@@ -100,14 +100,19 @@ GitHub이 **자동 실행 파일은 반드시 저장소 맨 위 `.github/workflo
 
 저장소 → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
 
-| 이름 | 값 |
-|---|---|
-| `LAW_OC` | `panryetheater` |
-| `GEMINI_API_KEY` | AI 스튜디오에서 받은 키 |
-| `YOUTUBE_CLIENT_ID` | 구글 클라우드에서 받은 값 |
-| `YOUTUBE_CLIENT_SECRET` | 〃 |
-| `YOUTUBE_REFRESH_TOKEN` | 〃 |
-| `NOTIFY_WEBHOOK` | 실패 알림용 (선택) |
+| 이름 | 값 | 꼭 필요한가 |
+|---|---|---|
+| `GEMINI_API_KEY` | AI 스튜디오에서 받은 키 | **대본 생성 때 필요** |
+| `YOUTUBE_CLIENT_ID` | 구글 클라우드에서 받은 값 | 업로드 때(5순위) |
+| `YOUTUBE_CLIENT_SECRET` | 〃 | 업로드 때(5순위) |
+| `YOUTUBE_REFRESH_TOKEN` | 〃 | 업로드 때(5순위) |
+| `NOTIFY_WEBHOOK` | 실패 알림 받을 주소 | 선택 |
+| `LAW_OC` | `panryetheater` | **필요 없음** — 아래 설명 |
+
+**`LAW_OC` 는 등록하지 않아도 된다.** 법제처가 누구에게나 발급하는 공개 API의 식별자이고,
+이 값은 `CLAUDE.md` 5번과 `STARTGUIDE.md` 에 이미 평문으로 적혀 있다. 감춰봐야 감춰지는 것이
+없는데 등록을 깜빡하면 파이프라인만 멈춘다. 그래서 `src/lawapi.py` 에 기본값을 두었다.
+다른 인증키로 바꾸고 싶을 때만 Secrets 에 넣으면 그 값이 우선한다.
 
 - 유튜브 관련 3개는 **5순위 작업이라 지금 없어도 된다.** 막히면 미루셔도 된다
 - 한 번 저장하면 다시 볼 수 없다. **메모에 원본을 남겨두십시오**

@@ -27,7 +27,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from lawapi import LawAPI, DailyLimitReached, DAILY_LIMIT  # noqa: E402
+from lawapi import LawAPI, DailyLimitReached, DAILY_LIMIT, DEFAULT_OC  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 CASES = ROOT / "data" / "cases"
@@ -158,11 +158,11 @@ def main():
     args = ap.parse_args()
 
     oc = os.environ.get("LAW_OC", "").strip()
-    if not oc:
-        print("❌ LAW_OC 가 비어 있다.")
-        print("   저장소 → Settings → Secrets and variables → Actions 에서")
-        print("   LAW_OC 를 등록했는지 확인하라. 값은 panryetheater 다.")
-        return 2
+    if oc:
+        print(f"법제처 인증키: 환경변수 LAW_OC 사용 ({oc[:4]}…)")
+    else:
+        oc = DEFAULT_OC
+        print(f"법제처 인증키: 기본값 사용 ({oc}). 비밀이 아니므로 등록 없이 동작한다.")
 
     today = date.today()
     st = load_state()

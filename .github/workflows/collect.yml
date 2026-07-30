@@ -48,25 +48,19 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: 열쇠 확인
+      # 법제처 인증키는 비밀이 아니라 공개 API의 식별자다(CLAUDE.md 5번에 평문으로 적혀 있다).
+      # 등록돼 있으면 그걸 쓰고, 없으면 코드의 기본값으로 그냥 돌아간다.
+      # 열쇠 하나 때문에 파이프라인이 멈추는 일이 없게 한다.
+      - name: 인증키 확인 (없어도 진행)
         env:
           LAW_OC: ${{ secrets.LAW_OC }}
         run: |
-          if [ -z "$LAW_OC" ]; then
-            echo "::error::LAW_OC 열쇠가 등록되어 있지 않습니다."
-            {
-              echo "## ❌ 열쇠가 없습니다"
-              echo ""
-              echo "저장소 → **Settings** → **Secrets and variables** → **Actions**"
-              echo "→ **New repository secret** 에서 아래를 등록하십시오."
-              echo ""
-              echo "| 이름 | 값 |"
-              echo "|---|---|"
-              echo "| \`LAW_OC\` | \`panryetheater\` |"
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 1
+          if [ -n "$LAW_OC" ]; then
+            echo "LAW_OC 가 등록되어 있습니다. 그 값을 씁니다."
+          else
+            echo "LAW_OC 가 없습니다. 코드의 기본값(panryetheater)으로 진행합니다."
+            echo "법제처 공개 API의 식별자라 감출 필요가 없는 값입니다."
           fi
-          echo "LAW_OC 확인됨"
 
       - name: 판례 수집 + 1·2차 선정
         id: run
@@ -110,16 +104,48 @@ jobs:
           git add data/cases state/queue.json state/collect_state.json 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "바뀐 것이 없다. 커밋하지 않는다."
-          else
-            N=$(git diff --cached --name-only | grep -c '^data/cases/' || true)
-            git commit -m "수집: 판례 ${N}건 갱신 [skip ci]"
-            for i in 1 2 3 4; do
-              git push origin HEAD:main && break
-              echo "푸시 실패. $((2**i))초 뒤 재시도"
-              sleep $((2**i))
-              git pull --rebase origin main || true
-            done
+            exit 0
           fi
+          N=$(git diff --cached --name-only | grep -c '^data/cases/' || true)
+          git commit -m "수집: 판례 ${N}건 갱신 [skip ci]"
+
+          OK=0
+          for i in 1 2 3 4; do
+            if git push origin HEAD:main; then OK=1; break; fi
+            echo "푸시 실패. $((2**i))초 뒤 재시도"
+            sleep $((2**i))
+            git pull --rebase origin main || true
+          done
+
+          if [ "$OK" = "0" ]; then
+            # 받아온 판례를 잃지 않게 첨부파일로라도 남긴다
+            echo "PUSH_FAILED=1" >> "$GITHUB_ENV"
+            {
+              echo ""
+              echo "### ⚠️ 결과를 저장소에 올리지 못했습니다"
+              echo ""
+              echo "판례는 정상적으로 받아왔지만 저장 단계에서 막혔습니다."
+              echo "쓰기 권한이 꺼져 있을 때 생기는 일입니다. 한 번만 켜주시면 됩니다."
+              echo ""
+              echo "저장소 → **Settings** → **Actions** → **General**"
+              echo "→ 맨 아래 **Workflow permissions**"
+              echo "→ **Read and write permissions** 선택 → **Save**"
+              echo ""
+              echo "받아온 판례는 이번 실행의 **Artifacts** 에 첨부해 두었습니다."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::저장소 쓰기 권한이 없어 결과를 커밋하지 못했습니다."
+          fi
+
+      - name: 못 올린 결과를 첨부파일로 보관
+        if: always() && env.PUSH_FAILED == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: collected-cases
+          path: |
+            data/cases
+            state/queue.json
+            state/collect_state.json
+          retention-days: 7
 
       - name: 실패 알림
         if: failure() && env.HOOK != ''

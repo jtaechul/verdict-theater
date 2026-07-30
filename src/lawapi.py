@@ -23,6 +23,14 @@ import xml.etree.ElementTree as ET
 BASE_LIST = "https://www.law.go.kr/DRF/lawSearch.do"
 BASE_BODY = "https://www.law.go.kr/DRF/lawService.do"
 
+# 법제처 인증키(OC). 비밀이 아니다.
+#   - 법제처가 누구에게나 발급하는 공개 API의 식별자다
+#   - 이 값은 CLAUDE.md 5번과 STARTGUIDE.md 에 이미 평문으로 적혀 있다
+#   - 즉 Secrets 로 감춰봐야 감춰지는 것이 없고, 등록을 깜빡하면 파이프라인만 멈춘다
+# 그래서 기본값을 코드에 두고, 필요하면 LAW_OC 환경변수로 덮어쓸 수 있게 한다.
+# (GEMINI_API_KEY 는 진짜 비밀이다. 그건 반드시 Secrets 에만 넣는다)
+DEFAULT_OC = "panryetheater"
+
 MIN_INTERVAL = 1.1      # 호출 간격(초)
 DAILY_LIMIT = 200       # 하루 상한
 TIMEOUT = 40

@@ -667,7 +667,7 @@ Actions가 렌더링 → 유튜브 비공개 업로드 → stage: uploaded_priva
 아이폰 사파리에서 저장소 → Settings → Secrets and variables → Actions 에 등록.
 
 ```
-LAW_OC                  법제처 인증키 (panryetheater)
+LAW_OC                  법제처 인증키 (panryetheater) — ⚠️ 등록 불필요. 아래 설명 참조
 GEMINI_API_KEY          이미지·음악·대본·TTS 생성
 YOUTUBE_CLIENT_ID
 YOUTUBE_CLIENT_SECRET
@@ -675,6 +675,10 @@ YOUTUBE_REFRESH_TOKEN
 NOTIFY_WEBHOOK          실패 알림용 (선택)
 ```
 
+- ⚠️ **`LAW_OC` 는 Secrets 에 넣지 않아도 된다.** 법제처가 누구에게나 발급하는 공개 API의
+  식별자이고 이 문서 5번에 평문으로 적혀 있다. 감출 것이 없는데 등록을 깜빡하면 수집이 멈춘다.
+  `src/lawapi.py` 의 `DEFAULT_OC` 가 기본값을 갖고, 환경변수가 있으면 그쪽이 우선한다.
+  **진짜 비밀은 `GEMINI_API_KEY` 와 유튜브 토큰 3종뿐이다. 그것들은 반드시 Secrets 에만 넣는다.**
 - TTS는 **Gemini API의 다중 화자 TTS를 우선 검토한다.** 같은 키로 해결되면 관리 지점이 줄어든다
 - 품질이 부족하면 한국어 전문 서비스를 검토한다. **미확정 항목이다**
 
