@@ -36,6 +36,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 50
 
+    # ⚠️ 알림 주소를 여기(잡 단위)에 둔다. 단계 안의 env 는 그 단계의 if 조건에서
+    #    읽히지 않아, 단계에만 두면 실패 알림이 영원히 안 울린다.
+    env:
+      HOOK: ${{ secrets.NOTIFY_WEBHOOK }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -118,8 +123,6 @@ jobs:
 
       - name: 실패 알림
         if: failure() && env.HOOK != ''
-        env:
-          HOOK: ${{ secrets.NOTIFY_WEBHOOK }}
         run: |
           curl -sS -X POST -H 'Content-Type: application/json' \
             -d "{\"text\":\"판결극장 · 판례 수집 실패\\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
