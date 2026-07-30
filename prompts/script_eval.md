@@ -141,7 +141,7 @@
 | `case_number` | 사건번호(`2024가합12345` 같은 형태) 또는 특정 법원 이름 |
 | `absolute_year` | 절대 연도(`2019년`, `2023년`). 상대 표기여야 한다 |
 | `amount_inconsistent` | 같은 금액이 대본 안에서 다르게 나오는 곳 |
-| `law_invented` | `law.refs_from_case` 에 없는 조문을 본문에서 인용 |
+| `law_invented` | 대본의 대사·나레이션에 나온 조문이 `law.refs_from_case` 에 없다. 또는 `law.refs_source` 가 비어 있다 |
 | `legal_advice` | 시청자에게 조언하는 문장. "이렇게 하면 이깁니다", "소송하시면 받습니다", 승소 가능성 언급 |
 | `asset_unknown` | `bg` `pose` `bgm` `amb` `sfx` `speaker` 중 정해진 목록에 없는 값 |
 | `cut_too_long` | `sec` 이 7.0을 넘는 컷 |
