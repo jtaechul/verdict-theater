@@ -1,0 +1,379 @@
+#!/usr/bin/env python3
+"""에셋 만들기 — 캐릭터 컷아웃 · 배경 · 소리.
+
+    python3 src/assets_gen.py sheet assets/sheets/F50A.png F50A   시트 한 장 → 컷아웃 17개
+    python3 src/assets_gen.py images --what bg --limit 4          배경 생성 (모델 호출)
+    python3 src/assets_gen.py images --what char --code F50B      캐릭터 시트 생성
+    python3 src/assets_gen.py audio                               앰비언스·효과음 (비용 0원)
+    python3 src/assets_gen.py check                               빠진 에셋 목록
+
+이 파일이 하는 일은 셋이다.
+
+1. **시트 후처리** — 3열 6행짜리 큰 그림 한 장을 인물 컷아웃 17개로 자른다.
+   API 없이 도는 순수 계산이라 지금 바로 검증할 수 있다.
+2. **이미지 생성** — 캐릭터 시트와 배경을 모델로 만든다.
+3. **소리 만들기** — 앰비언스와 일부 효과음은 **합성으로 만든다. 비용 0원.**
+   룸톤은 원래 저역 잡음이라 합성이 오히려 깨끗하다.
+"""
+
+import argparse
+import base64
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+from PIL import Image, ImageFilter
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from llm import BASE, _get, _post  # noqa: E402
+
+ROOT = Path(__file__).resolve().parent.parent
+ASSETS = ROOT / "assets"
+
+CHROMA = (0, 0xB1, 0x40)      # 크로마 그린. 실측 오차 5 이내로 균일
+CHROMA_TOL = 60
+COLS, ROWS = 3, 6
+GRID_TRIM = 4                  # 격자선 안쪽으로 이 만큼 잘라낸다
+OUTLINE_RATIO = 0.015          # 인물 높이의 1.5% 만큼 흰 테두리
+UPSCALE = 4
+
+# 시트 18칸의 순서. 18번(우하단)은 워터마크 자리라 비워 둔다.
+CELL_ORDER = [
+    "face_neutral", "face_sad", "face_anger",
+    "face_shock", "face_cold", "face_cry",
+    "bust_neutral", "bust_sad", "bust_anger",
+    "bust_shock", "bust_cold", "bust_cry",
+    "full_stand", "full_walk", "full_sit",
+    "full_back", "full_sit_down", None,
+]
+
+
+# ── 1. 시트 후처리 ───────────────────────────────────────
+def slice_sheet(img):
+    """3열 6행으로 자른다. 격자선(검은 3px)이 남지 않게 안쪽으로 조금 더 자른다."""
+    W, H = img.size
+    cw, ch = W / COLS, H / ROWS
+    cells = []
+    for r in range(ROWS):
+        for c in range(COLS):
+            box = (int(c * cw) + GRID_TRIM, int(r * ch) + GRID_TRIM,
+                   int((c + 1) * cw) - GRID_TRIM, int((r + 1) * ch) - GRID_TRIM)
+            cells.append(img.crop(box))
+    return cells
+
+
+def drop_chroma(cell):
+    """크로마 그린을 지워 투명하게 만든다."""
+    cell = cell.convert("RGBA")
+    px = cell.load()
+    W, H = cell.size
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = px[x, y]
+            if (abs(r - CHROMA[0]) < CHROMA_TOL and abs(g - CHROMA[1]) < CHROMA_TOL
+                    and abs(b - CHROMA[2]) < CHROMA_TOL and g > r + 40 and g > b + 20):
+                px[x, y] = (r, g, b, 0)
+    return cell
+
+
+def trim_alpha(img, pad=6):
+    box = img.getchannel("A").getbbox()
+    if not box:
+        return None
+    l, t, r, b = box
+    return img.crop((max(0, l - pad), max(0, t - pad),
+                     min(img.width, r + pad), min(img.height, b + pad)))
+
+
+def white_outline(img):
+    """인물 둘레에 흰 테두리를 두른다.
+
+    블러 배경 위에 인물이 떠 보이게 해서 '오려 붙인 티'를 줄인다.
+    두께는 인물 높이의 1.5%."""
+    w = max(2, int(img.height * OUTLINE_RATIO))
+    alpha = img.getchannel("A")
+    grown = alpha.filter(ImageFilter.MaxFilter(w * 2 + 1))
+    ring = Image.new("RGBA", img.size, (255, 255, 255, 0))
+    ring.putalpha(grown)
+    white = Image.new("RGBA", img.size, (255, 255, 255, 255))
+    white.putalpha(grown)
+    out = Image.alpha_composite(white, img)
+    return out
+
+
+def process_sheet(sheet_path, code, outdir=None, upscale=UPSCALE):
+    """시트 한 장 → 컷아웃 17개.
+
+    시트 생성 → 슬라이싱 → 크로마키 제거 → 알파 확장 후 흰색 채움 → 4배 업스케일 → 저장
+    """
+    outdir = Path(outdir or (ASSETS / "char" / code))
+    outdir.mkdir(parents=True, exist_ok=True)
+    img = Image.open(sheet_path).convert("RGBA")
+    cells = slice_sheet(img)
+    made = []
+    for i, (cell, name) in enumerate(zip(cells, CELL_ORDER)):
+        if name is None:
+            continue
+        cut = trim_alpha(drop_chroma(cell))
+        if cut is None:
+            print(f"  {i + 1:2d}번 칸 비어 있음 → {name} 건너뜀")
+            continue
+        cut = white_outline(cut)
+        if upscale > 1:
+            cut = cut.resize((cut.width * upscale, cut.height * upscale), Image.LANCZOS)
+        p = outdir / f"{name}.png"
+        cut.save(p)
+        made.append(p)
+    print(f"{code}: 컷아웃 {len(made)}개 → {outdir}")
+    return made
+
+
+# ── 2. 이미지 생성 ───────────────────────────────────────
+BG_PROMPTS = {
+    "funeral": "한국의 장례식장", "medical": "한국의 병원",
+    "home": "한국 서민 아파트", "court": "한국 법원",
+    "office": "한국의 사무 공간", "daily": "한국의 동네",
+    "etc": "한국의 일상 공간",
+}
+BG_PLACE = {
+    "funeral_reception": "접객실, 낮은 조명과 흰 국화", "funeral_hall": "긴 복도",
+    "funeral_altar": "영정이 놓인 제단 앞", "funeral_parking": "밤의 주차장",
+    "medical_room_single": "1인 병실", "medical_room_shared": "다인 병실",
+    "medical_nursing_hall": "요양원 복도", "medical_waiting": "병원 대기실",
+    "home_living_day": "낮의 거실", "home_living_night": "밤의 거실",
+    "home_kitchen": "부엌", "home_entrance": "현관", "home_bedroom": "안방",
+    "home_closet": "옷장 앞", "court_exterior": "법원 건물 외부",
+    "court_room": "법정 내부", "court_hall": "법원 복도",
+    "office_lawyer": "변호사 사무실", "office_registry": "등기소 창구",
+    "office_community": "주민센터", "office_bank": "은행 창구",
+    "daily_market": "시장 골목", "daily_sidedish": "반찬가게",
+    "daily_restaurant": "백반 식당", "daily_cafe": "동네 카페",
+    "daily_park": "공원 벤치", "etc_columbarium": "납골당",
+    "etc_country_yard": "시골 마당", "etc_busstop": "버스정류장",
+    "etc_alley_night": "밤의 골목길",
+}
+
+CHAR_LOOK = {
+    "F50A": "60대 한국 여성, 짧은 파마머리, 지친 눈, 남색 니트",
+    "F50B": "50대 한국 여성, 단정한 단발, 날카로운 눈매, 남색 블라우스",
+    "M50A": "50대 한국 남성, 희끗한 짧은 머리, 남색 정장",
+    "M50B": "50대 한국 남성, 벗어진 이마, 남색 점퍼",
+    "F70": "70대 한국 여성, 흰 파마머리, 굽은 어깨, 남색 상의",
+    "M70": "70대 한국 남성, 흰 머리, 마른 체구, 남색 상의",
+    "JUDGE": "한국 판사, 검은 법복",
+}
+
+
+def pick_image_model(key):
+    override = os.environ.get("GEMINI_IMAGE_MODEL")
+    if override:
+        return override.strip()
+    data = _get(f"{BASE}/models?key={key}&pageSize=200")
+    names = [m["name"].split("/", 1)[-1] for m in data.get("models", [])]
+    cands = [n for n in names if "image" in n.lower() and "embed" not in n.lower()]
+    if not cands:
+        return None
+    cands.sort(key=lambda n: ("preview" in n, len(n)))
+    return cands[0]
+
+
+def gen_image(key, model, prompt, out_path):
+    res = _post(f"{BASE}/models/{model}:generateContent?key={key}", {
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {"responseModalities": ["IMAGE", "TEXT"]},
+    }, timeout=300)
+    parts = (res.get("candidates") or [{}])[0].get("content", {}).get("parts", [])
+    blob = next((p["inlineData"] for p in parts if "inlineData" in p), None)
+    if not blob:
+        raise RuntimeError("이미지가 오지 않았다")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_bytes(base64.b64decode(blob["data"]))
+    return out_path
+
+
+def bg_prompt(code):
+    fam = code.split("_")[0]
+    place = BG_PLACE.get(code, code)
+    return (f"{BG_PROMPTS.get(fam, '한국의 공간')} — {place}. "
+            "사진처럼 사실적인 실내/실외 배경. **사람이 등장하지 않는다.** "
+            "글자·간판·상표가 보이지 않게. 차분하고 약간 어두운 색조. "
+            "가로 16:9 구도, 중앙을 비워 인물을 세울 자리를 남긴다.")
+
+
+def char_sheet_prompt(code):
+    return (
+        f"캐릭터 시트 한 장. {CHAR_LOOK.get(code, '한국 중년')}.\n"
+        "규격을 정확히 지켜라.\n"
+        "- 배경 전체를 순수한 크로마 그린 #00B140 단색으로 채운다\n"
+        "- 3열 6행 = 18칸 격자. 격자선은 검은색 3px\n"
+        "- 인물 의상은 남색 상의 + 검정 하의. 회색은 절대 쓰지 않는다\n"
+        "- 바닥 그림자를 그리지 않는다\n"
+        "- 18번 칸(오른쪽 맨 아래)은 인물 없이 비워 둔다\n"
+        "칸 순서: 1~6 얼굴 클로즈업(무표정·슬픔·분노·놀람·냉담·울음), "
+        "7~12 상반신(같은 순서), 13~17 전신(서기·걷기·앉기·뒷모습·주저앉기), 18 빈 칸\n"
+        "같은 인물의 얼굴이 18칸에서 완전히 동일해야 한다. 밝고 사실적인 채색."
+    )
+
+
+def cmd_images(args):
+    key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if not key:
+        print("❌ GEMINI_API_KEY 가 없다. 이미지 생성은 열쇠가 필요하다.")
+        return 2
+    model = pick_image_model(key)
+    if not model:
+        print("❌ 이미지를 만들 수 있는 모델을 찾지 못했다.")
+        print("   GEMINI_IMAGE_MODEL 환경변수로 모델 이름을 직접 지정할 수 있다.")
+        return 2
+    print(f"이미지 모델: {model}")
+
+    jobs = []
+    if args.what in ("bg", "all"):
+        for code in BG_PLACE:
+            p = ASSETS / "bg" / f"{code}.jpg"
+            if not p.exists() or args.force:
+                jobs.append(("bg", code, p, bg_prompt(code)))
+    if args.what in ("char", "all"):
+        codes = [args.code] if args.code else list(CHAR_LOOK)
+        for code in codes:
+            p = ASSETS / "sheets" / f"{code}.png"
+            if not p.exists() or args.force:
+                jobs.append(("char", code, p, char_sheet_prompt(code)))
+    if args.limit:
+        jobs = jobs[:args.limit]
+    if not jobs:
+        print("만들 것이 없다. 이미 다 있거나 --force 가 필요하다.")
+        return 0
+
+    print(f"{len(jobs)}개 생성")
+    made = 0
+    for kind, code, path, prompt in jobs:
+        try:
+            gen_image(key, model, prompt, path)
+            made += 1
+            print(f"  {kind} {code} → {path.name}")
+            if kind == "char":
+                process_sheet(path, code)
+        except Exception as e:
+            print(f"  {kind} {code} 실패: {type(e).__name__}: {e}")
+    print(f"\n완료 {made}/{len(jobs)}")
+    return 0
+
+
+# ── 3. 소리 만들기 (합성 · 비용 0원) ─────────────────────
+AMB_RECIPE = {
+    # 장소별 공기음. 룸톤은 원래 저역 잡음이라 합성이 오히려 깨끗하다.
+    "home":     "anoisesrc=c=brown:a=0.05,lowpass=f=320,volume=0.5",
+    "hospital": "anoisesrc=c=brown:a=0.04,lowpass=f=500,highpass=f=90,volume=0.5",
+    "court":    "anoisesrc=c=brown:a=0.035,lowpass=f=260,volume=0.5",
+    "funeral":  "anoisesrc=c=brown:a=0.03,lowpass=f=220,volume=0.45",
+    "street":   "anoisesrc=c=pink:a=0.05,lowpass=f=900,highpass=f=120,volume=0.45",
+}
+SFX_RECIPE = {
+    # 합성으로 그럴듯하게 나오는 것만. 나머지는 무료 음원을 넣어야 한다.
+    "heartbeat": "sine=f=52:d=2,atempo=1,volume=1.2,"
+                 "atrim=0:2,asetrate=44100,aformat=channel_layouts=mono",
+    "clock":     "sine=f=1400:d=0.02,apad=pad_dur=0.98,aloop=loop=5:size=44100,volume=0.7",
+    "gavel":     "anoisesrc=c=white:d=0.09:a=0.9,lowpass=f=900,volume=1.4,apad=pad_dur=0.5",
+    "paper":     "anoisesrc=c=white:d=0.5:a=0.25,highpass=f=1800,volume=0.9",
+    "tear":      "anoisesrc=c=white:d=0.8:a=0.35,highpass=f=1200,volume=1.0",
+    "footsteps": "anoisesrc=c=brown:d=0.12:a=0.6,lowpass=f=300,apad=pad_dur=0.38,"
+                 "aloop=loop=3:size=22050,volume=1.1",
+    "door":      "anoisesrc=c=brown:d=0.3:a=0.5,lowpass=f=400,volume=1.2,apad=pad_dur=0.4",
+    "monitor":   "sine=f=880:d=0.12,apad=pad_dur=0.88,aloop=loop=4:size=44100,volume=0.5",
+    "stamp":     "anoisesrc=c=white:d=0.07:a=0.8,lowpass=f=600,volume=1.3,apad=pad_dur=0.4",
+    "phone":     "sine=f=1000:d=0.4,apad=pad_dur=0.3,aloop=loop=3:size=44100,volume=0.8",
+}
+
+
+def synth(kind, name, recipe, seconds, force=False):
+    out = ASSETS / kind / f"{name}.mp3"
+    if out.exists() and not force:
+        return None
+    out.parent.mkdir(parents=True, exist_ok=True)
+    r = subprocess.run(["ffmpeg", "-y", "-loglevel", "error",
+                        "-f", "lavfi", "-i", recipe, "-t", f"{seconds}",
+                        "-ac", "1", "-ar", "44100", "-b:a", "128k", str(out)],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        print(f"  {kind}/{name} 실패: {r.stderr.strip()[-160:]}")
+        return None
+    return out
+
+
+def cmd_audio(args):
+    made = 0
+    print("앰비언스 5종 (장소별 공기음)")
+    for name, recipe in AMB_RECIPE.items():
+        if synth("amb", name, recipe, 30, args.force):
+            made += 1
+            print(f"  amb/{name}.mp3")
+    print("\n효과음 10종")
+    for name, recipe in SFX_RECIPE.items():
+        if synth("sfx", name, recipe, 2, args.force):
+            made += 1
+            print(f"  sfx/{name}.mp3")
+    print(f"\n합성 {made}개 · 비용 0원")
+    print("\n⚠️ 음악 8트랙은 합성으로 만들 수 없다.")
+    print("   지침서 8번대로 미리 만들어 `assets/bgm/{코드}.mp3` 로 넣어야 한다.")
+    print("   코드: hook past care reveal conflict court verdict outro")
+    print("   회차마다 만들지 않는다 — 톤이 튀면 시리즈물에서 치명적이다.")
+    return 0
+
+
+# ── 4. 무결성 검사 ───────────────────────────────────────
+def cmd_check(args):
+    mf = json.loads((ASSETS / "manifest.json").read_text(encoding="utf-8"))
+    need = mf["required_files"]
+    missing = [f for f in need if not (ROOT / f).exists()]
+    have = len(need) - len(missing)
+    print(f"에셋 {have}/{len(need)}개 준비됨")
+    if not missing:
+        print("전부 있다. 렌더링 가능.")
+        return 0
+    by = {}
+    for f in missing:
+        by.setdefault(f.split("/")[1], []).append(f)
+    print("\n빠진 것")
+    for k, v in sorted(by.items(), key=lambda x: -len(x[1])):
+        print(f"  {k:10s} {len(v):4d}개  예) {Path(v[0]).name}")
+    print("\n빠진 에셋은 렌더링에서 대체물(실루엣·무음)로 채워진다.")
+    print("파이프라인은 돌지만 발행할 수 있는 품질이 아니다.")
+    return 1
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    sub = ap.add_subparsers(dest="cmd", required=True)
+
+    s = sub.add_parser("sheet", help="시트 한 장 → 컷아웃 17개")
+    s.add_argument("path")
+    s.add_argument("code")
+    s.add_argument("--upscale", type=int, default=UPSCALE)
+
+    i = sub.add_parser("images", help="캐릭터 시트·배경 생성")
+    i.add_argument("--what", choices=["bg", "char", "all"], default="all")
+    i.add_argument("--code", default="")
+    i.add_argument("--limit", type=int, default=0)
+    i.add_argument("--force", action="store_true")
+
+    a = sub.add_parser("audio", help="앰비언스·효과음 합성 (비용 0원)")
+    a.add_argument("--force", action="store_true")
+
+    sub.add_parser("check", help="빠진 에셋 목록")
+
+    args = ap.parse_args()
+    if args.cmd == "sheet":
+        process_sheet(args.path, args.code, upscale=args.upscale)
+        return 0
+    if args.cmd == "images":
+        return cmd_images(args)
+    if args.cmd == "audio":
+        return cmd_audio(args)
+    return cmd_check(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
