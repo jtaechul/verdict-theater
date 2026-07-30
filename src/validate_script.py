@@ -229,6 +229,24 @@ def check_stakes(doc, r):
         r.ok(f"걸린 것이 {stakes_at[0]:.1f}초에 제시됨 ({stakes_at[1]})")
 
 
+def check_tags(doc, r):
+    """대본이 스스로 표시해 둔 컷들. 없으면 쇼츠와 검수가 짐작에 의존하게 된다."""
+    found = {}
+    for _act, cut in all_cuts(doc):
+        t = cut.get("tag")
+        if t:
+            found.setdefault(t, []).append(cut.get("id"))
+    if "anger_line" not in found:
+        r.error("표시", "3막의 뻔뻔한 대사에 tag:anger_line 이 없다 — 쇼츠 2번이 이 컷을 찾지 못한다")
+    elif len(found["anger_line"]) > 1:
+        r.error("표시", f"anger_line 이 {len(found['anger_line'])}개다. 정확히 1개여야 한다")
+    for t, why in (("twist", "2막 반전"), ("verdict", "4막 판결"), ("question", "5막 질문")):
+        if t not in found:
+            r.warn("표시", f"{why} 컷에 tag:{t} 가 없다")
+    if "anger_line" in found and len(found["anger_line"]) == 1:
+        r.ok(f"핵심 컷 표시 {len(found)}종 ({', '.join(sorted(found))})")
+
+
 def check_blackout(doc, r):
     bad = []
     for act in doc.get("acts", []):
@@ -391,6 +409,36 @@ def check_youtube(doc, r):
             r.ok("제목 후보 3개, 모두 30자 이내")
 
 
+def validate_doc(doc, mf=None):
+    """대본 dict 를 검사해 Report 를 돌려준다. 다른 코드(script.py)가 불러 쓴다."""
+    mf = mf or load_manifest()
+    r = Report()
+    check_structure(doc, r)
+    check_assets(doc, mf, r)
+    check_timing(doc, r)
+    check_text(doc, r)
+    check_hook(doc, r)
+    check_stakes(doc, r)
+    check_tags(doc, r)
+    check_blackout(doc, r)
+    check_nametags(doc, r)
+    check_anonymization(doc, r)
+    check_law(doc, r)
+    check_shorts(doc, r)
+    check_youtube(doc, r)
+    return r
+
+
+def errors_as_text(r, limit=12):
+    """검증 오류를 모델에게 돌려줄 문장으로 만든다."""
+    if not r.errors:
+        return ""
+    lines = [f"- [{w}] {m}" for w, m in r.errors[:limit]]
+    if len(r.errors) > limit:
+        lines.append(f"- (그 외 {len(r.errors) - limit}건)")
+    return "\n".join(lines)
+
+
 def main():
     if len(sys.argv) < 2:
         print("사용법: python3 src/validate_script.py <대본.json>")
@@ -406,27 +454,10 @@ def main():
         print(f"JSON 형식이 깨졌다: {e}")
         return 2
 
-    mf = load_manifest()
-    r = Report()
-
     print(f"검사 대상: {path}")
     print(f"사건: {doc.get('meta', {}).get('case_id')} · {doc.get('meta', {}).get('case_type')}")
     print()
-
-    check_structure(doc, r)
-    check_assets(doc, mf, r)
-    check_timing(doc, r)
-    check_text(doc, r)
-    check_hook(doc, r)
-    check_stakes(doc, r)
-    check_blackout(doc, r)
-    check_nametags(doc, r)
-    check_anonymization(doc, r)
-    check_law(doc, r)
-    check_shorts(doc, r)
-    check_youtube(doc, r)
-
-    return r.dump()
+    return validate_doc(doc).dump()
 
 
 if __name__ == "__main__":

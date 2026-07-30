@@ -1034,7 +1034,8 @@
           },
           "sfx": "sfx_heartbeat",
           "amb": "amb_street",
-          "blackout": false
+          "blackout": false,
+          "tag": "twist"
         },
         {
           "id": "A2-11",
@@ -1453,7 +1454,8 @@
           "gfx": null,
           "sfx": null,
           "amb": "amb_home",
-          "blackout": false
+          "blackout": false,
+          "tag": "anger_line"
         },
         {
           "id": "A3-06",
@@ -2169,7 +2171,8 @@
           },
           "sfx": null,
           "amb": "amb_court",
-          "blackout": false
+          "blackout": false,
+          "tag": "verdict"
         },
         {
           "id": "A4-20",
@@ -2397,7 +2400,8 @@
           "gfx": null,
           "sfx": null,
           "amb": "amb_street",
-          "blackout": true
+          "blackout": true,
+          "tag": "question"
         }
       ]
     }
