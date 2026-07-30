@@ -1,0 +1,105 @@
+name: 4. 공개하기
+
+# 검수를 마친 비공개 영상을 공개로 바꾼다.
+#
+# 흐름
+#   3. 영상 만들기 → 유튜브 비공개 업로드
+#     ↓
+#   아이폰 유튜브 앱에서 확인 (비공개 영상은 본인만 보임)
+#     ↓
+#   여기서 공개 전환
+#
+# ⚠️ 쇼츠는 같은 날 한꺼번에 공개하지 않는다.
+#    롱폼 발행 +1일 / +2일 / +4일 로 나눠 공개한다.
+#    같은 날 3편을 올리면 '조각내기' 신호가 명확해져 노출이 죽는다.
+
+on:
+  workflow_dispatch:
+    inputs:
+      episode:
+        description: '회차 (예: EP001)'
+        required: true
+      what:
+        description: '무엇을 공개할까요'
+        required: true
+        default: '롱폼'
+        type: choice
+        options:
+          - '롱폼'
+          - '쇼츠 1번 (궁금증형)'
+          - '쇼츠 2번 (분노형)'
+          - '쇼츠 3번 (사이다형)'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      HOOK: ${{ secrets.NOTIFY_WEBHOOK }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 공개 전환
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+        run: |
+          set -o pipefail
+          case "${{ inputs.what }}" in
+            "쇼츠 1번"*) N="--shorts 1" ;;
+            "쇼츠 2번"*) N="--shorts 2" ;;
+            "쇼츠 3번"*) N="--shorts 3" ;;
+            *) N="" ;;
+          esac
+          python3 src/upload.py publish "${{ inputs.episode }}" $N 2>&1 | tee publish.log
+
+      - name: 결과 화면
+        if: always()
+        run: |
+          {
+            echo "## ${{ inputs.episode }} · ${{ inputs.what }} 공개"
+            echo ""
+            echo '```'
+            tail -n 20 publish.log 2>/dev/null || echo "기록 없음"
+            echo '```'
+            echo ""
+            echo "### 다음 발행 일정"
+            echo ""
+            echo "| 언제 | 무엇 |"
+            echo "|---|---|"
+            echo "| 롱폼 발행일 | 쇼츠 없음 |"
+            echo "| +1일 | 쇼츠 1번 (궁금증형) |"
+            echo "| +2일 | 쇼츠 2번 (분노형) |"
+            echo "| +4일 | 쇼츠 3번 (사이다형) |"
+            echo ""
+            echo "> 같은 날 여러 편을 올리지 마십시오. 조각내기 신호가 됩니다."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 상태 커밋
+        if: always()
+        run: |
+          git config user.name  "verdict-theater-bot"
+          git config user.email "actions@github.com"
+          git add state 2>/dev/null || true
+          git diff --cached --quiet && exit 0
+          git commit -m "발행: ${{ inputs.episode }} ${{ inputs.what }} [skip ci]"
+          for i in 1 2 3 4; do
+            git push origin HEAD:main && break
+            sleep $((2**i)); git pull --rebase origin main || true
+          done
+
+      - name: 실패 알림
+        if: failure() && env.HOOK != ''
+        run: |
+          curl -sS -X POST -H 'Content-Type: application/json' \
+            -d "{\"text\":\"판결극장 · 공개 전환 실패\\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            "$HOOK" || true

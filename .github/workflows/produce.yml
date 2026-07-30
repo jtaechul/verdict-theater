@@ -1,0 +1,193 @@
+name: 3. 영상 만들기
+
+# 대본 → 영상 → 유튜브 비공개 업로드.
+#
+# 아이폰 GitHub 앱에서 쓰는 법
+#   Actions 탭 → "3. 영상 만들기" → Run workflow
+#
+# 끝나면 유튜브 앱에서 비공개 영상을 확인하고,
+# "4. 공개하기" 버튼으로 공개 전환한다.
+#
+# ⚠️ 완성 영상(MP4)은 저장소에 절대 커밋하지 않는다.
+#    편당 수백 MB이고, 지워도 이력에 영구히 남아 저장소가 되돌릴 수 없이 커진다.
+#    실행이 끝나면 작업 공간이 통째로 사라진다.
+
+on:
+  workflow_dispatch:
+    inputs:
+      episode:
+        description: '회차 (비우면 대본이 있는 가장 최근 회차)'
+        required: false
+        default: ''
+      limit:
+        description: '앞 N컷만 (시험용. 0이면 전체)'
+        required: false
+        default: '0'
+      voice:
+        description: '나레이션'
+        required: true
+        default: '음성 생성'
+        type: choice
+        options:
+          - '음성 생성'
+          - '무음으로 시험'
+      upload:
+        description: '유튜브 업로드'
+        required: true
+        default: '롱폼만'
+        type: choice
+        options:
+          - '롱폼만'
+          - '롱폼 + 쇼츠'
+          - '올리지 않음'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: produce
+  cancel-in-progress: false
+
+jobs:
+  produce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    env:
+      HOOK: ${{ secrets.NOTIFY_WEBHOOK }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 도구 준비 (FFmpeg · 한글 폰트)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-nanum
+          python3 -m pip install --quiet Pillow
+          ffmpeg -version | head -1
+          echo "나눔 폰트: $(ls /usr/share/fonts/truetype/nanum/ | head -1)"
+
+      - name: 회차 정하기
+        id: pick
+        run: |
+          EP="${{ inputs.episode }}"
+          if [ -z "$EP" ]; then
+            EP=$(ls -1 data/scripts/EP*.json 2>/dev/null | grep -v '\.eval\.\|\.shorts\.' | sort | tail -1 | xargs -n1 basename | sed 's/\.json//')
+          fi
+          if [ -z "$EP" ]; then
+            echo "## 만들 대본이 없습니다" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "먼저 **2. 대본 만들기** 를 실행하십시오." >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::대본이 없습니다."
+            exit 1
+          fi
+          echo "ep=$EP" >> "$GITHUB_OUTPUT"
+          echo "회차: $EP"
+
+      - name: 에셋 무결성 검사
+        run: |
+          # 렌더 전에 필요한 파일이 다 있는지 본다. 하나 없으면 대체물로 채워지므로
+          # 발행 품질이 아니라는 것을 여기서 분명히 알려준다.
+          python3 src/assets_gen.py check > asset.log 2>&1 || true
+          cat asset.log
+
+      - name: 나레이션 만들기
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          set -o pipefail
+          FLAG=""
+          [ "${{ inputs.voice }}" = "무음으로 시험" ] && FLAG="--silent"
+          python3 src/tts.py "data/scripts/${{ steps.pick.outputs.ep }}.json" \
+            --out build/voice $FLAG 2>&1 | tee tts.log
+
+      - name: 렌더링 (롱폼 16:9 + 쇼츠 9:16)
+        run: |
+          set -o pipefail
+          LIM=""
+          [ "${{ inputs.limit }}" != "0" ] && LIM="--limit ${{ inputs.limit }}"
+          python3 src/render.py "data/scripts/${{ steps.pick.outputs.ep }}.json" \
+            --out build --shorts --narration build/voice $LIM 2>&1 | tee render.log
+          ls -la build/*.mp4
+
+      - name: 유튜브 업로드 (비공개)
+        if: inputs.upload != '올리지 않음'
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+        run: |
+          set -o pipefail
+          python3 src/upload.py private "${{ steps.pick.outputs.ep }}" \
+            --video build/longform.mp4 --narration build/voice 2>&1 | tee upload.log
+          if [ "${{ inputs.upload }}" = "롱폼 + 쇼츠" ]; then
+            python3 src/upload.py shorts "${{ steps.pick.outputs.ep }}" --dir build 2>&1 | tee -a upload.log
+          fi
+
+      - name: 결과 화면
+        if: always()
+        run: |
+          {
+            echo "## ${{ steps.pick.outputs.ep }} 영상 제작"
+            echo ""
+            for f in asset.log tts.log render.log upload.log; do
+              [ -f "$f" ] || continue
+              echo "### ${f%.log}"
+              echo '```'
+              tail -n 20 "$f"
+              echo '```'
+              echo ""
+            done
+            if ls build/*.mp4 >/dev/null 2>&1; then
+              echo "### 만들어진 파일"
+              echo ""
+              echo "| 파일 | 크기 | 길이 |"
+              echo "|---|---|---|"
+              for v in build/*.mp4; do
+                SZ=$(du -h "$v" | cut -f1)
+                DU=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$v" 2>/dev/null | cut -d. -f1)
+                echo "| $(basename "$v") | $SZ | ${DU}초 |"
+              done
+              echo ""
+              echo "> 영상 파일은 저장소에 올리지 않습니다. 이 실행이 끝나면 사라집니다."
+              echo "> 유튜브에 비공개로 올라간 것을 앱에서 확인하십시오."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 상태 커밋 (영상은 제외)
+        if: always()
+        run: |
+          git config user.name  "verdict-theater-bot"
+          git config user.email "actions@github.com"
+          # data/scripts 와 state 만. build/ 는 .gitignore 가 막고 있다.
+          git add state data/scripts 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "바뀐 것이 없다."
+            exit 0
+          fi
+          git commit -m "제작: ${{ steps.pick.outputs.ep }} 상태 갱신 [skip ci]"
+          for i in 1 2 3 4; do
+            git push origin HEAD:main && break
+            sleep $((2**i)); git pull --rebase origin main || true
+          done
+
+      - name: 영상이 저장소에 들어갔는지 확인
+        if: always()
+        run: |
+          # 지침서 11번 — MP4 가 커밋되면 되돌릴 수 없다. 마지막에 반드시 확인한다.
+          if git ls-files | grep -iE '\.(mp4|mov|mkv|webm)$'; then
+            echo "::error::영상 파일이 저장소에 들어갔습니다. 즉시 제거해야 합니다."
+            exit 1
+          fi
+          echo "영상 파일 없음 — 정상"
+
+      - name: 실패 알림
+        if: failure() && env.HOOK != ''
+        run: |
+          curl -sS -X POST -H 'Content-Type: application/json' \
+            -d "{\"text\":\"판결극장 · 영상 제작 실패\\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            "$HOOK" || true

@@ -1,0 +1,71 @@
+name: 5. 성과 보기
+
+# 조회수·시청 지속률·구독 전환을 모아 판단 기준(KPI)을 점검한다.
+#
+# 왜 필요한가 (지침서 10번)
+#   이 사업의 최대 실패 원인은 3개월 내 포기다.
+#   수익은 3개월 동안 0원이므로 수익이 아니라 선행지표로 판단한다.
+#   8주차 시청 지속률이 핵심 분기점이다.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 매주 월요일 한국시간 오전 8시 (UTC 23:00 일요일)
+    - cron: '0 23 * * 0'
+
+permissions:
+  contents: write
+
+jobs:
+  stats:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      HOOK: ${{ secrets.NOTIFY_WEBHOOK }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 성과 수집
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+        run: |
+          set -o pipefail
+          python3 src/stats.py 2>&1 | tee stats.log
+
+      - name: 결과 화면
+        if: always()
+        run: |
+          {
+            echo "## 성과"
+            echo ""
+            echo '```'
+            cat stats.log 2>/dev/null || echo "기록 없음"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 기록 커밋
+        if: always()
+        run: |
+          git config user.name  "verdict-theater-bot"
+          git config user.email "actions@github.com"
+          git add state 2>/dev/null || true
+          git diff --cached --quiet && exit 0
+          git commit -m "성과: 주간 집계 [skip ci]"
+          for i in 1 2 3 4; do
+            git push origin HEAD:main && break
+            sleep $((2**i)); git pull --rebase origin main || true
+          done
+
+      - name: 실패 알림
+        if: failure() && env.HOOK != ''
+        run: |
+          curl -sS -X POST -H 'Content-Type: application/json' \
+            -d "{\"text\":\"판결극장 · 성과 수집 실패\\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            "$HOOK" || true

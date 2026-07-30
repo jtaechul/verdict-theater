@@ -1,0 +1,129 @@
+name: 0. 에셋 만들기
+
+# 캐릭터 컷아웃 · 배경 · 소리를 만든다. **한 번만 하면 되는 작업이다.**
+#
+# 회차마다 돈이 드는 게 아니라, 처음에 약 1만 5천 원어치를 만들어 두고 계속 재사용한다.
+# 고정 배우 7명을 회차마다 다른 역으로 돌려 쓴다 — 극단 개념이며 의도된 설계다.
+#
+# 순서 권장
+#   1) 소리 (비용 0원) → 2) 캐릭터 한 명 시험 → 결과 확인 → 3) 나머지 전부
+
+on:
+  workflow_dispatch:
+    inputs:
+      what:
+        description: '무엇을 만들까요'
+        required: true
+        default: '소리 (비용 0원)'
+        type: choice
+        options:
+          - '소리 (비용 0원)'
+          - '캐릭터 한 명 시험'
+          - '캐릭터 전부'
+          - '배경 전부'
+          - '빠진 것 확인만'
+      code:
+        description: "캐릭터 코드 (F50A F50B M50A M50B F70 M70 JUDGE)"
+        required: false
+        default: 'F50B'
+      limit:
+        description: '최대 생성 개수 (비용 상한)'
+        required: false
+        default: '6'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: assets
+  cancel-in-progress: false
+
+jobs:
+  assets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    env:
+      HOOK: ${{ secrets.NOTIFY_WEBHOOK }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 도구 준비
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-nanum
+          python3 -m pip install --quiet Pillow
+
+      - name: 만들기
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          set -o pipefail
+          case "${{ inputs.what }}" in
+            "소리"*)
+              python3 src/assets_gen.py audio 2>&1 | tee build.log ;;
+            "캐릭터 한 명 시험")
+              python3 src/assets_gen.py images --what char --code "${{ inputs.code }}" 2>&1 | tee build.log ;;
+            "캐릭터 전부")
+              python3 src/assets_gen.py images --what char --limit "${{ inputs.limit }}" 2>&1 | tee build.log ;;
+            "배경 전부")
+              python3 src/assets_gen.py images --what bg --limit "${{ inputs.limit }}" 2>&1 | tee build.log ;;
+            *)
+              python3 src/assets_gen.py check 2>&1 | tee build.log || true ;;
+          esac
+
+      - name: 남은 것 확인
+        if: always()
+        run: python3 src/assets_gen.py check 2>&1 | tee check.log || true
+
+      - name: 결과 화면
+        if: always()
+        run: |
+          {
+            echo "## 에셋 만들기 — ${{ inputs.what }}"
+            echo ""
+            echo '```'
+            tail -n 30 build.log 2>/dev/null || echo "기록 없음"
+            echo '```'
+            echo ""
+            echo "### 지금 상태"
+            echo ""
+            echo '```'
+            tail -n 15 check.log 2>/dev/null || true
+            echo '```'
+            echo ""
+            echo "> 캐릭터 시트는 만든 즉시 컷아웃 17개로 잘립니다."
+            echo "> 결과가 이상하면 \`assets/sheets/\` 의 원본을 보고 다시 만드십시오."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 저장소 용량 감시
+        if: always()
+        run: |
+          MB=$(du -sm --exclude=.git . | cut -f1)
+          echo "저장소 크기: ${MB}MB"
+          [ "$MB" -gt 500 ] && echo "::warning::저장소가 ${MB}MB 입니다." || true
+
+      - name: 커밋
+        if: always()
+        run: |
+          git config user.name  "verdict-theater-bot"
+          git config user.email "actions@github.com"
+          git add assets 2>/dev/null || true
+          git diff --cached --quiet && exit 0
+          N=$(git diff --cached --name-only | wc -l)
+          git commit -m "에셋: ${{ inputs.what }} — 파일 ${N}개 [skip ci]"
+          for i in 1 2 3 4; do
+            git push origin HEAD:main && break
+            sleep $((2**i)); git pull --rebase origin main || true
+          done
+
+      - name: 실패 알림
+        if: failure() && env.HOOK != ''
+        run: |
+          curl -sS -X POST -H 'Content-Type: application/json' \
+            -d "{\"text\":\"판결극장 · 에셋 생성 실패\\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            "$HOOK" || true
