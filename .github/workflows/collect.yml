@@ -1,0 +1,126 @@
+name: 1. 판례 수집
+
+# 판례를 받아와 기계가 1·2차로 걸러낸다.
+#
+# 아이폰 GitHub 앱에서 쓰는 법
+#   Actions 탭 → 왼쪽 목록에서 "1. 판례 수집" → Run workflow 버튼
+#
+# 법제처 하루 호출 상한이 200회라 한 번에 다 못 받는다.
+# state/collect_state.json 에 어디까지 받았는지 남기므로,
+# 다음 실행이 이어서 받는다. 백필은 3일에 나눠 끝난다.
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_calls:
+        description: '이번에 쓸 최대 호출 수 (하루 상한 200회)'
+        required: false
+        default: '180'
+      queries:
+        description: '검색어 (쉼표 구분). 비우면 40개 전부'
+        required: false
+        default: ''
+  schedule:
+    # 매주 월요일 한국시간 오전 6시 (UTC 21:00 일요일)
+    - cron: '0 21 * * 0'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 열쇠 확인
+        env:
+          LAW_OC: ${{ secrets.LAW_OC }}
+        run: |
+          if [ -z "$LAW_OC" ]; then
+            echo "::error::LAW_OC 열쇠가 등록되어 있지 않습니다."
+            {
+              echo "## ❌ 열쇠가 없습니다"
+              echo ""
+              echo "저장소 → **Settings** → **Secrets and variables** → **Actions**"
+              echo "→ **New repository secret** 에서 아래를 등록하십시오."
+              echo ""
+              echo "| 이름 | 값 |"
+              echo "|---|---|"
+              echo "| \`LAW_OC\` | \`panryetheater\` |"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "LAW_OC 확인됨"
+
+      - name: 판례 수집 + 1·2차 선정
+        id: run
+        env:
+          LAW_OC: ${{ secrets.LAW_OC }}
+        run: |
+          set -o pipefail
+          python3 src/collect.py \
+            --max-calls "${{ inputs.max_calls || '180' }}" \
+            --queries "${{ inputs.queries }}" 2>&1 | tee collect.log
+
+      - name: 결과 요약 (아이폰에서 읽는 화면)
+        if: always()
+        run: |
+          {
+            echo "## 판례 수집 결과"
+            echo ""
+            echo '```'
+            tail -n 40 collect.log 2>/dev/null || echo "로그 없음"
+            echo '```'
+            echo ""
+            if [ -f state/queue.json ]; then
+              echo "**대기열: $(python3 -c "import json;print(len(json.load(open('state/queue.json'))))")건**"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 저장소 용량 감시
+        if: always()
+        run: |
+          MB=$(du -sm --exclude=.git . | cut -f1)
+          echo "저장소 크기: ${MB}MB"
+          if [ "$MB" -gt 500 ]; then
+            echo "::warning::저장소가 ${MB}MB 입니다. 500MB를 넘었습니다. 영상이 잘못 커밋됐는지 확인하십시오."
+          fi
+
+      - name: 결과 커밋
+        if: always()
+        run: |
+          git config user.name  "verdict-theater-bot"
+          git config user.email "actions@github.com"
+          git add data/cases state/queue.json state/collect_state.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "바뀐 것이 없다. 커밋하지 않는다."
+          else
+            N=$(git diff --cached --name-only | grep -c '^data/cases/' || true)
+            git commit -m "수집: 판례 ${N}건 갱신 [skip ci]"
+            for i in 1 2 3 4; do
+              git push origin HEAD:main && break
+              echo "푸시 실패. $((2**i))초 뒤 재시도"
+              sleep $((2**i))
+              git pull --rebase origin main || true
+            done
+          fi
+
+      - name: 실패 알림
+        if: failure() && env.HOOK != ''
+        env:
+          HOOK: ${{ secrets.NOTIFY_WEBHOOK }}
+        run: |
+          curl -sS -X POST -H 'Content-Type: application/json' \
+            -d "{\"text\":\"판결극장 · 판례 수집 실패\\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            "$HOOK" || true
