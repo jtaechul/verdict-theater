@@ -1,0 +1,80 @@
+# admin/ — 관리자 페이지
+
+아이폰 사파리에서 여는 한 페이지짜리 조종석이다.
+
+**왜 만들었나.** 12분 대본은 컷 113개짜리 JSON 이다. GitHub 앱에서 이런 걸 읽는다.
+
+```
+{ "id": "A3-05", "sec": 6.0, "bg": "home_living_day",
+  "chars": [{"code":"M50A","pose":"bust_cold", ...
+```
+
+사람이 읽을 수 있는 물건이 아니다. **검수를 하려면 대사와 흐름이 보여야 한다.**
+
+---
+
+## 무엇이 보이나
+
+| 화면 | 내용 |
+|---|---|
+| 지금 상태 | 대기열 몇 건, 제작 가능 몇 건, 만든 회차, 에셋 진행도 |
+| 회차 | 회차별 진행 단계(소재 선정 → 대본 → 검수 대기 → 공개됨) |
+| 대기열 | 판례를 점수순으로. 각 판례의 한 줄 요약 |
+| **대본 읽기** | **5단 구조 전문. 대사·나레이션·회상·그래픽 표시까지** |
+| 실행 | 워크플로 6개를 버튼으로 |
+| 최근 실행 | 성공/실패 |
+
+**대본 읽기가 이 페이지의 핵심이다.** 먼저 볼 세 곳(3초 관문 · 분노 대사 · 판결 금액)을
+맨 위에 뽑아주고, 그 아래 전문이 대사 형태로 이어진다.
+
+---
+
+## 왜 GitHub Pages 가 아닌가
+
+이 저장소는 **비공개**다. 무료 요금제에서 비공개 저장소는 Pages 를 쓸 수 없다.
+Cloudflare Workers 는 공개/비공개와 무관하고 무료다.
+(북 캐럿셀에서 이미 쓰고 계신 방식이다.)
+
+---
+
+## 처음 한 번만 하는 준비
+
+저장소 → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
+
+| 이름 | 어디서 받나 |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | Cloudflare → My Profile → API Tokens → **Edit Cloudflare Workers** 템플릿 |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare 대시보드 오른쪽 **Account ID** |
+| `ADMIN_PASSWORD` | 직접 정한다. 이 페이지에 들어갈 비밀번호 |
+| `ADMIN_GH_TOKEN` | [토큰 만들기](https://github.com/settings/personal-access-tokens/new) |
+
+`ADMIN_GH_TOKEN` 을 만들 때
+
+- **Repository access**: Only select repositories → **verdict-theater 하나만**
+- **Permissions**: `Contents` = Read, `Actions` = Read and write
+
+⚠️ **저장소 하나에만 닿도록 좁게 만든다.** 새어 나가도 피해가 여기로 한정된다.
+
+등록한 뒤 **6. 관리자 페이지 배포** 를 실행하면 주소가 나온다.
+그 주소를 사파리에서 열고 **홈 화면에 추가**해 두면 앱처럼 쓸 수 있다.
+
+---
+
+## 안전장치
+
+| 항목 | 어떻게 |
+|---|---|
+| 토큰 노출 | GitHub 토큰은 **브라우저로 내려가지 않는다.** 모든 호출이 Worker 안에서 일어난다 |
+| 로그인 위조 | 비밀번호 → **서명된 쿠키**. 손으로 고치면 서명이 깨져 통과하지 못한다 |
+| 아무나 실행 | 로그인하지 않으면 어떤 버튼도 눌리지 않는다 |
+| 엉뚱한 워크플로 실행 | 목록에 있는 6개 말고는 서버가 거부한다 |
+
+---
+
+## 고칠 때
+
+`worker.js` 한 파일이 전부다. 빌드 단계가 없다.
+고쳐서 `main` 에 올리면 **자동으로 다시 배포된다** (`deploy-admin.yml`).
+
+화면을 바꾸려면 `appHtml()` 안의 HTML·CSS·JS 를 고친다.
+버튼을 추가하려면 파일 위쪽 `WORKFLOWS` 배열에 한 줄 넣는다.

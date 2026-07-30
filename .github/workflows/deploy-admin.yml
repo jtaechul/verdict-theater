@@ -1,0 +1,118 @@
+name: 6. 관리자 페이지 배포
+
+# 관리자 페이지를 Cloudflare Workers 에 올린다.
+#
+# 왜 Cloudflare 인가
+#   이 저장소는 비공개다. 무료 요금제에서 비공개 저장소는 GitHub Pages 를 쓸 수 없다.
+#   Cloudflare Workers 는 공개/비공개와 무관하고 무료다.
+#   손님이 이미 book-carousel 에서 쓰고 있는 방식이기도 하다.
+#
+# 처음 한 번만 등록하면 되는 값 (Settings → Secrets and variables → Actions)
+#   CLOUDFLARE_API_TOKEN   Cloudflare 대시보드 → My Profile → API Tokens
+#                          → Edit Cloudflare Workers 템플릿
+#   CLOUDFLARE_ACCOUNT_ID  Cloudflare 대시보드 오른쪽에 있는 계정 ID
+#   ADMIN_PASSWORD         관리자 페이지에 들어갈 비밀번호 (직접 정한다)
+#   ADMIN_GH_TOKEN         GitHub 개인 토큰. 이 저장소만 접근하도록 좁게 만든다
+#                          github.com/settings/personal-access-tokens/new
+#                          → Repository access: verdict-theater 하나만
+#                          → Permissions: Contents = Read, Actions = Read and write
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'admin/**'
+      - '.github/workflows/deploy-admin.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 열쇠 확인
+        env:
+          CF: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACC: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PW: ${{ secrets.ADMIN_PASSWORD }}
+          TK: ${{ secrets.ADMIN_GH_TOKEN }}
+        run: |
+          MISS=""
+          [ -z "$CF" ]  && MISS="$MISS CLOUDFLARE_API_TOKEN"
+          [ -z "$ACC" ] && MISS="$MISS CLOUDFLARE_ACCOUNT_ID"
+          [ -z "$PW" ]  && MISS="$MISS ADMIN_PASSWORD"
+          [ -z "$TK" ]  && MISS="$MISS ADMIN_GH_TOKEN"
+          if [ -n "$MISS" ]; then
+            {
+              echo "## 열쇠가 부족합니다"
+              echo ""
+              echo "없는 것:$MISS"
+              echo ""
+              echo "저장소 → **Settings** → **Secrets and variables** → **Actions**"
+              echo "→ **New repository secret** 에서 아래를 등록하십시오."
+              echo ""
+              echo "| 이름 | 어디서 받나 |"
+              echo "|---|---|"
+              echo "| \`CLOUDFLARE_API_TOKEN\` | Cloudflare → My Profile → API Tokens → **Edit Cloudflare Workers** 템플릿 |"
+              echo "| \`CLOUDFLARE_ACCOUNT_ID\` | Cloudflare 대시보드 오른쪽 **Account ID** |"
+              echo "| \`ADMIN_PASSWORD\` | 직접 정하십시오. 이 페이지에 들어갈 비밀번호 |"
+              echo "| \`ADMIN_GH_TOKEN\` | [토큰 만들기](https://github.com/settings/personal-access-tokens/new) — Repository access는 **verdict-theater 하나만**, Permissions는 **Contents=Read**, **Actions=Read and write** |"
+              echo ""
+              echo "> \`ADMIN_GH_TOKEN\` 은 이 저장소 하나에만 닿도록 좁게 만드십시오."
+              echo "> 새어 나가도 피해가 이 저장소로 한정됩니다."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::열쇠가 부족합니다:$MISS"
+            exit 1
+          fi
+          echo "열쇠 4개 확인됨"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 문법 검사
+        run: node --check admin/worker.js
+
+      - name: 비밀값 등록 + 배포
+        working-directory: admin
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -o pipefail
+          npm i -g wrangler@4 --silent
+          # 비밀값은 배포본 안에 들어가지 않는다. Cloudflare 쪽에 따로 저장된다.
+          printf '%s' "${{ secrets.ADMIN_GH_TOKEN }}" | npx wrangler secret put GH_TOKEN
+          printf '%s' "${{ secrets.ADMIN_PASSWORD }}" | npx wrangler secret put ADMIN_PASSWORD
+          printf '%s' "${{ secrets.SESSION_SECRET || secrets.ADMIN_PASSWORD }}${{ github.sha }}" \
+            | npx wrangler secret put SESSION_SECRET
+          npx wrangler deploy 2>&1 | tee deploy.log
+
+      - name: 주소 안내
+        if: always()
+        run: |
+          URL=$(grep -oE 'https://[a-zA-Z0-9.-]+workers\.dev' admin/deploy.log 2>/dev/null | tail -1)
+          {
+            echo "## 관리자 페이지 배포"
+            echo ""
+            if [ -n "$URL" ]; then
+              echo "### [$URL]($URL)"
+              echo ""
+              echo "이 주소를 **아이폰 사파리에서 열고 홈 화면에 추가**해 두십시오."
+              echo "앱처럼 한 번에 열립니다."
+              echo ""
+              echo "처음 열면 비밀번호를 묻습니다. \`ADMIN_PASSWORD\` 에 넣은 값입니다."
+            else
+              echo "주소를 찾지 못했습니다. 아래 기록을 확인하십시오."
+            fi
+            echo ""
+            echo '```'
+            tail -n 20 admin/deploy.log 2>/dev/null || echo "기록 없음"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

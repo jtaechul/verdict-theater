@@ -1,0 +1,9 @@
+name = "verdict-theater-admin"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+# 비밀값은 이 파일에 적지 않는다. 아래 세 개를 GitHub Secrets 로 넣으면
+# deploy-admin.yml 이 배포할 때 Cloudflare 에 등록한다.
+#   GH_TOKEN        저장소 접근 토큰 (contents:read, actions:read+write)
+#   ADMIN_PASSWORD  관리자 페이지 비밀번호
+#   SESSION_SECRET  로그인 위조 방지용 아무 긴 문자열
