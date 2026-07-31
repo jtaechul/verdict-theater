@@ -114,6 +114,18 @@ jobs:
             --out build --shorts --narration build/voice $LIM 2>&1 | tee render.log
           ls -la build/*.mp4
 
+      # 유튜브에 안 올리면 영상을 볼 방법이 없다 — 실행이 끝나면 작업 공간이 통째로 사라진다.
+      # 시험 렌더링을 눈으로 확인할 수 있게 첨부파일로 남긴다.
+      # ⚠️ 저장소에 커밋하는 것이 아니다. 7일 뒤 자동으로 지워지고 이력에도 남지 않는다.
+      - name: 시험 영상 남기기 (내려받아 볼 수 있게)
+        if: inputs.upload == '올리지 않음'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.pick.outputs.ep }}-시험영상
+          path: build/*.mp4
+          retention-days: 7
+          if-no-files-found: warn
+
       - name: 유튜브 업로드 (비공개)
         if: inputs.upload != '올리지 않음'
         env:
@@ -153,8 +165,13 @@ jobs:
                 echo "| $(basename "$v") | $SZ | ${DU}초 |"
               done
               echo ""
-              echo "> 영상 파일은 저장소에 올리지 않습니다. 이 실행이 끝나면 사라집니다."
-              echo "> 유튜브에 비공개로 올라간 것을 앱에서 확인하십시오."
+              echo "> 영상 파일은 저장소에 올리지 않습니다."
+              if [ "${{ inputs.upload }}" = "올리지 않음" ]; then
+                echo "> **이 화면 맨 아래 \`Artifacts\` 칸에서 내려받아 보십시오.**"
+                echo "> (\`${{ steps.pick.outputs.ep }}-시험영상\`, 7일 뒤 자동 삭제)"
+              else
+                echo "> 유튜브에 비공개로 올라간 것을 앱에서 확인하십시오."
+              fi
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
