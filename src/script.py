@@ -30,6 +30,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import prompts                                              # noqa: E402
 import money                                                # noqa: E402
+from autofix import autofix                                 # noqa: E402
 from llm import Gemini, LLMError, BudgetExceeded            # noqa: E402
 from claude import writer, ClaudeError                       # noqa: E402
 from claude import BudgetExceeded as ClaudeBudget            # noqa: E402
@@ -270,11 +271,58 @@ def assemble(design, acts_cuts):
 
 
 # ── 검증 → 보강 ──────────────────────────────────────────
-def machine_fix(llm, doc, rounds=2):
-    """기계 검증에서 걸린 것을 모델에게 고치게 한다. 채점 전에 먼저 한다.
+def apply_patch(doc, patch):
+    """모델이 돌려준 '바뀐 컷' 을 원본에 끼워 넣는다.
 
-    형식 오류가 있는 대본을 채점에 보내는 것은 낭비다. 채점은 재미를 보는 것이지
+    전문을 다시 받으면 113컷을 다시 쓰느라 약 26,000 토큰이 나간다.
+    바뀐 컷만 받으면 보통 3,000 토큰 아래다. 나머지는 여기서 원본을 그대로 쓴다.
+
+    모델이 없는 번호를 지어내면 조용히 버린다 — 원본에 없는 컷을 새로 만들면
+    초 배분과 쇼츠 지시가 전부 어긋난다."""
+    # 전문을 그대로 돌려준 경우(옛 형식)도 받아준다. 프롬프트를 못 따랐다고 버릴 이유는 없다.
+    if isinstance(patch, dict) and patch.get("acts"):
+        return money.tidy_doc(patch), None
+
+    index = {c.get("id"): c for _, c in _iter_cuts(doc) if c.get("id")}
+    hit, miss = 0, []
+    for c in (patch or {}).get("cuts") or []:
+        cid = c.get("id")
+        if cid in index:
+            index[cid].clear()
+            index[cid].update(c)
+            hit += 1
+        elif cid:
+            miss.append(cid)
+
+    for key in ("law", "characters", "anonymization", "youtube"):
+        if isinstance(patch.get(key), (dict, list)) and patch.get(key):
+            doc[key] = patch[key]
+
+    doc.setdefault("meta", {})["cut_count"] = sum(1 for _ in _iter_cuts(doc))
+    note = f"{hit}컷 교체"
+    if miss:
+        note += f" · 없는 번호 {len(miss)}개 무시({', '.join(miss[:4])})"
+    return money.tidy_doc(doc), note
+
+
+def _iter_cuts(doc):
+    for act in doc.get("acts", []):
+        for c in act.get("cuts", []):
+            yield act, c
+
+
+def machine_fix(llm, doc, rounds=2):
+    """기계 검증에서 걸린 것을 고친다.
+
+    ① 먼저 코드로 고친다 — 정답이 하나로 정해지는 것들(blackout·컷 수·초 합계·금액).
+       이것 때문에 대본 전문을 모델에 보내는 것은 순수한 낭비다. 비용 0원.
+    ② 그래도 남은 것만 모델에게 보낸다. 사람의 판단이 필요한 것들이다.
+
+    형식 오류가 있는 대본을 채점에 보내는 것도 낭비다. 채점은 재미를 보는 것이지
     괄호가 맞는지 보는 것이 아니다."""
+    for n in autofix(doc):
+        print(f"  자동 교정(무료): {n}")
+
     body = prompts.load("script_revise")
     for i in range(rounds):
         # 쇼츠는 5단계에서 만든다. 아직 없는 게 정상이므로 여기서 따지지 않는다.
@@ -298,13 +346,17 @@ def machine_fix(llm, doc, rounds=2):
             "strengths": [],
         }
         try:
-            doc = llm.json(prompts.fill(
+            patch = llm.json(prompts.fill(
                 body,
                 SCRIPT_JSON=json.dumps(doc, ensure_ascii=False),
                 EVAL_JSON=json.dumps(fake_eval, ensure_ascii=False, indent=2),
                 ASSET_RULES=asset_rules_text(),
-            ), tier="pro", max_output_tokens=60000, temperature=0.5, label="형식 보강")
-            doc = money.tidy_doc(doc)   # 보강하며 자잘한 금액이 되살아나는 것을 막는다
+            ), tier="pro", max_output_tokens=16384, temperature=0.5, label="형식 보강")
+            doc, note = apply_patch(doc, patch)
+            if note:
+                print(f"    {note}")
+            for n in autofix(doc):      # 모델이 새로 만든 기계적 오류도 무료로 잡는다
+                print(f"    자동 교정(무료): {n}")
         except (LLMError, ClaudeError) as e:
             print(f"    보강 실패: {e}")
             break
@@ -318,14 +370,20 @@ def evaluate(llm, doc):
 
 
 def revise(llm, doc, ev):
+    """품질 보강. 여기서도 바뀐 컷만 받아 끼운다 — 전문 재작성은 편당 약 900원이다."""
     body = prompts.load("script_revise")
-    out = llm.json(prompts.fill(
+    patch = llm.json(prompts.fill(
         body,
         SCRIPT_JSON=json.dumps(doc, ensure_ascii=False),
         EVAL_JSON=json.dumps(ev, ensure_ascii=False, indent=2),
         ASSET_RULES=asset_rules_text(),
-    ), tier="pro", max_output_tokens=60000, temperature=0.7, label="보강")
-    return money.tidy_doc(out)
+    ), tier="pro", max_output_tokens=16384, temperature=0.7, label="보강")
+    out, note = apply_patch(json.loads(json.dumps(doc)), patch)
+    if note:
+        print(f"    {note}")
+    for n in autofix(out):
+        print(f"    자동 교정(무료): {n}")
+    return out
 
 
 def _make_shorts_only(ep, prefer):
