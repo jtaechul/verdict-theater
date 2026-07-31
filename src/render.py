@@ -405,7 +405,12 @@ def main():
     print(f"렌더링: {sp.name}")
     render(doc, out, vertical=False, narration_dir=nar, limit=args.limit, name="longform")
 
-    if args.shorts:
+    if args.shorts and args.limit:
+        # --limit 은 "배관이 도는지 빨리 보자" 는 뜻이다. 그런데 쇼츠는 --limit 을 받지 않아
+        # 3편(약 150초)을 통째로 만든다. 4컷짜리 시험에서 쇼츠가 몇 배 더 오래 걸린다.
+        # 시험할 때는 건너뛴다 — 쇼츠는 어차피 같은 컷을 세로로 다시 그리는 것이다.
+        print(f"  쇼츠는 건너뛴다 (--limit {args.limit} — 배관 시험 중)")
+    elif args.shorts:
         # 쇼츠 구간은 두 곳에 있을 수 있다.
         #   1) shorts_gen.md 가 만든 별도 파일 — 세로 재배치까지 끝난 완성본
         #   2) script_gen.md 가 대본 안에 남긴 shorts[] — 구간 지정만 있는 초안
