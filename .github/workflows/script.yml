@@ -119,7 +119,9 @@ jobs:
           python3 src/gate.py --limit "${{ inputs.gate_limit || '10' }}" $W 2>&1 | tee gate.log
 
       - name: 대본 생성 + 채점 + 보강 + 쇼츠
-        if: inputs.mode != '소재 심사만'
+        # success() 를 적어두는 이유: 심사가 죽었으면 대본도 만들면 안 된다.
+        # 안 적어도 같게 동작하지만(기본값), 돈이 걸린 조건이라 눈에 보이게 둔다.
+        if: success() && inputs.mode != '소재 심사만'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
