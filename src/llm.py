@@ -79,6 +79,7 @@ class Gemini:
         self.tokens_in = 0
         self.tokens_out = 0
         self._models = None
+        self._limits = {}
 
     # ── 모델 고르기 ──────────────────────────────────────
     def available(self):
@@ -88,11 +89,15 @@ class Gemini:
             except urllib.error.HTTPError as e:
                 body = e.read().decode("utf-8", "replace")[:300]
                 raise LLMError(f"모델 목록을 받지 못했다 (HTTP {e.code}). 키가 올바른지 확인하라.\n{body}")
-            self._models = [
-                m["name"].split("/", 1)[-1]
-                for m in data.get("models", [])
-                if "generateContent" in m.get("supportedGenerationMethods", [])
-            ]
+            self._models = []
+            for m in data.get("models", []):
+                if "generateContent" not in m.get("supportedGenerationMethods", []):
+                    continue
+                name = m["name"].split("/", 1)[-1]
+                self._models.append(name)
+                # 모델마다 한 번에 낼 수 있는 출력 길이가 다르다. 넘겨 요청하면
+                # 중간에서 잘린 JSON 이 와서 통째로 버려야 한다. 미리 받아 맞춘다.
+                self._limits[name] = m.get("outputTokenLimit") or 0
         return self._models
 
     def pick(self, tier="pro"):
@@ -140,6 +145,10 @@ class Gemini:
                 "무한 루프로 인한 과금 폭발을 막는 장치다."
             )
         model = self.pick(tier)
+        cap = self._limits.get(model) or 0
+        if cap and max_output_tokens > cap:
+            print(f"    (출력 한도 조정: {max_output_tokens:,} → {cap:,} · {model})")
+            max_output_tokens = cap
         url = f"{BASE}/models/{model}:generateContent?key={self.key}"
         payload = {
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],

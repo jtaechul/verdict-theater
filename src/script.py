@@ -419,8 +419,14 @@ def main():
                 print(f"  {MAX_ROUNDS}회 끝. 폐기하지 않고 최고점({best_score}점) 버전으로 간다")
                 _record_rejected(row, best_eval)
                 break
-            doc = revise(llm, doc, ev)
-            doc, r = machine_fix(llm, doc, rounds=1)
+            try:
+                doc = revise(llm, doc, ev)
+                doc, r = machine_fix(llm, doc, rounds=1)
+            except LLMError as e:
+                # 보강 한 번 실패로 회차를 통째로 버리지 않는다.
+                # 지금까지 최고점 버전이 이미 best 에 있다.
+                print(f"  보강 실패({e}) → 최고점({best_score}점) 버전으로 마무리한다")
+                break
 
         doc = best or doc
 
