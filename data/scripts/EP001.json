@@ -1,0 +1,2823 @@
+{
+  "meta": {
+    "case_id": "234921",
+    "case_type": "상속회복(특별수익·진정명의회복)",
+    "title_candidates": [
+      "장남이 먼저 소송을 걸었습니다",
+      "아버지 장례 뒤, 형이 낸 소장",
+      "상속분이 없는 상속인"
+    ],
+    "logline": "먼저 소송한 장남이 상속분을 잃었다",
+    "runtime_sec": 720,
+    "cut_count": 113,
+    "revision": {
+      "round": 1,
+      "fixed_items": [
+        "형식"
+      ],
+      "changed_cuts": [
+        "A3-02",
+        "A3-12",
+        "A4-09"
+      ],
+      "note": "기계 검증 오류만 수정. A3-02에 재판장 네임태그, A3-12에 한지숙 네임태그 추가(금액 그래픽은 대사에 이미 포함되어 대체). A4-09 '재판장 앞에'를 '법대 위에'로 교체. 분량 초과 해소를 위해 A2-02, A2-10, A4-03, A4-06, A4-17, A4-20, A4-26, A5-04, A5-06 총 9컷 삭제(컷 113개, 전체 719.2초). 나머지 컷은 text·sec·bg·chars·gfx 모두 원본 그대로."
+    },
+    "episode": "EP001"
+  },
+  "anonymization": {
+    "names": [
+      {
+        "code": "F70",
+        "name": "윤옥선",
+        "age": 79,
+        "role": "어머니(미망인)"
+      },
+      {
+        "code": "M70",
+        "name": "강복만",
+        "age": 82,
+        "role": "아버지(망인)"
+      },
+      {
+        "code": "M50A",
+        "name": "강태석",
+        "age": 58,
+        "role": "장남(피고)"
+      },
+      {
+        "code": "M50B",
+        "name": "강태우",
+        "age": 55,
+        "role": "차남(원고)"
+      },
+      {
+        "code": "F50B",
+        "name": "한지숙",
+        "age": 56,
+        "role": "큰며느리"
+      },
+      {
+        "code": "F50A",
+        "name": "오세경",
+        "age": 52,
+        "role": "막내며느리(삼남의 아내)"
+      },
+      {
+        "code": "JUDGE",
+        "name": "재판장",
+        "age": 0,
+        "role": "재판장"
+      }
+    ],
+    "region_original_level": "광역 단위 변경함 (서울 → 대구, 병원 소재지 인천 → 울산)",
+    "amount_scale": 1.38,
+    "amounts_used": [
+      {
+        "label": "아버지가 남긴 재산(적극재산) 합계",
+        "value": "12억 400만 원"
+      },
+      {
+        "label": "장남이 생전에 받은 돈 합계",
+        "value": "9억 8,412만 원"
+      },
+      {
+        "label": "장남 - 아파트 매수자금",
+        "value": "1억 6,560만 원"
+      },
+      {
+        "label": "장남 - 은행 대출 대신 갚아준 돈",
+        "value": "5억 4,252만 원"
+      },
+      {
+        "label": "장남 - 마지막 해에 받은 현금",
+        "value": "2억 700만 원"
+      },
+      {
+        "label": "장남 - 병원 임대차보증금 지원",
+        "value": "6,900만 원"
+      },
+      {
+        "label": "아버지가 남긴 양도소득세 채무",
+        "value": "5억 7,735만 원"
+      },
+      {
+        "label": "어머니가 직접 납부한 세금",
+        "value": "3억 1,411만 원"
+      },
+      {
+        "label": "세무서가 예금에서 추심한 돈",
+        "value": "2억 7,559만 원"
+      },
+      {
+        "label": "어머니가 대신 돌려준 임대차보증금",
+        "value": "6,900만 원"
+      },
+      {
+        "label": "장남의 상속분 가액(계산 결과)",
+        "value": "4억 8,624만 원"
+      },
+      {
+        "label": "판결 - 어머니에게 지급",
+        "value": "1억 371만 원"
+      },
+      {
+        "label": "판결 - 차남·삼남에게 각 지급",
+        "value": "1,749만 원"
+      }
+    ],
+    "years_relative_only": true,
+    "judge_name_removed": true,
+    "case_number_used": false
+  },
+  "law": {
+    "refs_from_case": [
+      "민법 제411조",
+      "민법 제425조"
+    ],
+    "refs_source": "본문추출",
+    "explain_5act": "법은 상속인 중 누군가가 생전에 미리 큰 재산을 받은 경우, 그것을 '특별수익'으로 보아 상속분을 정할 때 함께 계산합니다. 아버지가 남긴 재산에 미리 준 재산을 더한 뒤 법정상속분을 곱하고, 거기서 이미 받아간 몫을 빼는 방식입니다. 그 결과가 0원이 되면 남은 재산에 대한 몫은 없다고 봅니다. 다만 배우자에게 오랜 혼인 기간 중에 준 재산은 사정이 다릅니다. 이 사건에서 법원은, 배우자에게 준 재산에는 함께 재산을 이루고 지켜온 기여에 대한 평가, 실질적 공동재산의 청산, 남은 생에 대한 부양의 뜻이 함께 담겨 있다고 보아 특별수익에서 제외했습니다. 반대로 빚은 다릅니다. 남은 재산에 대한 몫이 없어도 세금과 보증금 같은 채무는 법정상속분대로 승계됩니다. 그래서 임차인에게 보증금을 혼자 돌려준 사람은 민법 제411조와 제425조에 따라 다른 상속인에게 그 부담 부분을 되돌려 달라고 구할 수 있습니다. 이 설명은 이 사건에서 법원이 판단한 내용이며, 제도의 일반적인 모습까지만 전하는 것입니다."
+  },
+  "characters": [
+    {
+      "code": "F70",
+      "name": "윤옥선",
+      "age": 79,
+      "role": "어머니(미망인)",
+      "nametag": "윤옥선 · 79세 · 어머니",
+      "voice": "v_F70",
+      "note": "40여 년 혼인. 부동산 절반을 남편과 함께 취득. 세금과 보증금을 혼자 감당한 사람"
+    },
+    {
+      "code": "M70",
+      "name": "강복만",
+      "age": 82,
+      "role": "아버지(망인)",
+      "nametag": "강복만 · 82세 · 아버지",
+      "voice": "v_M70",
+      "note": "회상 장면에만 등장. 장남에게만 큰돈을 밀어준 아버지"
+    },
+    {
+      "code": "M50A",
+      "name": "강태석",
+      "age": 58,
+      "role": "장남(피고)",
+      "nametag": "강태석 · 58세 · 장남",
+      "voice": "v_M50A",
+      "note": "울산에서 병원 개원. 먼저 소송을 건 사람. 차분하게 뻔뻔하다"
+    },
+    {
+      "code": "M50B",
+      "name": "강태우",
+      "age": 55,
+      "role": "차남(원고)",
+      "nametag": "강태우 · 55세 · 차남",
+      "voice": "v_M50B",
+      "note": "연구소 30년 근무. 자기 돈으로 집을 산 사람. 어머니 곁을 지킨다"
+    },
+    {
+      "code": "F50B",
+      "name": "한지숙",
+      "age": 56,
+      "role": "큰며느리",
+      "nametag": "한지숙 · 56세 · 큰며느리",
+      "voice": "v_F50B",
+      "note": "'그 돈은 갚았다'고 주장. 문자 한 통을 근거로 내민다"
+    },
+    {
+      "code": "F50A",
+      "name": "오세경",
+      "age": 52,
+      "role": "막내며느리",
+      "nametag": "오세경 · 52세 · 막내며느리",
+      "voice": "v_F50A",
+      "note": "교사. 삼남의 아내. 집안의 기록을 정리해 온 사람"
+    },
+    {
+      "code": "JUDGE",
+      "name": "재판장",
+      "age": 0,
+      "role": "재판장",
+      "nametag": "재판장",
+      "voice": "v_JUDGE",
+      "note": "짧고 단정하게 말한다"
+    }
+  ],
+  "acts": [
+    {
+      "id": "hook",
+      "title": "도입 훅",
+      "start_sec": 0,
+      "end_sec": 22,
+      "bgm": "hook",
+      "cuts": [
+        {
+          "id": "H01",
+          "sec": 2.8,
+          "bg": "office_lawyer",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "face_cold",
+              "pos": "left",
+              "scale": 1.2
+            }
+          ],
+          "speaker": "v_M50A",
+          "text": "저는 아버지 재산에서 한 푼도 못 받았습니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "강태석 · 58세 · 장남"
+          },
+          "sfx": "sfx_paper",
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "H02",
+          "sec": 4.6,
+          "bg": "office_lawyer",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "bust_cold",
+              "pos": "left",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "narrator",
+          "text": "소장 봉투에 적힌 이름은, 어머니와 두 동생이었습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "H03",
+          "sec": 5.0,
+          "bg": "home_living_day",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "bust_shock",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "v_F70",
+          "text": "발신인이… 우리 큰애 이름인데.",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤옥선 · 79세 · 어머니"
+          },
+          "sfx": "sfx_paper",
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "H04",
+          "sec": 4.4,
+          "bg": "home_living_day",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "face_shock",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "v_M50B",
+          "text": "형이… 우리를 걸었어?",
+          "gfx": {
+            "type": "nametag",
+            "text": "강태우 · 55세 · 차남"
+          },
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "H05",
+          "sec": 5.4,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "full_sit",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "그런데 정말, 장남은 아무것도 받지 못했을까요.",
+          "gfx": null,
+          "sfx": "sfx_clock",
+          "amb": "amb_home",
+          "blackout": true
+        }
+      ]
+    },
+    {
+      "id": "act1",
+      "title": "40여 년, 절반씩 적은 이름",
+      "start_sec": 22,
+      "end_sec": 200,
+      "bgm": "past",
+      "cuts": [
+        {
+          "id": "A1-01",
+          "sec": 6.4,
+          "bg": "office_registry",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "bust_sad",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "봉투를 내려놓고, 어머니는 등기부를 다시 펼쳤습니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤옥선 · 79세 · 어머니"
+          },
+          "sfx": "sfx_paper",
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-02",
+          "sec": 6.6,
+          "bg": "office_registry",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "face_neutral",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "상가 셋, 주택 하나. 예금과 해약환급금까지.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-03",
+          "sec": 6.8,
+          "bg": "office_registry",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "bust_neutral",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "아버지가 남긴 몫은 모두 12억 400만 원이었습니다.",
+          "gfx": {
+            "type": "amount",
+            "value": "12억 400만 원",
+            "note": "아버지가 남긴 재산 합계"
+          },
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-04",
+          "sec": 6.5,
+          "bg": "home_living_day",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "face_sad",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "v_F70",
+          "text": "그 종이엔 우리 이름이 절반씩 적혀 있어.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-05",
+          "sec": 6.6,
+          "bg": "home_living_day",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "bust_sad",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "12억은 숫자가 아니라, 부부가 나눠 적은 이름이었습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-06",
+          "sec": 6.2,
+          "bg": "home_living_day",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "full_sit",
+              "pos": "left",
+              "scale": 1.0
+            },
+            {
+              "code": "M50B",
+              "pose": "bust_neutral",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "아들은 셋. 장남은 울산에서 병원을 열었습니다.",
+          "gfx": {
+            "type": "family",
+            "nodes": [
+              {
+                "name": "윤옥선",
+                "rel": "어머니"
+              },
+              {
+                "name": "강태석",
+                "rel": "장남·병원장"
+              },
+              {
+                "name": "강태우",
+                "rel": "차남"
+              },
+              {
+                "name": "오세경",
+                "rel": "막내며느리"
+              }
+            ]
+          },
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-07",
+          "sec": 6.4,
+          "bg": "daily_restaurant",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "bust_cold",
+              "pos": "left",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "narrator",
+          "text": "장남 강태석. 집안의 자랑이라 불린 사람이었습니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "강태석 · 58세 · 장남"
+          },
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-08",
+          "sec": 6.3,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "bust_neutral",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "차남 강태우. 연구소에서 30년 봉급을 받았습니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "강태우 · 55세 · 차남"
+          },
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-09",
+          "sec": 6.2,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_neutral",
+              "pos": "right",
+              "scale": 0.95
+            },
+            {
+              "code": "F70",
+              "pose": "full_sit",
+              "pos": "left",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "막내며느리 오세경. 집안의 종이를 정리해 온 교사였습니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "오세경 · 52세 · 막내며느리"
+          },
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-10",
+          "sec": 6.6,
+          "bg": "daily_market",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "full_walk",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "40여 년 전, 시장 골목 끝의 작은 가게였습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-11",
+          "sec": 6.4,
+          "bg": "daily_sidedish",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "full_stand",
+              "pos": "left",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "새벽 네 시 반. 형광등이 두 번 깜빡이고 켜졌습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-12",
+          "sec": 6.3,
+          "bg": "daily_sidedish",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "face_neutral",
+              "pos": "right",
+              "scale": 1.05
+            },
+            {
+              "code": "M70",
+              "pose": "bust_neutral",
+              "pos": "left",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "v_M70",
+          "text": "손등 또 갈라졌네. 오늘은 좀 쉬어.",
+          "gfx": {
+            "type": "nametag",
+            "text": "강복만 · 82세 · 아버지"
+          },
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-13",
+          "sec": 6.5,
+          "bg": "daily_sidedish",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "face_neutral",
+              "pos": "right",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "v_F70",
+          "text": "애들 셋이 크는데 쉬는 날이 어디 있어요.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-14",
+          "sec": 6.4,
+          "bg": "office_registry",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "M70",
+              "pose": "full_sit",
+              "pos": "left",
+              "scale": 1.0
+            },
+            {
+              "code": "F70",
+              "pose": "full_sit",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "가게가 상가가 될 때마다, 두 사람은 창구에 함께 앉았습니다.",
+          "gfx": null,
+          "sfx": "sfx_paper",
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-15",
+          "sec": 6.6,
+          "bg": "office_registry",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "bust_neutral",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "등기부에는 늘 두 이름이 절반씩 올라갔습니다.",
+          "gfx": null,
+          "sfx": "sfx_stamp",
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-16",
+          "sec": 6.2,
+          "bg": "medical_room_single",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "M70",
+              "pose": "full_sit_down",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "그리고 마지막 한 해. 아버지는 병실에서 보냈습니다.",
+          "gfx": null,
+          "sfx": "sfx_monitor",
+          "amb": "amb_hospital",
+          "blackout": false
+        },
+        {
+          "id": "A1-17",
+          "sec": 6.5,
+          "bg": "medical_room_single",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "full_sit",
+              "pos": "right",
+              "scale": 0.95
+            },
+            {
+              "code": "M70",
+              "pose": "bust_sad",
+              "pos": "left",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "narrator",
+          "text": "링거가 한 방울씩 떨어지는 소리로 밤이 갔습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_hospital",
+          "blackout": false
+        },
+        {
+          "id": "A1-18",
+          "sec": 6.4,
+          "bg": "medical_room_single",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "face_sad",
+              "pos": "right",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "narrator",
+          "text": "간이침대에서 자다 목이 굳어, 고개가 한쪽으로만 돌았습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_hospital",
+          "blackout": false
+        },
+        {
+          "id": "A1-19",
+          "sec": 6.3,
+          "bg": "medical_waiting",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "full_walk",
+              "pos": "left",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "narrator",
+          "text": "장남은 명절에만 왔습니다. 구두는 늘 반짝였습니다.",
+          "gfx": null,
+          "sfx": "sfx_footsteps",
+          "amb": "amb_hospital",
+          "blackout": false
+        },
+        {
+          "id": "A1-20",
+          "sec": 6.5,
+          "bg": "medical_room_single",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "bust_cold",
+              "pos": "left",
+              "scale": 1.15
+            },
+            {
+              "code": "F70",
+              "pose": "face_sad",
+              "pos": "right",
+              "scale": 0.9
+            }
+          ],
+          "speaker": "v_M50A",
+          "text": "어머니, 저는 병원이 바빠서요. 곧 또 올게요.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_hospital",
+          "blackout": false
+        },
+        {
+          "id": "A1-21",
+          "sec": 6.2,
+          "bg": "funeral_altar",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "full_back",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "아버지는 그 겨울에 세상을 떠났습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_funeral",
+          "blackout": false
+        },
+        {
+          "id": "A1-22",
+          "sec": 6.4,
+          "bg": "funeral_reception",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "full_sit",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "접객실 국 냄비 앞에서, 어머니는 부의금 봉투를 셌습니다.",
+          "gfx": null,
+          "sfx": "sfx_paper",
+          "amb": "amb_funeral",
+          "blackout": false
+        },
+        {
+          "id": "A1-23",
+          "sec": 6.3,
+          "bg": "funeral_hall",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "bust_neutral",
+              "pos": "left",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "narrator",
+          "text": "장남은 조문객들과 명함을 주고받고 있었습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_funeral",
+          "blackout": false
+        },
+        {
+          "id": "A1-24",
+          "sec": 6.6,
+          "bg": "office_registry",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "full_sit",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "장례 뒤, 상속등기는 법이 정한 몫대로 이루어졌습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-25",
+          "sec": 6.5,
+          "bg": "office_registry",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "bust_neutral",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "어머니 18분의 3, 아들 셋은 각각 18분의 2.",
+          "gfx": null,
+          "sfx": "sfx_stamp",
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-26",
+          "sec": 6.4,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "bust_neutral",
+              "pos": "right",
+              "scale": 0.95
+            },
+            {
+              "code": "F70",
+              "pose": "full_sit",
+              "pos": "left",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "v_M50B",
+          "text": "형 몫도 그냥 넣었어요. 형제니까요.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-27",
+          "sec": 6.5,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "face_neutral",
+              "pos": "left",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "narrator",
+          "text": "그 선의가 어떻게 돌아올지는, 아직 아무도 몰랐습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-28",
+          "sec": 6.6,
+          "bg": "home_entrance",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "bust_shock",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "narrator",
+          "text": "며칠 뒤, 현관에 두꺼운 봉투 하나가 도착했습니다.",
+          "gfx": null,
+          "sfx": "sfx_paper",
+          "amb": "amb_home",
+          "blackout": true
+        }
+      ]
+    },
+    {
+      "id": "act2",
+      "title": "그가 받아간 목록",
+      "start_sec": 200,
+      "end_sec": 370,
+      "bgm": "reveal",
+      "cuts": [
+        {
+          "id": "A2-01",
+          "sec": 6.5,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "full_sit",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "막내며느리 오세경은 그날 밤 잠을 자지 않았습니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "오세경 · 52세 · 막내며느리"
+          },
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-03",
+          "sec": 6.3,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_neutral",
+              "pos": "center",
+              "scale": 1.1
+            }
+          ],
+          "speaker": "v_F50A",
+          "text": "형님이 낸 소장이에요. 여기 다 적혀 있어요.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-04",
+          "sec": 6.5,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "bust_shock",
+              "pos": "left",
+              "scale": 1.05
+            },
+            {
+              "code": "F50A",
+              "pose": "bust_neutral",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "v_M50B",
+          "text": "형이 받은 걸 형이 직접 써놨다는 말이야?",
+          "gfx": {
+            "type": "nametag",
+            "text": "강태우 · 55세 · 차남"
+          },
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-05",
+          "sec": 6.0,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_neutral",
+              "pos": "center",
+              "scale": 1.1
+            }
+          ],
+          "speaker": "v_F50A",
+          "text": "자기가 못 받았다는 걸 증명하려고 쓴 거죠.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-06",
+          "sec": 6.5,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_neutral",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "첫 장. 대구 아파트 매수자금 1억 6,560만 원.",
+          "gfx": {
+            "type": "amount",
+            "value": "1억 6,560만 원",
+            "note": "장남 아파트 매수자금"
+          },
+          "sfx": "sfx_paper",
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-07",
+          "sec": 6.3,
+          "bg": "home_living_day",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "M70",
+              "pose": "bust_neutral",
+              "pos": "left",
+              "scale": 1.1
+            },
+            {
+              "code": "M50A",
+              "pose": "bust_neutral",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "v_M70",
+          "text": "집은 있어야 사람 구실을 하지. 아버지가 보태마.",
+          "gfx": {
+            "type": "nametag",
+            "text": "강복만 · 82세 · 아버지"
+          },
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-08",
+          "sec": 6.5,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_shock",
+              "pos": "center",
+              "scale": 1.1
+            }
+          ],
+          "speaker": "narrator",
+          "text": "둘째 장에서 오세경의 손이 멈췄습니다.",
+          "gfx": null,
+          "sfx": "sfx_heartbeat",
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-09",
+          "sec": 6.5,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_shock",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "형의 은행 대출 5억 4,252만 원. 아버지가 대신 갚았습니다.",
+          "gfx": {
+            "type": "amount",
+            "value": "5억 4,252만 원",
+            "note": "아버지가 대신 갚은 대출"
+          },
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-11",
+          "sec": 6.5,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "face_anger",
+              "pos": "center",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "v_M50B",
+          "text": "난 대출 이자 십오 년을 혼자 냈는데.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-12",
+          "sec": 6.3,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_neutral",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "셋째 장. 아버지가 세상을 떠나기 석 달 전, 현금 2억 700만 원.",
+          "gfx": {
+            "type": "amount",
+            "value": "2억 700만 원",
+            "note": "사망 3개월 전 건넨 현금"
+          },
+          "sfx": "sfx_paper",
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-13",
+          "sec": 6.0,
+          "bg": "medical_room_single",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "M70",
+              "pose": "bust_sad",
+              "pos": "left",
+              "scale": 1.0
+            },
+            {
+              "code": "M50A",
+              "pose": "bust_neutral",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "v_M50A",
+          "text": "아버지, 이번만요. 병원 자리가 급해서요.",
+          "gfx": {
+            "type": "nametag",
+            "text": "강태석 · 58세 · 장남"
+          },
+          "sfx": "sfx_monitor",
+          "amb": "amb_hospital",
+          "blackout": false
+        },
+        {
+          "id": "A2-14",
+          "sec": 6.5,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_neutral",
+              "pos": "center",
+              "scale": 1.1
+            }
+          ],
+          "speaker": "narrator",
+          "text": "넷째 장. 울산 병원 임대차보증금 6,900만 원까지.",
+          "gfx": {
+            "type": "amount",
+            "value": "6,900만 원",
+            "note": "병원 보증금 지원"
+          },
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-15",
+          "sec": 6.8,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_neutral",
+              "pos": "left",
+              "scale": 1.0
+            },
+            {
+              "code": "M50B",
+              "pose": "bust_shock",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "v_F50A",
+          "text": "넷을 다 더했어요. 아홉 억 팔천사백십이만 원.",
+          "gfx": {
+            "type": "amount",
+            "value": "9억 8,412만 원",
+            "note": "장남이 생전에 받은 돈 합계"
+          },
+          "sfx": "sfx_heartbeat",
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-16",
+          "sec": 6.5,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "face_shock",
+              "pos": "center",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "narrator",
+          "text": "아버지가 남긴 재산 전부는 12억 400만 원이었습니다.",
+          "gfx": {
+            "type": "amount",
+            "value": "12억 400만 원",
+            "note": "아버지가 남긴 재산 전부"
+          },
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-17",
+          "sec": 6.5,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_shock",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "v_F50A",
+          "text": "형님 몫이 아니라, 거의 전부를 미리 가져간 거예요.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-18",
+          "sec": 7.0,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_shock",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "narrator",
+          "text": "그리고 날짜를 나란히 적어보자, 다른 것이 보였습니다.",
+          "gfx": {
+            "type": "timeline",
+            "items": [
+              {
+                "label": "아파트 매수자금 지원",
+                "when": "10여 년 전"
+              },
+              {
+                "label": "은행 대출 대위변제",
+                "when": "8년쯤 전"
+              },
+              {
+                "label": "현금 2억 700만 원",
+                "when": "아버지 사망 3개월 전"
+              },
+              {
+                "label": "아버지 사망",
+                "when": "그해 가을"
+              },
+              {
+                "label": "장남, 유류분 소장 제출",
+                "when": "넉 달 뒤"
+              },
+              {
+                "label": "상속등기 완료",
+                "when": "소장 제출 이틀 뒤"
+              }
+            ]
+          },
+          "sfx": "sfx_heartbeat",
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-19",
+          "sec": 6.8,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_shock",
+              "pos": "left",
+              "scale": 1.0
+            },
+            {
+              "code": "M50B",
+              "pose": "face_shock",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "형이 소장을 낸 날은, 형 이름이 등기부에 올라가기 이틀 전이었습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false,
+          "tag": "twist"
+        },
+        {
+          "id": "A2-20",
+          "sec": 6.3,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "bust_anger",
+              "pos": "center",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "v_M50B",
+          "text": "등기를 하기도 전에 소송을 준비했다는 거잖아.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-21",
+          "sec": 6.5,
+          "bg": "office_registry",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "full_stand",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "발견은 여기서 끝나지 않았습니다. 다음 박스는 세금이었습니다.",
+          "gfx": null,
+          "sfx": "sfx_paper",
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A2-22",
+          "sec": 6.8,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_sad",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "아버지가 남긴 양도소득세는 5억 7,735만 원.",
+          "gfx": {
+            "type": "amount",
+            "value": "5억 7,735만 원",
+            "note": "아버지가 남긴 양도소득세"
+          },
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-23",
+          "sec": 6.8,
+          "bg": "office_bank",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "full_sit",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "어머니가 창구에서 3억 1,411만 원을 직접 냈습니다.",
+          "gfx": {
+            "type": "amount",
+            "value": "3억 1,411만 원",
+            "note": "어머니가 직접 낸 세금"
+          },
+          "sfx": "sfx_stamp",
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A2-24",
+          "sec": 6.5,
+          "bg": "office_bank",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "bust_sad",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "나머지 2억 7,559만 원은 아버지 예금에서 그대로 빠져나갔습니다.",
+          "gfx": {
+            "type": "amount",
+            "value": "2억 7,559만 원",
+            "note": "예금에서 추심된 세금"
+          },
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A2-25",
+          "sec": 6.5,
+          "bg": "daily_market",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "full_stand",
+              "pos": "left",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "상가 계단에서, 어머니는 임차인에게 봉투를 건넸습니다.",
+          "gfx": null,
+          "sfx": "sfx_footsteps",
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A2-26",
+          "sec": 6.3,
+          "bg": "daily_market",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "bust_sad",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "narrator",
+          "text": "돌려준 보증금 6,900만 원. 그것도 어머니 손에서 나갔습니다.",
+          "gfx": {
+            "type": "amount",
+            "value": "6,900만 원",
+            "note": "어머니가 돌려준 보증금"
+          },
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A2-27",
+          "sec": 6.8,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "bust_sad",
+              "pos": "left",
+              "scale": 1.0
+            },
+            {
+              "code": "M50B",
+              "pose": "bust_sad",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "v_F70",
+          "text": "그 사람은 이미 다 가져갔는데, 왜 또 우리를 걸었을까.",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤옥선 · 79세 · 어머니"
+          },
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-28",
+          "sec": 5.5,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "face_sad",
+              "pos": "center",
+              "scale": 1.1
+            }
+          ],
+          "speaker": "v_M50B",
+          "text": "어머니, 이제는 우리도 물어봐야 할 것 같아요.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": true
+        }
+      ]
+    },
+    {
+      "id": "act3",
+      "title": "받은 건 받은 거고",
+      "start_sec": 370,
+      "end_sec": 520,
+      "bgm": "conflict",
+      "cuts": [
+        {
+          "id": "A3-01",
+          "sec": 5.5,
+          "bg": "court_exterior",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "full_walk",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "장남이 낸 유류분 소송의 답은 짧았습니다.",
+          "gfx": null,
+          "sfx": "sfx_footsteps",
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-02",
+          "sec": 6.0,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "JUDGE",
+              "pose": "bust_neutral",
+              "pos": "center",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "v_JUDGE",
+          "text": "부족한 몫이 없습니다. 청구를 기각합니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "재판장"
+          },
+          "sfx": "sfx_gavel",
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A3-03",
+          "sec": 6.3,
+          "bg": "court_hall",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "bust_anger",
+              "pos": "left",
+              "scale": 1.1
+            }
+          ],
+          "speaker": "narrator",
+          "text": "장남은 항소했습니다. 결과는 같았습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A3-04",
+          "sec": 6.5,
+          "bg": "court_hall",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "bust_neutral",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "판결은 확정됐습니다. 그것으로 끝인 줄 알았습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A3-05",
+          "sec": 6.5,
+          "bg": "office_registry",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_shock",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "v_F50A",
+          "text": "어머니, 등기부에 아직 형님 이름이 있어요.",
+          "gfx": null,
+          "sfx": "sfx_paper",
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A3-06",
+          "sec": 6.0,
+          "bg": "office_registry",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_neutral",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "네 채의 부동산에, 장남 앞으로 2/18 지분.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A3-07",
+          "sec": 6.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "full_sit",
+              "pos": "left",
+              "scale": 1.15
+            },
+            {
+              "code": "M50B",
+              "pose": "full_sit",
+              "pos": "right",
+              "scale": 0.92
+            }
+          ],
+          "speaker": "v_M50B",
+          "text": "형, 그 지분은 정리해야 하지 않겠어요?",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-08",
+          "sec": 6.3,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "bust_cold",
+              "pos": "left",
+              "scale": 1.18
+            },
+            {
+              "code": "M50B",
+              "pose": "bust_sad",
+              "pos": "right",
+              "scale": 0.9
+            }
+          ],
+          "speaker": "v_M50A",
+          "text": "받은 건 받은 거고, 상속은 상속이죠.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false,
+          "tag": "anger_line"
+        },
+        {
+          "id": "A3-09",
+          "sec": 6.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "face_anger",
+              "pos": "right",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "v_M50B",
+          "text": "형이 받은 게 9억 8,412만 원이에요.",
+          "gfx": {
+            "type": "amount",
+            "value": "9억 8,412만 원",
+            "note": "장남이 생전에 받은 돈"
+          },
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-10",
+          "sec": 6.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "bust_neutral",
+              "pos": "left",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "v_M50A",
+          "text": "병원 하려면 그 정도는 드는 겁니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-11",
+          "sec": 6.8,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "bust_cold",
+              "pos": "left",
+              "scale": 1.15
+            },
+            {
+              "code": "F70",
+              "pose": "bust_sad",
+              "pos": "right",
+              "scale": 0.9
+            }
+          ],
+          "speaker": "v_M50A",
+          "text": "아버지가 큰아들 앞길 열어주신 거예요.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-12",
+          "sec": 6.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50B",
+              "pose": "bust_cold",
+              "pos": "left",
+              "scale": 1.1
+            },
+            {
+              "code": "F70",
+              "pose": "face_sad",
+              "pos": "right",
+              "scale": 0.9
+            }
+          ],
+          "speaker": "v_F50B",
+          "text": "그리고 그 6,900만 원은 갚았어요.",
+          "gfx": {
+            "type": "nametag",
+            "text": "한지숙 · 56세 · 큰며느리"
+          },
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-13",
+          "sec": 6.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50B",
+              "pose": "bust_neutral",
+              "pos": "left",
+              "scale": 1.1
+            }
+          ],
+          "speaker": "v_F50B",
+          "text": "보세요. 그날 은행에서 다 찾았잖아요.",
+          "gfx": null,
+          "sfx": "sfx_phone",
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-14",
+          "sec": 6.8,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_neutral",
+              "pos": "right",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "narrator",
+          "text": "화면엔 조카가 할아버지에게 보낸 문자 한 줄.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-15",
+          "sec": 6.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_shock",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "v_F50A",
+          "text": "'엄마가 예금 찾아서 할아버지 드리려고 해요.'",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-16",
+          "sec": 6.3,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "bust_cold",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "v_M50B",
+          "text": "드리려고 했다는 거지, 드렸다는 게 아니잖아요.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-17",
+          "sec": 6.8,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "full_sit",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "어머니가 낡은 서류철을 천천히 열었습니다.",
+          "gfx": null,
+          "sfx": "sfx_paper",
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-18",
+          "sec": 6.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "bust_neutral",
+              "pos": "right",
+              "scale": 1.0
+            },
+            {
+              "code": "M50A",
+              "pose": "face_shock",
+              "pos": "left",
+              "scale": 1.1
+            }
+          ],
+          "speaker": "v_F70",
+          "text": "네 이름 적힌 이 종이, 기억나니.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-19",
+          "sec": 6.8,
+          "bg": "funeral_reception",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "full_sit_down",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "아버지 장례 직후, 접객실 구석에서 쓴 상속포기서.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_funeral",
+          "blackout": false
+        },
+        {
+          "id": "A3-20",
+          "sec": 6.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "bust_sad",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "v_F70",
+          "text": "소송 때 이걸 냈더니, 너는 효력이 없다고 했지.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-21",
+          "sec": 6.8,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "bust_cold",
+              "pos": "left",
+              "scale": 1.12
+            },
+            {
+              "code": "F70",
+              "pose": "face_neutral",
+              "pos": "right",
+              "scale": 0.92
+            }
+          ],
+          "speaker": "v_M50A",
+          "text": "그건 무효고, 등기는 법정지분대로 합의한 겁니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-22",
+          "sec": 6.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "full_stand",
+              "pos": "left",
+              "scale": 1.1
+            }
+          ],
+          "speaker": "narrator",
+          "text": "장남은 잔을 밀어놓고 일어섰습니다.",
+          "gfx": null,
+          "sfx": "sfx_door",
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-23",
+          "sec": 6.6,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "full_sit",
+              "pos": "right",
+              "scale": 0.95
+            },
+            {
+              "code": "M50B",
+              "pose": "bust_neutral",
+              "pos": "left",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "v_M50B",
+          "text": "어머니, 이번엔 우리가 갑니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": true
+        }
+      ]
+    },
+    {
+      "id": "act4",
+      "title": "법정 — 상속분 0원",
+      "start_sec": 520,
+      "end_sec": 670,
+      "bgm": "court",
+      "cuts": [
+        {
+          "id": "A4-01",
+          "sec": 5.5,
+          "bg": "court_exterior",
+          "flashback": false,
+          "chars": [],
+          "speaker": "narrator",
+          "text": "그해 가을, 세 사람은 법원 앞에 섰습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A4-02",
+          "sec": 6.2,
+          "bg": "court_hall",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "full_walk",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "지팡이가 대리석 바닥을 짚는 소리만 길게 울렸습니다.",
+          "gfx": null,
+          "sfx": "sfx_footsteps",
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-04",
+          "sec": 6.3,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "bust_cold",
+              "pos": "left",
+              "scale": 1.2
+            }
+          ],
+          "speaker": "v_M50A",
+          "text": "아버지 재산은 법정지분대로 나누기로 이미 합의했습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-05",
+          "sec": 6.5,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "face_cold",
+              "pos": "left",
+              "scale": 1.2
+            }
+          ],
+          "speaker": "v_M50A",
+          "text": "상속재산 분할은 가정법원 일입니다. 이 소는 부적법합니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-07",
+          "sec": 6.5,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "bust_cold",
+              "pos": "left",
+              "scale": 1.15
+            },
+            {
+              "code": "F70",
+              "pose": "face_sad",
+              "pos": "right",
+              "scale": 0.85
+            }
+          ],
+          "speaker": "v_M50A",
+          "text": "제가 포기했다더니, 이제 빚은 나누자고요? 모순입니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-08",
+          "sec": 6.3,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50B",
+              "pose": "bust_anger",
+              "pos": "left",
+              "scale": 1.1
+            }
+          ],
+          "speaker": "v_F50B",
+          "text": "보증금 6,900만 원은 갚았습니다. 문자가 증거입니다.",
+          "gfx": null,
+          "sfx": "sfx_phone",
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-09",
+          "sec": 6.0,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [],
+          "speaker": "narrator",
+          "text": "원고 측 답변서가 법대 위에 놓였습니다.",
+          "gfx": null,
+          "sfx": "sfx_paper",
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-10",
+          "sec": 6.6,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [],
+          "speaker": "narrator",
+          "text": "「나눠 달라는 것이 아니다. 잘못 넘어간 등기를 되돌려 달라는 것이다.」",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-11",
+          "sec": 6.4,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "JUDGE",
+              "pose": "bust_neutral",
+              "pos": "center",
+              "scale": 1.2
+            }
+          ],
+          "speaker": "v_JUDGE",
+          "text": "원고들의 청구를 대부분 받아들입니다. 이유를 말합니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-12",
+          "sec": 6.5,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "JUDGE",
+              "pose": "face_neutral",
+              "pos": "center",
+              "scale": 1.2
+            }
+          ],
+          "speaker": "v_JUDGE",
+          "text": "특별수익. 생전에 미리 받아간 상속 몫을 말합니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-13",
+          "sec": 6.7,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "JUDGE",
+              "pose": "bust_cold",
+              "pos": "center",
+              "scale": 1.2
+            }
+          ],
+          "speaker": "v_JUDGE",
+          "text": "합의는 인정되지 않습니다. 등기와 소장 사이가 이틀입니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-14",
+          "sec": 6.3,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "face_shock",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "등기를 마친 이틀 뒤, 장남의 소장이 접수되었습니다.",
+          "gfx": {
+            "type": "timeline",
+            "items": [
+              {
+                "label": "장남 명의 상속등기",
+                "when": "장례 넉 달 뒤"
+              },
+              {
+                "label": "장남의 유류분 소장 접수",
+                "when": "그 이틀 뒤"
+              }
+            ]
+          },
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-15",
+          "sec": 6.6,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "JUDGE",
+              "pose": "bust_cold",
+              "pos": "center",
+              "scale": 1.2
+            }
+          ],
+          "speaker": "v_JUDGE",
+          "text": "그 정황으로는 지분대로 나누자는 협의가 있었다고 볼 수 없습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-16",
+          "sec": 6.8,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "JUDGE",
+              "pose": "face_cold",
+              "pos": "center",
+              "scale": 1.25
+            }
+          ],
+          "speaker": "v_JUDGE",
+          "text": "문자 한 줄은 증거가 되지 못합니다. 계좌에서 돈이 나갔을 뿐입니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-18",
+          "sec": 6.7,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "JUDGE",
+              "pose": "bust_neutral",
+              "pos": "center",
+              "scale": 1.2
+            }
+          ],
+          "speaker": "v_JUDGE",
+          "text": "어머니에게 준 재산은 특별수익이 아닙니다. 40여 년의 몫입니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-19",
+          "sec": 6.6,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "face_cry",
+              "pos": "right",
+              "scale": 0.9
+            }
+          ],
+          "speaker": "v_JUDGE",
+          "text": "함께 이룬 재산의 청산이고, 남은 생에 대한 부양입니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-21",
+          "sec": 6.8,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [],
+          "speaker": "narrator",
+          "text": "12억 400만 원에 9억 8,412만 원을 더합니다. 21억 8,812만 원.",
+          "gfx": {
+            "type": "amount",
+            "value": "21억 8,812만 원",
+            "note": "남긴 재산 + 미리 준 재산"
+          },
+          "sfx": "sfx_paper",
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-22",
+          "sec": 6.9,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "face_shock",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "장남 몫 4억 8,624만 원. 받아간 9억 8,412만 원을 빼면 0원.",
+          "gfx": {
+            "type": "amount",
+            "value": "0원",
+            "note": "장남의 구체적 상속분"
+          },
+          "sfx": "sfx_heartbeat",
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-23",
+          "sec": 6.5,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "JUDGE",
+              "pose": "bust_neutral",
+              "pos": "center",
+              "scale": 1.25
+            }
+          ],
+          "speaker": "v_JUDGE",
+          "text": "피고 명의로 마친 등기는 원인무효입니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-24",
+          "sec": 6.8,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "JUDGE",
+              "pose": "bust_cold",
+              "pos": "center",
+              "scale": 1.25
+            }
+          ],
+          "speaker": "v_JUDGE",
+          "text": "어머니에게 3/63, 두 동생에게 각 2/63 지분을 이전하십시오.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-25",
+          "sec": 6.9,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "JUDGE",
+              "pose": "face_neutral",
+              "pos": "left",
+              "scale": 1.2
+            },
+            {
+              "code": "F70",
+              "pose": "face_cry",
+              "pos": "right",
+              "scale": 0.9
+            }
+          ],
+          "speaker": "v_JUDGE",
+          "text": "어머니에게 1억 371만 원, 두 동생에게 각 1,749만 원.",
+          "gfx": {
+            "type": "amount",
+            "value": "1억 371만 원 / 각 1,749만 원",
+            "note": "판결 인정액"
+          },
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false,
+          "tag": "verdict"
+        },
+        {
+          "id": "A4-27",
+          "sec": 6.6,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "JUDGE",
+              "pose": "face_cold",
+              "pos": "center",
+              "scale": 1.2
+            }
+          ],
+          "speaker": "v_JUDGE",
+          "text": "남은 재산의 몫은 없어도, 세금과 보증금은 지분대로 승계됩니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-28",
+          "sec": 6.3,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "JUDGE",
+              "pose": "bust_neutral",
+              "pos": "center",
+              "scale": 1.2
+            }
+          ],
+          "speaker": "v_JUDGE",
+          "text": "민법 제411조와 제425조. 소송비용은 피고가 부담합니다.",
+          "gfx": null,
+          "sfx": "sfx_gavel",
+          "amb": "amb_court",
+          "blackout": true
+        }
+      ]
+    },
+    {
+      "id": "act5",
+      "title": "이름을 되돌리다",
+      "start_sec": 670,
+      "end_sec": 720,
+      "bgm": "outro",
+      "cuts": [
+        {
+          "id": "A5-01",
+          "sec": 6.0,
+          "bg": "office_registry",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "full_stand",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "판결 뒤 어느 아침, 등기소 창구였습니다.",
+          "gfx": null,
+          "sfx": "sfx_paper",
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A5-02",
+          "sec": 6.5,
+          "bg": "office_registry",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "bust_neutral",
+              "pos": "left",
+              "scale": 1.05
+            },
+            {
+              "code": "M50B",
+              "pose": "full_stand",
+              "pos": "right",
+              "scale": 0.9
+            }
+          ],
+          "speaker": "narrator",
+          "text": "새 등기부에 이름 둘이 나란히 적혀 있었습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A5-03",
+          "sec": 6.0,
+          "bg": "office_registry",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "face_sad",
+              "pos": "center",
+              "scale": 1.1
+            }
+          ],
+          "speaker": "v_F70",
+          "text": "이 절반은, 내가 벌어 넣은 거야.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A5-05",
+          "sec": 6.8,
+          "bg": "court_exterior",
+          "flashback": false,
+          "chars": [],
+          "speaker": "narrator",
+          "text": "법은 미리 받아간 재산을 '특별수익'으로 함께 셉니다.",
+          "gfx": {
+            "type": "amount",
+            "value": "9억 8,412만 원",
+            "note": "장남이 생전에 받은 돈"
+          },
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A5-07",
+          "sec": 6.5,
+          "bg": "court_hall",
+          "flashback": false,
+          "chars": [],
+          "speaker": "narrator",
+          "text": "배우자에게 준 재산은 기여와 부양의 뜻으로 달리 보았습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A5-08",
+          "sec": 6.7,
+          "bg": "court_hall",
+          "flashback": false,
+          "chars": [],
+          "speaker": "narrator",
+          "text": "몫이 없어도 빚은 남습니다. 민법 제411조·제425조입니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A5-09",
+          "sec": 6.0,
+          "bg": "home_living_day",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "full_sit",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "이 사건에서 법원이 그렇게 판단했습니다.",
+          "gfx": null,
+          "sfx": "sfx_clock",
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A5-10",
+          "sec": 6.5,
+          "bg": "home_living_day",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "face_neutral",
+              "pos": "center",
+              "scale": 1.1
+            }
+          ],
+          "speaker": "narrator",
+          "text": "여러분의 집에서는, 누가 무엇을 미리 받아갔는지 아십니까?",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": true,
+          "tag": "question"
+        }
+      ]
+    }
+  ],
+  "shorts": [],
+  "youtube": {
+    "description_body": "아버지가 세상을 떠난 뒤, 장남은 어머니와 두 동생을 상대로 먼저 소장을 냈습니다. 자신은 아버지 재산에서 한 푼도 받지 못했다는 이유였습니다.\n그 소송 기록에서, 그가 생전에 받아간 돈의 목록이 하나씩 드러납니다. 아파트 매수자금, 대신 갚아준 은행 대출, 병원 보증금.\n법원은 남은 재산에 대한 그의 몫을 어떻게 계산했을까요. 그리고 어머니가 혼자 감당한 세금과 보증금은 누구의 부담이었을까요.",
+    "chapters": [
+      {
+        "sec": 0,
+        "label": "「한 푼도 못 받았습니다」"
+      },
+      {
+        "sec": 22,
+        "label": "절반씩 적힌 두 이름"
+      },
+      {
+        "sec": 200,
+        "label": "그가 받아간 목록"
+      },
+      {
+        "sec": 370,
+        "label": "받은 건 받은 거고"
+      },
+      {
+        "sec": 520,
+        "label": "법정 — 상속분 0원"
+      },
+      {
+        "sec": 670,
+        "label": "이름을 되돌리다"
+      }
+    ],
+    "pinned_comment": "여러분의 집에서는, 누가 무엇을 미리 받아갔는지 서로 알고 계십니까?",
+    "tags": [
+      "상속",
+      "특별수익",
+      "유류분",
+      "상속회복",
+      "가족",
+      "형제갈등",
+      "판결극장"
+    ]
+  }
+}
