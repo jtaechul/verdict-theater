@@ -334,11 +334,12 @@ def render(doc, outdir, vertical=False, cut_ids=None, narration_dir=None,
     run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
          "-i", str(lst), "-c", "copy", str(silent)])
 
-    sub = {"acts": [{"id": "x", "cuts": [c for c, _ in keep], "bgm": doc["acts"][0].get("bgm")}]}
-    sub["acts"] = []
-    i = 0
+    # 소리는 막별 음악을 깔아야 하므로 '고른 컷만 남긴 대본'을 다시 만들어 넘긴다.
+    # 막 순서와 컷 순서가 keep 과 같아야 길이가 어긋나지 않는다.
+    kept_ids = {id(c) for c, _ in keep}
+    sub = {"acts": []}
     for act in doc["acts"]:
-        picked = [c for c in act["cuts"] if any(c is k for k, _ in keep)]
+        picked = [c for c in act["cuts"] if id(c) in kept_ids]
         if picked:
             sub["acts"].append({**act, "cuts": picked})
     audio = build_audio(sub, [d for _, d in keep], work, narration_dir)
