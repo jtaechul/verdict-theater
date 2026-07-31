@@ -343,7 +343,7 @@ def demo(outdir):
     out.mkdir(parents=True, exist_ok=True)
     samples = {
         "nametag": {"type": "nametag", "text": "한정숙 · 68세 · 아내"},
-        "amount": {"type": "amount", "value": "1억 5,690만 원", "note": "십 년의 새벽"},
+        "amount": {"type": "amount", "value": "1억 5,600만 원", "note": "십 년의 새벽"},
         "timeline": {"type": "timeline", "items": [
             {"label": "아들과 땅 계약", "when": "스물여섯 해 전"},
             {"label": "정숙 씨와 재혼", "when": "열한 달 뒤"},

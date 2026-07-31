@@ -445,7 +445,7 @@
       "publish_offset_days": 4,
       "est_sec": 37.7,
       "intro_line": "장남 상속분 0원",
-      "outro_line": "법원이 인정한 금액, 1억 371만 원.",
+      "outro_line": "법원이 인정한 금액, 1억 300만 원.",
       "hook_reason": "법원의 명쾌한 특별수익 선언을 첫 컷에 배치해 사이다 판결 몰입 유도",
       "cuts": [
         {
@@ -616,7 +616,7 @@
             "scale": 1.4
           },
           "speaker": "v_JUDGE",
-          "text": "어머니에게 1억 371만 원을 지급하십시오.",
+          "text": "어머니에게 1억 300만 원을 지급하십시오.",
           "gfx": {
             "type": "nametag",
             "text": "재판장"
@@ -638,7 +638,7 @@
             "scale": 1.35
           },
           "speaker": "narrator",
-          "text": "법원이 인정한 금액, 1억 371만 원.",
+          "text": "법원이 인정한 금액, 1억 300만 원.",
           "gfx": {
             "type": "nametag",
             "text": "재판장"

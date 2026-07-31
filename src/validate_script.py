@@ -23,6 +23,9 @@ import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import money                                                # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 
 # 막 이름 → (시작초, 끝초). CLAUDE.md "7. 대본 구조"
@@ -327,6 +330,16 @@ def check_anonymization(doc, r):
         r.warn("익명화", f"amounts_used 에 없는 금액 표기: {sorted(stray)}")
     else:
         r.ok(f"본문 금액이 amounts_used({len(declared)}종)와 일치")
+
+    # 금액이 백만원 단위인가 — 끝자리가 자잘하면 귀로 들어오지 않는다.
+    # 100만원 미만은 자르면 0원이 되므로 애초에 대상이 아니다.
+    rough = money.untidy(blob)
+    if rough:
+        seen = sorted(set(rough))
+        r.error("금액", f"백만원 단위가 아닌 금액 {len(seen)}종: {seen[:5]}"
+                        f"{' …' if len(seen) > 5 else ''}")
+    else:
+        r.ok("금액이 모두 백만원 단위")
 
 
 def check_law(doc, r):

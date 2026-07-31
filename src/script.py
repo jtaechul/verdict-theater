@@ -29,6 +29,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import prompts                                              # noqa: E402
+import money                                                # noqa: E402
 from llm import Gemini, LLMError, BudgetExceeded            # noqa: E402
 from claude import writer, ClaudeError                       # noqa: E402
 from claude import BudgetExceeded as ClaudeBudget            # noqa: E402
@@ -263,7 +264,9 @@ def assemble(design, acts_cuts):
     doc["shorts"] = []
     doc["youtube"] = design.get("youtube", {})
     doc["meta"]["cut_count"] = sum(len(a["cuts"]) for a in doc["acts"])
-    return doc
+    # 금액을 백만원 단위로 다듬는다. 본문·amounts_used·그래픽 값을 한꺼번에 훑어야
+    # "본문 금액이 amounts_used 와 다르다" 는 검증에 걸리지 않는다.
+    return money.tidy_doc(doc)
 
 
 # ── 검증 → 보강 ──────────────────────────────────────────
@@ -301,6 +304,7 @@ def machine_fix(llm, doc, rounds=2):
                 EVAL_JSON=json.dumps(fake_eval, ensure_ascii=False, indent=2),
                 ASSET_RULES=asset_rules_text(),
             ), tier="pro", max_output_tokens=60000, temperature=0.5, label="형식 보강")
+            doc = money.tidy_doc(doc)   # 보강하며 자잘한 금액이 되살아나는 것을 막는다
         except (LLMError, ClaudeError) as e:
             print(f"    보강 실패: {e}")
             break
@@ -315,12 +319,13 @@ def evaluate(llm, doc):
 
 def revise(llm, doc, ev):
     body = prompts.load("script_revise")
-    return llm.json(prompts.fill(
+    out = llm.json(prompts.fill(
         body,
         SCRIPT_JSON=json.dumps(doc, ensure_ascii=False),
         EVAL_JSON=json.dumps(ev, ensure_ascii=False, indent=2),
         ASSET_RULES=asset_rules_text(),
     ), tier="pro", max_output_tokens=60000, temperature=0.7, label="보강")
+    return money.tidy_doc(out)
 
 
 def _make_shorts_only(ep, prefer):
@@ -371,8 +376,9 @@ def _shorts_retry(doc, prefer):
 
 def make_shorts(llm, doc):
     body = prompts.load("shorts_gen")
-    return llm.json(prompts.fill(body, SCRIPT_JSON=json.dumps(doc, ensure_ascii=False)),
-                    tier="flash", max_output_tokens=16384, temperature=0.8, label="쇼츠")
+    out = llm.json(prompts.fill(body, SCRIPT_JSON=json.dumps(doc, ensure_ascii=False)),
+                   tier="flash", max_output_tokens=16384, temperature=0.8, label="쇼츠")
+    return money.tidy_doc(out)
 
 
 # ── 본체 ────────────────────────────────────────────────

@@ -44,11 +44,11 @@
     "amounts_used": [
       {
         "label": "땅의 감정가",
-        "value": "7억 3,220만 원"
+        "value": "7억 3,200만 원"
       },
       {
         "label": "판결 금액",
-        "value": "1억 5,690만 원"
+        "value": "1억 5,600만 원"
       }
     ],
     "years_relative_only": true,
@@ -330,7 +330,7 @@
           "text": "먼 나라의 땅 하나. 칠억이 넘었지만 정숙 씨는 본 적이 없었습니다.",
           "gfx": {
             "type": "amount",
-            "value": "7억 3,220만 원",
+            "value": "7억 3,200만 원",
             "note": "남편이 남긴 전부"
           },
           "sfx": null,
@@ -1217,10 +1217,10 @@
           "flashback": false,
           "chars": [],
           "speaker": "narrator",
-          "text": "땅의 감정가는 남편이 떠날 무렵 7억 3,220만 원이었습니다.",
+          "text": "땅의 감정가는 남편이 떠날 무렵 7억 3,200만 원이었습니다.",
           "gfx": {
             "type": "amount",
-            "value": "7억 3,220만 원",
+            "value": "7억 3,200만 원",
             "note": "먼 나라의 땅 620제곱미터"
           },
           "sfx": null,
@@ -2163,10 +2163,10 @@
           "flashback": false,
           "chars": [],
           "speaker": "narrator",
-          "text": "피고는 원고에게 1억 5,690만 원을 지급하라.",
+          "text": "피고는 원고에게 1억 5,600만 원을 지급하라.",
           "gfx": {
             "type": "amount",
-            "value": "1억 5,690만 원",
+            "value": "1억 5,600만 원",
             "note": "십 년의 새벽"
           },
           "sfx": null,
@@ -2449,7 +2449,7 @@
       ],
       "est_sec": 38.8,
       "intro_line": "재판장이 서류를 덮었습니다.",
-      "outro_line": "법원이 인정한 금액, 1억 5,690만 원."
+      "outro_line": "법원이 인정한 금액, 1억 5,600만 원."
     }
   ],
   "youtube": {

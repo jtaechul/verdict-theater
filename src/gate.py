@@ -22,6 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import prompts                                    # noqa: E402
+import money                                      # noqa: E402
 from llm import Gemini, LLMError, BudgetExceeded  # noqa: E402
 from claude import writer, ClaudeError            # noqa: E402
 from claude import BudgetExceeded as ClaudeBudget # noqa: E402
@@ -116,7 +117,9 @@ def main():
             "twist_hint": res.get("twist_hint", ""),
             "victim": res.get("victim", ""),
             "villain": res.get("villain", ""),
-            "amount_krw": res.get("amount_krw", 0),
+            # 대본에 쓸 금액은 백만원 단위로 다듬는다. 여기서부터 맞춰 둔다.
+            "amount_krw": money.floor(int(res.get("amount_krw") or 0)),
+            "amount_label": money.tidy(res.get("amount_label", "")),
             "gate_scores": res.get("scores", {}),
             "gate_reject": res.get("reject", []),
             "gate_note": res.get("note", ""),
