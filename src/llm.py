@@ -137,8 +137,13 @@ class Gemini:
         return cands[0]
 
     # ── 호출 ────────────────────────────────────────────
-    def json(self, prompt, tier="pro", max_output_tokens=32768, temperature=0.9, label=""):
-        """프롬프트를 보내고 JSON 하나를 받는다."""
+    def json(self, prompt, tier="pro", max_output_tokens=32768, temperature=0.9,
+             label="", cache_prefix=""):
+        """프롬프트를 보내고 JSON 하나를 받는다.
+
+        cache_prefix — Claude 쪽과 서명을 맞추기 위한 것. Gemini 는 반복되는 앞부분을
+        알아서 재사용하므로 따로 표시할 게 없고, 그냥 앞에 붙여 보내면 된다."""
+        prompt = cache_prefix + prompt
         if self.calls >= self.max_calls:
             raise BudgetExceeded(
                 f"이번 실행에서 이미 {self.calls}회 호출했다. 상한 {self.max_calls}회. "

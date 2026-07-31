@@ -225,7 +225,9 @@ ACT_EXTRA = {
 
 
 def gen_design(llm, base, case_txt):
-    return llm.json(base + DESIGN_TASK.replace("{{CASE_JSON}}", ""),
+    # base(지시문 + 판례 본문)는 아래 막별 6회에서도 글자 그대로 반복된다.
+    # cache_prefix 로 넘겨 한 번만 읽히고 이후엔 재사용하게 한다.
+    return llm.json(DESIGN_TASK.replace("{{CASE_JSON}}", ""), cache_prefix=base,
                     tier="pro", max_output_tokens=8192, temperature=0.85, label="설계")
 
 
@@ -243,7 +245,7 @@ def gen_act(llm, base, design, act):
             .replace("{{BEATS}}", " / ".join(beats) or "(설계에 없음)")
             .replace("{{EXTRA}}", ACT_EXTRA.get(aid, ""))
             .replace("{{PREFIX}}", prefix))
-    res = llm.json(base + task, tier="pro", max_output_tokens=16384,
+    res = llm.json(task, cache_prefix=base, tier="pro", max_output_tokens=16384,
                    temperature=0.9, label=f"막 {aid}")
     return res.get("cuts", [])
 

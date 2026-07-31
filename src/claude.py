@@ -242,6 +242,8 @@ class Claude:
         self.fails = 0
         self.tokens_in = 0
         self.tokens_out = 0
+        self.cache_write = 0   # 기억시키느라 낸 토큰 (한 번, 정가의 2배)
+        self.cache_read = 0    # 기억해 둔 걸 다시 쓴 토큰 (정가의 10분의 1)
         self._models = None
         # 배운 것은 모델별로 따로 기억한다. opus 와 sonnet 은 받아주는 설정이 다를 수 있다.
         self._drop = {}         # 모델 → 거절당한 설정 이름들
@@ -286,11 +288,17 @@ class Claude:
         return cands[0]
 
     # ── 호출 ────────────────────────────────────────────
-    def json(self, prompt, tier="pro", max_output_tokens=32768, temperature=0.9, label=""):
-        """프롬프트를 보내고 JSON 하나를 받는다."""
+    def json(self, prompt, tier="pro", max_output_tokens=32768, temperature=0.9,
+             label="", cache_prefix=""):
+        """프롬프트를 보내고 JSON 하나를 받는다.
+
+        cache_prefix — 여러 호출에서 **글자 하나 안 틀리고 똑같이** 반복되는 앞부분.
+          대본 생성이 그렇다. 지시문 + 판례 본문 13,449 토큰이 설계 1회 + 막별 6회,
+          모두 7번 똑같이 나간다. 그대로 두면 편당 659원이 순수한 중복이다.
+          여기에 표시해 두면 서버가 한 번만 읽고 기억한다 — 다음부터는 10분의 1 값이다."""
         model = self.pick(tier)
         self._warmup(model)
-        return self._call(model, prompt, max_output_tokens, temperature, label)
+        return self._call(model, prompt, max_output_tokens, temperature, label, cache_prefix)
 
     def _warmup(self, model):
         """본 작업 전에 아주 작은 호출 한 번으로 '이 모델이 받아주는 설정'을 알아낸다.
@@ -308,7 +316,7 @@ class Claude:
             return
         self._probed.add(model)
         try:
-            self._call(model, '{"ok": true} 를 그대로 출력하라.', 64, 0.0, "사전 점검")
+            self._call(model, '{"ok": true} 를 그대로 출력하라.', 64, 0.0, "사전 점검", "")
         except BudgetExceeded:
             raise
         except ClaudeError as e:
@@ -317,7 +325,7 @@ class Claude:
             # 내용 문제(작은 프롬프트라 생긴 것일 수 있다)는 넘어가고 본 호출에서 확인한다
             print(f"    (사전 점검 실패 — 본 호출에서 다시 확인한다: {str(e)[:120]})")
 
-    def _call(self, model, prompt, max_output_tokens, temperature, label):
+    def _call(self, model, prompt, max_output_tokens, temperature, label, cache_prefix=""):
         if self.calls >= self.max_calls:
             raise BudgetExceeded(
                 f"이번 실행에서 이미 {self.calls}회 호출했다. 상한 {self.max_calls}회. "
@@ -332,12 +340,25 @@ class Claude:
         # 프리필을 쓸 수 있는 모델이면 응답을 `{` 로 시작하게 못 박는다.
         # 못 쓰는 모델이면 시스템 지시 + 꺼내 읽기로 대신한다.
         prefill = self._prefill.get(model, True)
+
+        # 반복되는 앞부분은 따로 떼어 "이건 기억해 둬라"고 표시한다.
+        # ttl 1시간을 쓰는 이유: 막 하나 쓰는 데 2~3분씩 걸려 7번이면 20분이다.
+        # 기본 5분짜리로는 중간에 잊어버려 오히려 매번 다시 읽게 된다.
+        if cache_prefix:
+            content = [
+                {"type": "text", "text": cache_prefix,
+                 "cache_control": {"type": "ephemeral", "ttl": "1h"}},
+                {"type": "text", "text": prompt},
+            ]
+        else:
+            content = prompt
+
         payload = {
             "model": model,
             "max_tokens": max_output_tokens,
             "temperature": min(1.0, temperature),
             "system": _JSON_SYSTEM,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": [{"role": "user", "content": content}],
         }
         if prefill:
             payload["messages"].append({"role": "assistant", "content": "{"})
@@ -357,6 +378,8 @@ class Claude:
                 u = res.get("usage", {})
                 self.tokens_in += u.get("input_tokens", 0)
                 self.tokens_out += u.get("output_tokens", 0)
+                self.cache_write += u.get("cache_creation_input_tokens", 0)
+                self.cache_read += u.get("cache_read_input_tokens", 0)
 
                 # 모델이 안전상의 이유로 거절할 수 있다. 오류가 아니라 정상 응답으로 온다.
                 # 같은 걸 다시 물어도 또 거절한다 — 재시도하면 시간만 버린다.
@@ -446,6 +469,14 @@ class Claude:
              f"· 출력 {self.tokens_out:,} 토큰")
         if self.fails:
             s += f" · 실패 {self.fails}회"
+        if self.cache_read or self.cache_write:
+            # 정가로 다 냈다면 얼마였을지와 비교해 실제로 아낀 값을 보여준다.
+            full = self.tokens_in + self.cache_write + self.cache_read
+            paid = self.tokens_in + self.cache_write * 2 + self.cache_read * 0.1
+            s += (f"\n재사용: 기억 {self.cache_write:,} · 다시 씀 {self.cache_read:,} 토큰"
+                  f" → 입력값 {full:,} 어치를 {paid:,.0f} 값에 냈다")
+            if full > paid:
+                s += f" ({(1 - paid / full) * 100:.0f}% 절감)"
         return s
 
 
