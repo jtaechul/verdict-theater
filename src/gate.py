@@ -61,6 +61,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=10, help="이번에 평가할 판례 수")
     ap.add_argument("--max-calls", type=int, default=0, help="모델 호출 상한 (기본: limit + 2)")
+    ap.add_argument("--writer", choices=["claude", "gemini"], default=None,
+                    help="심사할 곳. 비우면 CLAUDE_API_KEY 가 있을 때 Claude")
     args = ap.parse_args()
 
     queue = load_queue()
@@ -71,7 +73,7 @@ def main():
         return 0
 
     try:
-        llm, who = writer(max_calls=args.max_calls or (args.limit + 2))
+        llm, who = writer(max_calls=args.max_calls or (args.limit + 2), prefer=args.writer)
     except (LLMError, ClaudeError) as e:
         print(f"❌ {e}")
         return 2
@@ -82,7 +84,7 @@ def main():
     print()
 
     by_id = {c["case_id"]: c for c in queue}
-    done = passed = 0
+    done = passed = failed = 0
 
     for c in todo:
         cid = c["case_id"]
@@ -100,6 +102,7 @@ def main():
             break
         except (LLMError, ClaudeError) as e:
             print(f"  {cid}  평가 실패: {e}")
+            failed += 1
             continue
 
         total = int(res.get("total", 0))
@@ -128,7 +131,8 @@ def main():
 
     print()
     print("─" * 60)
-    print(f"평가 {done}건 · 통과 {passed}건 · 폐기 {done - passed}건")
+    print(f"평가 {done}건 · 통과 {passed}건 · 폐기 {done - passed}건"
+          + (f" · 오류 {failed}건" if failed else ""))
     print(llm.report())
 
     ready = [c for c in queue if c.get("gate_pass")]
@@ -136,6 +140,15 @@ def main():
     for c in ready[:8]:
         print(f"  {c.get('gate_score', 0):3d}점  {c['case_id']}  {c.get('case_type', ''):8s} "
               f"{(c.get('one_line') or '')[:36]}")
+
+    # 한 건도 못 했으면 초록 체크를 주면 안 된다.
+    # 예전에 "19초 만에 성공"으로 끝났는데 실은 6건 전부 400 으로 죽어 있었다.
+    # 운영자는 로그를 열어보지 않으므로, 실패는 실패로 보여야 한다.
+    if done == 0:
+        print("\n한 건도 평가하지 못했다. 위의 오류 내용을 보라.")
+        return 3
+    if failed:
+        print(f"\n{failed}건은 오류로 건너뛰었다. 다시 실행하면 그 건들만 재시도한다.")
     return 0
 
 

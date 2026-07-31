@@ -341,10 +341,19 @@ def main():
 
     row = pick_case(queue, eps, args.case or None)
     if not row:
+        # 아무것도 안 만들었으면 초록 체크를 주면 안 된다.
+        # 운영자는 요약 화면만 본다. "성공"이라고 뜨면 대본이 생긴 줄 안다.
+        graded = [c for c in queue if c.get("gate_score") is not None]
         print("제작할 소재가 없다.")
-        print("  1) src/collect.py 로 판례를 모으고")
-        print("  2) src/gate.py 로 드라마성 평가를 돌려 통과분을 만든 뒤 다시 실행하라.")
-        return 0
+        if not queue:
+            print("  대기열이 비었다. 먼저 '1. 판례 수집' 을 돌려라.")
+        elif not graded:
+            print(f"  대기열에 {len(queue)}건이 있지만 소재 심사를 아직 안 했다.")
+            print("  '무엇을 할까요' 를 '둘다' 또는 '소재 심사만' 으로 놓고 다시 실행하라.")
+        else:
+            print(f"  심사한 {len(graded)}건 중 통과선(60점)을 넘긴 소재가 없다.")
+            print("  '1. 판례 수집' 으로 새 판례를 더 모아야 한다.")
+        return 4
 
     cid = row["case_id"]
     path = CASES / f"{cid}.json"

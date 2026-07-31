@@ -110,7 +110,13 @@ jobs:
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
         run: |
           set -o pipefail
-          python3 src/gate.py --limit "${{ inputs.gate_limit || '10' }}" 2>&1 | tee gate.log
+          # 심사도 모델을 쓴다. 버튼에서 고른 곳이 심사에도 그대로 적용돼야 한다.
+          case "${{ inputs.writer }}" in
+            "Claude") W="--writer claude" ;;
+            "Gemini") W="--writer gemini" ;;
+            *) W="" ;;
+          esac
+          python3 src/gate.py --limit "${{ inputs.gate_limit || '10' }}" $W 2>&1 | tee gate.log
 
       - name: 대본 생성 + 채점 + 보강 + 쇼츠
         if: inputs.mode != '소재 심사만'
@@ -129,7 +135,39 @@ jobs:
       - name: 검수 화면 만들기 (아이폰에서 바로 읽는 곳)
         if: always()
         run: |
+          # 로그를 한 덩어리로 합쳐 무슨 일이 있었는지 먼저 판단한다.
+          cat gate.log script.log > all.log 2>/dev/null || true
           {
+            # ── 무슨 일이 있었나 (맨 위) ──────────────────────────
+            # 운영자는 로그를 열어보지 않는다. 아이폰 요약 화면 첫 줄에 한국말로 적는다.
+            if grep -q 'invalid x-api-key\|authentication_error\|HTTP 401' all.log 2>/dev/null; then
+              echo "## 열쇠가 잘못됐습니다"
+              echo ""
+              echo "등록된 API 키를 서버가 거절했습니다. 키를 다시 발급해 등록하십시오."
+              echo ""
+              echo "저장소 → **Settings** → **Secrets and variables** → **Actions**"
+              echo "→ 해당 키 옆 연필 모양 → 새 값 붙여넣기 → **Update secret**"
+              echo ""
+            elif grep -q 'credit balance\|billing\|quota' all.log 2>/dev/null; then
+              echo "## 결제 잔액이나 사용 한도에 걸렸습니다"
+              echo ""
+              echo "API 제공사 화면에서 잔액과 한도를 확인하십시오."
+              echo "- Claude: [console.anthropic.com](https://console.anthropic.com/settings/billing)"
+              echo "- Gemini: [aistudio.google.com](https://aistudio.google.com)"
+              echo ""
+            elif grep -q '한 건도 평가하지 못했다' all.log 2>/dev/null; then
+              echo "## 소재 심사가 한 건도 되지 않았습니다"
+              echo ""
+              echo "아래 **소재 심사** 칸의 오류 내용을 보십시오."
+              echo "판례는 그대로 남아 있으니, 원인을 고치고 다시 실행하면 처음부터 다시 심사합니다."
+              echo ""
+            elif grep -q '제작할 소재가 없다' all.log 2>/dev/null; then
+              echo "## 대본을 만들지 않았습니다"
+              echo ""
+              echo "쓸 수 있는 소재가 없었습니다. 아래 **생성 기록** 칸에 이유가 적혀 있습니다."
+              echo ""
+            fi
+
             if [ -f gate.log ]; then
               echo "## 소재 심사"
               echo ""

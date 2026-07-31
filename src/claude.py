@@ -28,6 +28,40 @@ TIMEOUT = 600
 RETRIES = 4
 BACKOFF = [5, 15, 40]
 
+# 모델마다 받아주는 설정이 다르고, 그 규칙은 예고 없이 바뀐다.
+# 실제로 claude-opus-5 는 temperature 를 더 이상 받지 않아 소재 심사 6건이 전부 400 으로 죽었다.
+# 모델 이름을 코드에 박지 않기로 한 이상, 이런 것도 박아두면 안 된다.
+# → **거절당하면 그 설정만 빼고 다시 건다.** 모델이 바뀌어도 스스로 맞춘다.
+DROPPABLE = ("temperature", "top_p", "top_k")
+
+_REJECT_WORDS = ("deprecated", "unsupported", "not supported", "not allowed",
+                 "unexpected", "unrecognized", "no longer")
+
+
+def _unsupported_param(body, payload):
+    """400 응답이 '이 설정은 못 받는다'고 말하면 그 설정 이름을 돌려준다."""
+    low = body.lower()
+    if not any(w in low for w in _REJECT_WORDS):
+        return None
+    for name in DROPPABLE:
+        if name in payload and name in low:
+            return name
+    return None
+
+
+def _max_tokens_cap(body):
+    """400 응답이 '출력 한도를 넘었다'고 말하면 그 한도를 숫자로 돌려준다.
+
+    Claude 의 모델 목록에는 출력 한도가 안 나온다(Gemini 는 나온다).
+    그래서 물어볼 수 없고, 거절당했을 때 응답에 적힌 숫자로 배우는 수밖에 없다."""
+    m = re.search(r"max_tokens:\s*\d+\s*>\s*(\d+)", body)
+    if m:
+        return int(m.group(1))
+    m = re.search(r"(\d[\d,]*)\s*,?\s*which is the maximum allowed number of output tokens", body)
+    if m:
+        return int(m.group(1).replace(",", ""))
+    return None
+
 
 class ClaudeError(RuntimeError):
     pass
@@ -61,9 +95,12 @@ class Claude:
             )
         self.max_calls = max_calls
         self.calls = 0
+        self.fails = 0
         self.tokens_in = 0
         self.tokens_out = 0
         self._models = None
+        self._drop = set()      # 이 모델이 거절한 설정들. 한 번 배우면 이후 호출에도 안 보낸다
+        self._cap = None        # 이 모델의 출력 한도. 거절당하며 알아낸 값
 
     # ── 모델 고르기 ──────────────────────────────────────
     def available(self):
@@ -113,6 +150,9 @@ class Claude:
                 "무한 루프로 인한 과금 폭발을 막는 장치다."
             )
         model = self.pick(tier)
+        if self._cap and max_output_tokens > self._cap:
+            print(f"    (출력 한도 조정: {max_output_tokens:,} → {self._cap:,} · {model})")
+            max_output_tokens = self._cap
         payload = {
             "model": model,
             "max_tokens": max_output_tokens,
@@ -122,9 +162,13 @@ class Claude:
                 {"role": "assistant", "content": "{"},     # JSON 으로 시작하도록 못 박는다
             ],
         }
+        for name in self._drop:                # 앞선 호출에서 이미 거절당한 설정은 빼고 보낸다
+            payload.pop(name, None)
 
         last = None
-        for attempt in range(RETRIES):
+        attempt = 0
+        adjusted = 0                           # 설정을 고쳐서 다시 건 횟수 (재시도 횟수와 별개)
+        while attempt < RETRIES:
             try:
                 res = _req("messages", self.key, method="POST", body=payload)
                 self.calls += 1
@@ -150,25 +194,50 @@ class Claude:
 
             except urllib.error.HTTPError as e:
                 last = e
+                body = e.read().decode("utf-8", "replace")[:400]
+
+                # 400 이라고 다 끝난 게 아니다. "그 설정은 못 받는다"는 뜻이면 고쳐서 다시 건다.
+                if e.code == 400 and adjusted < 4:
+                    bad = _unsupported_param(body, payload)
+                    if bad:
+                        self._drop.add(bad)
+                        payload.pop(bad, None)
+                        adjusted += 1
+                        print(f"    (이 모델은 '{bad}' 설정을 받지 않는다 — 빼고 다시 건다)")
+                        continue
+                    cap = _max_tokens_cap(body)
+                    if cap and cap < payload.get("max_tokens", 0):
+                        self._cap = cap
+                        payload["max_tokens"] = cap
+                        adjusted += 1
+                        print(f"    (이 모델의 출력 한도는 {cap:,} — 줄여서 다시 건다)")
+                        continue
+
                 if e.code in (400, 401, 403, 404):
-                    body = e.read().decode("utf-8", "replace")[:400]
+                    self.fails += 1
                     raise ClaudeError(f"호출 실패 (HTTP {e.code}) — 재시도해도 소용없다.\n{body}")
-                if attempt < RETRIES - 1:
-                    w = BACKOFF[attempt]
-                    print(f"    (재시도 {attempt + 1}/{RETRIES - 1} — HTTP {e.code}, {w}초 대기)")
+                attempt += 1
+                if attempt < RETRIES:
+                    w = BACKOFF[attempt - 1]
+                    print(f"    (재시도 {attempt}/{RETRIES - 1} — HTTP {e.code}, {w}초 대기)")
                     time.sleep(w)
             except (urllib.error.URLError, TimeoutError, ClaudeError) as e:
                 last = e
-                if attempt < RETRIES - 1:
-                    w = BACKOFF[attempt]
-                    print(f"    (재시도 {attempt + 1}/{RETRIES - 1} — {type(e).__name__}, {w}초 대기)")
+                attempt += 1
+                if attempt < RETRIES:
+                    w = BACKOFF[attempt - 1]
+                    print(f"    (재시도 {attempt}/{RETRIES - 1} — {type(e).__name__}, {w}초 대기)")
                     time.sleep(w)
         self.calls += 1
+        self.fails += 1
         raise ClaudeError(f"{label or '호출'} 최종 실패: {last}")
 
     def report(self):
-        return (f"모델 호출 {self.calls}회 · 입력 {self.tokens_in:,} 토큰 "
-                f"· 출력 {self.tokens_out:,} 토큰")
+        s = (f"모델 호출 {self.calls}회 · 입력 {self.tokens_in:,} 토큰 "
+             f"· 출력 {self.tokens_out:,} 토큰")
+        if self.fails:
+            s += f" · 실패 {self.fails}회"
+        return s
 
 
 # ── 어느 쪽을 쓸지 고르기 ────────────────────────────────
