@@ -184,6 +184,8 @@ function appHtml() {
 const WF = ${JSON.stringify(WORKFLOWS)};
 const STAGE = ${JSON.stringify(STAGE_LABEL)};
 let S = null;
+let VIEW = 'home';   // 지금 보고 있는 화면. 대본을 보는 중에 첫 화면이 끼어들지 않게 한다
+let WATCH = null;    // 실행 후 자동 새로고침 타이머
 
 const $ = (h) => { const d = document.createElement('div'); d.innerHTML = h; return d; };
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -215,6 +217,7 @@ async function load() {
 }
 
 function home() {
+  VIEW = 'home';
   const eps = Object.entries(S.episodes || {}).sort((a,b) => b[0].localeCompare(a[0]));
   const ready = (S.queue || []).filter(q => q.gate_pass);
   const ungated = (S.queue || []).filter(q => q.gate_score == null);
@@ -292,7 +295,25 @@ async function run(i) {
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ file: w.file, inputs }) });
   const j = await r.json();
-  toast(j.ok ? (w.name + ' 시작됨. 몇 분 뒤 새로고침하십시오.') : ('실패: ' + (j.error||'')), 6000);
+  if (!j.ok) { toast('실패: ' + (j.error || '알 수 없는 이유'), 6000); return; }
+  toast(w.name + ' 시작됨. 아래 "최근 실행"이 저절로 갱신됩니다.', 6000);
+  watch();
+}
+
+// 실행 직후에는 목록에 아직 안 뜬다. 손님이 직접 새로고침하지 않아도 되게
+// 잠깐 동안 알아서 다시 확인한다. 첫 화면을 보고 있을 때만 다시 그린다.
+function watch() {
+  clearInterval(WATCH);
+  let left = 20;                       // 6초 간격으로 약 2분
+  WATCH = setInterval(async () => {
+    if (--left < 0 || VIEW !== 'home') { clearInterval(WATCH); return; }
+    try {
+      const r = await fetch('/api/state');
+      if (!r.ok) return;
+      S = await r.json();
+      if (VIEW === 'home') home();
+    } catch (e) { /* 잠깐 끊긴 것뿐이다. 다음 차례에 다시 해본다 */ }
+  }, 6000);
 }
 
 async function script(ep) {
@@ -306,6 +327,7 @@ async function script(ep) {
 }
 
 function render(ep, d, sh) {
+  VIEW = 'script';
   const m = d.meta || {}, a = d.anonymization || {};
   const cuts = (d.acts||[]).flatMap(x => x.cuts||[]);
   const total = cuts.reduce((s,c) => s + (c.sec||0), 0);
