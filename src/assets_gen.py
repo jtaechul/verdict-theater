@@ -24,7 +24,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageFilter
+from PIL import Image, ImageChops, ImageFilter
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from llm import BASE, _get, _post  # noqa: E402
@@ -36,7 +36,10 @@ CHROMA = (0, 0xB1, 0x40)      # 크로마 그린. 실측 오차 5 이내로 균�
 CHROMA_TOL = 60
 COLS, ROWS = 3, 6
 GRID_TRIM = 4                  # 격자선 안쪽으로 이 만큼 잘라낸다
-OUTLINE_RATIO = 0.015          # 인물 높이의 1.5% 만큼 흰 테두리
+# 스티커·콜라주 느낌의 컷아웃. 잡지에서 오려 붙인 것처럼 보이게 한다.
+OUTLINE_RATIO = 0.028          # 흰 테두리 두께 = 인물 높이의 2.8%
+TORN_EDGE = True               # 가장자리를 불규칙하게 (매끈하면 기계로 오린 티가 난다)
+SHADOW = True                  # 테두리 아래 그림자 → 배경에서 떠오른다
 UPSCALE = 4
 
 # 시트 18칸의 순서. 18번(우하단)은 워터마크 자리라 비워 둔다.
@@ -87,26 +90,67 @@ def trim_alpha(img, pad=6):
                      min(img.width, r + pad), min(img.height, b + pad)))
 
 
-def white_outline(img):
-    """인물 둘레에 흰 테두리를 두른다.
+def white_outline(img, thickness=OUTLINE_RATIO, torn=TORN_EDGE, shadow=SHADOW):
+    """인물 둘레에 **두껍고 불규칙한 흰 테두리**를 두르고 그림자를 깐다.
 
-    블러 배경 위에 인물이 떠 보이게 해서 '오려 붙인 티'를 줄인다.
-    두께는 인물 높이의 1.5%."""
-    w = max(2, int(img.height * OUTLINE_RATIO))
-    alpha = img.getchannel("A")
+    스티커·콜라주 방식이다. 잡지에서 사진을 가위로 오려 종이에 붙인 것처럼 보이게 한다.
+    이게 없으면 인물이 배경에 그냥 얹힌 것처럼 보여 '오려 붙인 티'가 난다.
+
+    세 겹으로 만든다.
+      1. 그림자 — 테두리를 흐리게 하고 아래로 조금 내려 깐다. 인물이 배경에서 떠오른다
+      2. 흰 테두리 — 가장자리를 일부러 불규칙하게 만든다. 매끈하면 기계로 오린 티가 난다
+      3. 인물 — 맨 위
+
+    두께는 인물 높이의 2.8%. 얇으면 블러 배경에 묻히고, 두꺼우면 유치해진다."""
+    w = max(3, int(img.height * thickness))
+    pad = w * 4                                   # 테두리와 그림자가 잘리지 않게 여백을 준다
+    canvas = Image.new("RGBA", (img.width + pad * 2, img.height + pad * 2), (0, 0, 0, 0))
+    canvas.alpha_composite(img, (pad, pad))
+    alpha = canvas.getchannel("A")
+
+    # ── 1) 테두리 모양 만들기 ──
     grown = alpha.filter(ImageFilter.MaxFilter(w * 2 + 1))
-    ring = Image.new("RGBA", img.size, (255, 255, 255, 0))
-    ring.putalpha(grown)
-    white = Image.new("RGBA", img.size, (255, 255, 255, 255))
+    grown = grown.point(lambda v: 255 if v > 8 else 0)
+
+    if torn:
+        # 찢은 종이 느낌. 부드럽게 번지게 한 뒤 잡음을 섞어 다시 자르면
+        # 가장자리가 들쭉날쭉해진다. 매끈한 곡선보다 손으로 오린 느낌이 난다.
+        soft = grown.filter(ImageFilter.GaussianBlur(w * 0.55))
+        noise = Image.effect_noise(canvas.size, 46).filter(
+            ImageFilter.GaussianBlur(max(1.0, w * 0.30)))
+        mixed = ImageChops.add(soft, noise, scale=1.0, offset=-118)
+        grown = mixed.point(lambda v: 255 if v > 128 else 0)
+        # 잡음 때문에 생긴 작은 점들을 메운다
+        grown = grown.filter(ImageFilter.MaxFilter(3)).filter(ImageFilter.MinFilter(3))
+        grown = ImageChops.lighter(grown, alpha.point(lambda v: 255 if v > 8 else 0))
+
+    out = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+
+    # ── 2) 그림자 ──
+    if shadow:
+        blur = grown.filter(ImageFilter.GaussianBlur(w * 1.1))
+        sh = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+        sh.putalpha(blur.point(lambda v: int(v * 0.42)))
+        off = max(2, int(w * 0.55))
+        out.alpha_composite(sh, (0, 0))
+        shifted = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+        shifted.paste(sh, (int(off * 0.35), off))
+        out = Image.alpha_composite(out, shifted)
+
+    # ── 3) 흰 테두리 → 인물 ──
+    white = Image.new("RGBA", canvas.size, (255, 255, 255, 255))
     white.putalpha(grown)
-    out = Image.alpha_composite(white, img)
-    return out
+    out = Image.alpha_composite(out, white)
+    out = Image.alpha_composite(out, canvas)
+
+    return trim_alpha(out, pad=2) or out
 
 
-def process_sheet(sheet_path, code, outdir=None, upscale=UPSCALE):
+def process_sheet(sheet_path, code, outdir=None, upscale=UPSCALE,
+                  outline=OUTLINE_RATIO, torn=TORN_EDGE, shadow=SHADOW):
     """시트 한 장 → 컷아웃 17개.
 
-    시트 생성 → 슬라이싱 → 크로마키 제거 → 알파 확장 후 흰색 채움 → 4배 업스케일 → 저장
+    시트 생성 → 슬라이싱 → 크로마키 제거 → **스티커 테두리 + 그림자** → 4배 업스케일 → 저장
     """
     outdir = Path(outdir or (ASSETS / "char" / code))
     outdir.mkdir(parents=True, exist_ok=True)
@@ -120,7 +164,7 @@ def process_sheet(sheet_path, code, outdir=None, upscale=UPSCALE):
         if cut is None:
             print(f"  {i + 1:2d}번 칸 비어 있음 → {name} 건너뜀")
             continue
-        cut = white_outline(cut)
+        cut = white_outline(cut, thickness=outline, torn=torn, shadow=shadow)
         if upscale > 1:
             cut = cut.resize((cut.width * upscale, cut.height * upscale), Image.LANCZOS)
         p = outdir / f"{name}.png"
@@ -352,6 +396,10 @@ def main():
     s.add_argument("path")
     s.add_argument("code")
     s.add_argument("--upscale", type=int, default=UPSCALE)
+    s.add_argument("--outline", type=float, default=OUTLINE_RATIO,
+                   help=f"흰 테두리 두께 = 인물 높이 대비 비율 (기본 {OUTLINE_RATIO})")
+    s.add_argument("--smooth", action="store_true", help="가장자리를 매끈하게 (찢은 느낌 끄기)")
+    s.add_argument("--no-shadow", action="store_true", help="그림자 끄기")
 
     i = sub.add_parser("images", help="캐릭터 시트·배경 생성")
     i.add_argument("--what", choices=["bg", "char", "all"], default="all")
@@ -366,7 +414,9 @@ def main():
 
     args = ap.parse_args()
     if args.cmd == "sheet":
-        process_sheet(args.path, args.code, upscale=args.upscale)
+        process_sheet(args.path, args.code, upscale=args.upscale,
+                      outline=args.outline, torn=not args.smooth,
+                      shadow=not args.no_shadow)
         return 0
     if args.cmd == "images":
         return cmd_images(args)
