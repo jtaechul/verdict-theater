@@ -31,10 +31,12 @@ const WORKFLOWS = [
     inputs: [{ k: 'max_calls', label: '호출 수', type: 'text', def: '180' },
              { k: 'queries', label: '검색어 (비우면 전부)', type: 'text', def: '' }] },
   { file: 'script.yml', name: '2. 대본 만들기', desc: '소재 심사 + 12분 대본 + 쇼츠',
-    inputs: [{ k: 'mode', label: '무엇을', type: 'select', opts: ['둘다', '소재 심사만', '대본 생성만'] },
+    inputs: [{ k: 'mode', label: '무엇을', type: 'select',
+               opts: ['둘다', '소재 심사만', '대본 생성만', '쇼츠만 다시'] },
              { k: 'writer', label: '대본을 쓸 곳', type: 'select',
                opts: ['자동 (Claude 우선)', 'Claude', 'Gemini'] },
-             { k: 'gate_limit', label: '심사 판례 수', type: 'text', def: '10' }] },
+             { k: 'gate_limit', label: '심사 판례 수', type: 'text', def: '10' },
+             { k: 'episode', label: "회차 ('쇼츠만 다시' 일 때만)", type: 'text', def: '' }] },
   { file: 'produce.yml', name: '3. 영상 만들기', desc: '렌더링 + 유튜브 비공개 업로드',
     inputs: [{ k: 'voice', label: '나레이션', type: 'select', opts: ['음성 생성', '무음으로 시험'] },
              { k: 'upload', label: '업로드', type: 'select', opts: ['롱폼만', '롱폼 + 쇼츠', '올리지 않음'] },
@@ -192,6 +194,19 @@ function toast(msg, ms = 3600) {
 }
 const mmss = (s) => Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0');
 
+// GitHub 이 영어로 주는 상태값. 손님 화면에 영어가 새어나가지 않게 한다.
+const CONCL = { success:'성공', failure:'실패', cancelled:'취소됨', skipped:'건너뜀',
+                timed_out:'시간 초과', action_required:'조치 필요', neutral:'-' };
+
+function ago(iso) {
+  if (!iso) return '';
+  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (m < 1) return '방금';
+  if (m < 60) return m + '분 전';
+  if (m < 1440) return Math.floor(m/60) + '시간 전';
+  return Math.floor(m/1440) + '일 전';
+}
+
 async function load() {
   const r = await fetch('/api/state');
   if (r.status === 401) { location.href = '/'; return; }
@@ -254,9 +269,10 @@ function home() {
   if ((S.runs||[]).length) {
     h += '<div class="card"><h2>최근 실행</h2><table>';
     S.runs.slice(0, 8).forEach(r => {
-      const ok = r.conclusion === 'success' ? '성공' : (r.conclusion || '진행 중');
+      const ok = CONCL[r.conclusion] || (r.conclusion ? esc(r.conclusion) : '진행 중');
       const c = r.conclusion === 'success' ? 'ok' : (r.conclusion ? 'wait' : 'go');
-      h += '<tr><td>' + esc(r.name) + '</td><td style="text-align:right">'
+      h += '<tr><td>' + esc(r.name) + '<small style="display:block;color:#9599ab">'
+        + ago(r.at) + '</small></td><td style="text-align:right">'
         + '<span class="pill ' + c + '">' + ok + '</span></td></tr>';
     });
     h += '</table></div>';

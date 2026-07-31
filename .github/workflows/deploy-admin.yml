@@ -79,7 +79,7 @@ jobs:
       - name: 문법 검사
         run: node --check admin/worker.js
 
-      - name: 비밀값 등록 + 배포
+      - name: 배포 + 비밀값 등록
         working-directory: admin
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -87,12 +87,18 @@ jobs:
         run: |
           set -o pipefail
           npm i -g wrangler@4 --silent
+
+          # 배포가 먼저다. 비밀값은 이미 있는 Worker 에만 넣을 수 있어서,
+          # 순서를 반대로 하면 맨 처음 배포가 "그런 Worker 가 없다"로 실패한다.
+          npx wrangler deploy 2>&1 | tee deploy.log
+
           # 비밀값은 배포본 안에 들어가지 않는다. Cloudflare 쪽에 따로 저장된다.
           printf '%s' "${{ secrets.ADMIN_GH_TOKEN }}" | npx wrangler secret put GH_TOKEN
           printf '%s' "${{ secrets.ADMIN_PASSWORD }}" | npx wrangler secret put ADMIN_PASSWORD
-          printf '%s' "${{ secrets.SESSION_SECRET || secrets.ADMIN_PASSWORD }}${{ github.sha }}" \
+          # 로그인 위조 방지용 서명키. github.sha 를 섞지 않는다 —
+          # 섞으면 관리자 페이지를 고칠 때마다 로그인이 풀려 매번 다시 들어가야 한다.
+          printf '%s' "${{ secrets.SESSION_SECRET || secrets.ADMIN_PASSWORD }}" \
             | npx wrangler secret put SESSION_SECRET
-          npx wrangler deploy 2>&1 | tee deploy.log
 
       - name: 주소 안내
         if: always()

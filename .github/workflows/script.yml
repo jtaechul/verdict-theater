@@ -20,8 +20,13 @@ on:
           - '둘다'
           - '소재 심사만'
           - '대본 생성만'
+          - '쇼츠만 다시'
       case:
         description: '판례일련번호 (비우면 대기열에서 가장 좋은 소재를 고름)'
+        required: false
+        default: ''
+      episode:
+        description: "회차 ('쇼츠만 다시' 를 고를 때만 씀. 예: EP001)"
         required: false
         default: ''
       gate_limit:
@@ -103,8 +108,34 @@ jobs:
           fi
           echo "GEMINI_API_KEY 확인됨"
 
+      # 대본은 이미 있고 쇼츠만 실패했을 때. 26분짜리 생성을 되풀이하지 않는다.
+      - name: 쇼츠만 다시 만들기
+        if: inputs.mode == '쇼츠만 다시'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+        run: |
+          set -o pipefail
+          EP="${{ inputs.episode }}"
+          if [ -z "$EP" ]; then
+            EP=$(ls -1 data/scripts/EP*.json 2>/dev/null \
+                 | grep -v '\.eval\.\|\.shorts\.\|\.draft\.' | sort | tail -1 \
+                 | xargs -r basename | sed 's/\.json$//')
+          fi
+          if [ -z "$EP" ]; then
+            echo "::error::만들어진 회차가 없습니다."
+            exit 1
+          fi
+          echo "대상 회차: $EP"
+          case "${{ inputs.writer }}" in
+            "Claude") W="--writer claude" ;;
+            "Gemini") W="--writer gemini" ;;
+            *) W="" ;;
+          esac
+          python3 src/script.py --shorts-only "$EP" $W 2>&1 | tee script.log
+
       - name: 소재 심사 (3차 드라마성 평가)
-        if: inputs.mode != '대본 생성만'
+        if: inputs.mode != '대본 생성만' && inputs.mode != '쇼츠만 다시'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
@@ -121,7 +152,7 @@ jobs:
       - name: 대본 생성 + 채점 + 보강 + 쇼츠
         # success() 를 적어두는 이유: 심사가 죽었으면 대본도 만들면 안 된다.
         # 안 적어도 같게 동작하지만(기본값), 돈이 걸린 조건이라 눈에 보이게 둔다.
-        if: success() && inputs.mode != '소재 심사만'
+        if: success() && inputs.mode != '소재 심사만' && inputs.mode != '쇼츠만 다시'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
