@@ -24,9 +24,16 @@ import urllib.request
 
 BASE = "https://api.anthropic.com/v1"
 VERSION = "2023-06-01"
-TIMEOUT = 600
+TIMEOUT = 900          # 생각까지 하고 긴 대본을 쓰면 오래 걸린다. 넉넉히 준다
 RETRIES = 4
 BACKOFF = [5, 15, 40]
+
+# 요즘 모델은 답을 내기 전에 '생각(thinking)'을 하고, 그게 기본으로 켜져 있다.
+# 중요한 건 **max_tokens 가 생각과 답을 합쳐서 덮는다**는 점이다.
+# 답 길이만 보고 한도를 잡으면 생각이 먼저 먹어치워 JSON 이 중간에서 잘린다.
+# max_tokens 는 상한일 뿐 실제로 쓴 만큼만 과금되므로, 넉넉히 잡는 게 손해가 아니다.
+THINK_ROOM = 8192      # 생각 몫으로 얹어주는 여유분
+MIN_TOKENS = 2048      # 아무리 짧은 요청이라도 이만큼은 준다
 
 # 모델마다 받아주는 설정이 다르고, 그 규칙은 예고 없이 바뀐다.
 # 실제로 claude-opus-5 는 temperature 를 더 이상 받지 않아 소재 심사 6건이 전부 400 으로 죽었다.
@@ -250,6 +257,7 @@ class Claude:
                 f"이번 실행에서 이미 {self.calls}회 호출했다. 상한 {self.max_calls}회. "
                 "무한 루프로 인한 과금 폭발을 막는 장치다."
             )
+        max_output_tokens = max(max_output_tokens + THINK_ROOM, MIN_TOKENS)
         cap = self._cap.get(model)
         if cap and max_output_tokens > cap:
             print(f"    (출력 한도 조정: {max_output_tokens:,} → {cap:,} · {model})")
@@ -280,6 +288,17 @@ class Claude:
                 u = res.get("usage", {})
                 self.tokens_in += u.get("input_tokens", 0)
                 self.tokens_out += u.get("output_tokens", 0)
+
+                # 모델이 안전상의 이유로 거절할 수 있다. 오류가 아니라 정상 응답으로 온다.
+                # 같은 걸 다시 물어도 또 거절한다 — 재시도하면 시간만 버린다.
+                if res.get("stop_reason") == "refusal":
+                    self.fails += 1
+                    cat = (res.get("stop_details") or {}).get("category")
+                    raise ClaudeError(
+                        "모델이 안전상의 이유로 답변을 거절했다"
+                        + (f" (분류: {cat})" if cat else "")
+                        + ".\n  이 판례의 소재가 걸렸을 수 있다. 다른 판례로 넘어가라.",
+                        fatal=True)
 
                 if res.get("stop_reason") == "max_tokens":
                     # 같은 요청을 그대로 다시 걸면 똑같이 잘린다. 한도를 올려서 걸어야 한다.
@@ -338,6 +357,9 @@ class Claude:
                     print(f"    (재시도 {attempt}/{RETRIES - 1} — HTTP {e.code}, {w}초 대기)")
                     time.sleep(w)
             except (urllib.error.URLError, TimeoutError, ClaudeError) as e:
+                # 고칠 수 없다고 판정된 것(안전 거절 등)은 다시 걸어도 같은 답이다.
+                if getattr(e, "fatal", False):
+                    raise
                 last = e
                 attempt += 1
                 if attempt < RETRIES:
