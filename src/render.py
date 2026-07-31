@@ -124,7 +124,7 @@ def placeholder_char(code, pose, H):
 
 
 # ── 한 컷의 두 겹 만들기 ──────────────────────────────────
-def build_plates(cut, W, H, vertical=False):
+def build_plates(cut, W, H, vertical=False, top_line=""):
     """움직이는 겹(배경+인물)과 고정된 겹(그래픽+자막)을 만든다."""
     code = cut.get("bg", "")
     p = bg_path(code)
@@ -164,12 +164,14 @@ def build_plates(cut, W, H, vertical=False):
     if gfx:
         static = Image.alpha_composite(static, gfx)
     static = G.draw_subtitle(static, cut.get("text", ""), vertical=vertical)
+    if top_line:
+        static = G.draw_top_line(static, top_line)
     return move, static
 
 
 # ── 컷 하나를 영상 조각으로 ──────────────────────────────
-def render_cut(cut, dur, workdir, idx, W, H, vertical=False):
-    move, static = build_plates(cut, W, H, vertical)
+def render_cut(cut, dur, workdir, idx, W, H, vertical=False, top_line=""):
+    move, static = build_plates(cut, W, H, vertical, top_line=top_line)
     mp = workdir / f"m{idx:03d}.png"
     sp = workdir / f"s{idx:03d}.png"
     move.convert("RGB").save(mp)
@@ -302,8 +304,25 @@ def cut_durations(doc, narration_dir=None):
     return durs
 
 
+def make_outro_cut(last_cut, text, sec=4.2):
+    """쇼츠 마무리 컷. 본문 마지막 컷의 배경을 그대로 쓴다.
+
+    새 배경을 만들면 갑자기 장면이 튀어 '따로 붙인 티'가 난다.
+    같은 배경에 마무리 문장만 얹어 자연스럽게 닫는다."""
+    c = json.loads(json.dumps(last_cut))
+    c["id"] = last_cut["id"] + "-out"
+    c["sec"] = sec
+    c["text"] = text
+    c["gfx"] = None
+    c["sfx"] = None
+    c["speaker"] = "narrator"
+    c["blackout"] = True
+    c["chars"] = []                      # 마무리는 글자만. 인물이 남으면 시선이 흩어진다
+    return c
+
+
 def render(doc, outdir, vertical=False, cut_ids=None, narration_dir=None,
-           limit=0, name="longform"):
+           limit=0, name="longform", short=None):
     outdir = Path(outdir)
     work = outdir / f"work_{name}"
     if work.exists():
@@ -321,10 +340,20 @@ def render(doc, outdir, vertical=False, cut_ids=None, narration_dir=None,
     if limit:
         keep = keep[:limit]
 
+    # 쇼츠는 전용 마무리 문장이 화면에 들어가야 규격(35~50초)을 채운다.
+    # 대본은 그 시간을 est_sec 에 이미 계산해 두었다.
+    outro_cut = None
+    if short and short.get("outro_line") and keep:
+        outro_cut = make_outro_cut(keep[-1][0], short["outro_line"])
+        keep = keep + [(outro_cut, outro_cut["sec"])]
+
     print(f"  {name}: 컷 {len(keep)}개 · {sum(d for _, d in keep):.1f}초 · {W}x{H}")
     segs = []
+    intro = (short or {}).get("intro_line", "")
     for i, (cut, dur) in enumerate(keep):
-        segs.append(render_cut(cut, dur, work, i, W, H, vertical))
+        # 넘기다 걸린 사람은 아무것도 모른다. 첫 화면에 한 줄로 상황을 알려준다.
+        segs.append(render_cut(cut, dur, work, i, W, H, vertical,
+                               top_line=intro if (i == 0 and intro) else ""))
         if (i + 1) % 20 == 0:
             print(f"    {i + 1}/{len(keep)}컷")
 
@@ -342,6 +371,8 @@ def render(doc, outdir, vertical=False, cut_ids=None, narration_dir=None,
         picked = [c for c in act["cuts"] if id(c) in kept_ids]
         if picked:
             sub["acts"].append({**act, "cuts": picked})
+    if outro_cut is not None and sub["acts"]:
+        sub["acts"][-1]["cuts"] = sub["acts"][-1]["cuts"] + [outro_cut]
     audio = build_audio(sub, [d for _, d in keep], work, narration_dir)
 
     final = outdir / f"{name}.mp4"
@@ -375,16 +406,29 @@ def main():
     render(doc, out, vertical=False, narration_dir=nar, limit=args.limit, name="longform")
 
     if args.shorts:
+        # 쇼츠 구간은 두 곳에 있을 수 있다.
+        #   1) shorts_gen.md 가 만든 별도 파일 — 세로 재배치까지 끝난 완성본
+        #   2) script_gen.md 가 대본 안에 남긴 shorts[] — 구간 지정만 있는 초안
+        # 1번이 없다고 쇼츠를 통째로 건너뛰면 안 된다. 2번으로도 만들 수 있다.
         shp = sp.parent / (sp.stem + ".shorts.json")
         if shp.exists():
-            sh = json.loads(shp.read_text(encoding="utf-8"))
-            for s in sh.get("shorts", []):
+            shorts = json.loads(shp.read_text(encoding="utf-8")).get("shorts", [])
+            src = "쇼츠 대본"
+        else:
+            shorts = doc.get("shorts", [])
+            src = "본 대본의 구간 지정 (쇼츠 대본이 없어 대신 씀)"
+        if not shorts:
+            print("  쇼츠 구간 정보가 어디에도 없다. 건너뛴다.")
+        else:
+            print(f"  쇼츠 {len(shorts)}편 — 출처: {src}")
+            for s in shorts:
                 ids = [c.get("from") or c.get("id") for c in s.get("cuts", [])] \
                     or s.get("cut_ids", [])
+                if not ids:
+                    print(f"  쇼츠 {s.get('no')}번: 가리키는 컷이 없다. 건너뛴다.")
+                    continue
                 render(doc, out, vertical=True, cut_ids=set(ids),
-                       narration_dir=nar, name=f"short{s.get('no')}")
-        else:
-            print(f"  쇼츠 대본이 없다: {shp.name}")
+                       narration_dir=nar, name=f"short{s.get('no')}", short=s)
 
     if any(MISSING.values()):
         print("\n⚠️ 대체물을 쓴 에셋이 있다. 실제 발행 전에 반드시 만들어야 한다.")

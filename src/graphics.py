@@ -131,6 +131,33 @@ def draw_subtitle(img, text, vertical=False):
     return Image.alpha_composite(img.convert("RGBA"), layer)
 
 
+def draw_top_line(img, text):
+    """쇼츠 첫 화면 위쪽에 얹는 한 줄. 상황을 1초 안에 알려준다.
+
+    넘기다 걸린 사람은 **누가 누군지 전혀 모른다.** 본편을 봐야 알 수 있는 대명사 대신
+    이 한 줄로 무슨 상황인지 못 박는다. 아래 자막과 겹치지 않게 화면 위쪽에 둔다."""
+    if not text:
+        return img
+    W, H = img.size
+    size = int(H * 0.036)
+    f = font(size)
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    lines = wrap_korean(text, 14)
+    gap = int(size * 0.3)
+    block = len(lines) * size + (len(lines) - 1) * gap
+    pad = int(size * 0.6)
+    top = int(H * 0.09)
+    d.rounded_rectangle([int(W * 0.06), top - pad, int(W * 0.94), top + block + pad],
+                        int(size * 0.5), fill=(198, 160, 74, 235))
+    y = top
+    for ln in lines:
+        w, _ = text_size(d, ln, f)
+        d.text(((W - w) // 2, y), ln, font=f, fill=(26, 22, 8, 255))
+        y += size + gap
+    return Image.alpha_composite(img.convert("RGBA"), layer)
+
+
 # ── 정보 그래픽 4종 ──────────────────────────────────────
 def _card(w, h, radius=24):
     img = Image.new("RGBA", (w + 24, h + 24), (0, 0, 0, 0))
