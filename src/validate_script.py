@@ -409,8 +409,13 @@ def check_youtube(doc, r):
             r.ok("제목 후보 3개, 모두 30자 이내")
 
 
-def validate_doc(doc, mf=None):
-    """대본 dict 를 검사해 Report 를 돌려준다. 다른 코드(script.py)가 불러 쓴다."""
+def validate_doc(doc, mf=None, with_shorts=True):
+    """대본 dict 를 검사해 Report 를 돌려준다. 다른 코드(script.py)가 불러 쓴다.
+
+    with_shorts=False 는 **쇼츠를 만들기 전** 단계에서 쓴다.
+    쇼츠는 대본이 완성된 뒤 5단계에서 만들어진다. 그 전에 "쇼츠 0편" 이라고
+    오류를 내면, 그 단계에서는 절대 고칠 수 없는 오류를 고치라고 6만 토큰짜리
+    재작성을 매번 시키게 된다 — 실제로 그 호출에서 연결이 끊겨 죽었다."""
     mf = mf or load_manifest()
     r = Report()
     check_structure(doc, r)
@@ -424,7 +429,8 @@ def validate_doc(doc, mf=None):
     check_nametags(doc, r)
     check_anonymization(doc, r)
     check_law(doc, r)
-    check_shorts(doc, r)
+    if with_shorts:
+        check_shorts(doc, r)
     check_youtube(doc, r)
     return r
 

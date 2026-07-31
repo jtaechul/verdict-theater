@@ -272,7 +272,9 @@ def machine_fix(llm, doc, rounds=2):
     괄호가 맞는지 보는 것이 아니다."""
     body = prompts.load("script_revise")
     for i in range(rounds):
-        r = validate_doc(doc)
+        # 쇼츠는 5단계에서 만든다. 아직 없는 게 정상이므로 여기서 따지지 않는다.
+        # (따졌더니 "쇼츠 0편" 오류가 매번 6만 토큰짜리 재작성을 부르고, 거기서 죽었다)
+        r = validate_doc(doc, with_shorts=False)
         if not r.errors:
             return doc, r
         print(f"  기계 검증: 오류 {len(r.errors)}건 → 보강 {i + 1}차")
@@ -300,7 +302,7 @@ def machine_fix(llm, doc, rounds=2):
         except (LLMError, ClaudeError) as e:
             print(f"    보강 실패: {e}")
             break
-    return doc, validate_doc(doc)
+    return doc, validate_doc(doc, with_shorts=False)
 
 
 def evaluate(llm, doc):
@@ -339,6 +341,19 @@ def main():
     queue = _load(QUEUE, [])
     eps = _load(EPISODES, {})
 
+    # 배관 시험은 소재가 필요 없다. 소재 고르기보다 먼저 처리한다
+    # (안 그러면 대기열이 비었을 때 --dry-run 이 아예 실행되지 않는다).
+    if args.dry_run:
+        sample = SCRIPTS / "SAMPLE_608371.json"
+        if not sample.exists():
+            print("dry-run 에 쓸 샘플이 없다.")
+            return 2
+        doc = json.loads(sample.read_text(encoding="utf-8"))
+        r = validate_doc(doc)
+        print(f"[dry-run] 샘플 검증 — 통과 {len(r.oks)} · 오류 {len(r.errors)}")
+        print("[dry-run] 선택 로직·검증·저장 경로 정상. 실제 생성은 API 키가 필요하다.")
+        return 0 if not r.errors else 1
+
     row = pick_case(queue, eps, args.case or None)
     if not row:
         # 아무것도 안 만들었으면 초록 체크를 주면 안 된다.
@@ -367,17 +382,6 @@ def main():
     print(f"게이트 {row.get('gate_score', '-')}점 · 유형 {row.get('case_type', '-')}")
     print()
 
-    if args.dry_run:
-        sample = SCRIPTS / "SAMPLE_608371.json"
-        if not sample.exists():
-            print("dry-run 에 쓸 샘플이 없다.")
-            return 2
-        doc = json.loads(sample.read_text(encoding="utf-8"))
-        r = validate_doc(doc)
-        print(f"[dry-run] 샘플 검증 — 통과 {len(r.oks)} · 오류 {len(r.errors)}")
-        print(f"[dry-run] 선택 로직·검증·저장 경로 정상. 실제 생성은 GEMINI_API_KEY 가 필요하다.")
-        return 0 if not r.errors else 1
-
     try:
         llm, who = writer(max_calls=args.max_calls, prefer=args.writer or None)
     except (LLMError, ClaudeError) as e:
@@ -390,6 +394,7 @@ def main():
     print(f"모델: {llm.pick('pro')} (생성) / {llm.pick('flash')} (채점)")
 
     best, best_score, best_eval = None, -1, None
+    draft, sh, rd = None, {"shorts": []}, 0
     try:
         # 1단계 설계
         print("\n[1단계] 설계")
@@ -407,6 +412,12 @@ def main():
             print(f"  {act[0]:5s} {len(c):3d}컷 {sum(x.get('sec', 0) for x in c):6.1f}초 "
                   f"(목표 {act[4]}컷 {act[3] - act[2]}초)")
         doc = assemble(design, cuts)
+
+        # 여기까지가 가장 비싸고 오래 걸리는 부분이다(설계 1회 + 막별 6회).
+        # 뒤 단계에서 무슨 일이 생겨도 이걸 잃으면 안 된다 — 실제로 19분치가 날아갔다.
+        draft = json.loads(json.dumps(doc))
+        _save(SCRIPTS / f"{ep}.draft.json", draft)
+        print(f"  (초벌 저장: {ep}.draft.json — 뒤에서 실패해도 이건 남는다)")
 
         # 기계 검증 → 형식 보강
         print("\n[3단계] 기계 검증")
@@ -451,14 +462,17 @@ def main():
             print(f"  {s.get('no')}번 {s.get('kind', ''):6s} {s.get('est_sec', 0):.1f}초  "
                   f"{s.get('intro_line', '')}")
 
-    except (BudgetExceeded, ClaudeBudget) as e:
-        print(f"\n⚠️ {e}")
-        if best is None:
+    except (BudgetExceeded, ClaudeBudget, LLMError, ClaudeError) as e:
+        # 여기서 그냥 포기하면 앞서 만든 컷 100여 개가 통째로 사라진다.
+        # 대본은 이 사업의 유일한 핵심 자산이다 — 남길 수 있으면 남긴다.
+        print(f"\n⚠️ 중단: {e}")
+        doc = best or draft
+        if doc is None:
+            print("  아직 만든 것이 없어 남길 것이 없다.")
             return 1
-        doc, sh = best, {"shorts": []}
-    except (LLMError, ClaudeError) as e:
-        print(f"\n❌ 생성 실패: {e}")
-        return 1
+        sh = {"shorts": []}
+        print(f"  지금까지 만든 대본(컷 {doc['meta'].get('cut_count')}개)을 저장하고 끝낸다.")
+        print("  다시 실행하면 이 판례로 처음부터 다시 만든다.")
 
     # 저장
     doc["meta"]["episode"] = ep
@@ -468,7 +482,10 @@ def main():
     if sh.get("shorts"):
         _save(SCRIPTS / f"{ep}.shorts.json", sh)
 
-    final = validate_doc(doc)
+    # 끝까지 왔으면 초벌은 필요 없다. 저장소에 군더더기를 남기지 않는다.
+    (SCRIPTS / f"{ep}.draft.json").unlink(missing_ok=True)
+
+    final = validate_doc(doc, with_shorts=bool(sh.get("shorts")))
     eps[ep] = {
         "case_id": cid,
         "gate_score": row.get("gate_score"),

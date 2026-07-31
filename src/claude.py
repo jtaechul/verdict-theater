@@ -15,6 +15,7 @@ llm.Gemini 와 같은 모양(`.json()`)을 갖는다
     script.py 와 gate.py 가 어느 쪽을 쓰든 코드를 바꾸지 않아도 되게 하기 위해서다.
 """
 
+import http.client
 import json
 import os
 import re
@@ -34,6 +35,17 @@ BACKOFF = [5, 15, 40]
 # max_tokens 는 상한일 뿐 실제로 쓴 만큼만 과금되므로, 넉넉히 잡는 게 손해가 아니다.
 THINK_ROOM = 8192      # 생각 몫으로 얹어주는 여유분
 MIN_TOKENS = 2048      # 아무리 짧은 요청이라도 이만큼은 준다
+
+# 긴 답을 '한 번에 다 써서 보내라'고 하면, 서버가 다 쓸 때까지 아무것도 안 보낸다.
+# 그 침묵이 길어지면 중간 장비가 연결을 끊는다 — 실제로 19분치 작업이 이렇게 날아갔다.
+#   http.client.RemoteDisconnected: Remote end closed connection without response
+# 그래서 긴 답은 **스트리밍**(쓰는 대로 조금씩 받기)으로 받는다. 계속 데이터가 흐르므로
+# 연결이 끊기지 않는다. 한도가 이 값을 넘으면 자동으로 스트리밍으로 바꾼다.
+STREAM_OVER = 16000
+
+# 네트워크가 끊기는 방식은 여러 가지다. RemoteDisconnected 는 URLError 가 아니라서
+# 종전 코드가 놓쳤다(그래서 재시도도 못 하고 그대로 죽었다). OSError 로 넓게 잡는다.
+NET_ERRORS = (OSError, http.client.HTTPException, TimeoutError)
 
 # 모델마다 받아주는 설정이 다르고, 그 규칙은 예고 없이 바뀐다.
 # 실제로 claude-opus-5 는 temperature 를 더 이상 받지 않아 소재 심사 6건이 전부 400 으로 죽었다.
@@ -161,6 +173,60 @@ def _req(path, key, method="GET", body=None, timeout=TIMEOUT):
         return json.loads(r.read().decode("utf-8"))
 
 
+def _stream(path, key, body, timeout=TIMEOUT):
+    """긴 답을 조금씩 받아 조립한다.
+
+    한 번에 다 받는 것과 결과는 똑같다 — 받는 방식만 다르다. 서버가 글을 쓰는 동안
+    계속 조각이 흘러오므로 연결이 끊기지 않는다. 조립이 끝나면 한 번에 받았을 때와
+    같은 모양으로 돌려주므로, 부르는 쪽 코드는 바뀔 게 없다."""
+    data = json.dumps(dict(body, stream=True)).encode("utf-8")
+    req = urllib.request.Request(f"{BASE}/{path}", data=data, method="POST", headers={
+        "x-api-key": key,
+        "anthropic-version": VERSION,
+        "content-type": "application/json",
+        "accept": "text/event-stream",
+        "user-agent": "verdict-theater/1.0",
+    })
+    parts = {}                       # 조각 번호 → 지금까지 모은 글
+    stop = None
+    usage = {"input_tokens": 0, "output_tokens": 0}
+
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        for raw in r:
+            line = raw.decode("utf-8", "replace").strip()
+            if not line.startswith("data:"):
+                continue
+            try:
+                ev = json.loads(line[5:].strip())
+            except json.JSONDecodeError:
+                continue
+            kind = ev.get("type")
+
+            if kind == "message_start":
+                u = (ev.get("message") or {}).get("usage") or {}
+                usage["input_tokens"] = u.get("input_tokens", 0)
+            elif kind == "content_block_start":
+                blk = ev.get("content_block") or {}
+                if blk.get("type") == "text":
+                    parts[ev.get("index", 0)] = blk.get("text", "")
+            elif kind == "content_block_delta":
+                d = ev.get("delta") or {}
+                if d.get("type") == "text_delta":
+                    i = ev.get("index", 0)
+                    parts[i] = parts.get(i, "") + d.get("text", "")
+            elif kind == "message_delta":
+                stop = (ev.get("delta") or {}).get("stop_reason", stop)
+                usage["output_tokens"] = (ev.get("usage") or {}).get(
+                    "output_tokens", usage["output_tokens"])
+            elif kind == "error":
+                e = ev.get("error") or {}
+                raise ClaudeError(f"스트리밍 중 오류: {e.get('type')} {e.get('message')}")
+
+    text = "".join(parts[i] for i in sorted(parts))
+    return {"content": [{"type": "text", "text": text}],
+            "stop_reason": stop, "usage": usage}
+
+
 class Claude:
     def __init__(self, api_key=None, max_calls=24):
         self.key = (api_key or os.environ.get("CLAUDE_API_KEY", "")
@@ -283,7 +349,10 @@ class Claude:
         adjusted = 0                             # 설정을 고쳐 다시 건 횟수 (재시도 횟수와 별개)
         while attempt < RETRIES:
             try:
-                res = _req("messages", self.key, method="POST", body=payload)
+                if payload["max_tokens"] > STREAM_OVER:
+                    res = _stream("messages", self.key, payload)
+                else:
+                    res = _req("messages", self.key, method="POST", body=payload)
                 self.calls += 1
                 u = res.get("usage", {})
                 self.tokens_in += u.get("input_tokens", 0)
@@ -356,7 +425,9 @@ class Claude:
                     w = BACKOFF[attempt - 1]
                     print(f"    (재시도 {attempt}/{RETRIES - 1} — HTTP {e.code}, {w}초 대기)")
                     time.sleep(w)
-            except (urllib.error.URLError, TimeoutError, ClaudeError) as e:
+            # 연결이 끊기는 방식은 여러 가지다(RemoteDisconnected · 리셋 · 타임아웃 …).
+            # 종전엔 URLError 만 잡아서 RemoteDisconnected 를 놓치고 그대로 죽었다.
+            except NET_ERRORS + (ClaudeError,) as e:
                 # 고칠 수 없다고 판정된 것(안전 거절 등)은 다시 걸어도 같은 답이다.
                 if getattr(e, "fatal", False):
                     raise

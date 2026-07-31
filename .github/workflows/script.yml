@@ -192,7 +192,7 @@ jobs:
               echo '```'
               echo ""
             fi
-            LATEST=$(ls -1 data/scripts/EP*.json 2>/dev/null | grep -v '\.eval\.\|\.shorts\.' | sort | tail -1)
+            LATEST=$(ls -1 data/scripts/EP*.json 2>/dev/null | grep -v '\.eval\.\|\.shorts\.\|\.draft\.' | sort | tail -1)
             if [ -n "$LATEST" ]; then
               echo "---"
               echo ""
