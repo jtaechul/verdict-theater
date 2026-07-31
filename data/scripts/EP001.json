@@ -2780,7 +2780,665 @@
       ]
     }
   ],
-  "shorts": [],
+  "shorts": [
+    {
+      "no": 1,
+      "kind": "궁금증형",
+      "publish_offset_days": 1,
+      "est_sec": 36.0,
+      "intro_line": "한 푼도 못 받았습니다",
+      "outro_line": "결말은 본편에서 확인하세요.",
+      "hook_reason": "첫 컷에서 뻔뻔하게 한 푼도 못 받았다고 주장하는 장남의 대사를 배치해 궁금증 유발",
+      "cuts": [
+        {
+          "id": "S1-01",
+          "from": "H01",
+          "sec": 2.4,
+          "bg": "office_lawyer",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "M50A",
+            "pose": "bust_cold",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "v_M50A",
+          "text": "아버지 재산에서 한 푼도 못 받았어요.",
+          "gfx": {
+            "type": "nametag",
+            "text": "강태석 · 58세 · 장남"
+          },
+          "sfx": "sfx_paper",
+          "amb": "amb_street"
+        },
+        {
+          "id": "S1-02",
+          "from": "H03",
+          "sec": 3.8,
+          "bg": "home_living_day",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F70",
+            "pose": "bust_shock",
+            "pos_y": 0.35,
+            "scale": 1.3
+          },
+          "speaker": "v_F70",
+          "text": "소장 발신인이 우리 큰애 이름이구나.",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤옥선 · 79세 · 어머니"
+          },
+          "sfx": "sfx_paper",
+          "amb": "amb_home"
+        },
+        {
+          "id": "S1-03",
+          "from": "H04",
+          "sec": 3.6,
+          "bg": "home_living_day",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "M50B",
+            "pose": "face_shock",
+            "pos_y": 0.35,
+            "scale": 1.3
+          },
+          "speaker": "v_M50B",
+          "text": "형이 가족들을 고소했단 말이야?",
+          "gfx": {
+            "type": "nametag",
+            "text": "강태우 · 55세 · 차남"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S1-04",
+          "from": "A2-06",
+          "sec": 4.2,
+          "bg": "home_kitchen",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "bust_neutral",
+            "pos_y": 0.38,
+            "scale": 1.3
+          },
+          "speaker": "v_F50A",
+          "text": "아파트 사준 돈 1억 6천만 원.",
+          "gfx": {
+            "type": "nametag",
+            "text": "오세경 · 52세 · 막내며느리"
+          },
+          "sfx": "sfx_paper",
+          "amb": "amb_home"
+        },
+        {
+          "id": "S1-05",
+          "from": "A2-09",
+          "sec": 4.2,
+          "bg": "home_kitchen",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "bust_shock",
+            "pos_y": 0.38,
+            "scale": 1.3
+          },
+          "speaker": "v_F50A",
+          "text": "대신 갚아준 대출만 5억 4천만 원.",
+          "gfx": {
+            "type": "nametag",
+            "text": "오세경 · 52세 · 막내며느리"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S1-06",
+          "from": "A2-15",
+          "sec": 4.5,
+          "bg": "home_living_night",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_shock",
+            "pos_y": 0.35,
+            "scale": 1.35
+          },
+          "speaker": "v_F50A",
+          "text": "미리 가져간 돈만 9억 8천만 원이에요!",
+          "gfx": {
+            "type": "nametag",
+            "text": "오세경 · 52세 · 막내며느리"
+          },
+          "sfx": "sfx_heartbeat",
+          "amb": "amb_home"
+        },
+        {
+          "id": "S1-07",
+          "from": "A2-19",
+          "sec": 4.8,
+          "bg": "home_kitchen",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "M50B",
+            "pose": "face_shock",
+            "pos_y": 0.35,
+            "scale": 1.35
+          },
+          "speaker": "v_M50B",
+          "text": "상속등기 하기도 전에 소송부터 냈어.",
+          "gfx": {
+            "type": "nametag",
+            "text": "강태우 · 55세 · 차남"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S1-08",
+          "from": "A2-27",
+          "sec": 4.5,
+          "bg": "home_living_night",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F70",
+            "pose": "bust_sad",
+            "pos_y": 0.38,
+            "scale": 1.3
+          },
+          "speaker": "v_F70",
+          "text": "다 가져가 놓고 왜 또 소송을 걸었을까.",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤옥선 · 79세 · 어머니"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S1-09",
+          "from": null,
+          "sec": 4.0,
+          "bg": "home_living_night",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F70",
+            "pose": "bust_sad",
+            "pos_y": 0.38,
+            "scale": 1.3
+          },
+          "speaker": "narrator",
+          "text": "결말은 본편에서 확인하세요.",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤옥선 · 79세 · 어머니"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        }
+      ],
+      "youtube": {
+        "title": "한 푼도 못 받았다며 가족을 고소한 장남의 실체",
+        "description_body": "아버지가 남긴 재산보다 더 큰 돈을 미리 챙겨간 장남이 오히려 어머니와 동생들을 소송했습니다.",
+        "tags": [
+          "상속",
+          "특별수익",
+          "유류분",
+          "가족갈등"
+        ]
+      }
+    },
+    {
+      "no": 2,
+      "kind": "분노형",
+      "publish_offset_days": 2,
+      "est_sec": 36.0,
+      "intro_line": "받은 건 받은 거지?",
+      "outro_line": "여러분이라면 어떻게 하시겠습니까?",
+      "hook_reason": "장남의 가장 뻔뻔하고 망언인 대사를 첫 컷에 배치하여 시청자의 분노 자극",
+      "cuts": [
+        {
+          "id": "S2-01",
+          "from": "A3-08",
+          "sec": 2.3,
+          "bg": "daily_cafe",
+          "bg_crop": "left",
+          "flashback": false,
+          "char": {
+            "code": "M50A",
+            "pose": "bust_cold",
+            "pos_y": 0.38,
+            "scale": 1.4
+          },
+          "speaker": "v_M50A",
+          "text": "받은 건 받은 거고, 상속은 상속이죠.",
+          "gfx": {
+            "type": "nametag",
+            "text": "강태석 · 58세 · 장남"
+          },
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-02",
+          "from": "A3-09",
+          "sec": 4.0,
+          "bg": "daily_cafe",
+          "bg_crop": "right",
+          "flashback": false,
+          "char": {
+            "code": "M50B",
+            "pose": "face_anger",
+            "pos_y": 0.35,
+            "scale": 1.35
+          },
+          "speaker": "v_M50B",
+          "text": "형이 미리 받아간 돈이 9억 8천만 원이야!",
+          "gfx": {
+            "type": "nametag",
+            "text": "강태우 · 55세 · 차남"
+          },
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-03",
+          "from": "A3-10",
+          "sec": 3.8,
+          "bg": "daily_cafe",
+          "bg_crop": "left",
+          "flashback": false,
+          "char": {
+            "code": "M50A",
+            "pose": "bust_neutral",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "v_M50A",
+          "text": "병원 개원하려면 그 정도는 드는 겁니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "강태석 · 58세 · 장남"
+          },
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-04",
+          "from": "A3-11",
+          "sec": 4.2,
+          "bg": "daily_cafe",
+          "bg_crop": "left",
+          "flashback": false,
+          "char": {
+            "code": "M50A",
+            "pose": "bust_cold",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "v_M50A",
+          "text": "아버지가 큰아들 앞길 열어주신 거예요.",
+          "gfx": {
+            "type": "nametag",
+            "text": "강태석 · 58세 · 장남"
+          },
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-05",
+          "from": "A3-12",
+          "sec": 4.2,
+          "bg": "daily_cafe",
+          "bg_crop": "left",
+          "flashback": false,
+          "char": {
+            "code": "F50B",
+            "pose": "bust_cold",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "v_F50B",
+          "text": "그리고 보증금 6천9백만 원은 갚았어요.",
+          "gfx": {
+            "type": "nametag",
+            "text": "한지숙 · 56세 · 큰며느리"
+          },
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-06",
+          "from": "A3-16",
+          "sec": 4.5,
+          "bg": "daily_cafe",
+          "bg_crop": "right",
+          "flashback": false,
+          "char": {
+            "code": "M50B",
+            "pose": "bust_cold",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "v_M50B",
+          "text": "드리려고 했다는 문자지, 줬다는 게 아니잖아!",
+          "gfx": {
+            "type": "nametag",
+            "text": "강태우 · 55세 · 차남"
+          },
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-07",
+          "from": "A3-21",
+          "sec": 4.8,
+          "bg": "daily_cafe",
+          "bg_crop": "left",
+          "flashback": false,
+          "char": {
+            "code": "M50A",
+            "pose": "bust_cold",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "v_M50A",
+          "text": "포기각서는 무효고, 등기대로 나누는 겁니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "강태석 · 58세 · 장남"
+          },
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-08",
+          "from": "A3-23",
+          "sec": 4.2,
+          "bg": "daily_cafe",
+          "bg_crop": "right",
+          "flashback": false,
+          "char": {
+            "code": "M50B",
+            "pose": "bust_neutral",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "v_M50B",
+          "text": "어머니, 이번엔 우리가 법으로 갑니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "강태우 · 55세 · 차남"
+          },
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-09",
+          "from": null,
+          "sec": 4.0,
+          "bg": "daily_cafe",
+          "bg_crop": "right",
+          "flashback": false,
+          "char": {
+            "code": "M50B",
+            "pose": "face_anger",
+            "pos_y": 0.35,
+            "scale": 1.35
+          },
+          "speaker": "narrator",
+          "text": "여러분이라면 어떻게 하시겠습니까?",
+          "gfx": {
+            "type": "nametag",
+            "text": "강태우 · 55세 · 차남"
+          },
+          "sfx": null,
+          "amb": "amb_street"
+        }
+      ],
+      "youtube": {
+        "title": "\"받은 건 받은 거고 상속은 상속이지\" 9억 삼킨 장남의 뻔뻔함",
+        "description_body": "아버지 생전에 9억 8천만 원을 미리 받아가고도 남은 상속분까지 내놓으라는 장남의 이야기.",
+        "tags": [
+          "형제갈등",
+          "상속재산",
+          "뻔뻔한장남",
+          "분노주의"
+        ]
+      }
+    },
+    {
+      "no": 3,
+      "kind": "사이다형",
+      "publish_offset_days": 4,
+      "est_sec": 37.7,
+      "intro_line": "장남 상속분 0원",
+      "outro_line": "법원이 인정한 금액, 1억 371만 원.",
+      "hook_reason": "법원의 명쾌한 특별수익 선언을 첫 컷에 배치해 사이다 판결 몰입 유도",
+      "cuts": [
+        {
+          "id": "S3-01",
+          "from": "A4-12",
+          "sec": 2.4,
+          "bg": "court_room",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "JUDGE",
+            "pose": "face_neutral",
+            "pos_y": 0.35,
+            "scale": 1.4
+          },
+          "speaker": "v_JUDGE",
+          "text": "생전에 미리 받아간 상속 몫을 계산합니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "재판장"
+          },
+          "sfx": null,
+          "amb": "amb_court"
+        },
+        {
+          "id": "S3-02",
+          "from": "A4-04",
+          "sec": 4.0,
+          "bg": "court_room",
+          "bg_crop": "left",
+          "flashback": false,
+          "char": {
+            "code": "M50A",
+            "pose": "bust_cold",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "v_M50A",
+          "text": "법정지분대로 나누기로 이미 합의했습니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "강태석 · 58세 · 장남"
+          },
+          "sfx": null,
+          "amb": "amb_court"
+        },
+        {
+          "id": "S3-03",
+          "from": "A4-13",
+          "sec": 4.5,
+          "bg": "court_room",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "JUDGE",
+            "pose": "bust_cold",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "v_JUDGE",
+          "text": "등기 이틀 만에 소송? 합의 인정 안 됩니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "재판장"
+          },
+          "sfx": null,
+          "amb": "amb_court"
+        },
+        {
+          "id": "S3-04",
+          "from": "A4-18",
+          "sec": 4.8,
+          "bg": "court_room",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "JUDGE",
+            "pose": "bust_neutral",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "v_JUDGE",
+          "text": "어머니 재산은 40년 기여이므로 제외합니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "재판장"
+          },
+          "sfx": null,
+          "amb": "amb_court"
+        },
+        {
+          "id": "S3-05",
+          "from": "A4-22",
+          "sec": 4.5,
+          "bg": "court_room",
+          "bg_crop": "right",
+          "flashback": false,
+          "char": {
+            "code": "M50A",
+            "pose": "face_shock",
+            "pos_y": 0.35,
+            "scale": 1.35
+          },
+          "speaker": "narrator",
+          "text": "미리 받은 9억 8천을 빼면, 장남 몫은 0원.",
+          "gfx": {
+            "type": "nametag",
+            "text": "강태석 · 58세 · 장남"
+          },
+          "sfx": "sfx_heartbeat",
+          "amb": "amb_court"
+        },
+        {
+          "id": "S3-06",
+          "from": "A4-23",
+          "sec": 4.2,
+          "bg": "court_room",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "JUDGE",
+            "pose": "bust_neutral",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "v_JUDGE",
+          "text": "피고 명의로 마친 등기는 원인무효입니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "재판장"
+          },
+          "sfx": null,
+          "amb": "amb_court"
+        },
+        {
+          "id": "S3-07",
+          "from": "A4-24",
+          "sec": 4.5,
+          "bg": "court_room",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "JUDGE",
+            "pose": "bust_cold",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "v_JUDGE",
+          "text": "부동산 지분을 어머니와 동생들에게 이전하라.",
+          "gfx": {
+            "type": "nametag",
+            "text": "재판장"
+          },
+          "sfx": null,
+          "amb": "amb_court"
+        },
+        {
+          "id": "S3-08",
+          "from": "A4-25",
+          "sec": 4.8,
+          "bg": "court_room",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "JUDGE",
+            "pose": "face_neutral",
+            "pos_y": 0.35,
+            "scale": 1.4
+          },
+          "speaker": "v_JUDGE",
+          "text": "어머니에게 1억 371만 원을 지급하십시오.",
+          "gfx": {
+            "type": "nametag",
+            "text": "재판장"
+          },
+          "sfx": "sfx_gavel",
+          "amb": "amb_court"
+        },
+        {
+          "id": "S3-09",
+          "from": null,
+          "sec": 4.0,
+          "bg": "court_room",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "JUDGE",
+            "pose": "bust_neutral",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "narrator",
+          "text": "법원이 인정한 금액, 1억 371만 원.",
+          "gfx": {
+            "type": "nametag",
+            "text": "재판장"
+          },
+          "sfx": null,
+          "amb": "amb_court"
+        }
+      ],
+      "youtube": {
+        "title": "미리 9억 받아간 뻔뻔한 장남, 법원 판결은 \"상속분 0원\"",
+        "description_body": "미리 받아간 재산은 '특별수익'으로 차감되어 남은 상속분은 0원. 어머니에게 지분과 돈을 돌려주라는 법원의 판결.",
+        "tags": [
+          "특별수익",
+          "법원판결",
+          "사이다판결",
+          "상속회복"
+        ]
+      }
+    }
+  ],
   "youtube": {
     "description_body": "아버지가 세상을 떠난 뒤, 장남은 어머니와 두 동생을 상대로 먼저 소장을 냈습니다. 자신은 아버지 재산에서 한 푼도 받지 못했다는 이유였습니다.\n그 소송 기록에서, 그가 생전에 받아간 돈의 목록이 하나씩 드러납니다. 아파트 매수자금, 대신 갚아준 은행 대출, 병원 보증금.\n법원은 남은 재산에 대한 그의 몫을 어떻게 계산했을까요. 그리고 어머니가 혼자 감당한 세금과 보증금은 누구의 부담이었을까요.",
     "chapters": [

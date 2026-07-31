@@ -323,6 +323,52 @@ def revise(llm, doc, ev):
     ), tier="pro", max_output_tokens=60000, temperature=0.7, label="보강")
 
 
+def _make_shorts_only(ep, prefer):
+    """이미 저장된 대본에 쇼츠 3편만 붙인다."""
+    path = SCRIPTS / f"{ep}.json"
+    if not path.exists():
+        print(f"{ep} 대본이 없다: {path}")
+        return 2
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    print(f"{ep} · 컷 {doc['meta'].get('cut_count')}개 — 쇼츠만 만든다")
+    try:
+        llm, who = writer(max_calls=3, prefer=prefer or None)
+        print(f"만드는 곳: {who}")
+        sh = make_shorts(llm, doc)
+    except (LLMError, ClaudeError) as e:
+        print(f"실패: {e}")
+        sh = _shorts_retry(doc, prefer)
+    if not sh.get("shorts"):
+        print("쇼츠를 만들지 못했다.")
+        return 1
+    doc["shorts"] = sh["shorts"]
+    _save(path, doc)
+    _save(SCRIPTS / f"{ep}.shorts.json", sh)
+    for s in sh["shorts"]:
+        print(f"  {s.get('no')}번 {s.get('kind', ''):6s} {s.get('est_sec', 0):.1f}초  "
+              f"{s.get('intro_line', '')}")
+    r = validate_doc(doc)
+    print(f"\n기계 검증: 통과 {len(r.oks)} · 오류 {len(r.errors)}")
+    for w, m in r.errors[:5]:
+        print(f"  [{w}] {m}")
+    return 0 if not r.errors else 1
+
+
+def _shorts_retry(doc, prefer):
+    """쇼츠는 대본과 달리 짧고 싸다. 한 곳이 실패하면 다른 곳으로 한 번 더 해본다.
+
+    대본 품질은 Claude 로 지켜야 하지만, 쇼츠는 이미 완성된 대본에서 구간을 골라내는
+    기계적인 일이다. 여기서 어느 쪽이 만들었는지는 결과에 차이를 만들지 않는다."""
+    other = "gemini" if (prefer or "claude") != "gemini" else "claude"
+    try:
+        alt, who = writer(max_calls=3, prefer=other)
+        print(f"  {who} 로 한 번 더 시도한다")
+        return make_shorts(alt, doc)
+    except (LLMError, ClaudeError) as e:
+        print(f"  2차도 실패: {e}")
+        return {"shorts": []}
+
+
 def make_shorts(llm, doc):
     body = prompts.load("shorts_gen")
     return llm.json(prompts.fill(body, SCRIPT_JSON=json.dumps(doc, ensure_ascii=False)),
@@ -337,7 +383,13 @@ def main():
     ap.add_argument("--dry-run", action="store_true", help="모델 호출 없이 배관만 시험")
     ap.add_argument("--writer", default="", choices=["", "claude", "gemini"],
                     help="대본을 쓸 곳. 비우면 CLAUDE_API_KEY 가 있을 때 claude")
+    ap.add_argument("--shorts-only", default="", metavar="EP001",
+                    help="이미 만든 대본에 쇼츠만 붙인다 (대본을 다시 만들지 않는다)")
     args = ap.parse_args()
+
+    # 쇼츠만 다시: 26분짜리 대본 생성을 처음부터 되풀이할 이유가 없다.
+    if args.shorts_only:
+        return _make_shorts_only(args.shorts_only, args.writer)
 
     SCRIPTS.mkdir(parents=True, exist_ok=True)
     queue = _load(QUEUE, [])
@@ -457,12 +509,21 @@ def main():
 
         doc = best or doc
 
-        # 쇼츠 3편
+        # 쇼츠 3편 — 여기서 실패해도 대본은 이미 완성이다.
+        # 대본 전체를 중단 처리로 끌고 가지 않는다(실제로 그렇게 조용히 0편이 나갔다).
         print("\n[5단계] 쇼츠 3편")
-        sh = make_shorts(llm, doc)
+        try:
+            sh = make_shorts(llm, doc)
+        except (LLMError, ClaudeError) as e:
+            print(f"  1차 실패: {e}")
+            sh = _shorts_retry(doc, args.writer)
         for s in sh.get("shorts", []):
             print(f"  {s.get('no')}번 {s.get('kind', ''):6s} {s.get('est_sec', 0):.1f}초  "
                   f"{s.get('intro_line', '')}")
+        if not sh.get("shorts"):
+            print("  ⚠️ 쇼츠를 못 만들었다. 대본은 정상이다.")
+            print("     '2. 대본 만들기' 를 다시 누를 필요 없이 쇼츠만 따로 만들 수 있다:")
+            print(f"     python3 src/script.py --shorts-only {ep}")
 
     except (BudgetExceeded, ClaudeBudget, LLMError, ClaudeError) as e:
         # 여기서 그냥 포기하면 앞서 만든 컷 100여 개가 통째로 사라진다.
@@ -479,10 +540,13 @@ def main():
     # 저장
     doc["meta"]["episode"] = ep
     doc["meta"]["case_id"] = cid
+    if sh.get("shorts"):
+        # 대본 안에도 넣는다. 검증기와 렌더러가 둘 다 여기를 본다 —
+        # 따로 파일로만 두면 "쇼츠 0편" 으로 잘못 잡힌다.
+        doc["shorts"] = sh["shorts"]
+        _save(SCRIPTS / f"{ep}.shorts.json", sh)
     _save(SCRIPTS / f"{ep}.json", doc)
     _save(SCRIPTS / f"{ep}.eval.json", best_eval or {})
-    if sh.get("shorts"):
-        _save(SCRIPTS / f"{ep}.shorts.json", sh)
 
     # 끝까지 왔으면 초벌은 필요 없다. 저장소에 군더더기를 남기지 않는다.
     (SCRIPTS / f"{ep}.draft.json").unlink(missing_ok=True)
