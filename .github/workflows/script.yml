@@ -28,6 +28,15 @@ on:
         description: '소재 심사할 판례 수'
         required: false
         default: '10'
+      writer:
+        description: '대본을 쓸 곳'
+        required: false
+        default: '자동 (Claude 우선)'
+        type: choice
+        options:
+          - '자동 (Claude 우선)'
+          - 'Claude'
+          - 'Gemini'
 
 permissions:
   contents: write
@@ -52,11 +61,21 @@ jobs:
         with:
           python-version: '3.12'
 
-      # GEMINI_API_KEY 는 진짜 비밀이다. 없으면 아무것도 못 한다.
+      # 대본은 Claude 나 Gemini 중 하나만 있어도 된다. 둘 다 없으면 아무것도 못 한다.
       - name: 열쇠 확인
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
         run: |
+          if [ -n "$CLAUDE_API_KEY" ]; then
+            echo "CLAUDE_API_KEY 확인됨 — 대본은 Claude 가 쓴다"
+          fi
+          if [ -n "$GEMINI_API_KEY" ]; then
+            echo "GEMINI_API_KEY 확인됨"
+          fi
+          if [ -n "$CLAUDE_API_KEY" ] || [ -n "$GEMINI_API_KEY" ]; then
+            exit 0
+          fi
           if [ -z "$GEMINI_API_KEY" ]; then
             {
               echo "## 열쇠가 없습니다"
@@ -88,6 +107,7 @@ jobs:
         if: inputs.mode != '대본 생성만'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
         run: |
           set -o pipefail
           python3 src/gate.py --limit "${{ inputs.gate_limit || '10' }}" 2>&1 | tee gate.log
@@ -96,9 +116,15 @@ jobs:
         if: inputs.mode != '소재 심사만'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
         run: |
           set -o pipefail
-          python3 src/script.py --case "${{ inputs.case }}" 2>&1 | tee script.log
+          case "${{ inputs.writer }}" in
+            "Claude") W="--writer claude" ;;
+            "Gemini") W="--writer gemini" ;;
+            *) W="" ;;
+          esac
+          python3 src/script.py --case "${{ inputs.case }}" $W 2>&1 | tee script.log
 
       - name: 검수 화면 만들기 (아이폰에서 바로 읽는 곳)
         if: always()

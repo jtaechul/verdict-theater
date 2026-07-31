@@ -32,6 +32,8 @@ const WORKFLOWS = [
              { k: 'queries', label: '검색어 (비우면 전부)', type: 'text', def: '' }] },
   { file: 'script.yml', name: '2. 대본 만들기', desc: '소재 심사 + 12분 대본 + 쇼츠',
     inputs: [{ k: 'mode', label: '무엇을', type: 'select', opts: ['둘다', '소재 심사만', '대본 생성만'] },
+             { k: 'writer', label: '대본을 쓸 곳', type: 'select',
+               opts: ['자동 (Claude 우선)', 'Claude', 'Gemini'] },
              { k: 'gate_limit', label: '심사 판례 수', type: 'text', def: '10' }] },
   { file: 'produce.yml', name: '3. 영상 만들기', desc: '렌더링 + 유튜브 비공개 업로드',
     inputs: [{ k: 'voice', label: '나레이션', type: 'select', opts: ['음성 생성', '무음으로 시험'] },

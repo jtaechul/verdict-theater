@@ -23,6 +23,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import prompts                                    # noqa: E402
 from llm import Gemini, LLMError, BudgetExceeded  # noqa: E402
+from claude import writer, ClaudeError            # noqa: E402
+from claude import BudgetExceeded as ClaudeBudget # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 CASES = ROOT / "data" / "cases"
@@ -69,13 +71,13 @@ def main():
         return 0
 
     try:
-        llm = Gemini(max_calls=args.max_calls or (args.limit + 2))
-    except LLMError as e:
+        llm, who = writer(max_calls=args.max_calls or (args.limit + 2))
+    except (LLMError, ClaudeError) as e:
         print(f"❌ {e}")
         return 2
 
     body = prompts.load("drama_gate")
-    print(f"모델: {llm.pick('pro')}")
+    print(f"심사하는 곳: {who} · 모델: {llm.pick('pro')}")
     print(f"평가 대상 {len(todo)}건 (대기열 {len(queue)}건 중 미평가분)")
     print()
 
@@ -93,10 +95,10 @@ def main():
             res = llm.json(prompts.fill(body, CASE_JSON=case_for_prompt(case)),
                            tier="pro", max_output_tokens=4096, temperature=0.4,
                            label=f"게이트 {cid}")
-        except BudgetExceeded as e:
+        except (BudgetExceeded, ClaudeBudget) as e:
             print(f"\n{e}")
             break
-        except LLMError as e:
+        except (LLMError, ClaudeError) as e:
             print(f"  {cid}  평가 실패: {e}")
             continue
 

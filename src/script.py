@@ -30,6 +30,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import prompts                                              # noqa: E402
 from llm import Gemini, LLMError, BudgetExceeded            # noqa: E402
+from claude import writer, ClaudeError                       # noqa: E402
+from claude import BudgetExceeded as ClaudeBudget            # noqa: E402
 from validate_script import validate_doc, errors_as_text, load_manifest  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -295,7 +297,7 @@ def machine_fix(llm, doc, rounds=2):
                 EVAL_JSON=json.dumps(fake_eval, ensure_ascii=False, indent=2),
                 ASSET_RULES=asset_rules_text(),
             ), tier="pro", max_output_tokens=60000, temperature=0.5, label="형식 보강")
-        except LLMError as e:
+        except (LLMError, ClaudeError) as e:
             print(f"    보강 실패: {e}")
             break
     return doc, validate_doc(doc)
@@ -329,6 +331,8 @@ def main():
     ap.add_argument("--case", default="", help="판례일련번호를 지정")
     ap.add_argument("--max-calls", type=int, default=24, help="모델 호출 상한")
     ap.add_argument("--dry-run", action="store_true", help="모델 호출 없이 배관만 시험")
+    ap.add_argument("--writer", default="", choices=["", "claude", "gemini"],
+                    help="대본을 쓸 곳. 비우면 CLAUDE_API_KEY 가 있을 때 claude")
     args = ap.parse_args()
 
     SCRIPTS.mkdir(parents=True, exist_ok=True)
@@ -366,13 +370,14 @@ def main():
         return 0 if not r.errors else 1
 
     try:
-        llm = Gemini(max_calls=args.max_calls)
-    except LLMError as e:
+        llm, who = writer(max_calls=args.max_calls, prefer=args.writer or None)
+    except (LLMError, ClaudeError) as e:
         print(f"❌ {e}")
         return 2
 
     base = prompts.fill(prompts.load("script_gen"),
                         CASE_JSON=case_json_for_prompt(case, row))
+    print(f"대본을 쓰는 곳: {who}")
     print(f"모델: {llm.pick('pro')} (생성) / {llm.pick('flash')} (채점)")
 
     best, best_score, best_eval = None, -1, None
@@ -422,7 +427,7 @@ def main():
             try:
                 doc = revise(llm, doc, ev)
                 doc, r = machine_fix(llm, doc, rounds=1)
-            except LLMError as e:
+            except (LLMError, ClaudeError) as e:
                 # 보강 한 번 실패로 회차를 통째로 버리지 않는다.
                 # 지금까지 최고점 버전이 이미 best 에 있다.
                 print(f"  보강 실패({e}) → 최고점({best_score}점) 버전으로 마무리한다")
@@ -437,12 +442,12 @@ def main():
             print(f"  {s.get('no')}번 {s.get('kind', ''):6s} {s.get('est_sec', 0):.1f}초  "
                   f"{s.get('intro_line', '')}")
 
-    except BudgetExceeded as e:
+    except (BudgetExceeded, ClaudeBudget) as e:
         print(f"\n⚠️ {e}")
         if best is None:
             return 1
         doc, sh = best, {"shorts": []}
-    except LLMError as e:
+    except (LLMError, ClaudeError) as e:
         print(f"\n❌ 생성 실패: {e}")
         return 1
 

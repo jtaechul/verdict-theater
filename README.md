@@ -51,7 +51,8 @@
 
 | 이름 | 언제 필요한가 | 어디서 받나 |
 |---|---|---|
-| `GEMINI_API_KEY` | **대본·이미지·음성** | [aistudio.google.com](https://aistudio.google.com) → Get API key |
+| `CLAUDE_API_KEY` | **대본·소재 심사·채점** | [console.anthropic.com](https://console.anthropic.com) |
+| `GEMINI_API_KEY` | **이미지·음성** (대본 대체용으로도 가능) | [aistudio.google.com](https://aistudio.google.com) → Get API key |
 | `YOUTUBE_CLIENT_ID` | 업로드 | STARTGUIDE 3-2 |
 | `YOUTUBE_CLIENT_SECRET` | 업로드 | 〃 |
 | `YOUTUBE_REFRESH_TOKEN` | 업로드 | 〃 |
@@ -98,14 +99,20 @@
 | `stats.py` | 성과 수집 + KPI 점검 + 게이트 보정 근거 |
 | `prompts.py` | `prompts/*.md` 에서 모델에게 보낼 부분만 잘라낸다 |
 | `llm.py` | Gemini 호출. **모델 이름을 코드에 박지 않는다** |
+| `claude.py` | Claude 호출 (대본 전용) + 어느 쪽을 쓸지 고르는 곳 |
 
 ---
 
 ## 설계에서 특히 신경 쓴 것
 
-**모델 이름을 코드에 박지 않는다.** Gemini 모델명은 자주 바뀐다. 박아두면 어느 날 갑자기
+**글은 Claude, 그림과 소리는 Gemini.** 지침서 0번이 "대본 생성 프롬프트가 이 사업의 유일한
+핵심 자산"이라고 못 박는다. 이 사업은 대본 품질이 전부다. 긴 한국어 감정 서사와 절제된 대사는
+Claude 쪽이 낫고, 그림과 목소리는 Claude 가 못 만든다. 그래서 나눴다.
+`CLAUDE_API_KEY` 가 없으면 대본도 Gemini 가 쓴다 — 파이프라인이 멈추지 않는다.
+
+**모델 이름을 코드에 박지 않는다.** 모델명은 자주 바뀐다. 박아두면 어느 날 갑자기
 파이프라인이 죽는데 운영자는 원인을 알 수 없다. 실행할 때마다 API에 "지금 쓸 수 있는 모델"을
-물어서 고른다.
+물어서 고른다. Claude 쪽도 같은 방식이다.
 
 **대본을 한 번에 뽑지 않는다.** 컷 113개는 JSON 으로 3만 토큰이 넘는다. 출력 한도에 걸리면
 중간에서 잘린 JSON 이 오고 통째로 버려야 한다. **설계 한 번 → 막별 여섯 번**으로 나눈다.
