@@ -403,8 +403,11 @@ export default {
     const ok = await authed(req, env);
 
     if (url.pathname === '/api/login' && req.method === 'POST') {
-      const form = await req.formData();
-      if (form.get('pw') !== env.ADMIN_PASSWORD) {
+      // 정상 경로는 로그인 화면의 <form> 이다. 다른 형식이 들어오면
+      // 서버 오류를 내지 말고 그냥 "틀렸다"로 돌려보낸다.
+      let form = null;
+      try { form = await req.formData(); } catch (e) { form = null; }
+      if (!form || form.get('pw') !== env.ADMIN_PASSWORD) {
         return new Response(LOGIN_HTML.replace('<form', '<div style="color:#d2564a;font-size:14px">비밀번호가 다릅니다</div><form'),
           { status: 401, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
       }
