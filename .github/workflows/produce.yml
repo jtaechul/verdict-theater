@@ -113,6 +113,9 @@ jobs:
       - name: 나레이션 만들기
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # 제미나이 TTS 미리보기 모델의 분당 요청 한도는 매우 낮다. 보수적으로 잡는다.
+          # 한도가 올라가면 이 숫자만 올리면 된다.
+          TTS_RPM: '10'
         run: |
           set -o pipefail
           ARGS=()
