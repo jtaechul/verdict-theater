@@ -65,11 +65,26 @@ jobs:
 
       - name: 도구 준비 (FFmpeg · 한글 폰트)
         run: |
+          set -euo pipefail
+          # ⚠️ 여기서 ffmpeg 를 실제로 **설치**한다.
+          #    예전에는 'ffmpeg -version | head -1' 로 확인만 했다. 그런데
+          #    ① ubuntu-latest 이미지에서 ffmpeg 가 빠졌고
+          #    ② 파이프( | head )라서 exit status 가 head(0) 이 되어
+          #    ffmpeg 가 없어도 이 단계가 "성공" 으로 찍혔다.
+          #    그래서 한참 뒤 나레이션 단계에서 FileNotFoundError 로 죽었다.
+          #    set -o pipefail 과 실제 설치, 둘 다 있어야 한다.
           sudo apt-get update -qq
-          sudo apt-get install -y -qq fonts-nanum
+          sudo apt-get install -y -qq ffmpeg fonts-nanum
           python3 -m pip install --quiet Pillow
-          ffmpeg -version | head -1
-          echo "나눔 폰트: $(ls /usr/share/fonts/truetype/nanum/ | head -1)"
+
+          # 있다고 믿지 않고 확인한다. 없으면 여기서 멈춘다 — 뒤에서 죽는 것보다 낫다.
+          for cmd in ffmpeg ffprobe; do
+            command -v "$cmd" >/dev/null || { echo "::error::$cmd 가 설치되지 않았습니다"; exit 1; }
+            echo "$cmd: $($cmd -version 2>&1 | head -1)"
+          done
+          FONT=$(ls /usr/share/fonts/truetype/nanum/ 2>/dev/null | head -1 || true)
+          [ -n "$FONT" ] || { echo "::error::한글 폰트가 설치되지 않았습니다"; exit 1; }
+          echo "나눔 폰트: $FONT"
 
       - name: 회차 정하기
         id: pick
@@ -100,18 +115,22 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           set -o pipefail
-          FLAG=""
-          [ "${{ inputs.voice }}" = "무음으로 시험" ] && FLAG="--silent"
+          ARGS=()
+          if [ "${{ inputs.voice }}" = "무음으로 시험" ]; then ARGS+=(--silent); fi
+          # ⚠️ 앞 N컷만 렌더링할 때는 음성도 N컷만 만든다.
+          #    예전에는 --limit 을 렌더링에만 줬다. 10컷만 보려는데 음성은 113컷을
+          #    다 만들려 했고, 그래서 속도 제한(429)에 걸렸다. 돈도 11배로 나간다.
+          if [ "${{ inputs.limit }}" != "0" ]; then ARGS+=(--limit "${{ inputs.limit }}"); fi
           python3 src/tts.py "data/scripts/${{ steps.pick.outputs.ep }}.json" \
-            --out build/voice $FLAG 2>&1 | tee tts.log
+            --out build/voice "${ARGS[@]}" 2>&1 | tee tts.log
 
       - name: 렌더링 (롱폼 16:9 + 쇼츠 9:16)
         run: |
           set -o pipefail
-          LIM=""
-          [ "${{ inputs.limit }}" != "0" ] && LIM="--limit ${{ inputs.limit }}"
+          ARGS=()
+          if [ "${{ inputs.limit }}" != "0" ]; then ARGS+=(--limit "${{ inputs.limit }}"); fi
           python3 src/render.py "data/scripts/${{ steps.pick.outputs.ep }}.json" \
-            --out build --shorts --narration build/voice $LIM 2>&1 | tee render.log
+            --out build --shorts --narration build/voice "${ARGS[@]}" 2>&1 | tee render.log
           ls -la build/*.mp4
 
       # 유튜브에 안 올리면 영상을 볼 방법이 없다 — 실행이 끝나면 작업 공간이 통째로 사라진다.

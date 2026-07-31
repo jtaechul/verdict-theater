@@ -24,14 +24,68 @@ import argparse
 import base64
 import json
 import os
+import shutil
 import struct
 import subprocess
 import sys
+import time
+import urllib.error
 import wave
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from llm import BASE, LLMError, _post  # noqa: E402
+
+# 속도 제한(429)에 걸렸을 때 기다리는 시간. 점점 늘린다.
+BACKOFF = [5, 15, 40, 90]
+THROTTLE = 1.2      # 요청 사이 최소 간격(초). 몰아치면 429 가 난다
+
+
+def _post_retry(url, payload, timeout=180, label=""):
+    """429·5xx 는 기다렸다 다시 해본다.
+
+    예전에는 재시도가 전혀 없어서, 속도 제한 한 번에 그 컷이 통째로 무음이 됐다.
+    음성은 컷마다 따로 만들므로 몇 초 기다리는 것으로 대부분 회복된다."""
+    last = None
+    for i in range(len(BACKOFF) + 1):
+        try:
+            return _post(url, payload, timeout=timeout)
+        except urllib.error.HTTPError as e:
+            last = e
+            if e.code not in (408, 429, 500, 502, 503, 504) or i >= len(BACKOFF):
+                raise
+            # 서버가 "이만큼 기다려라" 고 알려주면 그 말을 따른다
+            wait = BACKOFF[i]
+            hdr = (e.headers or {}).get("Retry-After") if e.headers else None
+            if hdr:
+                try:
+                    wait = max(wait, int(float(hdr)))
+                except ValueError:
+                    pass
+            print(f"    ({label} 속도 제한 HTTP {e.code} — {wait}초 기다렸다 다시 한다"
+                  f" {i + 1}/{len(BACKOFF)})")
+            time.sleep(wait)
+        except (OSError, LLMError) as e:
+            last = e
+            if i >= len(BACKOFF):
+                raise
+            print(f"    ({label} 통신 오류 {type(e).__name__} — {BACKOFF[i]}초 뒤 다시)")
+            time.sleep(BACKOFF[i])
+    raise last
+
+
+def need_ffmpeg():
+    """ffmpeg 가 없으면 여기서 분명히 말하고 멈춘다.
+
+    예전에는 없는 채로 진행하다가 한참 뒤 FileNotFoundError 로 죽었다.
+    로그만 보면 원인을 알 수 없었다."""
+    if shutil.which("ffmpeg"):
+        return
+    print("오류: ffmpeg 가 설치되어 있지 않습니다.", file=sys.stderr)
+    print("      음성을 만들려면 ffmpeg 가 필요합니다.", file=sys.stderr)
+    print("      GitHub Actions 에서는 '도구 준비' 단계가 설치합니다 —", file=sys.stderr)
+    print("      그 단계를 확인하십시오.", file=sys.stderr)
+    sys.exit(1)
 
 # 인물 코드 → 목소리 성격. 실제 음성 이름은 API가 주는 목록에서 고른다.
 VOICE_STYLE = {
@@ -96,7 +150,7 @@ def synth_one(key, model, text, speaker, out_mp3):
     voice = VOICE_NAME.get(speaker, "Charon")
     prompt = f"{style} 읽어라. 다른 말을 덧붙이지 말고 다음 문장만 읽어라:\n{text}"
 
-    res = _post(f"{BASE}/models/{model}:generateContent?key={key}", {
+    res = _post_retry(f"{BASE}/models/{model}:generateContent?key={key}", {
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
         "generationConfig": {
             "responseModalities": ["AUDIO"],
@@ -104,7 +158,7 @@ def synth_one(key, model, text, speaker, out_mp3):
                 "voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}
             },
         },
-    }, timeout=180)
+    }, timeout=180, label=speaker)
 
     parts = (res.get("candidates") or [{}])[0].get("content", {}).get("parts", [])
     blob = next((p["inlineData"] for p in parts if "inlineData" in p), None)
@@ -137,12 +191,15 @@ def main():
     ap.add_argument("--silent", action="store_true", help="모델을 부르지 않고 무음만 만든다")
     args = ap.parse_args()
 
+    need_ffmpeg()        # 없으면 여기서 분명히 말하고 멈춘다. 한참 뒤에 죽는 것보다 낫다.
+
     doc = json.loads(Path(args.script).read_text(encoding="utf-8"))
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     cuts = [c for a in doc["acts"] for c in a["cuts"]]
     if args.limit:
         cuts = cuts[:args.limit]
+        print(f"앞 {len(cuts)}컷만 만든다 (--limit {args.limit})")
 
     key = os.environ.get("GEMINI_API_KEY", "").strip()
     model = None
@@ -165,6 +222,7 @@ def main():
 
     print(f"음성 모델: {model}")
     ok = fail = 0
+    last_call = 0.0
     for i, c in enumerate(cuts):
         p = out / f"{c['id']}.mp3"
         if p.exists():
@@ -174,6 +232,10 @@ def main():
         if not text:
             silent(p, 1.0)
             continue
+        # 몰아치면 속도 제한에 걸린다. 요청 사이를 최소 THROTTLE 초 띄운다.
+        gap = time.monotonic() - last_call
+        if last_call and gap < THROTTLE:
+            time.sleep(THROTTLE - gap)
         try:
             synth_one(key, model, text, c.get("speaker", "narrator"), p)
             ok += 1
@@ -181,10 +243,23 @@ def main():
             fail += 1
             print(f"  {c['id']} 실패({type(e).__name__}) → 무음으로 대체")
             silent(p, float(c.get("sec", 6.0)) - 0.6)
+        last_call = time.monotonic()
         if (i + 1) % 20 == 0:
-            print(f"  {i + 1}/{len(cuts)}")
+            print(f"  {i + 1}/{len(cuts)}  (성공 {ok} · 실패 {fail})")
 
     print(f"음성 {ok}개 · 실패 {fail}개 → {out}")
+
+    # 대부분이 무음이면 그것은 "영상이 나왔다" 가 아니라 "음성이 통째로 실패했다" 이다.
+    # 예전에는 여기서 0 을 돌려줘서, 12분 내내 무음인 영상이 성공으로 올라갈 수 있었다.
+    total = ok + fail
+    if total and fail / total > 0.5:
+        print("", file=sys.stderr)
+        print(f"오류: {total}컷 중 {fail}컷이 음성 생성에 실패했습니다.", file=sys.stderr)
+        print("      이대로 만들면 대사가 거의 없는 영상이 됩니다.", file=sys.stderr)
+        print("      흔한 원인: 제미나이 API 사용량 한도 초과, 또는 결제 미등록.", file=sys.stderr)
+        print("      소리 없이 화면만 확인하려면 나레이션을 '무음으로 시험' 으로", file=sys.stderr)
+        print("      고른 뒤 다시 실행하십시오.", file=sys.stderr)
+        return 1
     if fail:
         print("⚠️ 실패한 컷은 무음이다. 그 자리에서 소리가 끊긴다.")
     return 0
