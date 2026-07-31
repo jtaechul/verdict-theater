@@ -49,6 +49,70 @@ def _unsupported_param(body, payload):
     return None
 
 
+CEILING = 64000          # 출력 한도를 스스로 올릴 때의 천장
+
+# 프리필(응답을 `{` 로 미리 채워 JSON 으로 시작하게 만드는 수법)을 못 쓰는 모델을 위해,
+# 같은 요구를 시스템 지시로 대신한다.
+_JSON_SYSTEM = (
+    "You output exactly one JSON object and nothing else. "
+    "No preamble, no explanation, no apology, no markdown code fences. "
+    "The first character of your reply is { and the last character is }. "
+    "Write the JSON *values* in the same language as the user's request "
+    "(Korean requests get Korean values)."
+)
+
+
+def _prefill_rejected(body):
+    """이 모델이 '응답 미리 채워 넣기'를 안 받는다고 말하는가."""
+    low = body.lower()
+    return ("prefill" in low
+            or "must end with a user message" in low
+            or ("assistant" in low and "last message" in low))
+
+
+def _extract_json(text):
+    """설명문·코드펜스가 섞여 와도 JSON 객체 하나를 끄집어낸다.
+
+    프리필을 못 쓰는 모델에서는 응답 앞뒤에 말이 붙을 수 있다.
+    문자열 안에 있는 중괄호를 세면 안 되므로 따옴표와 역슬래시를 따라간다."""
+    s = text.strip()
+    if s.startswith("```"):
+        s = re.sub(r"^```[a-zA-Z]*\s*", "", s)
+        s = re.sub(r"\s*```\s*$", "", s).strip()
+    try:
+        return json.loads(s)
+    except json.JSONDecodeError:
+        pass
+
+    start = s.find("{")
+    if start < 0:
+        raise ClaudeError(f"응답에 JSON 이 없다. 앞부분: {s[:200]}")
+    depth = 0
+    in_str = esc = False
+    for i in range(start, len(s)):
+        ch = s[i]
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                try:
+                    return json.loads(s[start:i + 1])
+                except json.JSONDecodeError as e:
+                    raise ClaudeError(f"JSON 형식이 아니다: {e}\n앞부분: {s[start:start + 200]}")
+    raise ClaudeError(f"JSON 이 중간에서 끊겼다 (받은 길이 {len(s)}). 앞부분: {s[:200]}")
+
+
 def _max_tokens_cap(body):
     """400 응답이 '출력 한도를 넘었다'고 말하면 그 한도를 숫자로 돌려준다.
 
@@ -64,7 +128,14 @@ def _max_tokens_cap(body):
 
 
 class ClaudeError(RuntimeError):
-    pass
+    """fatal=True 는 '설정을 바꿔도 소용없다'는 뜻이다.
+
+    열쇠가 틀렸거나 잔액이 없는 경우가 여기 해당한다. 사전 점검이 이걸 만나면
+    본 호출을 시도하지 않고 바로 멈춘다 — 어차피 똑같이 실패하기 때문이다."""
+
+    def __init__(self, msg, fatal=False):
+        super().__init__(msg)
+        self.fatal = fatal
 
 
 class BudgetExceeded(RuntimeError):
@@ -99,8 +170,11 @@ class Claude:
         self.tokens_in = 0
         self.tokens_out = 0
         self._models = None
-        self._drop = set()      # 이 모델이 거절한 설정들. 한 번 배우면 이후 호출에도 안 보낸다
-        self._cap = None        # 이 모델의 출력 한도. 거절당하며 알아낸 값
+        # 배운 것은 모델별로 따로 기억한다. opus 와 sonnet 은 받아주는 설정이 다를 수 있다.
+        self._drop = {}         # 모델 → 거절당한 설정 이름들
+        self._cap = {}          # 모델 → 출력 한도 (거절당하며 알아낸 값)
+        self._prefill = {}      # 모델 → 응답 미리 채워 넣기를 쓸 수 있는가
+        self._probed = set()    # 사전 점검을 마친 모델
 
     # ── 모델 고르기 ──────────────────────────────────────
     def available(self):
@@ -140,34 +214,65 @@ class Claude:
 
     # ── 호출 ────────────────────────────────────────────
     def json(self, prompt, tier="pro", max_output_tokens=32768, temperature=0.9, label=""):
-        """프롬프트를 보내고 JSON 하나를 받는다.
+        """프롬프트를 보내고 JSON 하나를 받는다."""
+        model = self.pick(tier)
+        self._warmup(model)
+        return self._call(model, prompt, max_output_tokens, temperature, label)
 
-        Claude 에는 'JSON 만 내라'는 설정이 없다. 대신 응답을 `{` 로 시작하게 미리 채워두면
-        모델이 그 뒤를 이어 쓰므로 설명문이 섞이지 않는다."""
+    def _warmup(self, model):
+        """본 작업 전에 아주 작은 호출 한 번으로 '이 모델이 받아주는 설정'을 알아낸다.
+
+        왜 이걸 따로 두는가
+          모델이 바뀌면 받아주는 설정도 바뀐다. 그걸 본 작업 도중에 알게 되면
+          비싼 호출이 줄줄이 실패한다 — 실제로 소재 심사 6건이 두 번 통째로 날아갔다
+          (한 번은 temperature, 한 번은 프리필).
+          그러지 말고 **토큰 몇 개짜리 호출 한 번으로 먼저 알아내고**,
+          알아낸 설정을 그 실행 내내 쓴다.
+
+        여기서 실패해도 멈추지 않는다. 진짜 문제라면 본 호출에서 같은 오류가 다시 나고,
+        그때 제대로 된 메시지가 나간다."""
+        if model in self._probed:
+            return
+        self._probed.add(model)
+        try:
+            self._call(model, '{"ok": true} 를 그대로 출력하라.', 64, 0.0, "사전 점검")
+        except BudgetExceeded:
+            raise
+        except ClaudeError as e:
+            if e.fatal:
+                raise          # 열쇠·잔액 문제. 본 호출을 걸어봐야 똑같이 실패한다
+            # 내용 문제(작은 프롬프트라 생긴 것일 수 있다)는 넘어가고 본 호출에서 확인한다
+            print(f"    (사전 점검 실패 — 본 호출에서 다시 확인한다: {str(e)[:120]})")
+
+    def _call(self, model, prompt, max_output_tokens, temperature, label):
         if self.calls >= self.max_calls:
             raise BudgetExceeded(
                 f"이번 실행에서 이미 {self.calls}회 호출했다. 상한 {self.max_calls}회. "
                 "무한 루프로 인한 과금 폭발을 막는 장치다."
             )
-        model = self.pick(tier)
-        if self._cap and max_output_tokens > self._cap:
-            print(f"    (출력 한도 조정: {max_output_tokens:,} → {self._cap:,} · {model})")
-            max_output_tokens = self._cap
+        cap = self._cap.get(model)
+        if cap and max_output_tokens > cap:
+            print(f"    (출력 한도 조정: {max_output_tokens:,} → {cap:,} · {model})")
+            max_output_tokens = cap
+
+        # 프리필을 쓸 수 있는 모델이면 응답을 `{` 로 시작하게 못 박는다.
+        # 못 쓰는 모델이면 시스템 지시 + 꺼내 읽기로 대신한다.
+        prefill = self._prefill.get(model, True)
         payload = {
             "model": model,
             "max_tokens": max_output_tokens,
             "temperature": min(1.0, temperature),
-            "messages": [
-                {"role": "user", "content": prompt},
-                {"role": "assistant", "content": "{"},     # JSON 으로 시작하도록 못 박는다
-            ],
+            "system": _JSON_SYSTEM,
+            "messages": [{"role": "user", "content": prompt}],
         }
-        for name in self._drop:                # 앞선 호출에서 이미 거절당한 설정은 빼고 보낸다
+        if prefill:
+            payload["messages"].append({"role": "assistant", "content": "{"})
+        for name in self._drop.get(model, ()):   # 이미 거절당한 설정은 처음부터 빼고 보낸다
             payload.pop(name, None)
 
         last = None
         attempt = 0
-        adjusted = 0                           # 설정을 고쳐서 다시 건 횟수 (재시도 횟수와 별개)
+        adjusted = 0                             # 설정을 고쳐 다시 건 횟수 (재시도 횟수와 별개)
         while attempt < RETRIES:
             try:
                 res = _req("messages", self.key, method="POST", body=payload)
@@ -177,45 +282,56 @@ class Claude:
                 self.tokens_out += u.get("output_tokens", 0)
 
                 if res.get("stop_reason") == "max_tokens":
-                    raise ClaudeError("출력이 길이 상한에서 잘렸다. max_output_tokens 를 늘려야 한다.")
+                    # 같은 요청을 그대로 다시 걸면 똑같이 잘린다. 한도를 올려서 걸어야 한다.
+                    room = self._cap.get(model) or CEILING
+                    cur = payload["max_tokens"]
+                    if cur < room and adjusted < 4:
+                        payload["max_tokens"] = min(room, cur * 2)
+                        adjusted += 1
+                        print(f"    (출력이 잘렸다 — 한도를 {payload['max_tokens']:,} 로 올려 다시 건다)")
+                        continue
+                    raise ClaudeError(
+                        f"출력이 길이 상한({cur:,})에서 잘렸다. 더 올릴 수 없다.")
+
                 text = "".join(p.get("text", "") for p in res.get("content", [])
                                if p.get("type") == "text")
                 if not text.strip():
                     raise ClaudeError(f"본문이 비었다 (stop_reason={res.get('stop_reason')})")
-                raw = "{" + text                      # 미리 채운 `{` 를 되돌린다
-                raw = raw.strip()
-                if raw.startswith("```"):
-                    raw = re.sub(r"^```[a-zA-Z]*\s*", "", raw)
-                    raw = re.sub(r"\s*```$", "", raw)
-                try:
-                    return json.loads(raw)
-                except json.JSONDecodeError as e:
-                    raise ClaudeError(f"JSON 형식이 아니다: {e}\n앞부분: {raw[:200]}")
+                if payload["messages"][-1]["role"] == "assistant":
+                    text = "{" + text            # 미리 채운 `{` 를 되돌린다
+                return _extract_json(text)
 
             except urllib.error.HTTPError as e:
                 last = e
                 body = e.read().decode("utf-8", "replace")[:400]
 
-                # 400 이라고 다 끝난 게 아니다. "그 설정은 못 받는다"는 뜻이면 고쳐서 다시 건다.
+                # 400 이라고 다 끝난 게 아니다. "그건 못 받는다"는 뜻이면 고쳐서 다시 건다.
                 if e.code == 400 and adjusted < 4:
                     bad = _unsupported_param(body, payload)
                     if bad:
-                        self._drop.add(bad)
+                        self._drop.setdefault(model, set()).add(bad)
                         payload.pop(bad, None)
                         adjusted += 1
                         print(f"    (이 모델은 '{bad}' 설정을 받지 않는다 — 빼고 다시 건다)")
                         continue
-                    cap = _max_tokens_cap(body)
-                    if cap and cap < payload.get("max_tokens", 0):
-                        self._cap = cap
-                        payload["max_tokens"] = cap
+                    if _prefill_rejected(body) and payload["messages"][-1]["role"] == "assistant":
+                        self._prefill[model] = False
+                        payload["messages"] = payload["messages"][:-1]
                         adjusted += 1
-                        print(f"    (이 모델의 출력 한도는 {cap:,} — 줄여서 다시 건다)")
+                        print("    (이 모델은 응답 미리 채우기를 받지 않는다 — 빼고 다시 건다)")
+                        continue
+                    lim = _max_tokens_cap(body)
+                    if lim and lim < payload.get("max_tokens", 0):
+                        self._cap[model] = lim
+                        payload["max_tokens"] = lim
+                        adjusted += 1
+                        print(f"    (이 모델의 출력 한도는 {lim:,} — 줄여서 다시 건다)")
                         continue
 
                 if e.code in (400, 401, 403, 404):
                     self.fails += 1
-                    raise ClaudeError(f"호출 실패 (HTTP {e.code}) — 재시도해도 소용없다.\n{body}")
+                    raise ClaudeError(
+                        f"호출 실패 (HTTP {e.code}) — 재시도해도 소용없다.\n{body}", fatal=True)
                 attempt += 1
                 if attempt < RETRIES:
                     w = BACKOFF[attempt - 1]
