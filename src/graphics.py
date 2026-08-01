@@ -29,12 +29,23 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 ROOT = Path(__file__).resolve().parent.parent
 
 # ── 디자인 토큰 ──────────────────────────────────────────
-INK = (24, 24, 28)
-PAPER = (250, 249, 246)
-GOLD = (198, 160, 74)
-CRIMSON = (176, 58, 46)
-SLATE = (86, 92, 104)
-LINE = (214, 210, 202)
+# ⭐ 색은 **세 개만** 쓴다.
+#    예전에는 미색 종이 + 금색 + 진홍 + 회색 + 흰 자막이 한 화면에 다 있어
+#    통일감이 없었다. 색이 많으면 화면이 시끄럽고 싸구려로 보인다.
+#    나머지는 이 세 색에서 뽑아낸 농도 차이일 뿐이다.
+INK = (22, 22, 26)          # 먹 — 글자와 선
+PAPER = (247, 245, 240)     # 종이 — 카드 바탕
+ACCENT = (168, 46, 42)      # 강조 — 판결·중요한 순간에만. 아껴 쓸수록 세진다
+
+# 위 세 색에서 뽑은 농도 (새 색이 아니다)
+MUTED = tuple(round(i + (p - i) * 0.55) for i, p in zip(INK, PAPER))    # 보조 글자
+HAIR = tuple(round(i + (p - i) * 0.86) for i, p in zip(INK, PAPER))     # 가는 선
+
+# 예전 이름 (남아 있는 호출부 호환)
+CRIMSON = ACCENT
+SLATE = MUTED
+LINE = HAIR
+GOLD = ACCENT
 SHADOW = (0, 0, 0, 110)
 
 SUB_MAX_CHARS = 18          # wrap_korean 의 기본값 (자막은 fit_subtitle 이 폭을 직접 잰다)
@@ -66,12 +77,26 @@ SUB_LINES_V = 3             # 세로는 한 줄에 12자뿐이라 3줄까지 연
 SUB_BOTTOM = 0.085          # 화면 아래에서 띄우는 여백
 SUB_BOTTOM_V = 0.20         # 세로는 UI 가 아래를 가리므로 더 띄운다
 
-# 한글이 나오는 폰트를 순서대로 찾는다. 러너에는 fonts-nanum 을 설치한다.
+# ⭐ 글자에 **역할을 준다.**
+#    예전에는 자막·이름표·금액·연표가 전부 나눔고딕Bold 하나였다.
+#    전부 같은 인상이라 무엇이 중요한지 화면이 말해주지 못했다.
+#    역할마다 글꼴을 달리하면 보는 사람이 읽기 전에 성격을 먼저 안다.
+#    네 글꼴 모두 `fonts-nanum` 한 꾸러미에 들어 있어 따로 받을 것이 없다.
+NANUM = "/usr/share/fonts/truetype/nanum/"
+FONT_ROLE = {
+    "sub":   ["NanumSquareB.ttf", "NanumGothicBold.ttf"],        # 자막 — 획이 고르고 시원하다
+    "label": ["NanumBarunGothicBold.ttf", "NanumGothicBold.ttf"],  # 이름표·작은 라벨 — 좁고 단정
+    "num":   ["NanumSquareB.ttf", "NanumGothicBold.ttf"],        # 숫자 — 자릿수가 시원하게
+    "serif": ["NanumMyeongjoBold.ttf", "NanumGothicBold.ttf"],   # 판결·제목 — 격식과 무게
+    "body":  ["NanumBarunGothic.ttf", "NanumGothic.ttf"],        # 본문 보조
+}
+
+# 나눔이 아예 없는 환경을 위한 마지막 대비책
 FONT_CANDIDATES = [
-    "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
-    "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+    NANUM + "NanumSquareB.ttf",
+    NANUM + "NanumGothicBold.ttf",
+    NANUM + "NanumGothic.ttf",
     "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
-    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
     "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc",
     "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
     "/usr/share/fonts/opentype/unifont/unifont.otf",
@@ -79,10 +104,13 @@ FONT_CANDIDATES = [
 _font_cache = {}
 
 
-def font_path():
+def font_path(role=None):
     env = os.environ.get("VT_FONT")
     if env and Path(env).exists():
         return env
+    for name in FONT_ROLE.get(role or "", []):
+        if Path(NANUM + name).exists():
+            return NANUM + name
     for p in FONT_CANDIDATES:
         if Path(p).exists():
             return p
@@ -92,10 +120,10 @@ def font_path():
     )
 
 
-def font(size):
-    key = max(6, int(size))
+def font(size, role="sub"):
+    key = (role, max(6, int(size)))
     if key not in _font_cache:
-        _font_cache[key] = ImageFont.truetype(font_path(), key)
+        _font_cache[key] = ImageFont.truetype(font_path(role), key[1])
     return _font_cache[key]
 
 
@@ -266,18 +294,33 @@ def draw_subtitle(img, text, vertical=False):
     scrim_top = max(0, top - int(size * 1.7))
     layer.paste(_scrim(W, H - scrim_top), (0, scrim_top))
 
-    d = ImageDraw.Draw(layer)
-    stroke = max(2, int(size * 0.085))
-    drop = max(2, int(size * 0.06))
+    # ⭐ 테두리를 얇게, 그림자를 부드럽게.
+    #    예전에는 테두리가 글자 크기의 8.5%(66px 글자에 5.6px)나 됐다.
+    #    그렇게 두꺼우면 'ㅁ' 안쪽이 메워지고 획 모서리가 뭉개져 촌스러워진다.
+    #    방송 자막은 **얇은 테두리 + 흐린 그림자**를 쓴다. 글자는 또렷해지고
+    #    배경에서 뜨는 효과는 그림자가 대신 맡는다.
+    stroke = max(1, round(size * 0.030))
+    blur = max(2, round(size * 0.075))
+    drop = max(2, round(size * 0.045))
+
+    # 1) 흐린 그림자 — 따로 그려서 번지게 한 뒤 깔아 준다
+    shadow = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    sd = ImageDraw.Draw(shadow)
     y = top
     for ln in lines:
         x = (W - text_w(ln, f)) // 2
-        # 1) 아래로 살짝 내린 그림자 — 배경에서 글자를 떼어 놓는다
-        d.text((x, y + drop), ln, font=f, fill=(0, 0, 0, 120),
-               stroke_width=stroke, stroke_fill=(0, 0, 0, 120))
-        # 2) 본문 — 흰 글자 + 아주 짙은 테두리
+        sd.text((x, y + drop), ln, font=f, fill=(0, 0, 0, 190),
+                stroke_width=stroke * 2, stroke_fill=(0, 0, 0, 190))
+        y += lh + gap
+    layer = Image.alpha_composite(layer, shadow.filter(ImageFilter.GaussianBlur(blur)))
+
+    # 2) 본문 — 흰 글자 + 얇고 짙은 테두리
+    d = ImageDraw.Draw(layer)
+    y = top
+    for ln in lines:
+        x = (W - text_w(ln, f)) // 2
         d.text((x, y), ln, font=f, fill=(255, 255, 255, 255),
-               stroke_width=stroke, stroke_fill=(10, 10, 14, 240))
+               stroke_width=stroke, stroke_fill=(12, 12, 16, 235))
         y += lh + gap
 
     return Image.alpha_composite(img.convert("RGBA"), layer)
@@ -295,7 +338,8 @@ def draw_top_line(img, text):
     x0, x1 = int(W * max(0.055, SAFE)), int(W * min(0.945, 1 - SAFE))
     # 글자를 배지 안쪽 폭에 맞춘다. 글자 수로 끊으면 회차마다 넘치거나 남는다.
     inner = (x1 - x0) - int(u * 0.10)
-    f = _fit_font(u * 0.055, u * 0.034, _wrap_px(text, font(int(u * 0.055)), inner), inner)
+    f = _fit_font(u * 0.055, u * 0.034,
+                  _wrap_px(text, font(int(u * 0.055), "label"), inner), inner, role="label")
     size = f.size
     lh = line_h(f)
     lines = _wrap_px(text, f, inner)
@@ -315,12 +359,11 @@ def draw_top_line(img, text):
     layer = Image.alpha_composite(layer, sh.filter(ImageFilter.GaussianBlur(int(size * 0.30))))
 
     d = ImageDraw.Draw(layer)
-    d.rounded_rectangle([x0, y0, x1, y1], radius, fill=GOLD + (242,))
-    d.rounded_rectangle([x0, y0, x1, y1], radius, outline=(255, 246, 222, 190),
-                        width=max(2, int(size * 0.055)))
+    d.rounded_rectangle([x0, y0, x1, y1], radius, fill=INK + (238,))
+    d.rectangle([x0, y1 - max(3, round(size * 0.07)), x1, y1], fill=ACCENT)  # 아래 강조선
     y = top
     for ln in lines:
-        d.text(((W - text_w(ln, f)) // 2, y), ln, font=f, fill=(30, 24, 10, 255))
+        d.text(((W - text_w(ln, f)) // 2, y), ln, font=f, fill=(255, 253, 250, 255))
         y += lh + gap
     return Image.alpha_composite(img.convert("RGBA"), layer)
 
@@ -329,7 +372,7 @@ def draw_top_line(img, text):
 PAD = 40                    # 카드 둘레 여백. 흐린 그림자가 잘리지 않게 넉넉히 둔다
 
 
-def _fit_font(start_px, floor_px, texts, maxw):
+def _fit_font(start_px, floor_px, texts, maxw, role="sub"):
     """주어진 글들이 모두 maxw 안에 들어오는 가장 큰 글자 크기를 찾는다.
 
     회차마다 항목 이름 길이가 제각각이라 크기를 고정하면 어떤 회차에서는 넘친다.
@@ -337,60 +380,64 @@ def _fit_font(start_px, floor_px, texts, maxw):
     size = int(start_px)
     floor_px = max(8, int(floor_px))
     while size > floor_px:
-        f = font(size)
+        f = font(size, role)
         if all(text_w(t, f) <= maxw for t in texts if t):
             return f
         size -= 1
-    return font(floor_px)
+    return font(floor_px, role)
 
 
-def _card(w, h, radius=24):
-    """종이 카드 한 장. 판결문 느낌의 미색 종이 + 흐린 그림자 + 금색 실선.
+def _card(w, h, radius=24, accent_top=False):
+    """정보 카드 한 장. 판결문을 닮은 미색 종이.
 
-    예전에는 그림자를 '4픽셀 내린 같은 모양'으로 그렸다. 경계가 딱 떨어져
-    스티커를 붙인 것처럼 보였다. 흐리게 번지는 그림자로 바꾸면 카드가 화면 위에 뜬다."""
+    ⭐ 예전보다 **납작하게** 만든다.
+       금색 테두리를 두르고 그림자를 짙게 깔았더니, 종이라기보다 '스티커' 로 보였다.
+       테두리를 없애고 그림자를 옅게 낮추면 화면에 얹힌 종이처럼 차분해진다.
+       강조가 필요하면 테두리 대신 **위쪽 가는 선 한 줄**(accent_top)만 쓴다."""
     W, H = w + PAD * 2, h + PAD * 2
     box = [PAD, PAD, PAD + w, PAD + h]
 
     sh = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     ImageDraw.Draw(sh).rounded_rectangle(
-        [box[0], box[1] + int(h * 0.05) + 6, box[2], box[3] + int(h * 0.05) + 6],
-        radius, fill=(0, 0, 0, 165))
-    img = sh.filter(ImageFilter.GaussianBlur(PAD * 0.42))
+        [box[0], box[1] + round(h * 0.03) + 4, box[2], box[3] + round(h * 0.03) + 4],
+        radius, fill=(0, 0, 0, 105))
+    img = sh.filter(ImageFilter.GaussianBlur(PAD * 0.50))
 
     d = ImageDraw.Draw(img)
-    d.rounded_rectangle(box, radius, fill=PAPER + (250,))
-    d.rounded_rectangle(box, radius, outline=GOLD + (150,), width=3)     # 금색 실선 한 겹
+    d.rounded_rectangle(box, radius, fill=PAPER + (252,))
+    if accent_top:
+        # 카드 위쪽에만 강조색 가는 선. 테두리를 두르는 것보다 훨씬 조용하다.
+        bar = max(3, round(h * 0.012))
+        d.rounded_rectangle([box[0], box[1], box[2], box[1] + radius], radius, fill=ACCENT)
+        d.rectangle([box[0], box[1] + bar, box[2], box[1] + radius], fill=PAPER + (252,))
     return img, d, box
 
 
 def g_nametag(text, W=1920, H=1080):
     """인물 이름표. 고정 배우 7명을 회차마다 다른 역으로 쓰므로 없으면 누가 누군지 모른다.
 
-    자리를 옮겼다. 예전에는 화면 높이 70% 지점 — 인물 몸통 한가운데였다.
-    방송 자막처럼 왼쪽 아래, 자막 그늘 바로 위에 둔다."""
+    방송 로워서드처럼 **왼쪽 강조 막대 + 이름**만 남긴다.
+    이름은 좁고 단정한 글꼴(label)로 — 자막과 인상이 겹치지 않게."""
     u = unit(W, H)
-    # 이름이 길어도 카드가 화면을 넘지 않게, 글자를 먼저 폭에 맞춘다
-    f = _fit_font(u * 0.036, u * 0.024, [text], int(W * (1 - 2 * SAFE) - u * 0.20))
+    f = _fit_font(u * 0.036, u * 0.024, [text], int(W * (1 - 2 * SAFE) - u * 0.20), role="label")
     size = f.size
     lh = line_h(f)
-    pad_x, pad_y = int(size * 0.95), int(size * 0.34)
-    bar_x, bar_w = int(size * 0.55), max(4, int(size * 0.14))
-    cw = bar_x + bar_w + pad_x + text_w(text, f) + pad_x
+    pad_x, pad_y = round(size * 0.85), round(size * 0.40)
+    bar_w = max(5, round(size * 0.16))
+    cw = bar_w + pad_x + text_w(text, f) + pad_x
     ch = lh + pad_y * 2
 
-    card, d, box = _card(cw, ch, radius=int(ch * 0.24))
+    card, d, box = _card(cw, ch, radius=round(ch * 0.16))
     x0, y0 = box[0], box[1]
-    # 붉은 세로 막대는 카드 **안쪽**에 둔다. 예전엔 카드 왼쪽 모서리에 붙여 그려
-    # 둥근 모서리 밖으로 삐져나온 혹처럼 보였다.
-    d.rounded_rectangle([x0 + bar_x, y0 + pad_y, x0 + bar_x + bar_w, y0 + ch - pad_y],
-                        bar_w // 2, fill=CRIMSON)
-    d.text((x0 + bar_x + bar_w + pad_x, y0 + pad_y), text, font=f, fill=INK)
+    # 왼쪽 끝을 강조색으로 — 카드 모서리를 따라 깔끔하게 잘린다
+    r = round(ch * 0.16)
+    d.rounded_rectangle([x0, y0, x0 + bar_w + r, y0 + ch], r, fill=ACCENT)
+    d.rectangle([x0 + bar_w, y0, x0 + bar_w + r, y0 + ch], fill=PAPER + (252,))
+    d.text((x0 + bar_w + pad_x, y0 + pad_y), text, font=f, fill=INK)
 
     out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    # 자막 그늘이 시작되는 높이보다 위. 인물 얼굴·자막 어느 쪽도 가리지 않는다
-    y = int(H * 0.60) - card.height // 2
-    return paste_safe(out, card, int(W * 0.05) - PAD, y)
+    y = round(H * 0.60) - card.height // 2
+    return paste_safe(out, card, round(W * 0.05) - PAD, y)
 
 
 def g_amount(value, note="", W=1920, H=1080):
@@ -404,9 +451,9 @@ def g_amount(value, note="", W=1920, H=1080):
     #    '9억 8,400만 원' 한 줄이 2400px, 카드가 2688px — 1080px 화면 밖으로 나갔다.
     #    이제 짧은 변 기준으로 잡고, 그 위에 **남는 폭에 맞춰 한 번 더 줄인다.**
     inner = int(W * (1 - 2 * SAFE) - u * 0.16)
-    cap = font(u * 0.026)
-    big = _fit_font(u * 0.125, u * 0.050, [value], inner)
-    small = _fit_font(u * 0.032, u * 0.020, [note] if note else [], inner)
+    cap = font(u * 0.024, "label")
+    big = _fit_font(u * 0.130, u * 0.050, [value], inner, role="num")
+    small = _fit_font(u * 0.030, u * 0.020, [note] if note else [], inner, role="body")
     label = "판 결 금 액"
     lw, lh_ = text_w(label, cap), line_h(cap)
     vw, vh = text_w(value, big), line_h(big)
@@ -416,18 +463,18 @@ def g_amount(value, note="", W=1920, H=1080):
     pad = int(u * 0.040)
     cw = min(max(vw, nw, lw) + int(u * 0.15), inner + int(u * 0.15))
     ch = lh_ + gap1 + vh + (gap2 * 2 + nh if note else 0) + pad * 2
-    card, d, box = _card(cw, ch, radius=int(u * 0.028))
+    card, d, box = _card(cw, ch, radius=int(u * 0.028), accent_top=True)
     x0, y0 = box[0], box[1]
 
     y = y0 + pad
-    d.text((x0 + (cw - lw) // 2, y), label, font=cap, fill=GOLD)
+    d.text((x0 + (cw - lw) // 2, y), label, font=cap, fill=MUTED)
     y += lh_ + gap1
     d.text((x0 + (cw - vw) // 2, y), value, font=big, fill=CRIMSON)
     if note:
         y += vh + gap2
         # 숫자와 설명 사이 가는 구분선. 줄 높이(line_h)로 자리를 잡아야
         # 선이 숫자를 가로지르지 않는다 — 잉크 높이로 재면 선이 숫자 위로 올라온다.
-        d.line([(x0 + int(cw * 0.36), y), (x0 + int(cw * 0.64), y)], fill=LINE, width=3)
+        d.line([(x0 + int(cw * 0.36), y), (x0 + int(cw * 0.64), y)], fill=HAIR, width=2)
         y += gap2
         d.text((x0 + (cw - nw) // 2, y), note, font=small, fill=SLATE)
 
@@ -446,10 +493,10 @@ def g_timeline(items, W=1920, H=1080):
     # 글자를 슬롯 안에 맞춘다. 예전에는 크기를 고정해 두어 마지막 항목
     # '장남, 유류분 소장 제출' 이 카드 오른쪽 밖으로 잘려 나갔다.
     slot = int(cw * 0.80 / max(1, n - 1)) if n > 1 else int(cw * 0.8)
-    lab = _fit_font(u * 0.032, u * 0.018,
-                    [str(it.get("label", ""))[:16] for it in items], slot - 12)
-    when = _fit_font(u * 0.027, u * 0.016,
-                     [str(it.get("when", ""))[:14] for it in items], slot - 12)
+    lab = _fit_font(u * 0.031, u * 0.018,
+                    [str(it.get("label", ""))[:16] for it in items], slot - 12, role="label")
+    when = _fit_font(u * 0.026, u * 0.016,
+                     [str(it.get("when", ""))[:14] for it in items], slot - 12, role="body")
 
     card, d, box = _card(cw, ch, radius=int(u * 0.028))
     bx, by = box[0], box[1]
@@ -462,7 +509,7 @@ def g_timeline(items, W=1920, H=1080):
     for i, it in enumerate(items):
         x = int(x0 + step * i) if n > 1 else (x0 + x1) // 2
         last = (i == n - 1)
-        color = CRIMSON if last else GOLD
+        color = ACCENT if last else MUTED
         r = int(u * 0.0155)
         # 마지막(결정적) 시점만 테두리를 둘러 눈이 먼저 간다
         d.ellipse([x - r - 7, y_line - r - 7, x + r + 7, y_line + r + 7],
@@ -494,8 +541,10 @@ def g_family(nodes, W=1920, H=1080):
 
     # 이름·관계를 상자 폭에 맞춘다. 상자보다 긴 글자는 상자 밖으로 삐져나간다.
     box_w = int((cw / n) * 0.76) - 12
-    nm = _fit_font(u * 0.034, u * 0.020, [str(x.get("name", ""))[:8] for x in nodes], box_w)
-    rel = _fit_font(u * 0.026, u * 0.015, [str(x.get("rel", ""))[:12] for x in nodes], box_w)
+    nm = _fit_font(u * 0.034, u * 0.020, [str(x.get("name", ""))[:8] for x in nodes],
+                   box_w, role="label")
+    rel = _fit_font(u * 0.025, u * 0.015, [str(x.get("rel", ""))[:12] for x in nodes],
+                    box_w, role="body")
 
     card, d, box = _card(cw, ch, radius=int(u * 0.028))
     bx, by = box[0], box[1]
@@ -515,7 +564,7 @@ def g_family(nodes, W=1920, H=1080):
         d.rounded_rectangle([cx - bw // 2, y - bh // 2, cx + bw // 2, y + bh // 2],
                             int(bh * 0.20), outline=LINE, width=3, fill=(255, 255, 255, 255))
         d.rectangle([cx - bw // 2 + 2, y - bh // 2 + 2,
-                     cx - bw // 2 + int(bw * 0.035), y + bh // 2 - 2], fill=GOLD)  # 왼쪽 금색 띠
+                     cx - bw // 2 + int(bw * 0.035), y + bh // 2 - 2], fill=ACCENT)  # 왼쪽 띠
         d.text((cx - text_w(t1, nm) // 2, y - int(bh * 0.30)), t1, font=nm, fill=INK)
         d.line([(cx - int(bw * 0.28), y + int(bh * 0.045)),
                 (cx + int(bw * 0.28), y + int(bh * 0.045))], fill=LINE, width=2)

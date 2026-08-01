@@ -256,22 +256,34 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
         x = min(max(x, edge - sprite.width // 4), W - sprite.width - edge + sprite.width // 4)
         move.alpha_composite(sprite, (max(0, x), max(0, y)))
 
-    static = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    # 그래픽과 자막을 **따로** 돌려준다.
+    # 둘을 한 장으로 합치면 함께 움직일 수밖에 없는데, 자막은 절대 움직이면 안 되고
+    # (읽는 중에 흔들리면 놓친다) 카드는 나타날 때 살짝 움직여야 생기가 산다.
+    gfx_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     if gfx:
-        static = Image.alpha_composite(static, gfx)
-    static = G.draw_subtitle(static, cut.get("text", ""), vertical=vertical)
+        gfx_layer = Image.alpha_composite(gfx_layer, gfx)
     if top_line:
-        static = G.draw_top_line(static, top_line)
-    return move, static
+        gfx_layer = G.draw_top_line(gfx_layer, top_line)
+
+    sub_layer = G.draw_subtitle(Image.new("RGBA", (W, H), (0, 0, 0, 0)),
+                                cut.get("text", ""), vertical=vertical)
+    return move, gfx_layer, sub_layer
 
 
 # ── 컷 하나를 영상 조각으로 ──────────────────────────────
+# 등장 연출 시간(초). 짧게 — 길면 정보를 읽기 시작하는 시점이 늦어진다.
+GFX_IN = 0.38
+SUB_IN = 0.16
+
+
 def render_cut(cut, dur, workdir, idx, W, H, vertical=False, top_line=""):
-    move, static = build_plates(cut, W, H, vertical, top_line=top_line)
+    move, gfx_layer, sub_layer = build_plates(cut, W, H, vertical, top_line=top_line)
     mp = workdir / f"m{idx:03d}.png"
+    gp = workdir / f"g{idx:03d}.png"
     sp = workdir / f"s{idx:03d}.png"
     move.convert("RGB").save(mp)
-    static.save(sp)
+    gfx_layer.save(gp)
+    sub_layer.save(sp)
 
     frames = max(2, int(dur * FPS))
     # 느린 확대 + 아주 약한 숨쉬기. 정지 이미지가 죽어 보이는 것을 막는다.
@@ -282,12 +294,30 @@ def render_cut(cut, dur, workdir, idx, W, H, vertical=False, top_line=""):
     zexpr = f"{ZOOM_START + 0.004:.4f}+{span:.4f}*(on/{frames})+0.004*sin(on/26)"
     vf = (f"[0:v]scale={W * 2}:{H * 2},"
           f"zoompan=z='{zexpr}':d={frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
-          f"s={W}x{H}:fps={FPS}[bg];[bg][1:v]overlay=0:0,format=yuv420p[v]")
+          f"s={W}x{H}:fps={FPS}[v]")
+
+    # ⭐ 등장 연출.
+    #    이름표는 **왼쪽에서 미끄러져 들어오고**(방송 로워서드가 쓰는 방식),
+    #    나머지 카드는 **살짝 아래에서 떠오르며** 나타난다.
+    #    자막은 움직이지 않는다 — 위치가 흔들리면 읽다가 놓친다. 페이드만 짧게.
+    gtype = (cut.get("gfx") or {}).get("type")
+    if gtype == "nametag":
+        gx = f"-(w*0.16)*max(0\,1-t/{GFX_IN})"
+        gy = "0"
+    else:
+        gx = "0"
+        gy = f"-(h*0.022)*max(0\,1-t/{GFX_IN})"
+
+    vf += (f";[2:v]format=rgba,fade=t=in:st=0:d={GFX_IN}:alpha=1[g]"
+           f";[v][g]overlay=x='{gx}':y='{gy}'[vg]"
+           f";[3:v]format=rgba,fade=t=in:st=0:d={SUB_IN}:alpha=1[s]"
+           f";[vg][s]overlay=0:0,format=yuv420p[vo]")
 
     out = workdir / f"v{idx:03d}.mp4"
     run(["ffmpeg", "-y", "-loglevel", "error",
-         "-loop", "1", "-i", str(mp), "-loop", "1", "-i", str(sp),
-         "-filter_complex", vf, "-map", "[v]", "-t", f"{dur:.3f}",
+         "-loop", "1", "-i", str(mp), "-loop", "1", "-i", str(gp),
+         "-loop", "1", "-i", str(gp), "-loop", "1", "-i", str(sp),
+         "-filter_complex", vf, "-map", "[vo]", "-t", f"{dur:.3f}",
          "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-r", str(FPS),
          str(out)])
     return out
