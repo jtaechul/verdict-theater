@@ -286,8 +286,12 @@ def build_audio(doc, durs, workdir, narration_dir=None):
             inputs += ["-stream_loop", "-1", "-i", str(amb)]
             filters.append(f"[{mixn}:a]atrim=0:{dur:.3f},volume=0.22[a{mixn}]")
         else:
-            inputs += ["-f", "lavfi", "-i", f"anoisesrc=d={dur:.3f}:c=brown:a=0.006"]
-            filters.append(f"[{mixn}:a]volume=1.0[a{mixn}]")
+            # 앰비언스 음원이 없을 때 까는 '방 소리'.
+            # ⚠️ 예전에는 a=0.006 그대로였는데, 나레이션이 무음이던 회차에서
+            #    마지막 loudnorm 이 이 잡음만 -14 LUFS 까지 끌어올려
+            #    영상 내내 '치지직' 소리만 나왔다. 낮추고 고음을 깎아 방 울림처럼 만든다.
+            inputs += ["-f", "lavfi", "-i", f"anoisesrc=d={dur:.3f}:c=brown:a=0.0025"]
+            filters.append(f"[{mixn}:a]lowpass=f=900,volume=1.0[a{mixn}]")
         mixn += 1
 
         nar = None

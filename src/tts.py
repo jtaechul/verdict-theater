@@ -110,7 +110,7 @@ def _post_retry(url, payload, timeout=180, label=""):
             wait = _retry_wait(e, BACKOFF[i])
             if wait == 0:
                 # 서버가 '몇 시간 뒤에 오라' 고 했다. 하루 몫이 끝났다는 뜻이다.
-                raise LLMError(
+                raise QuotaExhausted(
                     f"{label}: 오늘 쓸 수 있는 음성 생성량을 다 썼습니다(HTTP {e.code}). "
                     f"내일 한도가 초기화되거나, 결제 등급을 올리면 풀립니다.") from e
             print(f"    ({label} 속도 제한 HTTP {e.code} — {wait}초 기다렸다 다시 한다"
@@ -159,14 +159,31 @@ VOICE_NAME = {
 }
 
 
+class QuotaExhausted(LLMError):
+    """오늘 쓸 수 있는 몫을 다 썼다. 기다려도 이 실행 안에서는 풀리지 않는다."""
+
+
+def _quota_dead(e):
+    return isinstance(e, QuotaExhausted)
+
+
 def pick_tts_model(key):
-    """음성을 낼 수 있는 모델을 API 목록에서 찾는다. 이름을 코드에 박지 않는다.
+    """쓸 수 있는 음성 모델 하나. (호환용 — 목록이 필요하면 tts_models 를 쓴다)"""
+    ms = tts_models(key)
+    return ms[0] if ms else None
+
+
+def tts_models(key):
+    """음성을 낼 수 있는 모델을 **싼 것부터 순서대로** 돌려준다.
+
+    한 개가 아니라 목록인 이유: 하루 한도는 모델마다 따로 센다.
+    쓰던 모델이 바닥나면 다음 모델로 갈아타 그 회차를 끝낼 수 있다.
 
     ⚠️ 이것이 이번 실행의 **첫 API 호출**이라 속도 제한을 가장 먼저 맞는 자리다.
        재시도 없이 한 번에 포기하면 회차 전체가 무음이 된다."""
     override = os.environ.get("GEMINI_TTS_MODEL")
     if override:
-        return override.strip()
+        return [override.strip()]
     url = f"{BASE}/models?key={key}&pageSize=200"
     data = None
     for i in range(len(BACKOFF) + 1):
@@ -191,10 +208,8 @@ def pick_tts_model(key):
             time.sleep(BACKOFF[i])
     names = [m["name"].split("/", 1)[-1] for m in (data or {}).get("models", [])]
     cands = [n for n in names if "tts" in n.lower()]
-    if not cands:
-        return None
     cands.sort(key=_tts_rank)
-    return cands[0]
+    return cands
 
 
 def _tts_rank(name):
@@ -323,10 +338,12 @@ def main():
 
     key = os.environ.get("GEMINI_API_KEY", "").strip()
     model = None
+    all_models = []
     pick_err = None
     if not args.silent and key:
         try:
-            model = pick_tts_model(key)
+            all_models = tts_models(key)
+            model = all_models[0] if all_models else None
         except Exception as e:
             pick_err = e
             print(f"모델 목록 조회 실패: {e}")
@@ -354,7 +371,9 @@ def main():
         print(f"무음 {len(cuts)}개 생성: {out}")
         return 0
 
-    print(f"음성 모델: {model} · 요청 간격 {THROTTLE:.1f}초(분당 {TTS_RPM}회)")
+    alts = [m for m in (all_models or []) if m != model]
+    print(f"음성 모델: {model} · 요청 간격 {THROTTLE:.1f}초(분당 {TTS_RPM}회)"
+          + (f" · 예비 {len(alts)}개" if alts else ""))
     ok = fail = 0
     streak = 0
     last_call = 0.0
@@ -383,6 +402,25 @@ def main():
             ok += 1
             streak = 0
         except Exception as e:
+            # 하루 한도는 **모델별로 따로** 센다. 지금 쓰던 모델이 바닥나도
+            # 다른 음성 모델은 멀쩡한 경우가 많다 — 실제로 3.1-flash 가 102컷에서
+            # 막혔을 때 2.5-flash 로 남은 11컷을 그대로 끝냈다.
+            # 갈아탈 곳이 있으면 갈아타고, 이 컷부터 다시 해본다.
+            if _quota_dead(e) and alts:
+                nxt = alts.pop(0)
+                print(f"  {model} 오늘 몫이 끝났다 → {nxt} 로 갈아탄다")
+                model = nxt
+                last_call = 0.0
+                try:
+                    synth_one(key, model, text, c.get("speaker", "narrator"), p)
+                    ok += 1
+                    streak = 0
+                    last_call = time.monotonic()
+                    if (i + 1) % 20 == 0:
+                        print(f"  {i + 1}/{len(cuts)}  (성공 {ok} · 실패 {fail})")
+                    continue
+                except Exception as e2:
+                    e = e2
             fail += 1
             streak += 1
             print(f"  {c['id']} 실패({type(e).__name__}) → 무음으로 대체")
