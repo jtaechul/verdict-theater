@@ -629,6 +629,17 @@ def demo(outdir):
     return 1 if bad else 0
 
 
+def ink_box(img, thresh=40):
+    """또렷하게 보이는 부분만의 범위. 흐린 그림자는 빼고 잰다.
+
+    ⚠️ 그냥 `getbbox()` 를 쓰면 안 된다. 카드 그림자를 가우시안 블러로 번지게 하므로
+    아주 옅은 알파가 화면 끝까지 깔린다. 그러면 어떤 그림이든 '화면 가득' 으로 나와서
+    `bb[0] < 0` 같은 검사는 **영원히 통과** 하는 허수가 된다.
+    실제로 자막·쇼츠 도입문 검사가 그렇게 헛돌고 있었다."""
+    a = img.getchannel("A").point(lambda v: 255 if v >= thresh else 0)
+    return a.getbbox()
+
+
 def check_frame(script_path):
     """대본의 **모든** 자막·그래픽을 가로·세로 양쪽으로 그려 보고,
     화면 밖으로 나가는 것이 하나라도 있으면 실패로 알린다.
@@ -642,37 +653,50 @@ def check_frame(script_path):
     shapes = [("가로", 1920, 1080, False), ("세로", 1080, 1920, True)]
     bad = []
 
+    def probe(tag, name, img, W, limit):
+        """또렷한 부분이 안전 여백 안에 있는지. limit 은 좌우로 허용하는 최소 여백."""
+        bb = ink_box(img)
+        if bb and (bb[0] < limit or bb[2] > W - limit):
+            bad.append(f"{tag} {name} 가로 {bb[0]}~{bb[2]} (화면 {W}, 여백 {limit:.0f} 필요)")
+
     for tag, W, H, vert in shapes:
-        mx, my = W * SAFE, H * SAFE
+        limit = W * SAFE * 0.5
+        # 자막 한 줄이 실제로 차지하는 폭도 직접 잰다 — 그림으로만 보면 놓치는 경우가 있다
+        sub_max = W * (1 - 2 * SAFE)
         for c in cuts:
             if c.get("gfx"):
                 lay = render_gfx(c["gfx"], W, H)
-                bb = lay.getbbox() if lay else None
-                if bb and (bb[0] < mx * 0.5 or bb[2] > W - mx * 0.5):
-                    bad.append(f"{tag} {c['id']} {c['gfx'].get('type')} "
-                               f"가로 {bb[0]}~{bb[2]} (화면 {W})")
+                if lay:
+                    probe(tag, f"{c['id']} {c['gfx'].get('type')}", lay, W, limit)
             txt = (c.get("text") or "").strip()
-            if txt:
-                blank = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-                bb = draw_subtitle(blank, txt, vertical=vert).getbbox()
-                if bb and (bb[0] < 0 or bb[2] > W or bb[3] > H):
-                    bad.append(f"{tag} {c['id']} 자막 {bb[0]}~{bb[2]} (화면 {W})")
-                lines, _ = fit_subtitle(txt, W, H, vert)
-                if "".join(lines).replace(" ", "") != txt.replace(" ", ""):
-                    bad.append(f"{tag} {c['id']} 자막 글자 유실")
-
-    # 쇼츠 도입 문장도 세로로 확인한다
-    for s in doc.get("shorts", []):
-        for key in ("intro_line", "outro_line"):
-            t = (s.get(key) or "").strip()
-            if not t:
+            if not txt:
                 continue
+            # 자막은 **그림으로 재지 않는다.** 아래 그늘(scrim)이 일부러 화면 폭을 다 쓰므로
+            # 그림을 재면 언제나 '가로 0~W' 로 나와 전부 위반으로 잡힌다.
+            # 실제로 넘치면 안 되는 것은 **글자**다 — 글자 폭을 직접 잰다.
+            lines, size = fit_subtitle(txt, W, H, vert)
+            f = font(size)
+            wide = [ln for ln in lines if text_w(ln, f) > sub_max]
+            if wide:
+                bad.append(f"{tag} {c['id']} 자막 줄이 폭 초과: {wide[0][:20]}…")
+            if "".join(lines).replace(" ", "") != txt.replace(" ", ""):
+                bad.append(f"{tag} {c['id']} 자막 글자 유실")
+
+    # 쇼츠 도입·마무리 문장도 세로로 확인한다
+    for s in doc.get("shorts", []):
+        t = (s.get("intro_line") or "").strip()
+        if t:                                   # 도입은 금색 배지 — 그림으로 잰다
             blank = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
-            img = draw_top_line(blank, t) if key == "intro_line" \
-                else draw_subtitle(blank, t, vertical=True)
-            bb = img.getbbox()
-            if bb and (bb[0] < 0 or bb[2] > 1080):
-                bad.append(f"세로 쇼츠{s.get('no')} {key} {bb[0]}~{bb[2]} (화면 1080)")
+            probe("세로", f"쇼츠{s.get('no')} intro_line",
+                  draw_top_line(blank, t), 1080, 1080 * SAFE * 0.5)
+        t = (s.get("outro_line") or "").strip()
+        if t:                                   # 마무리는 자막으로 나간다 — 글자 폭을 잰다
+            lines, size = fit_subtitle(t, 1080, 1920, True)
+            f = font(size)
+            if any(text_w(ln, f) > 1080 * (1 - 2 * SAFE) for ln in lines):
+                bad.append(f"세로 쇼츠{s.get('no')} outro_line 글자가 폭 초과")
+            if "".join(lines).replace(" ", "") != t.replace(" ", ""):
+                bad.append(f"세로 쇼츠{s.get('no')} outro_line 글자 유실")
 
     n = len(cuts)
     if bad:
