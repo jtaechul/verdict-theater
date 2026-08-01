@@ -30,6 +30,7 @@
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -292,6 +293,38 @@ def render_cut(cut, dur, workdir, idx, W, H, vertical=False, top_line=""):
     return out
 
 
+# ── 소리 크기 맞추기 ─────────────────────────────────────
+# 효과음·앰비언스 원본은 파일마다 크기가 제각각이다.
+#   실측  효과음 -19.4 ~ -41.6 dB · 앰비언스 -47.9 ~ -54.3 dB · 나레이션 -16 dB
+# 예전에는 여기에 **고정 배율**(효과음 0.5, 앰비언스 0.22)만 곱했다. 그 결과
+#   효과음이 목소리보다 9~32 dB 작아져 **하나도 들리지 않았고**,
+#   앰비언스는 44 dB 이상 작아져 아예 없는 것과 같았다.
+# 배율이 아니라 **목표 크기**를 정하고, 파일마다 필요한 만큼 올리거나 내린다.
+TARGET_DB = {
+    "sfx": -22.0,       # 목소리(-16)보다 6 dB 아래 — 또렷이 들리되 말을 덮지 않는다
+    "amb": -36.0,       # 20 dB 아래 — 공간이 느껴지는 정도
+    "bgm": -30.0,       # 14 dB 아래 — 말 밑에 깔리는 정도
+}
+_db_cache = {}
+
+
+def mean_db(path):
+    """파일의 평균 음량(dB). 한 번만 재고 기억해 둔다."""
+    key = str(path)
+    if key not in _db_cache:
+        r = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", key,
+                            "-af", "volumedetect", "-f", "null", "-"],
+                           capture_output=True, text=True)
+        m = re.search(r"mean_volume:\s*(-?[\d.]+) dB", r.stderr)
+        _db_cache[key] = float(m.group(1)) if m else -30.0
+    return _db_cache[key]
+
+
+def gain_db(path, kind):
+    """이 파일을 목표 크기로 맞추는 데 필요한 dB. 지나친 증폭은 막는다."""
+    return max(-24.0, min(24.0, TARGET_DB[kind] - mean_db(path)))
+
+
 # ── 소리 ────────────────────────────────────────────────
 def build_audio(doc, durs, workdir, narration_dir=None):
     """나레이션 + 앰비언스 + 효과음 + 음악을 하나로 섞는다.
@@ -302,13 +335,18 @@ def build_audio(doc, durs, workdir, narration_dir=None):
     parts = []
 
     for i, (cut, dur) in enumerate(zip(cuts, durs)):
-        seg = workdir / f"a{i:03d}.m4a"
+        # ⚠️ 조각을 **WAV(무압축)** 로 만든다. 예전에는 컷마다 AAC 로 압축해 이어붙였는데,
+        #    AAC 프레임 경계가 컷 경계와 안 맞아 이음매마다 '틱' 소리가 났다.
+        #    실측(조각 3개를 예전 방식으로 붙임): 가장 큰 파형 도약이 정확히 이음매에 나타났다.
+        #    114컷이면 그 소리가 114번 난다 — 사용자가 들은 '치지직' 이 이것이다.
+        seg = workdir / f"a{i:03d}.wav"
         inputs, filters, mixn = [], [], 0
 
         amb = audio_path("amb", cut.get("amb", "amb_home"))
         if amb:
             inputs += ["-stream_loop", "-1", "-i", str(amb)]
-            filters.append(f"[{mixn}:a]atrim=0:{dur:.3f},volume=0.22[a{mixn}]")
+            filters.append(f"[{mixn}:a]atrim=0:{dur:.3f},"
+                           f"volume={gain_db(amb, 'amb'):.1f}dB[a{mixn}]")
         else:
             # 앰비언스 음원이 없을 때 까는 '방 소리'.
             # ⚠️ 예전에는 a=0.006 그대로였는데, 나레이션이 무음이던 회차에서
@@ -332,36 +370,83 @@ def build_audio(doc, durs, workdir, narration_dir=None):
         sfx = audio_path("sfx", cut["sfx"]) if cut.get("sfx") else None
         if sfx:
             inputs += ["-i", str(sfx)]
-            filters.append(f"[{mixn}:a]adelay=120|120,volume=0.5[a{mixn}]")
+            filters.append(f"[{mixn}:a]adelay=120|120,"
+                           f"volume={gain_db(sfx, 'sfx'):.1f}dB[a{mixn}]")
             mixn += 1
 
+        # 조각 양 끝에 8ms 페이드. 파형이 0 에서 시작해 0 으로 끝나야 이음매가 조용하다.
+        fade = min(0.008, dur / 4)
         mix = "".join(f"[a{k}]" for k in range(mixn))
-        fc = ";".join(filters) + f";{mix}amix=inputs={mixn}:duration=first:dropout_transition=0," \
-                                 f"apad,atrim=0:{dur:.3f}[out]"
+        fc = (";".join(filters) +
+              f";{mix}amix=inputs={mixn}:duration=first:dropout_transition=0,"
+              f"apad,atrim=0:{dur:.3f},"
+              f"afade=t=in:st=0:d={fade:.4f},"
+              f"afade=t=out:st={max(0.0, dur - fade):.4f}:d={fade:.4f}[out]")
         run(["ffmpeg", "-y", "-loglevel", "error", *inputs,
-             "-filter_complex", fc, "-map", "[out]", "-c:a", "aac", "-b:a", "160k", str(seg)])
+             "-filter_complex", fc, "-map", "[out]",
+             "-c:a", "pcm_s16le", "-ar", "48000", "-ac", "2", str(seg)])
         parts.append(seg)
 
     lst = workdir / "alist.txt"
     lst.write_text("".join(f"file '{p.name}'\n" for p in parts), encoding="utf-8")
-    body = workdir / "voice.m4a"
+    body = workdir / "voice.wav"
     run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
          "-i", str(lst), "-c", "copy", str(body)])
 
     # 막별 음악을 이어 붙인다
     music = build_music(doc, durs, workdir)
-    final = workdir / "audio.m4a"
+    mixed = workdir / "mixed.wav"
     if music:
         run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(body), "-i", str(music),
-             "-filter_complex",
-             "[1:a]volume=0.20[m];[0:a][m]amix=inputs=2:duration=first,"
-             "loudnorm=I=-14:TP=-1.5:LRA=11[out]",
-             "-map", "[out]", "-c:a", "aac", "-b:a", "192k", str(final)])
+             "-filter_complex", "[0:a][1:a]amix=inputs=2:duration=first[out]",
+             "-map", "[out]", "-c:a", "pcm_s16le", "-ar", "48000", str(mixed)])
     else:
-        run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(body),
-             "-af", "loudnorm=I=-14:TP=-1.5:LRA=11",
-             "-c:a", "aac", "-b:a", "192k", str(final)])
+        mixed = body
+
+    final = workdir / "audio.m4a"
+    run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(mixed),
+         "-af", loudnorm_af(mixed), "-c:a", "aac", "-b:a", "192k", str(final)])
     return final
+
+
+def loudnorm_af(path):
+    """음량을 -14 LUFS 로 맞추는 필터. **이득을 한 번만, 일정하게** 건다.
+
+    ⚠️ 예전에는 `loudnorm` 을 그냥 썼다. loudnorm 은 구간마다 이득을 다르게 주는데,
+    조용한 구간에서 이득을 크게 올리는 바람에 **잡음 바닥이 통째로 끌려 올라왔다.**
+    실측: 거의 무음인 갈색 잡음만 넣었더니 최대 음량의 86%까지 증폭됐다.
+    사용자가 들은 '치지직' 의 나머지 절반이 이것이다.
+
+    `linear=true` 로 고정할 수 있을 것 같지만, 측정된 음량 폭이 목표(LRA)를 넘으면
+    ffmpeg 가 **말없이 다시 구간별 모드로 돌아간다.** 실측으로 확인했다 —
+    말과 침묵이 섞인 소리는 폭이 크므로 거의 항상 그 경우다.
+
+    그래서 loudnorm 은 **재는 데만** 쓰고, 실제로는 `volume` 로 일정 이득을 한 번 걸고
+    `alimiter` 로 봉우리만 눌러 준다. 말이 있는 곳과 조용한 곳의 차이가 그대로 유지된다.
+
+    소리가 거의 없는 파일(나레이션이 통째로 실패한 경우)은 **올리지 않는다.**
+    올리면 12분 내내 잡음만 커진 영상이 나간다."""
+    target, ceiling = -14.0, -1.5
+    r = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(path),
+                        "-af", "loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json",
+                        "-f", "null", "-"], capture_output=True, text=True)
+    m = re.search(r"\{[^{}]*input_i[^{}]*\}", r.stderr, re.S)
+    if not m:
+        return f"alimiter=limit={ceiling}dB"
+    try:
+        d = json.loads(m.group(0))
+        measured = float(d["input_i"])
+    except Exception:
+        return f"alimiter=limit={ceiling}dB"
+
+    if measured < -45.0:
+        # 사실상 무음이다. 여기서 이득을 걸면 잡음만 키운다.
+        print(f"    ⚠️ 소리가 거의 없다({measured:.1f} LUFS). 음량을 올리지 않는다 —"
+              f" 나레이션이 제대로 만들어졌는지 확인이 필요하다.")
+        return f"alimiter=limit={ceiling}dB"
+
+    gain = max(-12.0, min(18.0, target - measured))
+    return f"volume={gain:.2f}dB,alimiter=limit={ceiling}dB"
 
 
 def build_music(doc, durs, workdir):
