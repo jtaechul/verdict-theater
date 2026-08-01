@@ -35,7 +35,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import graphics as G  # noqa: E402
@@ -93,37 +93,99 @@ def audio_path(kind, code):
     return None
 
 
+# 대체물에 코드 이름을 찍을지. 개발 중 배치를 확인할 때만 켠다.
+#   VT_DEBUG_LABELS=1 python3 src/render.py …
+DEBUG_LABELS = os.environ.get("VT_DEBUG_LABELS", "") not in ("", "0", "false")
+
+
 def placeholder_bg(code, W, H, flashback):
-    """배경이 없을 때 쓰는 대체 그림. 계열마다 색을 달리해 장면 전환이 보이게 한다."""
+    """배경이 없을 때 쓰는 대체 그림.
+
+    예전에는 단색 위에 `[대체 배경] home_kitchen` 이라고 크게 찍어, 화면이
+    '아직 안 만든 개발 화면' 으로 보였다. 에셋이 없어도 **완성된 영상처럼** 보이게 한다.
+    장면 계열마다 색을 달리해 장면이 바뀐 것은 그대로 알 수 있다."""
     fam = code.split("_")[0]
-    tone = {"funeral": (46, 44, 52), "medical": (44, 56, 62), "home": (58, 50, 44),
-            "court": (40, 44, 58), "office": (50, 52, 56), "daily": (56, 52, 46),
-            "etc": (42, 46, 44)}.get(fam, (48, 48, 54))
+    tone = {"funeral": (44, 42, 50), "medical": (40, 54, 60), "home": (60, 50, 42),
+            "court": (38, 43, 58), "office": (48, 51, 57), "daily": (58, 52, 44),
+            "etc": (42, 47, 45)}.get(fam, (46, 47, 54))
+
+    # 위가 조금 밝고 아래로 어두워지는 결. 단색보다 공간처럼 보인다
+    grad = Image.new("L", (1, H))
+    gp = grad.load()
+    for y in range(H):
+        gp[0, y] = int(255 * (1.0 - 0.55 * (y / max(1, H - 1)) ** 1.1))
     img = Image.new("RGB", (W, H), tone)
-    d = ImageDraw.Draw(img)
-    f = G.font(int(H * 0.028))
-    d.text((int(W * 0.03), int(H * 0.04)), f"[대체 배경] {code}", font=f, fill=(150, 150, 160))
+    img = Image.composite(img, Image.new("RGB", (W, H), (0, 0, 0)),
+                          grad.resize((W, H)))
+
+    # 인물 뒤쪽에 은은한 조명 하나. 화면 가운데가 살아난다
+    glow = Image.new("L", (W, H), 0)
+    ImageDraw.Draw(glow).ellipse(
+        [int(W * 0.22), int(-H * 0.10), int(W * 0.78), int(H * 0.78)], fill=70)
+    glow = glow.filter(ImageFilter.GaussianBlur(int(min(W, H) * 0.16)))
+    img = Image.composite(Image.new("RGB", (W, H), tuple(min(255, c + 40) for c in tone)),
+                          img, glow)
+
+    if DEBUG_LABELS:
+        d = ImageDraw.Draw(img)
+        f = G.font(int(H * 0.020))
+        d.text((int(W * 0.02), int(H * 0.955)), code, font=f, fill=(110, 112, 120))
     return img.convert("RGBA")
 
 
 def placeholder_char(code, pose, H):
-    """인물 컷아웃이 없을 때 쓰는 실루엣. 흰 테두리까지 흉내내 배치를 확인할 수 있게 한다."""
+    """인물 컷아웃이 없을 때 쓰는 실루엣.
+
+    예전에는 '동그라미 + 모서리 둥근 네모' 위에 `M50A / face_cold` 를 찍어 놓아
+    사람이 아니라 표지판처럼 보였다. 어깨선을 넣은 사람 모양으로 바꾸고
+    가장자리를 부드럽게 눌러, 배경에서 뜬 인물처럼 읽히게 한다."""
     h = int(H * 0.72)
-    w = int(h * 0.42)
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    body = (196, 198, 206, 235) if code.startswith("F") else (176, 182, 196, 235)
-    head_r = int(w * 0.30)
-    d.ellipse([w // 2 - head_r, int(h * 0.02), w // 2 + head_r, int(h * 0.02) + head_r * 2],
-              fill=body, outline=(255, 255, 255, 255), width=6)
-    d.rounded_rectangle([int(w * 0.10), int(h * 0.30), int(w * 0.90), h - 4],
-                        int(w * 0.18), fill=body, outline=(255, 255, 255, 255), width=6)
-    f = G.font(int(h * 0.05))
-    d.text((int(w * 0.12), int(h * 0.42)), f"{code}\n{pose}", font=f, fill=(70, 74, 84, 255))
+    w = int(h * 0.46)
+    mask = Image.new("L", (w, h), 0)
+    d = ImageDraw.Draw(mask)
+
+    head_r = int(w * 0.19)
+    cx = w // 2
+    head_cy = int(h * 0.12)
+    d.ellipse([cx - head_r, head_cy - head_r, cx + head_r, head_cy + head_r], fill=255)
+    d.rectangle([cx - int(head_r * 0.44), head_cy, cx + int(head_r * 0.44),
+                 head_cy + int(head_r * 1.35)], fill=255)                  # 목 — 짧게
+    # 어깨가 사람 실루엣을 만든다. 좁으면 장기말처럼 보인다
+    sh_y = head_cy + int(head_r * 1.30)
+    d.ellipse([cx - int(w * 0.42), sh_y - int(h * 0.015),
+               cx + int(w * 0.42), sh_y + int(h * 0.13)], fill=255)        # 어깨 곡선
+    d.polygon([(cx - int(w * 0.42), sh_y + int(h * 0.055)),
+               (cx + int(w * 0.42), sh_y + int(h * 0.055)),
+               (cx + int(w * 0.38), h),
+               (cx - int(w * 0.38), h)], fill=255)                         # 몸통
+    mask = mask.filter(ImageFilter.GaussianBlur(3))
+
+    body = (150, 154, 166) if code.startswith("F") else (128, 134, 150)
+    img = Image.new("RGBA", (w, h), body + (0,))
+    img.putalpha(mask)
+
+    # 위가 밝고 아래로 어두워지는 결 — 납작한 색면으로 보이지 않게
+    shade = Image.new("L", (1, h))
+    sp = shade.load()
+    for y in range(h):
+        sp[0, y] = int(255 * (1.0 - 0.45 * (y / max(1, h - 1))))
+    lit = Image.new("RGBA", (w, h), body + (255,))
+    dark = Image.new("RGBA", (w, h), tuple(int(c * 0.55) for c in body) + (255,))
+    img = Image.composite(lit, dark, shade.resize((w, h)))
+    img.putalpha(mask)
+
+    if DEBUG_LABELS:
+        dd = ImageDraw.Draw(img)
+        f = G.font(int(h * 0.035))
+        dd.text((int(w * 0.06), int(h * 0.94)), f"{code} {pose}", font=f, fill=(40, 42, 50, 200))
     return img
 
 
 # ── 한 컷의 두 겹 만들기 ──────────────────────────────────
+# 화면 위쪽을 통째로 쓰는 정보 카드. 이 위에 인물 얼굴이 겹치면 얼굴이 가려진다.
+WIDE_GFX = {"amount", "timeline", "family"}
+
+
 def build_plates(cut, W, H, vertical=False, top_line=""):
     """움직이는 겹(배경+인물)과 고정된 겹(그래픽+자막)을 만든다."""
     code = cut.get("bg", "")
@@ -134,6 +196,15 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
         move = placeholder_bg(code, W, H, cut.get("flashback"))
         if cut.get("flashback"):
             move = G._vignette(move.convert("RGB"), 0.5).convert("RGBA")
+
+    # 그래픽을 먼저 그려 실제로 차지한 아래끝을 잰다.
+    # 이걸 안 하면 연표·가족관계도 카드가 인물의 **얼굴을 통째로 덮는다**
+    # — 화면에는 목 아래 몸통만 기둥처럼 남는다.
+    gfx = G.render_gfx(cut.get("gfx"), W, H)
+    gfx_bottom = 0
+    if gfx and (cut.get("gfx") or {}).get("type") in WIDE_GFX:
+        bb = gfx.getbbox()
+        gfx_bottom = bb[3] if bb else 0
 
     chars = cut.get("chars") or []
     if vertical and len(chars) > 1:
@@ -146,6 +217,11 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
 
         scale = float(c.get("scale", 1.0)) * (1.35 if vertical else 1.0)
         target_h = int(H * 0.72 * scale)
+        if gfx_bottom:
+            # 카드 아래로 인물을 내린다. 정보 카드가 뜬 순간에는 카드가 주인공이고
+            # 인물은 배경으로 물러나는 것이 맞다.
+            room = H - int(H * 0.06) - (gfx_bottom + int(H * 0.03))
+            target_h = max(int(H * 0.24), min(target_h, room))
         ratio = target_h / sprite.height
         sprite = sprite.resize((max(1, int(sprite.width * ratio)), target_h), Image.LANCZOS)
 
@@ -160,7 +236,6 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
         move.alpha_composite(sprite, (max(0, x), max(0, y)))
 
     static = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    gfx = G.render_gfx(cut.get("gfx"), W, H)
     if gfx:
         static = Image.alpha_composite(static, gfx)
     static = G.draw_subtitle(static, cut.get("text", ""), vertical=vertical)
