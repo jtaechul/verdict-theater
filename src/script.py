@@ -485,10 +485,15 @@ def main():
     # 배관 시험은 소재가 필요 없다. 소재 고르기보다 먼저 처리한다
     # (안 그러면 대기열이 비었을 때 --dry-run 이 아예 실행되지 않는다).
     if args.dry_run:
-        sample = SCRIPTS / "SAMPLE_608371.json"
-        if not sample.exists():
-            print("dry-run 에 쓸 샘플이 없다.")
+        # 샘플 파일 이름을 코드에 박지 않는다. 규칙이 바뀌면 샘플도 바뀌는데,
+        # 이름이 박혀 있으면 옛 규칙으로 만든 샘플이 계속 검사돼 배관 시험이 늘 빨간불이 된다.
+        cands = sorted(SCRIPTS.glob("SAMPLE_*.json"))
+        cands = [c for c in cands if not c.name.endswith(".eval.json")]
+        if not cands:
+            print("dry-run 에 쓸 샘플이 없다 (data/scripts/SAMPLE_*.json).")
             return 2
+        sample = cands[0]
+        print(f"[dry-run] 샘플: {sample.name}")
         doc = json.loads(sample.read_text(encoding="utf-8"))
         r = validate_doc(doc)
         print(f"[dry-run] 샘플 검증 — 통과 {len(r.oks)} · 오류 {len(r.errors)}")
