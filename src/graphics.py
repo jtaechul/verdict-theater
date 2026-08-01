@@ -83,13 +83,39 @@ SUB_BOTTOM_V = 0.20         # 세로는 UI 가 아래를 가리므로 더 띄운
 #    역할마다 글꼴을 달리하면 보는 사람이 읽기 전에 성격을 먼저 안다.
 #    네 글꼴 모두 `fonts-nanum` 한 꾸러미에 들어 있어 따로 받을 것이 없다.
 NANUM = "/usr/share/fonts/truetype/nanum/"
+
+# 저장소에 직접 올린 폰트를 **가장 먼저** 쓴다 (assets/fonts/).
+# KoPub 월드체는 출판용이라 본문 가독성이 좋고 상업적 사용도 무료다. 다만 apt 에 없고
+# 이 실행 환경은 외부 내려받기가 막혀 있어 운영자가 올려야 한다.
+# 올라오기 전까지는 나눔으로 돌아간다 — 화면이 비지 않게.
+USER_FONTS = ROOT / "assets" / "fonts"
+
 FONT_ROLE = {
-    "sub":   ["NanumSquareB.ttf", "NanumGothicBold.ttf"],        # 자막 — 획이 고르고 시원하다
-    "label": ["NanumBarunGothicBold.ttf", "NanumGothicBold.ttf"],  # 이름표·작은 라벨 — 좁고 단정
-    "num":   ["NanumSquareB.ttf", "NanumGothicBold.ttf"],        # 숫자 — 자릿수가 시원하게
-    "serif": ["NanumMyeongjoBold.ttf", "NanumGothicBold.ttf"],   # 판결·제목 — 격식과 무게
-    "body":  ["NanumBarunGothic.ttf", "NanumGothic.ttf"],        # 본문 보조
+    "sub":   ["KoPubWorldDotumBold", "NanumSquareB", "NanumGothicBold"],
+    "label": ["KoPubWorldDotumMedium", "KoPubWorldDotumBold",
+              "NanumBarunGothicBold", "NanumGothicBold"],
+    "num":   ["KoPubWorldDotumBold", "NanumSquareB", "NanumGothicBold"],
+    "serif": ["KoPubWorldBatangBold", "NanumMyeongjoBold", "NanumGothicBold"],
+    "body":  ["KoPubWorldDotumLight", "KoPubWorldDotumMedium",
+              "NanumBarunGothic", "NanumGothic"],
 }
+
+
+def _norm(name):
+    return "".join(ch for ch in str(name).lower() if ch.isalnum())
+
+
+def _find_font(stem):
+    """이름이 맞는 폰트 파일을 찾는다. 올린 폰트를 먼저 본다.
+
+    파일 이름의 띄어쓰기·대소문자는 무시하므로 'KoPubWorld Dotum Bold.ttf' 도 잡힌다."""
+    want = _norm(stem)
+    if USER_FONTS.is_dir():
+        for f in sorted(USER_FONTS.iterdir()):
+            if f.suffix.lower() in (".ttf", ".otf") and _norm(f.stem) == want:
+                return str(f)
+    q = Path(NANUM + stem + ".ttf")
+    return str(q) if q.exists() else None
 
 # 나눔이 아예 없는 환경을 위한 마지막 대비책
 FONT_CANDIDATES = [
@@ -109,8 +135,9 @@ def font_path(role=None):
     if env and Path(env).exists():
         return env
     for name in FONT_ROLE.get(role or "", []):
-        if Path(NANUM + name).exists():
-            return NANUM + name
+        got = _find_font(name)
+        if got:
+            return got
     for p in FONT_CANDIDATES:
         if Path(p).exists():
             return p
@@ -413,165 +440,190 @@ def _card(w, h, radius=24, accent_top=False):
     return img, d, box
 
 
+# 그래픽 안에 글자를 어디에 그렸는지 기록해 둔다.
+# 띠(band)는 **일부러 화면 끝까지** 뻗으므로, 그림 전체를 재면 늘 '화면 밖' 으로 잡힌다.
+# 정작 잘리면 안 되는 것은 **글자**다. 그래서 글자 자리만 따로 적어 두고 검사기가 그것을 본다.
+_TEXT_BOXES = []
+
+
+def _t(d, xy, text, f, ox=0, oy=0, **kw):
+    """글자를 그리면서 그 자리를 기록한다. ox/oy 는 띠가 화면에 놓일 위치."""
+    x, y = xy
+    _TEXT_BOXES.append((x + ox, y + oy, x + ox + text_w(text, f), y + oy + line_h(f)))
+    d.text((x, y), text, font=f, **kw)
+
+
+def _band(W, h, alpha=222, accent_top=True):
+    """화면 가로를 **끝에서 끝까지** 지나는 띠.
+
+    ⭐ 예전에는 흰 종이 카드를 화면 가운데 띄웠다. 모서리가 둥글고 그림자가 깔린
+       흰 상자는 **휴대폰 앱 화면**처럼 보인다 — 다큐멘터리나 드라마의 자막 그래픽이 아니다.
+       방송 그래픽은 상자를 띄우지 않는다. **화면 밖으로 흘러나가는 띠** 위에 글자를 얹는다.
+       그래야 화면의 일부로 읽히고, 떠 있는 스티커처럼 보이지 않는다."""
+    img = Image.new("RGBA", (W, h), INK + (alpha,))
+    d = ImageDraw.Draw(img)
+    if accent_top:
+        d.rectangle([0, 0, W, max(2, round(h * 0.018))], fill=ACCENT)
+    d.line([(0, h - 1), (W, h - 1)], fill=HAIR + (60,))
+    return img, d
+
+
+def _pale(t):
+    """어두운 띠 위에 올릴 밝은 글자색. 종이색에서 뽑는다(새 색을 만들지 않는다)."""
+    return tuple(round(255 - (255 - c) * t) for c in PAPER)
+
+
+def _spaced(text, gap=" "):
+    """'판 결 금 액' 처럼 자간을 벌린다. 작은 라벨을 격식 있게 보이게 한다."""
+    return gap.join(list(text.replace(" ", "")))
+
+
 def g_nametag(text, W=1920, H=1080):
-    """인물 이름표. 고정 배우 7명을 회차마다 다른 역으로 쓰므로 없으면 누가 누군지 모른다.
+    """인물 이름표 — 방송 로워서드.
 
-    방송 로워서드처럼 **왼쪽 강조 막대 + 이름**만 남긴다.
-    이름은 좁고 단정한 글꼴(label)로 — 자막과 인상이 겹치지 않게."""
+    화면 **왼쪽 끝에 붙어** 시작해 오른쪽으로 뻗는다. 떠 있는 알약이 아니라
+    화면에 박힌 띠다. 아래에 강조색 가는 선 하나만 둔다."""
     u = unit(W, H)
-    f = _fit_font(u * 0.036, u * 0.024, [text], int(W * (1 - 2 * SAFE) - u * 0.20), role="label")
-    size = f.size
+    f = _fit_font(u * 0.038, u * 0.026, [text], int(W * 0.55), role="label")
     lh = line_h(f)
-    pad_x, pad_y = round(size * 0.85), round(size * 0.40)
-    bar_w = max(5, round(size * 0.16))
-    cw = bar_w + pad_x + text_w(text, f) + pad_x
-    ch = lh + pad_y * 2
-
-    card, d, box = _card(cw, ch, radius=round(ch * 0.16))
-    x0, y0 = box[0], box[1]
-    # 왼쪽 끝을 강조색으로 — 카드 모서리를 따라 깔끔하게 잘린다
-    r = round(ch * 0.16)
-    d.rounded_rectangle([x0, y0, x0 + bar_w + r, y0 + ch], r, fill=ACCENT)
-    d.rectangle([x0 + bar_w, y0, x0 + bar_w + r, y0 + ch], fill=PAPER + (252,))
-    d.text((x0 + bar_w + pad_x, y0 + pad_y), text, font=f, fill=INK)
+    # 띠는 화면 왼쪽 끝에서 시작하지만 **글자는 안전 여백 안쪽**에서 시작한다.
+    # 쇼츠는 왼쪽 가장자리에 UI 가 겹치는 기기가 있다.
+    pad_x, pad_y = round(W * SAFE), round(u * 0.018)
+    bw = pad_x + text_w(text, f) + round(u * 0.045)
+    bh = lh + pad_y * 2
 
     out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    y = round(H * 0.60) - card.height // 2
-    return paste_safe(out, card, round(W * 0.05) - PAD, y)
+    band = Image.new("RGBA", (bw, bh), INK + (228,))
+    d = ImageDraw.Draw(band)
+    d.rectangle([0, bh - max(3, round(u * 0.005)), bw, bh], fill=ACCENT)
+    _t(d, (pad_x, pad_y), text, f,
+       oy=round(H * 0.60) - bh // 2, fill=_pale(0.06))
+    out.alpha_composite(band, (0, round(H * 0.60) - bh // 2))
+    return out
 
 
 def g_amount(value, note="", W=1920, H=1080):
-    """금액 강조. 숫자는 귀로 들어오지 않는다. 큰 글씨로 화면에 박는다.
+    """금액 — 화면을 가로지르는 띠 위에 숫자만 크게.
 
-    금액 위에 '판결 금액' 이라는 작은 표찰을 붙인다. 숫자만 덩그러니 뜨면
-    그게 받은 돈인지 못 받은 돈인지 알 수 없어 시청자가 멈칫한다."""
+    상자를 없애니 숫자가 화면의 주인이 된다. 라벨은 자간을 벌려 작게,
+    숫자는 크게, 설명은 그 아래 가는 선 밑에."""
     u = unit(W, H)
-    # ⚠️ 여기가 세로 쇼츠에서 화면이 잘리던 자리다.
-    #    예전에는 `font(int(H*0.125))` 였다. 세로(H=1920)에서 240px 이 되어
-    #    '9억 8,400만 원' 한 줄이 2400px, 카드가 2688px — 1080px 화면 밖으로 나갔다.
-    #    이제 짧은 변 기준으로 잡고, 그 위에 **남는 폭에 맞춰 한 번 더 줄인다.**
-    inner = int(W * (1 - 2 * SAFE) - u * 0.16)
-    cap = font(u * 0.024, "label")
-    big = _fit_font(u * 0.130, u * 0.050, [value], inner, role="num")
-    small = _fit_font(u * 0.030, u * 0.020, [note] if note else [], inner, role="body")
-    label = "판 결 금 액"
-    lw, lh_ = text_w(label, cap), line_h(cap)
-    vw, vh = text_w(value, big), line_h(big)
-    nw, nh = (text_w(note, small), line_h(small)) if note else (0, 0)
+    inner = int(W * (1 - 2 * SAFE))
+    cap = font(u * 0.021, "label")
+    big = _fit_font(u * 0.130, u * 0.055, [value], inner, role="num")
+    small = _fit_font(u * 0.028, u * 0.018, [note] if note else [], inner, role="body")
+    label = _spaced("판결금액")
 
-    gap1, gap2 = int(u * 0.006), int(u * 0.024)
-    pad = int(u * 0.040)
-    cw = min(max(vw, nw, lw) + int(u * 0.15), inner + int(u * 0.15))
-    ch = lh_ + gap1 + vh + (gap2 * 2 + nh if note else 0) + pad * 2
-    card, d, box = _card(cw, ch, radius=int(u * 0.028), accent_top=True)
-    x0, y0 = box[0], box[1]
+    gap1, gap2 = round(u * 0.014), round(u * 0.020)
+    pad = round(u * 0.045)
+    bh = (line_h(cap) + gap1 + line_h(big)
+          + (gap2 * 2 + line_h(small) if note else 0) + pad * 2)
 
-    y = y0 + pad
-    d.text((x0 + (cw - lw) // 2, y), label, font=cap, fill=MUTED)
-    y += lh_ + gap1
-    d.text((x0 + (cw - vw) // 2, y), value, font=big, fill=CRIMSON)
+    band, d = _band(W, bh)
+    y = pad
+    oy = round(H * 0.16)
+    _t(d, ((W - text_w(label, cap)) // 2, y), label, cap, oy=oy, fill=_pale(0.48))
+    y += line_h(cap) + gap1
+    _t(d, ((W - text_w(value, big)) // 2, y), value, big, oy=oy, fill=_pale(0.02))
     if note:
-        y += vh + gap2
-        # 숫자와 설명 사이 가는 구분선. 줄 높이(line_h)로 자리를 잡아야
-        # 선이 숫자를 가로지르지 않는다 — 잉크 높이로 재면 선이 숫자 위로 올라온다.
-        d.line([(x0 + int(cw * 0.36), y), (x0 + int(cw * 0.64), y)], fill=HAIR, width=2)
+        y += line_h(big) + gap2
+        d.line([(W * 0.42, y), (W * 0.58, y)], fill=_pale(0.65) + (110,), width=2)
         y += gap2
-        d.text((x0 + (cw - nw) // 2, y), note, font=small, fill=SLATE)
+        _t(d, ((W - text_w(note, small)) // 2, y), note, small, oy=oy, fill=_pale(0.42))
 
     out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    return paste_safe(out, card, (W - card.width) // 2, int(H * 0.14) - PAD)
+    out.alpha_composite(band, (0, round(H * 0.16)))
+    return out
 
 
 def g_timeline(items, W=1920, H=1080):
     """연표. 판결극장의 반전은 전부 시간 순서다.
-    '재혼 열한 달 전'이 말로만 지나가면 충격이 전달되지 않는다."""
+    '재혼 열한 달 전'이 말로만 지나가면 충격이 전달되지 않는다.
+
+    상자를 없애고, 화면을 가로지르는 **한 줄** 위에 점을 찍는다."""
     items = items[:5]
     n = max(1, len(items))
     u = unit(W, H)
-    cw, ch = int(W * min(0.86, 1 - 2 * SAFE)), int(u * 0.31)
+    x0, x1 = round(W * 0.10), round(W * 0.90)
+    slot = (x1 - x0) // max(1, n - 1) if n > 1 else (x1 - x0)
 
-    # 글자를 슬롯 안에 맞춘다. 예전에는 크기를 고정해 두어 마지막 항목
-    # '장남, 유류분 소장 제출' 이 카드 오른쪽 밖으로 잘려 나갔다.
-    slot = int(cw * 0.80 / max(1, n - 1)) if n > 1 else int(cw * 0.8)
-    lab = _fit_font(u * 0.031, u * 0.018,
-                    [str(it.get("label", ""))[:16] for it in items], slot - 12, role="label")
-    when = _fit_font(u * 0.026, u * 0.016,
-                     [str(it.get("when", ""))[:14] for it in items], slot - 12, role="body")
+    lab = _fit_font(u * 0.030, u * 0.017,
+                    [str(it.get("label", ""))[:16] for it in items], slot - 16, role="label")
+    when = _fit_font(u * 0.025, u * 0.015,
+                     [str(it.get("when", ""))[:14] for it in items], slot - 16, role="body")
 
-    card, d, box = _card(cw, ch, radius=int(u * 0.028))
-    bx, by = box[0], box[1]
+    pad = round(u * 0.045)
+    bh = pad * 2 + line_h(lab) + round(u * 0.055) + line_h(when)
+    band, d = _band(W, bh)
 
-    y_line = by + int(ch * 0.54)
-    x0, x1 = bx + int(cw * 0.10), bx + int(cw * 0.90)
-    d.line([(x0, y_line), (x1, y_line)], fill=LINE, width=5)
+    y_line = pad + line_h(lab) + round(u * 0.028)
+    d.line([(x0, y_line), (x1, y_line)], fill=_pale(0.70) + (120,), width=2)
 
-    step = (x1 - x0) / max(1, n - 1) if n > 1 else 0
     for i, it in enumerate(items):
-        x = int(x0 + step * i) if n > 1 else (x0 + x1) // 2
+        x = x0 + slot * i if n > 1 else (x0 + x1) // 2
         last = (i == n - 1)
-        color = ACCENT if last else MUTED
-        r = int(u * 0.0155)
-        # 마지막(결정적) 시점만 테두리를 둘러 눈이 먼저 간다
-        d.ellipse([x - r - 7, y_line - r - 7, x + r + 7, y_line + r + 7],
-                  fill=PAPER + (255,))
-        d.ellipse([x - r, y_line - r, x + r, y_line + r], fill=color)
+        r = round(u * 0.0085)
         if last:
-            d.ellipse([x - r - 11, y_line - r - 11, x + r + 11, y_line + r + 11],
-                      outline=color + (120,), width=4)
+            d.ellipse([x - r * 2, y_line - r * 2, x + r * 2, y_line + r * 2],
+                      outline=ACCENT, width=max(2, round(u * 0.003)))
+        d.ellipse([x - r, y_line - r, x + r, y_line + r],
+                  fill=ACCENT if last else _pale(0.55))
 
         t1 = str(it.get("label", ""))[:16]
         t2 = str(it.get("when", ""))[:14]
-        # 양 끝 항목은 가운데 정렬하면 카드 밖으로 넘친다. 카드 안으로 밀어 넣는다.
-        lo, hi = bx + 10, bx + cw - 10
+        lo, hi = round(W * SAFE), W - round(W * SAFE)
         tx1 = min(max(x - text_w(t1, lab) // 2, lo), hi - text_w(t1, lab))
         tx2 = min(max(x - text_w(t2, when) // 2, lo), hi - text_w(t2, when))
-        d.text((tx1, y_line - int(ch * 0.14) - line_h(lab)), t1, font=lab, fill=INK)
-        d.text((tx2, y_line + int(ch * 0.11)), t2, font=when, fill=color)
+        oy = round(H * 0.15)
+        _t(d, (tx1, pad), t1, lab, oy=oy, fill=_pale(0.04))
+        _t(d, (tx2, y_line + round(u * 0.024)), t2, when, oy=oy,
+           fill=ACCENT if last else _pale(0.45))
 
     out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    return paste_safe(out, card, (W - card.width) // 2, int(H * 0.12) - PAD)
+    out.alpha_composite(band, (0, round(H * 0.15)))
+    return out
 
 
 def g_family(nodes, W=1920, H=1080):
-    """가족 관계도. 상속 사건은 관계 파악이 전제다. 도표 1장이 5분 설명을 대체한다."""
+    """가족 관계도. 상속 사건은 관계 파악이 전제다. 도표 1장이 5분 설명을 대체한다.
+
+    네모 상자를 없앤다. 이름을 한 줄에 늘어놓고 가는 선으로만 잇는다."""
     nodes = nodes[:5]
     n = max(1, len(nodes))
     u = unit(W, H)
-    cw, ch = int(W * min(0.80, 1 - 2 * SAFE)), int(u * 0.29)
+    x0, x1 = round(W * 0.10), round(W * 0.90)
+    slot = (x1 - x0) / max(1, n)
 
-    # 이름·관계를 상자 폭에 맞춘다. 상자보다 긴 글자는 상자 밖으로 삐져나간다.
-    box_w = int((cw / n) * 0.76) - 12
-    nm = _fit_font(u * 0.034, u * 0.020, [str(x.get("name", ""))[:8] for x in nodes],
-                   box_w, role="label")
-    rel = _fit_font(u * 0.025, u * 0.015, [str(x.get("rel", ""))[:12] for x in nodes],
-                    box_w, role="body")
+    nm = _fit_font(u * 0.034, u * 0.020,
+                   [str(x.get("name", ""))[:8] for x in nodes], int(slot * 0.88), role="label")
+    rel = _fit_font(u * 0.024, u * 0.014,
+                    [str(x.get("rel", ""))[:12] for x in nodes], int(slot * 0.92), role="body")
 
-    card, d, box = _card(cw, ch, radius=int(u * 0.028))
-    bx, by = box[0], box[1]
+    pad = round(u * 0.048)
+    bh = pad * 2 + line_h(nm) + round(u * 0.016) + line_h(rel)
+    band, d = _band(W, bh)
 
-    y = by + int(ch * 0.52)
-    slot = cw / n
+    y_nm = pad
+    y_rel = pad + line_h(nm) + round(u * 0.016)
+    y_mid = y_nm + line_h(nm) // 2
     for i, nd in enumerate(nodes):
-        cx = int(bx + slot * (i + 0.5))
-        # 인물이 5명이고 카드가 좁으면 상자 폭이 0 이하가 될 수 있다.
-        # 그대로 두면 PIL 이 'x1 must be >= x0' 로 죽는다 — 최소 폭을 보장한다.
-        bw, bh = max(8, int(slot * 0.76)), max(8, int(ch * 0.50))
-        if i < n - 1:                      # 이음선을 먼저 — 상자 뒤로 들어간다
-            d.line([(cx, y), (int(bx + slot * (i + 1.5)), y)], fill=LINE, width=5)
-
+        cx = round(x0 + slot * (i + 0.5))
         t1 = str(nd.get("name", ""))[:8]
         t2 = str(nd.get("rel", ""))[:12]
-        d.rounded_rectangle([cx - bw // 2, y - bh // 2, cx + bw // 2, y + bh // 2],
-                            int(bh * 0.20), outline=LINE, width=3, fill=(255, 255, 255, 255))
-        d.rectangle([cx - bw // 2 + 2, y - bh // 2 + 2,
-                     cx - bw // 2 + int(bw * 0.035), y + bh // 2 - 2], fill=ACCENT)  # 왼쪽 띠
-        d.text((cx - text_w(t1, nm) // 2, y - int(bh * 0.30)), t1, font=nm, fill=INK)
-        d.line([(cx - int(bw * 0.28), y + int(bh * 0.045)),
-                (cx + int(bw * 0.28), y + int(bh * 0.045))], fill=LINE, width=2)
-        d.text((cx - text_w(t2, rel) // 2, y + int(bh * 0.10)), t2, font=rel, fill=SLATE)
+        w1 = text_w(t1, nm)
+        if i < n - 1:                       # 이름과 이름 사이를 가는 선으로 잇는다
+            nx = round(x0 + slot * (i + 1.5))
+            w2 = text_w(str(nodes[i + 1].get("name", ""))[:8], nm)
+            a, b = cx + w1 // 2 + round(u * 0.018), nx - w2 // 2 - round(u * 0.018)
+            if b > a:
+                d.line([(a, y_mid), (b, y_mid)], fill=_pale(0.72) + (110,), width=2)
+        oy = round(H * 0.16)
+        _t(d, (cx - w1 // 2, y_nm), t1, nm, oy=oy, fill=_pale(0.04))
+        _t(d, (cx - text_w(t2, rel) // 2, y_rel), t2, rel, oy=oy, fill=_pale(0.45))
 
     out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    return paste_safe(out, card, (W - card.width) // 2, int(H * 0.13) - PAD)
+    out.alpha_composite(band, (0, round(H * 0.16)))
+    return out
 
 
 GFX = {"nametag": g_nametag, "amount": g_amount, "timeline": g_timeline, "family": g_family}
@@ -579,6 +631,7 @@ GFX = {"nametag": g_nametag, "amount": g_amount, "timeline": g_timeline, "family
 
 def render_gfx(spec, W=1920, H=1080):
     """대본의 gfx 항목을 그림으로 바꾼다. 모르는 종류면 None."""
+    _TEXT_BOXES.clear()
     if not spec:
         return None
     t = spec.get("type")
@@ -716,7 +769,12 @@ def check_frame(script_path):
             if c.get("gfx"):
                 lay = render_gfx(c["gfx"], W, H)
                 if lay:
-                    probe(tag, f"{c['id']} {c['gfx'].get('type')}", lay, W, limit)
+                    # 띠는 일부러 화면 끝까지 뻗는다. 글자만 안전 여백 안에 있으면 된다.
+                    for bx0, _by0, bx1, _by1 in _TEXT_BOXES:
+                        if bx0 < limit or bx1 > W - limit:
+                            bad.append(f"{tag} {c['id']} {c['gfx'].get('type')} "
+                                       f"글자 {bx0}~{bx1} (화면 {W}, 여백 {limit:.0f} 필요)")
+                            break
             txt = (c.get("text") or "").strip()
             if not txt:
                 continue
