@@ -320,7 +320,8 @@ def build_audio(doc, durs, workdir, narration_dir=None):
 
         nar = None
         if narration_dir:
-            cand = Path(narration_dir) / f"{cut['id']}.mp3"
+            # 쇼츠는 컷 id 가 본편과 다르다(S1-01 ↔ H01). nar_id 로 찾을 자리를 지정한다.
+            cand = Path(narration_dir) / f"{cut.get('nar_id', cut['id'])}.mp3"
             if cand.exists():
                 nar = cand
         if nar:
@@ -400,7 +401,7 @@ def cut_durations(doc, narration_dir=None):
         for c in act["cuts"]:
             d = float(c.get("sec", 6.0))
             if narration_dir:
-                p = Path(narration_dir) / f"{c['id']}.mp3"
+                p = Path(narration_dir) / f"{c.get('nar_id', c['id'])}.mp3"
                 if p.exists():
                     d = max(d, ffprobe_dur(p) + 0.6)
             durs.append(round(d, 3))
@@ -486,6 +487,47 @@ def render(doc, outdir, vertical=False, cut_ids=None, narration_dir=None,
     return final
 
 
+def shorts_doc(short):
+    """쇼츠 대본 1편을 render() 가 먹을 수 있는 대본 모양으로 바꾼다.
+
+    ⚠️ 여기가 **쇼츠가 규격보다 길어지던 원인**이었다.
+    `shorts_gen.md` 는 세로 화면에 맞춰 컷을 다시 쓴다 — 대사를 짧게 줄이고
+    ("어머니, 제가 받을 몫이 비잖아요. 법대로 하시죠." → "어머니, 법대로 하시죠.")
+    인물도 한 명만 남기고 `sec` 도 다시 잡는다. 그런데 렌더러는 그 결과를 버리고
+    `from` 이 가리키는 **본편 컷**을 그대로 세로로 그렸다.
+    그래서 쇼츠 대본이 39초로 잡아도 실제 영상은 68초가 나왔다(규격 35~50초).
+
+    컷 모양도 다르다 — 본편은 `chars`(여러 명 + pos), 쇼츠는 `char`(한 명 + pos_y).
+    나레이션 파일 이름도 본편 컷 id 를 따르므로 `nar_id` 로 연결해 둔다.
+
+    쇼츠 전용 음성이 아직 없으면 None 을 돌려준다. 그때는 본편 컷을 쓰는 옛 방식으로
+    돌아간다 — 짧아진 자막에 긴 음성이 붙어 어긋나느니, 길어도 맞는 편이 낫다."""
+    cuts = short.get("cuts") or []
+    if not cuts or not any(c.get("from") for c in cuts):
+        return None                      # 구간 지정만 있는 초안 — 다시 쓴 컷이 아니다
+
+    out = []
+    for i, c in enumerate(cuts):
+        ch = c.get("char")
+        n = {
+            "id": c.get("id") or f"S{i:02d}",
+            "nar_id": c.get("id") or c.get("from"),
+            "sec": float(c.get("sec", 4.0)),
+            "bg": c.get("bg", ""),
+            "flashback": bool(c.get("flashback")),
+            "chars": [ch] if isinstance(ch, dict) else (c.get("chars") or []),
+            "speaker": c.get("speaker", "narrator"),
+            "text": c.get("text", ""),
+            "gfx": c.get("gfx"),
+            "sfx": c.get("sfx"),
+            "amb": c.get("amb", "amb_home"),
+            "blackout": i == len(cuts) - 1,
+        }
+        out.append(n)
+    return {"acts": [{"id": f"short{short.get('no')}", "bgm": short.get("bgm", "hook"),
+                      "cuts": out}]}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("script")
@@ -530,6 +572,12 @@ def main():
         else:
             print(f"  쇼츠 {len(shorts)}편 — 출처: {src}")
             for s in shorts:
+                sdoc = shorts_doc(s)
+                if sdoc:
+                    # 쇼츠 대본이 세로용으로 **다시 쓴 컷**을 그대로 쓴다.
+                    render(sdoc, out, vertical=True, narration_dir=nar,
+                           name=f"short{s.get('no')}", short=s)
+                    continue
                 ids = [c.get("from") or c.get("id") for c in s.get("cuts", [])] \
                     or s.get("cut_ids", [])
                 if not ids:

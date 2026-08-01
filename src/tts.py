@@ -327,6 +327,8 @@ def main():
     ap.add_argument("--out", default="build/voice")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--silent", action="store_true", help="모델을 부르지 않고 무음만 만든다")
+    ap.add_argument("--shorts", action="store_true",
+                    help="쇼츠 대본({대본}.shorts.json)의 나레이션을 만든다")
     args = ap.parse_args()
 
     # 없으면 여기서 분명히 말하고 멈춘다. 한참 뒤에 죽는 것보다 낫다.
@@ -334,10 +336,25 @@ def main():
     if not args.silent:
         need_ffmpeg()
 
-    doc = json.loads(Path(args.script).read_text(encoding="utf-8"))
+    sp = Path(args.script)
+    doc = json.loads(sp.read_text(encoding="utf-8"))
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    cuts = [c for a in doc["acts"] for c in a["cuts"]]
+    if args.shorts:
+        # 쇼츠는 본편과 **대사가 다르다.** 세로 화면에 맞춰 짧게 다시 쓰기 때문이다.
+        #   본편 H01 "어머니, 제가 받을 몫이 비잖아요. 법대로 하시죠."
+        #   쇼츠 S1-01 "어머니, 법대로 하시죠."
+        # 본편 음성을 그대로 붙이면 자막과 소리가 어긋난다. 따로 만들어야 한다.
+        shp = sp.parent / (sp.stem + ".shorts.json")
+        if not shp.exists():
+            print(f"쇼츠 대본이 없다: {shp}")
+            return 2
+        sh = json.loads(shp.read_text(encoding="utf-8"))
+        cuts = [c for s_ in sh.get("shorts", []) for c in (s_.get("cuts") or [])]
+        cuts = [c for c in cuts if c.get("id")]
+        print(f"쇼츠 대본의 나레이션 {len(cuts)}컷을 만든다")
+    else:
+        cuts = [c for a in doc["acts"] for c in a["cuts"]]
     if args.limit:
         cuts = cuts[:args.limit]
         print(f"앞 {len(cuts)}컷만 만든다 (--limit {args.limit})")

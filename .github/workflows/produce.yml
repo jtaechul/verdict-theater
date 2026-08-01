@@ -152,6 +152,14 @@ jobs:
           python3 src/tts.py "data/scripts/${{ steps.pick.outputs.ep }}.json" \
             --out build/voice "${ARGS[@]}" 2>&1 | tee tts.log
 
+          # 쇼츠는 세로 화면에 맞춰 **대사를 짧게 다시 쓴다.** 본편 음성을 그대로 붙이면
+          # 자막과 소리가 어긋나고, 길이도 규격(35~50초)을 훌쩍 넘는다.
+          # 시험 렌더링(--limit)일 때는 쇼츠를 안 만들므로 음성도 만들지 않는다.
+          if [ "${{ inputs.limit }}" = "0" ] && [ "${{ inputs.voice }}" != "무음으로 시험" ]; then
+            python3 src/tts.py "data/scripts/${{ steps.pick.outputs.ep }}.json" \
+              --out build/voice --shorts 2>&1 | tee -a tts.log
+          fi
+
       # 음성을 만들자마자 곧바로 보관한다. 잡이 끝날 때 저장하면, 뒤의 렌더링에서
       # 실패했을 때 방금 돈 주고 만든 음성이 통째로 날아간다 — 막으려던 바로 그 상황이다.
       - name: 만든 음성 보관 (다음 실행에서 재사용)
