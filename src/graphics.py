@@ -39,11 +39,26 @@ SHADOW = (0, 0, 0, 110)
 
 SUB_MAX_CHARS = 18          # wrap_korean 의 기본값 (자막은 fit_subtitle 이 폭을 직접 잰다)
 
+# ⭐ 화면 밖으로 나가지 않게 하는 두 장치 ────────────────────
+#
+# 1) 글자 크기의 기준은 **화면의 짧은 변**이다 (unit 함수).
+#    예전에는 전부 H(화면 높이) 기준이었다. 가로 화면(1920×1080)에서는 H 가 짧은 변이라
+#    맞았지만, 세로 쇼츠(1080×1920)에서는 H 가 **긴 변**이라 글자가 1.78배로 튀었다.
+#    금액 카드의 숫자가 240px 로 그려져 카드 폭이 2688px 이 됐고, 1080px 화면에서
+#    좌우가 잘려 '9억 8,400만 원' 이 '억 8,400만' 으로 보였다.
+#    짧은 변을 기준으로 삼으면 가로·세로 어느 쪽이든 같은 크기로 읽힌다.
+#
+# 2) 그래도 넘치면 **통째로 줄여서** 넣는다 (fit_in_frame).
+#    글자 길이는 회차마다 다르니 계산만으로 100% 막을 수 없다. 마지막에 한 번 더 재서
+#    넘치면 줄이고 화면 안으로 민다. 잘린 채로 내보내는 일은 없어야 한다.
+SAFE = 0.045                # 화면 가장자리에서 비워 두는 비율.
+                            # 유튜브 쇼츠는 좌우에 UI 가 겹치고 기기마다 모서리가 둥글다.
+
 # 자막 — 50·60대 시청자 기준. 폰에서 손 뻗은 거리로 읽혀야 한다.
 # 실제 대본(EP001) 자막 길이: 중앙값 28자 · 90% 36자 · 최대 44자.
 # 가로는 한 줄 19~20자로 끊어 2줄에 담기고, 아주 긴 줄만 글씨가 살짝 줄어든다.
-SUB_SIZE = 0.062            # 화면 높이 대비 글자 크기 (예전 0.042 는 폰에서 작았다)
-SUB_SIZE_V = 0.042          # 세로(쇼츠)용 — 화면이 좁아 비율이 다르다
+SUB_SIZE = 0.062            # 짧은 변 대비 글자 크기 (예전 0.042 는 폰에서 작았다)
+SUB_SIZE_V = 0.075          # 세로(쇼츠)용 — 화면이 좁아 비율이 다르다
 SUB_WIDTH = 0.70            # 가로: 글자가 차지할 최대 폭 (한 줄 19~20자)
 SUB_WIDTH_V = 0.88          # 세로: 폭이 좁으니 최대한 쓴다
 SUB_LINES = 2               # 가로는 2줄이 기본. 3줄이면 화면 아래가 글자밭이 된다
@@ -78,10 +93,48 @@ def font_path():
 
 
 def font(size):
-    key = size
+    key = max(6, int(size))
     if key not in _font_cache:
-        _font_cache[key] = ImageFont.truetype(font_path(), size)
+        _font_cache[key] = ImageFont.truetype(font_path(), key)
     return _font_cache[key]
+
+
+def unit(W, H):
+    """글자 크기의 기준 길이 — 화면의 **짧은 변**. 위 ⭐ 1) 참조.
+
+    가로(1920×1080)든 세로(1080×1920)든 1080 이 나오므로,
+    같은 비율을 곱하면 두 화면에서 글자가 **같은 크기로** 읽힌다."""
+    return min(W, H)
+
+
+def fit_in_frame(card, W, H, margin=SAFE):
+    """카드가 화면(안전 여백 안쪽)을 넘으면 통째로 줄인다.
+
+    **넘긴 채로 내보내지 않는다.** 넘치면 잘리고, 잘린 자막·금액은
+    시청자에게 그냥 오류로 보인다. 조금 작아지는 편이 낫다."""
+    maxw = int(W * (1 - 2 * margin))
+    maxh = int(H * (1 - 2 * margin))
+    if card.width <= maxw and card.height <= maxh:
+        return card
+    s = min(maxw / card.width, maxh / card.height)
+    return card.resize((max(1, round(card.width * s)),
+                        max(1, round(card.height * s))), Image.LANCZOS)
+
+
+def paste_safe(out, card, x, y, margin=SAFE):
+    """카드를 화면 안으로 밀어 넣어 붙인다.
+
+    카드 그림에는 흐린 그림자를 담을 여백(PAD)이 둘러 있으므로,
+    **눈에 보이는 상자**가 안전 영역 안에 있으면 된다."""
+    W, H = out.size
+    card = fit_in_frame(card, W, H, margin)
+    pad = round(PAD * card.width / max(1, card.width))      # 축소돼도 PAD 는 그대로 취급
+    mx = int(W * margin)
+    lo, hi = mx - pad, W - mx - card.width + pad
+    x = int(min(max(x, lo), hi)) if hi >= lo else (W - card.width) // 2
+    y = int(min(max(y, -pad), H - card.height + pad))
+    out.paste(card, (x, y), card)
+    return out
 
 
 _measure = ImageDraw.Draw(Image.new("RGB", (8, 8)))
@@ -140,34 +193,37 @@ def fit_subtitle(text, W, H, vertical=False):
 
     큰 글씨부터 시작해 목표 줄 수에 들어갈 때까지 조금씩 줄인다.
     끝까지 안 들어가면 줄을 한 줄 더 쓴다 — **글자를 버리는 선택지는 없다.**"""
-    base = int(H * (SUB_SIZE_V if vertical else SUB_SIZE))
+    base = int(unit(W, H) * (SUB_SIZE_V if vertical else SUB_SIZE))
     floor_px = int(base * 0.74)                 # 이보다 작아지면 어르신이 못 읽는다
-    maxw = W * (SUB_WIDTH_V if vertical else SUB_WIDTH)
+    # 안전 여백보다 넓게 잡지 않는다 — 넓게 잡으면 글자가 화면 밖으로 나간다
+    maxw = W * min(SUB_WIDTH_V if vertical else SUB_WIDTH, 1 - 2 * SAFE)
     want = SUB_LINES_V if vertical else SUB_LINES
-    tmp = ImageDraw.Draw(Image.new("RGB", (10, 10)))
-
-    def wrap_px(size):
-        """실제 글자 폭을 재서 나눈다. 글자 수는 한글·숫자·문장부호마다 폭이 달라 부정확하다."""
-        f = font(size)
-        lines, cur = [], ""
-        for w in text.split():
-            cand = f"{cur} {w}".strip()
-            if text_size(tmp, cand, f)[0] <= maxw or not cur:
-                cur = cand
-            else:
-                lines.append(cur)
-                cur = w
-        if cur:
-            lines.append(cur)
-        return lines or [text]
 
     size = base
     while size >= floor_px:
-        lines = wrap_px(size)
+        lines = _wrap_px(text, font(size), maxw)
         if len(lines) <= want:
             return lines, size
         size = int(size * 0.94)
-    return wrap_px(floor_px), floor_px         # 한 줄 더 늘어나더라도 통째로 보여준다
+    return _wrap_px(text, font(floor_px), maxw), floor_px   # 줄이 늘더라도 통째로 보여준다
+
+
+def _wrap_px(text, f, maxw):
+    """실제 글자 폭을 재서 어절 단위로 줄을 나눈다.
+
+    글자 수로 세면 안 된다 — 한글·숫자·쉼표·마침표가 저마다 폭이 달라
+    '9억 8,400만 원' 같은 줄에서 한참 어긋난다."""
+    lines, cur = [], ""
+    for w in str(text).split():
+        cand = f"{cur} {w}".strip()
+        if text_w(cand, f) <= maxw or not cur:
+            cur = cand
+        else:
+            lines.append(cur)
+            cur = w
+    if cur:
+        lines.append(cur)
+    return lines or [str(text)]
 
 
 def _scrim(W, scrim_h, top_alpha=0, bottom_alpha=228, gamma=1.25):
@@ -235,16 +291,19 @@ def draw_top_line(img, text):
     if not text:
         return img
     W, H = img.size
-    size = int(H * 0.042)
-    f = font(size)
+    u = unit(W, H)
+    x0, x1 = int(W * max(0.055, SAFE)), int(W * min(0.945, 1 - SAFE))
+    # 글자를 배지 안쪽 폭에 맞춘다. 글자 수로 끊으면 회차마다 넘치거나 남는다.
+    inner = (x1 - x0) - int(u * 0.10)
+    f = _fit_font(u * 0.055, u * 0.034, _wrap_px(text, font(int(u * 0.055)), inner), inner)
+    size = f.size
     lh = line_h(f)
-    lines = wrap_korean(text, 13)
+    lines = _wrap_px(text, f, inner)
     gap = int(size * 0.14)
     block = len(lines) * lh + (len(lines) - 1) * gap
     pad_y, pad_x = int(size * 0.42), int(size * 0.9)
 
     top = int(H * 0.085)
-    x0, x1 = int(W * 0.055), int(W * 0.945)
     y0, y1 = top - pad_y, top + block + pad_y
     radius = int(size * 0.42)
 
@@ -310,8 +369,10 @@ def g_nametag(text, W=1920, H=1080):
 
     자리를 옮겼다. 예전에는 화면 높이 70% 지점 — 인물 몸통 한가운데였다.
     방송 자막처럼 왼쪽 아래, 자막 그늘 바로 위에 둔다."""
-    size = int(H * 0.036)
-    f = font(size)
+    u = unit(W, H)
+    # 이름이 길어도 카드가 화면을 넘지 않게, 글자를 먼저 폭에 맞춘다
+    f = _fit_font(u * 0.036, u * 0.024, [text], int(W * (1 - 2 * SAFE) - u * 0.20))
+    size = f.size
     lh = line_h(f)
     pad_x, pad_y = int(size * 0.95), int(size * 0.34)
     bar_x, bar_w = int(size * 0.55), max(4, int(size * 0.14))
@@ -329,8 +390,7 @@ def g_nametag(text, W=1920, H=1080):
     out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     # 자막 그늘이 시작되는 높이보다 위. 인물 얼굴·자막 어느 쪽도 가리지 않는다
     y = int(H * 0.60) - card.height // 2
-    out.paste(card, (int(W * 0.05) - PAD, y), card)
-    return out
+    return paste_safe(out, card, int(W * 0.05) - PAD, y)
 
 
 def g_amount(value, note="", W=1920, H=1080):
@@ -338,19 +398,25 @@ def g_amount(value, note="", W=1920, H=1080):
 
     금액 위에 '판결 금액' 이라는 작은 표찰을 붙인다. 숫자만 덩그러니 뜨면
     그게 받은 돈인지 못 받은 돈인지 알 수 없어 시청자가 멈칫한다."""
-    cap = font(int(H * 0.026))
-    big = font(int(H * 0.125))
-    small = font(int(H * 0.032))
+    u = unit(W, H)
+    # ⚠️ 여기가 세로 쇼츠에서 화면이 잘리던 자리다.
+    #    예전에는 `font(int(H*0.125))` 였다. 세로(H=1920)에서 240px 이 되어
+    #    '9억 8,400만 원' 한 줄이 2400px, 카드가 2688px — 1080px 화면 밖으로 나갔다.
+    #    이제 짧은 변 기준으로 잡고, 그 위에 **남는 폭에 맞춰 한 번 더 줄인다.**
+    inner = int(W * (1 - 2 * SAFE) - u * 0.16)
+    cap = font(u * 0.026)
+    big = _fit_font(u * 0.125, u * 0.050, [value], inner)
+    small = _fit_font(u * 0.032, u * 0.020, [note] if note else [], inner)
     label = "판 결 금 액"
     lw, lh_ = text_w(label, cap), line_h(cap)
     vw, vh = text_w(value, big), line_h(big)
     nw, nh = (text_w(note, small), line_h(small)) if note else (0, 0)
 
-    gap1, gap2 = int(H * 0.006), int(H * 0.024)
-    pad = int(H * 0.040)
-    cw = max(vw, nw, lw) + int(H * 0.15)
+    gap1, gap2 = int(u * 0.006), int(u * 0.024)
+    pad = int(u * 0.040)
+    cw = min(max(vw, nw, lw) + int(u * 0.15), inner + int(u * 0.15))
     ch = lh_ + gap1 + vh + (gap2 * 2 + nh if note else 0) + pad * 2
-    card, d, box = _card(cw, ch, radius=int(H * 0.028))
+    card, d, box = _card(cw, ch, radius=int(u * 0.028))
     x0, y0 = box[0], box[1]
 
     y = y0 + pad
@@ -366,8 +432,7 @@ def g_amount(value, note="", W=1920, H=1080):
         d.text((x0 + (cw - nw) // 2, y), note, font=small, fill=SLATE)
 
     out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    out.paste(card, ((W - card.width) // 2, int(H * 0.14) - PAD), card)
-    return out
+    return paste_safe(out, card, (W - card.width) // 2, int(H * 0.14) - PAD)
 
 
 def g_timeline(items, W=1920, H=1080):
@@ -375,17 +440,18 @@ def g_timeline(items, W=1920, H=1080):
     '재혼 열한 달 전'이 말로만 지나가면 충격이 전달되지 않는다."""
     items = items[:5]
     n = max(1, len(items))
-    cw, ch = int(W * 0.86), int(H * 0.31)
+    u = unit(W, H)
+    cw, ch = int(W * min(0.86, 1 - 2 * SAFE)), int(u * 0.31)
 
     # 글자를 슬롯 안에 맞춘다. 예전에는 크기를 고정해 두어 마지막 항목
     # '장남, 유류분 소장 제출' 이 카드 오른쪽 밖으로 잘려 나갔다.
     slot = int(cw * 0.80 / max(1, n - 1)) if n > 1 else int(cw * 0.8)
-    lab = _fit_font(H * 0.032, H * 0.021,
+    lab = _fit_font(u * 0.032, u * 0.018,
                     [str(it.get("label", ""))[:16] for it in items], slot - 12)
-    when = _fit_font(H * 0.027, H * 0.019,
+    when = _fit_font(u * 0.027, u * 0.016,
                      [str(it.get("when", ""))[:14] for it in items], slot - 12)
 
-    card, d, box = _card(cw, ch, radius=int(H * 0.028))
+    card, d, box = _card(cw, ch, radius=int(u * 0.028))
     bx, by = box[0], box[1]
 
     y_line = by + int(ch * 0.54)
@@ -397,7 +463,7 @@ def g_timeline(items, W=1920, H=1080):
         x = int(x0 + step * i) if n > 1 else (x0 + x1) // 2
         last = (i == n - 1)
         color = CRIMSON if last else GOLD
-        r = int(H * 0.0155)
+        r = int(u * 0.0155)
         # 마지막(결정적) 시점만 테두리를 둘러 눈이 먼저 간다
         d.ellipse([x - r - 7, y_line - r - 7, x + r + 7, y_line + r + 7],
                   fill=PAPER + (255,))
@@ -416,26 +482,31 @@ def g_timeline(items, W=1920, H=1080):
         d.text((tx2, y_line + int(ch * 0.11)), t2, font=when, fill=color)
 
     out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    out.paste(card, ((W - card.width) // 2, int(H * 0.12) - PAD), card)
-    return out
+    return paste_safe(out, card, (W - card.width) // 2, int(H * 0.12) - PAD)
 
 
 def g_family(nodes, W=1920, H=1080):
     """가족 관계도. 상속 사건은 관계 파악이 전제다. 도표 1장이 5분 설명을 대체한다."""
     nodes = nodes[:5]
     n = max(1, len(nodes))
-    nm = font(int(H * 0.034))
-    rel = font(int(H * 0.026))
+    u = unit(W, H)
+    cw, ch = int(W * min(0.80, 1 - 2 * SAFE)), int(u * 0.29)
 
-    cw, ch = int(W * 0.80), int(H * 0.29)
-    card, d, box = _card(cw, ch, radius=int(H * 0.028))
+    # 이름·관계를 상자 폭에 맞춘다. 상자보다 긴 글자는 상자 밖으로 삐져나간다.
+    box_w = int((cw / n) * 0.76) - 12
+    nm = _fit_font(u * 0.034, u * 0.020, [str(x.get("name", ""))[:8] for x in nodes], box_w)
+    rel = _fit_font(u * 0.026, u * 0.015, [str(x.get("rel", ""))[:12] for x in nodes], box_w)
+
+    card, d, box = _card(cw, ch, radius=int(u * 0.028))
     bx, by = box[0], box[1]
 
     y = by + int(ch * 0.52)
     slot = cw / n
     for i, nd in enumerate(nodes):
         cx = int(bx + slot * (i + 0.5))
-        bw, bh = int(slot * 0.76), int(ch * 0.50)
+        # 인물이 5명이고 카드가 좁으면 상자 폭이 0 이하가 될 수 있다.
+        # 그대로 두면 PIL 이 'x1 must be >= x0' 로 죽는다 — 최소 폭을 보장한다.
+        bw, bh = max(8, int(slot * 0.76)), max(8, int(ch * 0.50))
         if i < n - 1:                      # 이음선을 먼저 — 상자 뒤로 들어간다
             d.line([(cx, y), (int(bx + slot * (i + 1.5)), y)], fill=LINE, width=5)
 
@@ -451,8 +522,7 @@ def g_family(nodes, W=1920, H=1080):
         d.text((cx - text_w(t2, rel) // 2, y + int(bh * 0.10)), t2, font=rel, fill=SLATE)
 
     out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    out.paste(card, ((W - card.width) // 2, int(H * 0.13) - PAD), card)
-    return out
+    return paste_safe(out, card, (W - card.width) // 2, int(H * 0.13) - PAD)
 
 
 GFX = {"nametag": g_nametag, "amount": g_amount, "timeline": g_timeline, "family": g_family}
@@ -559,10 +629,70 @@ def demo(outdir):
     return 1 if bad else 0
 
 
+def check_frame(script_path):
+    """대본의 **모든** 자막·그래픽을 가로·세로 양쪽으로 그려 보고,
+    화면 밖으로 나가는 것이 하나라도 있으면 실패로 알린다.
+
+    왜 필요한가: 세로 쇼츠에서 금액 카드가 좌우로 잘려 '9억 8,400만 원' 이
+    '억 8,400만' 으로 방송됐다. 사람 눈으로 113컷 × 2방향을 다 볼 수는 없다.
+    글자 길이는 회차마다 달라지므로, 회차마다 기계가 재야 한다."""
+    import json
+    doc = json.loads(Path(script_path).read_text(encoding="utf-8"))
+    cuts = [c for a in doc["acts"] for c in a["cuts"]]
+    shapes = [("가로", 1920, 1080, False), ("세로", 1080, 1920, True)]
+    bad = []
+
+    for tag, W, H, vert in shapes:
+        mx, my = W * SAFE, H * SAFE
+        for c in cuts:
+            if c.get("gfx"):
+                lay = render_gfx(c["gfx"], W, H)
+                bb = lay.getbbox() if lay else None
+                if bb and (bb[0] < mx * 0.5 or bb[2] > W - mx * 0.5):
+                    bad.append(f"{tag} {c['id']} {c['gfx'].get('type')} "
+                               f"가로 {bb[0]}~{bb[2]} (화면 {W})")
+            txt = (c.get("text") or "").strip()
+            if txt:
+                blank = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+                bb = draw_subtitle(blank, txt, vertical=vert).getbbox()
+                if bb and (bb[0] < 0 or bb[2] > W or bb[3] > H):
+                    bad.append(f"{tag} {c['id']} 자막 {bb[0]}~{bb[2]} (화면 {W})")
+                lines, _ = fit_subtitle(txt, W, H, vert)
+                if "".join(lines).replace(" ", "") != txt.replace(" ", ""):
+                    bad.append(f"{tag} {c['id']} 자막 글자 유실")
+
+    # 쇼츠 도입 문장도 세로로 확인한다
+    for s in doc.get("shorts", []):
+        for key in ("intro_line", "outro_line"):
+            t = (s.get(key) or "").strip()
+            if not t:
+                continue
+            blank = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
+            img = draw_top_line(blank, t) if key == "intro_line" \
+                else draw_subtitle(blank, t, vertical=True)
+            bb = img.getbbox()
+            if bb and (bb[0] < 0 or bb[2] > 1080):
+                bad.append(f"세로 쇼츠{s.get('no')} {key} {bb[0]}~{bb[2]} (화면 1080)")
+
+    n = len(cuts)
+    if bad:
+        print(f"❌ 화면 밖으로 나가는 것 {len(bad)}건 (컷 {n}개 × 가로·세로 검사)")
+        for b in bad[:20]:
+            print(f"   {b}")
+        if len(bad) > 20:
+            print(f"   … 외 {len(bad) - 20}건")
+        return 1
+    print(f"✅ 컷 {n}개를 가로·세로 양쪽으로 확인 — 화면 밖으로 나가는 것 없음")
+    return 0
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--demo", default="", help="시험 이미지를 이 폴더에 만든다")
+    ap.add_argument("--check", default="", help="이 대본의 모든 컷이 화면 안에 드는지 검사")
     a = ap.parse_args()
+    if a.check:
+        sys.exit(check_frame(a.check))
     if a.demo:
         sys.exit(demo(a.demo))
     print(f"폰트: {font_path()}")

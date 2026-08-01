@@ -185,6 +185,16 @@ def placeholder_char(code, pose, H):
 # 화면 위쪽을 통째로 쓰는 정보 카드. 이 위에 인물 얼굴이 겹치면 얼굴이 가려진다.
 WIDE_GFX = {"amount", "timeline", "family"}
 
+# 인물이 차지할 수 있는 최대 가로 비율. 세로 쇼츠에서 인물을 1.35배 키우기 때문에
+# 옆으로 넓은 컷아웃은 이 제한이 없으면 좌우가 잘린다.
+CHAR_MAX_W = 0.86
+
+# 확대 연출(zoompan)이 매 프레임 가장자리를 깎아내는 최대 비율.
+# ZOOM_MAX 까지 확대되므로 각 변에서 (1 - 1/ZOOM_MAX)/2 만큼 사라진다.
+ZOOM_START = 1.0            # 첫 프레임은 **자르지 않는다** (예전 1.02 는 시작부터 2% 손실)
+ZOOM_MAX = 1.05
+ZOOM_EDGE = (1 - 1 / ZOOM_MAX) / 2
+
 
 def build_plates(cut, W, H, vertical=False, top_line=""):
     """움직이는 겹(배경+인물)과 고정된 겹(그래픽+자막)을 만든다."""
@@ -223,7 +233,14 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
             room = H - int(H * 0.06) - (gfx_bottom + int(H * 0.03))
             target_h = max(int(H * 0.24), min(target_h, room))
         ratio = target_h / sprite.height
-        sprite = sprite.resize((max(1, int(sprite.width * ratio)), target_h), Image.LANCZOS)
+        sw = max(1, int(sprite.width * ratio))
+        # 가로로도 화면을 넘지 않게 한 번 더 줄인다.
+        # 세로 쇼츠(1080폭)에서 인물을 1.35배로 키우므로, 옆으로 넓은 컷아웃은
+        # 그냥 두면 좌우가 잘려 나간다. 높이만 맞추면 안 된다.
+        if sw > W * CHAR_MAX_W:
+            k = (W * CHAR_MAX_W) / sw
+            sw, target_h = max(1, int(sw * k)), max(1, int(target_h * k))
+        sprite = sprite.resize((sw, target_h), Image.LANCZOS)
 
         if vertical:
             pos_y = float(c.get("pos_y", 0.38))
@@ -233,6 +250,9 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
             slot = {"left": 0.27, "center": 0.5, "right": 0.73}.get(c.get("pos", "center"), 0.5)
             x = int(W * slot) - sprite.width // 2
             y = H - sprite.height - int(H * 0.06)
+        # 확대 연출이 가장자리를 깎아내므로, 그 몫만큼 안쪽에 세운다
+        edge = int(min(W, H) * ZOOM_EDGE)
+        x = min(max(x, edge - sprite.width // 4), W - sprite.width - edge + sprite.width // 4)
         move.alpha_composite(sprite, (max(0, x), max(0, y)))
 
     static = Image.new("RGBA", (W, H), (0, 0, 0, 0))
@@ -254,7 +274,11 @@ def render_cut(cut, dur, workdir, idx, W, H, vertical=False, top_line=""):
 
     frames = max(2, int(dur * FPS))
     # 느린 확대 + 아주 약한 숨쉬기. 정지 이미지가 죽어 보이는 것을 막는다.
-    zexpr = f"1.02+0.055*(on/{frames})+0.004*sin(on/26)"
+    # ⚠️ 예전에는 1.02 에서 시작해 **첫 프레임부터 화면의 2% 를 잘라먹었다.**
+    #    1.0 에서 시작하면 첫 프레임은 원본 그대로다. 숨쉬기 진폭만큼은
+    #    1.0 아래로 내려가지 않게 바닥을 깔아 둔다(zoompan 은 z<1 을 1 로 자른다).
+    span = ZOOM_MAX - ZOOM_START - 0.004
+    zexpr = f"{ZOOM_START + 0.004:.4f}+{span:.4f}*(on/{frames})+0.004*sin(on/26)"
     vf = (f"[0:v]scale={W * 2}:{H * 2},"
           f"zoompan=z='{zexpr}':d={frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
           f"s={W}x{H}:fps={FPS}[bg];[bg][1:v]overlay=0:0,format=yuv420p[v]")
