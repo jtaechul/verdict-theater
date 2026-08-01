@@ -40,6 +40,13 @@ from llm import BASE, LLMError, _post  # noqa: E402
 BACKOFF = [5, 15, 40, 90]
 RETRYABLE = (408, 429, 500, 502, 503, 504)
 
+# 서버가 알려준 대기 시간을 따르되, **이 이상은 절대 기다리지 않는다.**
+# 구글은 '분당 한도'와 '하루 한도'를 똑같이 429 로 알린다. 하루 치를 다 쓰면
+# retryDelay 에 '78576초(21시간 46분) 뒤에 오라'고 답하는데, 그 말을 그대로 따르느라
+# 음성 만들기가 밤새 멈춰 서 있었다. 화면에는 아무 오류도 없어서 원인 찾기가 더 어려웠다.
+# 2분을 넘는 대기 요구는 '잠깐 밀렸다'가 아니라 '오늘 몫이 끝났다'는 뜻이다 — 바로 알린다.
+MAX_RETRY_WAIT = max(10, int(os.environ.get("TTS_MAX_RETRY_WAIT", "120")))
+
 # 요청 사이 간격은 분당 요청 수(RPM)로 정한다.
 # 제미나이 TTS 미리보기 모델의 분당 한도는 매우 낮다 — 보수적으로 잡는다.
 # 등급이 올라가면 워크플로에서 TTS_RPM 만 올리면 된다.
@@ -62,22 +69,32 @@ def _retry_wait(e, default):
     google.rpc.RetryInfo 를 넣어 보낸다:
         {"error":{"details":[{"@type":"...RetryInfo","retryDelay":"37s"}]}}
     헤더만 보면 이 값을 놓쳐, 서버가 37초를 기다리라는데 5초 만에 다시 쏘고
-    또 429 를 받는다."""
+    또 429 를 받는다.
+
+    다만 지시가 MAX_RETRY_WAIT 를 넘으면 기다리지 않고 **포기한다**(0 을 돌려준다).
+    하루 한도가 바닥난 상황이라 몇 시간을 기다려도 이 실행 안에서는 풀리지 않는다."""
+    want = None
     hdr = (getattr(e, "headers", None) or {}).get("Retry-After")
     if hdr:
         try:
-            return max(default, int(float(hdr)))
+            want = int(float(hdr))
         except (TypeError, ValueError):
-            pass
-    try:
-        body = json.loads(e.read().decode("utf-8", "replace"))
-        for d in (body.get("error", {}).get("details") or []):
-            rd = d.get("retryDelay")
-            if isinstance(rd, str) and rd.endswith("s"):
-                return max(default, int(float(rd[:-1])) + 1)      # 1초 여유
-    except Exception:
-        pass
-    return default
+            want = None
+    if want is None:
+        try:
+            body = json.loads(e.read().decode("utf-8", "replace"))
+            for d in (body.get("error", {}).get("details") or []):
+                rd = d.get("retryDelay")
+                if isinstance(rd, str) and rd.endswith("s"):
+                    want = int(float(rd[:-1])) + 1                # 1초 여유
+                    break
+        except Exception:
+            want = None
+    if want is None:
+        return default
+    if want > MAX_RETRY_WAIT:
+        return 0                    # 기다려봐야 소용없다 — 부른 쪽에서 바로 실패시킨다
+    return max(default, want)
 
 
 def _post_retry(url, payload, timeout=180, label=""):
@@ -91,6 +108,11 @@ def _post_retry(url, payload, timeout=180, label=""):
             if e.code not in RETRYABLE or i >= len(BACKOFF):
                 raise
             wait = _retry_wait(e, BACKOFF[i])
+            if wait == 0:
+                # 서버가 '몇 시간 뒤에 오라' 고 했다. 하루 몫이 끝났다는 뜻이다.
+                raise LLMError(
+                    f"{label}: 오늘 쓸 수 있는 음성 생성량을 다 썼습니다(HTTP {e.code}). "
+                    f"내일 한도가 초기화되거나, 결제 등급을 올리면 풀립니다.") from e
             print(f"    ({label} 속도 제한 HTTP {e.code} — {wait}초 기다렸다 다시 한다"
                   f" {i + 1}/{len(BACKOFF)})")
             time.sleep(wait)
@@ -157,6 +179,9 @@ def pick_tts_model(key):
             if e.code not in RETRYABLE or i >= len(BACKOFF):
                 raise
             w = _retry_wait(e, BACKOFF[i])
+            if w == 0:
+                raise LLMError(
+                    f"모델 목록: 오늘 몫을 다 썼습니다(HTTP {e.code})") from e
             print(f"    (모델 목록 HTTP {e.code} — {w}초 기다렸다 다시 한다)")
             time.sleep(w)
         except OSError as e:
@@ -168,8 +193,27 @@ def pick_tts_model(key):
     cands = [n for n in names if "tts" in n.lower()]
     if not cands:
         return None
-    cands.sort(key=lambda n: ("preview" in n, len(n)))
+    cands.sort(key=_tts_rank)
     return cands[0]
+
+
+def _tts_rank(name):
+    """음성 모델 우선순위. **싼 것부터 고른다.**
+
+    예전에는 이름 길이로 정렬해서 `gemini-2.5-pro-preview-tts` 가 뽑혔다.
+    pro 는 flash 보다 몇 배 비싸고 하루 한도도 훨씬 빡빡하다. 113컷을 만들다
+    한도가 바닥나 실행이 통째로 멈췄다. 나레이션은 한 컷이 한두 문장뿐이라
+    flash 로 충분하다 — 값이 몇 배 싸고 한도도 넉넉하다."""
+    low = name.lower()
+    ver = 0.0
+    for tok in low.replace("-", " ").split():
+        try:
+            ver = max(ver, float(tok))          # 'gemini-3.1-flash-tts' → 3.1
+        except ValueError:
+            pass
+    return (0 if "flash" in low else 1,         # flash 우선
+            -ver,                                # 같은 등급이면 최신 판
+            len(name))
 
 
 def pcm_to_wav(pcm, path, rate=24000, channels=1, width=2):
