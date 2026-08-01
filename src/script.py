@@ -34,7 +34,8 @@ from autofix import autofix                                 # noqa: E402
 from llm import Gemini, LLMError, BudgetExceeded            # noqa: E402
 from claude import writer, ClaudeError                       # noqa: E402
 from claude import BudgetExceeded as ClaudeBudget            # noqa: E402
-from validate_script import validate_doc, errors_as_text, load_manifest  # noqa: E402
+from validate_script import (validate_doc, errors_as_text, load_manifest,  # noqa: E402
+                             ACT_WINDOW)
 
 ROOT = Path(__file__).resolve().parent.parent
 CASES = ROOT / "data" / "cases"
@@ -46,15 +47,31 @@ REJECTED = ROOT / "state" / "rejected.json"
 TARGET_SCORE = 80
 MAX_ROUNDS = 3
 
-# 막별 목표 — CLAUDE.md "7. 대본 구조"
+# 막별 목표 — CLAUDE.md "7. 대본 구조" · validate_script.ACT_WINDOW 와 반드시 같아야 한다.
+#
+# ⚠️ v2.0(2026-08-01): 법정 150→55초, 5막 50→31초. 뺀 114초는 1~3막으로.
+#    판결·금액이 33.6%를 차지하던 것을 10% 아래로 내리기 위한 것이다.
+#    이 표가 검증기와 어긋나면, 대본은 옛 분량으로 쓰이고 검증에서만 떨어진다.
 ACTS = [
     ("hook", "도입 훅",   0,  22,  5, "hook"),
-    ("act1", "1막",      22, 200, 28, "past"),
-    ("act2", "2막",     200, 370, 26, "reveal"),
-    ("act3", "3막",     370, 520, 23, "conflict"),
-    ("act4", "4막",     520, 670, 23, "court"),
-    ("act5", "5막",     670, 720,  8, "outro"),
+    ("act1", "1막",      22, 240, 34, "past"),
+    ("act2", "2막",     240, 446, 32, "reveal"),
+    ("act3", "3막",     446, 634, 29, "conflict"),
+    ("act4", "4막",     634, 689,  9, "court"),
+    ("act5", "5막",     689, 720,  5, "outro"),
 ]
+
+# 위 표가 검증기와 어긋나면 **조용히 망가진다** — 대본은 옛 분량으로 쓰이고
+# 검증에서만 떨어져, 원인이 프롬프트인지 검증기인지 알 수 없게 된다.
+# 실제로 v2.0 첫 실행에서 그렇게 됐다(1~3막이 옛 목표로 생성돼 오류 5건).
+# 두 곳을 함께 고쳐야 하는 규칙이므로, 한 곳만 고치면 즉시 멈춘다.
+_plan = {a[0]: (a[2], a[3]) for a in ACTS}
+if _plan != ACT_WINDOW:
+    raise SystemExit(
+        "막 구성이 어긋났다 — src/script.py 의 ACTS 와 "
+        "src/validate_script.py 의 ACT_WINDOW 를 똑같이 맞춰라.\n"
+        f"  script.py       : {_plan}\n"
+        f"  validate_script : {ACT_WINDOW}")
 
 
 # ── 상태 파일 ────────────────────────────────────────────
@@ -207,22 +224,28 @@ ACT_TASK = """
 ACT_EXTRA = {
     "hook": "**첫 컷은 3.0초 이내, 인물 대사로 시작한다.** 금액·결말을 밝히지 않는다. "
             "22초가 끝날 때 답 없는 질문을 남긴다.",
-    "act1": "**첫 다섯 컷 안(22~50초)에 다투는 재산의 크기를 반드시 낸다.** "
-            "숫자만 던지지 말고 그것이 주인공에게 무슨 의미인지 한 마디 붙인다. "
+    "act1": "**금액을 한 번도 쓰지 않는다.** 걸린 것은 숫자가 아니라 물건과 관계로 말한다 "
+            "— '12억 400만 원' 이 아니라 '세 아들이 다 자란 그 집'. "
+            "이 막은 인물 관계를 세우는 곳이다. `family` 그래픽을 반드시 한 번 넣고, "
             "인물이 처음 나오는 컷마다 `nametag` 그래픽을 넣는다. 회상은 `flashback: true`.",
     "act2": "**반전이 드러나는 막이다. `timeline` 그래픽을 반드시 한 번 넣는다.** "
-            "금액이 처음 크게 나오면 `amount` 그래픽도 넣는다. "
+            "`amount` 그래픽은 여기에 넣지 않는다 — 회차 전체에서 4막 판결 컷 하나뿐이다. "
+            "금액을 말해야 하면 비교로 말한다: '형 몫이 동생 셋을 합친 것보다 컸습니다'. "
             "반전이 드러나는 컷에 `\"tag\": \"twist\"` 를 넣는다.",
     "act3": "**20자 이내의 뻔뻔한 대사를 반드시 하나 넣는다.** 욕설·고성 금지. "
             "차분하게 뻔뻔한 쪽이 훨씬 밉다. 이 한 줄이 쇼츠 2번이 된다. "
             "그 컷에 반드시 `\"tag\": \"anger_line\"` 을 넣는다. 나중에 다시 찾아야 한다.",
-    "act4": "상대 주장 → 재판장 판단 순서를 지킨다. 재판장 대사는 `v_JUDGE`. "
-            "**판결 낭독에 금액을 특정하고 `amount` 그래픽을 넣는다.** "
-            "그 컷에 `\"tag\": \"verdict\"` 를 넣는다. "
-            "법률 용어는 처음 나올 때 한 문장으로 푼다.",
-    "act5": "여운(약 20초) → 법령 설명(약 20초) → **예/아니오로 답할 수 없는 질문**(약 10초). "
+    "act4": "**55초 안에 끝낸다. 법정은 절정이 아니라 마침표다** — 절정은 3막에 있었다. "
+            "상대 주장 → 재판장 판단 순서를 지킨다. 재판장 대사는 `v_JUDGE`. "
+            "**금액은 판결 낭독 컷 딱 하나에서만 말하고, `amount` 그래픽도 그 컷에만 넣는다.** "
+            "그 앞뒤로 금액을 되풀이하지 않는다. 그 컷에 `\"tag\": \"verdict\"` 를 넣는다. "
+            "법률 용어는 처음 나올 때 한 문장으로 푼다. "
+            "**마지막 두세 컷은 판결을 듣는 가족들의 얼굴·침묵에 쓴다.**",
+    "act5": "여운(약 19초) → **제도 설명은 한 문장만**(약 6초) → "
+            "**관계를 묻는 질문**(약 6초). 돈이 아니라 사람을 묻는다. "
+            "여운 장면에는 **이겼는데도 잃은 것**이 보여야 한다. "
             "마지막 질문 컷에 `\"tag\": \"question\"` 을 넣는다. "
-            "조언하지 않는다. 설계의 `law.explain_5act` 를 여기서 쓴다.",
+            "조언하지 않는다. 설계의 `law.explain_5act` 를 한 문장으로 줄여 쓴다.",
 }
 
 
