@@ -61,6 +61,12 @@ MAX_FAIL_STREAK = max(1, int(os.environ.get("TTS_MAX_FAIL_STREAK", "5")))
 # 이 비율 미만으로 성공하면 발행 품질이 아니다. 소리 끊긴 영상이 나가는 것을 막는다.
 MIN_OK_RATIO = float(os.environ.get("TTS_MIN_OK_RATIO", "0.9"))
 
+# 모든 음성 모델이 한도로 막혔을 때, 포기하기 전에 쉬었다 다시 해보는 횟수·시간.
+# 실측: 세 모델이 전부 '오늘 몫 끝' 을 준 직후에도 2~3분 뒤에는 두 개가 다시 열렸다.
+# 사람이 없는 GitHub Actions 실행에서 그냥 멈추면 그 회차는 그대로 끝난다.
+MAX_COOLDOWNS = max(0, int(os.environ.get("TTS_MAX_COOLDOWNS", "3")))
+COOLDOWN_SEC = max(10, int(os.environ.get("TTS_COOLDOWN_SEC", "120")))
+
 
 def _retry_wait(e, default):
     """서버가 알려준 대기 시간을 읽는다. 헤더와 본문을 **둘 다** 본다.
@@ -372,6 +378,7 @@ def main():
         return 0
 
     alts = [m for m in (all_models or []) if m != model]
+    cooldowns = 0
     print(f"음성 모델: {model} · 요청 간격 {THROTTLE:.1f}초(분당 {TTS_RPM}회)"
           + (f" · 예비 {len(alts)}개" if alts else ""))
     ok = fail = 0
@@ -406,21 +413,32 @@ def main():
             # 다른 음성 모델은 멀쩡한 경우가 많다 — 실제로 3.1-flash 가 102컷에서
             # 막혔을 때 2.5-flash 로 남은 11컷을 그대로 끝냈다.
             # 갈아탈 곳이 있으면 갈아타고, 이 컷부터 다시 해본다.
-            if _quota_dead(e) and alts:
-                nxt = alts.pop(0)
-                print(f"  {model} 오늘 몫이 끝났다 → {nxt} 로 갈아탄다")
-                model = nxt
-                last_call = 0.0
-                try:
-                    synth_one(key, model, text, c.get("speaker", "narrator"), p)
-                    ok += 1
-                    streak = 0
-                    last_call = time.monotonic()
-                    if (i + 1) % 20 == 0:
-                        print(f"  {i + 1}/{len(cuts)}  (성공 {ok} · 실패 {fail})")
-                    continue
-                except Exception as e2:
-                    e = e2
+            if _quota_dead(e):
+                if not alts and cooldowns < MAX_COOLDOWNS:
+                    # 모든 모델이 막혔다. 그런데 실측해 보니 **잠시 뒤 다시 열리는 경우가 있다**
+                    # (구글이 분당 한도에도 몇 시간짜리 retryDelay 를 주는 일이 있다).
+                    # 여기서 그냥 멈추면, 사람이 없는 GitHub Actions 실행은 그대로 끝난다.
+                    # 한 번 쉬었다가 처음 모델부터 다시 훑는다.
+                    cooldowns += 1
+                    print(f"  모든 음성 모델이 막혔다 — {COOLDOWN_SEC}초 쉬었다 다시 한다"
+                          f" ({cooldowns}/{MAX_COOLDOWNS})")
+                    time.sleep(COOLDOWN_SEC)
+                    alts = list(all_models)
+                if alts:
+                    nxt = alts.pop(0)
+                    print(f"  {model} 오늘 몫이 끝났다 → {nxt} 로 갈아탄다")
+                    model = nxt
+                    last_call = 0.0
+                    try:
+                        synth_one(key, model, text, c.get("speaker", "narrator"), p)
+                        ok += 1
+                        streak = 0
+                        last_call = time.monotonic()
+                        if (i + 1) % 20 == 0:
+                            print(f"  {i + 1}/{len(cuts)}  (성공 {ok} · 실패 {fail})")
+                        continue
+                    except Exception as e2:
+                        e = e2
             fail += 1
             streak += 1
             print(f"  {c['id']} 실패({type(e).__name__}) → 무음으로 대체")
