@@ -381,6 +381,33 @@ def draw_top_line(img, text):
     return Image.alpha_composite(img.convert("RGBA"), _lift(layer, radius=round(u * 0.011)))
 
 
+def draw_time_caption(img, text):
+    """회상으로 들어갈 때 화면 가운데 잠깐 뜨는 시점 자막 — '십수 년 전'.
+
+    색만 세피아로 바뀌면 시청자는 '화면이 이상해졌다' 로 본다.
+    **언제인지 글자로 말해 줘야** 시간이 옮겨간 것을 안다.
+    본문 그래픽과 같은 방향(판 없음) — 위아래 가는 선 사이에 글자만."""
+    if not text:
+        return img
+    W, H = img.size
+    u = unit(W, H)
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+
+    f = _fit_font(u * 0.058, u * 0.034, [text], int(W * (1 - 2 * SAFE) * 0.8), role="serif")
+    tw = text_w(text, f)
+    cx, cy = W // 2, round(H * 0.40)
+    half = max(tw // 2 + round(u * 0.055), round(u * 0.13))
+    lw = max(2, round(u * 0.0025))
+    gap = round(u * 0.030)
+
+    d.line([(cx - half, cy - gap), (cx + half, cy - gap)], fill=_pale(0.62) + (190,), width=lw)
+    d.text((cx - tw // 2, cy), text, font=f, fill=_pale(0.02))
+    d.line([(cx - half, cy + line_h(f) + gap), (cx + half, cy + line_h(f) + gap)],
+           fill=_pale(0.62) + (190,), width=lw)
+    return Image.alpha_composite(img.convert("RGBA"), _lift(layer, radius=round(u * 0.011)))
+
+
 # ── 정보 그래픽 4종 ──────────────────────────────────────
 PAD = 40                    # 카드 둘레 여백. 흐린 그림자가 잘리지 않게 넉넉히 둔다
 

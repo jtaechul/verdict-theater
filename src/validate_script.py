@@ -279,6 +279,36 @@ def check_stakes(doc, r):
         r.ok("도입·1막에 금액 없음 (걸린 것을 관계로 전달)")
 
 
+def check_flashback(doc, r):
+    """회상이 시작되는 첫 컷마다 '언제인지'가 붙어 있는가.
+
+    색만 세피아로 바뀌면 어르신 시청자는 '화면이 이상해졌다' 로 본다.
+    EP001 실측: 회상을 8번 드나드는데 시점 표기가 하나도 없었다."""
+    cuts = [c for _a, c in all_cuts(doc)]
+    starts, missing, stray = 0, [], []
+    prev = False
+    for c in cuts:
+        fb = bool(c.get("flashback"))
+        lab = (c.get("flashback_label") or "").strip()
+        if fb and not prev:
+            starts += 1
+            if not lab:
+                missing.append(c.get("id"))
+        elif lab:
+            stray.append(c.get("id"))
+        prev = fb
+    if not starts:
+        r.ok("회상 구간이 없다")
+        return
+    if missing:
+        r.error("회상", f"회상 시작 컷에 시점 표기(flashback_label)가 없다: "
+                        f"{', '.join(missing[:6])}")
+    else:
+        r.ok(f"회상 {starts}구간 모두 시점 표기 있음")
+    if stray:
+        r.warn("회상", f"회상 시작이 아닌데 시점 표기가 있다: {', '.join(stray[:6])}")
+
+
 def check_tags(doc, r):
     """대본이 스스로 표시해 둔 컷들. 없으면 쇼츠와 검수가 짐작에 의존하게 된다."""
     found = {}
@@ -485,6 +515,7 @@ def validate_doc(doc, mf=None, with_shorts=True):
     check_hook(doc, r)
     check_legal_ratio(doc, r)
     check_stakes(doc, r)
+    check_flashback(doc, r)
     check_tags(doc, r)
     check_blackout(doc, r)
     check_nametags(doc, r)

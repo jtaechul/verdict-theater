@@ -267,16 +267,59 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
 
     sub_layer = G.draw_subtitle(Image.new("RGBA", (W, H), (0, 0, 0, 0)),
                                 cut.get("text", ""), vertical=vertical)
+
+    # 회상으로 들어가는 컷에는 **언제인지**를 화면 가운데 잠깐 띄운다.
+    # 색만 세피아로 바뀌면 어르신 시청자는 '화면이 이상해졌다' 로 본다.
+    # 대본이 flashback_label 을 채워야 나온다(없으면 조용히 건너뛴다).
+    when = (cut.get("flashback_label") or "").strip()
+    if when and cut.get("flashback"):
+        gfx_layer = G.draw_time_caption(gfx_layer, when)
     return move, gfx_layer, sub_layer
 
 
 # ── 컷 하나를 영상 조각으로 ──────────────────────────────
+# ── 화면 전환 ────────────────────────────────────────────
+# 예전에는 113개 컷 경계가 **전부 하드컷**이었다. 배경이 42번 바뀌고 회상을 8번
+# 드나드는데 바뀌는 순간이 없어서, 어르신 시청자는 그냥 화면이 이상해진 것으로 본다.
+# 대본은 막 끝마다 `blackout` 표시를 남겨 두었는데 렌더러가 **읽지도 않고 있었다.**
+#
+# 값이 거의 안 드는 방식(암전·플래시)만 쓴다. 진짜 크로스 디졸브는 두 장면을 겹쳐
+# 다시 인코딩해야 해서 렌더링이 1.5~2배로 늘어난다 — 얻는 것에 비해 너무 비싸다.
+ACT_OUT = 0.60      # 막이 끝날 때 검게 잠긴다
+ACT_IN = 0.50       # 다음 막이 검은 화면에서 열린다
+FLASH_IN = 0.45     # 회상으로 들어갈 때 — 흰 빛에서 열린다
+FLASH_OUT = 0.35    # 현재로 돌아올 때 — 흰 빛에서 짧게
+SCENE_DIP = 0.18    # 배경이 바뀔 때 — 아주 짧게 어두웠다 열린다
+
+
+def transitions(cuts):
+    """컷마다 시작·끝에 걸 전환을 정한다. (들어올 때, 나갈 때)
+
+    우선순위가 있다 — 한 경계에 여러 조건이 겹치면 **큰 것 하나만** 쓴다.
+    막 전환 > 회상 드나듦 > 배경 교체. 겹쳐 걸면 화면이 정신없어진다."""
+    out = []
+    prev_fb = prev_bg = None
+    prev_black = False
+    for c in cuts:
+        fb, bg = bool(c.get("flashback")), c.get("bg")
+        t_in = None
+        if prev_black:
+            t_in = ("black", ACT_IN)
+        elif prev_fb is not None and fb != prev_fb:
+            t_in = ("white", FLASH_IN if fb else FLASH_OUT)
+        elif prev_bg is not None and bg != prev_bg:
+            t_in = ("black", SCENE_DIP)
+        out.append((t_in, ("black", ACT_OUT) if c.get("blackout") else None))
+        prev_fb, prev_bg, prev_black = fb, bg, bool(c.get("blackout"))
+    return out
+
+
 # 등장 연출 시간(초). 짧게 — 길면 정보를 읽기 시작하는 시점이 늦어진다.
 GFX_IN = 0.38
 SUB_IN = 0.16
 
 
-def render_cut(cut, dur, workdir, idx, W, H, vertical=False, top_line=""):
+def render_cut(cut, dur, workdir, idx, W, H, vertical=False, top_line="", trans=(None, None)):
     move, gfx_layer, sub_layer = build_plates(cut, W, H, vertical, top_line=top_line)
     mp = workdir / f"m{idx:03d}.png"
     gp = workdir / f"g{idx:03d}.png"
@@ -311,7 +354,21 @@ def render_cut(cut, dur, workdir, idx, W, H, vertical=False, top_line=""):
     vf += (f";[2:v]format=rgba,fade=t=in:st=0:d={GFX_IN}:alpha=1[g]"
            f";[v][g]overlay=x='{gx}':y='{gy}'[vg]"
            f";[3:v]format=rgba,fade=t=in:st=0:d={SUB_IN}:alpha=1[s]"
-           f";[vg][s]overlay=0:0,format=yuv420p[vo]")
+           f";[vg][s]overlay=0:0[vt]")
+
+    # 전환은 **맨 마지막에** 건다. 자막·그래픽까지 전부 합쳐진 뒤라야
+    # 화면 전체가 함께 잠기고 함께 열린다.
+    t_in, t_out = trans
+    fades = []
+    if t_in:
+        color, d_ = t_in
+        fades.append(f"fade=t=in:st=0:d={min(d_, dur / 2):.3f}:color={color}")
+    if t_out:
+        color, d_ = t_out
+        d_ = min(d_, dur / 2)
+        fades.append(f"fade=t=out:st={max(0.0, dur - d_):.3f}:d={d_:.3f}:color={color}")
+    vf += f";[vt]{','.join(fades)},format=yuv420p[vo]" if fades \
+        else ";[vt]format=yuv420p[vo]"
 
     out = workdir / f"v{idx:03d}.mp4"
     run(["ffmpeg", "-y", "-loglevel", "error",
@@ -569,10 +626,12 @@ def render(doc, outdir, vertical=False, cut_ids=None, narration_dir=None,
     print(f"  {name}: 컷 {len(keep)}개 · {sum(d for _, d in keep):.1f}초 · {W}x{H}")
     segs = []
     intro = (short or {}).get("intro_line", "")
+    trs = transitions([c for c, _ in keep])
     for i, (cut, dur) in enumerate(keep):
         # 넘기다 걸린 사람은 아무것도 모른다. 첫 화면에 한 줄로 상황을 알려준다.
         segs.append(render_cut(cut, dur, work, i, W, H, vertical,
-                               top_line=intro if (i == 0 and intro) else ""))
+                               top_line=intro if (i == 0 and intro) else "",
+                               trans=trs[i]))
         if (i + 1) % 20 == 0:
             print(f"    {i + 1}/{len(keep)}컷")
 

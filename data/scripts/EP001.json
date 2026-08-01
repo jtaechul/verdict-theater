@@ -251,7 +251,8 @@
           },
           "sfx": null,
           "amb": "amb_home",
-          "blackout": false
+          "blackout": false,
+          "flashback_label": "사십 년 전"
         },
         {
           "id": "A1-02",
@@ -431,7 +432,8 @@
           "gfx": null,
           "sfx": null,
           "amb": "amb_street",
-          "blackout": false
+          "blackout": false,
+          "flashback_label": "아버지 생전"
         },
         {
           "id": "A1-09",
@@ -595,7 +597,8 @@
           "gfx": null,
           "sfx": null,
           "amb": "amb_home",
-          "blackout": false
+          "blackout": false,
+          "flashback_label": "형제가 자라던 때"
         },
         {
           "id": "A1-16",
@@ -1218,7 +1221,8 @@
           "gfx": null,
           "sfx": null,
           "amb": "amb_home",
-          "blackout": false
+          "blackout": false,
+          "flashback_label": "아버지 생전"
         },
         {
           "id": "A2-10",
