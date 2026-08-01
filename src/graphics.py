@@ -90,14 +90,24 @@ NANUM = "/usr/share/fonts/truetype/nanum/"
 # 올라오기 전까지는 나눔으로 돌아간다 — 화면이 비지 않게.
 USER_FONTS = ROOT / "assets" / "fonts"
 
+# 이름은 띄어쓰기·밑줄·대소문자를 무시하고 견준다.
+#   'KoPub_Dotum_Pro_Bold.otf' · 'KoPubWorld Dotum Bold.ttf' 둘 다 잡힌다.
 FONT_ROLE = {
-    "sub":   ["KoPubWorldDotumBold", "NanumSquareB", "NanumGothicBold"],
-    "label": ["KoPubWorldDotumMedium", "KoPubWorldDotumBold",
-              "NanumBarunGothicBold", "NanumGothicBold"],
-    "num":   ["KoPubWorldDotumBold", "NanumSquareB", "NanumGothicBold"],
-    "serif": ["KoPubWorldBatangBold", "NanumMyeongjoBold", "NanumGothicBold"],
-    "body":  ["KoPubWorldDotumLight", "KoPubWorldDotumMedium",
-              "NanumBarunGothic", "NanumGothic"],
+    # 자막 — 고딕. 획이 고르고 어르신 가독성이 가장 좋다
+    "sub":   ["KoPubDotumProBold", "KoPubWorldDotumBold",
+              "NanumSquareB", "NanumGothicBold"],
+    # 이름표·작은 라벨 — 한 단계 가볍게. 자막과 인상이 겹치지 않는다
+    "label": ["KoPubDotumProMedium", "KoPubWorldDotumMedium",
+              "KoPubDotumProBold", "NanumBarunGothicBold", "NanumGothicBold"],
+    # 금액 숫자 — 굵게. 자릿수가 시원하다
+    "num":   ["KoPubDotumProBold", "KoPubWorldDotumBold",
+              "NanumSquareB", "NanumGothicBold"],
+    # 판결·회상 시점 — 바탕(명조). 법과 시간의 무게를 낸다
+    "serif": ["KoPubBatangProBold", "KoPubWorldBatangBold",
+              "NanumMyeongjoBold", "NanumGothicBold"],
+    # 설명 보조 — 가장 가볍게
+    "body":  ["KoPubDotumProLight", "KoPubWorldDotumLight",
+              "KoPubDotumProMedium", "NanumBarunGothic", "NanumGothic"],
 }
 
 
