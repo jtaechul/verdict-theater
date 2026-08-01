@@ -357,42 +357,28 @@ def draw_top_line(img, text):
     """쇼츠 첫 화면 위쪽에 얹는 한 줄. 상황을 1초 안에 알려준다.
 
     넘기다 걸린 사람은 **누가 누군지 전혀 모른다.** 본편을 봐야 알 수 있는 대명사 대신
-    이 한 줄로 무슨 상황인지 못 박는다. 아래 자막과 겹치지 않게 화면 위쪽에 둔다."""
+    이 한 줄로 무슨 상황인지 못 박는다. 본문 그래픽과 같은 방향(판 없음)으로 —
+    강조색 짧은 선 하나와 글자만."""
     if not text:
         return img
     W, H = img.size
     u = unit(W, H)
-    x0, x1 = int(W * max(0.055, SAFE)), int(W * min(0.945, 1 - SAFE))
-    # 글자를 배지 안쪽 폭에 맞춘다. 글자 수로 끊으면 회차마다 넘치거나 남는다.
-    inner = (x1 - x0) - int(u * 0.10)
-    f = _fit_font(u * 0.055, u * 0.034,
-                  _wrap_px(text, font(int(u * 0.055), "label"), inner), inner, role="label")
-    size = f.size
-    lh = line_h(f)
+    inner = int(W * (1 - 2 * max(0.075, SAFE)))
+    f = _fit_font(u * 0.050, u * 0.032,
+                  _wrap_px(text, font(int(u * 0.050), "label"), inner), inner, role="label")
     lines = _wrap_px(text, f, inner)
-    gap = int(size * 0.14)
-    block = len(lines) * lh + (len(lines) - 1) * gap
-    pad_y, pad_x = int(size * 0.42), int(size * 0.9)
-
-    top = int(H * 0.085)
-    y0, y1 = top - pad_y, top + block + pad_y
-    radius = int(size * 0.42)
+    lh, gap = line_h(f), round(f.size * 0.14)
 
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    # 그림자 — 흐린 한 겹. 배지가 화면 위에 떠 보인다
-    sh = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    ImageDraw.Draw(sh).rounded_rectangle(
-        [x0, y0 + int(size * 0.22), x1, y1 + int(size * 0.22)], radius, fill=(0, 0, 0, 150))
-    layer = Image.alpha_composite(layer, sh.filter(ImageFilter.GaussianBlur(int(size * 0.30))))
-
     d = ImageDraw.Draw(layer)
-    d.rounded_rectangle([x0, y0, x1, y1], radius, fill=INK + (238,))
-    d.rectangle([x0, y1 - max(3, round(size * 0.07)), x1, y1], fill=ACCENT)  # 아래 강조선
-    y = top
+    y = round(H * 0.085)
+    d.line([(W // 2 - round(u * 0.050), y), (W // 2 + round(u * 0.050), y)],
+           fill=ACCENT, width=max(3, round(u * 0.005)))
+    y += round(u * 0.030)
     for ln in lines:
-        d.text(((W - text_w(ln, f)) // 2, y), ln, font=f, fill=(255, 253, 250, 255))
+        d.text(((W - text_w(ln, f)) // 2, y), ln, font=f, fill=_pale(0.02))
         y += lh + gap
-    return Image.alpha_composite(img.convert("RGBA"), layer)
+    return Image.alpha_composite(img.convert("RGBA"), _lift(layer, radius=round(u * 0.011)))
 
 
 # ── 정보 그래픽 4종 ──────────────────────────────────────
@@ -453,177 +439,171 @@ def _t(d, xy, text, f, ox=0, oy=0, **kw):
     d.text((x, y), text, font=f, **kw)
 
 
-def _band(W, h, alpha=222, accent_top=True):
-    """화면 가로를 **끝에서 끝까지** 지나는 띠.
+def _lift(layer, radius=10, alpha=170, spread=3):
+    """⭐ 판을 깔지 않는 대신 두 겹으로 글자를 띄운다.
 
-    ⭐ 예전에는 흰 종이 카드를 화면 가운데 띄웠다. 모서리가 둥글고 그림자가 깔린
-       흰 상자는 **휴대폰 앱 화면**처럼 보인다 — 다큐멘터리나 드라마의 자막 그래픽이 아니다.
-       방송 그래픽은 상자를 띄우지 않는다. **화면 밖으로 흘러나가는 띠** 위에 글자를 얹는다.
-       그래야 화면의 일부로 읽히고, 떠 있는 스티커처럼 보이지 않는다."""
-    img = Image.new("RGBA", (W, h), INK + (alpha,))
-    d = ImageDraw.Draw(img)
-    if accent_top:
-        d.rectangle([0, 0, W, max(2, round(h * 0.018))], fill=ACCENT)
-    d.line([(0, h - 1), (W, h - 1)], fill=HAIR + (60,))
-    return img, d
+    이 방향(활자)의 유일한 위험은 **밝은 배경에서 흰 글자가 묻히는 것**이다.
+    실제로 밝은 벽 배경으로 시험해 보니 작은 라벨이 거의 안 보였다.
+    상자를 다시 깔면 도로 앱 화면이 되므로, 상자 없이 두 가지로 푼다.
+
+      1) 그늘 — 글자 모양 그대로 번진다. 네모가 보이지 않는다
+      2) 위쪽 그라데이션 — 자막이 아래에서 쓰는 것과 같은 방식.
+         글자가 놓인 높이까지만 은은하게 덮고 아래로 스르르 사라진다.
+         어두운 장면에서는 거의 보이지 않고, 밝은 장면에서만 일한다"""
+    W, H = layer.size
+    box = layer.getchannel("A").point(lambda v: 255 if v >= 24 else 0).getbbox()
+    out = Image.new("RGBA", layer.size, (0, 0, 0, 0))
+
+    if box:
+        pad = round(H * 0.055)
+        bottom = min(H, box[3] + pad)
+        fade = max(1, round(H * 0.10))
+        grad = Image.new("L", (1, bottom))
+        px = grad.load()
+        for y in range(bottom):
+            left = bottom - y
+            px[0, y] = 132 if left > fade else round(132 * (left / fade) ** 1.4)
+        shade = Image.new("RGBA", (W, bottom), (10, 11, 14, 255))
+        shade.putalpha(grad.resize((W, bottom)))
+        out.alpha_composite(shade, (0, 0))
+
+    a = layer.getchannel("A").point(lambda v: min(255, v * spread))
+    a = a.filter(ImageFilter.GaussianBlur(radius))
+    sh = Image.new("RGBA", layer.size, (0, 0, 0, 0))
+    sh.putalpha(a.point(lambda v: round(v * alpha / 255)))
+    out.alpha_composite(sh)
+    out.alpha_composite(layer)
+    return out
 
 
 def _pale(t):
-    """어두운 띠 위에 올릴 밝은 글자색. 종이색에서 뽑는다(새 색을 만들지 않는다)."""
+    """어두운 화면 위에 올릴 밝은 글자색. 종이색에서 뽑는다(새 색을 만들지 않는다)."""
     return tuple(round(255 - (255 - c) * t) for c in PAPER)
 
 
-def _spaced(text, gap=" "):
-    """'판 결 금 액' 처럼 자간을 벌린다. 작은 라벨을 격식 있게 보이게 한다."""
-    return gap.join(list(text.replace(" ", "")))
+def _spaced(text, gap="  "):
+    """'판 결 금 액' 처럼 자간을 벌린다. 작은 라벨이 격식 있게 읽힌다."""
+    return gap.join(list(str(text).replace(" ", "")))
 
 
 def g_nametag(text, W=1920, H=1080):
-    """인물 이름표 — 방송 로워서드.
+    """인물 이름표 — 강조색 짧은 선 하나와 이름만.
 
-    화면 **왼쪽 끝에 붙어** 시작해 오른쪽으로 뻗는다. 떠 있는 알약이 아니라
-    화면에 박힌 띠다. 아래에 강조색 가는 선 하나만 둔다."""
+    판도 상자도 없다. 방송 다큐멘터리가 쓰는 가장 조용한 형태다."""
     u = unit(W, H)
-    f = _fit_font(u * 0.038, u * 0.026, [text], int(W * 0.55), role="label")
-    lh = line_h(f)
-    # 띠는 화면 왼쪽 끝에서 시작하지만 **글자는 안전 여백 안쪽**에서 시작한다.
-    # 쇼츠는 왼쪽 가장자리에 UI 가 겹치는 기기가 있다.
-    pad_x, pad_y = round(W * SAFE), round(u * 0.018)
-    bw = pad_x + text_w(text, f) + round(u * 0.045)
-    bh = lh + pad_y * 2
-
     out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    band = Image.new("RGBA", (bw, bh), INK + (228,))
-    d = ImageDraw.Draw(band)
-    d.rectangle([0, bh - max(3, round(u * 0.005)), bw, bh], fill=ACCENT)
-    _t(d, (pad_x, pad_y), text, f,
-       oy=round(H * 0.60) - bh // 2, fill=_pale(0.06))
-    out.alpha_composite(band, (0, round(H * 0.60) - bh // 2))
-    return out
+    d = ImageDraw.Draw(out)
+    f = _fit_font(u * 0.034, u * 0.024, [text], int(W * 0.52), role="label")
+    x, y = round(W * 0.055), round(H * 0.615)
+    d.line([(x, y), (x + round(u * 0.075), y)], fill=ACCENT, width=max(3, round(u * 0.004)))
+    _t(d, (x, y + round(u * 0.020)), text, f, fill=_pale(0.02))
+    return _lift(out, radius=round(u * 0.009))
 
 
 def g_amount(value, note="", W=1920, H=1080):
-    """금액 — 화면을 가로지르는 띠 위에 숫자만 크게.
+    """금액 — 화면 위쪽에 숫자만 크게. 판을 깔지 않는다.
 
-    상자를 없애니 숫자가 화면의 주인이 된다. 라벨은 자간을 벌려 작게,
-    숫자는 크게, 설명은 그 아래 가는 선 밑에."""
+    작은 라벨(자간 벌림) → 큰 숫자 → 강조색 짧은 선 → 설명. 세로로 네 켜."""
     u = unit(W, H)
     inner = int(W * (1 - 2 * SAFE))
-    cap = font(u * 0.021, "label")
-    big = _fit_font(u * 0.130, u * 0.055, [value], inner, role="num")
-    small = _fit_font(u * 0.028, u * 0.018, [note] if note else [], inner, role="body")
-    label = _spaced("판결금액")
-
-    gap1, gap2 = round(u * 0.014), round(u * 0.020)
-    pad = round(u * 0.045)
-    bh = (line_h(cap) + gap1 + line_h(big)
-          + (gap2 * 2 + line_h(small) if note else 0) + pad * 2)
-
-    band, d = _band(W, bh)
-    y = pad
-    oy = round(H * 0.16)
-    _t(d, ((W - text_w(label, cap)) // 2, y), label, cap, oy=oy, fill=_pale(0.48))
-    y += line_h(cap) + gap1
-    _t(d, ((W - text_w(value, big)) // 2, y), value, big, oy=oy, fill=_pale(0.02))
-    if note:
-        y += line_h(big) + gap2
-        d.line([(W * 0.42, y), (W * 0.58, y)], fill=_pale(0.65) + (110,), width=2)
-        y += gap2
-        _t(d, ((W - text_w(note, small)) // 2, y), note, small, oy=oy, fill=_pale(0.42))
-
     out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    out.alpha_composite(band, (0, round(H * 0.16)))
-    return out
+    d = ImageDraw.Draw(out)
+
+    cap = font(u * 0.019, "label")
+    big = _fit_font(u * 0.135, u * 0.055, [value], inner, role="num")
+    sml = _fit_font(u * 0.024, u * 0.016, [note] if note else [], inner, role="body")
+    lab = _spaced("판결금액")
+
+    y = round(H * 0.185)
+    _t(d, ((W - text_w(lab, cap)) // 2, y), lab, cap, fill=_pale(0.52))
+    y += line_h(cap) + round(u * 0.022)
+    _t(d, ((W - text_w(value, big)) // 2, y), value, big, fill=_pale(0.01))
+    y += line_h(big) + round(u * 0.018)
+    d.line([(W // 2 - round(u * 0.055), y), (W // 2 + round(u * 0.055), y)],
+           fill=ACCENT, width=max(3, round(u * 0.004)))
+    if note:
+        y += round(u * 0.026)
+        _t(d, ((W - text_w(note, sml)) // 2, y), note, sml, fill=_pale(0.46))
+    return _lift(out, radius=round(u * 0.012))
 
 
 def g_timeline(items, W=1920, H=1080):
     """연표. 판결극장의 반전은 전부 시간 순서다.
     '재혼 열한 달 전'이 말로만 지나가면 충격이 전달되지 않는다.
 
-    상자를 없애고, 화면을 가로지르는 **한 줄** 위에 점을 찍는다."""
+    판 없이 가는 선 한 줄과 점만. 마지막(결정적) 점만 강조색."""
     items = items[:5]
     n = max(1, len(items))
     u = unit(W, H)
+    out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(out)
+
     x0, x1 = round(W * 0.10), round(W * 0.90)
-    slot = (x1 - x0) // max(1, n - 1) if n > 1 else (x1 - x0)
+    step = (x1 - x0) // max(1, n - 1) if n > 1 else 0
+    lab = _fit_font(u * 0.026, u * 0.016,
+                    [str(it.get("label", ""))[:16] for it in items],
+                    int(step * 0.94) if n > 1 else int(W * 0.6), role="label")
+    whn = _fit_font(u * 0.021, u * 0.014,
+                    [str(it.get("when", ""))[:14] for it in items],
+                    int(step * 0.94) if n > 1 else int(W * 0.6), role="body")
 
-    lab = _fit_font(u * 0.030, u * 0.017,
-                    [str(it.get("label", ""))[:16] for it in items], slot - 16, role="label")
-    when = _fit_font(u * 0.025, u * 0.015,
-                     [str(it.get("when", ""))[:14] for it in items], slot - 16, role="body")
-
-    pad = round(u * 0.045)
-    bh = pad * 2 + line_h(lab) + round(u * 0.055) + line_h(when)
-    band, d = _band(W, bh)
-
-    y_line = pad + line_h(lab) + round(u * 0.028)
-    d.line([(x0, y_line), (x1, y_line)], fill=_pale(0.70) + (120,), width=2)
-
+    yl = round(H * 0.235)
+    d.line([(x0, yl), (x1, yl)], fill=_pale(0.72) + (120,), width=2)
+    lo, hi = round(W * SAFE), W - round(W * SAFE)
     for i, it in enumerate(items):
-        x = x0 + slot * i if n > 1 else (x0 + x1) // 2
+        x = x0 + step * i if n > 1 else (x0 + x1) // 2
         last = (i == n - 1)
-        r = round(u * 0.0085)
+        r = round(u * 0.006)
+        d.ellipse([x - r, yl - r, x + r, yl + r], fill=ACCENT if last else _pale(0.55))
         if last:
-            d.ellipse([x - r * 2, y_line - r * 2, x + r * 2, y_line + r * 2],
-                      outline=ACCENT, width=max(2, round(u * 0.003)))
-        d.ellipse([x - r, y_line - r, x + r, y_line + r],
-                  fill=ACCENT if last else _pale(0.55))
-
+            rr = r * 2
+            d.ellipse([x - rr, yl - rr, x + rr, yl + rr],
+                      outline=ACCENT, width=max(2, round(u * 0.0025)))
         t1 = str(it.get("label", ""))[:16]
         t2 = str(it.get("when", ""))[:14]
-        lo, hi = round(W * SAFE), W - round(W * SAFE)
-        tx1 = min(max(x - text_w(t1, lab) // 2, lo), hi - text_w(t1, lab))
-        tx2 = min(max(x - text_w(t2, when) // 2, lo), hi - text_w(t2, when))
-        oy = round(H * 0.15)
-        _t(d, (tx1, pad), t1, lab, oy=oy, fill=_pale(0.04))
-        _t(d, (tx2, y_line + round(u * 0.024)), t2, when, oy=oy,
-           fill=ACCENT if last else _pale(0.45))
-
-    out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    out.alpha_composite(band, (0, round(H * 0.15)))
-    return out
+        _t(d, (min(max(x - text_w(t1, lab) // 2, lo), hi - text_w(t1, lab)),
+               yl - round(u * 0.030) - line_h(lab)), t1, lab, fill=_pale(0.03))
+        _t(d, (min(max(x - text_w(t2, whn) // 2, lo), hi - text_w(t2, whn)),
+               yl + round(u * 0.026)), t2, whn, fill=ACCENT if last else _pale(0.45))
+    return _lift(out, radius=round(u * 0.009))
 
 
 def g_family(nodes, W=1920, H=1080):
     """가족 관계도. 상속 사건은 관계 파악이 전제다. 도표 1장이 5분 설명을 대체한다.
 
-    네모 상자를 없앤다. 이름을 한 줄에 늘어놓고 가는 선으로만 잇는다."""
+    상자를 두지 않는다. 이름을 늘어놓고 가는 선으로만 잇는다."""
     nodes = nodes[:5]
     n = max(1, len(nodes))
     u = unit(W, H)
+    out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(out)
+
     x0, x1 = round(W * 0.10), round(W * 0.90)
     slot = (x1 - x0) / max(1, n)
+    nm = _fit_font(u * 0.032, u * 0.019,
+                   [str(x.get("name", ""))[:8] for x in nodes],
+                   int(slot * 0.84), role="label")
+    rel = _fit_font(u * 0.022, u * 0.014,
+                    [str(x.get("rel", ""))[:12] for x in nodes],
+                    int(slot * 0.90), role="body")
 
-    nm = _fit_font(u * 0.034, u * 0.020,
-                   [str(x.get("name", ""))[:8] for x in nodes], int(slot * 0.88), role="label")
-    rel = _fit_font(u * 0.024, u * 0.014,
-                    [str(x.get("rel", ""))[:12] for x in nodes], int(slot * 0.92), role="body")
-
-    pad = round(u * 0.048)
-    bh = pad * 2 + line_h(nm) + round(u * 0.016) + line_h(rel)
-    band, d = _band(W, bh)
-
-    y_nm = pad
-    y_rel = pad + line_h(nm) + round(u * 0.016)
+    y_nm = round(H * 0.200)
+    y_rel = y_nm + line_h(nm) + round(u * 0.014)
     y_mid = y_nm + line_h(nm) // 2
     for i, nd in enumerate(nodes):
         cx = round(x0 + slot * (i + 0.5))
         t1 = str(nd.get("name", ""))[:8]
         t2 = str(nd.get("rel", ""))[:12]
         w1 = text_w(t1, nm)
-        if i < n - 1:                       # 이름과 이름 사이를 가는 선으로 잇는다
+        if i < n - 1:
             nx = round(x0 + slot * (i + 1.5))
             w2 = text_w(str(nodes[i + 1].get("name", ""))[:8], nm)
             a, b = cx + w1 // 2 + round(u * 0.018), nx - w2 // 2 - round(u * 0.018)
             if b > a:
-                d.line([(a, y_mid), (b, y_mid)], fill=_pale(0.72) + (110,), width=2)
-        oy = round(H * 0.16)
-        _t(d, (cx - w1 // 2, y_nm), t1, nm, oy=oy, fill=_pale(0.04))
-        _t(d, (cx - text_w(t2, rel) // 2, y_rel), t2, rel, oy=oy, fill=_pale(0.45))
-
-    out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    out.alpha_composite(band, (0, round(H * 0.16)))
-    return out
+                d.line([(a, y_mid), (b, y_mid)], fill=_pale(0.74) + (110,), width=2)
+        _t(d, (cx - w1 // 2, y_nm), t1, nm, fill=_pale(0.03))
+        _t(d, (cx - text_w(t2, rel) // 2, y_rel), t2, rel, fill=_pale(0.45))
+    return _lift(out, radius=round(u * 0.009))
 
 
 GFX = {"nametag": g_nametag, "amount": g_amount, "timeline": g_timeline, "family": g_family}
@@ -792,10 +772,16 @@ def check_frame(script_path):
     # 쇼츠 도입·마무리 문장도 세로로 확인한다
     for s in doc.get("shorts", []):
         t = (s.get("intro_line") or "").strip()
-        if t:                                   # 도입은 금색 배지 — 그림으로 잰다
-            blank = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
-            probe("세로", f"쇼츠{s.get('no')} intro_line",
-                  draw_top_line(blank, t), 1080, 1080 * SAFE * 0.5)
+        if t:
+            # 도입 문장도 자막과 같다 — 뒤에 깔리는 그라데이션은 일부러 화면 폭을 다 쓴다.
+            # 그림으로 재면 늘 위반으로 잡히므로 **글자 폭**을 잰다.
+            u = unit(1080, 1920)
+            inner = int(1080 * (1 - 2 * max(0.075, SAFE)))
+            f = _fit_font(u * 0.050, u * 0.032,
+                          _wrap_px(t, font(int(u * 0.050), "label"), inner),
+                          inner, role="label")
+            if any(text_w(ln, f) > 1080 * (1 - 2 * SAFE) for ln in _wrap_px(t, f, inner)):
+                bad.append(f"세로 쇼츠{s.get('no')} intro_line 글자가 폭 초과")
         t = (s.get("outro_line") or "").strip()
         if t:                                   # 마무리는 자막으로 나간다 — 글자 폭을 잰다
             lines, size = fit_subtitle(t, 1080, 1920, True)
