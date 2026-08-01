@@ -28,14 +28,18 @@ import money                                                # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# 막 이름 → (시작초, 끝초). CLAUDE.md "7. 대본 구조"
+# 막 이름 → (시작초, 끝초). prompts/script_gen.md v2.0 의 시간 예산과 같아야 한다.
+#
+# ⚠️ v2.0 에서 크게 바뀌었다. 법정(4막)이 150초, 5막 법령 설명이 20초여서
+#    판결·금액이 전체의 20%를 넘게 차지했다. 이 채널은 법정물이 아니라 가족 드라마다.
+#    4막 150→55초, 5막 50→31초로 줄이고 그 114초를 1~3막(사람 이야기)으로 옮겼다.
 ACT_WINDOW = {
     "hook": (0, 22),
-    "act1": (22, 200),
-    "act2": (200, 370),
-    "act3": (370, 520),
-    "act4": (520, 670),
-    "act5": (670, 720),
+    "act1": (22, 240),
+    "act2": (240, 446),
+    "act3": (446, 634),
+    "act4": (634, 689),
+    "act5": (689, 720),
 }
 
 MAX_CUT_SEC = 7.0
@@ -44,6 +48,10 @@ CUT_MIN, CUT_MAX = 100, 115
 RUNTIME, RUNTIME_TOL = 720, 10
 ACT_TOL = 5
 SHORT_MIN, SHORT_MAX = 35.0, 50.0
+
+# 판결·금액이 차지해도 되는 최대 비율. 이야기의 90%는 사람 사이의 일이어야 한다.
+LEGAL_MAX_RATIO = 0.10
+MAX_AMOUNT_GFX = 1          # 금액 카드는 4막 판결 낭독 한 컷에만
 
 
 class Report:
@@ -204,32 +212,71 @@ def check_hook(doc, r):
             r.error("3초 관문", f"{cut['id']}: 인물 소개·설명형 도입으로 보인다 — \"{t}\"")
 
 
-def check_stakes(doc, r):
-    """30초 관문 — 22~50초 안에 '무엇이 걸려 있는지'가 나와야 한다.
+def _is_money_cut(cut):
+    """이 컷이 '돈 이야기' 인가."""
+    return bool(money.mentions(cut.get("text") or "")) or \
+        (cut.get("gfx") or {}).get("type") == "amount"
 
-    도입 훅(0~22초)에는 금액을 밝히면 안 되고, 1막 첫머리에는 반드시 밝혀야 한다.
-    이 둘을 혼동해 금액을 4막까지 미루면 시청자가 30초에서 이탈한다."""
-    t = 0.0
-    hook_amount = None
-    stakes_at = None
+
+def check_legal_ratio(doc, r):
+    """⭐ 판결·금액이 전체의 10%를 넘지 않는가.
+
+    이 채널은 법정물이 아니라 가족 드라마다. 시청자는 판결이 궁금해서 보는 게 아니라
+    저 집 사람들이 왜 저렇게 됐는지가 궁금해서 본다. 판결은 마침표일 뿐 본문이 아니다.
+
+    예전 대본(v1.0)은 4막 법정 150초 + 5막 법령 설명 20초에 금액 문장이 곳곳에 흩어져
+    판결·금액이 20%를 넘었다. 화면이 계속 돈 이야기로 보였다."""
+    total = sum(float(c.get("sec", 0)) for _a, c in all_cuts(doc))
+    budget = total * LEGAL_MAX_RATIO
+
+    legal_sec, act4_sec, money_out = 0.0, 0.0, []
     for act, cut in all_cuts(doc):
-        has_amount = ("억" in (cut.get("text") or "")) or \
-                     ((cut.get("gfx") or {}).get("type") == "amount")
-        if has_amount:
-            if t < 22 and hook_amount is None:
-                hook_amount = (t, cut.get("id"))
-            elif t >= 22 and stakes_at is None:
-                stakes_at = (t, cut.get("id"))
-        t += float(cut.get("sec", 0))
+        sec = float(cut.get("sec", 0))
+        in_act4 = act.get("id") == "act4"
+        if in_act4:
+            act4_sec += sec
+        if in_act4 or _is_money_cut(cut):
+            legal_sec += sec
+        if _is_money_cut(cut) and not in_act4:
+            money_out.append(cut.get("id"))
 
-    if hook_amount:
-        r.error("3초 관문", f"도입 22초 안에 금액이 나온다 ({hook_amount[1]}) — 볼 이유가 사라진다")
-    if stakes_at is None:
-        r.error("30초 관문", "걸린 것(재산의 크기)이 대본 어디에도 없다")
-    elif stakes_at[0] > 50:
-        r.error("30초 관문", f"걸린 것이 {stakes_at[0]:.1f}초에야 나온다 ({stakes_at[1]}) — 50초 이내여야 한다")
+    pct = 100 * legal_sec / max(1.0, total)
+    if legal_sec > budget:
+        r.error("판결·금액 비중",
+                f"{legal_sec:.0f}초 ({pct:.1f}%) — 상한 {budget:.0f}초({LEGAL_MAX_RATIO:.0%}) 초과. "
+                f"4막 {act4_sec:.0f}초 + 4막 밖 금액 컷 {len(money_out)}개"
+                + (f" ({', '.join(money_out[:6])})" if money_out else ""))
     else:
-        r.ok(f"걸린 것이 {stakes_at[0]:.1f}초에 제시됨 ({stakes_at[1]})")
+        r.ok(f"판결·금액 {legal_sec:.0f}초 ({pct:.1f}%) — 상한 {budget:.0f}초 이내")
+
+    # 금액 카드는 판결 낭독 한 컷에만. 여러 번 뜨면 화면이 계속 돈 이야기가 된다.
+    amt = [c.get("id") for _a, c in all_cuts(doc)
+           if (c.get("gfx") or {}).get("type") == "amount"]
+    if len(amt) > MAX_AMOUNT_GFX:
+        r.error("판결·금액 비중",
+                f"금액 그래픽이 {len(amt)}개 ({', '.join(amt)}) — {MAX_AMOUNT_GFX}개까지")
+    else:
+        r.ok(f"금액 그래픽 {len(amt)}개 ({MAX_AMOUNT_GFX}개 이하)")
+
+
+def check_stakes(doc, r):
+    """도입과 1막에서는 금액을 말하지 않는다.
+
+    걸린 것의 무게는 숫자가 아니라 **물건과 관계**로 전한다.
+    "12억 400만 원" 이 아니라 "세 아들이 다 자란 그 집" 이다.
+    시작부터 액수가 나오면 이야기가 돈 문제가 되고, 시청자는 남의 재산 구경이 된다."""
+    early = []
+    for act, cut in all_cuts(doc):
+        if act.get("id") not in ("hook", "act1"):
+            continue
+        if _is_money_cut(cut):
+            early.append(f"{cut.get('id')}({act.get('id')})")
+    if early:
+        r.error("30초 관문",
+                f"도입·1막에 금액이 나온다: {', '.join(early[:6])} — "
+                f"걸린 것은 물건과 관계로 말한다 ('그 집', '아버지 논')")
+    else:
+        r.ok("도입·1막에 금액 없음 (걸린 것을 관계로 전달)")
 
 
 def check_tags(doc, r):
@@ -436,6 +483,7 @@ def validate_doc(doc, mf=None, with_shorts=True):
     check_timing(doc, r)
     check_text(doc, r)
     check_hook(doc, r)
+    check_legal_ratio(doc, r)
     check_stakes(doc, r)
     check_tags(doc, r)
     check_blackout(doc, r)

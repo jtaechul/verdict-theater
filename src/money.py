@@ -103,6 +103,13 @@ def is_tidy(text, step=STEP):
     return True
 
 
+def mentions(text):
+    """문장 안에 나오는 금액 표기를 전부 돌려준다.
+
+    '이 컷이 돈 이야기인가' 를 세는 데 쓴다 — 판결·금액 비중 10% 규칙(검증기)."""
+    return [m.group(0) for m in _MONEY.finditer(text or "")]
+
+
 def untidy(text, step=STEP):
     """백만원 단위가 아닌 금액 표기만 골라 돌려준다. 오류 메시지용."""
     out = []
