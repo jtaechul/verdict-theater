@@ -3,20 +3,22 @@
 
     python3 tools/thumb_mock.py --out build/thumb
 
-⛔ 인물 그림에 **절대 손대지 않는다**
-    한 번 흰 테두리를 깎아내려다 얼굴을 망쳤다. 3.6%만 깎으려던 것이 실제로는
-    10.4% 가 깎여 머리 위·턱·귀가 잘려 나갔다(실측). 손님이 "얼굴을 왜
-    찌그러트렸냐"고 한 것이 이것이다.
-    → 그림은 **원본 그대로** 쓴다. 아래 잘린 단면은 깎아서가 아니라
-      **화면 밖으로 밀어내서** 감춘다. 모양을 건드리지 않는 방법이다.
+참고 채널 6곳의 썸네일에서 읽어낸 문법 (전부 지킨다)
+    · 큰 글씨가 **화면 폭의 90%를 꽉 채운다.** 이것이 가장 큰 차이였다 —
+      내 예전 시안은 55% 라 폰에서 작고 얌전해 보였다.
+    · 흰(또는 검은) 테두리를 **아주 두껍게.** 글자 굵기의 20% 이상.
+    · 인물마다 **노란 딱지**를 바로 옆에 붙인다 — (장남) (어머니).
+      누가 누구인지 0.5초 안에 알아야 한다.
+    · 인물은 둘 이상, **표정이 대비**되게.
+    · 색을 아낀다고 얌전해지면 안 된다. 빨강·노랑을 과감히 쓴다.
 
-글은 두 덩어리만
-    참고 채널들의 썸네일은 예외 없이 '작은 한 줄 + 큰 두 줄' 이다.
-    예전 시안은 라벨·인용·소제목·금액·결과까지 다섯 덩어리라 읽히지 않았다.
+우리만의 차별점
+    참고 채널들은 '막장 상황' 을 판다. 우리는 **"그래서 얼마를 물어냈나"** 를 판다.
+    큰 줄에 반드시 **금액**이 들어간다.
 
-테두리
-    참고 이미지 두 장 모두 화면 가장자리에 **크림색 테두리**를 두르고 있다.
-    피드에서 다른 영상과 경계를 만들어 주는 장치다. 같은 방식으로 두른다.
+인물 그림은 원본 그대로 쓴다
+    흰 테두리는 손대지 않는다(손님 확인: 싸구려로 보이지 않는다).
+    아래 잘린 단면은 **화면 밖으로 밀어내** 감춘다.
 """
 
 import argparse
@@ -29,119 +31,61 @@ ROOT = Path(__file__).resolve().parent.parent
 BATANG = ROOT / "assets/fonts/KoPub_Batang_Pro_Bold.otf"
 W, H = 1280, 720
 
-INK = (12, 13, 18)
-PAPER = (245, 243, 238)
-GOLD = (238, 196, 104)
-CREAM = (238, 226, 200)          # 바깥 테두리 — 참고 이미지의 그 색
-BLOOD = (196, 44, 44)
-BORDER = 13                      # 테두리 두께
+INK = (10, 11, 16)
+PAPER = (255, 255, 255)
+YELLOW = (255, 216, 64)
+BLOOD = (222, 46, 46)
+CREAM = (240, 228, 200)
+BORDER = 11
+FADE_FROM = 430          # 이 줄부터 어두워지기 시작 (얼굴 아래)
+FADE_TO = 572            # 이 줄부터는 완전히 어둡다 — 인물 아래 단면이 여기 잠긴다
 
 
-def f(size):
-    return ImageFont.truetype(str(BATANG), size)
+def fit(text, target_w, lo=40, hi=190):
+    """글자가 target_w 를 꽉 채우는 크기를 찾는다. 참고 이미지의 핵심."""
+    best = lo
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        f = ImageFont.truetype(str(BATANG), mid)
+        if ImageDraw.Draw(Image.new("RGB", (1, 1))).textlength(text, font=f) <= target_w:
+            best, lo = mid, mid + 1
+        else:
+            hi = mid - 1
+    return ImageFont.truetype(str(BATANG), best)
 
 
 def backdrop(name):
-    """배경 — 흐리게, 어둡게, 왼쪽으로 갈수록 더 어둡게(글씨 자리를 비운다)."""
     p = ROOT / f"assets/bg/{name}"
     if p.exists():
         bg = Image.open(p).convert("RGB").resize((W, H), Image.LANCZOS)
-        bg = bg.filter(ImageFilter.GaussianBlur(10))
+        bg = bg.filter(ImageFilter.GaussianBlur(11))
     else:
         bg = Image.new("RGB", (W, H), (30, 32, 40))
-    bg = Image.blend(bg, Image.new("RGB", (W, H), INK), 0.40)
-
-    grad = Image.new("L", (W, 1))
-    gp = grad.load()
-    for x in range(W):
-        t = x / (W - 1)
-        gp[x, 0] = int(240 * max(0.0, 1.0 - (t / 0.72) ** 1.7))
-    shade = Image.new("RGBA", (W, H), (*INK, 255))
-    shade.putalpha(grad.resize((W, H), Image.BILINEAR))
-    out = bg.convert("RGBA")
-    out.alpha_composite(shade)
-    return out
+    return Image.blend(bg, Image.new("RGB", (W, H), INK), 0.42).convert("RGBA")
 
 
-def drop_white_ring(im):
-    """인물 둘레에 **인쇄된 순백 띠**만 투명하게 만든다. 모양은 안 건드린다.
-
-    ⛔ 예전 실패 — 알파를 통째로 안쪽으로 밀었다(erode). 3.6%만 깎으려던 것이
-       실제로는 10.4% 깎여 머리 위·턱·귀가 잘려 나갔다. 얼굴이 망가진다.
-    ✅ 지금 방식 — **지울 픽셀을 색으로 고르되, 가장자리 근처로 한정**한다.
-       ① 순백(RGB 245 이상, 세 값이 거의 같음)이고
-       ② 실루엣 가장자리에서 안쪽으로 얼마 안 들어온 자리
-       두 조건을 **모두** 만족하는 픽셀만 지운다.
-       흰 셔츠는 ②에 걸려 안전하다 — 옷은 인물 안쪽에 있다.
-       지워도 사람 모양은 그대로다. 없던 것을 없애는 것뿐이다."""
-    a = im.getchannel("A")
-    hard = a.point(lambda v: 255 if v > 200 else 0)
-    # 가장자리 띠 = 원래 실루엣 - 안쪽으로 민 실루엣 (마스크로만 쓴다)
-    w, h = im.size
-    small = hard.resize((max(1, w // 4), max(1, h // 4)), Image.NEAREST)
-    for _ in range(3):                                   # 넉넉히 잡아 띠를 덮는다
-        small = small.filter(ImageFilter.MinFilter(9))
-    inner = small.resize((w, h), Image.BILINEAR).point(lambda v: 255 if v > 128 else 0)
-
-    import numpy as np
-    arr = np.array(im)
-    rgb, al = arr[..., :3].astype(int), arr[..., 3]
-    ring = (np.array(inner) == 0) & (al > 8) & (rgb.min(axis=2) >= 245)
-    arr[..., 3] = np.where(ring, 0, al)
-    out = Image.fromarray(arr, "RGBA")
-    box = out.getchannel("A").getbbox()
-    return out.crop(box) if box else out
-
-
-def put_person(base, code, pose, height, cx, bottom):
-    """인물을 앉힌다. **모양은 원본 그대로** — 흰 띠만 벗긴다.
-
-    bottom 이 화면 높이보다 크면 아래쪽이 화면 밖으로 나가, 잘린 단면이
-    보이지 않는다."""
+def person(base, code, pose, height, cx, bottom):
+    """원본 그대로. bottom > H 면 아래 단면이 화면 밖으로 나간다."""
     p = ROOT / f"assets/char/{code}/{pose}.png"
     if not p.exists():
         print(f"  (그림 없음: {code}/{pose})")
-        return
+        return None
     im = Image.open(p).convert("RGBA")
     im = im.crop(im.getchannel("A").getbbox())
-    im = drop_white_ring(im)
-    r = height / im.height                       # 가로세로 비율 그대로
+    r = height / im.height
     im = im.resize((round(im.width * r), round(height)), Image.LANCZOS)
-    base.alpha_composite(im, (round(cx - im.width / 2), round(bottom - im.height)))
+    x, y = round(cx - im.width / 2), round(bottom - im.height)
+    base.alpha_composite(im, (x, y))
+    return (x, y, im.width, im.height)
 
 
-def frame(d):
-    """참고 이미지처럼 바깥에 크림색 테두리를 두른다."""
-    for i in range(BORDER):
-        d.rectangle((i, i, W - 1 - i, H - 1 - i), outline=CREAM)
-    # 안쪽에 얇은 어두운 선을 하나 더 — 테두리가 배경에 녹지 않게 한다
-    d.rectangle((BORDER, BORDER, W - 1 - BORDER, H - 1 - BORDER), outline=(40, 36, 30))
-
-
-def text(d, s, xy, size, fill=PAPER, stroke=None):
-    d.text(xy, s, font=f(size), fill=fill,
-           stroke_width=max(5, size // 10) if stroke is None else stroke,
-           stroke_fill=INK)
-
-
-def build(lead, big1, big2, code, pose, bg, out):
-    """lead = 작은 한 줄 / big1·big2 = 큰 두 줄. 그 이상은 넣지 않는다."""
-    base = backdrop(bg)
-    put_person(base, code, pose, height=800, cx=1010, bottom=H + 120)
-    d = ImageDraw.Draw(base)
-
-    text(d, lead, (62, 96), 44, fill=(226, 218, 200), stroke=5)
-    d.rectangle((62, 168, 372, 174), fill=BLOOD)
-    text(d, big1, (56, 404), 104, fill=GOLD)
-    text(d, big2, (60, 540), 104)
-
-    lab = f(30)
-    tw = d.textlength("판결극장", font=lab)
-    d.rectangle((W - tw - 74, 34, W - 38, 88), fill=(0, 0, 0))
-    d.text((W - tw - 56, 48), "판결극장", font=lab, fill=GOLD)
-
-    frame(d)
-    base.convert("RGB").save(out, quality=94)
+def label(d, text, cx, y):
+    """인물 옆 노란 딱지 — 참고 이미지의 (남편) (내연녀) 방식."""
+    f = ImageFont.truetype(str(BATANG), 52)
+    t = f"({text})"
+    tw = d.textlength(t, font=f)
+    d.text((cx - tw / 2, y), t, font=f, fill=YELLOW,
+           stroke_width=11, stroke_fill=INK)
 
 
 def main():
@@ -153,12 +97,63 @@ def main():
     if not BATANG.exists():
         print("바탕체 폰트가 없다")
         return 1
-    build("어머니를 법정에 세운 장남", "1억 3,500만 원", "토해냈다",
-          "M50A", "face_shock", "court_hall.jpg", out / "C1.jpg")
-    build("9억을 받고도 소송했다", "장남 몫은", "0원",
-          "M50A", "face_anger", "court_room.jpg", out / "C2.jpg")
-    build("어머니 몫까지 요구한 장남", "법원의 답은", "달랐다",
-          "M50A", "face_cold", "court_exterior.jpg", out / "C3.jpg")
+
+    plans = [
+        ("C1.jpg", "court_hall.jpg",
+         [("F50A", "face_cry", 640, 320, 648, "어머니"),
+          ("M50A", "face_anger", 680, 960, 656, "장남")],
+         "어머니를 법정에 세운 장남", "1억 3,500만 원 토해냈다"),
+        ("C2.jpg", "court_room.jpg",
+         [("F50A", "face_sad", 640, 300, 648, "어머니"),
+          ("M50A", "face_shock", 690, 970, 658, "장남")],
+         "9억을 받고도 소송했다", "장남 몫은 0원이었다"),
+        ("C3.jpg", "funeral_hall.jpg",
+         [("M50B", "face_sad", 640, 300, 648, "차남"),
+          ("M50A", "face_cold", 680, 960, 656, "장남")],
+         "장례식 날 날아온 소장", "법원이 형을 멈춰세웠다"),
+    ]
+
+    for fn, bg, cast, small, big in plans:
+        base = backdrop(bg)
+        d0 = ImageDraw.Draw(base)
+        for code, pose, h, cx, bot, name in cast:
+            person(base, code, pose, h, cx, bot)
+        for code, pose, h, cx, bot, name in cast:
+            label(d0, name, cx, max(10, bot - h - 18))
+
+        # 아래 글씨 자리 — **딱 끊는 판이 아니라 서서히 어두워지는 그늘**이다.
+        # ⚠️ 판을 딱 끊어 깔면 그 윗선에서 인물의 잘린 아래 단면(흰 테두리)이
+        #    가로줄로 드러난다. 실제로 그렇게 나왔다.
+        #    그늘로 스며들게 하면 인물이 어둠 속으로 들어가 단면이 사라진다 —
+        #    참고 이미지들이 쓰는 방식이다.
+        grad = Image.new("L", (1, H))
+        gp = grad.load()
+        for yy in range(H):
+            k = (yy - FADE_FROM) / max(1, FADE_TO - FADE_FROM)
+            gp[0, yy] = int(250 * min(1.0, max(0.0, k)) ** 0.85)
+        band = Image.new("RGBA", (W, H), (*INK, 255))
+        band.putalpha(grad.resize((W, H), Image.BILINEAR))
+        base.alpha_composite(band, (0, 0))
+        d = ImageDraw.Draw(base)
+
+        fs = ImageFont.truetype(str(BATANG), 46)
+        tw = d.textlength(small, font=fs)
+        d.text(((W - tw) / 2, H - 232), small, font=fs, fill=(252, 220, 220),
+               stroke_width=8, stroke_fill=INK)
+
+        fb = fit(big, int(W * 0.93))                       # 폭을 꽉 채운다
+        tw = d.textlength(big, font=fb)
+        d.text(((W - tw) / 2, H - 172), big, font=fb, fill=PAPER,
+               stroke_width=max(12, fb.size // 7), stroke_fill=INK)
+
+        lab = ImageFont.truetype(str(BATANG), 29)
+        tl = d.textlength("판결극장", font=lab)
+        d.rectangle((W - tl - 60, 22, W - 24, 74), fill=(0, 0, 0))
+        d.text((W - tl - 42, 34), "판결극장", font=lab, fill=YELLOW)
+
+        for i in range(BORDER):
+            d.rectangle((i, i, W - 1 - i, H - 1 - i), outline=CREAM)
+        base.convert("RGB").save(out / fn, quality=94)
     print(f"시안 3장 → {out}")
     return 0
 
