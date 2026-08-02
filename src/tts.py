@@ -565,6 +565,48 @@ def synth_one(key, model, text, speaker, out_mp3, rotate=False):
     return out_mp3
 
 
+
+def _daily_dead(err):
+    """이 오류가 '하루 몫 소진' 인가. 분당 한도와 구분해야 한다."""
+    src = err.__cause__ if getattr(err, "__cause__", None) is not None else err
+    raw = getattr(src, "_vt_body", "") or ""
+    return isinstance(err, QuotaExhausted) or "PerDay" in raw
+
+
+def _all_models_dead(key, pool):
+    """남은 모델을 한 번씩 두드려 본다.
+
+    전부 하루 몫이 끝났으면 **가장 빨리 풀리는 시간(초)** 을, 하나라도 살아 있으면
+    None 을 돌려준다. 거절된 요청은 한도를 깎지 않으므로 두드려 봐도 손해가 없다."""
+    soonest = None
+    for m in list(pool.models):
+        url = f"{BASE}/models/{m}:generateContent?key={key}"
+        payload = {"contents": [{"role": "user", "parts": [{"text": "네."}]}],
+                   "generationConfig": {"responseModalities": ["AUDIO"],
+                                        "speechConfig": {"voiceConfig": {
+                                            "prebuiltVoiceConfig": {"voiceName": "Charon"}}}}}
+        try:
+            _post(url, payload, timeout=60)
+            return None                      # 하나라도 살아 있다 → 계속 진행
+        except urllib.error.HTTPError as e:
+            raw = ""
+            try:
+                raw = e.read().decode("utf-8", "replace")
+                e._vt_body = raw
+            except Exception:
+                pass
+            if e.code != 429 or "PerDay" not in raw:
+                return None                  # 하루 한도가 아니다 → 계속 진행
+            for d in (json.loads(raw).get("error", {}).get("details") or []):
+                rd = d.get("retryDelay")
+                if isinstance(rd, str) and rd.endswith("s"):
+                    v = float(rd[:-1])
+                    soonest = v if soonest is None else min(soonest, v)
+        except Exception:
+            return None                      # 통신 문제일 수 있다 → 섣불리 멈추지 않는다
+    return soonest
+
+
 def make_one(pool, key, text, speaker, path, tries=0, pinned=None):
     """한 컷을 만든다. 성공하면 (None, 쓴 모델), 실패하면 (마지막 오류, None).
 
@@ -578,10 +620,19 @@ def make_one(pool, key, text, speaker, path, tries=0, pinned=None):
     한 컷이 무음이 되면 그 자리에서 소리가 끊기기 때문이다."""
     tries = tries or max(2, len(pool.models) + 1)
     last = None
+    dead = QuotaExhausted("쓸 수 있는 음성 모델이 남지 않았습니다.")
     for _ in range(tries):
         if not pool.alive():
+            # ⚠️ 쓸 모델이 하나도 없다. 여기서 그냥 빠져나가면 last 가 None 이라
+            #    **부른 쪽이 '성공' 으로 읽는다.** 실제로 그렇게 돼서, 소리 파일이
+            #    만들어지지도 않은 컷 3개가 성공으로 세어졌다(로그의 '모델별: None 3컷').
+            #    성공률 검사가 그만큼 헐거워져 소리 빈 영상이 통과할 뻔했다.
+            last = last or dead
             break
         model = (pool.wait_for(pinned) or pool.acquire()) if pinned else pool.acquire()
+        if model is None:
+            last = last or dead
+            break
         try:
             synth_one(key, model, text, speaker, path, rotate=True)
             return None, model
@@ -925,8 +976,24 @@ def main():
             note = quota_note(err.__cause__ if err.__cause__ is not None else err)
             print(f"  ⚠️ 열쇠 확인 실패({type(err).__name__})"
                   + (f" — {note}" if note else ""))
-            print("     GEMINI_API_KEY 가 결제 걸린 프로젝트의 열쇠인지 확인하십시오.")
             (out / f"{probe['id']}.mp3").unlink(missing_ok=True)
+
+            # ⭐ **하루 몫이 끝났으면 여기서 멈춘다.**
+            #    예전에는 그대로 114컷을 돌았다. 전부 무음으로 때워지는데도 컷마다
+            #    기다리느라 30분 넘게 돌다가, 소리가 절반 빈 영상이 나왔다.
+            #    남은 모델까지 한 번씩 두드려 보고, 전부 막혔으면 **언제 풀리는지**
+            #    분 단위로 알려주고 끝낸다. 다시 눌러야 할 시각을 알 수 있어야 한다.
+            if _daily_dead(err):
+                wait = _all_models_dead(key, pool)
+                if wait is not None:
+                    print("", file=sys.stderr)
+                    print("오류: 오늘 쓸 수 있는 음성 생성량을 다 썼습니다.", file=sys.stderr)
+                    print(f"      약 {max(1, round(wait / 60))}분 뒤에 한도가 초기화됩니다."
+                          " 그때 다시 실행하십시오.", file=sys.stderr)
+                    print("      (모델별 하루 한도 — flash 100회씩, pro 50회."
+                          " 한 편에 약 144회가 듭니다)", file=sys.stderr)
+                    return 1
+            print("     GEMINI_API_KEY 가 결제 걸린 프로젝트의 열쇠인지 확인하십시오.")
 
     ok = fail = 0
     streak = 0
