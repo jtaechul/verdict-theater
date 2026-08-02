@@ -135,7 +135,15 @@ def sheet_prompt(code, poses, cols, rows):
         f"LAYOUT — obey exactly:\n"
         f"  - The background is a FLAT PURE CHROMA GREEN #00B140 everywhere. Nothing else.\n"
         f"  - Arrange the figures in a {cols} by {rows} grid, reading left to right, top to bottom.\n"
-        f"  - Draw NO grid lines, NO borders, NO labels, NO text, NO numbers, NO captions.\n"
+        f"  - Draw NO labels, NO text, NO numbers, NO captions.\n"
+        # ⚠️ "격자선을 그리지 마라" 라고 써도 모델은 그린다 (실측: (1,1,1) 검은 줄).
+        #    지시를 거스르게 하지 말고 **색을 바꾸게** 한다 — 초록이면 배경과 함께
+        #    걷어내지므로 무해하다. 손님 제안이고, 실제로 절반이 초록으로 바뀌었다.
+        #    (나머지 절반은 여전히 검게 나오므로 degrid 가 마지막에 확실히 지운다)
+        f"  - ⚠️ ABSOLUTE RULE ON COLOUR: every single pixel that is not part of the\n"
+        f"    person must be EXACTLY the chroma green #00B140. If you draw any panel\n"
+        f"    border, cell divider, frame or separator line at all, it MUST be that\n"
+        f"    same pure green — never black, never grey, never white.\n"
         f"  - Leave a clear band of pure green between every figure — they must never touch or overlap.\n"
         f"  - ⚠️ EVERY figure is COMPLETE and fully inside its own cell, with pure green visible on all\n"
         f"    four sides of it. Never let a head, hair, shoulder or hand touch or run off the edge of\n"
@@ -175,6 +183,72 @@ def gen_sheet(key, prompt, out_path, cols, rows):
 #    렌더러가 인물을 쓰는 최대 크기는 세로 쇼츠에서 약 1050픽셀이다.
 #    1200픽셀로 줄여 놓고 작업하면 화질 손해 없이 수십 배 빨라진다.
 WORK_H = 1200
+
+
+# ── 칸 선 지우기 (시트 단계에서 · 자르기 전에) ─────────────
+#
+# ⭐ 여기가 **칸 선을 잡을 수 있는 유일한 자리**다. 실측으로 확인했다.
+#
+#    제미나이는 "격자선을 그리지 마라" 라고 프롬프트에 써도 그린다. 실제로 뽑아 재보니
+#    칸 사이에 (1,1,1) · (2,7,1) 짜리 검은 줄을 그어 놓았다. 배경은 (0,174,77) 초록인데도.
+#    "선을 그리더라도 배경과 같은 초록으로" 라고 고쳐 써 봤더니 둘 중 하나만 초록이 되고
+#    나머지 하나는 여전히 검정이었다 — **말로는 보장이 안 된다.**
+#
+#    잘라낸 뒤에 지우려는 시도는 다섯 번 다 실패했다. 그때는 선이 옷에 붙어 있어
+#    법복·니트·구두와 구분이 불가능하기 때문이다.
+#    그런데 **시트에서는 선이 그림을 처음부터 끝까지 관통한다.** 실측:
+#        칸 선이 있는 열   : 어두운 픽셀 100%
+#        가장 어두운 옷 열 : 어두운 픽셀  34%
+#    한 번도 겹치지 않는다. 그래서 여기서는 안전하게 가를 수 있다.
+GRID_DARK = 40      # 가장 밝은 채널이 이 값 미만이면 '어두운 점'
+GRID_SPAN = 0.80    # 그 줄의 이 비율 이상이 어두우면 칸 선 (실측: 선 100% · 옷 34%)
+GRID_THICK = 0.02   # 그림 폭·높이의 이 비율보다 두꺼우면 선이 아니다
+
+
+def degrid(img):
+    """시트에 그어진 칸 선을 **배경 초록으로 덮는다.** → (고친 시트, 지운 줄 수)
+
+    초록으로 덮으면 바로 다음 단계의 크로마 키가 배경과 함께 통째로 걷어낸다.
+    인물에 딸려 나갈 여지가 아예 없어진다."""
+    im = img.convert("RGB")
+    W, H = im.size
+    px = im.load()
+    sy = max(1, H // 600)
+    sx = max(1, W // 600)
+
+    cols = [x for x in range(W)
+            if sum(1 for y in range(0, H, sy) if max(px[x, y]) < GRID_DARK)
+            >= len(range(0, H, sy)) * GRID_SPAN]
+    rows = [y for y in range(H)
+            if sum(1 for x in range(0, W, sx) if max(px[x, y]) < GRID_DARK)
+            >= len(range(0, W, sx)) * GRID_SPAN]
+
+    def thin_groups(idx, limit):
+        """이어진 덩어리로 묶고, 얇은 것만 돌려준다 (두꺼우면 선이 아니다)"""
+        out, i = [], 0
+        while i < len(idx):
+            j = i
+            while j + 1 < len(idx) and idx[j + 1] == idx[j] + 1:
+                j += 1
+            if idx[j] - idx[i] + 1 <= limit:
+                out.append((idx[i], idx[j]))
+            i = j + 1
+        return out
+
+    gc = thin_groups(cols, max(4, int(W * GRID_THICK)))
+    gr = thin_groups(rows, max(4, int(H * GRID_THICK)))
+    if not gc and not gr:
+        return img, 0
+
+    out = img.convert("RGBA")
+    d = ImageDraw.Draw(out)
+    pad = 2                       # 선 가장자리의 흐릿한 곳까지 함께 덮는다
+    fill = tuple(A.CHROMA) + (255,)
+    for a, b in gc:
+        d.rectangle([a - pad, 0, b + pad, H - 1], fill=fill)
+    for a, b in gr:
+        d.rectangle([0, a - pad, W - 1, b + pad], fill=fill)
+    return out, len(gc) + len(gr)
 
 
 def fast_key(img):
@@ -447,6 +521,11 @@ def label_figures(keyed, figs, poses, key):
 def slice_sheet(sheet_path, code, poses, cols, rows, outdir=None, save_debug=None,
                 key=""):
     sheet = Image.open(sheet_path).convert("RGBA")
+    # ⭐ 자르기 **전에** 칸 선을 배경 초록으로 덮는다. 여기서 안 지우면
+    #    잘린 뒤에는 옷과 붙어 버려 두 번 다시 안전하게 지울 수 없다.
+    sheet, n_grid = degrid(sheet)
+    if n_grid:
+        print(f"    칸 선 {n_grid}줄을 배경색으로 덮었다 (자르기 전)")
     keyed, figs = find_figures(sheet, cols, rows, want=len(poses))
     print(f"    시트 {sheet.width}x{sheet.height} · 덩어리 {len(figs)}개 발견 (필요 {len(poses)}개)")
 
