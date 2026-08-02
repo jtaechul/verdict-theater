@@ -46,17 +46,18 @@ RATIOS = {"1:1": 1.0, "3:2": 1.5, "2:3": 2 / 3, "4:3": 4 / 3, "3:4": 0.75,
 # 인물 생김새. 회차가 바뀌어도 같은 코드면 같은 사람이어야 한다.
 LOOK = {
     "F50A": "a 60-year-old Korean woman, short permed dark hair with grey strands, "
-            "tired kind eyes, thin face, wearing a navy knit sweater and black trousers",
+            "tired kind eyes, thin face, wearing a light beige knit sweater and black trousers",
     "F50B": "a 50-year-old Korean woman, neat shoulder-length bob, sharp cool eyes, "
-            "wearing a navy blouse and black trousers",
+            "wearing a deep burgundy blouse and black trousers",
     "F70": "a 70-year-old Korean woman, white permed hair, deeply lined face, "
-           "stooped shoulders, small frame, wearing a navy cardigan and black trousers",
+           "stooped shoulders, small frame, wearing a soft lilac vest over a white "
+           "blouse and black trousers",
     "M50A": "a 50-year-old Korean man, short greying hair, square jaw, heavy build, "
             "wearing a navy suit jacket, white shirt and black trousers",
     "M50B": "a 48-year-old Korean man, receding hairline, thin face, tired eyes, "
-            "wearing a navy zip-up jacket and black trousers",
+            "wearing an olive-green zip-up jacket and dark trousers",
     "M70": "a 70-year-old Korean man, thin white hair, gaunt lean face, frail thin body, "
-           "wearing a navy jacket and black trousers",
+           "wearing a brown cardigan over a white shirt and grey trousers",
     "JUDGE": "a Korean judge in a black judicial robe with a white collar, "
              "middle-aged, composed, hair neatly combed",
 }

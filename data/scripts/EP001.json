@@ -287,10 +287,10 @@
               "scale": 0.95
             },
             {
-              "code": "M50B",
+              "code": "M70",
               "pose": "bust_neutral",
-              "pos": "right",
-              "scale": 0.9
+              "pos": "left",
+              "scale": 0.95
             }
           ],
           "speaker": "narrator",
@@ -446,6 +446,12 @@
               "pose": "bust_neutral",
               "pos": "center",
               "scale": 1.1
+            },
+            {
+              "code": "M70",
+              "pose": "bust_neutral",
+              "pos": "center",
+              "scale": 1.1
             }
           ],
           "speaker": "v_M50A",
@@ -494,10 +500,10 @@
               "scale": 1.1
             },
             {
-              "code": "F50A",
+              "code": "M70",
               "pose": "bust_sad",
-              "pos": "left",
-              "scale": 0.9
+              "pos": "right",
+              "scale": 1.1
             }
           ],
           "speaker": "v_M50A",
@@ -514,8 +520,8 @@
           "flashback": true,
           "chars": [
             {
-              "code": "F50A",
-              "pose": "bust_sad",
+              "code": "M70",
+              "pose": "face_neutral",
               "pos": "center",
               "scale": 1.0
             }
