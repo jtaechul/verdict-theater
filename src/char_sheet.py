@@ -63,7 +63,11 @@ LOOK = {
 
 # 칸마다 무엇을 그릴지. 표정 낱말과 프레이밍으로 나뉜다.
 FRAME = {
-    "face": "an extreme close-up of the face only, head fills the cell, shoulders barely visible",
+    # ⚠️ '얼굴로 화면을 채워라' 라고 하면 모델이 **머리카락 위쪽을 잘라서** 그린다.
+    #    (실측: 판사 얼굴을 두 번 뽑았는데 두 번 다 정수리가 평평하게 잘렸다.)
+    #    '머리 전체가 여백과 함께 다 보이게' 로 못 박는다.
+    "face": "a close-up of the head — the WHOLE head including all the hair is visible "
+            "with clear empty space above it, cut off just below the collarbone",
     "bust": "a head-and-shoulders shot, cut off at mid-chest",
     "full": "the entire body from head to feet, standing in the middle of the cell",
 }
