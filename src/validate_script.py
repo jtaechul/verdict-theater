@@ -192,6 +192,58 @@ def check_speaker(doc, r):
         r.ok("말하는 사람과 화면 인물이 모두 맞는다")
 
 
+# 대사가 여러 명을 가리키는 말. 그만큼 사람이 실제로 있어야 한다.
+PLURAL_WORDS = {
+    "동생들": ("차남", "삼남", "사남", "장녀", "차녀", "막내"),
+    "형들": ("장남", "차남"),
+    "아들들": ("장남", "차남", "삼남", "사남"),
+    "딸들": ("장녀", "차녀", "삼녀"),
+    "자녀들": ("장남", "차남", "삼남", "장녀", "차녀"),
+    "형제들": ("장남", "차남", "삼남", "사남"),
+}
+
+
+def check_plural(doc, r):
+    """**여러 명을 가리키는 대사인데 사람이 그만큼 없는지** 본다.
+
+    실제로 있었던 일
+        판례 원문은 '상속인은 배우자, 장남(피고), 차남, 삼남' 인데 대본 배역에는
+        삼남이 빠져 있었다. 대사는 '어머니와 동생들의 몫' 이라고 정확히 말하는데
+        명단과 가족관계도에는 동생이 한 명뿐이라 앞뒤가 맞지 않았다.
+        사람 눈으로만 찾을 수 있는 종류라 기계가 잡아야 한다.
+
+    ⚠️ 상속인 수는 **금액과 직결된다.** 법정상속분은 배우자 1.5 : 자녀 1 : 1 : 1 로
+       나누므로, 동생 수를 줄이면 판결 금액이 통째로 틀려진다.
+       그래서 '대사를 단수로 고치는' 해법은 쓰면 안 된다 — 사람을 채워야 한다."""
+    roles = set()
+    for n in (doc.get("anonymization", {}) or {}).get("names", []) or []:
+        if n.get("role"):
+            roles.add(str(n["role"]).strip())
+    for ch in (doc.get("characters") or []):
+        if ch.get("role"):
+            roles.add(str(ch["role"]).strip())
+    for _, cut in all_cuts(doc):
+        g = cut.get("gfx") or {}
+        if g.get("type") == "family":
+            for nd in (g.get("nodes") or []):
+                if nd.get("rel"):
+                    roles.add(str(nd["rel"]).strip())
+
+    bad = 0
+    for _, cut in all_cuts(doc):
+        text = cut.get("text") or ""
+        for word, want in PLURAL_WORDS.items():
+            if word in text:
+                have = sum(1 for w in want if w in roles)
+                if have < 2:
+                    r.error(cut.get("id", "?"),
+                            f"'{word}' 라고 말하는데 해당하는 사람이 {have}명뿐이다 "
+                            f"— 배역·가족관계도에 채우거나 대사를 고쳐야 한다")
+                    bad += 1
+    if bad == 0:
+        r.ok("여러 명을 가리키는 대사에 사람이 모두 있다")
+
+
 def check_timing(doc, r):
     cuts = list(all_cuts(doc))
     n = len(cuts)
@@ -558,6 +610,7 @@ def validate_doc(doc, mf=None, with_shorts=True):
     check_structure(doc, r)
     check_assets(doc, mf, r)
     check_speaker(doc, r)
+    check_plural(doc, r)
     check_timing(doc, r)
     check_text(doc, r)
     check_hook(doc, r)
