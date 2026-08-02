@@ -52,42 +52,69 @@ PEOPLE = (
 # 한국식 공간을 그대로 찾기는 어려우므로 **분위기와 구조가 맞는 것**을 노린다.
 # 어차피 흐려서 깔리므로 나라보다 빛과 결이 중요하다.
 QUERIES = {
-    "home_living_day": ["empty living room sofa daylight", "living room interior window light",
-                        "simple living room couch"],
-    "home_living_night": ["dark living room lamp night", "dim living room evening",
-                          "living room night interior"],
-    "home_kitchen": ["small kitchen interior old", "vintage kitchen counter",
-                     "simple kitchen window"],
-    "home_closet": ["old wooden wardrobe bedroom", "vintage closet clothes",
-                    "bedroom wardrobe interior"],
-    "home_entrance": ["apartment entryway door", "hallway front door interior",
-                      "entrance corridor door"],
-    "court_hall": ["empty marble corridor building", "long hallway government building",
-                   "institutional corridor windows"],
-    "court_room": ["empty courtroom", "courtroom interior", "council chamber wooden"],
-    "court_exterior": ["courthouse building exterior columns", "government building facade stairs",
-                       "classical civic building"],
-    "office_lawyer": ["law office desk books", "wooden desk library office",
-                      "office bookshelf legal"],
-    "office_registry": ["government office counter", "public office desk interior",
-                        "administrative office counter"],
-    "office_bank": ["bank counter interior", "bank branch office", "teller counter"],
-    "funeral_hall": ["dim empty corridor carpet", "quiet hotel hallway dark",
-                     "dim corridor doors"],
-    "funeral_reception": ["empty dining hall tables", "banquet hall empty",
-                          "traditional room low tables"],
-    "funeral_parking": ["night parking lot wet asphalt", "empty parking lot night lights",
-                        "parking lot rain night"],
-    "funeral_altar": ["white chrysanthemum flowers", "white flowers memorial arrangement",
-                      "white lily funeral flowers"],
-    "medical_room_single": ["empty hospital room bed", "hospital ward interior",
-                            "clinic room bed window"],
-    "daily_cafe": ["empty cafe table window", "coffee shop interior empty",
-                   "cafe interior morning light"],
-    "daily_restaurant": ["empty restaurant table interior", "small diner interior",
-                         "simple restaurant table"],
+    "home_living_day": ["living room sofa coffee table", "living room interior daylight sofa",
+                        "apartment living room furniture"],
+    "home_living_night": ["dark living room lamp night", "living room evening warm lamp",
+                          "dim interior night sofa"],
+    "home_kitchen": ["kitchen sink window interior", "small kitchen counter wooden",
+                     "home kitchen interior"],
+    "home_closet": ["wooden wardrobe clothes hanging", "closet clothes rail bedroom",
+                    "old wardrobe interior"],
+    "home_entrance": ["front door hallway interior", "apartment corridor door interior",
+                      "entrance hall door"],
+    "court_hall": ["office building corridor daylight", "long hallway windows interior",
+                   "institutional hallway daylight"],
+    "court_room": ["courtroom benches empty", "council chamber wooden seats",
+                   "assembly hall wooden desks"],
+    "court_exterior": ["courthouse building exterior columns", "city hall building exterior",
+                       "government building facade street", "old civic building entrance steps"],
+    "office_lawyer": ["office desk bookshelf documents", "wooden desk law books",
+                      "study room desk books"],
+    "office_registry": ["office counter documents desk", "reception counter office interior",
+                        "public service counter"],
+    # ⚠️ "bank interior counter" 로 찾으면 어두운 나무 대청이 잔뜩 나온다(교회처럼 보인다).
+    #    창구의 핵심은 '카운터와 대기 의자' 이므로 그쪽으로 찾는다.
+    "office_bank": ["office reception desk lobby", "service counter desk interior",
+                    "reception desk waiting area", "bank interior counter"],
+    "funeral_hall": ["dim corridor carpet doors", "quiet hallway warm light",
+                     "hotel corridor dim"],
+    "funeral_reception": ["banquet hall empty tables", "dining hall long tables",
+                          "event hall tables chairs"],
+    "funeral_parking": ["empty parking lot night", "parking garage interior cars",
+                        "night street wet asphalt lights", "underground parking lot"],
+    "funeral_altar": ["white chrysanthemum flowers", "white flowers arrangement dark",
+                      "white lily bouquet"],
+    "medical_room_single": ["hospital room bed empty", "hospital ward bed window",
+                            "clinic patient room"],
+    "daily_cafe": ["cafe interior table chairs", "coffee shop table window",
+                   "cafe empty seats interior"],
+    "daily_restaurant": ["restaurant table chairs interior", "diner interior table",
+                         "dining table restaurant empty"],
 }
 
+
+# 제미나이가 후보를 볼 때 "이 장면이 맞나" 를 재는 기준.
+# 배경 코드가 무엇을 뜻하는지 사람 말로 적어 둔다.
+WANT = {
+    "home_living_day": "the living room of an ordinary apartment in daytime, sofa and low table visible",
+    "home_living_night": "a living room at night, lit only by a lamp, dark and quiet",
+    "home_kitchen": "a small ordinary home kitchen with a counter and sink",
+    "home_closet": "a wardrobe or closet with clothes, inside a bedroom",
+    "home_entrance": "the small entryway or front door area of a home",
+    "court_hall": "a long institutional corridor with daylight, like a courthouse or government building",
+    "court_room": "a courtroom or formal chamber with wooden benches and desks",
+    "court_exterior": "the exterior of a civic or courthouse building with columns or steps",
+    "office_lawyer": "a lawyer's office: a wooden desk with documents and shelves of books",
+    "office_registry": "a public service counter in a government office",
+    "office_bank": "the interior of a bank branch with a teller counter",
+    "funeral_hall": "a dim quiet corridor with closed doors, solemn atmosphere",
+    "funeral_reception": "a large hall with rows of empty tables, like a banquet or reception room",
+    "funeral_parking": "an outdoor parking lot at night",
+    "funeral_altar": "white chrysanthemum or lily flowers, funeral flower arrangement",
+    "medical_room_single": "a hospital room with a bed",
+    "daily_cafe": "a cafe interior with a table by a window",
+    "daily_restaurant": "a small restaurant or diner interior with a table",
+}
 
 # ⚠️ Pexels 는 `Python-urllib/3.x` 라는 기본 이름표를 보면 403 으로 막는다.
 #    (실측: 같은 주소를 이름표만 바꿔 부르면 200 이 온다.) 평범한 브라우저 이름표를 단다.
@@ -99,6 +126,87 @@ def get(url, key):
     req = urllib.request.Request(url, headers={"Authorization": key, "User-Agent": UA})
     with urllib.request.urlopen(req, timeout=40) as r:
         return json.loads(r.read().decode("utf-8"))
+
+
+# ── 제미나이가 후보를 눈으로 보고 고른다 ──────────────────────
+# ⚠️ 처음에는 설명글(alt)에 사람 낱말이 있는지만 봤다. **그것으로는 부족했다** —
+#    법정 사진에 판사가, 변호사 사무실 사진에 사람이 앉아 있는 채로 통과했다.
+#    설명글은 사람이 붙인 것이라 사람이 찍혔어도 안 적혀 있을 수 있다.
+#    이제 후보 12장을 번호 붙인 한 장의 판으로 만들어 제미나이에게 보여주고
+#    "사람이 없고 이 장면에 맞는 것" 을 고르게 한다. 판이 한 장이라 호출도 한 번이다.
+JUDGE_MODEL = os.environ.get("BG_JUDGE_MODEL", "gemini-3.1-flash-lite")
+GEMINI = "https://generativelanguage.googleapis.com/v1beta"
+GRID = (4, 3)               # 가로 4 × 세로 3 = 12장
+TILE = 320
+
+
+def contact_sheet(images):
+    """후보 그림들을 번호 붙인 한 장으로 붙인다."""
+    from PIL import ImageDraw
+    cols, rows = GRID
+    th = round(TILE * 9 / 16)
+    sheet = Image.new("RGB", (cols * TILE, rows * (th + 26)), (20, 20, 24))
+    d = ImageDraw.Draw(sheet)
+    for i, im in enumerate(images[:cols * rows]):
+        x, y = (i % cols) * TILE, (i // cols) * (th + 26)
+        sheet.paste(im.resize((TILE, th), Image.LANCZOS), (x, y))
+        d.rectangle([x, y + th, x + TILE, y + th + 26], fill=(20, 20, 24))
+        d.text((x + 6, y + th + 5), f"#{i + 1}", fill=(255, 255, 255))
+    return sheet
+
+
+def judge(code, photos, key):
+    """후보 중 몇 번이 좋은지 제미나이에게 묻는다. → 뽑힌 사진 또는 None."""
+    import base64
+    import io
+    thumbs = []
+    keep = []
+    for p in photos[:GRID[0] * GRID[1]]:
+        try:
+            req = urllib.request.Request(p["src"]["medium"], headers={"User-Agent": UA})
+            with urllib.request.urlopen(req, timeout=40) as r:
+                thumbs.append(Image.open(io.BytesIO(r.read())).convert("RGB"))
+            keep.append(p)
+        except Exception:
+            continue
+    if not thumbs:
+        return None
+    buf = io.BytesIO()
+    contact_sheet(thumbs).save(buf, format="JPEG", quality=82)
+
+    want = WANT.get(code, code.replace("_", " "))
+    prompt = (
+        f"This contact sheet has {len(thumbs)} numbered candidate photos.\n"
+        f"Pick the ONE best photo to use as a blurred background plate for a drama scene:\n"
+        f"  {want}\n\n"
+        "HARD REQUIREMENTS — reject a photo if any is true:\n"
+        "  - any person, face, body, or human silhouette is visible, even small or in the distance\n"
+        "  - it is obviously a different kind of place than described\n"
+        "  - it is dominated by large readable text or a logo\n"
+        "Prefer: calm, muted colour, ordinary and lived-in, clear sense of the place,\n"
+        "a composition that still reads when the centre third is cropped for a vertical video.\n\n"
+        'Answer with JSON only: {"best": <number, or -1 if every candidate fails>, '
+        '"why": "<8 words max>"}'
+    )
+    body = {"contents": [{"role": "user", "parts": [
+        {"text": prompt},
+        {"inlineData": {"mimeType": "image/jpeg",
+                        "data": base64.b64encode(buf.getvalue()).decode()}}]}],
+        "generationConfig": {"responseMimeType": "application/json", "temperature": 0}}
+    req = urllib.request.Request(f"{GEMINI}/models/{JUDGE_MODEL}:generateContent?key={key}",
+                                 data=json.dumps(body).encode(),
+                                 headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=180) as r:
+        res = json.loads(r.read().decode())
+    txt = "".join(pt.get("text", "") for pt
+                  in res["candidates"][0]["content"]["parts"])
+    ans = json.loads(txt)
+    n = int(ans.get("best", -1))
+    if n < 1 or n > len(keep):
+        print(f"    제미나이: 쓸 만한 것이 없다 ({ans.get('why','')})")
+        return None
+    print(f"    제미나이 선택 #{n} — {ans.get('why','')}")
+    return keep[n - 1]
 
 
 def has_people(alt):
@@ -116,8 +224,12 @@ def score(p):
     return (min(w, 6000) / 6000) * 0.4 + fit * 0.6
 
 
-def pick(code, key, used, dry=False):
-    """이 배경에 쓸 사진 하나를 고른다. → (사진 정보, 쓴 검색어) 또는 (None, None)"""
+def pick(code, key, used, gkey="", dry=False):
+    """이 배경에 쓸 사진 하나를 고른다. → (사진 정보, 쓴 검색어) 또는 (None, None)
+
+    검색어 목록을 위에서부터 훑으며 후보를 모으고, 설명글로 1차로 거른 뒤
+    제미나이가 그림을 직접 보고 고른다. 제미나이 키가 없으면 1차 결과만 쓴다."""
+    pool, qs = [], []
     for q in QUERIES[code]:
         url = (f"{API}?query={urllib.parse.quote(q)}"
                f"&per_page=40&orientation=landscape&size=large")
@@ -126,19 +238,35 @@ def pick(code, key, used, dry=False):
         except Exception as e:
             print(f"    검색 실패({q}): {e}")
             continue
-        cands = []
         for p in data.get("photos", []):
-            if p["id"] in used:
+            if p["id"] in used or any(x["id"] == p["id"] for x in pool):
                 continue
             if has_people(p.get("alt", "")):
                 continue
-            cands.append(p)
-        if dry:
-            print(f"    [{q}] 후보 {len(cands)}장 / 전체 {len(data.get('photos', []))}장")
-        if cands:
-            cands.sort(key=score, reverse=True)
-            return cands[0], q
-    return None, None
+            pool.append(p)
+            qs.append(q)
+        if len(pool) >= GRID[0] * GRID[1]:
+            break
+
+    if dry:
+        print(f"    후보 {len(pool)}장")
+        return None, None
+    if not pool:
+        return None, None
+
+    order = sorted(range(len(pool)), key=lambda i: score(pool[i]), reverse=True)
+    pool = [pool[i] for i in order]
+    qs = [qs[i] for i in order]
+    if gkey:
+        try:
+            got = judge(code, pool, gkey)
+        except Exception as e:
+            print(f"    제미나이 심사 실패({e}) — 설명글 기준으로만 고른다")
+            got = None
+        if got:
+            return got, qs[[p["id"] for p in pool].index(got["id"])]
+        return None, None
+    return pool[0], qs[0]
 
 
 def fetch(photo, path):
@@ -173,6 +301,9 @@ def main():
         print("PEXELS_API_KEY 가 없다.", file=sys.stderr)
         return 2
 
+    gkey = os.environ.get("GEMINI_API_KEY", "").strip()
+    if not gkey:
+        print("  (GEMINI_API_KEY 가 없어 그림을 눈으로 확인하지 않는다 — 사람이 섞일 수 있다)")
     codes = [c.strip() for c in args.only.split(",") if c.strip()] or list(QUERIES)
     OUT.mkdir(parents=True, exist_ok=True)
     credits_path = OUT / "credits.json"
@@ -193,7 +324,7 @@ def main():
             skip += 1
             continue
         print(f"  {code}")
-        photo, q = pick(code, key, used, dry=args.dry)
+        photo, q = pick(code, key, used, gkey=gkey, dry=args.dry)
         if args.dry:
             continue
         if not photo:
