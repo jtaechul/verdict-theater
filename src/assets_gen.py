@@ -32,8 +32,45 @@ from llm import BASE, _get, _post  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
 
+# ⭐ 제미나이에게 그림을 시킬 때의 **색 약속** — 온 저장소가 이 두 색만 쓴다.
+#
+#    배경 = 크로마 그린 · 칸을 나누는 선 = 마젠타.
+#    둘 다 '사람이 아닌 것' 이라 오려낼 때 한꺼번에 지운다.
+#
+#    ⚠️ 왜 선을 마젠타로 하는가 — 같은 시트를 세 번 뽑아 재본 결과다
+#         "격자선을 그리지 마라"        → 검은 줄 (1,3,0) 을 그었다.
+#                                        잘라내면 6장 중 5장에 검은 선이 남았다
+#         "그리더라도 배경과 같은 초록"  → 절반만 초록. 안 보이는 선을 그리라는
+#                                        모순된 지시라 모델이 버틴다
+#         "마젠타로 그려라"             → **검은 줄 0개.** 따를 수 있는 지시라 따른다
+#    그리고 마젠타는 사진 안 어디에도 없다 — 피부·남색 양복·검은 법복·흰 셔츠·흰머리
+#    무엇도 '초록이 가장 낮고 빨강·파랑이 둘 다 높다' 를 만족하지 못한다.
+#    검정은 옷과 겹쳐 골라낼 수가 없었다. 그것이 그동안 실패한 진짜 이유다.
 CHROMA = (0, 0xB1, 0x40)      # 크로마 그린. 실측 오차 5 이내로 균일
 CHROMA_TOL = 60
+MAGENTA = (0xFF, 0x00, 0xFF)  # 칸을 나누는 선. 배경과 함께 지워진다
+
+
+def is_magenta(r, g, b):
+    """마젠타인가. 사진 속 어떤 것도 여기 걸리지 않는다 — 실측으로 확인."""
+    return r > 100 and b > 100 and g < min(r, b) - 40
+
+
+# 이미지 프롬프트에 항상 들어가는 색 약속.
+# **한 곳에서 고치면 모든 이미지 생성에 반영되게** 여기 모아 둔다.
+COLOUR_RULE_KO = (
+    "- 배경 전체를 순수한 크로마 그린 #00B140 단색으로 채운다\n"
+    "- 칸을 나누는 선은 순수 마젠타 #FF00FF 로 12픽셀 굵기로 긋는다\n"
+    "- 사람 바깥에 쓰는 색은 이 둘뿐이다. 검정·회색·흰색 테두리나 선은 절대 그리지 않는다\n"
+)
+COLOUR_RULE_EN = (
+    "  - The background is a FLAT PURE CHROMA GREEN #00B140 everywhere.\n"
+    "  - Separate the cells with straight lines of PURE MAGENTA #FF00FF, about\n"
+    "    12 pixels thick, drawn edge to edge across the whole image.\n"
+    "  - ⚠️ ABSOLUTE RULE ON COLOUR: outside the people there are only two colours —\n"
+    "    the chroma green #00B140 background and those magenta #FF00FF divider\n"
+    "    lines. NEVER draw a black, grey or white border, frame or line anywhere.\n"
+)
 COLS, ROWS = 3, 6
 GRID_TRIM = 4                  # 격자선 안쪽으로 이 만큼 잘라낸다
 # 스티커·콜라주 느낌의 컷아웃. 잡지에서 오려 붙인 것처럼 보이게 한다.
@@ -68,15 +105,19 @@ def slice_sheet(img):
 
 
 def drop_chroma(cell):
-    """크로마 그린을 지워 투명하게 만든다."""
+    """'사람이 아닌 색' 을 지워 투명하게 만든다 — 크로마 그린과 **마젠타**.
+
+    마젠타는 칸을 나누는 선의 색이다. 배경과 같은 취급으로 여기서 함께 지우면,
+    선이 컷아웃에 딸려 나갈 일이 아예 없어진다."""
     cell = cell.convert("RGBA")
     px = cell.load()
     W, H = cell.size
     for y in range(H):
         for x in range(W):
             r, g, b, a = px[x, y]
-            if (abs(r - CHROMA[0]) < CHROMA_TOL and abs(g - CHROMA[1]) < CHROMA_TOL
-                    and abs(b - CHROMA[2]) < CHROMA_TOL and g > r + 40 and g > b + 20):
+            green = (abs(r - CHROMA[0]) < CHROMA_TOL and abs(g - CHROMA[1]) < CHROMA_TOL
+                     and abs(b - CHROMA[2]) < CHROMA_TOL and g > r + 40 and g > b + 20)
+            if green or is_magenta(r, g, b):
                 px[x, y] = (r, g, b, 0)
     return cell
 
@@ -250,8 +291,11 @@ def char_sheet_prompt(code):
     return (
         f"캐릭터 시트 한 장. {CHAR_LOOK.get(code, '한국 중년')}.\n"
         "규격을 정확히 지켜라.\n"
-        "- 배경 전체를 순수한 크로마 그린 #00B140 단색으로 채운다\n"
-        "- 3열 6행 = 18칸 격자. 격자선은 검은색 3px\n"
+        # ⚠️ 여기가 검은 칸 선의 **최초 발원지**였다 — 예전에는 이 자리에
+        #    "격자선은 검은색 3px" 이라고 **직접 시키고** 있었다.
+        #    검은 선은 검은 옷과 구분이 안 돼서 오려낼 때 딸려 나온다.
+        + COLOUR_RULE_KO +
+        "- 3열 6행 = 18칸 격자\n"
         "- 인물 의상은 남색 상의 + 검정 하의. 회색은 절대 쓰지 않는다\n"
         "- 바닥 그림자를 그리지 않는다\n"
         "- 18번 칸(오른쪽 맨 아래)은 인물 없이 비워 둔다\n"

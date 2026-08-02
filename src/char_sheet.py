@@ -133,9 +133,10 @@ def sheet_prompt(code, poses, cols, rows):
         f"A character reference sheet of ONE single person: {look}.\n"
         f"Photorealistic, evenly lit studio lighting, natural skin, realistic proportions.\n\n"
         f"LAYOUT — obey exactly:\n"
-        f"  - The background is a FLAT PURE CHROMA GREEN #00B140 everywhere. Nothing else.\n"
         f"  - Arrange the figures in a {cols} by {rows} grid, reading left to right, top to bottom.\n"
         f"  - Draw NO labels, NO text, NO numbers, NO captions.\n"
+        # ⭐ 색 약속은 assets_gen 에 한 벌만 둔다. 여기서 따로 쓰면 언젠가 어긋난다.
+        + A.COLOUR_RULE_EN +
         # ⭐ 칸 선은 **금지하지 말고 시킨다.** 실측으로 확인한 결론이다.
         #      "그리지 마라"            → 검은 줄 (1,1,1) 을 그었다
         #      "그리더라도 초록으로"     → 둘 중 하나만 초록. 안 보이는 선을 그리라는
@@ -144,11 +145,6 @@ def sheet_prompt(code, poses, cols, rows):
         #    마젠타는 사진 안 어디에도 없다 — 피부·남색 양복·검은 법복·흰 셔츠·흰머리
         #    무엇도 '초록이 가장 낮고 빨강·파랑이 둘 다 높다' 를 만족하지 않는다.
         #    그래서 잘라내기 전에 degrid 가 확실히 골라 지운다.
-        f"  - Separate the cells with straight lines of PURE MAGENTA #FF00FF, about\n"
-        f"    12 pixels thick, drawn edge to edge across the whole image.\n"
-        f"  - ⚠️ ABSOLUTE RULE ON COLOUR: outside the people there are only two colours —\n"
-        f"    the chroma green #00B140 background and those magenta #FF00FF divider\n"
-        f"    lines. NEVER draw a black, grey or white border, frame or line anywhere.\n"
         f"  - Leave a clear band of pure green between every figure — they must never touch or overlap.\n"
         f"  - ⚠️ EVERY figure is COMPLETE and fully inside its own cell, with pure green visible on all\n"
         f"    four sides of it. Never let a head, hair, shoulder or hand touch or run off the edge of\n"
@@ -222,12 +218,8 @@ GRID_THICK = 0.02   # 그림 폭·높이의 이 비율보다 두꺼우면 선이
 
 
 def _is_mag(p):
-    """마젠타인가. 사진 안의 어떤 것도 여기 걸리지 않는다 — 실측으로 확인.
-
-    피부 (200,160,140) · 남색 (30,31,49) · 흰 셔츠 (240,240,245) · 배경 초록 —
-    전부 '초록이 가장 낮고 빨강·파랑이 둘 다 높다' 를 만족하지 못한다."""
-    r, g, b = p[0], p[1], p[2]
-    return r > 100 and b > 100 and g < min(r, b) - 40
+    """마젠타인가 — 판정은 assets_gen 에 한 벌만 둔다."""
+    return A.is_magenta(p[0], p[1], p[2])
 
 
 def degrid(img):
@@ -298,7 +290,16 @@ def fast_key(img):
         ImageChops.multiply(
             r.point(lambda v: 255 if v < A.CHROMA[0] + A.CHROMA_TOL else 0),
             g.point(lambda v: 255 if abs(v - A.CHROMA[1]) < A.CHROMA_TOL else 0)))
-    alpha = ImageChops.invert(green)
+
+    # ⭐ 마젠타(칸을 나누는 선)도 배경과 똑같이 지운다.
+    #    '사람이 아닌 색' 은 초록과 마젠타 둘뿐이라는 약속이 여기서 완성된다.
+    #    빨강·파랑이 둘 다 높고 초록이 그보다 40 이상 낮은 곳 — 사진에는 없는 조건이다.
+    lo = ImageChops.darker(r, b)
+    mag = ImageChops.multiply(
+        ImageChops.multiply(r.point(lambda v: 255 if v > 100 else 0),
+                            b.point(lambda v: 255 if v > 100 else 0)),
+        ImageChops.subtract(lo, g).point(lambda v: 255 if v > 40 else 0))
+    alpha = ImageChops.invert(ImageChops.lighter(green, mag))
 
     # 초록 누르기 — g 가 r·b 평균보다 튀는 만큼만 깎는다
     rb = ImageChops.add(r, b, scale=2.0)
@@ -618,6 +619,10 @@ def gen_one(key, code, pose, ref_path, out_path):
         f"New picture: {cell_text(pose)}\n\n"
         f"RULES:\n"
         f"  - Background is FLAT PURE CHROMA GREEN #00B140 everywhere, nothing else.\n"
+        # 한 장에 한 포즈라 칸 선이 있을 이유가 없다. 그래도 모델이 액자를 두르는
+        # 버릇이 있어, 굳이 그린다면 마젠타로 그리게 해 둔다 (오려낼 때 함께 지워진다).
+        f"  - If you draw any frame or border at all it MUST be pure magenta #FF00FF,\n"
+        f"    never black, never grey, never white.\n"
         f"  - ONE person only. Centred, complete, with clear green margin on all four sides.\n"
         f"  - The whole head including all hair must be inside the frame. Never crop the head.\n"
         f"  - No text, no numbers, no borders, no frame lines, no grid, no labels, no watermark.\n"
