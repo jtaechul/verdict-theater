@@ -136,14 +136,19 @@ def sheet_prompt(code, poses, cols, rows):
         f"  - The background is a FLAT PURE CHROMA GREEN #00B140 everywhere. Nothing else.\n"
         f"  - Arrange the figures in a {cols} by {rows} grid, reading left to right, top to bottom.\n"
         f"  - Draw NO labels, NO text, NO numbers, NO captions.\n"
-        # ⚠️ "격자선을 그리지 마라" 라고 써도 모델은 그린다 (실측: (1,1,1) 검은 줄).
-        #    지시를 거스르게 하지 말고 **색을 바꾸게** 한다 — 초록이면 배경과 함께
-        #    걷어내지므로 무해하다. 손님 제안이고, 실제로 절반이 초록으로 바뀌었다.
-        #    (나머지 절반은 여전히 검게 나오므로 degrid 가 마지막에 확실히 지운다)
-        f"  - ⚠️ ABSOLUTE RULE ON COLOUR: every single pixel that is not part of the\n"
-        f"    person must be EXACTLY the chroma green #00B140. If you draw any panel\n"
-        f"    border, cell divider, frame or separator line at all, it MUST be that\n"
-        f"    same pure green — never black, never grey, never white.\n"
+        # ⭐ 칸 선은 **금지하지 말고 시킨다.** 실측으로 확인한 결론이다.
+        #      "그리지 마라"            → 검은 줄 (1,1,1) 을 그었다
+        #      "그리더라도 초록으로"     → 둘 중 하나만 초록. 안 보이는 선을 그리라는
+        #                                 모순된 지시라 모델이 버틴다
+        #      "마젠타로 그려라"         → **검은 줄 0개.** 따를 수 있는 지시라 따른다
+        #    마젠타는 사진 안 어디에도 없다 — 피부·남색 양복·검은 법복·흰 셔츠·흰머리
+        #    무엇도 '초록이 가장 낮고 빨강·파랑이 둘 다 높다' 를 만족하지 않는다.
+        #    그래서 잘라내기 전에 degrid 가 확실히 골라 지운다.
+        f"  - Separate the cells with straight lines of PURE MAGENTA #FF00FF, about\n"
+        f"    12 pixels thick, drawn edge to edge across the whole image.\n"
+        f"  - ⚠️ ABSOLUTE RULE ON COLOUR: outside the people there are only two colours —\n"
+        f"    the chroma green #00B140 background and those magenta #FF00FF divider\n"
+        f"    lines. NEVER draw a black, grey or white border, frame or line anywhere.\n"
         f"  - Leave a clear band of pure green between every figure — they must never touch or overlap.\n"
         f"  - ⚠️ EVERY figure is COMPLETE and fully inside its own cell, with pure green visible on all\n"
         f"    four sides of it. Never let a head, hair, shoulder or hand touch or run off the edge of\n"
@@ -187,26 +192,42 @@ WORK_H = 1200
 
 # ── 칸 선 지우기 (시트 단계에서 · 자르기 전에) ─────────────
 #
-# ⭐ 여기가 **칸 선을 잡을 수 있는 유일한 자리**다. 실측으로 확인했다.
+# ⭐ 칸 선 문제의 전말 — 실제로 뽑아서 재보고 알아낸 것
 #
-#    제미나이는 "격자선을 그리지 마라" 라고 프롬프트에 써도 그린다. 실제로 뽑아 재보니
-#    칸 사이에 (1,1,1) · (2,7,1) 짜리 검은 줄을 그어 놓았다. 배경은 (0,174,77) 초록인데도.
-#    "선을 그리더라도 배경과 같은 초록으로" 라고 고쳐 써 봤더니 둘 중 하나만 초록이 되고
-#    나머지 하나는 여전히 검정이었다 — **말로는 보장이 안 된다.**
+#    ① 제미나이는 "격자선을 그리지 마라" 라고 써도 **그린다.** 뽑아 재보니 칸 사이에
+#       (1,1,1) · (2,7,1) 짜리 검은 줄이 있었다. 배경은 (0,174,77) 초록인데도.
+#       '캐릭터 시트' 라는 개념에 칸 테두리가 워낙 강하게 붙어 있어 금지어가 안 통한다.
 #
-#    잘라낸 뒤에 지우려는 시도는 다섯 번 다 실패했다. 그때는 선이 옷에 붙어 있어
-#    법복·니트·구두와 구분이 불가능하기 때문이다.
-#    그런데 **시트에서는 선이 그림을 처음부터 끝까지 관통한다.** 실측:
-#        칸 선이 있는 열   : 어두운 픽셀 100%
-#        가장 어두운 옷 열 : 어두운 픽셀  34%
-#    한 번도 겹치지 않는다. 그래서 여기서는 안전하게 가를 수 있다.
+#    ② "그리더라도 배경과 같은 초록으로" → **절반만 통했다.** 하나는 초록이 됐고
+#       하나는 검은 채였다. 안 보이는 선을 그리라는 모순된 지시라 모델이 버틴다.
+#
+#    ③ ⭐ **"마젠타로 그려라" → 검은 줄 0개.** 금지하지 말고 **시켜야** 한다.
+#       모델이 그리고 싶어 하는 선을, 사진 안에 절대 없는 색으로 그리게 한다.
+#       (사람 피부·남색 양복·검은 법복·흰 셔츠·흰머리 어디에도 마젠타는 없다)
+#       이제 프롬프트가 그렇게 시킨다 — sheet_prompt() 참조.
+#
+#    ④ 그래도 지우는 단계는 남긴다. 모델이 언제 또 검게 그릴지 모르기 때문이다.
+#       **자르기 전**이어야 한다 — 잘라낸 뒤에는 선이 옷에 붙어 법복·니트·구두와
+#       구분이 불가능하다(그 방식으로 다섯 번 실패했다).
+#       시트에서는 선이 그림을 처음부터 끝까지 관통한다. 실측:
+#           칸 선이 있는 줄 : 100%      가장 어두운 옷 : 21.7%
+#       한 번도 겹치지 않아 안전하게 가를 수 있다.
 GRID_DARK = 20      # 가장 밝은 채널이 이 값 미만이면 '어두운 점'
                     # ⚠️ 40 으로 잡았다가 **일부만 초록으로 나온 칸선을 놓쳤다.**
                     #    실측(문턱 40): 그 칸선 70% · 가장 어두운 옷 39% — 여유가 없다.
                     #    문턱 20 에서는 옷이 최대 21.7% 로 떨어지고 칸선은 100% 그대로다.
-GRID_SPAN = 0.45    # 그 줄의 이 비율 이상이 어두우면 칸 선
+GRID_SPAN = 0.45    # 그 줄의 이 비율 이상이 걸리면 칸 선
                     # 실측(문턱 20): 칸선 100% · 칸선 아닌 곳 최대 21.7% — 2배 여유
 GRID_THICK = 0.02   # 그림 폭·높이의 이 비율보다 두꺼우면 선이 아니다
+
+
+def _is_mag(p):
+    """마젠타인가. 사진 안의 어떤 것도 여기 걸리지 않는다 — 실측으로 확인.
+
+    피부 (200,160,140) · 남색 (30,31,49) · 흰 셔츠 (240,240,245) · 배경 초록 —
+    전부 '초록이 가장 낮고 빨강·파랑이 둘 다 높다' 를 만족하지 못한다."""
+    r, g, b = p[0], p[1], p[2]
+    return r > 100 and b > 100 and g < min(r, b) - 40
 
 
 def degrid(img):
@@ -220,11 +241,16 @@ def degrid(img):
     sy = max(1, H // 600)
     sx = max(1, W // 600)
 
+    # 칸 선은 **검거나(모델이 제멋대로 그린 것) 마젠타(우리가 시킨 것)** 다.
+    # 둘 다 여기서 배경 초록으로 덮으면 바로 다음 크로마 키가 통째로 걷어낸다.
+    def hit(p):
+        return max(p[0], p[1], p[2]) < GRID_DARK or _is_mag(p)
+
     cols = [x for x in range(W)
-            if sum(1 for y in range(0, H, sy) if max(px[x, y]) < GRID_DARK)
+            if sum(1 for y in range(0, H, sy) if hit(px[x, y]))
             >= len(range(0, H, sy)) * GRID_SPAN]
     rows = [y for y in range(H)
-            if sum(1 for x in range(0, W, sx) if max(px[x, y]) < GRID_DARK)
+            if sum(1 for x in range(0, W, sx) if hit(px[x, y]))
             >= len(range(0, W, sx)) * GRID_SPAN]
 
     def thin_groups(idx, limit):
