@@ -3,17 +3,20 @@
 
     python3 tools/thumb_mock.py --out build/thumb
 
-무엇을 파는 썸네일인가
-    예시로 받은 채널들은 전부 "막장 상황" 을 판다. 우리는 **"그래서 얼마를
-    물어냈나"** 를 판다. 50~60대가 궁금한 것은 사연보다 결말이고, 금액이 박힌
-    썸네일은 답을 보여주면서도 눌러야 이유를 알 수 있게 만든다.
+⛔ 인물 그림에 **절대 손대지 않는다**
+    한 번 흰 테두리를 깎아내려다 얼굴을 망쳤다. 3.6%만 깎으려던 것이 실제로는
+    10.4% 가 깎여 머리 위·턱·귀가 잘려 나갔다(실측). 손님이 "얼굴을 왜
+    찌그러트렸냐"고 한 것이 이것이다.
+    → 그림은 **원본 그대로** 쓴다. 아래 잘린 단면은 깎아서가 아니라
+      **화면 밖으로 밀어내서** 감춘다. 모양을 건드리지 않는 방법이다.
 
-지켜야 할 것
-    · **폰트는 바탕체.** 고딕은 예능처럼 보인다. 법정물은 바탕·명조가 맞는다.
-    · **인물 아래 흰 선이 보이면 안 된다.** 인물 그림에는 흰 테두리(실측 52px)와
-      검은 그림자(88px)가 구워져 있다. 둘 다 벗겨내고(strip_edge), 그러고도
-      **화면 아래로 밀어내** 잘린 단면 자체가 안 보이게 앉힌다.
-    · 얼굴은 잘려도 된다 — 본편과 규칙이 정반대다. 썸네일은 꽉 차야 한다.
+글은 두 덩어리만
+    참고 채널들의 썸네일은 예외 없이 '작은 한 줄 + 큰 두 줄' 이다.
+    예전 시안은 라벨·인용·소제목·금액·결과까지 다섯 덩어리라 읽히지 않았다.
+
+테두리
+    참고 이미지 두 장 모두 화면 가장자리에 **크림색 테두리**를 두르고 있다.
+    피드에서 다른 영상과 경계를 만들어 주는 장치다. 같은 방식으로 두른다.
 """
 
 import argparse
@@ -26,44 +29,16 @@ ROOT = Path(__file__).resolve().parent.parent
 BATANG = ROOT / "assets/fonts/KoPub_Batang_Pro_Bold.otf"
 W, H = 1280, 720
 
-INK = (10, 11, 16)
-PAPER = (242, 240, 234)
-GOLD = (233, 190, 98)
-BLOOD = (188, 40, 40)
-
-# 인물 그림에 구워진 흰 테두리 두께(그림 높이 대비). 실측 52/1445 = 3.6%.
-EDGE_PCT = 0.040
+INK = (12, 13, 18)
+PAPER = (245, 243, 238)
+GOLD = (238, 196, 104)
+CREAM = (238, 226, 200)          # 바깥 테두리 — 참고 이미지의 그 색
+BLOOD = (196, 44, 44)
+BORDER = 13                      # 테두리 두께
 
 
 def f(size):
     return ImageFont.truetype(str(BATANG), size)
-
-
-def strip_edge(im, pct=EDGE_PCT):
-    """흰 테두리와 검은 그림자를 벗겨 **인물만** 남긴다.
-
-    왜 색으로 못 지우나
-        인물이 흰 셔츠를 입고 있다. '흰색을 지운다' 로 하면 셔츠에 구멍이 난다.
-        그래서 색이 아니라 **모양으로** 깎는다 — 알파(투명도)를 안쪽으로 민다.
-    4분의 1 크기에서 깎고 되돌린다. 가장자리 처리라 그 정도로 충분하고 빠르다."""
-    a = im.getchannel("A").point(lambda v: 255 if v > 200 else 0)   # 그림자부터 제거
-    w, h = im.size
-    small = a.resize((max(1, w // 4), max(1, h // 4)), Image.NEAREST)
-    for _ in range(max(1, int(round(small.height * pct / 4)))):     # 한 번에 4px 깎임
-        small = small.filter(ImageFilter.MinFilter(9))
-    a2 = small.resize((w, h), Image.BILINEAR).filter(ImageFilter.GaussianBlur(1.2))
-    out = im.copy()
-    out.putalpha(a2)
-    box = a2.getbbox()
-    return out.crop(box) if box else out
-
-
-def drop_shadow(im, blur=30, alpha=175):
-    """인물 뒤에 깔 부드러운 그림자. 흰 테두리 대신 배경과 떼어 놓는다."""
-    a = im.getchannel("A").filter(ImageFilter.GaussianBlur(blur))
-    sh = Image.new("RGBA", im.size, (0, 0, 0, 0))
-    sh.putalpha(a.point(lambda v: int(v * alpha / 255)))
-    return sh
 
 
 def backdrop(name):
@@ -71,76 +46,101 @@ def backdrop(name):
     p = ROOT / f"assets/bg/{name}"
     if p.exists():
         bg = Image.open(p).convert("RGB").resize((W, H), Image.LANCZOS)
-        bg = bg.filter(ImageFilter.GaussianBlur(9))
+        bg = bg.filter(ImageFilter.GaussianBlur(10))
     else:
-        bg = Image.new("RGB", (W, H), (28, 30, 38))
-    bg = Image.blend(bg, Image.new("RGB", (W, H), INK), 0.42)
+        bg = Image.new("RGB", (W, H), (30, 32, 40))
+    bg = Image.blend(bg, Image.new("RGB", (W, H), INK), 0.40)
 
     grad = Image.new("L", (W, 1))
     gp = grad.load()
     for x in range(W):
         t = x / (W - 1)
-        gp[x, 0] = int(238 * max(0.0, 1.0 - (t / 0.80) ** 1.6))
+        gp[x, 0] = int(240 * max(0.0, 1.0 - (t / 0.72) ** 1.7))
     shade = Image.new("RGBA", (W, H), (*INK, 255))
     shade.putalpha(grad.resize((W, H), Image.BILINEAR))
     out = bg.convert("RGBA")
     out.alpha_composite(shade)
-
-    vg = Image.new("L", (1, H))
-    vp = vg.load()
-    for y in range(H):
-        t = abs(y / (H - 1) - 0.5) * 2
-        vp[0, y] = int(160 * max(0.0, (t - 0.55) / 0.45) ** 1.2)
-    vig = Image.new("RGBA", (W, H), (*INK, 255))
-    vig.putalpha(vg.resize((W, H), Image.BILINEAR))
-    out.alpha_composite(vig)
     return out
 
 
+def drop_white_ring(im):
+    """인물 둘레에 **인쇄된 순백 띠**만 투명하게 만든다. 모양은 안 건드린다.
+
+    ⛔ 예전 실패 — 알파를 통째로 안쪽으로 밀었다(erode). 3.6%만 깎으려던 것이
+       실제로는 10.4% 깎여 머리 위·턱·귀가 잘려 나갔다. 얼굴이 망가진다.
+    ✅ 지금 방식 — **지울 픽셀을 색으로 고르되, 가장자리 근처로 한정**한다.
+       ① 순백(RGB 245 이상, 세 값이 거의 같음)이고
+       ② 실루엣 가장자리에서 안쪽으로 얼마 안 들어온 자리
+       두 조건을 **모두** 만족하는 픽셀만 지운다.
+       흰 셔츠는 ②에 걸려 안전하다 — 옷은 인물 안쪽에 있다.
+       지워도 사람 모양은 그대로다. 없던 것을 없애는 것뿐이다."""
+    a = im.getchannel("A")
+    hard = a.point(lambda v: 255 if v > 200 else 0)
+    # 가장자리 띠 = 원래 실루엣 - 안쪽으로 민 실루엣 (마스크로만 쓴다)
+    w, h = im.size
+    small = hard.resize((max(1, w // 4), max(1, h // 4)), Image.NEAREST)
+    for _ in range(3):                                   # 넉넉히 잡아 띠를 덮는다
+        small = small.filter(ImageFilter.MinFilter(9))
+    inner = small.resize((w, h), Image.BILINEAR).point(lambda v: 255 if v > 128 else 0)
+
+    import numpy as np
+    arr = np.array(im)
+    rgb, al = arr[..., :3].astype(int), arr[..., 3]
+    ring = (np.array(inner) == 0) & (al > 8) & (rgb.min(axis=2) >= 245)
+    arr[..., 3] = np.where(ring, 0, al)
+    out = Image.fromarray(arr, "RGBA")
+    box = out.getchannel("A").getbbox()
+    return out.crop(box) if box else out
+
+
 def put_person(base, code, pose, height, cx, bottom):
-    """인물을 앉힌다. bottom 이 H 보다 크면 아래로 잘려 **단면이 안 보인다.**"""
+    """인물을 앉힌다. **모양은 원본 그대로** — 흰 띠만 벗긴다.
+
+    bottom 이 화면 높이보다 크면 아래쪽이 화면 밖으로 나가, 잘린 단면이
+    보이지 않는다."""
     p = ROOT / f"assets/char/{code}/{pose}.png"
     if not p.exists():
         print(f"  (그림 없음: {code}/{pose})")
         return
     im = Image.open(p).convert("RGBA")
     im = im.crop(im.getchannel("A").getbbox())
-    im = strip_edge(im)
-    r = height / im.height
-    im = im.resize((max(1, int(im.width * r)), int(height)), Image.LANCZOS)
-    x, y = int(cx - im.width / 2), int(bottom - im.height)
-    base.alpha_composite(drop_shadow(im), (x - 12, y + 10))
-    base.alpha_composite(im, (x, y))
+    im = drop_white_ring(im)
+    r = height / im.height                       # 가로세로 비율 그대로
+    im = im.resize((round(im.width * r), round(height)), Image.LANCZOS)
+    base.alpha_composite(im, (round(cx - im.width / 2), round(bottom - im.height)))
+
+
+def frame(d):
+    """참고 이미지처럼 바깥에 크림색 테두리를 두른다."""
+    for i in range(BORDER):
+        d.rectangle((i, i, W - 1 - i, H - 1 - i), outline=CREAM)
+    # 안쪽에 얇은 어두운 선을 하나 더 — 테두리가 배경에 녹지 않게 한다
+    d.rectangle((BORDER, BORDER, W - 1 - BORDER, H - 1 - BORDER), outline=(40, 36, 30))
 
 
 def text(d, s, xy, size, fill=PAPER, stroke=None):
-    font = f(size)
-    d.text(xy, s, font=font, fill=fill,
-           stroke_width=max(4, size // 12) if stroke is None else stroke,
+    d.text(xy, s, font=f(size), fill=fill,
+           stroke_width=max(5, size // 10) if stroke is None else stroke,
            stroke_fill=INK)
 
 
-def build(label, quote, amount, verdict, code, pose, bg, out):
+def build(lead, big1, big2, code, pose, bg, out):
+    """lead = 작은 한 줄 / big1·big2 = 큰 두 줄. 그 이상은 넣지 않는다."""
     base = backdrop(bg)
-    # bottom = H + 110 → 인물의 잘린 아래 단면이 화면 밖으로 나간다
-    put_person(base, code, pose, height=780, cx=1000, bottom=H + 110)
+    put_person(base, code, pose, height=800, cx=1010, bottom=H + 120)
     d = ImageDraw.Draw(base)
 
-    d.rectangle((44, 92, 50, 236), fill=GOLD)          # 왼쪽 금색 세로선
-    text(d, label, (72, 96), 33, fill=(206, 202, 192), stroke=4)
-    text(d, f"“{quote}”", (66, 146), 64)
+    text(d, lead, (62, 96), 44, fill=(226, 218, 200), stroke=5)
+    d.rectangle((62, 168, 372, 174), fill=BLOOD)
+    text(d, big1, (56, 404), 104, fill=GOLD)
+    text(d, big2, (60, 540), 104)
 
-    d.rectangle((44, 392, 700, 399), fill=BLOOD)       # 판결 구분선
-    text(d, "법원의 답", (70, 420), 35, fill=(208, 124, 124), stroke=4)
-    text(d, amount, (62, 470), 100, fill=GOLD)
-    text(d, verdict, (68, 596), 62)
-
-    lab = f(29)                                        # 채널 딱지
+    lab = f(30)
     tw = d.textlength("판결극장", font=lab)
-    d.rectangle((W - tw - 54, 22, W - 22, 74), fill=(0, 0, 0))
-    d.rectangle((W - tw - 54, 22, W - 22, 26), fill=GOLD)
-    d.text((W - tw - 38, 36), "판결극장", font=lab, fill=GOLD)
+    d.rectangle((W - tw - 74, 34, W - 38, 88), fill=(0, 0, 0))
+    d.text((W - tw - 56, 48), "판결극장", font=lab, fill=GOLD)
 
+    frame(d)
     base.convert("RGB").save(out, quality=94)
 
 
@@ -153,12 +153,12 @@ def main():
     if not BATANG.exists():
         print("바탕체 폰트가 없다")
         return 1
-    build("어머니를 법정에 세운 장남", "법대로 하시죠", "1억 3,500만 원",
-          "장남이 물어냈다", "M50A", "face_shock", "court_hall.jpg", out / "C1.jpg")
-    build("9억을 받고도 소송한 장남", "제 몫이 비잖아요", "1억 3,500만 원",
-          "돌려주라", "M50A", "face_anger", "court_room.jpg", out / "C2.jpg")
-    build("어머니 몫까지 요구한 장남", "당연히 내 지분이지", "지분 0원",
-          "법원이 답했다", "M50A", "face_cold", "court_exterior.jpg", out / "C3.jpg")
+    build("어머니를 법정에 세운 장남", "1억 3,500만 원", "토해냈다",
+          "M50A", "face_shock", "court_hall.jpg", out / "C1.jpg")
+    build("9억을 받고도 소송했다", "장남 몫은", "0원",
+          "M50A", "face_anger", "court_room.jpg", out / "C2.jpg")
+    build("어머니 몫까지 요구한 장남", "법원의 답은", "달랐다",
+          "M50A", "face_cold", "court_exterior.jpg", out / "C3.jpg")
     print(f"시안 3장 → {out}")
     return 0
 
