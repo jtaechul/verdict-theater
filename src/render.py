@@ -320,6 +320,61 @@ ZOOM_EDGE = (1 - 1 / ZOOM_MAX) / 2
 PLACE_LOG = None            # 검수 스크립트가 [] 를 넣으면 인물 배치 결과를 여기 쌓는다
 
 
+def _solve_char(c, cut, W, H, vertical, gfx_bottom):
+    """인물 한 명의 **크기**를 푼다. (자리는 build_plates 가 바닥에 붙인다)
+
+    ⭐ 상반신·얼굴은 크기와 자리를 **함께** 풀어야 한다.
+       따로 정하면 조건이 서로를 깨뜨린다 — 얼굴을 가운데 두면 아래가 안 닿고,
+       아래를 닿게 하면 자막이 얼굴을 덮고, 키우면 머리가 화면 위로 나간다.
+       (실측: 26장 중 9장이 화면 바닥에 닿지 않았다.)
+       그래서 '인물의 진짜 아래끝을 화면 바닥에 붙인다' 를 고정해 놓고,
+       나머지 세 조건을 **키의 상·하한**으로 바꿔 한 번에 만족시킨다."""
+    ccode, pose = c.get("code", ""), c.get("pose", "")
+    cp = char_path(ccode, pose)
+    sprite = Image.open(cp).convert("RGBA") if cp else placeholder_char(ccode, pose, H)
+
+    scale = float(c.get("scale", 1.0)) * (1.35 if vertical else 1.0)
+    target_h = int(H * 0.72 * scale)
+    room = H
+    if gfx_bottom:
+        # 카드 아래로 인물을 내린다. 정보 카드가 뜬 순간에는 카드가 주인공이고
+        # 인물은 배경으로 물러나는 것이 맞다.
+        room = H - int(H * 0.06) - (gfx_bottom + int(H * 0.03))
+        target_h = max(int(H * 0.24), min(target_h, room))
+    kind = pose.split("_")[0]
+    edge = int(min(W, H) * ZOOM_EDGE) + 4          # 확대 연출이 깎아내는 몫 + 여유
+
+    h0 = sprite.height
+    f_pad = top_pad(sprite) / h0                   # 그림 위쪽의 빈 띠
+    f_chin = chin_y(sprite) / h0
+    head_frac = max(0.0, f_chin - f_pad)           # 그림에서 '머리'가 차지하는 비율
+    cap = target_h
+
+    if kind in ("bust", "face"):
+        f_bleed = bottom_bleed(sprite) / h0        # 아래쪽 흰 테두리가 차지하는 몫
+        body = max(0.05, 1.0 - f_bleed)            # 그림에서 '인물 아래끝' 까지의 비율
+        sub_top = G.subtitle_top(cut.get("text", ""), W, H, vertical)
+        m = int(H * 0.015)
+
+        lo = (H - sub_top + m) / max(0.02, body - f_chin)   # 자막이 얼굴을 덮지 않을 최소 키
+        # 머리가 화면 위로 안 나갈 최대 키.
+        # ⚠️ 예전엔 `(H-edge)/body` 였다 — 위쪽 빈 띠를 인물 키로 세는 바람에
+        #    화면 위가 100px 넘게 비어 있는데도 더 못 키우고, 그래서 자막이
+        #    턱을 스쳤다(실측: 가로 1건). 빈 띠만큼 더 키울 수 있다.
+        hi = (H - edge) / max(0.05, body - f_pad)
+        # ⚠️ 좌우 상한에는 뒤의 CHAR_MAX_W 축소까지 **미리** 넣어야 한다.
+        #    빼먹었더니 여기서 정한 키를 뒤에서 다시 줄여 262건 중 186건이
+        #    바닥에서 떠 버렸다(실측). 나중에 줄일 값은 여기서 함께 풀어야 한다.
+        room_w = min(W - 2 * edge, W * CHAR_MAX_W)
+        wide = room_w * h0 / max(1, sprite.width)           # 좌우가 안 잘릴 최대 키
+        cap = min(hi, wide)                                 # 더 키울 수 있는 한계
+        target_h = int(max(lo, min(target_h, cap)) if lo <= cap else cap)
+
+    return {"code": ccode, "pose": pose, "sprite": sprite, "kind": kind,
+            "edge": edge, "target_h": target_h, "cap": cap, "room": room,
+            "head_frac": head_frac, "head_px": target_h * head_frac}
+
+
 def build_plates(cut, W, H, vertical=False, top_line=""):
     """움직이는 겹(배경+인물)과 고정된 겹(그래픽+자막)을 만든다."""
     code = cut.get("bg", "")
@@ -345,49 +400,28 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
         chars = chars[:1]                       # 세로는 한 명만. 두 명이면 화면이 죽는다
     head_top, face_bottom = H, 0                # 실제로 앉힌 인물의 위·아래 얼굴선
 
-    for c in chars:
-        ccode, pose = c.get("code", ""), c.get("pose", "")
-        cp = char_path(ccode, pose)
-        sprite = Image.open(cp).convert("RGBA") if cp else placeholder_char(ccode, pose, H)
+    # ⭐ 같은 컷에 선 사람들은 **머리 크기가 같아야** 한다.
+    #    아래에서 '자막을 피할 최소 키(lo)' 로 크기를 정하는데, 그 값은 그림마다
+    #    가슴이 얼마나 담겼느냐에 따라 크게 달라진다. 그대로 두면 한 화면에서
+    #    한 사람은 크고 한 사람은 절반만 하게 나온다(실측: 판사 옆 김성일).
+    #    그래서 먼저 각자 풀고, **가장 큰 머리에 나머지를 맞춘다.**
+    plan = [_solve_char(c, cut, W, H, vertical, gfx_bottom) for c in chars]
+    heads = [p["head_px"] for p in plan if p["head_px"] > 0]
+    if len(heads) > 1:
+        want_head = max(heads)
+        for p in plan:
+            if p["head_px"] <= 0 or p["head_frac"] <= 0:
+                continue
+            # 키우기만 한다 — 줄이면 자막이 얼굴을 덮는다.
+            # ⚠️ '정보 카드를 넘지 않게' 로 묶어 봤더니, 카드가 뜬 컷에서 한 사람만
+            #    인형처럼 작아졌다(판결 선고 컷). 카드 글자는 인물 **위에** 덧그려지므로
+            #    조금 겹쳐도 읽는 데 지장이 없다. 크기가 어긋나는 쪽이 훨씬 나쁘다.
+            grow = min(p["cap"], want_head / p["head_frac"])
+            p["target_h"] = int(max(p["target_h"], grow))
 
-        scale = float(c.get("scale", 1.0)) * (1.35 if vertical else 1.0)
-        target_h = int(H * 0.72 * scale)
-        if gfx_bottom:
-            # 카드 아래로 인물을 내린다. 정보 카드가 뜬 순간에는 카드가 주인공이고
-            # 인물은 배경으로 물러나는 것이 맞다.
-            room = H - int(H * 0.06) - (gfx_bottom + int(H * 0.03))
-            target_h = max(int(H * 0.24), min(target_h, room))
-        kind = pose.split("_")[0]
-        edge = int(min(W, H) * ZOOM_EDGE) + 4      # 확대 연출이 깎아내는 몫 + 여유
-
-        # ⭐ 상반신·얼굴은 크기와 자리를 **함께** 푼다.
-        #    따로 정하면 조건이 서로를 깨뜨린다 — 얼굴을 가운데 두면 아래가 안 닿고,
-        #    아래를 닿게 하면 자막이 얼굴을 덮고, 키우면 머리가 화면 위로 나간다.
-        #    (실측: 26개 중 9개가 화면 바닥에 닿지 않았다.)
-        #    그래서 '인물의 진짜 아래끝을 화면 바닥에 붙인다' 를 기준으로 놓고,
-        #    나머지 세 조건을 크기의 상·하한으로 바꿔 한 번에 만족시킨다.
-        if kind in ("bust", "face"):
-            h0 = sprite.height
-            f_chin = chin_y(sprite) / h0
-            f_bleed = bottom_bleed(sprite) / h0       # 아래쪽 흰 테두리가 차지하는 몫
-            body = max(0.05, 1.0 - f_bleed)           # 그림에서 '인물 아래끝' 까지의 비율
-            sub_top = G.subtitle_top(cut.get("text", ""), W, H, vertical)
-            m = int(H * 0.015)
-
-            f_pad = top_pad(sprite) / h0              # 그림 위쪽의 빈 띠
-            lo = (H - sub_top + m) / max(0.02, body - f_chin)   # 자막이 얼굴을 덮지 않을 최소 키
-            # 머리가 화면 위로 안 나갈 최대 키.
-            # ⚠️ 예전엔 `(H-edge)/body` 였다 — 위쪽 빈 띠를 인물 키로 세는 바람에
-            #    화면 위가 100px 넘게 비어 있는데도 더 못 키우고, 그래서 자막이
-            #    턱을 스쳤다(실측: 가로 1건). 빈 띠만큼 더 키울 수 있다.
-            hi = (H - edge) / max(0.05, body - f_pad)
-            # ⚠️ 좌우 상한에는 아래의 CHAR_MAX_W 축소까지 **미리** 넣어야 한다.
-            #    빼먹었더니 여기서 정한 키를 아래가 다시 줄여 버려서, 262건 중 186건이
-            #    바닥에서 떠 버렸다(실측). 나중에 줄일 값은 여기서 함께 풀어야 한다.
-            room_w = min(W - 2 * edge, W * CHAR_MAX_W)
-            wide = room_w * h0 / max(1, sprite.width)           # 좌우가 안 잘릴 최대 키
-            target_h = int(max(lo, min(target_h, hi, wide))
-                           if lo <= min(hi, wide) else min(hi, wide))
+    for c, p in zip(chars, plan):
+        ccode, pose, sprite = p["code"], p["pose"], p["sprite"]
+        target_h, kind, edge = p["target_h"], p["kind"], p["edge"]
 
         ratio = target_h / sprite.height
         sw = max(1, int(sprite.width * ratio))
