@@ -92,23 +92,49 @@ USER_FONTS = ROOT / "assets" / "fonts"
 
 # 이름은 띄어쓰기·밑줄·대소문자를 무시하고 견준다.
 #   'KoPub_Dotum_Pro_Bold.otf' · 'KoPubWorld Dotum Bold.ttf' 둘 다 잡힌다.
+# ⭐ 화면 글자는 **전부 바탕체(명조)** 로 간다.
+#    고딕은 정보를 전달하는 글씨다 — 웹페이지·안내판·자막방송이 쓴다.
+#    판결극장은 드라마다. 드라마 자막·타이틀 카드는 바탕체가 정석이고,
+#    획 끝의 삐침이 화면에 무게와 시대감을 준다. 굵기로만 층을 나눈다.
+#      Bold   자막 · 금액 숫자 · 회상 시점
+#      Medium 이름표 · 항목 이름
+#      Light  나이·관계 같은 보조 설명
 FONT_ROLE = {
-    # 자막 — 고딕. 획이 고르고 어르신 가독성이 가장 좋다
-    "sub":   ["KoPubDotumProBold", "KoPubWorldDotumBold",
-              "NanumSquareB", "NanumGothicBold"],
-    # 이름표·작은 라벨 — 한 단계 가볍게. 자막과 인상이 겹치지 않는다
-    "label": ["KoPubDotumProMedium", "KoPubWorldDotumMedium",
-              "KoPubDotumProBold", "NanumBarunGothicBold", "NanumGothicBold"],
-    # 금액 숫자 — 굵게. 자릿수가 시원하다
-    "num":   ["KoPubDotumProBold", "KoPubWorldDotumBold",
-              "NanumSquareB", "NanumGothicBold"],
-    # 판결·회상 시점 — 바탕(명조). 법과 시간의 무게를 낸다
+    "sub":   ["KoPubBatangProBold", "KoPubWorldBatangBold",
+              "NanumMyeongjoBold", "NanumGothicBold"],
+    "label": ["KoPubBatangProMedium", "KoPubWorldBatangMedium",
+              "KoPubBatangProBold", "NanumMyeongjoBold", "NanumGothicBold"],
+    "num":   ["KoPubBatangProBold", "KoPubWorldBatangBold",
+              "NanumMyeongjoBold", "NanumGothicBold"],
     "serif": ["KoPubBatangProBold", "KoPubWorldBatangBold",
               "NanumMyeongjoBold", "NanumGothicBold"],
-    # 설명 보조 — 가장 가볍게
-    "body":  ["KoPubDotumProLight", "KoPubWorldDotumLight",
-              "KoPubDotumProMedium", "NanumBarunGothic", "NanumGothic"],
+    "body":  ["KoPubBatangProLight", "KoPubWorldBatangLight",
+              "KoPubBatangProMedium", "NanumMyeongjo", "NanumGothic"],
 }
+
+# ⭐ 글자 크기표 — 짧은 변(unit) 대비 (시작 크기, 최소 크기).
+#    여기가 "홈페이지 같다" 던 원인이다. 라벨을 1.9%(1080p 에서 20픽셀)로 두면
+#    웹페이지 각주처럼 보인다. 드라마 카드는 **폰을 무릎에 놓고도** 읽혀야 한다.
+#    기준을 정한다 — 자막이 6.2%. 어떤 보조 글자도 그 3분의 1(2.1%) 아래로 두지 않는다.
+#    한곳에 모아 두어야 회차마다 감으로 고치지 않는다.
+TEXT = {
+    "name":     (0.052, 0.036),   # 이름표 — 인물 이름
+    "name_sub": (0.032, 0.023),   # 이름표 — 나이·관계
+    "amt_lab":  (0.040, 0.026),   # 금액이 무슨 돈인지 ('부당이득 반환 금액')
+    "amt_num":  (0.155, 0.070),   # 금액 숫자
+    "tl_lab":   (0.040, 0.025),   # 연표 항목
+    "tl_when":  (0.033, 0.022),   # 연표 시점
+    "fam_name": (0.050, 0.031),   # 가족 이름
+    "fam_rel":  (0.035, 0.023),   # 가족 관계
+    "time_cap": (0.072, 0.042),   # 회상 시점 자막
+    "top_line": (0.056, 0.036),   # 쇼츠 상단 한 줄
+}
+
+
+def _px(key, u):
+    """크기표의 비율을 실제 픽셀 (시작, 최소) 로 바꾼다."""
+    a, b = TEXT[key]
+    return u * a, u * b
 
 
 def _norm(name):
@@ -374,8 +400,9 @@ def draw_top_line(img, text):
     W, H = img.size
     u = unit(W, H)
     inner = int(W * (1 - 2 * max(0.075, SAFE)))
-    f = _fit_font(u * 0.050, u * 0.032,
-                  _wrap_px(text, font(int(u * 0.050), "label"), inner), inner, role="label")
+    f = _fit_font(*_px("top_line", u),
+                  _wrap_px(text, font(int(u * TEXT["top_line"][0]), "label"), inner),
+                  inner, role="label")
     lines = _wrap_px(text, f, inner)
     lh, gap = line_h(f), round(f.size * 0.14)
 
@@ -404,9 +431,9 @@ def draw_time_caption(img, text):
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
 
-    f = _fit_font(u * 0.058, u * 0.034, [text], int(W * (1 - 2 * SAFE) * 0.8), role="serif")
+    f = _fit_font(*_px("time_cap", u), [text], int(W * (1 - 2 * SAFE) * 0.8), role="serif")
     tw = text_w(text, f)
-    cx, cy = W // 2, round(H * 0.40)
+    cx, cy = W // 2, round(H * (0.35 if H > W else 0.40))
     half = max(tw // 2 + round(u * 0.055), round(u * 0.13))
     lw = max(2, round(u * 0.0025))
     gap = round(u * 0.030)
@@ -415,7 +442,25 @@ def draw_time_caption(img, text):
     d.text((cx - tw // 2, cy), text, font=f, fill=_pale(0.02))
     d.line([(cx - half, cy + line_h(f) + gap), (cx + half, cy + line_h(f) + gap)],
            fill=_pale(0.62) + (190,), width=lw)
-    return Image.alpha_composite(img.convert("RGBA"), _lift(layer, radius=round(u * 0.011)))
+
+    # ⚠️ 인물 얼굴 위에 그대로 얹으면 글자와 얼굴이 서로를 잡아먹는다.
+    #    (세로 쇼츠에서 '아버지 생전' 이 인물 목에 걸쳐 둘 다 안 읽혔다.)
+    #    판을 깔지는 않는다 — 위아래로 스르르 사라지는 그늘만 둔다.
+    #    영화가 시점 자막을 넣을 때 쓰는 방식이고, 자막 그늘과 같은 장치다.
+    #    ⭐ 그늘은 _lift **앞에** 깐다. 뒤에 깔면 _lift 가 띠까지 글자로 착각해
+    #      화면 위쪽 절반을 통째로 어둡게 만든다.
+    bh = line_h(f) + gap * 5
+    band = Image.new("L", (1, bh))
+    bp = band.load()
+    for i in range(bh):
+        t = abs(i / max(1, bh - 1) - 0.5) * 2                # 가운데 0, 위아래 끝 1
+        bp[0, i] = int(160 * (1 - t) ** 1.5)
+    shade = Image.new("RGBA", (W, bh), (10, 11, 15, 255))
+    shade.putalpha(band.resize((W, bh)))
+
+    out = img.convert("RGBA")
+    out.alpha_composite(shade, (0, max(0, cy - round(gap * 2.4))))
+    return Image.alpha_composite(out, _lift(layer, radius=round(u * 0.011)))
 
 
 # ── 정보 그래픽 4종 ──────────────────────────────────────
@@ -524,43 +569,67 @@ def _spaced(text, gap="  "):
 
 
 def g_nametag(text, W=1920, H=1080):
-    """인물 이름표 — 강조색 짧은 선 하나와 이름만.
+    """인물 이름표 — 강조색 짧은 선 하나와 이름만. 판도 상자도 없다.
 
-    판도 상자도 없다. 방송 다큐멘터리가 쓰는 가장 조용한 형태다."""
+    ⭐ 이름과 나머지를 나눠 두 줄로 앉힌다.
+       '김성일 · 50세 · 장남' 을 한 줄로 같은 크기로 늘어놓으면 명단처럼 읽힌다.
+       드라마는 **이름이 각인돼야** 한다 — 이름을 크게, 나이·관계는 아래에 작게.
+
+    ⚠️ 자막 그늘 위로 올라타지 않도록 **아래끝을 고정하고 위로 쌓는다.**
+       크기를 키우면 아래로 자라는 구조였는데, 그러면 자막과 겹친다."""
     u = unit(W, H)
     out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(out)
-    f = _fit_font(u * 0.034, u * 0.024, [text], int(W * 0.52), role="label")
-    x, y = round(W * 0.055), round(H * 0.615)
-    d.line([(x, y), (x + round(u * 0.075), y)], fill=ACCENT, width=max(3, round(u * 0.004)))
-    _t(d, (x, y + round(u * 0.020)), text, f, fill=_pale(0.02))
+
+    head, _, tail = str(text).partition("·")
+    head, tail = head.strip(), tail.strip()
+    maxw = int(W * (0.80 if H > W else 0.52))
+    fn = _fit_font(*_px("name", u), [head], maxw, role="label")
+    ft = _fit_font(*_px("name_sub", u), [tail], maxw, role="body") if tail else None
+
+    gap = round(u * 0.012)
+    block = line_h(fn) + (gap + line_h(ft) if ft else 0)
+    x = round(W * 0.055)
+    y = round(H * (0.50 if H > W else 0.655)) - block       # 아래끝 기준으로 위로 쌓는다
+
+    d.line([(x, y - round(u * 0.028)), (x + round(u * 0.075), y - round(u * 0.028))],
+           fill=ACCENT, width=max(3, round(u * 0.005)))
+    _t(d, (x, y), head, fn, fill=_pale(0.02))
+    if ft:
+        _t(d, (x, y + line_h(fn) + gap), tail, ft, fill=_pale(0.42))
     return _lift(out, radius=round(u * 0.009))
 
 
 def g_amount(value, note="", W=1920, H=1080):
     """금액 — 화면 위쪽에 숫자만 크게. 판을 깔지 않는다.
 
-    작은 라벨(자간 벌림) → 큰 숫자 → 강조색 짧은 선 → 설명. 세로로 네 켜."""
+    ⭐ 라벨을 '판결금액' 으로 못 박지 않는다.
+       대본이 '부당이득 반환 금액' 이라고 일러 주는데도 화면에는 늘 '판결금액' 을
+       크게 쓰고, 정작 무슨 돈인지는 2.4% 짜리 각주로 아래에 붙였다.
+       **뜻이 겹치는 말을 두 번 쓴 셈**이고, 중요한 쪽이 작았다.
+       이제 무슨 돈인지를 위에 제대로 된 크기로 쓰고, 숫자, 강조선 — 세 켜로 끝낸다."""
     u = unit(W, H)
     inner = int(W * (1 - 2 * SAFE))
     out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(out)
 
-    cap = font(u * 0.019, "label")
-    big = _fit_font(u * 0.135, u * 0.055, [value], inner, role="num")
-    sml = _fit_font(u * 0.024, u * 0.016, [note] if note else [], inner, role="body")
-    lab = _spaced("판결금액")
+    lab = str(note or "판결금액").strip()
+    if len(lab.replace(" ", "")) <= 6:
+        lab = _spaced(lab)              # 짧은 말만 자간을 벌린다. 길면 두 줄로 넘친다
+    cap = _fit_font(*_px("amt_lab", u), [lab], inner, role="label")
+    big = _fit_font(*_px("amt_num", u), [value], inner, role="num")
 
-    y = round(H * 0.185)
-    _t(d, ((W - text_w(lab, cap)) // 2, y), lab, cap, fill=_pale(0.52))
-    y += line_h(cap) + round(u * 0.022)
-    _t(d, ((W - text_w(value, big)) // 2, y), value, big, fill=_pale(0.01))
-    y += line_h(big) + round(u * 0.018)
-    d.line([(W // 2 - round(u * 0.055), y), (W // 2 + round(u * 0.055), y)],
-           fill=ACCENT, width=max(3, round(u * 0.004)))
-    if note:
-        y += round(u * 0.026)
-        _t(d, ((W - text_w(note, sml)) // 2, y), note, sml, fill=_pale(0.46))
+    y = round(H * 0.175)
+    _t(d, ((W - text_w(lab, cap)) // 2, y), lab, cap, fill=_pale(0.40))
+    y += line_h(cap) + round(u * 0.024)
+    vw = text_w(value, big)
+    _t(d, ((W - vw) // 2, y), value, big, fill=_pale(0.01))
+    y += line_h(big) + round(u * 0.020)
+    # 강조선은 숫자 폭에 맞춰 늘린다. 폭에 상관없이 고정 길이로 그으면
+    # 큰 숫자 밑에서는 짤막한 점처럼 보여 실수한 것 같다.
+    half = max(round(u * 0.055), round(vw * 0.14))
+    d.line([(W // 2 - half, y), (W // 2 + half, y)],
+           fill=ACCENT, width=max(3, round(u * 0.005)))
     return _lift(out, radius=round(u * 0.012))
 
 
@@ -577,10 +646,10 @@ def g_timeline(items, W=1920, H=1080):
 
     x0, x1 = round(W * 0.10), round(W * 0.90)
     step = (x1 - x0) // max(1, n - 1) if n > 1 else 0
-    lab = _fit_font(u * 0.026, u * 0.016,
+    lab = _fit_font(*_px("tl_lab", u),
                     [str(it.get("label", ""))[:16] for it in items],
                     int(step * 0.94) if n > 1 else int(W * 0.6), role="label")
-    whn = _fit_font(u * 0.021, u * 0.014,
+    whn = _fit_font(*_px("tl_when", u),
                     [str(it.get("when", ""))[:14] for it in items],
                     int(step * 0.94) if n > 1 else int(W * 0.6), role="body")
 
@@ -617,10 +686,10 @@ def g_family(nodes, W=1920, H=1080):
 
     x0, x1 = round(W * 0.10), round(W * 0.90)
     slot = (x1 - x0) / max(1, n)
-    nm = _fit_font(u * 0.032, u * 0.019,
+    nm = _fit_font(*_px("fam_name", u),
                    [str(x.get("name", ""))[:8] for x in nodes],
                    int(slot * 0.84), role="label")
-    rel = _fit_font(u * 0.022, u * 0.014,
+    rel = _fit_font(*_px("fam_rel", u),
                     [str(x.get("rel", ""))[:12] for x in nodes],
                     int(slot * 0.90), role="body")
 

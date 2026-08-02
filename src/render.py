@@ -29,6 +29,7 @@
 
 import argparse
 import json
+import math
 import os
 import re
 import shutil
@@ -247,6 +248,10 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
             pos_y = float(c.get("pos_y", 0.38))
             x = (W - sprite.width) // 2
             y = int(H * pos_y) - int(sprite.height * 0.18)
+            # ⚠️ 세로에서는 인물 자리를 pos_y 가 정하므로, 키만 줄여서는 카드를 못 피한다.
+            #    실제로 금액 카드의 강조선에 인물 머리가 닿았다. 카드 아래로 확실히 민다.
+            if gfx_bottom:
+                y = max(y, gfx_bottom + int(H * 0.035))
         else:
             slot = {"left": 0.27, "center": 0.5, "right": 0.73}.get(c.get("pos", "center"), 0.5)
             x = int(W * slot) - sprite.width // 2
@@ -559,8 +564,12 @@ def build_audio(doc, durs, workdir, narration_dir=None):
     music = build_music(doc, durs, workdir)
     mixed = workdir / "mixed.wav"
     if music:
+        # 여기도 normalize=0. 켜 두면 목소리가 6 dB 깎이고 음악은 이미 -30 dB 로
+        # 맞춰 둔 것이 또 깎여, 애써 잡은 균형이 무너진다.
         run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(body), "-i", str(music),
-             "-filter_complex", "[0:a][1:a]amix=inputs=2:duration=first[out]",
+             "-filter_complex",
+             "[0:a][1:a]amix=inputs=2:duration=first:normalize=0,"
+             "alimiter=limit=-1.0dB:level=disabled[out]",
              "-map", "[out]", "-c:a", "pcm_s16le", "-ar", "48000", str(mixed)])
     else:
         mixed = body
@@ -611,8 +620,21 @@ def loudnorm_af(path):
     return f"volume={gain:.2f}dB,alimiter=limit={ceiling}dB:level=disabled"
 
 
+MUSIC_XFADE = 3.0       # 음악이 한 바퀴 돌 때 겹쳐 넘기는 시간(초)
+MUSIC_TAIL = 5.0        # 곡 끝의 제 페이드아웃은 잘라낸다 (아래 ⚠️ 참조)
+MUSIC_MAX_LOOP = 12     # 안전장치. 이보다 많이 돌 일은 없다
+
+
 def build_music(doc, durs, workdir):
-    """막마다 정해진 음악을 그 막 길이만큼 깔고 교차 페이드로 잇는다."""
+    """막마다 정해진 음악을 그 막 길이만큼 깔고 교차 페이드로 잇는다.
+
+    ⚠️ 음악 한 곡이 2분인데 막은 3~4분이다. 그냥 이어 붙이면 **곡이 뚝 끊겼다가
+       처음부터 다시 시작하는 소리**가 그대로 들린다. 한 바퀴 돌 때마다 3초씩
+       겹쳐 넘겨(acrossfade) 이음매를 지운다.
+
+    ⚠️ 크기도 맞춘다. 예전에는 원본 그대로 깔고 마지막에 목소리와 반반으로 섞었다.
+       올려주신 곡들은 -14.3 dB — **목소리(-16)보다 크다.** 그대로 두면 음악이
+       대사를 덮는다. 목표(-30 dB)로 내려 대사 밑에 깔리게 한다."""
     segs, i = [], 0
     for act in doc["acts"]:
         n = len(act["cuts"])
@@ -621,10 +643,32 @@ def build_music(doc, durs, workdir):
         p = audio_path("bgm", act.get("bgm", "hook"))
         if not p or alen <= 0:
             continue
+
+        # ⚠️ 곡 끝 4~5초는 곡 자신이 페이드아웃하는 구간이다(실측: 112초 -14.7 dB →
+        #    116초 -45.7 dB). 그 위에 겹쳐 넘기면 이음매마다 음악이 **푹 꺼진다**
+        #    (실측 -49.6 dB). 꼬리를 잘라내고 제 소리가 살아 있는 데서 넘긴다.
+        one = ffprobe_dur(p)
+        body = one - MUSIC_TAIL if one > MUSIC_TAIL + MUSIC_XFADE + 1 else one
+        loops = 1
+        if body > MUSIC_XFADE + 1 and body < alen:
+            loops = min(MUSIC_MAX_LOOP,
+                        1 + math.ceil((alen - body) / (body - MUSIC_XFADE)))
+        inputs, fc, prev = [], "", "[0:a]"
+        for k in range(loops):
+            inputs += ["-t", f"{body:.3f}", "-i", str(p)]
+        for k in range(1, loops):
+            tag = "[mx]" if k == loops - 1 else f"[x{k}]"
+            fc += f"{prev}[{k}:a]acrossfade=d={MUSIC_XFADE}:c1=tri:c2=tri{tag};"
+            prev = tag
+        if loops == 1:
+            fc = "[0:a]anull[mx];"
+        fc += (f"[mx]atrim=0:{alen:.3f},volume={gain_db(p, 'bgm'):.1f}dB,"
+               f"afade=t=in:st=0:d=1.2,"
+               f"afade=t=out:st={max(0, alen - 1.5):.3f}:d=1.5[out]")
+
         s = workdir / f"m_{act['id']}.m4a"
-        run(["ffmpeg", "-y", "-loglevel", "error", "-stream_loop", "-1", "-i", str(p),
-             "-t", f"{alen:.3f}", "-af",
-             f"afade=t=in:st=0:d=1.2,afade=t=out:st={max(0, alen - 1.5):.3f}:d=1.5",
+        run(["ffmpeg", "-y", "-loglevel", "error", *inputs,
+             "-filter_complex", fc, "-map", "[out]",
              "-c:a", "aac", "-b:a", "160k", str(s)])
         segs.append(s)
     if not segs:
