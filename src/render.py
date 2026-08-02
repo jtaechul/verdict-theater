@@ -692,8 +692,17 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
         bar.rectangle((0, 0, W, y0 - 1), fill=(0, 0, 0, 255))
     if y1 < H:
         bar.rectangle((0, y1, W, H), fill=(0, 0, 0, 255))
-    # 무대와 띠 사이에 가는 금선 한 줄 — 경계가 흐리멍덩하지 않게
-    bar.rectangle((0, y1, W, y1 + max(2, round(H * 0.0022))), fill=(168, 46, 42, 255))
+    # 무대와 띠 사이는 **선을 긋지 않는다.**
+    # 붉은 줄을 그어 봤더니 촌스러웠다(손님 지적). 대신 무대 아래쪽을 짧게
+    # 어둡게 죽여 띠로 자연스럽게 이어지게 한다 — 경계가 눈에 안 띈다.
+    hem = max(6, round(H * 0.030))
+    grad = Image.new("L", (1, hem))
+    gp = grad.load()
+    for i in range(hem):
+        gp[0, i] = round(255 * (i / max(1, hem - 1)) ** 1.6)
+    hemlay = Image.new("RGBA", (W, hem), (0, 0, 0, 255))
+    hemlay.putalpha(grad.resize((W, hem), Image.BILINEAR))
+    gfx.alpha_composite(hemlay, (0, max(0, y1 - hem)))
     if top_line:
         gfx = G.draw_top_line(gfx, top_line, box=(0, 0, W, y0))
 
