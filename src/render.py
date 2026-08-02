@@ -78,10 +78,34 @@ def bg_path(code):
     return None
 
 
+# 표정이 비슷한 것끼리. 딱 맞는 포즈가 없을 때 **같은 화각의 다른 표정**으로 대신한다.
+POSE_ALT = {
+    "anger": ("cold", "shock", "neutral"),
+    "cold": ("neutral", "anger"),
+    "shock": ("anger", "neutral"),
+    "sad": ("cry", "neutral"),
+    "cry": ("sad", "neutral"),
+    "neutral": ("cold", "sad"),
+    "stand": ("walk",), "walk": ("stand",),
+    "sit": ("sit_down", "stand"), "sit_down": ("sit",), "back": ("stand",),
+}
+
+
 def char_path(code, pose):
     p = ASSETS / "char" / code / f"{pose}.png"
     if p.exists():
         return p
+
+    # ⚠️ 없다고 곧바로 회색 실루엣으로 떨어뜨리지 않는다.
+    #    시트를 만들 때 모델이 칸 하나를 덜 그리는 일이 있는데(실측: 12칸 중 11명),
+    #    그 한 컷만 회색 그림자로 나오면 **같은 인물이 갑자기 실루엣이 된다.**
+    #    같은 화각의 가까운 표정으로 대신하면 시청자는 눈치채지 못한다.
+    kind, _, mood = pose.partition("_")
+    for alt in POSE_ALT.get(mood, ()):
+        q = ASSETS / "char" / code / f"{kind}_{alt}.png"
+        if q.exists():
+            MISSING["char"].add(f"{code}/{pose} → {kind}_{alt} 로 대신")
+            return q
     MISSING["char"].add(f"{code}/{pose}")
     return None
 

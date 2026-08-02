@@ -433,7 +433,10 @@ def draw_time_caption(img, text):
 
     f = _fit_font(*_px("time_cap", u), [text], int(W * (1 - 2 * SAFE) * 0.8), role="serif")
     tw = text_w(text, f)
-    cx, cy = W // 2, round(H * (0.35 if H > W else 0.40))
+    # ⚠️ 0.40 은 인물 얼굴 높이다. 실제 컷아웃을 넣어 보니 '사십 년 전' 이
+    #    어머니 이마를 가로질렀다. 인물 머리 **위쪽**으로 올린다.
+    #    (넓은 정보 카드는 0.175~0.235 에 있고, 시점 자막과 같은 컷에 나오지 않는다.)
+    cx, cy = W // 2, round(H * (0.30 if H > W else 0.27))
     half = max(tw // 2 + round(u * 0.055), round(u * 0.13))
     lw = max(2, round(u * 0.0025))
     gap = round(u * 0.030)

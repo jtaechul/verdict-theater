@@ -29,7 +29,7 @@ import os
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageChops, ImageFilter
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import assets_gen as A  # noqa: E402
@@ -229,21 +229,59 @@ def components(mask, min_area):
     return boxes
 
 
-def find_figures(sheet, cols, rows, scale=8):
-    """시트에서 인물 덩어리들을 찾아 왼→오른쪽, 위→아래 순서로 돌려준다."""
+def split_wide(mask, box, cell_w, want):
+    """가로로 붙어 버린 덩어리를 세로 골짜기에서 쪼갠다.
+
+    ⚠️ 깎아내기(erosion)만으로는 안 되는 경우가 있다. 실측: M50A 시트에서 한 줄의
+       얼굴 세 개가 어깨까지 서로 닿아 있어, 25까지 깎아도 한 덩어리로 남았다.
+       이럴 때는 세로 방향으로 픽셀을 세어 **가장 비어 있는 세로줄**에서 자른다.
+       사람과 사람 사이는 반드시 그 줄이 가장 비어 있다."""
+    x0, y0, x1, y1 = box
+    w = x1 - x0
+    k = max(1, min(want, round(w / max(1, cell_w))))
+    if k < 2:
+        return [box]
+    px = mask.crop(box).load()
+    colsum = [sum(1 for y in range(y1 - y0) if px[x, y] > 128) for x in range(w)]
+    cuts = []
+    step = w / k
+    for i in range(1, k):
+        centre = round(step * i)
+        lo, hi = max(1, centre - round(step * 0.30)), min(w - 1, centre + round(step * 0.30))
+        if hi <= lo:
+            continue
+        cuts.append(min(range(lo, hi), key=lambda x: colsum[x]))
+    edges = [0] + sorted(cuts) + [w]
+    return [(x0 + edges[i], y0, x0 + edges[i + 1], y1) for i in range(len(edges) - 1)]
+
+
+def find_figures(sheet, cols, rows, scale=8, want=0):
+    """시트에서 인물 덩어리들을 찾아 왼→오른쪽, 위→아래 순서로 돌려준다.
+
+    `want` 개를 찾을 때까지 **깎는 정도를 키워 가며 다시 시도한다.**
+    ⚠️ 고정값 하나로는 안 된다 — 같은 프롬프트로 만든 시트인데도 인물끼리
+       거의 붙어 나오는 경우가 있어(실측: 판사 시트에서 2명이 1덩어리로 잡혔다)
+       실선을 지울 만큼 깎아도 모자랄 때가 있다."""
     keyed = fast_key(sheet)
-    small = keyed.getchannel("A").resize(
+    base = keyed.getchannel("A").resize(
         (max(1, keyed.width // scale), max(1, keyed.height // scale)), Image.BILINEAR)
-    small = small.point(lambda v: 255 if v > 96 else 0)
-    # ⚠️ 여기가 없으면 **시트 전체가 덩어리 하나로 잡힌다.**
-    #    모델이 칸 경계에 아주 옅은 선을 남기는데(초록이 미묘하게 다르다) 그 선이
-    #    초록으로 판정되지 않아, 실 같은 줄이 인물들을 전부 이어 버린다.
-    #    (실측: 인물 2명짜리 시트에서 덩어리가 1개로 나왔다.)
-    #    얇게 깎았다가(MinFilter) 도로 부풀리면(MaxFilter) 실 같은 선만 사라지고
-    #    인물은 원래 크기로 돌아온다. 형태학에서 '열기(opening)' 라고 부르는 것이다.
-    small = small.filter(ImageFilter.MinFilter(5)).filter(ImageFilter.MaxFilter(5))
-    cell_area = (small.width / cols) * (small.height / rows)
-    boxes = components(small, min_area=int(cell_area * 0.03))
+    base = base.point(lambda v: 255 if v > 96 else 0)
+
+    best = None
+    for k in (5, 9, 13, 19, 25):
+        small = base.filter(ImageFilter.MinFilter(k)).filter(ImageFilter.MaxFilter(k))
+        cell_area = (small.width / cols) * (small.height / rows)
+        got = components(small, min_area=int(cell_area * 0.03))
+        if best is None or len(got) > len(best[1]):
+            best = (k, got, small)
+        if want and len(got) >= want:
+            best = (k, got, small)
+            break
+    k, boxes, small = best
+    if k > 5:
+        print(f"    (덩어리가 붙어 있어 {k} 만큼 깎아서 떼어냈다)")
+    # 깎았다 부풀리는 '열기(opening)' 로 칸 경계의 옅은 실선을 지운다.
+    # 그 선은 초록으로 판정되지 않아서, 그냥 두면 인물들을 전부 이어 버린다.
     if not boxes:
         return keyed, []
 
@@ -257,6 +295,28 @@ def find_figures(sheet, cols, rows, scale=8):
         else:
             cur.append(b)
     lines.append(cur)
+
+    # 가로로 붙어 버린 줄을 쪼갠다 (위 split_wide 설명 참조)
+    if want and sum(len(l) for l in lines) < want:
+        cell_w = small.width / cols
+        for li, ln in enumerate(lines):
+            fixed = []
+            for b in ln:
+                parts = split_wide(small, b[:4], cell_w, want)
+                if len(parts) == 1:
+                    fixed.append(b)
+                    continue
+                for q in parts:
+                    pts = [i for i in b[5]
+                           if q[0] <= (i % small.width) < q[2]]
+                    if len(pts) > (cell_w * cell_w * 0.04):
+                        xs = [i % small.width for i in pts]
+                        ys = [i // small.width for i in pts]
+                        fixed.append((min(xs), min(ys), max(xs) + 1, max(ys) + 1,
+                                      len(pts), pts))
+            lines[li] = fixed
+        n = sum(len(l) for l in lines)
+        print(f"    (붙어 있던 줄을 쪼개 {n}개로 늘렸다)")
 
     out = []
     pad = scale * 3                      # 깎아낸 몫 + 여유. trim_alpha 가 뒤에서 다시 조인다
@@ -274,15 +334,92 @@ def find_figures(sheet, cols, rows, scale=8):
             for i in b[5]:
                 buf[i] = 255
             m = Image.frombytes("L", small.size, bytes(buf))
-            m = m.filter(ImageFilter.MaxFilter(5))          # 깎아낸 만큼 되돌린다
+            m = m.filter(ImageFilter.MaxFilter(k))          # 깎아낸 만큼 되돌린다
             out.append((box, m))
     return keyed, out
 
 
-def slice_sheet(sheet_path, code, poses, cols, rows, outdir=None, save_debug=None):
+# ── 어느 덩어리가 어느 포즈인지 확인 ─────────────────────
+# ⚠️ 순서대로 짝지으면 안 된다. 모델이 요청한 칸 수보다 **적게 그리는 일이 있다**
+#    (실측: M50A 는 12칸을 요청했는데 11명만 그렸다). 하나가 비면 그 뒤가 전부 한 칸씩
+#    밀려서, '슬픔' 자리에 '놀람' 얼굴이 저장된다. 화면에 그대로 나가는 사고다.
+#    그래서 떼어낸 덩어리들을 번호 붙여 한 장으로 만들고, 값싼 모델에게
+#    "몇 번이 어느 포즈인가" 를 묻는다. 인물당 한 번이면 된다.
+LABEL_MODEL = os.environ.get("CHAR_LABEL_MODEL", "gemini-3.1-flash-lite")
+
+
+def label_figures(keyed, figs, poses, key):
+    """덩어리 번호 → 포즈 이름. 확인에 실패하면 None(순서대로 짝짓기로 되돌아간다)."""
+    import io
+    tiles = []
+    for box, blob in figs:
+        cut = keyed.crop(box)
+        m = blob.crop((box[0] // 8, box[1] // 8, -(-box[2] // 8), -(-box[3] // 8)))
+        cut.putalpha(ImageChops.multiply(cut.getchannel("A"),
+                                         m.resize(cut.size, Image.BILINEAR)))
+        cut = A.trim_alpha(cut) or cut
+        bg = Image.new("RGB", cut.size, (240, 240, 240))
+        bg.paste(cut, (0, 0), cut)
+        tiles.append(bg)
+
+    tw = 300
+    th = max(1, max(round(t.height * tw / t.width) for t in tiles))
+    cols = min(6, len(tiles))
+    rows = -(-len(tiles) // cols)
+    sheet = Image.new("RGB", (cols * tw, rows * (th + 26)), (255, 255, 255))
+    d = ImageDraw.Draw(sheet)
+    for i, t in enumerate(tiles):
+        x, y = (i % cols) * tw, (i // cols) * (th + 26)
+        t2 = t.resize((tw, min(th, max(1, round(t.height * tw / t.width)))), Image.LANCZOS)
+        sheet.paste(t2, (x, y))
+        d.text((x + 6, y + th + 5), f"#{i + 1}", fill=(0, 0, 0))
+    buf = io.BytesIO()
+    sheet.save(buf, format="JPEG", quality=80)
+
+    opts = "\n".join(f"  {p} = {cell_text(p)}" for p in poses)
+    prompt = (
+        f"This sheet shows {len(tiles)} numbered cut-outs of the same person.\n"
+        f"Match each number to exactly one of these pose names:\n{opts}\n\n"
+        "Rules: 'face' = head fills the frame; 'bust' = head and shoulders/chest; "
+        "'full' = whole body including legs.\n"
+        "Each name may be used at most once. If no cut-out fits a name, leave that name out.\n"
+        'Answer with JSON only: {"1": "<pose name>", "2": "<pose name>", ...}'
+    )
+    body = {"contents": [{"role": "user", "parts": [
+        {"text": prompt},
+        {"inlineData": {"mimeType": "image/jpeg",
+                        "data": base64.b64encode(buf.getvalue()).decode()}}]}],
+        "generationConfig": {"responseMimeType": "application/json", "temperature": 0}}
+    try:
+        res = _post(f"{BASE}/models/{LABEL_MODEL}:generateContent?key={key}", body, timeout=180)
+        txt = "".join(pt.get("text", "") for pt
+                      in res["candidates"][0]["content"]["parts"])
+        ans = json.loads(txt)
+    except Exception as e:
+        print(f"    확인 실패({e}) — 순서대로 짝짓는다")
+        return None
+    out = {}
+    for k, v in ans.items():
+        try:
+            i = int(k) - 1
+        except ValueError:
+            continue
+        if 0 <= i < len(figs) and v in poses and v not in out.values():
+            out[i] = v
+    return out or None
+
+
+def slice_sheet(sheet_path, code, poses, cols, rows, outdir=None, save_debug=None,
+                key=""):
     sheet = Image.open(sheet_path).convert("RGBA")
-    keyed, figs = find_figures(sheet, cols, rows)
+    keyed, figs = find_figures(sheet, cols, rows, want=len(poses))
     print(f"    시트 {sheet.width}x{sheet.height} · 덩어리 {len(figs)}개 발견 (필요 {len(poses)}개)")
+
+    names = None
+    if key and figs:
+        names = label_figures(keyed, figs, poses, key)
+        if names:
+            print("    확인: " + " · ".join(f"#{i + 1}={n}" for i, n in sorted(names.items())))
 
     if save_debug:
         from PIL import ImageDraw
@@ -297,7 +434,9 @@ def slice_sheet(sheet_path, code, poses, cols, rows, outdir=None, save_debug=Non
     outdir = Path(outdir or (ROOT / "assets" / "char" / code))
     outdir.mkdir(parents=True, exist_ok=True)
     made = []
-    for pose, (box, blob) in zip(poses, figs):
+    pairs = ([(names[i], figs[i]) for i in sorted(names)] if names
+             else list(zip(poses, figs)))
+    for pose, (box, blob) in pairs:
         cut = keyed.crop(box)
         # 덩어리 본을 원래 크기로 늘려 알파에 곱한다 → 이 인물만 남는다
         m = blob.crop((box[0] // 8, box[1] // 8, -(-box[2] // 8), -(-box[3] // 8)))
@@ -355,7 +494,8 @@ def main():
         poses = need[code]
         cols, rows = grid_for(len(poses))
         slice_sheet(args.slice[0], code, poses, cols, rows,
-                    save_debug=Path(args.sheets) / f"{code}_check.jpg")
+                    save_debug=Path(args.sheets) / f"{code}_check.jpg",
+                    key=os.environ.get("GEMINI_API_KEY", "").strip())
         return 0
 
     only = {c.strip() for c in args.only.split(",") if c.strip()}
@@ -390,7 +530,7 @@ def main():
             bad.append(code)
             continue
         made, missing = slice_sheet(p, code, poses, cols, rows,
-                                    save_debug=sheets / f"{code}_check.jpg")
+                                    save_debug=sheets / f"{code}_check.jpg", key=key)
         if missing:
             bad.append(code)
         ok += len(made)
