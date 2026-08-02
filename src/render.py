@@ -230,6 +230,45 @@ CHAR_BOTTOM_ZONE = 0.10
 CHAR_OUTLINE = 0.030        # 흰 테두리 두께(인물 키 대비). assets_gen 의 2.8% + 여유
 
 
+# ⭐ 인물 얼굴이 오는 자리 — 화면 높이의 몇 지점인가.
+#    예전에는 인물을 화면 **바닥에 맞춰** 세웠다. 그러면 얼굴이 아래로 밀려서
+#    자막이 입과 턱을 덮었다. 얼굴은 화면 한가운데쯤 와야 한다.
+#    (자막이 아래 3분의 1을 쓰므로 정확히 0.5 보다 조금 위가 '가운데'로 보인다.)
+HEAD_Y = 0.44               # 가로 화면
+HEAD_Y_V = 0.34             # 세로 쇼츠 — 자막 덩어리가 더 크다
+HEAD_MAX_UP = 1.35          # 아래가 비면 이만큼까지 키운다 (아래 설명 참조)
+
+
+def head_center(sprite):
+    """컷아웃에서 **얼굴 한가운데**가 위에서 몇 픽셀인지 잰다.
+
+    실루엣의 줄별 폭을 재서 폭이 갑자기 넓어지는 곳(어깨선)을 찾는다.
+    머리 꼭대기와 어깨선의 가운데가 얼굴 중심이다.
+    얼굴만 있는 그림(face_*)은 어깨가 없으므로 그림의 한가운데가 된다.
+
+    포즈 이름으로 어림잡지 않고 그림을 재는 이유: 같은 bust 라도 인물마다
+    머리 크기와 어깨 폭이 달라 고정 비율로는 어긋난다."""
+    a = sprite.getchannel("A").point(lambda v: 255 if v > 200 else 0)
+    W, H = a.size
+    px = a.load()
+    step = max(1, W // 160)
+    widths = []
+    for y in range(H):
+        xs = [x for x in range(0, W, step) if px[x, y]]
+        widths.append((max(xs) - min(xs) + step) if xs else 0)
+    solid = [y for y, w in enumerate(widths) if w > W * 0.04]
+    if not solid:
+        return H // 2
+    top, bot = solid[0], solid[-1]
+    n = max(4, int((bot - top) * 0.16))
+    probe = [w for w in widths[top:top + n] if w]
+    head_w = sorted(probe)[len(probe) // 2] if probe else W
+    for y in range(top + n, bot + 1):
+        if widths[y] > head_w * 1.55:
+            return (top + y) // 2
+    return (top + bot) // 2
+
+
 def bottom_bleed(sprite):
     """이 그림을 화면 바닥에 맞추려면 얼마나 더 내려야 하는지(픽셀).
 
@@ -283,6 +322,19 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
             # 인물은 배경으로 물러나는 것이 맞다.
             room = H - int(H * 0.06) - (gfx_bottom + int(H * 0.03))
             target_h = max(int(H * 0.24), min(target_h, room))
+        kind = pose.split("_")[0]
+        head_y = (HEAD_Y_V if vertical else HEAD_Y) * H
+
+        # ⭐ 상반신은 **얼굴을 가운데 두면서 아래는 화면 밖으로** 나가야 한다.
+        #    둘 중 하나만 맞추면, 얼굴이 가운데면 아래에 흰 테두리가 뜨고
+        #    아래를 맞추면 얼굴이 밀린다. 필요한 만큼 키워서 둘 다 만족시킨다.
+        #    (회장님 말씀대로 "이미지 사이즈를 조금 더 키울 필요" 가 여기다.)
+        if kind in ("bust", "face"):
+            f = head_center(sprite) / max(1, sprite.height)      # 그림에서 얼굴 위치 비율
+            need = (H - head_y) / max(0.05, 1.0 - f)             # 아래가 화면에 닿는 최소 키
+            if kind == "bust" and need > target_h:
+                target_h = int(min(need, target_h * HEAD_MAX_UP))
+
         ratio = target_h / sprite.height
         sw = max(1, int(sprite.width * ratio))
         # 가로로도 화면을 넘지 않게 한 번 더 줄인다.
@@ -293,26 +345,50 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
             sw, target_h = max(1, int(sw * k)), max(1, int(target_h * k))
         sprite = sprite.resize((sw, target_h), Image.LANCZOS)
 
+        edge = int(min(W, H) * ZOOM_EDGE) + 4      # 확대 연출이 깎아내는 몫 + 여유
+
         if vertical:
-            pos_y = float(c.get("pos_y", 0.38))
             x = (W - sprite.width) // 2
-            y = int(H * pos_y) - int(sprite.height * 0.18)
-            # ⚠️ 세로에서는 인물 자리를 pos_y 가 정하므로, 키만 줄여서는 카드를 못 피한다.
-            #    실제로 금액 카드의 강조선에 인물 머리가 닿았다. 카드 아래로 확실히 민다.
-            if gfx_bottom:
-                y = max(y, gfx_bottom + int(H * 0.035))
         else:
             slot = {"left": 0.27, "center": 0.5, "right": 0.73}.get(c.get("pos", "center"), 0.5)
             x = int(W * slot) - sprite.width // 2
-            y = H - sprite.height - int(H * 0.06)
 
-        # 화면 아래 경계에 닿는 인물은 경계에 딱 맞춰 세우고 잘라낸다 (위 CHAR_BLEED 참조)
+        if kind == "full":
+            # 전신은 발이 화면 바닥에 닿아야 한다. 얼굴을 가운데로 끌어올리면 다리가 잘린다.
+            y = H - sprite.height - int(H * 0.06)
+        else:
+            # 얼굴 한가운데를 화면의 정해진 높이에 맞춘다
+            y = round(head_y) - head_center(sprite)
+
+        # 세로에서는 위쪽 정보 카드를 피해야 한다 (금액 카드 강조선에 머리가 닿은 적이 있다)
+        if vertical and gfx_bottom:
+            y = max(y, gfx_bottom + int(H * 0.035))
+
+        # 화면 아래 경계에 닿는 인물은 경계에 딱 맞춰 세우고 잘라낸다
         if y + sprite.height >= H - int(H * CHAR_BOTTOM_ZONE):
             y = H - sprite.height + bottom_bleed(sprite)
 
-        # 확대 연출이 가장자리를 깎아내므로, 그 몫만큼 안쪽에 세운다
-        edge = int(min(W, H) * ZOOM_EDGE)
-        x = min(max(x, edge - sprite.width // 4), W - sprite.width - edge + sprite.width // 4)
+        # ⭐ 머리 위와 좌우는 **절대 자르지 않는다.**
+        #    ⚠️ 예전 가로 배치는 `edge - sprite.width // 4` 로 클램프해서
+        #       인물 폭의 4분의 1까지 화면 밖으로 나가는 것을 **허용**하고 있었다.
+        #       그래서 좌우에 세운 인물의 어깨와 팔이 잘려 나갔다.
+        #    넓거나 높아서 안 들어가면 자르지 않고 **줄여서** 넣는다.
+        room_w, room_h = W - 2 * edge, H - edge
+        if sprite.width > room_w or (kind != "full" and sprite.height > room_h):
+            k = min(room_w / sprite.width,
+                    room_h / sprite.height if kind != "full" else 1.0)
+            sprite = sprite.resize((max(1, round(sprite.width * k)),
+                                    max(1, round(sprite.height * k))), Image.LANCZOS)
+            if kind == "full":
+                y = H - sprite.height - int(H * 0.06)
+            else:
+                y = round(head_y) - head_center(sprite)
+            if y + sprite.height >= H - int(H * CHAR_BOTTOM_ZONE):
+                y = H - sprite.height + bottom_bleed(sprite)
+            x = (W - sprite.width) // 2 if vertical else x
+
+        x = min(max(x, edge), W - sprite.width - edge)
+        y = max(y, edge)                            # 머리 위가 잘리지 않게
 
         # 화면 밖으로 나가는 부분은 여기서 잘라낸다.
         # alpha_composite 는 대상 밖으로 나가는 그림을 받지 않으므로 미리 맞춰 준다.
