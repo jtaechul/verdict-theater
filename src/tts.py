@@ -88,7 +88,17 @@ def _retry_wait(e, default):
             want = None
     if want is None:
         try:
-            body = json.loads(e.read().decode("utf-8", "replace"))
+            # ⚠️ 응답 본문은 **한 번만** 읽을 수 있다. quota_note 도 같은 본문을 봐야
+            #    하므로 여기서 읽어 e._vt_body 에 담아 둔다. 안 그러면 둘 중 하나는
+            #    빈손이 되어, '어떤 한도였는지' 를 영영 알 수 없다.
+            raw = getattr(e, "_vt_body", None)
+            if raw is None:
+                raw = e.read().decode("utf-8", "replace")
+                try:
+                    e._vt_body = raw
+                except Exception:
+                    pass
+            body = json.loads(raw)
             for d in (body.get("error", {}).get("details") or []):
                 rd = d.get("retryDelay")
                 if isinstance(rd, str) and rd.endswith("s"):
@@ -170,6 +180,41 @@ VOICE_NAME = {
     "v_M50A": "Puck", "v_M50B": "Orus", "v_F70": "Kore",
     "v_M70": "Fenrir", "v_JUDGE": "Charon",
 }
+
+
+def quota_note(e):
+    """429 본문에서 **어떤 한도**에 걸렸는지 읽어 사람이 읽는 한 줄로.
+
+    ⚠️ 이걸 안 읽어서 지금까지 원인을 계속 추측했다 — '분당인가 하루인가',
+       '무료 등급인가 유료인가' 를 로그만 보고는 알 수가 없었다.
+       구글은 본문에 QuotaFailure 로 정확히 적어 보낸다:
+         {"error":{"details":[{"@type":"...QuotaFailure","violations":[
+            {"quotaId":"GenerateRequestsPerDayPerProjectPerModel-FreeTier", ...}]}]}}
+       'PerDay' 면 오늘은 안 풀리고, 'FreeTier' 면 결제가 안 걸린 열쇠라는 뜻이다."""
+    raw = getattr(e, "_vt_body", "") or ""
+    if not raw:
+        return ""
+    try:
+        body = json.loads(raw)
+    except Exception:
+        return raw[:160].replace("\n", " ")
+    ids = []
+    for d in (body.get("error", {}).get("details") or []):
+        for v in (d.get("violations") or []):
+            q = v.get("quotaId") or v.get("quotaMetric") or ""
+            if q:
+                ids.append(q)
+    if not ids:
+        return (body.get("error", {}).get("message", "") or "")[:160]
+    flat = " ".join(ids).lower().replace("_", "").replace("-", "")
+    note = " · ".join(ids[:3])
+    if "freetier" in flat:
+        note += "   ← 무료 등급입니다 (결제가 걸린 열쇠가 아닙니다)"
+    if "perday" in flat:
+        note += "   ← 하루 한도라 오늘은 안 풀립니다"
+    elif "perminute" in flat:
+        note += "   ← 분당 한도라 천천히 하면 풀립니다"
+    return note
 
 
 class QuotaExhausted(LLMError):
@@ -411,8 +456,29 @@ def main():
     cooldowns = 0
     print(f"음성 모델: {model} · 요청 간격 {THROTTLE:.1f}초(분당 {TTS_RPM}회)"
           + (f" · 예비 {len(alts)}개" if alts else ""))
+    # ⭐ 시작 전에 열쇠를 한 번 두드려 본다.
+    #    실측: 열쇠가 막힌 상태로 시작해 **30분을 버리고** 실패했다(114컷 중 22컷).
+    #    한 컷만 미리 만들어 보면 10초 안에 알 수 있고, 그 한 컷도 버리지 않고 쓴다.
+    #    실패해도 여기서 멈추지는 않는다 — 아래 본 순환이 모델 갈아타기·쉬었다 하기를
+    #    이미 하므로, 여기서는 **원인만 분명히 찍고** 넘긴다.
+    probe = next((c for c in cuts
+                  if (c.get("text") or "").strip()
+                  and not (out / f"{c['id']}.mp3").exists()), None)
+    if probe is not None:
+        try:
+            synth_one(key, model, probe["text"].strip(),
+                      probe.get("speaker", "narrator"), out / f"{probe['id']}.mp3")
+            print("  열쇠 확인: 정상")
+        except Exception as e:
+            note = quota_note(e.__cause__ if e.__cause__ is not None else e)
+            print(f"  ⚠️ 열쇠 확인 실패({type(e).__name__})"
+                  + (f" — {note}" if note else ""))
+            print("     GEMINI_API_KEY 가 결제 걸린 프로젝트의 열쇠인지 확인하십시오.")
+            (out / f"{probe['id']}.mp3").unlink(missing_ok=True)
+
     ok = fail = 0
     streak = 0
+    quota_shown = False   # '어떤 한도인지' 는 한 번만 찍는다
     last_call = 0.0
     for i, c in enumerate(cuts):
         p = out / f"{c['id']}.mp3"
@@ -472,6 +538,13 @@ def main():
             fail += 1
             streak += 1
             print(f"  {c['id']} 실패({type(e).__name__}) → 무음으로 대체")
+            # 어떤 한도에 걸린 것인지 **한 번은** 분명히 남긴다.
+            # 이게 없어서 실패할 때마다 원인을 추측만 했다. 114줄 도배는 막는다.
+            if not quota_shown:
+                note = quota_note(e.__cause__ if e.__cause__ is not None else e)
+                if note:
+                    print(f"      걸린 한도: {note}")
+                    quota_shown = True
             silent(p, float(c.get("sec", 6.0)) - 0.6)
             if streak >= MAX_FAIL_STREAK:
                 # 할당량이 끝난 것을 113컷 내내 확인할 필요가 없다.
