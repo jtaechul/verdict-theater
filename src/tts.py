@@ -47,11 +47,11 @@ RETRYABLE = (408, 429, 500, 502, 503, 504)
 # 2분을 넘는 대기 요구는 '잠깐 밀렸다'가 아니라 '오늘 몫이 끝났다'는 뜻이다 — 바로 알린다.
 MAX_RETRY_WAIT = max(10, int(os.environ.get("TTS_MAX_RETRY_WAIT", "120")))
 
-# 요청 사이 간격은 분당 요청 수(RPM)로 정한다.
-# 제미나이 TTS 미리보기 모델의 분당 한도는 매우 낮다 — 보수적으로 잡는다.
-# 등급이 올라가면 워크플로에서 TTS_RPM 만 올리면 된다.
-TTS_RPM = max(1, int(os.environ.get("TTS_RPM", "10")))
-THROTTLE = 60.0 / TTS_RPM
+# ⭐ **모델 하나당** 분당 몇 번까지 부를지. 실측 한도는 10 이다.
+#    한도에 딱 붙이면(10) 조금만 흔들려도 넘고, 넘으면 재시도가 다음 분의 몫을
+#    또 먹어 영영 안 풀린다 — 실제로 그렇게 30분을 버렸다. 여유를 두고 8 로 둔다.
+PER_MODEL_RPM = max(1, int(os.environ.get("TTS_PER_MODEL_RPM", "8")))
+PER_MODEL_GAP = 60.0 / PER_MODEL_RPM
 
 # 연속 실패가 이만큼 쌓이면 그만둔다.
 # 컷마다 최대 150초(5+15+40+90)를 기다리므로, 113컷을 끝까지 가면 4시간이 넘어
@@ -113,14 +113,27 @@ def _retry_wait(e, default):
     return max(default, want)
 
 
-def _post_retry(url, payload, timeout=180, label=""):
+def _post_retry(url, payload, timeout=180, label="", rotate=False):
     """429·5xx 는 기다렸다 다시 해본다.
 
-    예전에는 재시도가 전혀 없어서, 속도 제한 한 번에 그 컷이 통째로 무음이 됐다."""
+    예전에는 재시도가 전혀 없어서, 속도 제한 한 번에 그 컷이 통째로 무음이 됐다.
+
+    rotate — 429 일 때 **여기서 기다리지 않고 곧바로 알린다.**
+        한도는 모델마다 따로 걸린다(실측). 그러니 막힌 모델을 붙들고 60초씩
+        네 번 자는 것은 4분을 그냥 버리는 짓이다. 부른 쪽(ModelPool)이
+        그 모델만 쉬게 두고 **다른 모델로 즉시 갈아탄다.**
+        5xx·통신 오류는 모델을 바꿔도 소용없으므로 예전대로 여기서 다시 해본다."""
     for i in range(len(BACKOFF) + 1):
         try:
             return _post(url, payload, timeout=timeout)
         except urllib.error.HTTPError as e:
+            if rotate and e.code == 429:
+                wait = _retry_wait(e, 60)           # 본문도 여기서 e._vt_body 에 담긴다
+                if wait == 0:
+                    raise QuotaExhausted(
+                        f"{label}: 이 모델의 오늘 몫을 다 썼습니다(HTTP {e.code}).") from e
+                e._vt_wait = wait
+                raise
             if e.code not in RETRYABLE or i >= len(BACKOFF):
                 raise
             wait = _retry_wait(e, BACKOFF[i])
@@ -217,12 +230,84 @@ def quota_note(e):
     return note
 
 
+class ModelPool:
+    """음성 모델을 **돌려쓴다.** 한도가 모델별로 따로 걸리기 때문이다.
+
+    ⭐ 실측으로 확인한 것 (서버가 429 본문에 그대로 적어 보낸다)
+           quotaId  : GenerateRequestsPerMinutePerProjectPerModel
+           quotaValue: 10          ← 모델 하나당 **분당 10회**
+           model    : gemini-3.1-flash-tts
+       그리고 A 모델이 막힌 그 순간 B 모델은 5/5 성공했다 — **따로 센다.**
+
+    ⚠️ 그래서 예전 설정이 위험했다. 워크플로가 TTS_RPM=10 으로 **한도에 딱 붙여**
+       한 모델만 두들겼다. 여유가 0 이라 조금만 흔들려도 넘고, 넘으면 재시도가
+       다음 분의 몫을 또 먹어 **영영 안 풀린다.**
+       실측: 16컷 성공 뒤 30분 내내 429, 114컷 중 22컷에서 중단.
+
+    이제 이렇게 한다
+        · 모델마다 분당 PER_MODEL_RPM(기본 8, 한도 10보다 낮게) 로 **따로** 센다
+        · 한 모델이 429 면 그 모델만 잠시 쉬게 두고 **다른 모델로 즉시 넘어간다**
+        · 값싼 flash 를 먼저 다 쓰고, 비싼 pro 는 예비로만 둔다(acquire 참고)
+        · 전부 쉬는 중이면 가장 빨리 풀리는 모델까지만 기다린다
+      실측(EP001 앞 30컷): flash 15·14컷 / pro 0컷 / 실패 0 / 2분 11초.
+      114컷 기준 약 9분이면 끝난다."""
+
+    def __init__(self, models):
+        self.models = list(models)
+        self.next_ok = {m: 0.0 for m in self.models}      # 이 시각 뒤에 쓸 수 있다
+        # 값싼 무리(flash)와 비싼 무리(pro)를 가른다. 숫자가 작을수록 싸다.
+        self.tier = {m: (0 if "flash" in m.lower() else 1) for m in self.models}
+
+    def acquire(self):
+        """지금 쓸 수 있는 모델. 없으면 풀릴 때까지 기다렸다 돌려준다.
+
+        ⭐ **싼 것을 끝까지 먼저 쓴다.**
+           그냥 '가장 한가한 모델' 을 고르면 비싼 pro 가 3분의 1을 가져간다 —
+           실측으로 40컷이 13·13·13 으로 갈렸다. pro TTS 는 flash 보다 몇 배 비싸다.
+           그래서 순서를 이렇게 둔다.
+             ① 지금 바로 쓸 수 있는 flash 가 있으면 그것
+             ② 없어도 flash 가 **평소 간격(7.5초) 안에** 풀릴 것 같으면 기다린다
+                — 잠깐 기다리는 편이 pro 값을 무는 것보다 싸다
+             ③ 그래도 안 되면(=flash 가 429 로 길게 묶였다) 그때 pro 가 나선다
+           결과: 평소에는 pro 를 한 컷도 안 쓰고, 진짜 막혔을 때만 예비로 쓴다."""
+        now = time.monotonic()
+        pick = wait = None
+        for tier in sorted(set(self.tier[m] for m in self.models)):
+            group = [m for m in self.models if self.tier[m] == tier]
+            ready = [m for m in group if self.next_ok[m] <= now]
+            if ready:
+                pick, wait = ready[0], 0.0
+                break
+            soon = min(group, key=lambda x: self.next_ok[x])
+            w = self.next_ok[soon] - now
+            if w <= PER_MODEL_GAP + 0.5:     # 평소 간격일 뿐이다 → 기다린다
+                pick, wait = soon, w
+                break
+        if pick is None:                     # 전부 길게 묶였다 → 가장 빨리 풀리는 것
+            pick = min(self.models, key=lambda x: self.next_ok[x])
+            wait = self.next_ok[pick] - now
+        if wait > 0:
+            time.sleep(min(wait, MAX_RETRY_WAIT))
+        self.next_ok[pick] = time.monotonic() + PER_MODEL_GAP
+        return pick
+
+    def penalize(self, model, seconds):
+        """이 모델은 이만큼 쉬게 둔다 (서버가 알려준 시간)."""
+        self.next_ok[model] = max(self.next_ok.get(model, 0.0),
+                                  time.monotonic() + max(1.0, seconds))
+
+    def alive(self):
+        return bool(self.models)
+
+    def drop(self, model):
+        """오늘 몫이 끝난 모델은 아예 뺀다."""
+        if model in self.models:
+            self.models.remove(model)
+            self.next_ok.pop(model, None)
+
+
 class QuotaExhausted(LLMError):
     """오늘 쓸 수 있는 몫을 다 썼다. 기다려도 이 실행 안에서는 풀리지 않는다."""
-
-
-def _quota_dead(e):
-    return isinstance(e, QuotaExhausted)
 
 
 def pick_tts_model(key):
@@ -309,7 +394,7 @@ def rate_from_mime(mime):
     return 24000
 
 
-def synth_one(key, model, text, speaker, out_mp3):
+def synth_one(key, model, text, speaker, out_mp3, rotate=False):
     style, speed = VOICE_STYLE.get(speaker, VOICE_STYLE["narrator"])
     voice = VOICE_NAME.get(speaker, "Charon")
     prompt = f"{style} 읽어라. 다른 말을 덧붙이지 말고 다음 문장만 읽어라:\n{text}"
@@ -322,7 +407,7 @@ def synth_one(key, model, text, speaker, out_mp3):
                 "voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}
             },
         },
-    }, timeout=180, label=speaker)
+    }, timeout=180, label=speaker, rotate=rotate)
 
     parts = (res.get("candidates") or [{}])[0].get("content", {}).get("parts", [])
     blob = next((p["inlineData"] for p in parts if "inlineData" in p), None)
@@ -348,6 +433,43 @@ def synth_one(key, model, text, speaker, out_mp3):
     finally:
         tmp.unlink(missing_ok=True)     # 실패해도 24kHz PCM 찌꺼기를 남기지 않는다
     return out_mp3
+
+
+def make_one(pool, key, text, speaker, path, tries=0):
+    """한 컷을 만든다. 막히면 **모델을 갈아타며** 다시 해본다.
+
+    성공하면 (None, 쓴 모델), 실패하면 (마지막 오류, None).
+
+    왜 이렇게까지 하나
+        한 컷이 무음이 되면 그 자리에서 영상 소리가 끊긴다. 그런데 429 는
+        '이 모델이 이번 분에 꽉 찼다' 는 뜻일 뿐, 옆 모델은 멀쩡하다(실측).
+        그러니 포기하기 전에 **남은 모델을 전부 한 번씩** 두드려 본다."""
+    tries = tries or max(2, len(pool.models) + 1)
+    last = None
+    for _ in range(tries):
+        if not pool.alive():
+            break
+        model = pool.acquire()
+        try:
+            synth_one(key, model, text, speaker, path, rotate=True)
+            return None, model
+        except QuotaExhausted as e:
+            last = e
+            pool.drop(model)
+            print(f"    {model} 오늘 몫이 끝났다 → 뺀다"
+                  f" (남은 모델 {len(pool.models)}개)")
+        except urllib.error.HTTPError as e:
+            last = e
+            if e.code == 429:
+                wait = getattr(e, "_vt_wait", None) or _retry_wait(e, 60)
+                pool.penalize(model, wait)
+                print(f"    {model} 분당 한도 — {int(wait)}초 쉬게 두고 다른 모델로")
+            else:
+                pool.penalize(model, 10)
+        except Exception as e:                 # 통신 오류·빈 응답 등
+            last = e
+            pool.penalize(model, 5)
+    return last, None
 
 
 def silent(out_mp3, sec, marker=True):
@@ -452,10 +574,17 @@ def main():
         print(f"무음 {len(cuts)}개 생성: {out}")
         return 0
 
-    alts = [m for m in (all_models or []) if m != model]
     cooldowns = 0
-    print(f"음성 모델: {model} · 요청 간격 {THROTTLE:.1f}초(분당 {TTS_RPM}회)"
-          + (f" · 예비 {len(alts)}개" if alts else ""))
+    pool = ModelPool(all_models or [model])
+    cheap = [m for m in pool.models if pool.tier[m] == 0]
+    spare = [m for m in pool.models if pool.tier[m] != 0]
+    print(f"음성 모델 {len(pool.models)}개 — 싼 것부터 쓴다")
+    print(f"  주력(flash) {len(cheap)}개: {' · '.join(cheap) or '없음'}")
+    if spare:
+        print(f"  예비(pro)  {len(spare)}개: {' · '.join(spare)}"
+              "  ← 주력이 한도에 막혔을 때만 나선다")
+    print(f"  모델당 분당 {PER_MODEL_RPM}회 (실측 한도 10) → 주력만으로 분당 "
+          f"약 {PER_MODEL_RPM * max(1, len(cheap))}회")
     # ⭐ 시작 전에 열쇠를 한 번 두드려 본다.
     #    실측: 열쇠가 막힌 상태로 시작해 **30분을 버리고** 실패했다(114컷 중 22컷).
     #    한 컷만 미리 만들어 보면 10초 안에 알 수 있고, 그 한 컷도 버리지 않고 쓴다.
@@ -465,21 +594,22 @@ def main():
                   if (c.get("text") or "").strip()
                   and not (out / f"{c['id']}.mp3").exists()), None)
     if probe is not None:
-        try:
-            synth_one(key, model, probe["text"].strip(),
-                      probe.get("speaker", "narrator"), out / f"{probe['id']}.mp3")
-            print("  열쇠 확인: 정상")
-        except Exception as e:
-            note = quota_note(e.__cause__ if e.__cause__ is not None else e)
-            print(f"  ⚠️ 열쇠 확인 실패({type(e).__name__})"
+        err, used = make_one(pool, key, probe["text"].strip(),
+                             probe.get("speaker", "narrator"),
+                             out / f"{probe['id']}.mp3", tries=1)
+        if err is None:
+            print(f"  열쇠 확인: 정상 ({used})")
+        else:
+            note = quota_note(err.__cause__ if err.__cause__ is not None else err)
+            print(f"  ⚠️ 열쇠 확인 실패({type(err).__name__})"
                   + (f" — {note}" if note else ""))
             print("     GEMINI_API_KEY 가 결제 걸린 프로젝트의 열쇠인지 확인하십시오.")
             (out / f"{probe['id']}.mp3").unlink(missing_ok=True)
 
     ok = fail = 0
     streak = 0
+    used = {}             # 모델별로 몇 컷을 만들었나 (골고루 갔는지 눈으로 확인)
     quota_shown = False   # '어떤 한도인지' 는 한 번만 찍는다
-    last_call = 0.0
     for i, c in enumerate(cuts):
         p = out / f"{c['id']}.mp3"
         if p.exists():
@@ -496,55 +626,34 @@ def main():
             silent(p, 1.0, marker=False)     # 대사 없는 컷 — 의도된 무음이라 실패가 아니다
             ok += 1
             continue
-        # 몰아치면 속도 제한에 걸린다. 요청 사이를 최소 THROTTLE 초 띄운다.
-        gap = time.monotonic() - last_call
-        if last_call and gap < THROTTLE:
-            time.sleep(THROTTLE - gap)
-        try:
-            synth_one(key, model, text, c.get("speaker", "narrator"), p)
+        # ⭐ 모델을 **돌려쓴다.** 한도가 모델별로 따로 걸리므로, 한 모델이 쉬는 동안
+        #    다른 모델로 계속 갈 수 있다. 요청 간격도 여기서 함께 지켜진다.
+        err, _used = make_one(pool, key, text, c.get("speaker", "narrator"), p)
+
+        if err is not None and not pool.alive() and cooldowns < MAX_COOLDOWNS:
+            # 모든 모델이 막혔다. 실측해 보니 잠시 뒤 다시 열리는 경우가 있다.
+            # 사람이 없는 GitHub Actions 실행에서 그냥 멈추면 그 회차는 그대로 끝난다.
+            cooldowns += 1
+            print(f"  모든 음성 모델이 막혔다 — {COOLDOWN_SEC}초 쉬었다 다시 한다"
+                  f" ({cooldowns}/{MAX_COOLDOWNS})")
+            time.sleep(COOLDOWN_SEC)
+            pool = ModelPool(all_models)
+            err, _used = make_one(pool, key, text, c.get("speaker", "narrator"), p)
+
+        if err is None:
             ok += 1
             streak = 0
-        except Exception as e:
-            # 하루 한도는 **모델별로 따로** 센다. 지금 쓰던 모델이 바닥나도
-            # 다른 음성 모델은 멀쩡한 경우가 많다 — 실제로 3.1-flash 가 102컷에서
-            # 막혔을 때 2.5-flash 로 남은 11컷을 그대로 끝냈다.
-            # 갈아탈 곳이 있으면 갈아타고, 이 컷부터 다시 해본다.
-            if _quota_dead(e):
-                if not alts and cooldowns < MAX_COOLDOWNS:
-                    # 모든 모델이 막혔다. 그런데 실측해 보니 **잠시 뒤 다시 열리는 경우가 있다**
-                    # (구글이 분당 한도에도 몇 시간짜리 retryDelay 를 주는 일이 있다).
-                    # 여기서 그냥 멈추면, 사람이 없는 GitHub Actions 실행은 그대로 끝난다.
-                    # 한 번 쉬었다가 처음 모델부터 다시 훑는다.
-                    cooldowns += 1
-                    print(f"  모든 음성 모델이 막혔다 — {COOLDOWN_SEC}초 쉬었다 다시 한다"
-                          f" ({cooldowns}/{MAX_COOLDOWNS})")
-                    time.sleep(COOLDOWN_SEC)
-                    alts = list(all_models)
-                if alts:
-                    nxt = alts.pop(0)
-                    print(f"  {model} 오늘 몫이 끝났다 → {nxt} 로 갈아탄다")
-                    model = nxt
-                    last_call = 0.0
-                    try:
-                        synth_one(key, model, text, c.get("speaker", "narrator"), p)
-                        ok += 1
-                        streak = 0
-                        last_call = time.monotonic()
-                        if (i + 1) % 20 == 0:
-                            print(f"  {i + 1}/{len(cuts)}  (성공 {ok} · 실패 {fail})")
-                        continue
-                    except Exception as e2:
-                        e = e2
-            fail += 1
-            streak += 1
-            print(f"  {c['id']} 실패({type(e).__name__}) → 무음으로 대체")
-            # 어떤 한도에 걸린 것인지 **한 번은** 분명히 남긴다.
-            # 이게 없어서 실패할 때마다 원인을 추측만 했다. 114줄 도배는 막는다.
+            used[_used] = used.get(_used, 0) + 1
+        else:
+            src = err.__cause__ if err.__cause__ is not None else err
             if not quota_shown:
-                note = quota_note(e.__cause__ if e.__cause__ is not None else e)
+                note = quota_note(src)
                 if note:
                     print(f"      걸린 한도: {note}")
                     quota_shown = True
+            fail += 1
+            streak += 1
+            print(f"  {c['id']} 실패({type(err).__name__}) → 무음으로 대체")
             silent(p, float(c.get("sec", 6.0)) - 0.6)
             if streak >= MAX_FAIL_STREAK:
                 # 할당량이 끝난 것을 113컷 내내 확인할 필요가 없다.
@@ -559,11 +668,13 @@ def main():
                 print(f"      (성공 {ok} · 실패 {fail} · 남은 컷 {len(cuts) - i - 1})",
                       file=sys.stderr)
                 return 1
-        last_call = time.monotonic()
         if (i + 1) % 20 == 0:
             print(f"  {i + 1}/{len(cuts)}  (성공 {ok} · 실패 {fail})")
 
     print(f"음성 {ok}개 · 실패 {fail}개 → {out}")
+    if used:
+        # 한쪽 모델만 두들기면 다시 429 가 난다. 골고루 갔는지 여기서 바로 보인다.
+        print("  모델별: " + " · ".join(f"{m} {n}컷" for m, n in used.items()))
 
     # 소리가 자주 끊기면 그것은 "영상이 나왔다" 가 아니라 "음성이 실패했다" 이다.
     # 예전에는 여기서 0 을 돌려줘서, 소리 없는 영상이 성공으로 올라갈 수 있었다.
