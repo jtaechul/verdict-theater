@@ -103,6 +103,12 @@ jobs:
           echo "ep=$EP" >> "$GITHUB_OUTPUT"
           echo "회차: $EP"
 
+      # 제미나이로 만든 배경에는 오른쪽 아래에 로고가 박혀 나온다.
+      # 렌더 전에 자동으로 지운다. 이미 지운 그림은 건너뛴다.
+      - name: 배경 워터마크 지우기
+        run: |
+          python3 src/dewatermark.py assets/bg || true
+
       - name: 에셋 무결성 검사
         run: |
           # 렌더 전에 필요한 파일이 다 있는지 본다. 하나 없으면 대체물로 채워지므로
