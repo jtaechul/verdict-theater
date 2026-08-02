@@ -23,6 +23,7 @@
 import argparse
 import base64
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -186,12 +187,19 @@ VOICE_STYLE = {
     "v_JUDGE":  ("재판장. 무겁고 절제된 목소리로 또박또박", 1.00),
 }
 
-# Gemini TTS 가 제공하는 목소리 이름(참고용 기본 배정).
-# API가 다른 이름을 주면 아래 값 대신 목록에서 순서대로 배정한다.
+# Gemini TTS 목소리 이름. **인물마다 서로 다른 이름이어야 한다.**
+#
+# ⚠️ 예전에는 나레이터와 재판장이 **둘 다 Charon** 이었다. 해설과 판결 선고가
+#    똑같은 목소리로 나와, 누가 말하는지 소리로는 구분되지 않았다.
+#    실측(같은 대사·같은 모델로 목소리 높이를 잼):
+#      Charon 106Hz · Algieba 85Hz · Enceladus 116Hz · Iapetus 131Hz
+#      Orus 136Hz · Fenrir 114Hz · Rasalgethi 115Hz
+#    재판장은 가장 낮은 Algieba 로 옮겼다 — 나레이터와 21Hz 벌어져 확실히 구분되고,
+#    낮고 무거운 목소리가 배역에도 맞는다.
 VOICE_NAME = {
     "narrator": "Charon", "v_F50A": "Aoede", "v_F50B": "Leda",
     "v_M50A": "Puck", "v_M50B": "Orus", "v_F70": "Kore",
-    "v_M70": "Fenrir", "v_JUDGE": "Charon",
+    "v_M70": "Fenrir", "v_JUDGE": "Algieba",
 }
 
 
@@ -299,6 +307,22 @@ class ModelPool:
     def alive(self):
         return bool(self.models)
 
+    def wait_for(self, model):
+        """**이 모델이** 쓸 수 있을 때까지 기다린다. 다른 모델로 바꾸지 않는다.
+
+        ⭐ 인물마다 모델이 고정돼 있기 때문이다(pin_models 참고).
+           한도에 걸렸다고 다른 모델로 갈아타면 그 인물 목소리가 도중에 바뀐다 —
+           실측으로 같은 목소리 이름이 모델에 따라 113Hz ~ 157Hz 로 나온다.
+           사람 귀에는 '다른 사람', 심하면 '남자가 여자로' 들린다.
+           목소리가 바뀌는 것보다 몇 초 기다리는 편이 낫다."""
+        if model not in self.next_ok:
+            return None                     # 이미 빠진 모델이다
+        wait = self.next_ok[model] - time.monotonic()
+        if wait > 0:
+            time.sleep(min(wait, MAX_RETRY_WAIT))
+        self.next_ok[model] = time.monotonic() + PER_MODEL_GAP
+        return model
+
     def drop(self, model):
         """오늘 몫이 끝난 모델은 아예 뺀다."""
         if model in self.models:
@@ -308,6 +332,112 @@ class ModelPool:
 
 class QuotaExhausted(LLMError):
     """오늘 쓸 수 있는 몫을 다 썼다. 기다려도 이 실행 안에서는 풀리지 않는다."""
+
+
+# ─────────────────────────────────────────────────────────────────────
+# 목소리를 인물별로 **고정**하는 장치
+#
+# 손님 지적: "장남 목소리가 중간에 여자로 바뀌고 계속 달라진다."
+# 실측으로 확인한 원인 세 가지 — 전부 여기서 막는다.
+#
+#   ① 모델이 달라지면 같은 목소리 이름도 다른 사람이 된다
+#      같은 대사·같은 이름(Puck)인데
+#        gemini-3.1-flash-tts-preview  157Hz   ← 여자로 들릴 높이
+#        gemini-2.5-flash-preview-tts  122Hz
+#        gemini-2.5-pro-preview-tts    113Hz
+#      → 인물마다 모델을 하나로 못 박는다(pin_models). 한도에 걸려도 갈아타지 않는다.
+#
+#   ② 지난 실행에서 만든 음성이 섞인다
+#      워크플로가 build/voice 를 캐시로 되살리는데, 예전에는 다른 모델로 만든
+#      파일이 그대로 남아 새 파일과 한 영상 안에 섞였다. 44Hz 가 튄다.
+#      → 컷마다 '어떤 조리법(모델·목소리·배속)으로 만들었는지' 를 적어 두고,
+#        조리법이 다르면 지우고 다시 만든다(prune_stale).
+#
+#   ③ 같은 모델 안에서도 대사 감정에 따라 흔들린다 (실측 108~132Hz, 폭 24Hz)
+#      지시문으로 "음높이를 바꾸지 말라"고 해도 안 잡혔다(폭 23Hz, 차이 없음).
+#      → 다 만든 뒤 인물별 중앙값으로 끌어당긴다(normalize_pitch).
+# ─────────────────────────────────────────────────────────────────────
+
+def recipe(speaker, model):
+    """이 컷을 '무엇으로 만들었는지' 한 줄. 하나라도 다르면 다시 만들어야 한다."""
+    voice = VOICE_NAME.get(speaker, "Charon")
+    _, speed = VOICE_STYLE.get(speaker, VOICE_STYLE["narrator"])
+    return f"{model}|{voice}|{speed:.2f}"
+
+
+# 등장인물(대사)에 쓸 모델의 **선호 순서**. 목록 순서가 아니라 이 순서를 따른다.
+#
+# ⚠️ 왜 이름을 박아 두나 — 자동 정렬에 맡기면 모델이 하나 추가되는 것만으로
+#    다음 회차 인물 목소리가 통째로 달라진다. 실측으로 고른 순서를 적어 둔다.
+#    같은 목소리(Puck)로 "50대 남성" 대사를 읽혔을 때:
+#      gemini-2.5-flash-preview-tts  122Hz  ← 50대 남성으로 들린다
+#      gemini-3.1-flash-tts-preview  157Hz  ← 너무 높다. 여자로 들릴 수 있다
+#    그래서 대사는 2.5-flash 를 먼저 쓰고, 나레이터에게 나머지를 준다.
+CHAR_MODEL_ORDER = ["gemini-2.5-flash-preview-tts", "gemini-3.1-flash-tts-preview"]
+
+
+def _pref(models):
+    """CHAR_MODEL_ORDER 에 적힌 순서대로. 목록에 없는 모델은 뒤에 붙인다."""
+    known = [m for m in CHAR_MODEL_ORDER if m in models]
+    return known + [m for m in models if m not in known]
+
+
+def pin_models(speakers, models):
+    """인물 → 쓸 모델. **한 인물은 끝까지 한 모델만 쓴다.**
+
+    나레이터가 전체의 절반을 넘는다(113컷 중 62컷). 그래서 나레이터에게
+    모델 하나를 통째로 주고, 등장인물들이 남은 모델을 나눠 쓴다.
+    이렇게 해야 한 모델에 몰리지 않아 분당 한도에도 걸리지 않는다.
+      실측 배분 — 나레이터 62컷 ÷ 8분 = 분당 7.5회, 인물 51컷 = 분당 6.1회.
+      둘 다 모델당 한도(분당 10, 우리 설정 8) 아래다.
+
+    등장인물이 **좋은 쪽**을 가져간다. 나레이터는 해설이라 음높이가 조금 높아도
+    어색하지 않지만, 등장인물은 나이·성별이 정해져 있어 어긋나면 바로 들킨다."""
+    if not models:
+        return {}
+    order = _pref(models)
+    pin = {}
+    rest = [s for s in speakers if s != "narrator"]
+    if "narrator" in speakers and len(order) > 1:
+        pin["narrator"] = order[-1]            # 나레이터는 뒤쪽 모델
+        others = order[:-1]
+    else:
+        if "narrator" in speakers:
+            pin["narrator"] = order[0]         # 모델이 하나뿐 — 같이 쓸 수밖에 없다
+        others = order
+    for i, s in enumerate(sorted(rest)):
+        pin[s] = others[i % len(others)]
+    return pin
+
+
+def prune_stale(out, cuts, pin):
+    """조리법이 달라진 컷은 지운다. **다른 실행에서 만든 음성이 섞이는 것을 막는다.**
+
+    지우면 아래 본 순환이 그 컷만 새로 만든다. 나머지는 그대로 재사용하므로
+    돈이 더 들지 않는다 — 바뀐 것만 다시 만든다."""
+    book = out / "recipe.json"
+    old = {}
+    try:
+        old = json.loads(book.read_text(encoding="utf-8"))
+    except Exception:
+        old = {}
+    killed = 0
+    for c in cuts:
+        cid = c.get("id")
+        p = out / f"{cid}.mp3"
+        if not p.exists():
+            continue
+        speaker = c.get("speaker", "narrator")
+        want = recipe(speaker, pin.get(speaker, ""))
+        if old.get(cid) != want:
+            p.unlink()
+            p.with_suffix(".silent").unlink(missing_ok=True)
+            old.pop(cid, None)
+            killed += 1
+    if killed:
+        print(f"  지난 실행의 음성 {killed}컷이 지금 설정과 달라 지웠다 — 그 컷만 다시 만든다")
+        book.write_text(json.dumps(old, ensure_ascii=False), encoding="utf-8")
+    return old
 
 
 def pick_tts_model(key):
@@ -435,21 +565,23 @@ def synth_one(key, model, text, speaker, out_mp3, rotate=False):
     return out_mp3
 
 
-def make_one(pool, key, text, speaker, path, tries=0):
-    """한 컷을 만든다. 막히면 **모델을 갈아타며** 다시 해본다.
+def make_one(pool, key, text, speaker, path, tries=0, pinned=None):
+    """한 컷을 만든다. 성공하면 (None, 쓴 모델), 실패하면 (마지막 오류, None).
 
-    성공하면 (None, 쓴 모델), 실패하면 (마지막 오류, None).
+    pinned — 이 인물에게 못 박힌 모델. 주어지면 **그 모델만 쓴다.**
+        429 가 나도 다른 모델로 갈아타지 않고 풀릴 때까지 기다린다.
+        갈아타면 그 인물 목소리가 도중에 바뀌기 때문이다(실측 113~157Hz).
+        그 모델의 **하루 몫이 끝났을 때만** 어쩔 수 없이 다른 모델로 넘어가고,
+        부른 쪽이 그것을 보고 그 인물 컷을 전부 다시 만든다.
 
-    왜 이렇게까지 하나
-        한 컷이 무음이 되면 그 자리에서 영상 소리가 끊긴다. 그런데 429 는
-        '이 모델이 이번 분에 꽉 찼다' 는 뜻일 뿐, 옆 모델은 멀쩡하다(실측).
-        그러니 포기하기 전에 **남은 모델을 전부 한 번씩** 두드려 본다."""
+    pinned 가 없으면(쇼츠 등) 남은 모델을 돌아가며 두드린다 —
+    한 컷이 무음이 되면 그 자리에서 소리가 끊기기 때문이다."""
     tries = tries or max(2, len(pool.models) + 1)
     last = None
     for _ in range(tries):
         if not pool.alive():
             break
-        model = pool.acquire()
+        model = (pool.wait_for(pinned) or pool.acquire()) if pinned else pool.acquire()
         try:
             synth_one(key, model, text, speaker, path, rotate=True)
             return None, model
@@ -470,6 +602,179 @@ def make_one(pool, key, text, speaker, path, tries=0):
             last = e
             pool.penalize(model, 5)
     return last, None
+
+
+def measure_f0(path):
+    """목소리 높이(Hz) 중앙값. 못 재면 None.
+
+    자기상관(autocorrelation) — 소리 파형이 자기 자신과 몇 칸 뒤에서 가장 닮았는지를
+    보고 한 주기의 길이를 알아내는 방법이다. 그 길이의 역수가 목소리 높이다."""
+    try:
+        import numpy as np
+    except ImportError:
+        return None
+    tmp = str(path) + ".f0.wav"
+    try:
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(path),
+                        "-ac", "1", "-ar", "16000", tmp],
+                       check=True, capture_output=True, timeout=60)
+        with wave.open(tmp) as f:
+            x = np.frombuffer(f.readframes(f.getnframes()), "<i2").astype(float)
+    except Exception:
+        return None
+    finally:
+        Path(tmp).unlink(missing_ok=True)
+    sr, N, got = 16000, 1024, []
+    for i in range(0, max(0, len(x) - N), N // 2):
+        fr = x[i:i + N]
+        if float(np.sqrt((fr ** 2).mean())) < 400:      # 무음·숨소리는 건너뛴다
+            continue
+        fr = fr - fr.mean()
+        ac = np.correlate(fr, fr, "full")[N - 1:]
+        lo, hi = sr // 300, sr // 70                    # 사람 목소리 범위(70~300Hz)
+        if hi >= len(ac) or ac[0] <= 0:
+            continue
+        pk = lo + int(np.argmax(ac[lo:hi]))
+        if ac[pk] > 0.3 * ac[0]:
+            got.append(sr / pk)
+    return float(np.median(got)) if len(got) >= 3 else None
+
+
+# 인물별 중앙값에서 이만큼(반음) 넘게 벗어난 컷만 손본다. 그 이하는 사람이 못 느낀다.
+PITCH_TOL = float(os.environ.get("TTS_PITCH_TOL", "1.0"))
+# 손보더라도 이 이상은 절대 안 옮긴다. 많이 옮기면 목소리가 기계처럼 변한다.
+PITCH_MAX = float(os.environ.get("TTS_PITCH_MAX", "2.0"))
+# 이만큼(반음) 넘게 벗어난 컷은 **음을 옮기지 않고 다시 만든다.**
+#   실측: 장남 대사 하나가 174Hz 로 나왔다(다른 대사는 110Hz 안팎). 62Hz 차이다.
+#   이런 것은 억지로 내리면(최대 2반음) 155Hz 에 그쳐 여전히 튀고, 소리도 뭉개진다.
+#   모델에게 그 한 줄만 다시 읽히면 대개 제 높이로 나온다 — 한 번 부르는 값이면 된다.
+PITCH_REDO = float(os.environ.get("TTS_PITCH_REDO", "3.0"))
+PITCH_REDO_TRIES = max(0, int(os.environ.get("TTS_PITCH_REDO_TRIES", "2")))
+
+
+def normalize_pitch(out, cuts, retake=None):
+    """인물마다 목소리 높이를 **중앙값으로 맞춘다.**
+
+    왜 필요한가
+        같은 모델·같은 목소리인데도 대사의 감정에 따라 높이가 흔들린다
+        (실측: 장남 6개 대사가 108~132Hz, 폭 24Hz). 대화 중에 이만큼 오르내리면
+        같은 사람으로 안 들린다. 지시문으로는 안 잡혔다(폭 23Hz — 차이 없음).
+
+    어떻게
+        컷마다 높이를 재고, 그 인물의 중앙값에서 반음(PITCH_TOL) 넘게 벗어난 것만
+        중앙값 쪽으로 끌어당긴다. 최대 2반음까지만 — 그 이상 옮기면 기계 소리가 난다.
+        ffmpeg 의 asetrate 로 음을 옮기고 atempo 로 길이를 되돌려, **길이는 그대로**다.
+        (길이가 변하면 자막·컷 길이와 어긋난다.)
+
+    두 번 실행해도 안전하다 — 손본 컷은 pitch.json 에 적어 두고 건너뛴다."""
+    if not shutil.which("ffmpeg"):
+        return
+    try:
+        import numpy  # noqa: F401
+    except ImportError:
+        # 조용히 넘어가면 목소리가 흔들린 채로 발행된다. 분명히 말한다.
+        print("  ⚠️ numpy 가 없어 목소리 높이 고르기를 건너뛴다"
+              " (인물 목소리가 컷마다 흔들릴 수 있다)")
+        return
+    book = out / "pitch.json"
+    done = {}
+    try:
+        done = json.loads(book.read_text(encoding="utf-8"))
+    except Exception:
+        done = {}
+
+    by_speaker = {}
+    for c in cuts:
+        cid, sp = c.get("id"), c.get("speaker", "narrator")
+        p = out / f"{cid}.mp3"
+        if not p.exists() or p.with_suffix(".silent").exists():
+            continue                       # 무음은 잴 것이 없다
+        if not (c.get("text") or "").strip():
+            continue
+        hz = done.get(cid) or measure_f0(p)
+        if hz:
+            by_speaker.setdefault(sp, []).append((cid, p, hz))
+
+    if not by_speaker:
+        return
+    import statistics
+
+    def off(hz, mid):
+        """중앙값에서 몇 반음 벗어났나."""
+        return 12.0 * math.log2(hz / mid) if hz > 0 and mid > 0 else 0.0
+
+    redone = fixed = 0
+    for sp, items in by_speaker.items():
+        if len(items) < 3:                 # 표본이 적으면 중앙값을 못 믿는다
+            continue
+        mid = statistics.median(h for _, _, h in items)
+
+        # ① 크게 튄 컷은 **다시 읽힌다.** 음을 억지로 옮기는 것보다 자연스럽다.
+        if retake is not None:
+            fresh = []
+            for cid, p, hz in items:
+                if cid in done or abs(off(hz, mid)) <= PITCH_REDO:
+                    fresh.append((cid, p, hz))
+                    continue
+                # ⚠️ 다시 읽히기 전에 **원본을 챙겨 둔다.**
+                #    다시 만들기가 실패하면(한도 소진 등) 그 컷이 통째로 사라진다 —
+                #    조금 튀는 목소리보다 소리가 아예 없는 것이 훨씬 나쁘다.
+                keep = p.with_suffix(".keep")
+                shutil.copyfile(p, keep)
+                best, best_hz = None, hz
+                for _ in range(PITCH_REDO_TRIES):
+                    p.unlink(missing_ok=True)
+                    if not retake(cid):
+                        break
+                    got = measure_f0(p)
+                    if not got:
+                        break
+                    if abs(off(got, mid)) < abs(off(best_hz, mid)):
+                        best, best_hz = got, got
+                    if abs(off(got, mid)) <= PITCH_TOL:
+                        break
+                if not p.exists() or best is None:
+                    keep.replace(p)            # 원본을 되돌린다
+                    best, best_hz = None, hz
+                else:
+                    keep.unlink(missing_ok=True)
+                if best is not None:
+                    redone += 1
+                    print(f"    {cid} ({sp}) 목소리가 {hz:.0f}Hz 로 크게 튀어 다시 읽혔다"
+                          f" → {best_hz:.0f}Hz (인물 중앙값 {mid:.0f}Hz)")
+                fresh.append((cid, p, best_hz))
+            items = fresh
+            mid = statistics.median(h for _, _, h in items)
+
+        # ② 남은 잔잔한 흔들림은 음을 조금 옮겨 맞춘다(최대 2반음).
+        for cid, p, hz in items:
+            if cid in done:
+                continue                   # 이미 손본 컷
+            semitone = off(hz, mid)
+            if abs(semitone) <= PITCH_TOL:
+                done[cid] = hz             # 손댈 필요 없음. 다시 재지 않게 적어 둔다
+                continue
+            move = max(-PITCH_MAX, min(PITCH_MAX, -semitone))
+            r = 2 ** (move / 12.0)
+            tmp = p.with_suffix(".fix.mp3")
+            try:
+                subprocess.run(
+                    ["ffmpeg", "-y", "-loglevel", "error", "-i", str(p), "-af",
+                     f"asetrate=24000*{r:.5f},aresample=24000,atempo={1 / r:.5f}",
+                     "-b:a", "160k", str(tmp)], check=True, timeout=120)
+                tmp.replace(p)
+                done[cid] = hz * r
+                fixed += 1
+            except Exception:
+                tmp.unlink(missing_ok=True)
+    if redone:
+        print(f"  목소리가 튄 {redone}컷을 다시 읽혔다")
+    if fixed:
+        print(f"  목소리 높이 고르기: {fixed}컷을 인물 중앙값 쪽으로 당겼다")
+    try:
+        book.write_text(json.dumps(done, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
 
 
 def silent(out_mp3, sec, marker=True):
@@ -585,6 +890,17 @@ def main():
               "  ← 주력이 한도에 막혔을 때만 나선다")
     print(f"  모델당 분당 {PER_MODEL_RPM}회 (실측 한도 10) → 주력만으로 분당 "
           f"약 {PER_MODEL_RPM * max(1, len(cheap))}회")
+
+    # ⭐ 인물마다 모델을 **못 박는다.** 같은 목소리 이름이라도 모델이 다르면
+    #    다른 사람으로 들린다(실측 113~157Hz). 여기서 정한 짝은 끝까지 안 바뀐다.
+    speakers = sorted({c.get("speaker", "narrator") for c in cuts})
+    pin = pin_models(speakers, cheap or pool.models)
+    print("  인물별 고정 목소리 —")
+    for s in speakers:
+        print(f"    {s:10s} {VOICE_NAME.get(s, 'Charon'):10s} {pin.get(s, '?')}")
+    # 지난 실행에서 다른 설정으로 만든 음성이 섞이지 않게 지운다.
+    book = prune_stale(out, cuts, pin)
+
     # ⭐ 시작 전에 열쇠를 한 번 두드려 본다.
     #    실측: 열쇠가 막힌 상태로 시작해 **30분을 버리고** 실패했다(114컷 중 22컷).
     #    한 컷만 미리 만들어 보면 10초 안에 알 수 있고, 그 한 컷도 버리지 않고 쓴다.
@@ -594,11 +910,17 @@ def main():
                   if (c.get("text") or "").strip()
                   and not (out / f"{c['id']}.mp3").exists()), None)
     if probe is not None:
-        err, used = make_one(pool, key, probe["text"].strip(),
-                             probe.get("speaker", "narrator"),
-                             out / f"{probe['id']}.mp3", tries=1)
+        # ⚠️ 여기서도 **그 인물에게 못 박힌 모델**을 써야 한다.
+        #    예전에는 아무 모델이나 썼다. 그래서 그 한 컷만 다른 목소리로 만들어져,
+        #    영상에서 딱 한 번 목소리가 튀었다(실측: 장남 첫 대사만 125Hz, 나머지 99~112Hz).
+        #    손님이 지적한 "중간에 목소리가 바뀐다" 가 바로 이것이다.
+        pspeak = probe.get("speaker", "narrator")
+        err, used = make_one(pool, key, probe["text"].strip(), pspeak,
+                             out / f"{probe['id']}.mp3", tries=1,
+                             pinned=pin.get(pspeak))
         if err is None:
             print(f"  열쇠 확인: 정상 ({used})")
+            book[probe["id"]] = recipe(pspeak, used)
         else:
             note = quota_note(err.__cause__ if err.__cause__ is not None else err)
             print(f"  ⚠️ 열쇠 확인 실패({type(err).__name__})"
@@ -609,6 +931,7 @@ def main():
     ok = fail = 0
     streak = 0
     used = {}             # 모델별로 몇 컷을 만들었나 (골고루 갔는지 눈으로 확인)
+    switched = set()      # 도중에 모델이 바뀐 인물 — 끝나고 통째로 다시 만든다
     quota_shown = False   # '어떤 한도인지' 는 한 번만 찍는다
     for i, c in enumerate(cuts):
         p = out / f"{c['id']}.mp3"
@@ -626,9 +949,9 @@ def main():
             silent(p, 1.0, marker=False)     # 대사 없는 컷 — 의도된 무음이라 실패가 아니다
             ok += 1
             continue
-        # ⭐ 모델을 **돌려쓴다.** 한도가 모델별로 따로 걸리므로, 한 모델이 쉬는 동안
-        #    다른 모델로 계속 갈 수 있다. 요청 간격도 여기서 함께 지켜진다.
-        err, _used = make_one(pool, key, text, c.get("speaker", "narrator"), p)
+        # ⭐ 이 인물에게 못 박힌 모델로만 만든다. 한도에 걸려도 갈아타지 않고 기다린다.
+        speaker = c.get("speaker", "narrator")
+        err, _used = make_one(pool, key, text, speaker, p, pinned=pin.get(speaker))
 
         if err is not None and not pool.alive() and cooldowns < MAX_COOLDOWNS:
             # 모든 모델이 막혔다. 실측해 보니 잠시 뒤 다시 열리는 경우가 있다.
@@ -638,12 +961,19 @@ def main():
                   f" ({cooldowns}/{MAX_COOLDOWNS})")
             time.sleep(COOLDOWN_SEC)
             pool = ModelPool(all_models)
-            err, _used = make_one(pool, key, text, c.get("speaker", "narrator"), p)
+            err, _used = make_one(pool, key, text, speaker, p, pinned=pin.get(speaker))
 
         if err is None:
             ok += 1
             streak = 0
             used[_used] = used.get(_used, 0) + 1
+            book[c["id"]] = recipe(speaker, _used)
+            if _used != pin.get(speaker):
+                # 못 박은 모델이 죽어 다른 모델로 만들어졌다. 그대로 두면 이 인물
+                # 목소리가 도중에 바뀐다 — 아래에서 이 인물 컷을 전부 다시 만든다.
+                print(f"  ⚠️ {speaker} 가 {pin.get(speaker)} → {_used} 로 바뀌었다")
+                pin[speaker] = _used
+                switched.add(speaker)
         else:
             src = err.__cause__ if err.__cause__ is not None else err
             if not quota_shown:
@@ -670,6 +1000,65 @@ def main():
                 return 1
         if (i + 1) % 20 == 0:
             print(f"  {i + 1}/{len(cuts)}  (성공 {ok} · 실패 {fail})")
+
+    # ⭐ 도중에 모델이 바뀐 인물은 **그 인물 컷을 전부 다시 만든다.**
+    #    앞부분과 뒷부분이 다른 목소리로 남으면, 손님이 지적한 바로 그 증상
+    #    ("중간에 장남 목소리가 여자로 바뀐다")이 그대로 나온다.
+    for sp in sorted(switched):
+        mine = [c for c in cuts
+                if c.get("speaker", "narrator") == sp and (c.get("text") or "").strip()]
+        stale = [c for c in mine if book.get(c["id"]) != recipe(sp, pin[sp])]
+        if not stale:
+            continue
+        print(f"  {sp} 목소리를 {pin[sp]} 로 통일한다 — {len(stale)}컷 다시 만듦")
+        for c in stale:
+            p = out / f"{c['id']}.mp3"
+            # ⚠️ 원본을 챙겨 두고 지운다. 다시 만들기가 실패하면 되돌린다 —
+            #    목소리가 조금 다른 것보다 그 자리가 무음이 되는 것이 훨씬 나쁘다.
+            keep = p.with_suffix(".keep") if p.exists() else None
+            if keep:
+                shutil.copyfile(p, keep)
+            p.unlink(missing_ok=True)
+            p.with_suffix(".silent").unlink(missing_ok=True)
+            err, m2 = make_one(pool, key, c["text"].strip(), sp, p, pinned=pin[sp])
+            if err is None:
+                book[c["id"]] = recipe(sp, m2)
+                if keep:
+                    keep.unlink(missing_ok=True)
+            elif keep:
+                keep.replace(p)                # 예전 음성이라도 살려 둔다
+            else:
+                silent(p, float(c.get("sec", 6.0)) - 0.6)
+
+    try:
+        (out / "recipe.json").write_text(json.dumps(book, ensure_ascii=False),
+                                         encoding="utf-8")
+    except Exception:
+        pass
+
+    # ⭐ 마지막으로 인물마다 목소리 높이를 고른다. 같은 모델·같은 목소리인데도
+    #    대사 감정에 따라 24Hz 씩 흔들려(실측) 같은 사람으로 안 들리기 때문이다.
+    by_id = {c["id"]: c for c in cuts}
+
+    def retake(cid):
+        """크게 튄 컷을 **같은 모델·같은 목소리로** 다시 읽힌다."""
+        c = by_id.get(cid)
+        if c is None:
+            return False
+        sp = c.get("speaker", "narrator")
+        e, m2 = make_one(pool, key, (c.get("text") or "").strip(), sp,
+                         out / f"{cid}.mp3", tries=1, pinned=pin.get(sp))
+        if e is None:
+            book[cid] = recipe(sp, m2)
+            return True
+        return False
+
+    normalize_pitch(out, cuts, retake=retake)
+    try:
+        (out / "recipe.json").write_text(json.dumps(book, ensure_ascii=False),
+                                         encoding="utf-8")
+    except Exception:
+        pass
 
     print(f"음성 {ok}개 · 실패 {fail}개 → {out}")
     if used:
