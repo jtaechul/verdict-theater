@@ -1,0 +1,403 @@
+#!/usr/bin/env python3
+"""인물 컷아웃을 만든다 — **인물 한 명당 시트 한 장**.
+
+    GEMINI_API_KEY=... python3 src/char_sheet.py data/scripts/EP001.json
+    GEMINI_API_KEY=... python3 src/char_sheet.py data/scripts/EP001.json --only F70
+    GEMINI_API_KEY=... python3 src/char_sheet.py data/scripts/EP001.json --plan   (부르지 않고 계획만)
+    python3 src/char_sheet.py data/scripts/EP001.json --slice build/sheets/F70.png F70
+
+왜 한 명당 한 장인가 — **동질성**
+    포즈마다 따로 만들면 같은 인물의 얼굴이 매번 달라진다. 12분짜리 드라마에서
+    주인공 얼굴이 컷마다 바뀌면 이야기가 성립하지 않는다.
+    한 장 안에 필요한 포즈를 전부 넣으면 모델이 **한 사람을 그리는 문제**로 풀기 때문에
+    얼굴이 유지된다. 호출도 인물 수만큼(7번)이면 끝난다.
+
+어떻게 오려내나
+    배경을 순수한 크로마 그린으로 칠하게 하고, 그 색을 지워 투명하게 만든다.
+    그다음 **남은 덩어리를 찾아** 하나씩 떼어낸다.
+
+    ⚠️ 격자선을 긋게 하고 3분의 1씩 잘라내는 방법은 쓰지 않는다.
+       모델이 그리는 격자는 픽셀 단위로 정확하지 않아서, 조금만 밀려도 인물의
+       팔다리가 잘려 나간다. 덩어리를 직접 찾으면 격자가 삐뚤어도 상관이 없다.
+
+    맨 끝 칸은 일부러 비운다. 제미나이 로고가 오른쪽 아래에 찍히기 때문이다.
+"""
+import argparse
+import base64
+import json
+import os
+import sys
+from pathlib import Path
+
+from PIL import Image, ImageChops, ImageFilter
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import assets_gen as A  # noqa: E402
+from llm import BASE, _post  # noqa: E402
+
+ROOT = Path(__file__).resolve().parent.parent
+MODEL = os.environ.get("GEMINI_IMAGE_MODEL", "gemini-3-pro-image")
+SIZE = os.environ.get("GEMINI_IMAGE_SIZE", "4K")
+
+# 모델이 받아 주는 화면비. 격자에서 계산한 비율을 여기에 가장 가까운 것으로 맞춘다.
+RATIOS = {"1:1": 1.0, "3:2": 1.5, "2:3": 2 / 3, "4:3": 4 / 3, "3:4": 0.75,
+          "5:4": 1.25, "4:5": 0.8, "16:9": 16 / 9, "9:16": 9 / 16}
+
+# 인물 생김새. 회차가 바뀌어도 같은 코드면 같은 사람이어야 한다.
+LOOK = {
+    "F50A": "a 60-year-old Korean woman, short permed dark hair with grey strands, "
+            "tired kind eyes, thin face, wearing a navy knit sweater and black trousers",
+    "F50B": "a 50-year-old Korean woman, neat shoulder-length bob, sharp cool eyes, "
+            "wearing a navy blouse and black trousers",
+    "F70": "a 70-year-old Korean woman, white permed hair, deeply lined face, "
+           "stooped shoulders, small frame, wearing a navy cardigan and black trousers",
+    "M50A": "a 50-year-old Korean man, short greying hair, square jaw, heavy build, "
+            "wearing a navy suit jacket, white shirt and black trousers",
+    "M50B": "a 48-year-old Korean man, receding hairline, thin face, tired eyes, "
+            "wearing a navy zip-up jacket and black trousers",
+    "M70": "a 70-year-old Korean man, thin white hair, gaunt lean face, frail thin body, "
+           "wearing a navy jacket and black trousers",
+    "JUDGE": "a Korean judge in a black judicial robe with a white collar, "
+             "middle-aged, composed, hair neatly combed",
+}
+
+# 칸마다 무엇을 그릴지. 표정 낱말과 프레이밍으로 나뉜다.
+FRAME = {
+    "face": "an extreme close-up of the face only, head fills the cell, shoulders barely visible",
+    "bust": "a head-and-shoulders shot, cut off at mid-chest",
+    "full": "the entire body from head to feet, standing in the middle of the cell",
+}
+MOOD = {
+    "neutral": "calm neutral expression, lips closed",
+    "sad": "sorrowful expression, eyes lowered, brows drawn together",
+    "anger": "angry expression, jaw set, brows down, mouth tight",
+    "shock": "shocked expression, eyes wide, mouth slightly open",
+    "cold": "cold distant expression, eyes narrowed, unreadable",
+    "cry": "crying, tears on the cheeks, face crumpled",
+}
+BODY = {
+    "stand": "standing straight, arms at the sides, facing the viewer",
+    "walk": "walking forward, mid-stride, seen from the front",
+    "sit": "sitting upright on a plain chair, hands on the knees",
+    "sit_down": "collapsed sitting on the floor, shoulders slumped, head down",
+    "back": "seen from behind, facing away from the viewer",
+}
+
+
+def cell_text(pose):
+    """포즈 이름을 그림 지시문으로 바꾼다. full_sit_down 처럼 밑줄이 둘인 것도 받는다."""
+    kind, _, rest = pose.partition("_")
+    if kind == "full":
+        return f"{FRAME['full']}, {BODY.get(rest, rest)}, neutral expression"
+    return f"{FRAME.get(kind, kind)}, {MOOD.get(rest, rest)}"
+
+
+def grid_for(n):
+    """포즈 n개를 담을 격자 (열, 행). 맨 끝 칸 하나는 반드시 비워 둔다.
+
+    비워 두는 이유: 제미나이 로고가 오른쪽 아래에 찍힌다. 거기에 인물이 있으면
+    로고가 얼굴 위에 얹힌다."""
+    need = n + 1
+    best = None
+    for cols in (2, 3, 4):
+        rows = -(-need // cols)
+        # 칸 하나를 세로 3:4 로 보고 시트 전체 비율을 잰다. 1:1 에 가까울수록 좋다
+        ratio = (cols * 3) / (rows * 4)
+        score = abs(ratio - 1.0) + (cols * rows - need) * 0.05
+        if best is None or score < best[0]:
+            best = (score, cols, rows)
+    return best[1], best[2]
+
+
+def nearest_ratio(cols, rows):
+    want = (cols * 3) / (rows * 4)
+    return min(RATIOS, key=lambda k: abs(RATIOS[k] - want))
+
+
+def sheet_prompt(code, poses, cols, rows):
+    look = LOOK.get(code, "a middle-aged Korean person")
+    lines = [f"  cell {i + 1}: {cell_text(p)}" for i, p in enumerate(poses)]
+    blanks = cols * rows - len(poses)
+    return (
+        f"A character reference sheet of ONE single person: {look}.\n"
+        f"Photorealistic, evenly lit studio lighting, natural skin, realistic proportions.\n\n"
+        f"LAYOUT — obey exactly:\n"
+        f"  - The background is a FLAT PURE CHROMA GREEN #00B140 everywhere. Nothing else.\n"
+        f"  - Arrange the figures in a {cols} by {rows} grid, reading left to right, top to bottom.\n"
+        f"  - Draw NO grid lines, NO borders, NO labels, NO text, NO numbers, NO captions.\n"
+        f"  - Leave a clear band of pure green between every figure — they must never touch or overlap.\n"
+        f"  - ⚠️ EVERY figure is COMPLETE and fully inside its own cell, with pure green visible on all\n"
+        f"    four sides of it. Never let a head, hair, shoulder or hand touch or run off the edge of\n"
+        f"    the image or of its cell. For close-ups, the whole head including all the hair must fit\n"
+        f"    with green space around it — zoom out rather than crop.\n"
+        f"  - Cast NO shadow on the background. No floor, no ground, no props except a plain chair when sitting.\n"
+        f"  - The last {blanks} cell(s) at the bottom right are EMPTY — pure green, no figure.\n\n"
+        f"CELLS:\n" + "\n".join(lines) + "\n\n"
+        f"CONSISTENCY — this is the most important rule:\n"
+        f"  Every cell shows THE SAME PERSON. Identical face, identical hair, identical clothes,\n"
+        f"  identical age and body type in all cells. Only the framing and expression change.\n"
+        f"  Clothing is navy on top and black below in every cell — never grey, never brown.\n"
+    )
+
+
+def gen_sheet(key, prompt, out_path, cols, rows):
+    body = {
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "responseModalities": ["IMAGE"],
+            "imageConfig": {"aspectRatio": nearest_ratio(cols, rows), "imageSize": SIZE},
+        },
+    }
+    res = _post(f"{BASE}/models/{MODEL}:generateContent?key={key}", body, timeout=600)
+    parts = (res.get("candidates") or [{}])[0].get("content", {}).get("parts", [])
+    blob = next((p["inlineData"] for p in parts if "inlineData" in p), None)
+    if not blob:
+        raise RuntimeError(f"이미지가 오지 않았다: {json.dumps(res)[:400]}")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_bytes(base64.b64decode(blob["data"]))
+    return out_path
+
+
+# 오려낸 뒤 작업할 최대 높이(픽셀).
+# ⚠️ 4K 시트에서 인물 하나가 2400픽셀이 넘는데, 흰 테두리를 두르는 형태 연산은
+#    높이가 커질수록 급격히 느려진다(실측: 1200px 6.7초 → 2400px 은 분 단위).
+#    렌더러가 인물을 쓰는 최대 크기는 세로 쇼츠에서 약 1050픽셀이다.
+#    1200픽셀로 줄여 놓고 작업하면 화질 손해 없이 수십 배 빨라진다.
+WORK_H = 1200
+
+
+def fast_key(img):
+    """크로마 그린을 지운다. 픽셀을 하나씩 훑지 않고 채널 연산으로 한 번에 한다.
+
+    (assets_gen.drop_chroma 는 파이썬 반복문이라 4K 시트에서 6초가 걸린다.
+     여기서는 같은 판정을 밴드 연산으로 옮겨 0.1초 안에 끝낸다.)
+
+    초록 걷어내기만으로는 머리카락 가장자리에 초록 기운이 남는다.
+    남긴 픽셀에서 초록을 눌러(despill) 그 테두리를 없앤다."""
+    img = img.convert("RGB")
+    r, g, b = img.split()
+    green = ImageChops.multiply(
+        ImageChops.multiply(
+            ImageChops.subtract(g, r).point(lambda v: 255 if v > 40 else 0),
+            ImageChops.subtract(g, b).point(lambda v: 255 if v > 20 else 0)),
+        ImageChops.multiply(
+            r.point(lambda v: 255 if v < A.CHROMA[0] + A.CHROMA_TOL else 0),
+            g.point(lambda v: 255 if abs(v - A.CHROMA[1]) < A.CHROMA_TOL else 0)))
+    alpha = ImageChops.invert(green)
+
+    # 초록 누르기 — g 가 r·b 평균보다 튀는 만큼만 깎는다
+    rb = ImageChops.add(r, b, scale=2.0)
+    g2 = ImageChops.darker(g, ImageChops.add(rb, Image.new("L", g.size, 12)))
+    out = Image.merge("RGBA", (r, g2, b, alpha))
+    return out
+
+
+# ── 덩어리 찾아 떼어내기 ──────────────────────────────────
+def components(mask, min_area):
+    """불투명한 점들이 이어진 덩어리마다 (왼,위,오른,아래) 를 돌려준다.
+
+    재귀 없이 스택으로 훑는다 — 인물 하나가 수십만 픽셀이라 재귀로는 스택이 넘친다."""
+    W, H = mask.size
+    px = mask.load()
+    seen = bytearray(W * H)
+    boxes = []
+    for sy in range(H):
+        for sx in range(W):
+            if seen[sy * W + sx] or px[sx, sy] < 128:
+                continue
+            stack = [(sx, sy)]
+            pts = [sy * W + sx]
+            seen[sy * W + sx] = 1
+            x0 = x1 = sx
+            y0 = y1 = sy
+            area = 0
+            while stack:
+                x, y = stack.pop()
+                area += 1
+                if x < x0: x0 = x
+                if x > x1: x1 = x
+                if y < y0: y0 = y
+                if y > y1: y1 = y
+                for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+                    if 0 <= nx < W and 0 <= ny < H and not seen[ny * W + nx] \
+                            and px[nx, ny] >= 128:
+                        seen[ny * W + nx] = 1
+                        pts.append(ny * W + nx)
+                        stack.append((nx, ny))
+            if area >= min_area:
+                boxes.append((x0, y0, x1 + 1, y1 + 1, area, pts))
+    return boxes
+
+
+def find_figures(sheet, cols, rows, scale=8):
+    """시트에서 인물 덩어리들을 찾아 왼→오른쪽, 위→아래 순서로 돌려준다."""
+    keyed = fast_key(sheet)
+    small = keyed.getchannel("A").resize(
+        (max(1, keyed.width // scale), max(1, keyed.height // scale)), Image.BILINEAR)
+    small = small.point(lambda v: 255 if v > 96 else 0)
+    # ⚠️ 여기가 없으면 **시트 전체가 덩어리 하나로 잡힌다.**
+    #    모델이 칸 경계에 아주 옅은 선을 남기는데(초록이 미묘하게 다르다) 그 선이
+    #    초록으로 판정되지 않아, 실 같은 줄이 인물들을 전부 이어 버린다.
+    #    (실측: 인물 2명짜리 시트에서 덩어리가 1개로 나왔다.)
+    #    얇게 깎았다가(MinFilter) 도로 부풀리면(MaxFilter) 실 같은 선만 사라지고
+    #    인물은 원래 크기로 돌아온다. 형태학에서 '열기(opening)' 라고 부르는 것이다.
+    small = small.filter(ImageFilter.MinFilter(5)).filter(ImageFilter.MaxFilter(5))
+    cell_area = (small.width / cols) * (small.height / rows)
+    boxes = components(small, min_area=int(cell_area * 0.03))
+    if not boxes:
+        return keyed, []
+
+    # 줄로 묶는다 — 세로 가운데가 비슷한 것끼리 한 줄
+    boxes.sort(key=lambda b: (b[1] + b[3]) / 2)
+    band = small.height / rows * 0.6
+    lines, cur = [], [boxes[0]]
+    for b in boxes[1:]:
+        if (b[1] + b[3]) / 2 - (cur[-1][1] + cur[-1][3]) / 2 > band:
+            lines.append(cur); cur = [b]
+        else:
+            cur.append(b)
+    lines.append(cur)
+
+    out = []
+    pad = scale * 3                      # 깎아낸 몫 + 여유. trim_alpha 가 뒤에서 다시 조인다
+    for ln in lines:
+        for b in sorted(ln, key=lambda b: b[0]):
+            x0, y0, x1, y1 = (v * scale for v in b[:4])
+            box = (max(0, x0 - pad), max(0, y0 - pad),
+                   min(keyed.width, x1 + pad), min(keyed.height, y1 + pad))
+            # ⭐ 이 덩어리에 속한 점들만 남긴 본을 만든다.
+            #    ⚠️ 상자만 잘라내면 **칸 경계의 옅은 실선이 같이 딸려온다.**
+            #       (실측: 판사 컷아웃 왼쪽·아래에 흰 'ㄴ' 자 줄이 그대로 붙어 나왔고,
+            #        그 줄 때문에 상자가 커져 얼굴이 작게 렌더링됐다.)
+            #       덩어리에 속한 점만 남기면 실선도, 옆 칸 부스러기도 따라오지 않는다.
+            buf = bytearray(small.width * small.height)
+            for i in b[5]:
+                buf[i] = 255
+            m = Image.frombytes("L", small.size, bytes(buf))
+            m = m.filter(ImageFilter.MaxFilter(5))          # 깎아낸 만큼 되돌린다
+            out.append((box, m))
+    return keyed, out
+
+
+def slice_sheet(sheet_path, code, poses, cols, rows, outdir=None, save_debug=None):
+    sheet = Image.open(sheet_path).convert("RGBA")
+    keyed, figs = find_figures(sheet, cols, rows)
+    print(f"    시트 {sheet.width}x{sheet.height} · 덩어리 {len(figs)}개 발견 (필요 {len(poses)}개)")
+
+    if save_debug:
+        from PIL import ImageDraw
+        dbg = Image.new("RGB", sheet.size, (20, 20, 24))
+        dbg.paste(keyed.convert("RGB"), (0, 0), keyed.getchannel("A"))
+        d = ImageDraw.Draw(dbg)
+        for i, ((x0, y0, x1, y1), _m) in enumerate(figs):
+            d.rectangle([x0, y0, x1, y1], outline=(220, 60, 60), width=6)
+            d.text((x0 + 10, y0 + 10), str(i + 1), fill=(255, 255, 255))
+        dbg.save(save_debug, quality=80)
+
+    outdir = Path(outdir or (ROOT / "assets" / "char" / code))
+    outdir.mkdir(parents=True, exist_ok=True)
+    made = []
+    for pose, (box, blob) in zip(poses, figs):
+        cut = keyed.crop(box)
+        # 덩어리 본을 원래 크기로 늘려 알파에 곱한다 → 이 인물만 남는다
+        m = blob.crop((box[0] // 8, box[1] // 8, -(-box[2] // 8), -(-box[3] // 8)))
+        m = m.resize(cut.size, Image.BILINEAR)
+        cut.putalpha(ImageChops.multiply(cut.getchannel("A"), m))
+        cut = A.trim_alpha(cut)
+        if cut is None:
+            continue
+        if cut.height > WORK_H:                       # 위 WORK_H 설명 참조
+            k = WORK_H / cut.height
+            cut = cut.resize((max(1, round(cut.width * k)), WORK_H), Image.LANCZOS)
+        cut = A.white_outline(cut)
+        cut.save(outdir / f"{pose}.png")
+        made.append(pose)
+    missing = [p for p in poses if p not in made]
+    print(f"    {len(made)}개 저장" + (f" · 못 만든 것: {', '.join(missing)}" if missing else ""))
+    return made, missing
+
+
+def poses_from_script(path):
+    """대본(본편+쇼츠)이 실제로 쓰는 인물·포즈만 모은다. 안 쓰는 것은 만들지 않는다."""
+    doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    need = {}
+    for a in doc["acts"]:
+        for c in a["cuts"]:
+            for ch in (c.get("chars") or []):
+                need.setdefault(ch.get("code", ""), set()).add(ch.get("pose", ""))
+    sp = Path(path).parent / (Path(path).stem + ".shorts.json")
+    if sp.exists():
+        sh = json.loads(sp.read_text(encoding="utf-8"))
+        for s in sh.get("shorts", []):
+            for c in (s.get("cuts") or []):
+                ch = c.get("char")
+                if ch:
+                    need.setdefault(ch.get("code", ""), set()).add(ch.get("pose", ""))
+    # 얼굴 → 상반신 → 전신 순서로 늘어놓는다. 비슷한 것끼리 붙어 있어야 모델이 헷갈리지 않는다
+    order = {"face": 0, "bust": 1, "full": 2}
+    return {k: sorted(v, key=lambda p: (order.get(p.split("_")[0], 9), p))
+            for k, v in sorted(need.items()) if k}
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("script")
+    ap.add_argument("--only", default="", help="이 인물만 (쉼표로 여러 명)")
+    ap.add_argument("--plan", action="store_true", help="모델을 부르지 않고 계획만 본다")
+    ap.add_argument("--sheets", default="build/sheets", help="시트 원본을 둘 곳")
+    ap.add_argument("--slice", nargs=2, metavar=("SHEET", "CODE"),
+                    help="이미 있는 시트를 자르기만 한다")
+    args = ap.parse_args()
+
+    need = poses_from_script(args.script)
+    if args.slice:
+        code = args.slice[1]
+        poses = need[code]
+        cols, rows = grid_for(len(poses))
+        slice_sheet(args.slice[0], code, poses, cols, rows,
+                    save_debug=Path(args.sheets) / f"{code}_check.jpg")
+        return 0
+
+    only = {c.strip() for c in args.only.split(",") if c.strip()}
+    if only:
+        need = {k: v for k, v in need.items() if k in only}
+
+    print(f"인물 {len(need)}명 · 포즈 {sum(len(v) for v in need.values())}개"
+          f" · 모델 {MODEL} ({SIZE})")
+    for code, poses in need.items():
+        cols, rows = grid_for(len(poses))
+        print(f"  {code:6} 포즈 {len(poses):2}개 → {cols}x{rows} 격자 "
+              f"({nearest_ratio(cols, rows)}) : {' '.join(poses)}")
+    if args.plan:
+        print(f"\n계획만 보았다. 실제 호출은 {len(need)}번.")
+        return 0
+
+    key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if not key:
+        print("GEMINI_API_KEY 가 없다.", file=sys.stderr)
+        return 2
+
+    sheets = Path(args.sheets)
+    ok, bad = 0, []
+    for code, poses in need.items():
+        cols, rows = grid_for(len(poses))
+        print(f"\n{code} — 시트 만드는 중…")
+        try:
+            p = gen_sheet(key, sheet_prompt(code, poses, cols, rows),
+                          sheets / f"{code}.png", cols, rows)
+        except Exception as e:
+            print(f"    실패: {e}")
+            bad.append(code)
+            continue
+        made, missing = slice_sheet(p, code, poses, cols, rows,
+                                    save_debug=sheets / f"{code}_check.jpg")
+        if missing:
+            bad.append(code)
+        ok += len(made)
+
+    print(f"\n컷아웃 {ok}개 완성" + (f" · 다시 해야 할 인물: {', '.join(bad)}" if bad else ""))
+    return 1 if bad else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
