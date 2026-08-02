@@ -214,13 +214,19 @@ jobs:
           echo "보관함: $TAG"
 
           # 최근 3편만 남긴다. 편당 100MB 안팎이라 그냥 두면 계속 쌓인다.
+          #
+          # ⚠️ 여기는 **절대 실패하면 안 되는 자리**다. 바로 위에서 영상 보관은 이미
+          #    끝났는데, 청소하다 죽으면 워크플로 전체가 빨간 X 가 된다.
+          #    특히 `set -o pipefail` 에서 grep 은 찾은 게 없으면 1 을 돌려주므로
+          #    (영상 릴리스가 아직 하나도 없는 첫 실행) 그것만으로 실패한다.
+          #    한 시간짜리 제작이 청소 때문에 실패로 찍히는 일은 없어야 한다.
           KEEP=3
-          gh release list --limit 100 --json tagName --jq '.[].tagName' \
-            | grep '^video-' | sort -r | tail -n "+$((KEEP+1))" \
-            | while read -r t; do
-                echo "오래된 영상 지움: $t"
-                gh release delete "$t" --yes --cleanup-tag || true
-              done
+          OLD=$(gh release list --limit 100 --json tagName --jq '.[].tagName' 2>/dev/null \
+                | grep '^video-' | sort -r | tail -n "+$((KEEP+1))" || true)
+          for t in $OLD; do
+            echo "오래된 영상 지움: $t"
+            gh release delete "$t" --yes --cleanup-tag || true
+          done
 
       - name: 유튜브 업로드 (비공개)
         if: inputs.upload != '올리지 않음'
