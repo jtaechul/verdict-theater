@@ -48,6 +48,14 @@ const WORKFLOWS = [
   { file: 'stats.yml', name: '5. 성과 보기', desc: '조회수·지속률·KPI 점검', inputs: [] },
 ];
 
+// 릴리스 자산 파일명 → 사람이 읽는 이름
+const VIDEO_LABEL = {
+  'longform.mp4': '본편 (가로)',
+  'short1.mp4': '쇼츠 1번 · 궁금증형',
+  'short2.mp4': '쇼츠 2번 · 분노형',
+  'short3.mp4': '쇼츠 3번 · 사이다형',
+};
+
 const STAGE_LABEL = {
   selected: '소재 선정', scripting: '대본 작성 중', evaluated: '대본 완료',
   rendering: '영상 제작 중', uploaded_private: '검수 대기', approved: '승인됨',
@@ -139,10 +147,17 @@ border:1px solid var(--line);background:#161822;color:var(--ink);min-height:48px
 label{display:block;margin:10px 0 0;font-size:13px;color:var(--dim)}
 .wf{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;background:#191b25}
 .wf b{display:block;font-size:16px}.wf small{color:var(--dim);display:block;margin:3px 0 10px}
-.ep{display:flex;justify-content:space-between;align-items:center;gap:8px;
-padding:13px 0;border-bottom:1px solid var(--line)}
+.ep{padding:13px 0;border-bottom:1px solid var(--line)}
 .ep:last-child{border-bottom:0}
 .ep b{font-size:15px}.ep small{color:var(--dim);display:block;font-size:13px}
+/* 제목과 상태는 한 줄, 버튼은 그 아래 한 줄. 폭 393px 폰에서 제목이 두 줄로
+   접히고 버튼이 흩어지던 것을 고친 배치다. */
+.ep-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+/* 손가락으로 눌러야 하므로 버튼 높이를 36px 아래로 내리지 않는다 */
+.btns{display:flex;flex-wrap:wrap;gap:7px;justify-content:flex-end;margin-top:9px}
+.mini{width:auto;min-height:36px;padding:8px 12px;font-size:13px;border-radius:10px;
+background:#262a38;color:var(--ink);display:inline-block;text-decoration:none;line-height:1.2}
+.mini.gold{background:var(--gold);color:#1a1608}
 .q{padding:11px 0;border-bottom:1px solid var(--line);font-size:14px}
 .q:last-child{border-bottom:0}
 .q b{color:var(--gold);font-variant-numeric:tabular-nums;margin-right:8px}
@@ -236,11 +251,15 @@ function home() {
   eps.forEach(([id, v]) => {
     const st = STAGE[v.stage] || v.stage || '-';
     const cls = v.stage === 'published' ? 'ok' : (v.stage === 'uploaded_private' ? 'wait' : 'go');
-    h += '<div class="ep"><div><b>' + id + '</b>'
+    const nvid = (S.videos || {})[id] || 0;
+    let btns = mini('대본 읽기', 'script(\\'' + id + '\\')');
+    if (nvid) btns = mini('영상 보기', 'videos(\\'' + id + '\\')', 'gold') + btns;
+    if (v.longform_id) btns += '<a class="mini" target="_blank" rel="noopener" '
+      + 'href="https://youtu.be/' + esc(v.longform_id) + '">유튜브</a>';
+    h += '<div class="ep"><div class="ep-top"><div><b>' + id + '</b>'
       + '<small>' + esc(v.case_type||'') + ' · 소재 ' + (v.gate_score??'-') + '점 · 대본 ' + (v.script_score??'-') + '점</small></div>'
-      + '<div style="text-align:right"><span class="pill ' + cls + '">' + st + '</span><br>'
-      + '<button class="ghost" style="width:auto;padding:7px 12px;min-height:0;margin-top:7px;font-size:13px" '
-      + 'onclick="script(\\'' + id + '\\')">대본 읽기</button></div></div>';
+      + '<span class="pill ' + cls + '">' + st + '</span></div>'
+      + '<div class="btns">' + btns + '</div></div>';
   });
   h += '</div>';
 
@@ -285,6 +304,65 @@ function home() {
 }
 
 const row = (k, v) => '<div class="row"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>';
+const mini = (t, fn, cls) => '<button class="mini ' + (cls||'') + '" onclick="' + fn + '">' + t + '</button>';
+const mb = (b) => (b >= 1048576 ? Math.round(b/1048576) + 'MB' : Math.round(b/1024) + 'KB');
+
+// ── 영상 보기 ───────────────────────────────────────────
+// 영상은 저장소에 커밋하지 않는다. 제작 워크플로가 릴리스 자산으로 올려 두고,
+// 이 페이지가 그것을 스트리밍한다. 최근 3편만 남는다.
+let VIDS = [];
+
+async function videos(ep) {
+  VIEW = 'video';
+  document.getElementById('app').innerHTML = '<div class="empty">영상 목록 불러오는 중…</div>';
+  let j = {};
+  try { j = await (await fetch('/api/videos?ep=' + encodeURIComponent(ep))).json(); } catch (e) {}
+  VIDS = j.items || [];
+  if (!VIDS.length) {
+    document.getElementById('app').innerHTML =
+      '<div class="card"><div class="empty">이 회차의 영상이 없습니다.<br>'
+      + '<b>3. 영상 만들기</b>를 실행하면 여기에서 바로 보실 수 있습니다.</div>'
+      + '<button class="ghost" onclick="home()">← 목록</button></div>';
+    return;
+  }
+  play(ep, 0);
+}
+
+function play(ep, i) {
+  VIEW = 'video';
+  const v = VIDS[i];
+  const vertical = v.name.indexOf('short') === 0;
+  let h = '<button class="ghost" onclick="home()">← 목록</button><div style="height:12px"></div>';
+  h += '<div class="card"><h2>' + esc(ep) + ' 영상</h2>';
+  // playsinline 이 없으면 아이폰이 전체화면으로 낚아채 간다.
+  // preload=metadata 여야 첫 화면과 길이만 먼저 받고 나머지는 볼 때 받는다.
+  h += '<video id="pl" controls playsinline preload="metadata" '
+    + 'style="width:100%;max-height:' + (vertical ? '70vh' : '46vh')
+    + ';border-radius:12px;background:#000;display:block" '
+    + 'src="/api/video?id=' + v.id + '"></video>';
+  h += '<div style="color:#9599ab;font-size:13px;margin:10px 0 4px">'
+    + esc(v.label) + ' · ' + mb(v.size) + '</div>';
+  h += '</div>';
+
+  if (VIDS.length > 1) {
+    h += '<div class="card"><h2>이 회차의 영상</h2>';
+    VIDS.forEach((x, k) => {
+      h += '<div class="row"><span class="k">' + esc(x.label) + ' · ' + mb(x.size) + '</span>'
+        + (k === i ? '<span class="pill go">보는 중</span>'
+                   : mini('재생', 'play(\\'' + ep + '\\',' + k + ')')) + '</div>';
+    });
+    h += '</div>';
+  }
+
+  h += '<div class="card"><h2>안내</h2>'
+    + '<div style="color:#9599ab;font-size:13px;line-height:1.7">'
+    + '영상은 저장소에 커밋하지 않습니다. 최근 <b>3편</b>만 보관하고 오래된 것은 자동으로 지워집니다.<br>'
+    + '데이터가 걱정되면 Wi-Fi 에서 보십시오 — 본편 한 편이 100MB 안팎입니다.'
+    + '</div></div>';
+
+  document.getElementById('app').innerHTML = h;
+  scrollTo(0, 0);
+}
 
 async function run(i) {
   const w = WF[i];
@@ -425,13 +503,21 @@ export default {
 
     try {
       if (url.pathname === '/api/state') {
-        const [episodes, queue, manifest, runsRes, files] = await Promise.all([
+        const [episodes, queue, manifest, runsRes, files, rels] = await Promise.all([
           getJson(env, 'state/episodes.json'),
           getJson(env, 'state/queue.json'),
           getJson(env, 'assets/manifest.json'),
           gh(env, `/repos/${REPO}/actions/runs?per_page=10`).catch(() => ({ workflow_runs: [] })),
           listDir(env, 'assets/bg').catch(() => []),
+          // 영상은 릴리스 자산으로 보관한다 (저장소 커밋이 아니다). 어느 회차에
+          // 영상이 있는지 여기서 알아야 목록에 '영상 보기' 버튼을 띄울 수 있다.
+          gh(env, `/repos/${REPO}/releases?per_page=30`).catch(() => []),
         ]);
+        const videos = {};
+        (Array.isArray(rels) ? rels : []).forEach((r) => {
+          const m = /^video-(.+)$/.exec(r.tag_name || '');
+          if (m) videos[m[1]] = (r.assets || []).filter((a) => a.name.endsWith('.mp4')).length;
+        });
         let assets = null;
         if (manifest) {
           // 전부 세면 호출이 많아지므로, 대표적으로 배경만 세어 진행도를 짐작한다
@@ -442,10 +528,64 @@ export default {
           episodes: episodes || {},
           queue: Array.isArray(queue) ? queue : [],
           assets,
+          videos,
           runs: (runsRes.workflow_runs || []).map((r) => ({
             name: r.name, conclusion: r.conclusion, status: r.status, at: r.created_at,
           })),
         });
+      }
+
+      // 그 회차에 어떤 영상이 있는지
+      if (url.pathname === '/api/videos') {
+        const ep = url.searchParams.get('ep') || '';
+        if (!/^EP\d{3}$|^SAMPLE_\w+$/.test(ep)) return Response.json({ error: 'bad ep' }, { status: 400 });
+        let rel = null;
+        try { rel = await gh(env, `/repos/${REPO}/releases/tags/video-${ep}`); } catch { rel = null; }
+        const order = Object.keys(VIDEO_LABEL);           // 본편 → 쇼츠 1·2·3 순서
+        const rank = (n) => (order.indexOf(n) < 0 ? 99 : order.indexOf(n));
+        const items = ((rel && rel.assets) || [])
+          .filter((a) => a.name.endsWith('.mp4'))
+          .map((a) => ({ id: a.id, name: a.name, size: a.size,
+                         label: VIDEO_LABEL[a.name] || a.name }))
+          .sort((x, y) => rank(x.name) - rank(y.name));
+        return Response.json({ ep, items, at: rel ? rel.published_at : null });
+      }
+
+      // 영상 스트리밍.
+      //   ⚠️ 자산의 실제 주소는 **한 번 쓰고 버리는 서명 주소**다. 미리 받아 둘 수 없고,
+      //      요청이 올 때마다 새로 받아야 한다.
+      //   ⚠️ Range(부분 요청)를 그대로 넘겨야 한다. 아이폰 사파리는 부분 요청이
+      //      되지 않는 영상은 **아예 재생하지 않는다.** 되감기도 이걸로 된다.
+      //   토큰은 여기서만 쓰이고 브라우저로 내려가지 않는다.
+      if (url.pathname === '/api/video') {
+        const id = url.searchParams.get('id') || '';
+        if (!/^\d+$/.test(id)) return new Response('bad id', { status: 400 });
+        const r0 = await fetch(`${GH}/repos/${REPO}/releases/assets/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${env.GH_TOKEN}`,
+            'Accept': 'application/octet-stream',
+            'User-Agent': 'verdict-theater-admin',
+            'X-GitHub-Api-Version': '2022-11-28',
+          },
+          redirect: 'manual',
+        });
+        const loc = r0.headers.get('Location');
+        const range = req.headers.get('Range');
+        // 리다이렉트 없이 본문을 바로 주는 경우도 있어 양쪽을 다 받는다.
+        const up = loc
+          ? await fetch(loc, range ? { headers: { Range: range } } : {})
+          : r0;
+        if (!up.ok && up.status !== 206)
+          return new Response('영상을 가져오지 못했습니다 (' + up.status + ')', { status: 502 });
+        const h = new Headers();
+        h.set('Content-Type', 'video/mp4');
+        h.set('Accept-Ranges', 'bytes');
+        h.set('Cache-Control', 'private, no-store');
+        for (const k of ['Content-Length', 'Content-Range', 'ETag', 'Last-Modified']) {
+          const v = up.headers.get(k);
+          if (v) h.set(k, v);
+        }
+        return new Response(up.body, { status: up.status, headers: h });
       }
 
       if (url.pathname === '/api/script') {
