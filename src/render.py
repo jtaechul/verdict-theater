@@ -710,6 +710,7 @@ def gain_db(path, kind, ss=0.0, t=0.0):
 # ⭐ tr_flash_in 만 다르게 쓴다. 차오르는 소리를 도착한 뒤에 틀면 앞뒤가 뒤집힌다.
 #    **앞 컷 끝**에 걸어 정점이 경계(흰 플래시)에 딱 맞게 하고, 도착한 컷에는 여운만 남긴다.
 TR_TAIL = 0.35                          # 전환음 끝을 이만큼 부드럽게 내린다
+OPEN_FADE = 0.7                         # 영상 맨 앞을 무음에서 올리는 시간(초)
 TR_IN = {                               # 도착한 컷 머리에 건다: (파일, 잘라낼 시작, 길이)
     ("black", ACT_IN): ("tr_act", 0.30, 2.60),
     ("white", FLASH_OUT): ("tr_flash_out", 0.30, 1.70),
@@ -728,6 +729,14 @@ def transition_sounds(cuts, durs):
     for i, (cut, (t_in, _)) in enumerate(zip(cuts, transitions(cuts))):
         spec = TR_IN.get(t_in)
         if spec:
+            # ⚠️ **맨 첫 컷에는 막 전환음을 넣지 않는다.**
+            #    t=0 은 '넘어온' 자리가 아니라 '시작하는' 자리다. 넘어오는 소리를
+            #    영상이 열리자마자 틀면 전환이 아니라 잡음으로 들린다.
+            #    실측: tr_act 는 앞 300ms 안에 최대치(1.000)까지 치솟는데,
+            #    같은 순간 첫 컷의 종이 효과음(고음 81%)과 앰비언스가 함께 터져
+            #    "치시시시직" 으로 들렸다. 첫 컷은 조용히 연다.
+            if i == 0:
+                continue
             p = audio_path("sfx", spec[0])
             if p:
                 out[i].append((p, spec[1], spec[2], 0.0))
@@ -793,8 +802,13 @@ def build_audio(doc, durs, workdir, narration_dir=None):
 
         sfx = audio_path("sfx", cut["sfx"]) if cut.get("sfx") else None
         if sfx:
+            # ⚠️ 고음을 조금 깎는다. 종이 부스럭 소리는 에너지의 **81%가 5kHz 위**라
+            #    (실측) 그대로 틀면 "치시식" 하고 쏜다. 50~60대 시청자에게는
+            #    이 대역이 특히 피로하다. 소리는 살리고 날만 죽인다(81% → 71%).
+            # ⚠️ 첫 컷은 한 박자 더 늦춘다. 영상이 열리자마자 효과음이 터지지 않게.
+            delay = 420 if i == 0 else 120
             inputs += ["-i", str(sfx)]
-            filters.append(f"[{mixn}:a]adelay=120|120,"
+            filters.append(f"[{mixn}:a]highshelf=f=5000:g=-8,adelay={delay}|{delay},"
                            f"volume={gain_db(sfx, 'sfx'):.1f}dB[a{mixn}]")
             mixn += 1
 
@@ -849,9 +863,14 @@ def build_audio(doc, durs, workdir, narration_dir=None):
     else:
         mixed = body
 
+    # ⭐ 영상 맨 앞 0.7초는 무음에서 서서히 올라온다.
+    #    예전에는 t=0 에 앰비언스·효과음·전환음이 **동시에 최대치로** 시작했다.
+    #    사용자가 들은 "치시시시직" 이 이것이다. 어떤 소리든 0 에서 올라오면
+    #    그 순간 귀에 거슬리는 것이 없다 — 방송에서 늘 하는 처리다.
     final = workdir / "audio.m4a"
     run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(mixed),
-         "-af", loudnorm_af(mixed), "-c:a", "aac", "-b:a", "192k", str(final)])
+         "-af", loudnorm_af(mixed) + f",afade=t=in:st=0:d={OPEN_FADE:.2f}",
+         "-c:a", "aac", "-b:a", "192k", str(final)])
     return final
 
 
