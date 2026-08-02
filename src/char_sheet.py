@@ -497,11 +497,14 @@ def slice_sheet(sheet_path, code, poses, cols, rows, outdir=None, save_debug=Non
 #    **머리가 통째로 사라졌다.** 자를 것이 없으면 잘못 자를 일도 없다.
 #    같은 사람인지는 **이미 잘 나온 그림을 참고로 함께 넣어** 지킨다.
 def gen_one(key, code, pose, ref_path, out_path):
+    """한 장에 한 포즈. ref_path 가 None 이면 참고 그림 없이 처음부터 만든다."""
     import base64
-    ref = base64.b64encode(Path(ref_path).read_bytes()).decode()
+    ref = base64.b64encode(Path(ref_path).read_bytes()).decode() if ref_path else None
     look = LOOK.get(code, "a middle-aged Korean person")
+    same = ("Draw THE SAME PERSON as in the reference image — identical face, hair, "
+            "age and build.\n" if ref else "Draw one person.\n")
     prompt = (
-        f"Draw THE SAME PERSON as in the reference image — identical face, hair, age and build.\n"
+        f"{same}"
         f"He is {look}.\n\n"
         f"New picture: {cell_text(pose)}\n\n"
         f"RULES:\n"
@@ -511,9 +514,10 @@ def gen_one(key, code, pose, ref_path, out_path):
         f"  - No text, no numbers, no borders, no frame lines, no grid, no labels, no watermark.\n"
         f"  - No shadow on the background, no floor, no props except a plain chair when sitting.\n"
         f"  - Photorealistic, even studio lighting. Navy on top, black below.\n")
-    body = {"contents": [{"role": "user", "parts": [
-        {"text": prompt},
-        {"inlineData": {"mimeType": "image/png", "data": ref}}]}],
+    parts = [{"text": prompt}]
+    if ref:
+        parts.append({"inlineData": {"mimeType": "image/png", "data": ref}})
+    body = {"contents": [{"role": "user", "parts": parts}],
         "generationConfig": {"responseModalities": ["IMAGE"],
                              "imageConfig": {"aspectRatio": "3:4" if pose.startswith("full") else "1:1",
                                              "imageSize": "2K"}}}
@@ -585,6 +589,8 @@ def main():
     ap.add_argument("script")
     ap.add_argument("--only", default="", help="이 인물만 (쉼표로 여러 명)")
     ap.add_argument("--plan", action="store_true", help="모델을 부르지 않고 계획만 본다")
+    ap.add_argument("--grid", action="store_true",
+                    help="옛 격자 시트 방식 (권하지 않음 — 칸 선이 딸려 나온다)")
     ap.add_argument("--sheets", default="build/sheets", help="시트 원본을 둘 곳")
     ap.add_argument("--slice", nargs=2, metavar=("SHEET", "CODE"),
                     help="이미 있는 시트를 자르기만 한다")
@@ -637,14 +643,19 @@ def main():
     if only:
         need = {k: v for k, v in need.items() if k in only}
 
-    print(f"인물 {len(need)}명 · 포즈 {sum(len(v) for v in need.values())}개"
-          f" · 모델 {MODEL} ({SIZE})")
+    n_pose = sum(len(v) for v in need.values())
+    print(f"인물 {len(need)}명 · 포즈 {n_pose}개 · 모델 {MODEL} ({SIZE})")
     for code, poses in need.items():
-        cols, rows = grid_for(len(poses))
-        print(f"  {code:6} 포즈 {len(poses):2}개 → {cols}x{rows} 격자 "
-              f"({nearest_ratio(cols, rows)}) : {' '.join(poses)}")
+        if args.grid:
+            cols, rows = grid_for(len(poses))
+            print(f"  {code:6} 포즈 {len(poses):2}개 → {cols}x{rows} 격자 "
+                  f"({nearest_ratio(cols, rows)}) : {' '.join(poses)}")
+        else:
+            print(f"  {code:6} 포즈 {len(poses):2}개 → 한 장씩 : {' '.join(poses)}")
     if args.plan:
-        print(f"\n계획만 보았다. 실제 호출은 {len(need)}번.")
+        calls = len(need) if args.grid else n_pose
+        print(f"\n계획만 보았다. 실제 호출은 {calls}번"
+              + (" (격자 — 권하지 않음)." if args.grid else " (한 장에 한 포즈)."))
         return 0
 
     key = os.environ.get("GEMINI_API_KEY", "").strip()
@@ -652,25 +663,64 @@ def main():
         print("GEMINI_API_KEY 가 없다.", file=sys.stderr)
         return 2
 
-    sheets = Path(args.sheets)
+    raw_dir = Path(args.sheets) / "single"
+
+    # ⭐ **한 장에 한 포즈.** 격자 시트는 쓰지 않는다.
+    #
+    #    격자로 뽑으면 칸 경계선(검은 줄)이 인물과 함께 잘려 나온다. 그 선을 나중에
+    #    지우려고 다섯 번 시도했고 다섯 번 다 틀렸다 — 밝기로 가르면 옷을 갉아먹고,
+    #    모양으로 가르면 법복 주름과 구분이 안 됐다. 실측: 판사 상반신 왼쪽에
+    #    404픽셀짜리 인쇄선이 끝까지 남았다.
+    #    자를 것이 없으면 잘못 자를 일도 없다. **선이 생기는 원인을 없앤다.**
+    #
+    #    같은 사람인지는 첫 포즈를 참고 그림으로 함께 넣어 지킨다.
+    #    (--grid 를 주면 옛 격자 방식으로 돌아가지만 권하지 않는다)
+    if args.grid:
+        print("⚠️ 격자 시트 방식입니다. 칸 선이 인물에 딸려 나올 수 있습니다.")
+        sheets = Path(args.sheets)
+        ok, bad = 0, []
+        for code, poses in need.items():
+            cols, rows = grid_for(len(poses))
+            print(f"\n{code} — 시트 만드는 중…")
+            try:
+                p = gen_sheet(key, sheet_prompt(code, poses, cols, rows),
+                              sheets / f"{code}.png", cols, rows)
+            except Exception as e:
+                print(f"    실패: {e}")
+                bad.append(code)
+                continue
+            made, missing = slice_sheet(p, code, poses, cols, rows,
+                                        save_debug=sheets / f"{code}_check.jpg", key=key)
+            if missing:
+                bad.append(code)
+            ok += len(made)
+        print(f"\n컷아웃 {ok}개 완성" + (f" · 다시 해야 할 인물: {', '.join(bad)}" if bad else ""))
+        return 1 if bad else 0
+
     ok, bad = 0, []
     for code, poses in need.items():
-        cols, rows = grid_for(len(poses))
-        print(f"\n{code} — 시트 만드는 중…")
-        try:
-            p = gen_sheet(key, sheet_prompt(code, poses, cols, rows),
-                          sheets / f"{code}.png", cols, rows)
-        except Exception as e:
-            print(f"    실패: {e}")
-            bad.append(code)
-            continue
-        made, missing = slice_sheet(p, code, poses, cols, rows,
-                                    save_debug=sheets / f"{code}_check.jpg", key=key)
-        if missing:
-            bad.append(code)
-        ok += len(made)
+        print(f"\n{code} — 포즈 {len(poses)}개를 한 장씩 만든다")
+        # 이미 잘 나온 그림이 있으면 그것을 얼굴 기준으로 삼는다 (돈이 덜 든다)
+        have = sorted((ROOT / "assets" / "char" / code).glob("*.png"))
+        ref = have[0] if have else None
+        for i, pose in enumerate(poses):
+            print(f"  {pose} …" + ("" if ref else "  (첫 장 — 참고 그림 없이)"))
+            try:
+                rp = gen_one(key, code, pose, ref, raw_dir / f"{code}_{pose}.png")
+                out = cut_one(rp, code, pose)
+                if out:
+                    ok += 1
+                    if ref is None:
+                        ref = out          # 첫 장을 이후 포즈의 얼굴 기준으로 쓴다
+                    print(f"    → {out.name}")
+                else:
+                    bad.append(f"{code}/{pose}")
+                    print("    오려내기 실패")
+            except Exception as e:
+                bad.append(f"{code}/{pose}")
+                print(f"    실패: {e}")
 
-    print(f"\n컷아웃 {ok}개 완성" + (f" · 다시 해야 할 인물: {', '.join(bad)}" if bad else ""))
+    print(f"\n컷아웃 {ok}개 완성" + (f" · 다시 해야 할 것: {', '.join(bad)}" if bad else ""))
     return 1 if bad else 0
 
 
