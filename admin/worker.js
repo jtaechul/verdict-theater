@@ -114,6 +114,13 @@ async function authed(req, env) {
   return (await sign(env, val)) === mac;
 }
 
+// ⚠️ 화면은 **절대 캐시하지 않는다.**
+//    페이지를 고쳐 배포해도 아이폰이 예전 화면을 계속 보여 주는 일이 실제로 있었다
+//    ('영상 보기' 기능을 올렸는데 폰에는 안 나옴). 사파리는 캐시 지시가 없는 HTML 을
+//    스스로 판단해 쥐고 있고, 홈 화면에 추가한 경우 특히 오래 붙잡는다.
+//    이 페이지는 32KB 뿐이고 내용은 전부 /api/* 로 따로 받아 오므로 캐시할 이유가 없다.
+const HTML = { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store, must-revalidate' };
+
 // ── 화면 ────────────────────────────────────────────────
 const CSS = `
 :root{--bg:#12131a;--card:#1c1e29;--line:#2c2f3d;--ink:#e9e9ef;--dim:#9599ab;
@@ -487,7 +494,7 @@ export default {
       try { form = await req.formData(); } catch (e) { form = null; }
       if (!form || form.get('pw') !== env.ADMIN_PASSWORD) {
         return new Response(LOGIN_HTML.replace('<form', '<div style="color:#d2564a;font-size:14px">비밀번호가 다릅니다</div><form'),
-          { status: 401, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+          { status: 401, headers: HTML });
       }
       const val = String(Date.now());
       const cookie = `vt=${encodeURIComponent(val + '.' + await sign(env, val))}` +
@@ -498,7 +505,7 @@ export default {
     if (!ok) {
       if (url.pathname.startsWith('/api/'))
         return Response.json({ error: 'unauthorized' }, { status: 401 });
-      return new Response(LOGIN_HTML, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+      return new Response(LOGIN_HTML, { headers: HTML });
     }
 
     try {
@@ -610,7 +617,7 @@ export default {
         return Response.json({ ok: true });
       }
 
-      return new Response(appHtml(), { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+      return new Response(appHtml(), { headers: HTML });
     } catch (e) {
       if (url.pathname.startsWith('/api/'))
         return Response.json({ ok: false, error: String(e).slice(0, 300) }, { status: 500 });
