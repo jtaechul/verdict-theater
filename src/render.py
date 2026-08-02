@@ -546,7 +546,32 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
             r.setdefault("sub_moved", sub_top_over)
 
     sub_layer = G.draw_subtitle(Image.new("RGBA", (W, H), (0, 0, 0, 0)),
-                                text, vertical=vertical, top=sub_top_over)
+                                text, vertical=vertical, top=sub_top_over,
+                                speaker=cut.get("speaker"))
+
+    # ⭐ 자막이 위로 올라오면 **이름표가 비켜난다.**
+    #    이름표 기본 자리(세로 화면 높이의 50%)와 올라온 자막이 정면으로 겹쳐
+    #    '김성일 · 50세 · 장남' 이 통째로 가려졌다(손님 화면 캡처로 확인).
+    #    비켜나는 쪽은 늘 이름표다 — 자막은 읽는 중에 움직이면 안 된다.
+    #
+    # ⚠️ 자막의 '차지 영역' 은 글자만이 아니다. 뒤에 깔리는 **그늘 띠**가 글자보다
+    #    위아래로 더 넓다. 그래서 좌표를 계산하지 않고 **다 그린 자막을 직접 재서**
+    #    그 위에 놓는다. 계산으로 짐작했다가 6컷이 그대로 겹쳤다.
+    spec = cut.get("gfx") or {}
+    if sub_top_over is not None and spec.get("type") == "nametag":
+        sb = sub_layer.getbbox()
+        if sb:
+            need = G.nametag_block(spec.get("text", ""), W, H)
+            want = sb[1] - int(H * 0.020)                    # 자막 그늘 바로 위
+            if want - need < int(H * 0.05):                  # 위에 자리가 없다
+                want = min(head_top - int(H * 0.02), H)      # → 자막 아래·얼굴 위
+            if want - need >= int(H * 0.04) and want <= H:
+                moved = G.render_gfx({**spec, "_bottom": int(want)}, W, H)
+                if moved is not None:
+                    gfx_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+                    gfx_layer = Image.alpha_composite(gfx_layer, moved)
+                    if top_line:
+                        gfx_layer = G.draw_top_line(gfx_layer, top_line)
 
     # 회상으로 들어가는 컷에는 **언제인지**를 화면 가운데 잠깐 띄운다.
     # 색만 세피아로 바뀌면 어르신 시청자는 '화면이 이상해졌다' 로 본다.

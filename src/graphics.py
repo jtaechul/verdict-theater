@@ -368,7 +368,7 @@ def subtitle_top(text, W, H, vertical=False):
             - subtitle_block(text, W, H, vertical))
 
 
-def draw_subtitle(img, text, vertical=False, top=None):
+def draw_subtitle(img, text, vertical=False, top=None, speaker=None):
     """화면 아래쪽 자막. (`top` 을 주면 그 자리에 띠 모양으로 올려 그린다)
 
     고친 것 (예전이 왜 구렸나)
@@ -380,6 +380,20 @@ def draw_subtitle(img, text, vertical=False, top=None):
     if not text:
         return img
     W, H = img.size
+
+    # ⭐ 대사와 나레이션을 **화면에서 갈라놓는다.**
+    #    예전에는 둘이 글씨체·색·자리까지 똑같아서, 해설이 흐르는데 화면에 인물이
+    #    있으면 그 인물이 말하는 것으로 보였다. 재판장이 선고를 읽을 때도 해설과
+    #    구분이 안 됐다(목소리는 따로 갈라놨다 — tts.py VOICE_NAME 참고).
+    #      대사   → 따옴표를 두르고 흰색. "누가 지금 말하고 있다"
+    #      나레이션 → 따옴표 없이 살짝 눕힌 흰색. "설명하는 목소리다"
+    said = bool(speaker) and speaker not in ("narrator", "")
+    if said:
+        s = text.strip()
+        if not (s[:1] in "\u201c\"\u300c" or s[-1:] in "\u201d\"\u300d"):
+            text = f"\u201c{s}\u201d"
+    body_fill = (255, 255, 255, 255) if said else (232, 228, 218, 255)
+
     lines, size = fit_subtitle(text, W, H, vertical)
     f = font(size)
     lh = line_h(f)
@@ -424,7 +438,7 @@ def draw_subtitle(img, text, vertical=False, top=None):
     y = top
     for ln in lines:
         x = (W - text_w(ln, f)) // 2
-        d.text((x, y), ln, font=f, fill=(255, 255, 255, 255),
+        d.text((x, y), ln, font=f, fill=body_fill,
                stroke_width=stroke, stroke_fill=(12, 12, 16, 235))
         y += lh + gap
 
@@ -613,7 +627,19 @@ def _spaced(text, gap="  "):
     return gap.join(list(str(text).replace(" ", "")))
 
 
-def g_nametag(text, W=1920, H=1080):
+def nametag_block(text, W, H):
+    """이름표가 차지하는 높이(픽셀). 자막과 겹치는지 미리 재려고 쓴다."""
+    u = unit(W, H)
+    head, _, tail = str(text).partition("·")
+    maxw = int(W * (0.80 if H > W else 0.52))
+    fn = _fit_font(*_px("name", u), [head.strip()], maxw, role="label")
+    if not tail.strip():
+        return line_h(fn) + round(u * 0.028)
+    ft = _fit_font(*_px("name_sub", u), [tail.strip()], maxw, role="body")
+    return line_h(fn) + round(u * 0.012) + line_h(ft) + round(u * 0.028)
+
+
+def g_nametag(text, W=1920, H=1080, bottom=None):
     """인물 이름표 — 강조색 짧은 선 하나와 이름만. 판도 상자도 없다.
 
     ⭐ 이름과 나머지를 나눠 두 줄로 앉힌다.
@@ -621,7 +647,13 @@ def g_nametag(text, W=1920, H=1080):
        드라마는 **이름이 각인돼야** 한다 — 이름을 크게, 나이·관계는 아래에 작게.
 
     ⚠️ 자막 그늘 위로 올라타지 않도록 **아래끝을 고정하고 위로 쌓는다.**
-       크기를 키우면 아래로 자라는 구조였는데, 그러면 자막과 겹친다."""
+       크기를 키우면 아래로 자라는 구조였는데, 그러면 자막과 겹친다.
+
+    bottom — 이름표 아래끝을 이 픽셀로 옮긴다.
+        세로 쇼츠에서 자막이 얼굴을 피해 **위로 올라오면** 이름표 기본 자리
+        (화면 높이의 65.5%)와 정면으로 겹친다. 실제로 겹쳐서 '김성일 50세 장남'이
+        자막에 통째로 가려졌다. 그럴 때 렌더러가 새 아래끝을 찍어 준다.
+        **비켜나는 쪽은 늘 이름표다** — 자막은 읽는 중에 움직이면 안 된다."""
     u = unit(W, H)
     out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(out)
@@ -635,7 +667,8 @@ def g_nametag(text, W=1920, H=1080):
     gap = round(u * 0.012)
     block = line_h(fn) + (gap + line_h(ft) if ft else 0)
     x = round(W * 0.055)
-    y = round(H * (0.50 if H > W else 0.655)) - block       # 아래끝 기준으로 위로 쌓는다
+    base = bottom if bottom else round(H * (0.50 if H > W else 0.655))
+    y = max(round(u * 0.040), base - block)                 # 아래끝 기준으로 위로 쌓는다
 
     d.line([(x, y - round(u * 0.028)), (x + round(u * 0.075), y - round(u * 0.028))],
            fill=ACCENT, width=max(3, round(u * 0.005)))
@@ -770,7 +803,7 @@ def render_gfx(spec, W=1920, H=1080):
     if not fn:
         return None
     if t == "nametag":
-        return fn(spec.get("text", ""), W, H)
+        return fn(spec.get("text", ""), W, H, bottom=spec.get("_bottom"))
     if t == "amount":
         return fn(spec.get("value", ""), spec.get("note", ""), W, H)
     if t == "timeline":
