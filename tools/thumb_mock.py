@@ -1,164 +1,147 @@
 #!/usr/bin/env python3
-"""썸네일 시안 만들기 (제안용).
+"""썸네일 만들기 — 판결 결과형(C).
 
-    python3 tools/thumb_mock.py --ep EP001 --out build/thumb
+    python3 tools/thumb_mock.py --out build/thumb
 
-왜 만드나
-    말로 "인물 크게, 글씨 두 줄" 이라고 해봐야 안 와닿는다. 실제 그림으로 보여
-    고르게 한다. 확정되면 src/thumbnail.py 로 옮겨 자동 생성에 넣는다.
+무엇을 파는 썸네일인가
+    예시로 받은 채널들은 전부 "막장 상황" 을 판다. 우리는 **"그래서 얼마를
+    물어냈나"** 를 판다. 50~60대가 궁금한 것은 사연보다 결말이고, 금액이 박힌
+    썸네일은 답을 보여주면서도 눌러야 이유를 알 수 있게 만든다.
 
-참고한 문법 (손님이 주신 예시 4장의 공통점)
-    · 얼굴이 화면을 거의 다 채운다. 잘려도 된다 — 본편과 규칙이 다르다
-    · 글씨는 아래 3분의 1에 두 줄. 굵은 고딕 + 두꺼운 검정 테두리
-    · 핵심 낱말만 색을 바꾼다 (노랑·빨강)
-    · 인물 위에 작은 관계 딱지 ("장남", "70대 어머니")
-    · 채널 딱지는 오른쪽 위
+지켜야 할 것
+    · **폰트는 바탕체.** 고딕은 예능처럼 보인다. 법정물은 바탕·명조가 맞는다.
+    · **인물 아래 흰 선이 보이면 안 된다.** 인물 그림에는 흰 테두리(실측 52px)와
+      검은 그림자(88px)가 구워져 있다. 둘 다 벗겨내고(strip_edge), 그러고도
+      **화면 아래로 밀어내** 잘린 단면 자체가 안 보이게 앉힌다.
+    · 얼굴은 잘려도 된다 — 본편과 규칙이 정반대다. 썸네일은 꽉 차야 한다.
 """
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
-FONT_B = ROOT / "assets/fonts/KoPub_Dotum_Pro_Bold.otf"
-FONT_M = ROOT / "assets/fonts/KoPub_Dotum_Pro_Medium.otf"
+BATANG = ROOT / "assets/fonts/KoPub_Batang_Pro_Bold.otf"
 W, H = 1280, 720
 
-INK = (16, 17, 22)
-WHITE = (255, 255, 255)
-GOLD = (255, 214, 64)
-RED = (255, 74, 74)
+INK = (10, 11, 16)
+PAPER = (242, 240, 234)
+GOLD = (233, 190, 98)
+BLOOD = (188, 40, 40)
+
+# 인물 그림에 구워진 흰 테두리 두께(그림 높이 대비). 실측 52/1445 = 3.6%.
+EDGE_PCT = 0.040
 
 
-def f(path, size):
-    return ImageFont.truetype(str(path), size)
+def f(size):
+    return ImageFont.truetype(str(BATANG), size)
 
 
-def sprite(code, pose):
-    p = ROOT / f"assets/char/{code}/{pose}.png"
-    if not p.exists():
-        return None
-    im = Image.open(p).convert("RGBA")
-    return im.crop(im.getchannel("A").getbbox())
+def strip_edge(im, pct=EDGE_PCT):
+    """흰 테두리와 검은 그림자를 벗겨 **인물만** 남긴다.
+
+    왜 색으로 못 지우나
+        인물이 흰 셔츠를 입고 있다. '흰색을 지운다' 로 하면 셔츠에 구멍이 난다.
+        그래서 색이 아니라 **모양으로** 깎는다 — 알파(투명도)를 안쪽으로 민다.
+    4분의 1 크기에서 깎고 되돌린다. 가장자리 처리라 그 정도로 충분하고 빠르다."""
+    a = im.getchannel("A").point(lambda v: 255 if v > 200 else 0)   # 그림자부터 제거
+    w, h = im.size
+    small = a.resize((max(1, w // 4), max(1, h // 4)), Image.NEAREST)
+    for _ in range(max(1, int(round(small.height * pct / 4)))):     # 한 번에 4px 깎임
+        small = small.filter(ImageFilter.MinFilter(9))
+    a2 = small.resize((w, h), Image.BILINEAR).filter(ImageFilter.GaussianBlur(1.2))
+    out = im.copy()
+    out.putalpha(a2)
+    box = a2.getbbox()
+    return out.crop(box) if box else out
 
 
-def place(base, im, height, cx, bottom):
-    """인물을 키 height 로 맞춰 (cx, bottom) 에 앉힌다. 화면 밖은 잘려도 된다."""
-    if im is None:
-        return
-    r = height / im.height
-    im = im.resize((max(1, int(im.width * r)), int(height)), Image.LANCZOS)
-    base.alpha_composite(im, (int(cx - im.width / 2), int(bottom - im.height)))
+def drop_shadow(im, blur=30, alpha=175):
+    """인물 뒤에 깔 부드러운 그림자. 흰 테두리 대신 배경과 떼어 놓는다."""
+    a = im.getchannel("A").filter(ImageFilter.GaussianBlur(blur))
+    sh = Image.new("RGBA", im.size, (0, 0, 0, 0))
+    sh.putalpha(a.point(lambda v: int(v * alpha / 255)))
+    return sh
 
 
-def backdrop(name, dim=0.55, blur=6):
+def backdrop(name):
+    """배경 — 흐리게, 어둡게, 왼쪽으로 갈수록 더 어둡게(글씨 자리를 비운다)."""
     p = ROOT / f"assets/bg/{name}"
     if p.exists():
         bg = Image.open(p).convert("RGB").resize((W, H), Image.LANCZOS)
-        bg = bg.filter(ImageFilter.GaussianBlur(blur))
-        bg = Image.blend(bg, Image.new("RGB", (W, H), INK), dim)
+        bg = bg.filter(ImageFilter.GaussianBlur(9))
     else:
-        bg = Image.new("RGB", (W, H), INK)
-    return bg.convert("RGBA")
+        bg = Image.new("RGB", (W, H), (28, 30, 38))
+    bg = Image.blend(bg, Image.new("RGB", (W, H), INK), 0.42)
+
+    grad = Image.new("L", (W, 1))
+    gp = grad.load()
+    for x in range(W):
+        t = x / (W - 1)
+        gp[x, 0] = int(238 * max(0.0, 1.0 - (t / 0.80) ** 1.6))
+    shade = Image.new("RGBA", (W, H), (*INK, 255))
+    shade.putalpha(grad.resize((W, H), Image.BILINEAR))
+    out = bg.convert("RGBA")
+    out.alpha_composite(shade)
+
+    vg = Image.new("L", (1, H))
+    vp = vg.load()
+    for y in range(H):
+        t = abs(y / (H - 1) - 0.5) * 2
+        vp[0, y] = int(160 * max(0.0, (t - 0.55) / 0.45) ** 1.2)
+    vig = Image.new("RGBA", (W, H), (*INK, 255))
+    vig.putalpha(vg.resize((W, H), Image.BILINEAR))
+    out.alpha_composite(vig)
+    return out
 
 
-def big_line(d, text, y, size, colours, cx=None, left=None, stroke=None):
-    """굵은 글씨 한 줄. colours 는 {낱말: 색} — 그 낱말만 색이 바뀐다."""
-    font = f(FONT_B, size)
-    stroke = stroke if stroke is not None else max(6, size // 9)
-    parts, buf = [], ""
-    for ch in text:
-        buf += ch
-    # 낱말 단위로 쪼개 색을 입힌다
-    chunks, rest = [], text
-    while rest:
-        hit = None
-        for word in colours:
-            i = rest.find(word)
-            if i >= 0 and (hit is None or i < hit[0]):
-                hit = (i, word)
-        if hit is None:
-            chunks.append((rest, WHITE)); break
-        i, word = hit
-        if i:
-            chunks.append((rest[:i], WHITE))
-        chunks.append((word, colours[word]))
-        rest = rest[i + len(word):]
-    total = sum(d.textlength(t, font=font) for t, _ in chunks)
-    x = (cx - total / 2) if cx is not None else left
-    for t, col in chunks:
-        d.text((x, y), t, font=font, fill=col,
-               stroke_width=stroke, stroke_fill=INK)
-        x += d.textlength(t, font=font)
-    return size
+def put_person(base, code, pose, height, cx, bottom):
+    """인물을 앉힌다. bottom 이 H 보다 크면 아래로 잘려 **단면이 안 보인다.**"""
+    p = ROOT / f"assets/char/{code}/{pose}.png"
+    if not p.exists():
+        print(f"  (그림 없음: {code}/{pose})")
+        return
+    im = Image.open(p).convert("RGBA")
+    im = im.crop(im.getchannel("A").getbbox())
+    im = strip_edge(im)
+    r = height / im.height
+    im = im.resize((max(1, int(im.width * r)), int(height)), Image.LANCZOS)
+    x, y = int(cx - im.width / 2), int(bottom - im.height)
+    base.alpha_composite(drop_shadow(im), (x - 12, y + 10))
+    base.alpha_composite(im, (x, y))
 
 
-def tag(d, text, cx, y, fg=WHITE, bg=(214, 40, 40)):
-    """인물 위 작은 관계 딱지."""
-    font = f(FONT_B, 34)
-    tw = d.textlength(text, font=font)
-    pad = 16
-    box = (cx - tw / 2 - pad, y, cx + tw / 2 + pad, y + 54)
-    d.rounded_rectangle(box, 10, fill=bg)
-    d.text((cx - tw / 2, y + 6), text, font=font, fill=fg)
+def text(d, s, xy, size, fill=PAPER, stroke=None):
+    font = f(size)
+    d.text(xy, s, font=font, fill=fill,
+           stroke_width=max(4, size // 12) if stroke is None else stroke,
+           stroke_fill=INK)
 
 
-def logo(d):
-    font = f(FONT_B, 30)
-    t = "판결극장"
-    tw = d.textlength(t, font=font)
-    d.rounded_rectangle((W - tw - 56, 22, W - 20, 84), 12, fill=(0, 0, 0, 190))
-    d.text((W - tw - 38, 36), t, font=font, fill=GOLD)
-
-
-# ── 시안 A — 대립형 (예시 2 '빨간풍선' 문법) ────────────────────────
-def variant_a(out):
-    base = backdrop("court_room.jpg", dim=0.6, blur=8)
-    place(base, sprite("F50A", "face_cry"), 700, 250, 700)      # 왼쪽 어머니
-    place(base, sprite("M50A", "face_anger"), 760, 1055, 720)   # 오른쪽 장남
+def build(label, quote, amount, verdict, code, pose, bg, out):
+    base = backdrop(bg)
+    # bottom = H + 110 → 인물의 잘린 아래 단면이 화면 밖으로 나간다
+    put_person(base, code, pose, height=780, cx=1000, bottom=H + 110)
     d = ImageDraw.Draw(base)
-    tag(d, "어머니", 250, 40)
-    tag(d, "장남", 1055, 40, bg=(30, 60, 150))
-    big_line(d, "어머니를 법정에 세운", 448, 70, {"법정": GOLD}, left=36)
-    big_line(d, "장남이 받은 돈 0원", 542, 84, {"0원": RED}, left=36)
-    logo(d)
-    base.convert("RGB").save(out, quality=92)
 
+    d.rectangle((44, 92, 50, 236), fill=GOLD)          # 왼쪽 금색 세로선
+    text(d, label, (72, 96), 33, fill=(206, 202, 192), stroke=4)
+    text(d, f"“{quote}”", (66, 146), 64)
 
-# ── 시안 B — 3인 구도 (예시 1·4 문법) ───────────────────────────────
-def variant_b(out):
-    base = backdrop("funeral_hall.jpg", dim=0.5, blur=7)
-    # ⚠️ 글씨가 가운데 인물 얼굴을 가로지르지 않게, 가운데는 작고 낮게 앉힌다.
-    place(base, sprite("F50A", "face_sad"), 620, 190, 470)
-    place(base, sprite("M50B", "face_cold"), 480, 640, 430)
-    place(base, sprite("M50A", "face_anger"), 690, 1075, 480)
-    d = ImageDraw.Draw(base)
-    tag(d, "어머니", 190, 28)
-    tag(d, "차남", 640, 22, bg=(60, 60, 70))
-    tag(d, "장남", 1075, 18, bg=(30, 60, 150))
-    d.rectangle((0, 486, W, H), fill=(12, 13, 18))       # 글씨 자리를 통째로 비운다
-    big_line(d, "9억 챙기고도", 508, 78, {"9억": GOLD}, cx=W // 2)
-    big_line(d, "빚은 어머니에게", 606, 86, {"빚": RED}, cx=W // 2)
-    logo(d)
-    base.convert("RGB").save(out, quality=92)
+    d.rectangle((44, 392, 700, 399), fill=BLOOD)       # 판결 구분선
+    text(d, "법원의 답", (70, 420), 35, fill=(208, 124, 124), stroke=4)
+    text(d, amount, (62, 470), 100, fill=GOLD)
+    text(d, verdict, (68, 596), 62)
 
+    lab = f(29)                                        # 채널 딱지
+    tw = d.textlength("판결극장", font=lab)
+    d.rectangle((W - tw - 54, 22, W - 22, 74), fill=(0, 0, 0))
+    d.rectangle((W - tw - 54, 22, W - 22, 26), fill=GOLD)
+    d.text((W - tw - 38, 36), "판결극장", font=lab, fill=GOLD)
 
-# ── 시안 C — 판결 결과형 (우리만의 차별점) ──────────────────────────
-def variant_c(out):
-    base = backdrop("court_hall.jpg", dim=0.62, blur=9)
-    place(base, sprite("M50A", "face_shock"), 820, 900, 740)
-    d = ImageDraw.Draw(base)
-    tag(d, "소송 건 장남", 900, 40, bg=(30, 60, 150))
-    big_line(d, "\"법대로 하시죠\"", 120, 66, {}, left=48)
-    # 판결 도장 느낌의 붉은 테두리 상자
-    d.rounded_rectangle((40, 430, 720, 660), 18, outline=RED, width=10)
-    big_line(d, "1억 3,500만 원", 452, 82, {"1억 3,500만 원": GOLD}, left=70)
-    big_line(d, "지급하라", 556, 76, {}, left=70)
-    logo(d)
-    base.convert("RGB").save(out, quality=92)
+    base.convert("RGB").save(out, quality=94)
 
 
 def main():
@@ -167,11 +150,15 @@ def main():
     a = ap.parse_args()
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    if not FONT_B.exists():
-        print("폰트가 없다"); return 1
-    variant_a(out / "A_대립형.jpg")
-    variant_b(out / "B_3인구도.jpg")
-    variant_c(out / "C_판결결과형.jpg")
+    if not BATANG.exists():
+        print("바탕체 폰트가 없다")
+        return 1
+    build("어머니를 법정에 세운 장남", "법대로 하시죠", "1억 3,500만 원",
+          "장남이 물어냈다", "M50A", "face_shock", "court_hall.jpg", out / "C1.jpg")
+    build("9억을 받고도 소송한 장남", "제 몫이 비잖아요", "1억 3,500만 원",
+          "돌려주라", "M50A", "face_anger", "court_room.jpg", out / "C2.jpg")
+    build("어머니 몫까지 요구한 장남", "당연히 내 지분이지", "지분 0원",
+          "법원이 답했다", "M50A", "face_cold", "court_exterior.jpg", out / "C3.jpg")
     print(f"시안 3장 → {out}")
     return 0
 
