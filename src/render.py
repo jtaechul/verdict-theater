@@ -292,6 +292,15 @@ def chin_y(sprite):
     return bot                            # 얼굴만 있는 그림 — 그림 아래끝이 턱이다
 
 
+def top_pad(sprite):
+    """그림 맨 위에서 **인물(흰 테두리 포함)이 시작되기까지** 비어 있는 픽셀.
+
+    컷아웃 PNG 위쪽에는 옅은 그림자만 있는 투명한 띠가 있다. 이걸 인물의 키로
+    잘못 세면, 화면 위가 남아도는데도 '더 키우면 머리가 잘린다' 고 판단해 버린다."""
+    box = sprite.getchannel("A").point(lambda v: 255 if v > 40 else 0).getbbox()
+    return box[1] if box else 0
+
+
 def bottom_bleed(sprite):
     """이 그림을 화면 바닥에 맞추려면 얼마나 더 내려야 하는지(픽셀).
 
@@ -307,6 +316,8 @@ def bottom_bleed(sprite):
 ZOOM_START = 1.0            # 첫 프레임은 **자르지 않는다** (예전 1.02 는 시작부터 2% 손실)
 ZOOM_MAX = 1.05
 ZOOM_EDGE = (1 - 1 / ZOOM_MAX) / 2
+
+PLACE_LOG = None            # 검수 스크립트가 [] 를 넣으면 인물 배치 결과를 여기 쌓는다
 
 
 def build_plates(cut, W, H, vertical=False, top_line=""):
@@ -332,6 +343,7 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
     chars = cut.get("chars") or []
     if vertical and len(chars) > 1:
         chars = chars[:1]                       # 세로는 한 명만. 두 명이면 화면이 죽는다
+    head_top, face_bottom = H, 0                # 실제로 앉힌 인물의 위·아래 얼굴선
 
     for c in chars:
         ccode, pose = c.get("code", ""), c.get("pose", "")
@@ -346,17 +358,36 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
             room = H - int(H * 0.06) - (gfx_bottom + int(H * 0.03))
             target_h = max(int(H * 0.24), min(target_h, room))
         kind = pose.split("_")[0]
-        head_y = (HEAD_Y_V if vertical else HEAD_Y) * H
+        edge = int(min(W, H) * ZOOM_EDGE) + 4      # 확대 연출이 깎아내는 몫 + 여유
 
-        # ⭐ 상반신은 **얼굴을 가운데 두면서 아래는 화면 밖으로** 나가야 한다.
-        #    둘 중 하나만 맞추면, 얼굴이 가운데면 아래에 흰 테두리가 뜨고
-        #    아래를 맞추면 얼굴이 밀린다. 필요한 만큼 키워서 둘 다 만족시킨다.
-        #    (회장님 말씀대로 "이미지 사이즈를 조금 더 키울 필요" 가 여기다.)
+        # ⭐ 상반신·얼굴은 크기와 자리를 **함께** 푼다.
+        #    따로 정하면 조건이 서로를 깨뜨린다 — 얼굴을 가운데 두면 아래가 안 닿고,
+        #    아래를 닿게 하면 자막이 얼굴을 덮고, 키우면 머리가 화면 위로 나간다.
+        #    (실측: 26개 중 9개가 화면 바닥에 닿지 않았다.)
+        #    그래서 '인물의 진짜 아래끝을 화면 바닥에 붙인다' 를 기준으로 놓고,
+        #    나머지 세 조건을 크기의 상·하한으로 바꿔 한 번에 만족시킨다.
         if kind in ("bust", "face"):
-            f = head_center(sprite) / max(1, sprite.height)      # 그림에서 얼굴 위치 비율
-            need = (H - head_y) / max(0.05, 1.0 - f)             # 아래가 화면에 닿는 최소 키
-            if kind == "bust" and need > target_h:
-                target_h = int(min(need, target_h * HEAD_MAX_UP))
+            h0 = sprite.height
+            f_chin = chin_y(sprite) / h0
+            f_bleed = bottom_bleed(sprite) / h0       # 아래쪽 흰 테두리가 차지하는 몫
+            body = max(0.05, 1.0 - f_bleed)           # 그림에서 '인물 아래끝' 까지의 비율
+            sub_top = G.subtitle_top(cut.get("text", ""), W, H, vertical)
+            m = int(H * 0.015)
+
+            f_pad = top_pad(sprite) / h0              # 그림 위쪽의 빈 띠
+            lo = (H - sub_top + m) / max(0.02, body - f_chin)   # 자막이 얼굴을 덮지 않을 최소 키
+            # 머리가 화면 위로 안 나갈 최대 키.
+            # ⚠️ 예전엔 `(H-edge)/body` 였다 — 위쪽 빈 띠를 인물 키로 세는 바람에
+            #    화면 위가 100px 넘게 비어 있는데도 더 못 키우고, 그래서 자막이
+            #    턱을 스쳤다(실측: 가로 1건). 빈 띠만큼 더 키울 수 있다.
+            hi = (H - edge) / max(0.05, body - f_pad)
+            # ⚠️ 좌우 상한에는 아래의 CHAR_MAX_W 축소까지 **미리** 넣어야 한다.
+            #    빼먹었더니 여기서 정한 키를 아래가 다시 줄여 버려서, 262건 중 186건이
+            #    바닥에서 떠 버렸다(실측). 나중에 줄일 값은 여기서 함께 풀어야 한다.
+            room_w = min(W - 2 * edge, W * CHAR_MAX_W)
+            wide = room_w * h0 / max(1, sprite.width)           # 좌우가 안 잘릴 최대 키
+            target_h = int(max(lo, min(target_h, hi, wide))
+                           if lo <= min(hi, wide) else min(hi, wide))
 
         ratio = target_h / sprite.height
         sw = max(1, int(sprite.width * ratio))
@@ -379,24 +410,27 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
         if kind == "full":
             # 전신은 발이 화면 바닥에 닿아야 한다. 얼굴을 가운데로 끌어올리면 다리가 잘린다.
             y = H - sprite.height - int(H * 0.06)
+            if y + sprite.height >= H - int(H * CHAR_BOTTOM_ZONE):
+                y = H - sprite.height + bottom_bleed(sprite)
         else:
-            # 얼굴 한가운데를 화면의 정해진 높이에 맞춘다
-            y = round(head_y) - head_center(sprite)
-
-        # 세로에서는 위쪽 정보 카드를 피해야 한다 (금액 카드 강조선에 머리가 닿은 적이 있다)
-        if vertical and gfx_bottom:
-            y = max(y, gfx_bottom + int(H * 0.035))
-
-        # 화면 아래 경계에 닿는 인물은 경계에 딱 맞춰 세우고 잘라낸다
-        if y + sprite.height >= H - int(H * CHAR_BOTTOM_ZONE):
+            # 인물의 진짜 아래끝(흰 테두리 제외)을 화면 바닥에 붙인다
             y = H - sprite.height + bottom_bleed(sprite)
+
+        # 세로에서는 위쪽 정보 카드를 피해야 한다
+        if vertical and gfx_bottom and y < gfx_bottom + int(H * 0.035):
+            y = gfx_bottom + int(H * 0.035)
 
         # ⭐ 머리 위와 좌우는 **절대 자르지 않는다.**
         #    ⚠️ 예전 가로 배치는 `edge - sprite.width // 4` 로 클램프해서
         #       인물 폭의 4분의 1까지 화면 밖으로 나가는 것을 **허용**하고 있었다.
         #       그래서 좌우에 세운 인물의 어깨와 팔이 잘려 나갔다.
         #    넓거나 높아서 안 들어가면 자르지 않고 **줄여서** 넣는다.
-        room_w, room_h = W - 2 * edge, H - edge
+        #    ⚠️ 높이 상한은 위쪽 **빈 띠**를 빼고 재야 한다. 그냥 `H - edge` 로 재면
+        #       위가 남아도는데도 줄여 버려서, 방금 푼 크기를 여기서 다시 깎는다.
+        #       (실측: 그 바람에 가로 1건에서 자막이 턱을 9px 덮었다.)
+        room_w = W - 2 * edge
+        vis_h = sprite.height - top_pad(sprite) - bottom_bleed(sprite)   # 화면에 들어가야 할 몫
+        room_h = (H - edge) * sprite.height / max(1, vis_h)
         if sprite.width > room_w or (kind != "full" and sprite.height > room_h):
             k = min(room_w / sprite.width,
                     room_h / sprite.height if kind != "full" else 1.0)
@@ -404,43 +438,48 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
                                     max(1, round(sprite.height * k))), Image.LANCZOS)
             if kind == "full":
                 y = H - sprite.height - int(H * 0.06)
+                if y + sprite.height >= H - int(H * CHAR_BOTTOM_ZONE):
+                    y = H - sprite.height + bottom_bleed(sprite)
             else:
-                y = round(head_y) - head_center(sprite)
-            if y + sprite.height >= H - int(H * CHAR_BOTTOM_ZONE):
                 y = H - sprite.height + bottom_bleed(sprite)
             x = (W - sprite.width) // 2 if vertical else x
 
-        # ⭐ 자막은 **몸통만** 가린다. 얼굴은 절대 가리지 않는다.
-        #    턱 아래끝이 자막 글자 위쪽보다 아래로 내려가면 그만큼 위로 올린다.
-        #    올려서 머리가 화면 위로 나갈 상황이면 인물을 **줄여서** 맞춘다.
-        sub_top = G.subtitle_top(cut.get("text", ""), W, H, vertical)
-        for _ in range(3):
+        # 안전망 — 전신은 자막이 얼굴을 덮으면 위로 올린다.
+        # ⚠️ 상반신·얼굴에는 쓰지 않는다. 위로 올리면 아래끝이 바닥에서 떠 버리는데,
+        #    "전신이 아닌 이상 아래끝은 화면 바닥에 닿아야 한다" 가 더 우선이다.
+        #    (얼굴이 자막에 덮이지 않는 것은 이미 위에서 최소 키 `lo` 로 풀었다.)
+        if kind == "full":
+            sub_top = G.subtitle_top(cut.get("text", ""), W, H, vertical)
             over = (y + chin_y(sprite)) - (sub_top - int(H * 0.015))
-            if over <= 0:
-                break
-            if y - over >= edge:
+            if over > 0 and y - over >= edge:
                 y -= over
-                break
-            k = max(0.55, 1.0 - over / max(1, sprite.height))
-            sprite = sprite.resize((max(1, round(sprite.width * k)),
-                                    max(1, round(sprite.height * k))), Image.LANCZOS)
-            y = (H - sprite.height - int(H * 0.06)) if kind == "full" \
-                else round(head_y) - head_center(sprite)
-            if y + sprite.height >= H - int(H * CHAR_BOTTOM_ZONE):
-                y = H - sprite.height + bottom_bleed(sprite)
-            x = (W - sprite.width) // 2 if vertical else x
 
-        x = min(max(x, edge), W - sprite.width - edge)
+        x = min(max(x, edge), max(edge, W - sprite.width - edge))
         y = max(y, edge)                            # 머리 위가 잘리지 않게
+
+        # ⭐ 마지막으로 한 번 더 바닥에 붙인다. 위 클램프들이 인물을 들어 올렸을 수 있다.
+        if kind != "full":
+            y = max(edge, H - sprite.height + bottom_bleed(sprite))
 
         # 화면 밖으로 나가는 부분은 여기서 잘라낸다.
         # alpha_composite 는 대상 밖으로 나가는 그림을 받지 않으므로 미리 맞춰 준다.
+        if PLACE_LOG is not None:                   # 검수용 — 평소에는 None 이라 비용 0
+            PLACE_LOG.append(dict(
+                code=ccode, pose=pose, W=W, H=H, x=x, y=y,
+                w=sprite.width, h=sprite.height,
+                bleed=bottom_bleed(sprite), edge=edge,
+                chin=chin_y(sprite),
+                sub_top=G.subtitle_top(cut.get("text", ""), W, H, vertical)))
+
         sx, sy = max(0, x), max(0, y)
         cx0, cy0 = sx - x, sy - y
         cx1 = min(sprite.width, cx0 + (W - sx))
         cy1 = min(sprite.height, cy0 + (H - sy))
         if cx1 > cx0 and cy1 > cy0:
             move.alpha_composite(sprite.crop((cx0, cy0, cx1, cy1)), (sx, sy))
+
+        head_top = min(head_top, y)
+        face_bottom = max(face_bottom, y + chin_y(sprite))
 
     # 그래픽과 자막을 **따로** 돌려준다.
     # 둘을 한 장으로 합치면 함께 움직일 수밖에 없는데, 자막은 절대 움직이면 안 되고
@@ -451,8 +490,29 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
     if top_line:
         gfx_layer = G.draw_top_line(gfx_layer, top_line)
 
+    # ⭐ 세로 쇼츠에서만: 자막이 얼굴을 가로지르면 자막을 **머리 위**로 올린다.
+    #    세로 화면(1080 폭)에서는 인물 폭이 화면 폭에 막혀 키가 화면의 45% 밖에 안 된다.
+    #    그 인물을 바닥에 붙이면 얼굴이 화면 아래 절반에 오는데, 쇼츠는 유튜브 UI 때문에
+    #    자막을 바닥에서 20% 띄워야 해서 자막이 딱 얼굴 위를 지난다.
+    #    좌우를 자르는 것도, 인물을 띄우는 것도 금지이므로 **자막이 비켜난다.**
+    #    (가로 본편은 인물이 크게 들어가므로 이 일이 생기지 않는다 — 실측 0건)
+    sub_top_over = None
+    text = cut.get("text", "")
+    if vertical and text and face_bottom > G.subtitle_top(text, W, H, True):
+        block = G.subtitle_block(text, W, H, True)
+        floor_ = (gfx_bottom + int(H * 0.03)) if gfx_bottom else int(H * 0.06)
+        # 머리 바로 위가 첫째 자리. 위쪽 카드에 막히면 카드 바로 아래로 붙인다 —
+        # 얼굴만 넘지 않으면 되므로 굳이 포기할 이유가 없다.
+        want = max(floor_, head_top - block - int(H * 0.035))
+        if want + block <= face_bottom - int(H * 0.02):
+            sub_top_over = want
+
+    if PLACE_LOG is not None:
+        for r in PLACE_LOG:
+            r.setdefault("sub_moved", sub_top_over)
+
     sub_layer = G.draw_subtitle(Image.new("RGBA", (W, H), (0, 0, 0, 0)),
-                                cut.get("text", ""), vertical=vertical)
+                                text, vertical=vertical, top=sub_top_over)
 
     # 회상으로 들어가는 컷에는 **언제인지**를 화면 가운데 잠깐 띄운다.
     # 색만 세피아로 바뀌면 어르신 시청자는 '화면이 이상해졌다' 로 본다.

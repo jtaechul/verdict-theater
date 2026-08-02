@@ -43,6 +43,7 @@ MAX_PEEL = 12    # 바깥에서 이만큼까지만 본다. 선은 몇 픽셀이�
                  # 설령 머리카락을 조금 깎아도 화면에서 보이지 않는다.
 BLACK_LINE = 0.60  # 그 줄의 불투명한 점 중 완전한 검정이 이 비율 이상이면 선이다
 FLAT_TOP = 0.34  # 맨 윗줄 폭이 최대 폭의 이 비율을 넘으면 머리가 잘린 것
+CHIN_AT = 0.55   # 되살린 얼굴에서 턱이 와야 할 높이 비율 (아래에 가슴이 남도록)
 
 
 def strip_outline(sp, white_at=238):
@@ -166,11 +167,30 @@ def face_from_bust(code, mood):
         probe = [w for w in widths[top:top + n] if w]
         head_w = sorted(probe)[len(probe) // 2] if probe else W
         sh = next((y for y in range(top + n, bot + 1) if widths[y] > head_w * 1.55), None)
-        cut_at = int(min(H, (sh or int(H * 0.55)) + ((sh or int(H * 0.55)) - top) * 0.22))
+        # ⚠️ 예전에는 어깨선 바로 아래(+22%)에서 잘랐다. 그러면 **머리만 남는다** —
+        #    실측: 그렇게 만든 M50B 얼굴 4장은 턱이 그림 높이의 93% 에 있었다.
+        #    그 그림을 화면 바닥에 붙이면 턱이 바닥이라 자막이 얼굴을 덮는다.
+        #    턱 아래에 가슴이 남도록, **턱이 그림 한가운데(55%)** 에 오게 자른다.
+        #    가슴이 모자라면 아래 min() 이 알아서 자르지 않고 통째로 쓴다.
+        chin = sh or int(H * 0.55)
+        cut_at = int(min(H, (chin - top) / CHIN_AT + top))
         face = A.trim_alpha(plain.crop((0, 0, W, cut_at)))
         if face is not None:
             return face, m
     return None, None
+
+
+def _log_path():
+    """이미 손댄 그림의 지문(해시) 목록. 같은 그림을 두 번 벗기지 않기 위한 기록.
+
+    파일 이름이 아니라 **내용의 지문**을 적는다. 그래야 그림을 새로 만들어
+    끼워 넣으면(같은 이름·다른 내용) 다시 한 번 검사한다."""
+    return CHAR / ".cleaned.txt"
+
+
+def _fp(path):
+    import hashlib
+    return hashlib.sha1(path.read_bytes()).hexdigest()[:16]
 
 
 def main():
@@ -184,9 +204,18 @@ def main():
         want = {s.strip() for s in args.only.split(",") if s.strip()}
         files = [f for f in files if f.parent.name in want]
 
+    done = _log_path()
+    seen = set(done.read_text(encoding="utf-8").split()) if done.exists() else set()
+
     n_peel = n_head = 0
     for f in files:
         code, pose = f.parent.name, f.stem
+        # ⚠️ 이 도구는 **두 번 돌리면 안 된다.** 한 번 벗긴 뒤 흰 테두리를 다시 두르면,
+        #    다음 번에는 그 아래에서 새로 드러난 어두운 옷깃을 또 '선' 으로 보고 벗긴다.
+        #    실측: 이미 깨끗한 판사 상반신에서 7겹, 김성일 전신 2장에서 12겹을 더 먹었다.
+        #    그래서 한 번 손댄 파일은 기록해 두고 다시 건드리지 않는다.
+        if _fp(f) in seen:
+            continue
         plain = strip_outline(Image.open(f).convert("RGBA"))
         plain, peeled = peel_black(plain)
 
@@ -204,6 +233,10 @@ def main():
             continue
         if not args.dry:
             A.white_outline(rebuilt if rebuilt is not None else plain).save(f)
+            seen.add(_fp(f))
+
+    if not args.dry:
+        done.write_text("\n".join(sorted(seen)) + "\n", encoding="utf-8")
 
     print(f"\n검은 선 {n_peel}장 · 머리 되살림 {n_head}장 (전체 {len(files)}장)"
           + ("   [--dry — 저장하지 않았다]" if args.dry else ""))

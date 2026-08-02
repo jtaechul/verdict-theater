@@ -332,21 +332,44 @@ def _scrim(W, scrim_h, top_alpha=0, bottom_alpha=228, gamma=1.25):
     return shade
 
 
+def _band(W, band_h, alpha=200):
+    """글자 뭉치 뒤에 까는 **띠 모양** 그늘. 위아래로 부드럽게 사라진다.
+
+    화면 아래에 자막이 있을 때는 바닥까지 짙어지는 그늘(_scrim)이 맞다.
+    그런데 세로 쇼츠에서는 자막을 인물 **머리 위**로 올려야 할 때가 있고,
+    그때 바닥까지 가는 그늘을 깔면 인물이 통째로 어두워진다. 그래서 띠로 만든다."""
+    grad = Image.new("L", (1, band_h))
+    px = grad.load()
+    for i in range(band_h):
+        t = i / max(1, band_h - 1)
+        edge = min(t, 1 - t) * 2          # 0(가장자리) ~ 1(가운데)
+        px[0, i] = int(alpha * min(1.0, edge * 1.8) ** 0.8)
+    shade = Image.new("RGBA", (W, band_h), (10, 11, 15, 255))
+    shade.putalpha(grad.resize((W, band_h)))
+    return shade
+
+
+def subtitle_block(text, W, H, vertical=False):
+    """자막 글자 뭉치의 높이(픽셀). 자막을 다른 자리로 옮길 때 필요하다."""
+    if not text:
+        return 0
+    lines, size = fit_subtitle(text, W, H, vertical)
+    lh = line_h(font(size))
+    return len(lines) * lh + (len(lines) - 1) * int(size * 0.16)
+
+
 def subtitle_top(text, W, H, vertical=False):
     """자막 글자가 시작되는 y. **인물 얼굴이 이 아래로 내려오면 안 된다.**
 
     렌더러가 인물을 앉히기 전에 이 값을 물어보고, 얼굴이 여기에 닿으면 위로 올린다."""
     if not text:
         return H
-    lines, size = fit_subtitle(text, W, H, vertical)
-    lh = line_h(font(size))
-    gap = int(size * 0.16)
-    block = len(lines) * lh + (len(lines) - 1) * gap
-    return H - int(H * (SUB_BOTTOM_V if vertical else SUB_BOTTOM)) - block
+    return (H - int(H * (SUB_BOTTOM_V if vertical else SUB_BOTTOM))
+            - subtitle_block(text, W, H, vertical))
 
 
-def draw_subtitle(img, text, vertical=False):
-    """화면 아래쪽 자막.
+def draw_subtitle(img, text, vertical=False, top=None):
+    """화면 아래쪽 자막. (`top` 을 주면 그 자리에 띠 모양으로 올려 그린다)
 
     고친 것 (예전이 왜 구렸나)
       · 글씨 4.2% → 6.2%. 폰에서 어르신이 읽을 크기가 아니었다
@@ -365,10 +388,16 @@ def draw_subtitle(img, text, vertical=False):
 
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
 
-    # 그늘은 글자 블록보다 넉넉히 위에서 시작해 화면 바닥까지 간다
-    top = H - int(H * (SUB_BOTTOM_V if vertical else SUB_BOTTOM)) - block_h
-    scrim_top = max(0, top - int(size * 1.7))
-    layer.paste(_scrim(W, H - scrim_top), (0, scrim_top))
+    if top is None:
+        # 보통은 화면 아래. 그늘은 글자 블록보다 넉넉히 위에서 시작해 바닥까지 간다
+        top = H - int(H * (SUB_BOTTOM_V if vertical else SUB_BOTTOM)) - block_h
+        scrim_top = max(0, top - int(size * 1.7))
+        layer.paste(_scrim(W, H - scrim_top), (0, scrim_top))
+    else:
+        # 옮겨 놓은 자막(세로 쇼츠에서 인물 위) — 바닥까지 어둡게 하면 인물이 죽는다
+        pad = int(size * 1.0)
+        band_top = max(0, top - pad)
+        layer.paste(_band(W, min(H - band_top, block_h + pad * 2)), (0, band_top))
 
     # ⭐ 테두리를 얇게, 그림자를 부드럽게.
     #    예전에는 테두리가 글자 크기의 8.5%(66px 글자에 5.6px)나 됐다.

@@ -66,9 +66,16 @@ FRAME = {
     # ⚠️ '얼굴로 화면을 채워라' 라고 하면 모델이 **머리카락 위쪽을 잘라서** 그린다.
     #    (실측: 판사 얼굴을 두 번 뽑았는데 두 번 다 정수리가 평평하게 잘렸다.)
     #    '머리 전체가 여백과 함께 다 보이게' 로 못 박는다.
-    "face": "a close-up of the head — the WHOLE head including all the hair is visible "
-            "with clear empty space above it, cut off just below the collarbone",
-    "bust": "a head-and-shoulders shot, cut off at mid-chest",
+    # ⚠️ '쇄골 바로 아래에서 자른다' 로 뽑았더니 **턱이 그림 높이의 75~93%** 에 왔다.
+    #    그 그림을 화면 바닥에 붙이면 턱이 바닥 근처라 자막이 얼굴을 덮고, 얼굴을 올리면
+    #    몸통이 바닥에서 뜬다. 둘 다 사용자가 하지 말라고 한 것이다.
+    #    → 턱 아래에 가슴이 충분히 있어야 한다. **턱을 그림 한가운데**로 못 박는다.
+    "face": "a close-up — the WHOLE head including all the hair is visible with clear "
+            "empty space above it, and the neck, shoulders and upper chest fill the "
+            "lower half of the picture, cut off at mid-chest. The chin sits near the "
+            "vertical middle of the picture, never near the bottom edge",
+    "bust": "a head-and-shoulders shot cut off at the waist, the whole head visible "
+            "with empty space above it and the chin near the vertical middle",
     "full": "the entire body from head to feet, standing in the middle of the cell",
 }
 MOOD = {
