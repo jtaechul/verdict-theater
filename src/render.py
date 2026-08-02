@@ -227,35 +227,7 @@ CHAR_MAX_W = 0.86
 #    아래 10% 안에 들어오는 인물만 이렇게 처리한다. 화면 가운데 떠 있는 인물은
 #    원래대로 테두리를 두른 채 둔다 — 거기서 자르면 잘린 티만 난다.
 CHAR_BOTTOM_ZONE = 0.10
-# 인물 그림에는 더 이상 흰 테두리가 없다(tools/strip_ring.py 로 걷어냈다).
-# 값을 0 으로 두어 바닥 계산이 없는 테두리를 감안하지 않게 한다.
-CHAR_OUTLINE = 0.0
-
-# 인물 뒤에 까는 그림자 — 흰 테두리를 대신해 배경에서 떠 보이게 한다.
-SHADOW_BLUR = 0.022         # 번짐 (인물 키 대비)
-SHADOW_DROP = 10            # 아래로 내리는 픽셀
-SHADOW_SPREAD = 6           # 좌우로 퍼지는 픽셀
-SHADOW_ALPHA = 130          # 짙기 (0~255)
-_shadow_cache = {}
-
-
-def _soft_shadow(sprite):
-    """인물 실루엣을 흐리게 번지게 한 그림자 한 장."""
-    key = (id(sprite), sprite.size)
-    got = _shadow_cache.get(key)
-    if got is not None:
-        return got
-    from PIL import ImageFilter
-    pad = SHADOW_SPREAD * 2
-    a = Image.new("L", (sprite.width + pad, sprite.height + pad), 0)
-    a.paste(sprite.getchannel("A"), (SHADOW_SPREAD, SHADOW_SPREAD))
-    a = a.filter(ImageFilter.GaussianBlur(max(4, sprite.height * SHADOW_BLUR)))
-    out = Image.new("RGBA", a.size, (0, 0, 0, 0))
-    out.putalpha(a.point(lambda v: int(v * SHADOW_ALPHA / 255)))
-    if len(_shadow_cache) > 24:
-        _shadow_cache.clear()
-    _shadow_cache[key] = out
-    return out
+CHAR_OUTLINE = 0.030        # 흰 테두리 두께(인물 키 대비). assets_gen 의 2.8% + 여유
 
 
 # ⭐ 인물 얼굴이 오는 자리 — 화면 높이의 몇 지점인가.
@@ -533,20 +505,6 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
                 chin=chin_y(sprite),
                 sub_top=G.subtitle_top(cut.get("text", ""), W, H, vertical)))
 
-        # ⭐ 인물 뒤에 **부드러운 그림자**를 깐다.
-        #    예전에는 그림 자체에 흰 테두리가 구워져 있었다(스티커처럼 오려 붙인 느낌).
-        #    화면에서는 싸구려로 보여 걷어냈다(tools/strip_ring.py).
-        #    그래도 인물이 배경에서 떠 보여야 하므로, 그 일을 그림자가 대신 맡는다.
-        #    참고로 받은 유튜브 썸네일 네 장도 전부 이 방식이다 — 테두리 없이 그림자만.
-        shadow = _soft_shadow(sprite)
-        ox, oy = x - SHADOW_SPREAD, y + SHADOW_DROP
-        px, py = max(0, ox), max(0, oy)
-        qx0, qy0 = px - ox, py - oy
-        qx1 = min(shadow.width, qx0 + (W - px))
-        qy1 = min(shadow.height, qy0 + (H - py))
-        if qx1 > qx0 and qy1 > qy0:
-            move.alpha_composite(shadow.crop((qx0, qy0, qx1, qy1)), (px, py))
-
         sx, sy = max(0, x), max(0, y)
         cx0, cy0 = sx - x, sy - y
         cx1 = min(sprite.width, cx0 + (W - sx))
@@ -574,12 +532,28 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
     #    (가로 본편은 인물이 크게 들어가므로 이 일이 생기지 않는다 — 실측 0건)
     sub_top_over = None
     text = cut.get("text", "")
+    spec = cut.get("gfx") or {}
+    # ⭐ 쌓는 순서는 **위에서부터 자막 → 이름표 → 인물**이다.
+    #    이름표는 그 인물이 누구인지 알려주는 딱지다. 딱지는 붙일 대상 옆에 있어야
+    #    한다 — 인물에서 멀면 누구 이름인지 헷갈린다.
+    #    자막은 읽는 글이라 인물과 떨어져도 상관없다. 그래서 자막이 위로 간다.
+    name_h = (G.nametag_block(spec.get("text", ""), W, H)
+              if vertical and spec.get("type") == "nametag" else 0)
     if vertical and text and face_bottom > G.subtitle_top(text, W, H, True):
         block = G.subtitle_block(text, W, H, True)
         floor_ = (gfx_bottom + int(H * 0.03)) if gfx_bottom else int(H * 0.06)
-        # 머리 바로 위가 첫째 자리. 위쪽 카드에 막히면 카드 바로 아래로 붙인다 —
-        # 얼굴만 넘지 않으면 되므로 굳이 포기할 이유가 없다.
-        want = max(floor_, head_top - block - int(H * 0.035))
+        # ⚠️ 위쪽 한 줄(쇼츠 상단 문구)도 바닥선에 넣는다.
+        #    안 넣었더니 자막이 위로 올라가다 상단 문구를 덮었다(실측 6컷).
+        if top_line:
+            tb = G.draw_top_line(Image.new("RGBA", (W, H), (0, 0, 0, 0)),
+                                 top_line).getbbox()
+            if tb:
+                floor_ = max(floor_, tb[3] + int(H * 0.030))
+        # 자막 그늘은 글자 위로 더 번진다. 그만큼도 바닥선에서 띄운다.
+        floor_ += int(G.fit_subtitle(text, W, H, True)[1] * 1.1)
+        # 이름표가 들어갈 자리를 **미리 비워 두고** 자막은 그 위로 올린다.
+        reserve = (name_h + int(H * 0.045)) if name_h else 0
+        want = max(floor_, head_top - block - reserve - int(H * 0.035))
         if want + block <= face_bottom - int(H * 0.02):
             sub_top_over = want
 
@@ -591,22 +565,20 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
                                 text, vertical=vertical, top=sub_top_over,
                                 speaker=cut.get("speaker"))
 
-    # ⭐ 자막이 위로 올라오면 **이름표가 비켜난다.**
-    #    이름표 기본 자리(세로 화면 높이의 50%)와 올라온 자막이 정면으로 겹쳐
+    # ⭐ 이름표를 **인물 머리 바로 위**로 내린다 (자막과 인물 사이).
+    #    기본 자리(세로 화면 높이의 50%)에 두면 올라온 자막과 정면으로 겹쳐
     #    '김성일 · 50세 · 장남' 이 통째로 가려졌다(손님 화면 캡처로 확인).
-    #    비켜나는 쪽은 늘 이름표다 — 자막은 읽는 중에 움직이면 안 된다.
     #
     # ⚠️ 자막의 '차지 영역' 은 글자만이 아니다. 뒤에 깔리는 **그늘 띠**가 글자보다
     #    위아래로 더 넓다. 그래서 좌표를 계산하지 않고 **다 그린 자막을 직접 재서**
-    #    그 위에 놓는다. 계산으로 짐작했다가 6컷이 그대로 겹쳤다.
-    spec = cut.get("gfx") or {}
+    #    그 아래에 놓는다. 계산으로 짐작했다가 6컷이 그대로 겹쳤다.
     if sub_top_over is not None and spec.get("type") == "nametag":
         sb = sub_layer.getbbox()
         if sb:
-            need = G.nametag_block(spec.get("text", ""), W, H)
-            want = sb[1] - int(H * 0.020)                    # 자막 그늘 바로 위
-            if want - need < int(H * 0.05):                  # 위에 자리가 없다
-                want = min(head_top - int(H * 0.02), H)      # → 자막 아래·얼굴 위
+            need = name_h
+            want = head_top - int(H * 0.018)                 # 인물 머리 바로 위
+            if want - need < sb[3] + int(H * 0.012):         # 자막 그늘과 닿으면
+                want = sb[3] + int(H * 0.012) + need         #   그늘 바로 아래로
             if want - need >= int(H * 0.04) and want <= H:
                 moved = G.render_gfx({**spec, "_bottom": int(want)}, W, H)
                 if moved is not None:
@@ -620,7 +592,15 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
     # 대본이 flashback_label 을 채워야 나온다(없으면 조용히 건너뛴다).
     when = (cut.get("flashback_label") or "").strip()
     if when and cut.get("flashback"):
-        gfx_layer = G.draw_time_caption(gfx_layer, when)
+        # ⚠️ 자막이 위로 올라온 컷에서는 시점 자막 기본 자리(H의 30%)와 겹친다.
+        #    실측: A1-01 에서 '정임 씨는 40년을…' 이 시점 자막을 덮었다.
+        #    그럴 때는 시점 자막을 **자막 그늘 위**로 올린다.
+        cy = None
+        if sub_top_over is not None:
+            sb = sub_layer.getbbox()
+            if sb:
+                cy = max(int(H * 0.09), sb[1] - int(H * 0.055))
+        gfx_layer = G.draw_time_caption(gfx_layer, when, cy=cy)
     return move, gfx_layer, sub_layer
 
 

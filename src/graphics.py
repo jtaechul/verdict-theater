@@ -474,7 +474,7 @@ def draw_top_line(img, text):
     return Image.alpha_composite(img.convert("RGBA"), _lift(layer, radius=round(u * 0.011)))
 
 
-def draw_time_caption(img, text):
+def draw_time_caption(img, text, cy=None):
     """회상으로 들어갈 때 화면 가운데 잠깐 뜨는 시점 자막 — '십수 년 전'.
 
     색만 세피아로 바뀌면 시청자는 '화면이 이상해졌다' 로 본다.
@@ -492,7 +492,11 @@ def draw_time_caption(img, text):
     # ⚠️ 0.40 은 인물 얼굴 높이다. 실제 컷아웃을 넣어 보니 '사십 년 전' 이
     #    어머니 이마를 가로질렀다. 인물 머리 **위쪽**으로 올린다.
     #    (넓은 정보 카드는 0.175~0.235 에 있고, 시점 자막과 같은 컷에 나오지 않는다.)
-    cx, cy = W // 2, round(H * (0.30 if H > W else 0.27))
+    # cy 를 받으면 그 자리에 놓는다 — 세로 쇼츠에서 자막이 올라오면
+    # 기본 자리(H의 30%)와 겹친다. 실측: A1-01 에서 자막이 시점 자막을 덮었다.
+    cx = W // 2
+    if cy is None:
+        cy = round(H * (0.30 if H > W else 0.27))
     half = max(tw // 2 + round(u * 0.055), round(u * 0.13))
     lw = max(2, round(u * 0.0025))
     gap = round(u * 0.030)
