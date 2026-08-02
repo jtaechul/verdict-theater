@@ -333,6 +333,8 @@ def main():
     ap.add_argument("script")
     ap.add_argument("--out", default="build/voice")
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--only", default="",
+                    help="이 컷들만 만든다(쉼표로 구분). 시연 영상 만들 때 쓴다")
     ap.add_argument("--silent", action="store_true", help="모델을 부르지 않고 무음만 만든다")
     ap.add_argument("--shorts", action="store_true",
                     help="쇼츠 대본({대본}.shorts.json)의 나레이션을 만든다")
@@ -362,6 +364,10 @@ def main():
         print(f"쇼츠 대본의 나레이션 {len(cuts)}컷을 만든다")
     else:
         cuts = [c for a in doc["acts"] for c in a["cuts"]]
+    if args.only:
+        want = {s.strip() for s in args.only.split(",") if s.strip()}
+        cuts = [c for c in cuts if c.get("id") in want]
+        print(f"고른 {len(cuts)}컷만 만든다 (--only)")
     if args.limit:
         cuts = cuts[:args.limit]
         print(f"앞 {len(cuts)}컷만 만든다 (--limit {args.limit})")

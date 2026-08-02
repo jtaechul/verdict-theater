@@ -391,25 +391,81 @@ TARGET_DB = {
     "sfx": -22.0,       # 목소리(-16)보다 6 dB 아래 — 또렷이 들리되 말을 덮지 않는다
     "amb": -36.0,       # 20 dB 아래 — 공간이 느껴지는 정도
     "bgm": -30.0,       # 14 dB 아래 — 말 밑에 깔리는 정도
+    "tr": -20.0,        # 전환음 — 4 dB 아래. 말이 아직 시작 전이라 조금 더 커도 된다
 }
 _db_cache = {}
 
 
-def mean_db(path):
-    """파일의 평균 음량(dB). 한 번만 재고 기억해 둔다."""
-    key = str(path)
+def mean_db(path, ss=0.0, t=0.0):
+    """파일(또는 그 일부)의 평균 음량(dB). 한 번만 재고 기억해 둔다.
+
+    `ss`·`t` 를 주면 그 구간만 잰다. 전환음은 파일 전체가 아니라 잘라 쓰는 구간의
+    크기를 맞춰야 하기 때문이다 — 앞뒤 여백까지 넣어 재면 실제보다 작게 나온다."""
+    key = (str(path), round(ss, 3), round(t, 3))
     if key not in _db_cache:
-        r = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", key,
-                            "-af", "volumedetect", "-f", "null", "-"],
-                           capture_output=True, text=True)
+        cmd = ["ffmpeg", "-hide_banner", "-nostats"]
+        if ss:
+            cmd += ["-ss", f"{ss:.3f}"]
+        if t:
+            cmd += ["-t", f"{t:.3f}"]
+        r = subprocess.run(cmd + ["-i", str(path), "-af", "volumedetect",
+                                  "-f", "null", "-"], capture_output=True, text=True)
         m = re.search(r"mean_volume:\s*(-?[\d.]+) dB", r.stderr)
         _db_cache[key] = float(m.group(1)) if m else -30.0
     return _db_cache[key]
 
 
-def gain_db(path, kind):
+def gain_db(path, kind, ss=0.0, t=0.0):
     """이 파일을 목표 크기로 맞추는 데 필요한 dB. 지나친 증폭은 막는다."""
-    return max(-24.0, min(24.0, TARGET_DB[kind] - mean_db(path)))
+    return max(-24.0, min(24.0, TARGET_DB[kind] - mean_db(path, ss, t)))
+
+
+# ── 전환음 ───────────────────────────────────────────────
+# 화면만 바뀌어서는 부족하다. 50~60대 시청자는 **소리가 나야** 장면이 넘어간 것을 알아챈다.
+# 올려주신 음원 4종을 전환 종류에 맞춰 건다. 각 음원의 봉우리 위치를 실측해 잘라 쓴다.
+#   tr_act        0.5초에 타격(-6 dB) 뒤 긴 여운   → 막이 열릴 때
+#   tr_flash_out  0.5초에 타격 뒤 빠른 감쇠         → 현재로 돌아올 때
+#   tr_flash_in   1.5~2.0초에 정점까지 **차오름**   → 회상으로 들어갈 때
+#   tr_twist      0.25~2.0초 지속                  → 반전이 드러나는 컷
+# ⭐ tr_flash_in 만 다르게 쓴다. 차오르는 소리를 도착한 뒤에 틀면 앞뒤가 뒤집힌다.
+#    **앞 컷 끝**에 걸어 정점이 경계(흰 플래시)에 딱 맞게 하고, 도착한 컷에는 여운만 남긴다.
+TR_TAIL = 0.35                          # 전환음 끝을 이만큼 부드럽게 내린다
+TR_IN = {                               # 도착한 컷 머리에 건다: (파일, 잘라낼 시작, 길이)
+    ("black", ACT_IN): ("tr_act", 0.30, 2.60),
+    ("white", FLASH_OUT): ("tr_flash_out", 0.30, 1.70),
+}
+TR_PRE = ("tr_flash_in", 0.20, 1.90)    # 회상 직전 — 앞 컷 끝에서 차오른다
+TR_LAND = ("tr_flash_in", 2.10, 2.20)   # 회상에 도착한 뒤 남는 여운
+TR_TWIST = ("tr_twist", 0.15, 2.60)     # 반전 컷 — 전환이 따로 없을 때만
+
+
+def transition_sounds(cuts, durs):
+    """컷마다 깔 전환음 목록. → [[(경로, 잘라낼 시작, 길이, 지연초), …], …]
+
+    배경만 바뀌는 짧은 암전(0.18초)에는 소리를 넣지 않는다. 42번이나 되기 때문에
+    다 넣으면 영상 내내 '슉슉' 소리만 난다."""
+    out = [[] for _ in cuts]
+    for i, (cut, (t_in, _)) in enumerate(zip(cuts, transitions(cuts))):
+        spec = TR_IN.get(t_in)
+        if spec:
+            p = audio_path("sfx", spec[0])
+            if p:
+                out[i].append((p, spec[1], spec[2], 0.0))
+        elif t_in == ("white", FLASH_IN):
+            name, ss, ln = TR_PRE
+            p = audio_path("sfx", name)
+            if p and i:
+                # 앞 컷이 짧으면 **뒤쪽(정점)을 남기고** 앞을 잘라낸다.
+                ln_ = min(ln, durs[i - 1])
+                out[i - 1].append((p, ss + (ln - ln_), ln_, durs[i - 1] - ln_))
+            lp = audio_path("sfx", TR_LAND[0])
+            if lp:
+                out[i].append((lp, TR_LAND[1], TR_LAND[2], 0.0))
+        elif cut.get("tag") == "twist":
+            p = audio_path("sfx", TR_TWIST[0])
+            if p:
+                out[i].append((p, TR_TWIST[1], TR_TWIST[2], 0.0))
+    return out
 
 
 # ── 소리 ────────────────────────────────────────────────
@@ -419,6 +475,7 @@ def build_audio(doc, durs, workdir, narration_dir=None):
     ⚠️ **무음 구간을 만들지 않는다.** 완전한 무음은 '죽은 소리'로 들려 이탈을 부른다.
     앰비언스가 없으면 아주 작은 방 소리를 합성해서라도 깔아둔다."""
     cuts = [c for a in doc["acts"] for c in a["cuts"]]
+    trs = transition_sounds(cuts, durs)
     parts = []
 
     for i, (cut, dur) in enumerate(zip(cuts, durs)):
@@ -461,11 +518,29 @@ def build_audio(doc, durs, workdir, narration_dir=None):
                            f"volume={gain_db(sfx, 'sfx'):.1f}dB[a{mixn}]")
             mixn += 1
 
+        # 전환음. 지연 없이 컷 머리에 붙인다 — 화면이 열리는 순간과 같이 나야 한다.
+        # (나레이션은 250ms 뒤에 시작하므로 말과 겹치지 않는다.)
+        for p, ss, ln, delay in trs[i]:
+            ln = min(ln, max(0.10, dur - delay))
+            inputs += ["-ss", f"{ss:.3f}", "-t", f"{ln:.3f}", "-i", str(p)]
+            f = (f"[{mixn}:a]volume={gain_db(p, 'tr', ss, ln):.1f}dB,"
+                 f"afade=t=out:st={max(0.0, ln - TR_TAIL):.3f}:d={min(TR_TAIL, ln):.3f}")
+            if delay > 0.001:
+                f += f",adelay={int(delay * 1000)}|{int(delay * 1000)}"
+            filters.append(f + f"[a{mixn}]")
+            mixn += 1
+
         # 조각 양 끝에 8ms 페이드. 파형이 0 에서 시작해 0 으로 끝나야 이음매가 조용하다.
         fade = min(0.008, dur / 4)
         mix = "".join(f"[a{k}]" for k in range(mixn))
+        # ⚠️ `normalize=0` 이 꼭 필요하다. amix 는 기본으로 **입력 개수만큼 나눈다.**
+        #    실측: 같은 소리를 입력 1개→4개로 늘리면 -33 → -45 dB 로 줄었다.
+        #    그래서 예전에는 효과음이 있는 컷에서만 목소리가 3.5 dB 작아졌고,
+        #    전환음까지 넣으면 막이 바뀔 때마다 목소리가 6 dB 씩 꺼지게 된다.
+        #    이제 크기는 위에서 dB 로 직접 정하고, 봉우리만 리미터로 눌러 준다.
         fc = (";".join(filters) +
-              f";{mix}amix=inputs={mixn}:duration=first:dropout_transition=0,"
+              f";{mix}amix=inputs={mixn}:duration=first:dropout_transition=0:normalize=0,"
+              f"volume=-3dB,alimiter=limit=-1.0dB:level=disabled,"
               f"apad,atrim=0:{dur:.3f},"
               f"afade=t=in:st=0:d={fade:.4f},"
               f"afade=t=out:st={max(0.0, dur - fade):.4f}:d={fade:.4f}[out]")
@@ -519,21 +594,21 @@ def loudnorm_af(path):
                         "-f", "null", "-"], capture_output=True, text=True)
     m = re.search(r"\{[^{}]*input_i[^{}]*\}", r.stderr, re.S)
     if not m:
-        return f"alimiter=limit={ceiling}dB"
+        return f"alimiter=limit={ceiling}dB:level=disabled"
     try:
         d = json.loads(m.group(0))
         measured = float(d["input_i"])
     except Exception:
-        return f"alimiter=limit={ceiling}dB"
+        return f"alimiter=limit={ceiling}dB:level=disabled"
 
     if measured < -45.0:
         # 사실상 무음이다. 여기서 이득을 걸면 잡음만 키운다.
         print(f"    ⚠️ 소리가 거의 없다({measured:.1f} LUFS). 음량을 올리지 않는다 —"
               f" 나레이션이 제대로 만들어졌는지 확인이 필요하다.")
-        return f"alimiter=limit={ceiling}dB"
+        return f"alimiter=limit={ceiling}dB:level=disabled"
 
     gain = max(-12.0, min(18.0, target - measured))
-    return f"volume={gain:.2f}dB,alimiter=limit={ceiling}dB"
+    return f"volume={gain:.2f}dB,alimiter=limit={ceiling}dB:level=disabled"
 
 
 def build_music(doc, durs, workdir):
