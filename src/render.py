@@ -215,6 +215,31 @@ WIDE_GFX = {"amount", "timeline", "family"}
 # 옆으로 넓은 컷아웃은 이 제한이 없으면 좌우가 잘린다.
 CHAR_MAX_W = 0.86
 
+# ⭐ 화면 아래 경계에 닿는 인물은 **경계에서 그냥 잘라낸다.**
+#    예전에는 화면 아래에서 6% 띄우고 흰 테두리를 사방에 두른 채로 세웠다.
+#    그러면 인물이 벽에 붙인 스티커처럼 떠 보인다 — 방송 화면은 그렇게 하지 않는다.
+#    인물의 실제 아래끝을 화면 바닥에 딱 맞추면, 흰 테두리와 그림자는 화면 밖으로
+#    밀려나 보이지 않고 인물은 화면에 심긴 것처럼 보인다.
+#
+#    ⚠️ 얼마나 내릴지는 **그림마다 재서 정한다.** 처음에 4.5% 로 어림잡았더니
+#       흰 테두리가 화면 바닥에서 20픽셀 위에 그대로 남았다(실측).
+#       그림마다 테두리·그림자가 차지하는 몫이 달라 고정값으로는 맞출 수 없다.
+#    아래 10% 안에 들어오는 인물만 이렇게 처리한다. 화면 가운데 떠 있는 인물은
+#    원래대로 테두리를 두른 채 둔다 — 거기서 자르면 잘린 티만 난다.
+CHAR_BOTTOM_ZONE = 0.10
+CHAR_OUTLINE = 0.030        # 흰 테두리 두께(인물 키 대비). assets_gen 의 2.8% + 여유
+
+
+def bottom_bleed(sprite):
+    """이 그림을 화면 바닥에 맞추려면 얼마나 더 내려야 하는지(픽셀).
+
+    ① PNG 맨 아래에는 반투명한 그림자만 있는 띠가 있다 — 그만큼 내린다
+    ② 그 위의 흰 테두리도 화면 밖으로 밀어낸다
+    남는 것은 인물의 진짜 아래끝이고, 그것이 화면 바닥에 딱 걸린다."""
+    box = sprite.getchannel("A").point(lambda v: 255 if v > 200 else 0).getbbox()
+    solid_bottom = box[3] if box else sprite.height
+    return (sprite.height - solid_bottom) + round(sprite.height * CHAR_OUTLINE) + 2
+
 # 확대 연출(zoompan)이 매 프레임 가장자리를 깎아내는 최대 비율.
 # ZOOM_MAX 까지 확대되므로 각 변에서 (1 - 1/ZOOM_MAX)/2 만큼 사라진다.
 ZOOM_START = 1.0            # 첫 프레임은 **자르지 않는다** (예전 1.02 는 시작부터 2% 손실)
@@ -280,10 +305,23 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
             slot = {"left": 0.27, "center": 0.5, "right": 0.73}.get(c.get("pos", "center"), 0.5)
             x = int(W * slot) - sprite.width // 2
             y = H - sprite.height - int(H * 0.06)
+
+        # 화면 아래 경계에 닿는 인물은 경계에 딱 맞춰 세우고 잘라낸다 (위 CHAR_BLEED 참조)
+        if y + sprite.height >= H - int(H * CHAR_BOTTOM_ZONE):
+            y = H - sprite.height + bottom_bleed(sprite)
+
         # 확대 연출이 가장자리를 깎아내므로, 그 몫만큼 안쪽에 세운다
         edge = int(min(W, H) * ZOOM_EDGE)
         x = min(max(x, edge - sprite.width // 4), W - sprite.width - edge + sprite.width // 4)
-        move.alpha_composite(sprite, (max(0, x), max(0, y)))
+
+        # 화면 밖으로 나가는 부분은 여기서 잘라낸다.
+        # alpha_composite 는 대상 밖으로 나가는 그림을 받지 않으므로 미리 맞춰 준다.
+        sx, sy = max(0, x), max(0, y)
+        cx0, cy0 = sx - x, sy - y
+        cx1 = min(sprite.width, cx0 + (W - sx))
+        cy1 = min(sprite.height, cy0 + (H - sy))
+        if cx1 > cx0 and cy1 > cy0:
+            move.alpha_composite(sprite.crop((cx0, cy0, cx1, cy1)), (sx, sy))
 
     # 그래픽과 자막을 **따로** 돌려준다.
     # 둘을 한 장으로 합치면 함께 움직일 수밖에 없는데, 자막은 절대 움직이면 안 되고

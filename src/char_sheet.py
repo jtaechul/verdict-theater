@@ -309,11 +309,35 @@ def find_figures(sheet, cols, rows, scale=8, want=0):
                 for q in parts:
                     pts = [i for i in b[5]
                            if q[0] <= (i % small.width) < q[2]]
-                    if len(pts) > (cell_w * cell_w * 0.04):
-                        xs = [i % small.width for i in pts]
-                        ys = [i // small.width for i in pts]
-                        fixed.append((min(xs), min(ys), max(xs) + 1, max(ys) + 1,
-                                      len(pts), pts))
+                    if len(pts) <= (cell_w * cell_w * 0.04):
+                        continue
+                    # ⚠️ 세로로 자른 자리에는 **옆 사람의 어깨 조각이 조금 남는다.**
+                    #    (실측: 김성일 컷아웃 오른쪽에 흰 갈고리 모양이 붙어 나왔다.)
+                    #    잘라낸 조각 안에서 다시 덩어리를 찾아 **가장 큰 것만** 남긴다.
+                    #    남의 조각은 본인과 떨어져 있으므로 이걸로 깨끗이 사라진다.
+                    buf = bytearray(small.width * small.height)
+                    for i in pts:
+                        buf[i] = 255
+                    sub = Image.frombytes("L", small.size, bytes(buf))
+                    # 옆 사람과 **어깨가 맞닿아** 조각이 붙어 있는 경우가 있다.
+                    # 얇게 깎으면 그 다리가 끊어져 남의 조각이 따로 떨어진다.
+                    # 가장 큰 것만 남기고 다시 부풀려 원래 두께로 돌린다.
+                    thin = sub.filter(ImageFilter.MinFilter(7))
+                    inner = components(thin, min_area=1)
+                    if inner:
+                        big = max(inner, key=lambda c: c[4])
+                        buf2 = bytearray(small.width * small.height)
+                        for i in big[5]:
+                            buf2[i] = 255
+                        grown = Image.frombytes("L", small.size, bytes(buf2)) \
+                            .filter(ImageFilter.MaxFilter(9))
+                        gp = grown.load()
+                        pts = [i for i in pts
+                               if gp[i % small.width, i // small.width] > 128]
+                    xs = [i % small.width for i in pts]
+                    ys = [i // small.width for i in pts]
+                    fixed.append((min(xs), min(ys), max(xs) + 1, max(ys) + 1,
+                                  len(pts), pts))
             lines[li] = fixed
         n = sum(len(l) for l in lines)
         print(f"    (붙어 있던 줄을 쪼개 {n}개로 늘렸다)")
