@@ -30,7 +30,14 @@
             "text": "김성일 · 50세 · 장남"
           },
           "sfx": "sfx_paper",
-          "amb": "amb_funeral"
+          "amb": "amb_funeral",
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "bust_anger",
+              "pos": "center"
+            }
+          ]
         },
         {
           "id": "S1-02",
@@ -140,7 +147,14 @@
             "text": "이정임 · 68세 · 어머니"
           },
           "sfx": null,
-          "amb": "amb_home"
+          "amb": "amb_home",
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_sad",
+              "pos": "center"
+            }
+          ]
         },
         {
           "id": "S1-07",
@@ -270,7 +284,14 @@
             "text": "김성일 · 50세 · 장남"
           },
           "sfx": null,
-          "amb": "amb_street"
+          "amb": "amb_street",
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "bust_anger",
+              "pos": "center"
+            }
+          ]
         },
         {
           "id": "S2-02",
@@ -402,7 +423,14 @@
             "text": "이정임 · 68세 · 어머니"
           },
           "sfx": null,
-          "amb": "amb_home"
+          "amb": "amb_home",
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_sad",
+              "pos": "center"
+            }
+          ]
         },
         {
           "id": "S2-08",
@@ -576,7 +604,14 @@
             "text": "김성일 · 50세 · 장남"
           },
           "sfx": null,
-          "amb": "amb_funeral"
+          "amb": "amb_funeral",
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "bust_anger",
+              "pos": "center"
+            }
+          ]
         },
         {
           "id": "S3-05",
@@ -598,7 +633,14 @@
             "text": "이정임 · 68세 · 어머니"
           },
           "sfx": null,
-          "amb": "amb_home"
+          "amb": "amb_home",
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_sad",
+              "pos": "center"
+            }
+          ]
         },
         {
           "id": "S3-06",

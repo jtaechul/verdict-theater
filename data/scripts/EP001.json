@@ -84,6 +84,23 @@
       "nametag": "김성훈 · 48세 · 차남",
       "voice": "v_M50B",
       "note": "어머니를 모시며 형의 만행에 분노하는 동생"
+    },
+    {
+      "code": "M70",
+      "name": "김재복",
+      "age": 72,
+      "role": "아버지",
+      "nametag": "김재복 · 72세 · 아버지",
+      "voice": "v_M70",
+      "note": "장남에게 평생 퍼주고 세상을 떠난 아버지 (회상에만 등장)"
+    },
+    {
+      "code": "JUDGE",
+      "name": "재판장",
+      "role": "재판장",
+      "nametag": "재판장",
+      "voice": "v_JUDGE",
+      "note": "판사 실명은 쓰지 않는다 — 언제나 '재판장'"
     }
   ],
   "acts": [
@@ -179,16 +196,16 @@
           "flashback": false,
           "chars": [
             {
-              "code": "F50A",
-              "pose": "full_stand",
-              "pos": "left",
-              "scale": 0.9
-            },
-            {
               "code": "M50B",
               "pose": "full_stand",
               "pos": "right",
               "scale": 1.0
+            },
+            {
+              "code": "F50A",
+              "pose": "full_stand",
+              "pos": "left",
+              "scale": 0.9
             }
           ],
           "speaker": "narrator",
@@ -281,21 +298,24 @@
           "flashback": true,
           "chars": [
             {
-              "code": "F50A",
-              "pose": "bust_sad",
+              "code": "M70",
+              "pose": "bust_neutral",
               "pos": "left",
               "scale": 0.95
             },
             {
-              "code": "M70",
-              "pose": "bust_neutral",
+              "code": "F50A",
+              "pose": "bust_sad",
               "pos": "left",
               "scale": 0.95
             }
           ],
           "speaker": "narrator",
           "text": "그 세월이 고스란히 묻어있는 곳. 아버지가 남긴 유일한 흔적이었습니다.",
-          "gfx": null,
+          "gfx": {
+            "type": "nametag",
+            "text": "김재복 · 72세 · 아버지"
+          },
           "sfx": null,
           "amb": "amb_home",
           "blackout": false

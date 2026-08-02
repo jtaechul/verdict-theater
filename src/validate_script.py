@@ -145,6 +145,53 @@ def check_assets(doc, mf, r):
         r.ok("모든 에셋 코드가 manifest.json 목록 안에 있다")
 
 
+def check_speaker(doc, r):
+    """**말하는 사람과 화면에 있는 사람이 맞는지** 본다.
+
+    왜 필요한가
+        · 대사인데 화면에 그 인물이 없으면 목소리만 허공에서 들린다.
+          실측: 쇼츠 6컷이 `chars: []` 인 채로 장남·어머니 목소리가 나왔다.
+        · 서로 다른 인물에게 같은 코드를 주면 화면에 **같은 얼굴**로 나온다.
+          실제로 아버지와 차남이 같은 얼굴로 나왔다."""
+    bad = 0
+    name2code = {}
+    for ch in (doc.get("characters") or []):
+        nm = str(ch.get("nametag") or ch.get("name") or "").split("·")[0].strip()
+        if nm:
+            name2code[nm] = ch.get("code")
+    for act, cut in all_cuts(doc):
+        cid = cut.get("id", "?")
+        sp = cut.get("speaker") or "narrator"
+        text = (cut.get("text") or "").strip()
+        on = [c.get("code") for c in (cut.get("chars") or [])]
+
+        if text and sp != "narrator":
+            want = sp[2:] if sp.startswith("v_") else sp
+            if not on:
+                r.error(cid, f"{sp} 가 말하는데 화면에 아무도 없다 — 목소리만 뜬다")
+                bad += 1
+            elif want not in on:
+                r.error(cid, f"{sp} 가 말하는데 화면에는 {on} 뿐이다")
+                bad += 1
+
+        # 이름표에 적힌 사람이 **화면에 실제로 있는지** 본다.
+        # ⚠️ chars[0] 이 그 사람일 거라고 짐작하면 안 된다. 두 명이 선 컷에서
+        #    순서가 반대면 멀쩡한 대본을 오류로 잡는다(실제로 그랬다).
+        #    배역 명단(characters)에서 이름 → 코드를 정확히 찾는다.
+        g = cut.get("gfx") or {}
+        if g.get("type") == "nametag":
+            who = str(g.get("text", "")).split("·")[0].strip()
+            code = name2code.get(who)
+            if who and code is None:
+                r.error(cid, f"이름표 '{who}' 가 배역 명단에 없다")
+                bad += 1
+            elif code and code not in on:
+                r.error(cid, f"이름표는 '{who}'({code}) 인데 화면에는 {on} 뿐이다")
+                bad += 1
+    if bad == 0:
+        r.ok("말하는 사람과 화면 인물이 모두 맞는다")
+
+
 def check_timing(doc, r):
     cuts = list(all_cuts(doc))
     n = len(cuts)
@@ -510,6 +557,7 @@ def validate_doc(doc, mf=None, with_shorts=True):
     r = Report()
     check_structure(doc, r)
     check_assets(doc, mf, r)
+    check_speaker(doc, r)
     check_timing(doc, r)
     check_text(doc, r)
     check_hook(doc, r)
