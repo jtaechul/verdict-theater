@@ -10,16 +10,22 @@
     둘러지면서 좌·우·아래에 검은 줄이 박힌 채로 남았다.
     앞서 `blackbar.py` 는 **아래쪽 가로 띠**만 처리했다 — 좌우 세로 선은 그대로였다.
 
-옷의 검정과 어떻게 구분하나 — 실측
-    칸 선  : (0, 0, 0)          완전한 검정
-    남색 양복: (30, 31, 49)
-    검은 법복: (39, 35, 42)
-    그래서 **가장 밝은 채널이 22 미만**인 것만 선으로 본다. 옷은 절대 걸리지 않는다.
+칸 선은 이렇게 생겼다 — 실측 (이정임 face_sad, 흰 테두리를 벗긴 뒤 아래에서 위로)
+    아래 11겹 : 폭 7px 짜리 **가시** (순검정)
+    그 위 1겹 : 밝은 실오라기
+    그 위  6겹 : **폭 710/841 이 98~100% 순검정** ← 이것이 칸 선
+    그 아래    : 옷 (순검정 비율 0.8~8%)
 
-어떻게 벗기나
-    가장자리에서 한 겹씩 안으로 들어가며, 그 겹이 완전한 검정이면 지운다.
-    검정이 아닌 겹(피부·셔츠·머리카락)을 만나면 즉시 멈춘다.
-    그래서 선의 두께만큼만 정확히 벗겨진다.
+어떻게 가르나 — **밝기만으로는 절대 못 가른다**
+    니트·법복도 골 사이가 새까맣다. 밝기로만 지우면 옷이 갉아먹힌다(실제로 겪었다).
+    그래서 **모양**으로 가른다 — ① 실루엣을 가로지를 것(가장 넓은 줄의 절반 이상)
+    ② 그 줄의 95% 이상이 순검정일 것 ③ 얇을 것.
+    구두(폭의 28%)·법복(가장 밝은 채널 42 라 순검정 아님)은 걸리지 않는다.
+    바깥 12겹은 가시라 폭이 1% 뿐 — **건너뛰고 안쪽까지 봐야** 진짜 선을 만난다.
+
+두 번 돌려도 안전하다
+    지우고 나면 그 자리에 옷(순검정 아님)이 드러나므로 다음 번에는 아무것도 안 지운다.
+    실측으로 확인했다 — 두 번째 실행 0장.
 
 머리 잘림
     시트를 자를 때 얼굴 컷의 정수리가 평평하게 잘린 것이 있다. 실루엣 맨 윗줄이
@@ -38,10 +44,11 @@ import assets_gen as A  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 CHAR = ROOT / "assets" / "char"
 
-PURE = 22        # 가장 밝은 채널이 이 값 미만이면 '칸 선' (실측: 옷은 30~49)
-MAX_PEEL = 12    # 바깥에서 이만큼까지만 본다. 선은 몇 픽셀이고, 여기까지는
-                 # 설령 머리카락을 조금 깎아도 화면에서 보이지 않는다.
-BLACK_LINE = 0.60  # 그 줄의 불투명한 점 중 완전한 검정이 이 비율 이상이면 선이다
+PURE = 22          # 가장 밝은 채널이 이 값 미만이면 순검정 (실측: 옷은 30~49)
+MAX_PEEL = 30      # 바깥에서 이만큼까지만 본다 (실측: 가시 11겹 + 선 6겹이라 12로는 모자랐다)
+LINE_SPAN = 0.50   # 실루엣에서 가장 넓은 줄의 이 비율은 넘어야 '가로지르는 선'
+LINE_BLACK = 0.95  # 그 줄의 이 비율 이상이 순검정이어야 선 (실측: 선 98~100% · 옷 0.8~8%)
+LINE_MAX_THICK = 12  # 이보다 두꺼우면 선이 아니라 검은 옷이다
 FLAT_TOP = 0.34  # 맨 윗줄 폭이 최대 폭의 이 비율을 넘으면 머리가 잘린 것
 CHIN_AT = 0.55   # 되살린 얼굴에서 턱이 와야 할 높이 비율 (아래에 가슴이 남도록)
 
@@ -69,13 +76,31 @@ def strip_outline(sp, white_at=238):
 
 
 def peel_black(sp):
-    """가장자리에 **직선으로 늘어선** 검은 줄만 벗긴다. → (바뀐 그림, 벗긴 줄 수)
+    """실루엣에 붙어 있는 **얇은 검정**(칸 선)만 지운다. → (바뀐 그림, 지운 점 수)
 
-    ⚠️ 처음에는 '가장자리에서 완전한 검정을 한 겹씩 벗기기' 로 했는데,
-       검은 곱슬머리가 함께 벗겨져 30겹까지 파고들었다(실측).
-       칸 선은 **바깥 끝에서 곧게 뻗은 한 줄**이고 머리카락은 들쭉날쭉하다.
-       그래서 바깥 줄(열·행) 단위로만 보고, 그 줄의 불투명한 점 대부분이
-       완전한 검정이면서 길게 이어질 때만 지운다."""
+    ⚠️ 앞서 두 가지 방법이 다 틀렸다.
+       ① 가장자리에서 완전검정을 한 겹씩 벗기기 → 검은 곱슬머리를 30겹까지 먹었다.
+       ② 바깥 줄(행·열) 단위로 보고 12줄까지만 벗기기 → **거의 다 놓쳤다.**
+          실측: 이정임 7장에 아직 선이 남아 있었다. 칸 선은 반듯한 가로줄이 아니라
+          실루엣 밖으로 삐져나온 **얇은 조각**이라(폭 1px 짜리 가시도 있었다)
+          '한 줄이 통째로 검다' 는 가정 자체가 틀렸다.
+
+    ⚠️ ③ '검정을 타고 흘러 들어가며 얇은 것만 지우기' 도 해 봤는데 **옷을 갉아먹었다.**
+          니트·법복의 골 사이가 28 보다 어두워서 실오라기처럼 이어졌기 때문이다.
+          밝기만으로는 칸 선과 검은 옷을 절대 가를 수 없다.
+
+    지금 방식 — 실측한 **모양**으로 가른다.
+       테두리를 벗기고 아래에서 위로 재어 보니 이렇게 생겼다(이정임 face_sad):
+         아래 11겹 : 폭 7px 짜리 **가시** (순검정)
+         그 위 1겹 : 밝은 실오라기
+         그 위 6겹 : **폭 710/841 이 98~100% 순검정** ← 이게 칸 선이다
+         그 아래   : 옷 (순검정 비율 0.8~8%)
+       그래서 조건은 셋이다 — ① 실루엣 폭을 가로지를 것(가장 넓은 줄의 절반 이상)
+       ② 그 줄의 95% 이상이 순검정일 것 ③ 얇을 것.
+       구두·법복은 ①이나 ②에서 걸러진다 (실측: 뒷모습 구두는 폭의 28%,
+       법복은 가장 밝은 채널이 42 라 순검정이 아니다).
+       ⚠️ 가시 때문에 바깥 12겹은 폭이 1% 밖에 안 된다 — 거기서 멈추면 안 되고
+          **건너뛰고 계속 안쪽을 봐야** 진짜 선을 만난다. 예전 코드가 여기서 멈췄다."""
     r, g, b = sp.convert("RGB").split()
     pure = ImageChops.multiply(
         ImageChops.multiply(r.point(lambda v: 255 if v < PURE else 0),
@@ -85,35 +110,36 @@ def peel_black(sp):
     W, H = sp.size
     ap, pp = a.load(), pure.load()
 
-    def line(kind, i):
-        """그 줄의 (불투명 점 수, 그중 완전한 검정 수, 이어진 길이)"""
-        rng = range(H) if kind in ("L", "R") else range(W)
-        on = [j for j in rng if (ap[i, j] if kind in ("L", "R") else ap[j, i])]
-        if not on:
-            return 0, 0, 0
-        blk = sum(1 for j in on
-                  if (pp[i, j] if kind in ("L", "R") else pp[j, i]))
-        return len(on), blk, on[-1] - on[0] + 1
+    def scan(kind, i):
+        """그 줄의 (불투명 점 수, 그중 순검정 수)"""
+        if kind in ("L", "R"):
+            on = [j for j in range(H) if ap[i, j]]
+            return len(on), sum(1 for j in on if pp[i, j])
+        on = [j for j in range(W) if ap[j, i]]
+        return len(on), sum(1 for j in on if pp[j, i])
 
-    # ⚠️ '길게 이어져야 한다' 는 조건을 넣었다가 판사 왼쪽 선을 놓쳤다.
-    #    실측: x=2~3 열이 94% 완전검정인데 길이는 그림 높이의 13%뿐이었다
-    #    (얼굴 컷이라 법복이 아래 일부에만 있기 때문). 길이 조건을 뺀다.
-    #    대신 바깥 12픽셀까지만 본다 — 그 안쪽은 사람이다.
-    cut = {"L": 0, "R": 0, "T": 0, "B": 0}
+    cut = {}
     for kind, idx in (("L", range(W)), ("R", range(W - 1, -1, -1)),
                       ("T", range(H)), ("B", range(H - 1, -1, -1))):
-        deepest = 0
+        n_lines = W if kind in ("L", "R") else H
+        widest = max([scan(kind, i)[0]
+                      for i in range(0, n_lines, max(1, n_lines // 60))] + [1])
+        deepest, run = 0, 0
         for k, i in enumerate(idx):
             if k >= MAX_PEEL:
                 break
-            n_on, n_blk, _ = line(kind, i)
-            if n_on == 0:
-                continue
-            if n_blk >= n_on * BLACK_LINE:
-                deepest = k + 1          # 여기까지(포함) 지운다
+            n_on, n_blk = scan(kind, i)
+            if n_on < widest * LINE_SPAN:
+                run = 0
+                continue                      # 가시·자투리 — 건너뛰고 계속 안쪽을 본다
+            if n_blk >= n_on * LINE_BLACK:
+                run += 1
+                if run <= LINE_MAX_THICK:     # 두꺼우면 선이 아니라 검은 옷이다
+                    deepest = k + 1
+            else:
+                run = 0
         cut[kind] = deepest
 
-    total = sum(1 for v in cut.values() if v)
     if not any(cut.values()):
         return sp, 0
     keep = Image.new("L", sp.size, 0)
@@ -180,19 +206,6 @@ def face_from_bust(code, mood):
     return None, None
 
 
-def _log_path():
-    """이미 손댄 그림의 지문(해시) 목록. 같은 그림을 두 번 벗기지 않기 위한 기록.
-
-    파일 이름이 아니라 **내용의 지문**을 적는다. 그래야 그림을 새로 만들어
-    끼워 넣으면(같은 이름·다른 내용) 다시 한 번 검사한다."""
-    return CHAR / ".cleaned.txt"
-
-
-def _fp(path):
-    import hashlib
-    return hashlib.sha1(path.read_bytes()).hexdigest()[:16]
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry", action="store_true")
@@ -204,18 +217,9 @@ def main():
         want = {s.strip() for s in args.only.split(",") if s.strip()}
         files = [f for f in files if f.parent.name in want]
 
-    done = _log_path()
-    seen = set(done.read_text(encoding="utf-8").split()) if done.exists() else set()
-
     n_peel = n_head = 0
     for f in files:
         code, pose = f.parent.name, f.stem
-        # ⚠️ 이 도구는 **두 번 돌리면 안 된다.** 한 번 벗긴 뒤 흰 테두리를 다시 두르면,
-        #    다음 번에는 그 아래에서 새로 드러난 어두운 옷깃을 또 '선' 으로 보고 벗긴다.
-        #    실측: 이미 깨끗한 판사 상반신에서 7겹, 김성일 전신 2장에서 12겹을 더 먹었다.
-        #    그래서 한 번 손댄 파일은 기록해 두고 다시 건드리지 않는다.
-        if _fp(f) in seen:
-            continue
         plain = strip_outline(Image.open(f).convert("RGBA"))
         plain, peeled = peel_black(plain)
 
@@ -227,16 +231,12 @@ def main():
                 print(f"  {code}/{pose:14} 머리 잘림 → bust_{used} 에서 얼굴을 오려 대신함")
                 n_head += 1
         if peeled:
-            print(f"  {code}/{pose:14} 검은 선 {peeled}겹 벗김")
+            print(f"  {code}/{pose:14} 검은 선 {peeled:,}점 지움")
             n_peel += 1
         if not peeled and rebuilt is None:
             continue
         if not args.dry:
             A.white_outline(rebuilt if rebuilt is not None else plain).save(f)
-            seen.add(_fp(f))
-
-    if not args.dry:
-        done.write_text("\n".join(sorted(seen)) + "\n", encoding="utf-8")
 
     print(f"\n검은 선 {n_peel}장 · 머리 되살림 {n_head}장 (전체 {len(files)}장)"
           + ("   [--dry — 저장하지 않았다]" if args.dry else ""))
