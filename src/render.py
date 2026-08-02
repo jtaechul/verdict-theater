@@ -37,7 +37,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import graphics as G  # noqa: E402
@@ -215,6 +215,39 @@ WIDE_GFX = {"amount", "timeline", "family"}
 # 옆으로 넓은 컷아웃은 이 제한이 없으면 좌우가 잘린다.
 CHAR_MAX_W = 0.86
 
+# ── 무대와 자막 띠 ───────────────────────────────────────
+# ⭐ 화면을 둘로 나눈다.
+#      **무대** — 배경과 인물이 사는 곳
+#      **띠**   — 그 아래 검은 칸. 자막만 들어간다
+#
+#    왜 이렇게 바꾸나 (손님 제안)
+#      예전에는 자막이 화면 위에 떠 있어서 얼굴을 덮었다. 그것을 피하려고
+#      인물 크기와 자막 위치를 컷마다 계산하는 장치가 붙어 있었고,
+#      그래도 136컷에서 자막이 얼굴을 가로질렀다.
+#      띠를 두면 **그 문제가 통째로 사라진다.** 자막 자리가 고정이라 계산이 없다.
+#      덤으로 인물의 잘린 아래 단면이 띠에 가려져 깔끔해진다.
+#
+#    세로 쇼츠는 무대를 **정방형**으로 만든다(손님 지정).
+#    1080 폭이면 무대도 1080 높이 — 남는 아래 35%가 통째로 자막 띠가 된다.
+# ⭐ 말하는 사람 강조 (손님 제안 5번)
+#    "이야기하는 사람이 더 커진다" 는 아이디어를 **뒤집어** 넣는다.
+#    말하는 사람을 키우면 인물이 이미 무대를 꽉 채우고 있어 어깨가 잘린다 —
+#    손님이 세 번 하지 말라고 한 바로 그 일이다.
+#    그래서 **듣는 사람을 줄이고 어둡게** 한다. 말하는 사람은 손대지 않는다.
+#    결과는 같으면서(말하는 쪽이 앞으로 나와 보인다) 잘릴 위험이 0 이다.
+LISTEN_SCALE = 0.88         # 듣는 사람 크기
+LISTEN_DIM = 0.72           # 듣는 사람 밝기
+BAND = 0.22                 # 가로 본편 — 아래 띠 높이(화면 대비)
+TOP_STRIP_V = 0.09          # 세로 쇼츠 — 위쪽 띠(상단 문구 자리)
+
+
+def stage_box(W, H, vertical):
+    """배경·인물이 사는 영역 (위, 아래). 그 밖은 검은 띠."""
+    if vertical:
+        y0 = int(H * TOP_STRIP_V)
+        return y0, min(H, y0 + W)          # 정방형 무대
+    return 0, int(H * (1 - BAND))
+
 # ⭐ 화면 아래 경계에 닿는 인물은 **경계에서 그냥 잘라낸다.**
 #    예전에는 화면 아래에서 6% 띄우고 흰 테두리를 사방에 두른 채로 세웠다.
 #    그러면 인물이 벽에 붙인 스티커처럼 떠 보인다 — 방송 화면은 그렇게 하지 않는다.
@@ -320,7 +353,7 @@ ZOOM_EDGE = (1 - 1 / ZOOM_MAX) / 2
 PLACE_LOG = None            # 검수 스크립트가 [] 를 넣으면 인물 배치 결과를 여기 쌓는다
 
 
-def _solve_char(c, cut, W, H, vertical, gfx_bottom):
+def _solve_char(c, cut, W, H, vertical, gfx_bottom, banded=False):
     """인물 한 명의 **크기**를 푼다. (자리는 build_plates 가 바닥에 붙인다)
 
     ⭐ 상반신·얼굴은 크기와 자리를 **함께** 풀어야 한다.
@@ -334,7 +367,9 @@ def _solve_char(c, cut, W, H, vertical, gfx_bottom):
     sprite = Image.open(cp).convert("RGBA") if cp else placeholder_char(ccode, pose, H)
 
     scale = float(c.get("scale", 1.0)) * (1.35 if vertical else 1.0)
-    target_h = int(H * 0.72 * scale)
+    # ⭐ 띠가 있으면 무대가 짧아진 대신 **자막을 피할 필요가 없다.**
+    #    예전 비율(0.72)을 그대로 쓰면 무대 위가 휑하게 빈다 — 더 채운다.
+    target_h = int(H * (0.90 if banded else 0.72) * scale)
     room = H
     if gfx_bottom:
         # 카드 아래로 인물을 내린다. 정보 카드가 뜬 순간에는 카드가 주인공이고
@@ -353,10 +388,15 @@ def _solve_char(c, cut, W, H, vertical, gfx_bottom):
     if kind in ("bust", "face"):
         f_bleed = bottom_bleed(sprite) / h0        # 아래쪽 흰 테두리가 차지하는 몫
         body = max(0.05, 1.0 - f_bleed)            # 그림에서 '인물 아래끝' 까지의 비율
-        sub_top = G.subtitle_top(cut.get("text", ""), W, H, vertical)
-        m = int(H * 0.015)
-
-        lo = (H - sub_top + m) / max(0.02, body - f_chin)   # 자막이 얼굴을 덮지 않을 최소 키
+        # ⭐ 자막 띠가 있으면 자막이 무대 밖에 있다 — 얼굴을 덮을 수가 없다.
+        #    그래서 '자막을 피할 최소 키' 라는 굴레가 통째로 사라진다.
+        #    (이 굴레 때문에 인물이 필요 이상으로 커지고 컷마다 크기가 튀었다.)
+        if banded:
+            lo = 0.0
+        else:
+            sub_top = G.subtitle_top(cut.get("text", ""), W, H, vertical)
+            m = int(H * 0.015)
+            lo = (H - sub_top + m) / max(0.02, body - f_chin)
         # 머리가 화면 위로 안 나갈 최대 키.
         # ⚠️ 예전엔 `(H-edge)/body` 였다 — 위쪽 빈 띠를 인물 키로 세는 바람에
         #    화면 위가 100px 넘게 비어 있는데도 더 못 키우고, 그래서 자막이
@@ -375,8 +415,8 @@ def _solve_char(c, cut, W, H, vertical, gfx_bottom):
             "head_frac": head_frac, "head_px": target_h * head_frac}
 
 
-def build_plates(cut, W, H, vertical=False, top_line=""):
-    """움직이는 겹(배경+인물)과 고정된 겹(그래픽+자막)을 만든다."""
+def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False):
+    """**무대 한 판**을 그린다. banded 면 자막은 그리지 않는다(띠가 맡는다)."""
     code = cut.get("bg", "")
     p = bg_path(code)
     if p:
@@ -405,7 +445,7 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
     #    가슴이 얼마나 담겼느냐에 따라 크게 달라진다. 그대로 두면 한 화면에서
     #    한 사람은 크고 한 사람은 절반만 하게 나온다(실측: 판사 옆 김성일).
     #    그래서 먼저 각자 풀고, **가장 큰 머리에 나머지를 맞춘다.**
-    plan = [_solve_char(c, cut, W, H, vertical, gfx_bottom) for c in chars]
+    plan = [_solve_char(c, cut, W, H, vertical, gfx_bottom, banded) for c in chars]
     heads = [p["head_px"] for p in plan if p["head_px"] > 0]
     if len(heads) > 1:
         want_head = max(heads)
@@ -419,9 +459,21 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
             grow = min(p["cap"], want_head / p["head_frac"])
             p["target_h"] = int(max(p["target_h"], grow))
 
-    for c, p in zip(chars, plan):
+    # ⭐ 말하는 사람과 듣는 사람을 가른다.
+    #    듣는 사람을 **먼저** 그려 뒤로 보내고, 조금 줄이고 어둡게 한다.
+    sp = cut.get("speaker") or "narrator"
+    talker = sp[2:] if sp.startswith("v_") else (sp if sp != "narrator" else None)
+    on = [x.get("code") for x in chars]
+    solo = (talker in on) and len(chars) > 1        # 화면에 말하는 사람이 있고 둘 이상일 때만
+    order = sorted(range(len(chars)),
+                   key=lambda i: chars[i].get("code") == talker)   # 듣는 사람 먼저
+    for i in order:
+        c, p = chars[i], plan[i]
         ccode, pose, sprite = p["code"], p["pose"], p["sprite"]
         target_h, kind, edge = p["target_h"], p["kind"], p["edge"]
+        listening = solo and ccode != talker
+        if listening:
+            target_h = max(1, int(target_h * LISTEN_SCALE))
 
         ratio = target_h / sprite.height
         sw = max(1, int(sprite.width * ratio))
@@ -505,6 +557,13 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
                 chin=chin_y(sprite),
                 sub_top=G.subtitle_top(cut.get("text", ""), W, H, vertical)))
 
+        if listening:
+            # 밝기만 낮춘다. 알파는 그대로 둬야 흰 테두리가 반투명해지지 않는다.
+            rgb = ImageEnhance.Brightness(sprite.convert("RGB")).enhance(LISTEN_DIM)
+            dim = rgb.convert("RGBA")
+            dim.putalpha(sprite.getchannel("A"))
+            sprite = dim
+
         sx, sy = max(0, x), max(0, y)
         cx0, cy0 = sx - x, sy - y
         cx1 = min(sprite.width, cx0 + (W - sx))
@@ -539,7 +598,7 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
     #    자막은 읽는 글이라 인물과 떨어져도 상관없다. 그래서 자막이 위로 간다.
     name_h = (G.nametag_block(spec.get("text", ""), W, H)
               if vertical and spec.get("type") == "nametag" else 0)
-    if vertical and text and face_bottom > G.subtitle_top(text, W, H, True):
+    if (not banded) and vertical and text and face_bottom > G.subtitle_top(text, W, H, True):
         block = G.subtitle_block(text, W, H, True)
         floor_ = (gfx_bottom + int(H * 0.03)) if gfx_bottom else int(H * 0.06)
         # ⚠️ 위쪽 한 줄(쇼츠 상단 문구)도 바닥선에 넣는다.
@@ -561,9 +620,10 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
         for r in PLACE_LOG:
             r.setdefault("sub_moved", sub_top_over)
 
-    sub_layer = G.draw_subtitle(Image.new("RGBA", (W, H), (0, 0, 0, 0)),
-                                text, vertical=vertical, top=sub_top_over,
-                                speaker=cut.get("speaker"))
+    sub_layer = (Image.new("RGBA", (W, H), (0, 0, 0, 0)) if banded
+                 else G.draw_subtitle(Image.new("RGBA", (W, H), (0, 0, 0, 0)),
+                                      text, vertical=vertical, top=sub_top_over,
+                                      speaker=cut.get("speaker")))
 
     # ⭐ 이름표를 **인물 머리 바로 위**로 내린다 (자막과 인물 사이).
     #    기본 자리(세로 화면 높이의 50%)에 두면 올라온 자막과 정면으로 겹쳐
@@ -604,6 +664,45 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
     return move, gfx_layer, sub_layer
 
 
+def build_plates(cut, W, H, vertical=False, top_line=""):
+    """한 컷의 세 겹을 만든다 — 움직이는 겹(배경+인물) · 고정된 겹(그래픽) · 자막.
+
+    ⭐ 무대와 자막 띠를 나눈다(stage_box 참고).
+       무대는 **자기 크기의 캔버스**에 그대로 그린 뒤 통째로 붙인다.
+       그래야 '아래끝을 바닥에 붙인다', '좌우·머리 위를 자르지 않는다',
+       '같은 컷의 머리 크기를 맞춘다' 같은 규칙을 하나도 안 고치고 그대로 쓴다.
+
+    ⚠️ 검은 띠는 **고정된 겹**에 그린다. 움직이는 겹에 그리면 확대 연출(zoompan)에
+       같이 확대돼 띠가 흔들리고, 무대 내용이 띠 위로 삐져나온다."""
+    y0, y1 = stage_box(W, H, vertical)
+    if (y0, y1) == (0, H):
+        return _stage_plates(cut, W, H, vertical, top_line)      # 띠 없음(예전 방식)
+
+    sh = y1 - y0
+    s_move, s_gfx, _ = _stage_plates(cut, W, sh, vertical, top_line="", banded=True)
+
+    move = Image.new("RGBA", (W, H), (0, 0, 0, 255))
+    move.paste(s_move.convert("RGBA"), (0, y0))
+
+    gfx = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    gfx.paste(s_gfx, (0, y0))
+    # 띠를 덮는다. 확대 연출이 무대를 넘치게 해도 여기서 잘린다.
+    bar = ImageDraw.Draw(gfx)
+    if y0 > 0:
+        bar.rectangle((0, 0, W, y0 - 1), fill=(0, 0, 0, 255))
+    if y1 < H:
+        bar.rectangle((0, y1, W, H), fill=(0, 0, 0, 255))
+    # 무대와 띠 사이에 가는 금선 한 줄 — 경계가 흐리멍덩하지 않게
+    bar.rectangle((0, y1, W, y1 + max(2, round(H * 0.0022))), fill=(168, 46, 42, 255))
+    if top_line:
+        gfx = G.draw_top_line(gfx, top_line, box=(0, 0, W, y0))
+
+    sub = G.draw_subtitle(Image.new("RGBA", (W, H), (0, 0, 0, 0)),
+                          cut.get("text", ""), vertical=vertical,
+                          speaker=cut.get("speaker"), band=(y1, H))
+    return move, gfx, sub
+
+
 # ── 컷 하나를 영상 조각으로 ──────────────────────────────
 # ── 화면 전환 ────────────────────────────────────────────
 # 예전에는 113개 컷 경계가 **전부 하드컷**이었다. 배경이 42번 바뀌고 회상을 8번
@@ -612,11 +711,15 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
 #
 # 값이 거의 안 드는 방식(암전·플래시)만 쓴다. 진짜 크로스 디졸브는 두 장면을 겹쳐
 # 다시 인코딩해야 해서 렌더링이 1.5~2배로 늘어난다 — 얻는 것에 비해 너무 비싸다.
-ACT_OUT = 0.60      # 막이 끝날 때 검게 잠긴다
-ACT_IN = 0.50       # 다음 막이 검은 화면에서 열린다
-FLASH_IN = 0.45     # 회상으로 들어갈 때 — 흰 빛에서 열린다
-FLASH_OUT = 0.35    # 현재로 돌아올 때 — 흰 빛에서 짧게
-SCENE_DIP = 0.18    # 배경이 바뀔 때 — 아주 짧게 어두웠다 열린다
+# ⚠️ 손님 요청으로 **전부 길게** 잡았다("조금 더 전환 효과가 있었으면").
+#    예전 값은 절반이라 눈에 잘 안 띄었다 — 특히 배경 교체(0.18초)는
+#    깜빡임 수준이라 장면이 바뀐 줄 모르고 지나갔다.
+#    다만 무한정 늘리면 12분에서 전환에만 40초 넘게 쓴다. 아래가 상한이다.
+ACT_OUT = 0.80      # 막이 끝날 때 검게 잠긴다
+ACT_IN = 0.70       # 다음 막이 검은 화면에서 열린다
+FLASH_IN = 0.60     # 회상으로 들어갈 때 — 흰 빛에서 열린다
+FLASH_OUT = 0.50    # 현재로 돌아올 때 — 흰 빛에서 짧게
+SCENE_DIP = 0.28    # 배경이 바뀔 때 — 짧게 어두웠다 열린다
 
 
 def transitions(cuts):

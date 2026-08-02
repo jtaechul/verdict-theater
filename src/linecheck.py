@@ -153,3 +153,31 @@ def main():
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+# ── 인물 그림 비율·여백 검사 (손님 요청 3번) ──────────────
+# ⚠️ 이번 회차 그림에는 적용하지 않는다. **다음 회차부터** 새로 만든 그림이
+#    규격에 맞는지 여기서 걸러낸다.
+#    실측: 지금 그림은 가로÷세로 0.82~1.06(거의 정사각). 그래서 화면에서 키우면
+#    가로가 먼저 꽉 차 세로로 못 커지고, 세로 쇼츠에서 인물이 48% 에 그친다.
+SHAPE_MAX_RATIO = 0.80      # 가로÷세로. 이보다 넓으면 '너무 납작하다'
+SHAPE_SIDE_PAD = 0.04       # 어깨 양옆에 최소 이만큼 여백(그림 폭 대비)
+
+
+def shape_check(path):
+    """그림 하나의 비율과 좌우 여백을 잰다. → (가로세로비, 왼여백, 오른여백)"""
+    from PIL import Image
+    im = Image.open(path).convert("RGBA")
+    a = im.getchannel("A")
+    box = a.getbbox()
+    if not box:
+        return None
+    im = im.crop(box)
+    W, H = im.size
+    px = im.load()
+    left = right = W
+    for y in range(0, H, max(1, H // 60)):
+        row = [x for x in range(W) if px[x, y][3] > 40]
+        if row:
+            left = min(left, row[0])
+            right = min(right, W - 1 - row[-1])
+    return W / H, left / W, right / W

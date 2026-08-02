@@ -368,7 +368,7 @@ def subtitle_top(text, W, H, vertical=False):
             - subtitle_block(text, W, H, vertical))
 
 
-def draw_subtitle(img, text, vertical=False, top=None, speaker=None):
+def draw_subtitle(img, text, vertical=False, top=None, speaker=None, band=None):
     """화면 아래쪽 자막. (`top` 을 주면 그 자리에 띠 모양으로 올려 그린다)
 
     고친 것 (예전이 왜 구렸나)
@@ -402,7 +402,17 @@ def draw_subtitle(img, text, vertical=False, top=None, speaker=None):
 
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
 
-    if top is None:
+    if band is not None:
+        # ⭐ 검은 띠 안에 앉힌다. 띠가 이미 새까매서 **그늘을 깔지 않는다** —
+        #    깔면 띠 안에 또 다른 검정이 생겨 얼룩처럼 보인다.
+        b0, b1 = band
+        if vertical:
+            # 세로 쇼츠는 아래쪽에 유튜브 UI(계정·설명·버튼)가 겹친다.
+            # 띠 안에서도 **위쪽에** 앉혀 UI 를 피한다.
+            top = b0 + int((b1 - b0) * 0.13)
+        else:
+            top = b0 + max(0, ((b1 - b0) - block_h) // 2)
+    elif top is None:
         # 보통은 화면 아래. 그늘은 글자 블록보다 넉넉히 위에서 시작해 바닥까지 간다
         top = H - int(H * (SUB_BOTTOM_V if vertical else SUB_BOTTOM)) - block_h
         scrim_top = max(0, top - int(size * 1.7))
@@ -445,7 +455,7 @@ def draw_subtitle(img, text, vertical=False, top=None, speaker=None):
     return Image.alpha_composite(img.convert("RGBA"), layer)
 
 
-def draw_top_line(img, text):
+def draw_top_line(img, text, box=None):
     """쇼츠 첫 화면 위쪽에 얹는 한 줄. 상황을 1초 안에 알려준다.
 
     넘기다 걸린 사람은 **누가 누군지 전혀 모른다.** 본편을 봐야 알 수 있는 대명사 대신
@@ -464,7 +474,13 @@ def draw_top_line(img, text):
 
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
-    y = round(H * 0.085)
+    if box:
+        # 위쪽 검은 띠 안에 세로 가운데로 앉힌다(무대가 정방형인 쇼츠).
+        b0, b1 = box[1], box[3]
+        block = len(lines) * lh + (len(lines) - 1) * gap + round(u * 0.030)
+        y = b0 + max(round(u * 0.012), ((b1 - b0) - block) // 2)
+    else:
+        y = round(H * 0.085)
     d.line([(W // 2 - round(u * 0.050), y), (W // 2 + round(u * 0.050), y)],
            fill=ACCENT, width=max(3, round(u * 0.005)))
     y += round(u * 0.030)

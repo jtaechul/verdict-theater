@@ -71,12 +71,24 @@ FRAME = {
     #    그 그림을 화면 바닥에 붙이면 턱이 바닥 근처라 자막이 얼굴을 덮고, 얼굴을 올리면
     #    몸통이 바닥에서 뜬다. 둘 다 사용자가 하지 말라고 한 것이다.
     #    → 턱 아래에 가슴이 충분히 있어야 한다. **턱을 그림 한가운데**로 못 박는다.
-    "face": "a close-up — the WHOLE head including all the hair is visible with clear "
-            "empty space above it, and the neck, shoulders and upper chest fill the "
-            "lower half of the picture, cut off at mid-chest. The chin sits near the "
-            "vertical middle of the picture, never near the bottom edge",
-    "bust": "a head-and-shoulders shot cut off at the waist, the whole head visible "
-            "with empty space above it and the chin near the vertical middle",
+    # ⭐ 손님 요청(3번) — 어깨가 잘리지 않고, 상체가 화면 위쪽까지 올라오게.
+    #    실측으로 찾은 원인: 기존 그림이 거의 **정사각형**(가로÷세로 0.82~1.06)이었다.
+    #    어깨 너비와 그림 높이가 비슷해서, 화면에서 키우면 세로로 커지기 전에
+    #    **가로가 먼저 꽉 차** 더 못 커진다. 세로 쇼츠에서는 인물이 화면 높이의
+    #    48%밖에 안 됐다 — 상체가 중간 위로 못 올라오는 이유가 이것이다.
+    #    → 허리까지 넣어 **세로로 긴 비율**로 만들고, 어깨 양옆에 여백을 둔다.
+    #      그러면 가로에 안 막혀 더 커지고, 어깨가 잘릴 일도 없다.
+    "face": "a chest-up portrait in PORTRAIT orientation, clearly taller than it is "
+            "wide. The WHOLE head including all the hair is visible with clear empty "
+            "space above it. BOTH shoulders are fully inside the frame with a wide "
+            "empty margin on the left and right of the shoulders — the shoulders must "
+            "never touch the left or right edge. The body is cut off just below the "
+            "chest. The chin sits near the vertical middle of the picture",
+    "bust": "a waist-up shot in PORTRAIT orientation, clearly taller than it is wide. "
+            "The whole head is visible with empty space above it, BOTH shoulders fully "
+            "inside the frame with a wide empty margin left and right of the shoulders "
+            "so they never touch the edges, and the body cut off at the waist. "
+            "The chin sits near the vertical middle",
     "full": "the entire body from head to feet, standing in the middle of the cell",
 }
 MOOD = {
