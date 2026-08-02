@@ -163,7 +163,12 @@ def check_speaker(doc, r):
         cid = cut.get("id", "?")
         sp = cut.get("speaker") or "narrator"
         text = (cut.get("text") or "").strip()
+        # 본편은 chars(복수), 쇼츠는 char(단수)를 쓴다. 둘 다 읽는다 —
+        # 한쪽만 보다가 멀쩡한 쇼츠 6컷을 '화면이 비었다' 고 잘못 잡은 적이 있다.
+        one = cut.get("char")
         on = [c.get("code") for c in (cut.get("chars") or [])]
+        if isinstance(one, dict) and one.get("code"):
+            on.append(one["code"])
 
         if text and sp != "narrator":
             want = sp[2:] if sp.startswith("v_") else sp
@@ -560,7 +565,16 @@ def check_shorts(doc, r):
         miss = [c for c in s.get("cut_ids", []) if c not in ids]
         if miss:
             r.error(f"쇼츠{no}", f"존재하지 않는 컷을 가리킨다: {miss}")
-        body = sum(by_sec.get(c, 0) for c in s.get("cut_ids", []))
+        # ⚠️ 쇼츠 형식이 두 가지다.
+        #    옛 형식 — 본편 컷을 가리키기만 한다(cut_ids)
+        #    지금 형식 — **쇼츠 전용 컷**을 자기가 들고 있다(cuts). 대사를 짧게 다시 쓰므로
+        #               본편 컷 길이로 재면 안 된다. 실제로 그래서 합이 0 으로 나와
+        #               멀쩡한 쇼츠 3편이 매번 경고로 찍혔다.
+        own = s.get("cuts") or []
+        if own:
+            body = sum(float(c.get("sec", 0)) for c in own) - 6.0
+        else:
+            body = sum(by_sec.get(c, 0) for c in s.get("cut_ids", []))
         est = float(s.get("est_sec", 0))
         if not (SHORT_MIN <= est <= SHORT_MAX):
             r.error(f"쇼츠{no}", f"est_sec {est}초 — {SHORT_MIN}~{SHORT_MAX}초여야 한다")
