@@ -332,6 +332,19 @@ def _scrim(W, scrim_h, top_alpha=0, bottom_alpha=228, gamma=1.25):
     return shade
 
 
+def subtitle_top(text, W, H, vertical=False):
+    """자막 글자가 시작되는 y. **인물 얼굴이 이 아래로 내려오면 안 된다.**
+
+    렌더러가 인물을 앉히기 전에 이 값을 물어보고, 얼굴이 여기에 닿으면 위로 올린다."""
+    if not text:
+        return H
+    lines, size = fit_subtitle(text, W, H, vertical)
+    lh = line_h(font(size))
+    gap = int(size * 0.16)
+    block = len(lines) * lh + (len(lines) - 1) * gap
+    return H - int(H * (SUB_BOTTOM_V if vertical else SUB_BOTTOM)) - block
+
+
 def draw_subtitle(img, text, vertical=False):
     """화면 아래쪽 자막.
 

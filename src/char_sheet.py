@@ -480,6 +480,73 @@ def slice_sheet(sheet_path, code, poses, cols, rows, outdir=None, save_debug=Non
     return made, missing
 
 
+# ── 한 장에 한 포즈 (격자 없이) ───────────────────────────
+# ⚠️ 격자 시트는 **자르다가 망가진다.** 실측: M50A 12포즈 중 7장이 못 쓰게 나왔다 —
+#    상반신 4장에 칸 테두리 기둥이 붙었고, 전신 3장은 자르는 선이 목을 지나
+#    **머리가 통째로 사라졌다.** 자를 것이 없으면 잘못 자를 일도 없다.
+#    같은 사람인지는 **이미 잘 나온 그림을 참고로 함께 넣어** 지킨다.
+def gen_one(key, code, pose, ref_path, out_path):
+    import base64
+    ref = base64.b64encode(Path(ref_path).read_bytes()).decode()
+    look = LOOK.get(code, "a middle-aged Korean person")
+    prompt = (
+        f"Draw THE SAME PERSON as in the reference image — identical face, hair, age and build.\n"
+        f"He is {look}.\n\n"
+        f"New picture: {cell_text(pose)}\n\n"
+        f"RULES:\n"
+        f"  - Background is FLAT PURE CHROMA GREEN #00B140 everywhere, nothing else.\n"
+        f"  - ONE person only. Centred, complete, with clear green margin on all four sides.\n"
+        f"  - The whole head including all hair must be inside the frame. Never crop the head.\n"
+        f"  - No text, no numbers, no borders, no frame lines, no grid, no labels, no watermark.\n"
+        f"  - No shadow on the background, no floor, no props except a plain chair when sitting.\n"
+        f"  - Photorealistic, even studio lighting. Navy on top, black below.\n")
+    body = {"contents": [{"role": "user", "parts": [
+        {"text": prompt},
+        {"inlineData": {"mimeType": "image/png", "data": ref}}]}],
+        "generationConfig": {"responseModalities": ["IMAGE"],
+                             "imageConfig": {"aspectRatio": "3:4" if pose.startswith("full") else "1:1",
+                                             "imageSize": "2K"}}}
+    res = _post(f"{BASE}/models/{MODEL}:generateContent?key={key}", body, timeout=600)
+    parts = (res.get("candidates") or [{}])[0].get("content", {}).get("parts", [])
+    blob = next((p["inlineData"] for p in parts if "inlineData" in p), None)
+    if not blob:
+        raise RuntimeError(f"이미지가 오지 않았다: {json.dumps(res)[:300]}")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_bytes(base64.b64decode(blob["data"]))
+    return out_path
+
+
+def cut_one(raw_path, code, pose, outdir=None):
+    """한 장짜리 그림에서 인물만 오려 흰 테두리를 두른다."""
+    img = Image.open(raw_path).convert("RGBA")
+    keyed = fast_key(img)
+    small = keyed.getchannel("A").resize((img.width // 8, img.height // 8), Image.BILINEAR)
+    small = small.point(lambda v: 255 if v > 96 else 0)
+    small = small.filter(ImageFilter.MinFilter(5)).filter(ImageFilter.MaxFilter(5))
+    comps = components(small, min_area=(small.width * small.height) // 200)
+    if not comps:
+        return None
+    big = max(comps, key=lambda c: c[4])
+    buf = bytearray(small.width * small.height)
+    for i in big[5]:
+        buf[i] = 255
+    m = Image.frombytes("L", small.size, bytes(buf)).filter(ImageFilter.MaxFilter(5))
+    keyed.putalpha(ImageChops.multiply(keyed.getchannel("A"),
+                                       m.resize(keyed.size, Image.BILINEAR)))
+    cut = A.trim_alpha(keyed)
+    if cut is None:
+        return None
+    if cut.height > WORK_H:
+        k = WORK_H / cut.height
+        cut = cut.resize((max(1, round(cut.width * k)), WORK_H), Image.LANCZOS)
+    cut = A.white_outline(cut)
+    outdir = Path(outdir or (ROOT / "assets" / "char" / code))
+    outdir.mkdir(parents=True, exist_ok=True)
+    p = outdir / f"{pose}.png"
+    cut.save(p)
+    return p
+
+
 def poses_from_script(path):
     """대본(본편+쇼츠)이 실제로 쓰는 인물·포즈만 모은다. 안 쓰는 것은 만들지 않는다."""
     doc = json.loads(Path(path).read_text(encoding="utf-8"))
@@ -510,6 +577,9 @@ def main():
     ap.add_argument("--sheets", default="build/sheets", help="시트 원본을 둘 곳")
     ap.add_argument("--slice", nargs=2, metavar=("SHEET", "CODE"),
                     help="이미 있는 시트를 자르기만 한다")
+    ap.add_argument("--redo", default="",
+                    help="망가진 포즈만 한 장씩 다시 만든다. 예: M50A:bust_cold,full_stand")
+    ap.add_argument("--ref", default="", help="--redo 가 참고할 그림 (기본: 그 인물의 face_ 하나)")
     args = ap.parse_args()
 
     need = poses_from_script(args.script)
@@ -521,6 +591,36 @@ def main():
                     save_debug=Path(args.sheets) / f"{code}_check.jpg",
                     key=os.environ.get("GEMINI_API_KEY", "").strip())
         return 0
+
+    if args.redo:
+        key = os.environ.get("GEMINI_API_KEY", "").strip()
+        if not key:
+            print("GEMINI_API_KEY 가 없다.", file=sys.stderr)
+            return 2
+        code, _, plist = args.redo.partition(":")
+        poses = [p.strip() for p in plist.split(",") if p.strip()]
+        ref = Path(args.ref) if args.ref else None
+        if not ref:
+            cands = sorted((ROOT / "assets" / "char" / code).glob("face_*.png")) or \
+                    sorted((ROOT / "assets" / "char" / code).glob("*.png"))
+            ref = cands[0] if cands else None
+        if not ref:
+            print(f"{code}: 참고할 그림이 없다", file=sys.stderr)
+            return 2
+        print(f"{code} — 참고 그림 {ref.name} · 다시 만들 포즈 {len(poses)}개")
+        raw_dir = Path(args.sheets) / "single"
+        ok = 0
+        for pose in poses:
+            print(f"  {pose} …")
+            try:
+                rp = gen_one(key, code, pose, ref, raw_dir / f"{code}_{pose}.png")
+                out = cut_one(rp, code, pose)
+                print(f"    → {out.name if out else '오려내기 실패'}")
+                ok += bool(out)
+            except Exception as e:
+                print(f"    실패: {e}")
+        print(f"\n{ok}/{len(poses)}개 다시 만들었다")
+        return 0 if ok == len(poses) else 1
 
     only = {c.strip() for c in args.only.split(",") if c.strip()}
     if only:

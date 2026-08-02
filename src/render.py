@@ -269,6 +269,29 @@ def head_center(sprite):
     return (top + bot) // 2
 
 
+def chin_y(sprite):
+    """컷아웃에서 **턱 아래끝**이 위에서 몇 픽셀인지. 자막이 여기 위로 오면 안 된다."""
+    a = sprite.getchannel("A").point(lambda v: 255 if v > 200 else 0)
+    W, H = a.size
+    px = a.load()
+    step = max(1, W // 160)
+    widths = []
+    for y in range(H):
+        xs = [x for x in range(0, W, step) if px[x, y]]
+        widths.append((max(xs) - min(xs) + step) if xs else 0)
+    solid = [y for y, w in enumerate(widths) if w > W * 0.04]
+    if not solid:
+        return H
+    top, bot = solid[0], solid[-1]
+    n = max(4, int((bot - top) * 0.16))
+    probe = [w for w in widths[top:top + n] if w]
+    head_w = sorted(probe)[len(probe) // 2] if probe else W
+    for y in range(top + n, bot + 1):
+        if widths[y] > head_w * 1.55:
+            return y                      # 어깨가 시작되는 곳 = 턱 아래
+    return bot                            # 얼굴만 있는 그림 — 그림 아래끝이 턱이다
+
+
 def bottom_bleed(sprite):
     """이 그림을 화면 바닥에 맞추려면 얼마나 더 내려야 하는지(픽셀).
 
@@ -383,6 +406,26 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
                 y = H - sprite.height - int(H * 0.06)
             else:
                 y = round(head_y) - head_center(sprite)
+            if y + sprite.height >= H - int(H * CHAR_BOTTOM_ZONE):
+                y = H - sprite.height + bottom_bleed(sprite)
+            x = (W - sprite.width) // 2 if vertical else x
+
+        # ⭐ 자막은 **몸통만** 가린다. 얼굴은 절대 가리지 않는다.
+        #    턱 아래끝이 자막 글자 위쪽보다 아래로 내려가면 그만큼 위로 올린다.
+        #    올려서 머리가 화면 위로 나갈 상황이면 인물을 **줄여서** 맞춘다.
+        sub_top = G.subtitle_top(cut.get("text", ""), W, H, vertical)
+        for _ in range(3):
+            over = (y + chin_y(sprite)) - (sub_top - int(H * 0.015))
+            if over <= 0:
+                break
+            if y - over >= edge:
+                y -= over
+                break
+            k = max(0.55, 1.0 - over / max(1, sprite.height))
+            sprite = sprite.resize((max(1, round(sprite.width * k)),
+                                    max(1, round(sprite.height * k))), Image.LANCZOS)
+            y = (H - sprite.height - int(H * 0.06)) if kind == "full" \
+                else round(head_y) - head_center(sprite)
             if y + sprite.height >= H - int(H * CHAR_BOTTOM_ZONE):
                 y = H - sprite.height + bottom_bleed(sprite)
             x = (W - sprite.width) // 2 if vertical else x
