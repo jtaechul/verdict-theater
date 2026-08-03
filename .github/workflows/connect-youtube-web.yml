@@ -1,0 +1,81 @@
+name: 유튜브 연결 (웹 방식)
+
+# ⭐ TV 방식을 대체한다. 실측으로 확인한 두 가지 한계 때문이다.
+#    ① TV 방식은 force-ssl 권한을 아예 안 준다("Invalid device flow scope").
+#       그래서 자막 넣기와 고정 댓글 달기가 403 으로 막힌다.
+#       고정 댓글은 변호사법 방어 고지문이 들어가는 자리라 뺄 수 없다.
+#    ② TV 방식은 계정에 채널이 여러 개일 때 **기본 채널로 그냥 붙는다.**
+#       실제로 판결극장이 아니라 다른 채널로 연결됐다.
+#    웹 방식은 로그인 도중 채널 선택 화면이 뜨고, force-ssl 도 준다.
+#
+# ⚠️ 구글 클라우드에서 먼저 해야 할 것
+#    Credentials → Create OAuth client → Application type: **Web application**
+#    Authorized redirect URIs 에 정확히 이것을 추가: http://localhost:8080/
+#    나온 Client ID / Client secret 을 시크릿에 넣는다.
+#
+# 쓰는 법
+#   1) mode = 주소만들기  로 실행 → 요약 화면에 로그인 주소가 뜬다
+#   2) 그 주소를 열어 계정·채널 고르고 허용 → 흰 화면의 주소창에서 code= 뒤를 복사
+#   3) mode = 코드입력  으로 실행하면서 code 칸에 붙여넣기 → 토큰이 나온다
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: '무엇을 할까요'
+        required: true
+        default: '주소만들기'
+        type: choice
+        options:
+          - '주소만들기'
+          - '코드입력'
+      code:
+        description: "'코드입력' 일 때만. 주소창의 code= 뒤 글자"
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: connect-youtube-web
+  cancel-in-progress: false
+
+jobs:
+  connect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 로그인 주소 만들기
+        if: inputs.mode == '주소만들기'
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python3 src/yt_connect_web.py --url
+
+      - name: 코드를 토큰으로 바꾸기
+        if: inputs.mode == '코드입력'
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python3 src/yt_connect_web.py --code "${{ inputs.code }}"
+
+      # 클로드가 내려받아 손님에게 바로 건넨다 — 로그를 뒤질 필요가 없다.
+      - name: 결과를 첨부파일로 올리기
+        if: always() && hashFiles('connect_out/*') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: connect-result
+          path: connect_out/
+          retention-days: 1
