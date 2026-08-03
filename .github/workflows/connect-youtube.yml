@@ -2,15 +2,15 @@ name: 유튜브 연결하기 (최초 1회)
 
 # 유튜브 계정을 이 저장소에 연결한다. **한 번만 하면 된다.**
 #
-# 아이폰 GitHub 앱에서 쓰는 법
-#   Actions 탭 → "유튜브 연결하기 (최초 1회)" → Run workflow
-#   → 실행 화면에 주소와 8자리 코드가 뜬다 (텔레그램으로도 온다)
-#   → 폰 브라우저로 그 주소에 들어가 코드를 넣고 '허용'
-#   → 요약 화면에 나온 토큰을 시크릿에 넣으면 끝
+# ⭐ 단계를 둘로 나눈 이유 (처음엔 하나였고 그게 실패했다)
+#    '코드 받기 + 허용 기다리기' 를 한 단계에 넣었더니, 그 단계가 계속 실행 중이라
+#    ① 요약 화면이 안 뜨고(요약은 단계가 끝나야 올라간다)
+#    ② 실행이 끝나야 로그를 받을 수 있어 클로드도 코드를 못 읽었다.
+#    결국 손님이 폰에서 실행 중인 로그를 손으로 헤집어야 했다.
+#    이제 '코드 받기' 가 몇 초 만에 끝나면서 요약과 첨부파일에 코드가 올라간다.
 #
 # ⚠️ 미리 등록돼 있어야 하는 것: YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET
-#    구글 클라우드에서 만들 때 애플리케이션 유형을 **'TV 및 제한된 입력 장치'** 로 고른다.
-#    '웹 애플리케이션' 으로 만들면 이 방식이 통하지 않는다.
+#    구글 클라우드에서 만들 때 Application type 을 **TV and Limited Input devices** 로 고른다.
 
 on:
   workflow_dispatch:
@@ -35,11 +35,39 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: 유튜브 연결 (폰에서 코드 입력)
+      # 1단계 — 몇 초면 끝난다. 끝나는 즉시 요약 화면에 주소·코드가 뜬다.
+      - name: 1. 코드 받기
         env:
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
-          # 코드를 텔레그램으로도 보낸다 — 실행 화면을 지켜보지 않아도 된다.
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python3 src/yt_connect.py
+        run: python3 src/yt_connect.py --request
+
+      # 코드를 첨부파일로도 올린다 — 클로드가 이걸 내려받아 손님에게 바로 건넨다.
+      # (device_code 는 이 실행에서만 쓰이고 몇 분 뒤 만료되므로 남아도 위험하지 않다)
+      - name: 코드를 첨부파일로 올리기
+        uses: actions/upload-artifact@v4
+        with:
+          name: device-code
+          path: connect_out/device.json
+          retention-days: 1
+
+      # 2단계 — 손님이 '허용' 을 누를 때까지 기다린다.
+      - name: 2. 허용을 기다립니다 (폰에서 코드 입력)
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python3 src/yt_connect.py --poll
+
+      # 토큰도 첨부파일로 올린다 — 클로드가 읽어 손님에게 건네면 손님은 붙여넣기만 하면 된다.
+      # ⚠️ 시크릿에 넣은 뒤에는 이 실행 기록을 지우도록 요약 화면이 안내한다.
+      - name: 토큰을 첨부파일로 올리기
+        if: always() && hashFiles('connect_out/token.txt') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: refresh-token
+          path: connect_out/token.txt
+          retention-days: 1
