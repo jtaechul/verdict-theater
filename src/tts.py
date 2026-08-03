@@ -22,6 +22,7 @@
 
 import argparse
 import base64
+import hashlib
 import json
 import math
 import os
@@ -358,11 +359,18 @@ class QuotaExhausted(LLMError):
 #      → 다 만든 뒤 인물별 중앙값으로 끌어당긴다(normalize_pitch).
 # ─────────────────────────────────────────────────────────────────────
 
-def recipe(speaker, model):
-    """이 컷을 '무엇으로 만들었는지' 한 줄. 하나라도 다르면 다시 만들어야 한다."""
+def recipe(speaker, model, text=""):
+    """이 컷을 '무엇으로 만들었는지' 한 줄. 하나라도 다르면 다시 만들어야 한다.
+
+    ⚠️ **대사 자체가 들어가야 한다.**
+       예전에는 모델·목소리·배속만 적었다. 그래서 대본의 대사를 고쳐도 조리법이
+       같아 보였고, 캐시에 있던 **옛 대사 음성이 그대로 재사용**됐다.
+       화면 자막은 새 대사인데 소리는 옛 대사 — 눈과 귀가 어긋난다.
+       (워크플로가 build/voice 를 캐시로 되살리므로 실제로 일어날 수 있다.)"""
     voice = VOICE_NAME.get(speaker, "Charon")
     _, speed = VOICE_STYLE.get(speaker, VOICE_STYLE["narrator"])
-    return f"{model}|{voice}|{speed:.2f}"
+    h = hashlib.sha1((text or "").strip().encode("utf-8")).hexdigest()[:10]
+    return f"{model}|{voice}|{speed:.2f}|{h}"
 
 
 # 등장인물(대사)에 쓸 모델의 **선호 순서**. 목록 순서가 아니라 이 순서를 따른다.
@@ -428,7 +436,7 @@ def prune_stale(out, cuts, pin):
         if not p.exists():
             continue
         speaker = c.get("speaker", "narrator")
-        want = recipe(speaker, pin.get(speaker, ""))
+        want = recipe(speaker, pin.get(speaker, ""), c.get("text") or "")
         if old.get(cid) != want:
             p.unlink()
             p.with_suffix(".silent").unlink(missing_ok=True)
@@ -971,7 +979,7 @@ def main():
                              pinned=pin.get(pspeak))
         if err is None:
             print(f"  열쇠 확인: 정상 ({used})")
-            book[probe["id"]] = recipe(pspeak, used)
+            book[probe["id"]] = recipe(pspeak, used, probe.get("text") or "")
         else:
             note = quota_note(err.__cause__ if err.__cause__ is not None else err)
             print(f"  ⚠️ 열쇠 확인 실패({type(err).__name__})"
@@ -1034,7 +1042,7 @@ def main():
             ok += 1
             streak = 0
             used[_used] = used.get(_used, 0) + 1
-            book[c["id"]] = recipe(speaker, _used)
+            book[c["id"]] = recipe(speaker, _used, text)
             if _used != pin.get(speaker):
                 # 못 박은 모델이 죽어 다른 모델로 만들어졌다. 그대로 두면 이 인물
                 # 목소리가 도중에 바뀐다 — 아래에서 이 인물 컷을 전부 다시 만든다.
@@ -1074,7 +1082,8 @@ def main():
     for sp in sorted(switched):
         mine = [c for c in cuts
                 if c.get("speaker", "narrator") == sp and (c.get("text") or "").strip()]
-        stale = [c for c in mine if book.get(c["id"]) != recipe(sp, pin[sp])]
+        stale = [c for c in mine
+                 if book.get(c["id"]) != recipe(sp, pin[sp], c.get("text") or "")]
         if not stale:
             continue
         print(f"  {sp} 목소리를 {pin[sp]} 로 통일한다 — {len(stale)}컷 다시 만듦")
@@ -1089,7 +1098,7 @@ def main():
             p.with_suffix(".silent").unlink(missing_ok=True)
             err, m2 = make_one(pool, key, c["text"].strip(), sp, p, pinned=pin[sp])
             if err is None:
-                book[c["id"]] = recipe(sp, m2)
+                book[c["id"]] = recipe(sp, m2, c.get("text") or "")
                 if keep:
                     keep.unlink(missing_ok=True)
             elif keep:
@@ -1116,7 +1125,7 @@ def main():
         e, m2 = make_one(pool, key, (c.get("text") or "").strip(), sp,
                          out / f"{cid}.mp3", tries=1, pinned=pin.get(sp))
         if e is None:
-            book[cid] = recipe(sp, m2)
+            book[cid] = recipe(sp, m2, (c.get("text") or "").strip())
             return True
         return False
 

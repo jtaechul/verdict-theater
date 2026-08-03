@@ -249,6 +249,60 @@ def check_plural(doc, r):
         r.ok("여러 명을 가리키는 대사에 사람이 모두 있다")
 
 
+# 대사에 나오면 안 되는 것들 — 이번 회차 검수에서 실제로 걸린 것만 넣는다.
+#   ① 배역에 없는 사람 (조카·사위·며느리…) 이 불쑥 나오면 시청자가 멈칫한다
+#   ② 어머니가 자기 아들을 '동생' 이라 부르는 식의 **시점 어긋난 호칭**
+GHOST_PEOPLE = ("조카", "사위", "며느리", "손자", "손녀", "이모", "삼촌",
+                "고모", "매형", "처남", "올케", "형수", "제수")
+# 부모가 **자기를 형제 자리에 놓고** 말하는 경우만 잡는다.
+# ⚠️ '너희 형은 바쁘잖니' 는 어머니가 차남에게 하는 **자연스러운** 말이다.
+#    처음에 '형은' 을 통째로 막았더니 멀쩡한 대사가 걸렸다 — 규칙을 좁혔다.
+#    진짜 문제는 '나랑 동생들을 상대로' 처럼 자기와 동생을 한 묶음으로 놓는 것이다.
+WRONG_CALL = {
+    "어머니": (r"(나|저)(랑|와|하고)\s*동생", r"우리\s*동생"),
+    "아버지": (r"(나|저)(랑|와|하고)\s*동생", r"우리\s*동생"),
+}
+
+
+def check_dialogue(doc, r):
+    """대사를 사람이 읽듯 훑는다 — 없는 사람, 어긋난 호칭, 같은 말 반복.
+
+    실제로 이번 회차에서 걸린 것들
+      · '조카가 보낸 문자' — 조카는 배역에 없다. 누구인지 알 수 없다
+      · 어머니가 '나랑 동생들을 상대로' — '동생' 은 형제 기준 호칭이다
+      · 어머니와 차남이 **바로 이웃한 컷에서** 똑같이 '소송을 걸었다고?' 로 놀란다"""
+    code2role = {c.get("code"): c.get("role", "") for c in (doc.get("characters") or [])}
+    bad = 0
+    prev = None
+    for _, cut in all_cuts(doc):
+        cid = cut.get("id", "?")
+        text = (cut.get("text") or "").strip()
+        sp = cut.get("speaker") or "narrator"
+        if not text:
+            prev = None
+            continue
+        for w in GHOST_PEOPLE:
+            if w in text:
+                r.error(cid, f"배역에 없는 사람 '{w}' 이 대사에 나온다 — "
+                             "배역에 넣거나 대사를 고쳐야 한다")
+                bad += 1
+        role = code2role.get(sp[2:] if sp.startswith("v_") else sp, "")
+        for pat in WRONG_CALL.get(role, ()):
+            if re.search(pat, text):
+                r.error(cid, f"{role} 가 자기를 형제 자리에 놓고 말한다 — "
+                             "'동생' 은 형제 기준 호칭이다: 「" + text[:30] + "」")
+                bad += 1
+        # 이웃한 두 대사가 거의 같은 말인가 (핵심 낱말 겹침으로 본다)
+        if prev and sp != "narrator" and prev[1] != "narrator":
+            a = set(re.findall(r"[가-힣]{2,}", prev[2]))
+            b = set(re.findall(r"[가-힣]{2,}", text))
+            if a and b and len(a & b) / min(len(a), len(b)) >= 0.6:
+                r.warn(cid, f"바로 앞({prev[0]}) 대사와 겹친다 — 같은 말을 두 번 한다")
+        prev = (cid, sp, text)
+    if bad == 0:
+        r.ok("대사에 없는 사람·어긋난 호칭이 없다")
+
+
 def check_timing(doc, r):
     cuts = list(all_cuts(doc))
     n = len(cuts)
@@ -625,6 +679,7 @@ def validate_doc(doc, mf=None, with_shorts=True):
     check_assets(doc, mf, r)
     check_speaker(doc, r)
     check_plural(doc, r)
+    check_dialogue(doc, r)
     check_timing(doc, r)
     check_text(doc, r)
     check_hook(doc, r)
