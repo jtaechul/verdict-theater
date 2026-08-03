@@ -68,8 +68,8 @@ def access_token():
     if missing:
         raise RuntimeError(
             "유튜브 열쇠가 없다: " + ", ".join(missing) + "\n"
-            "  저장소 → Settings → Secrets and variables → Actions 에 등록하라.\n"
-            "  발급 절차는 STARTGUIDE.md 3-2 에 있다."
+            "  Actions 탭 → '유튜브 연결하기 (최초 1회)' 를 실행하면 버튼만으로 받을 수 있다.\n"
+            "  절차는 STARTGUIDE.md 3-2 에 있다."
         )
     data = urllib.parse.urlencode({
         "client_id": cid, "client_secret": sec,
