@@ -122,10 +122,15 @@ TEXT = {
     "name_sub": (0.032, 0.023),   # 이름표 — 나이·관계
     "amt_lab":  (0.040, 0.026),   # 금액이 무슨 돈인지 ('부당이득 반환 금액')
     "amt_num":  (0.155, 0.070),   # 금액 숫자
-    "tl_lab":   (0.040, 0.025),   # 연표 항목
-    "tl_when":  (0.033, 0.022),   # 연표 시점
-    "fam_name": (0.050, 0.031),   # 가족 이름
-    "fam_rel":  (0.035, 0.023),   # 가족 관계
+    # ⭐ 연표 글자를 키웠다. 손님이 화면을 확대해 보내며 "너무 작고 색도 잘 안 보인다"
+    #    고 했다. 특히 시점('장례 직후')은 항목 이름보다 더 작아서 먼저 뭉갰다.
+    #    50~60대가 휴대폰으로 보는 채널이다 — 시점은 연표의 핵심이므로 거의 같게 키운다.
+    "tl_lab":   (0.046, 0.030),   # 연표 항목
+    "tl_when":  (0.040, 0.028),   # 연표 시점
+    "fam_name": (0.050, 0.034),   # 가족 이름
+    # 관계('어머니','장남')도 연표 시점과 같은 문제였다 — 이름보다 훨씬 작아 먼저 뭉갰다.
+    # 상속 이야기에서 누가 누구인지가 곧 사건이므로 이름만큼 잘 보여야 한다.
+    "fam_rel":  (0.040, 0.028),   # 가족 관계
     "time_cap": (0.072, 0.042),   # 회상 시점 자막
     "top_line": (0.056, 0.036),   # 쇼츠 상단 한 줄
 }
@@ -757,18 +762,26 @@ def g_timeline(items, W=1920, H=1080):
     for i, it in enumerate(items):
         x = x0 + step * i if n > 1 else (x0 + x1) // 2
         last = (i == n - 1)
-        r = round(u * 0.006)
+        # 결정적인 마지막 점은 **도형으로만** 강조한다(아래 설명 참고).
+        r = round(u * (0.008 if last else 0.006))
         d.ellipse([x - r, yl - r, x + r, yl + r], fill=ACCENT if last else _pale(0.55))
         if last:
-            rr = r * 2
+            rr = round(r * 2.1)
             d.ellipse([x - rr, yl - rr, x + rr, yl + rr],
-                      outline=ACCENT, width=max(2, round(u * 0.0025)))
+                      outline=ACCENT, width=max(3, round(u * 0.0032)))
         t1 = str(it.get("label", ""))[:16]
         t2 = str(it.get("when", ""))[:14]
         _t(d, (min(max(x - text_w(t1, lab) // 2, lo), hi - text_w(t1, lab)),
                yl - round(u * 0.030) - line_h(lab)), t1, lab, fill=_pale(0.03))
+        # ⭐ 시점 글자에 빨강을 쓰지 않는다.
+        #    연표는 배경 사진 위에 바로 얹힌다. 사진 밝기는 컷마다 다른데,
+        #    진홍(168,46,42)은 **중간 회색 배경에서 대비가 2.03** 밖에 안 나온다
+        #    (읽으려면 최소 3.0). 실제로 '장례 직후' 가 거의 안 보인다는 지적을 받았다.
+        #    빨강을 밝혀 봐도 중간 회색에서는 어떤 농도도 2.1 을 못 넘는다 — 색으로는 못 푼다.
+        #    그래서 글자는 전부 흰색으로 두고, 결정적인 순간은 **빨간 점과 테두리**가 맡는다.
+        #    점은 속이 꽉 찬 도형이라 가는 획과 달리 낮은 대비에서도 잘 보인다.
         _t(d, (min(max(x - text_w(t2, whn) // 2, lo), hi - text_w(t2, whn)),
-               yl + round(u * 0.026)), t2, whn, fill=ACCENT if last else _pale(0.45))
+               yl + round(u * 0.030)), t2, whn, fill=_pale(0.03))
     return _lift(out, radius=round(u * 0.009))
 
 
