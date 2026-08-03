@@ -200,12 +200,32 @@ jobs:
               --out build/voice --shorts 2>&1 | tee -a tts.log
           fi
 
+      # ⭐ 보관할지 말지를 **여기서 눈에 보이게** 정한다.
+      #    예전에는 보관 단계의 조건 안에 hashFiles(...) 를 숨겨 놨다. 그런데 8월 2일
+      #    실행에서 음성 144컷을 다 만들고도 보관 단계가 소리 없이 건너뛰어졌고,
+      #    조건 안에서 일어난 일이라 **왜 건너뛰었는지 기록조차 남지 않았다.**
+      #    하루치 음성 한도를 통째로 버린 셈이라, 다음 날까지 다시 만들 수 없었다.
+      #    이제 개수를 세어 로그에 찍고, 그 값으로만 판단한다.
+      - name: 음성이 몇 컷 만들어졌는지 세기
+        if: always()
+        id: voicecount
+        run: |
+          N=$(find build/voice -name '*.mp3' 2>/dev/null | wc -l | tr -d ' ')
+          echo "n=$N" >> "$GITHUB_OUTPUT"
+          echo "만들어진 음성: ${N}컷"
+          if [ "$N" = "0" ]; then
+            echo "::warning::음성이 하나도 없어 보관하지 않습니다."
+          fi
+
       # 음성을 만들자마자 곧바로 보관한다. 잡이 끝날 때 저장하면, 뒤의 렌더링에서
       # 실패했을 때 방금 돈 주고 만든 음성이 통째로 날아간다 — 막으려던 바로 그 상황이다.
+      #
+      # ⚠️ 열쇠에 대본 지문이 들어간다. 대본을 고치면 열쇠가 바뀌므로 **매번 새로 보관**한다.
+      #    cache-hit 이 참일 때만 건너뛴다(그때는 이미 똑같은 것이 들어 있다).
       - name: 만든 음성 보관 (다음 실행에서 재사용)
         if: always() && inputs.voice != '무음으로 시험'
              && steps.voicecache.outputs.cache-hit != 'true'
-             && hashFiles('build/voice/**') != ''
+             && steps.voicecount.outputs.n != '0'
         uses: actions/cache/save@v4
         with:
           path: build/voice
@@ -270,6 +290,31 @@ jobs:
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
         run: |
           set -o pipefail
+          # ⭐ 열쇠가 없으면 **여기서 먼저** 알려 준다.
+          #    8월 2일 실행이 그랬다. 영상은 12분짜리까지 다 만들어졌는데
+          #    유튜브 열쇠만 없어서 빨간 X 가 떴고, 화면만 봐서는 영상이
+          #    안 만들어진 것처럼 보였다. 무엇이 되고 무엇이 안 됐는지 갈라서 적는다.
+          if [ -z "$YOUTUBE_CLIENT_ID" ] || [ -z "$YOUTUBE_CLIENT_SECRET" ] \
+             || [ -z "$YOUTUBE_REFRESH_TOKEN" ]; then
+            {
+              echo "## 영상은 다 만들어졌습니다 — 유튜브 업로드만 못 했습니다"
+              echo ""
+              echo "**영상 보기**: 위 관리자 페이지 또는 이 저장소의 Releases 에 들어 있습니다."
+              echo ""
+              echo "유튜브에 올리려면 열쇠 3개를 등록해야 합니다."
+              echo "저장소 → Settings → Secrets and variables → Actions"
+              echo ""
+              echo "- \`YOUTUBE_CLIENT_ID\`"
+              echo "- \`YOUTUBE_CLIENT_SECRET\`"
+              echo "- \`YOUTUBE_REFRESH_TOKEN\`"
+              echo ""
+              echo "발급 절차는 STARTGUIDE.md 3-2 에 있습니다."
+              echo "지금 당장 올릴 생각이 없으시면, 다음부터는 '유튜브 업로드' 를"
+              echo "**올리지 않음** 으로 두고 실행하시면 빨간 X 가 뜨지 않습니다."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::영상은 만들어졌습니다. 유튜브 열쇠 3개가 없어 업로드만 못 했습니다."
+            exit 1
+          fi
           python3 src/upload.py private "${{ steps.pick.outputs.ep }}" \
             --video build/longform.mp4 --narration build/voice 2>&1 | tee upload.log
           if [ "${{ inputs.upload }}" = "롱폼 + 쇼츠" ]; then
