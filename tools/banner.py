@@ -38,6 +38,9 @@ SAFE_W, SAFE_H = 1235, 338          # 모든 기기에서 보이는 가운데 �
 MIN_W, MIN_H = 2048, 1152           # 이보다 작으면 업로드가 거부된다
 MAX_BYTES = 6 * 1024 * 1024         # 6MB
 
+# 배경을 눌러서 맞출 목표 밝기(0~255). 글자가 뜨면서도 건물이 보이는 선.
+TARGET_MEAN = 62
+
 TITLE = "판결극장"
 TAGLINE = "실제 판결을 재구성한 드라마"
 
@@ -63,6 +66,40 @@ def pick_bg(name=None):
     return got[0]
 
 
+def trim_bars(img, tol=16):
+    """가장자리의 **검은 띠(레터박스)** 를 잘라낸다.
+
+    제미나이에게 16:9 를 달라고 하면, 그림을 그린 뒤 위아래에 검은 띠를 붙여
+    비율만 맞춰 주는 경우가 있다. 그대로 배너로 쓰면 화면에 검은 줄이 그대로 남는다.
+    거의 균일하게 어두운 **가장자리 줄만** 벗겨 낸다 — 그림 안쪽은 건드리지 않는다."""
+    g = img.convert("L")
+    w, h = g.size
+    px = g.load()
+    sx, sy = max(1, w // 200), max(1, h // 200)
+
+    def dark_row(y):
+        return max(px[x, y] for x in range(0, w, sx)) <= tol
+
+    def dark_col(x):
+        return max(px[x, y] for y in range(0, h, sy)) <= tol
+
+    top, bot = 0, h - 1
+    while top < bot and dark_row(top):
+        top += 1
+    while bot > top and dark_row(bot):
+        bot -= 1
+    left, right = 0, w - 1
+    while left < right and dark_col(left):
+        left += 1
+    while right > left and dark_col(right):
+        right -= 1
+
+    cut = (top + (h - 1 - bot)) + (left + (w - 1 - right))
+    if cut == 0:
+        return img, 0
+    return img.crop((left, top, right + 1, bot + 1)), cut
+
+
 def cover(img, w, h):
     """가로세로비를 지키며 (w,h) 를 꽉 채우도록 키우고 가운데를 자른다.
 
@@ -76,13 +113,20 @@ def cover(img, w, h):
 
 def build(bg_path):
     base = Image.open(bg_path).convert("RGB")
+    base, cut = trim_bars(base)
     small = base.width < MIN_W or base.height < MIN_H
     img = cover(base, W, H)
 
-    # 배경은 글자의 배경일 뿐이다. 세게 어둡게 눌러 글자가 확실히 뜨게 한다.
-    img = ImageEnhance.Brightness(img).enhance(0.34)
-    img = ImageEnhance.Color(img).enhance(0.45)
-    img = img.filter(ImageFilter.GaussianBlur(3))
+    # ⭐ 어둡게 누르는 정도를 **원본 밝기에 맞춰 자동으로** 정한다.
+    #    고정 배율(0.34)로 눌렀더니, 이미 해질녘이라 어두웠던 그림이 새까맣게 뭉갰다.
+    #    밝은 낮 사진과 어두운 저녁 사진에 같은 배율을 쓰면 결과가 제각각이다.
+    #    지금 밝기를 재서 **목표 밝기에 맞도록** 배율을 계산한다.
+    mean = sum(i * n for i, n in enumerate(img.convert("L").histogram())) / \
+        max(1, img.width * img.height)
+    k = min(1.15, max(0.30, TARGET_MEAN / max(1.0, mean)))
+    img = ImageEnhance.Brightness(img).enhance(k)
+    img = ImageEnhance.Color(img).enhance(0.55)
+    img = img.filter(ImageFilter.GaussianBlur(2))
 
     # 가운데(안전 영역)를 가장 어둡게 — 글자가 놓이는 자리다.
     sx, sy = (W - SAFE_W) // 2, (H - SAFE_H) // 2
@@ -125,7 +169,7 @@ def build(bg_path):
     # 부제 — 조금 눌러서 제목을 방해하지 않게
     d.text(((W - gw) // 2, top + th + rule_gap), TAGLINE, font=gf,
            fill=(198, 194, 186))
-    return img, small, size
+    return img, small, size, cut, round(mean), round(k, 2)
 
 
 def main():
@@ -135,7 +179,7 @@ def main():
     a = ap.parse_args()
 
     src = pick_bg(a.bg)
-    img, small, size = build(src)
+    img, small, size, cut, mean, k = build(src)
     out = Path(a.out)
     img.save(out, "PNG", optimize=True)
 
@@ -146,11 +190,14 @@ def main():
 
     mb = out.stat().st_size / 1024 / 1024
     print(f"바탕 그림 : {src.name}")
+    if cut:
+        print(f"            (가장자리 검은 띠 {cut}px 잘라냈습니다)")
     if small:
         print("            (원본이 규격보다 작아 키웠습니다)")
     print(f"만든 파일 : {out}")
     print(f"크기      : {img.width} x {img.height}   용량 {mb:.2f} MB")
     print(f"제목 글자 : {size}px")
+    print(f"밝기 조절 : 원본 평균 {mean} → 배율 {k} (목표 {TARGET_MEAN})")
     print()
     print("유튜브 배너 기준")
     print(f"  최소 {MIN_W}x{MIN_H} : {'통과' if img.width >= MIN_W and img.height >= MIN_H else '미달'}")
