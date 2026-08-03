@@ -3,12 +3,18 @@
 
     python3 tools/check_place.py
 
-  1) 전신(full_*)이 아닌 인물은 **아래끝이 화면 바닥에 닿아야** 한다.
-     닿는다 = 인물의 진짜 아래끝(흰 테두리 제외)이 화면 바닥선 아래로 내려간다.
+  1) 전신(full_*)이 아닌 인물은 **아래끝이 무대 바닥에 닿아야** 한다.
+     닿는다 = 인물의 진짜 아래끝(흰 테두리 제외)이 무대 바닥선 아래로 내려간다.
   2) 좌·우가 **절대 잘리면 안 된다.** (확대 연출이 깎는 몫까지 감안)
   3) 머리 위도 잘리면 안 된다.
+  4) 자막이 얼굴을 덮으면 안 된다. (자막 띠가 있는 컷은 애초에 해당 없음)
 
 가로(1920x1080)와 세로 쇼츠(1080x1920) 두 가지를 모두 본다.
+
+⚠️ '바닥' 은 **화면 바닥이 아니라 무대 바닥**이다. 자막 검은 띠가 생긴 뒤로
+   인물은 띠 위 무대 안에서만 논다. 화면 전체 높이로 재면 띠 높이(가로 238px)만큼
+   "인물이 떠 있다" 는 헛경보가 컷마다 나온다. 실제로 그렇게 345건이 잘못 떴다.
+   그래서 배치 기록(PLACE_LOG)에 적힌 무대 크기(p['W'], p['H'])로만 잰다.
 """
 import json
 import sys
@@ -36,23 +42,28 @@ def main():
             R.build_plates(cut, W, H, vertical=vert)
             for p in R.PLACE_LOG:
                 n += 1
+                # ⚠️ 무대 크기로 잰다 — 화면 크기가 아니다(맨 위 설명 참고).
+                sw, sh = p["W"], p["H"]
                 tag = (f"{'세로' if vert else '가로'} #{i:3} "
                        f"{p['code']}/{p['pose']}")
-                # 1) 아래끝이 화면 바닥에 닿는가 (인물 아래끝 = y + h - bleed)
+                # 1) 아래끝이 무대 바닥에 닿는가 (인물 아래끝 = y + h - bleed)
                 if not p["pose"].startswith("full"):
                     body_bottom = p["y"] + p["h"] - p["bleed"]
-                    if body_bottom < H:
-                        bad_bottom.append(f"{tag}  아래끝이 {H - body_bottom}px 떠 있다")
+                    if body_bottom < sh:
+                        bad_bottom.append(f"{tag}  아래끝이 {sh - body_bottom}px 떠 있다")
                 # 2) 좌우 (확대가 깎는 edge 안쪽에 들어와야 온전하다)
-                if p["x"] < p["edge"] - 1 or p["x"] + p["w"] > W - p["edge"] + 1:
+                if p["x"] < p["edge"] - 1 or p["x"] + p["w"] > sw - p["edge"] + 1:
                     bad_side.append(
-                        f"{tag}  좌 {p['x']} · 우 {W - (p['x'] + p['w'])} "
+                        f"{tag}  좌 {p['x']} · 우 {sw - (p['x'] + p['w'])} "
                         f"(여유 {p['edge']} 필요)")
                 # 3) 머리 위
                 if p["y"] < p["edge"] - 1:
                     bad_top.append(f"{tag}  위 {p['y']} (여유 {p['edge']} 필요)")
-                # 4) 자막이 턱(=얼굴 아래끝)을 덮는가 (자막을 옮긴 컷은 제외)
-                if p.get("sub_moved") is None and p["y"] + p["chin"] > p["sub_top"]:
+                # 4) 자막이 턱(=얼굴 아래끝)을 덮는가
+                #    자막 띠가 있는 컷(sub_top=None)은 자막이 무대 밖이라 해당 없다.
+                #    자막을 위로 옮긴 컷(sub_moved)도 따로 계산했으므로 뺀다.
+                if p.get("sub_top") is not None and p.get("sub_moved") is None \
+                        and p["y"] + p["chin"] > p["sub_top"]:
                     bad_face.append(
                         f"{tag}  자막이 턱을 {p['y'] + p['chin'] - p['sub_top']}px 덮는다")
     R.PLACE_LOG = None

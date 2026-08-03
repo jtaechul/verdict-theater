@@ -550,12 +550,17 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False):
         # 화면 밖으로 나가는 부분은 여기서 잘라낸다.
         # alpha_composite 는 대상 밖으로 나가는 그림을 받지 않으므로 미리 맞춰 준다.
         if PLACE_LOG is not None:                   # 검수용 — 평소에는 None 이라 비용 0
+            # ⚠️ 여기 W·H 는 **무대 캔버스** 크기다(자막 띠를 뺀 높이).
+            #    검수 스크립트는 반드시 이 H 로 재야 한다. 화면 전체 높이로 재면
+            #    띠 높이(238px)만큼 "인물이 떠 있다" 는 헛경보가 컷마다 나온다.
             PLACE_LOG.append(dict(
                 code=ccode, pose=pose, W=W, H=H, x=x, y=y,
                 w=sprite.width, h=sprite.height,
                 bleed=bottom_bleed(sprite), edge=edge,
-                chin=chin_y(sprite),
-                sub_top=G.subtitle_top(cut.get("text", ""), W, H, vertical)))
+                chin=chin_y(sprite), banded=banded,
+                # 띠가 있으면 자막이 무대 밖이라 얼굴을 덮을 수가 없다.
+                sub_top=(None if banded else
+                         G.subtitle_top(cut.get("text", ""), W, H, vertical))))
 
         if listening:
             # 밝기만 낮춘다. 알파는 그대로 둬야 흰 테두리가 반투명해지지 않는다.

@@ -467,6 +467,39 @@ def check_flashback(doc, r):
         r.warn("회상", f"회상 시작이 아닌데 시점 표기가 있다: {', '.join(stray[:6])}")
 
 
+# 그래픽이 글자를 잘라 버리는 한계. graphics.py 의 [:N] 과 반드시 같아야 한다.
+GFX_LIMIT = {
+    ("timeline", "label"): 16,
+    ("timeline", "when"): 14,
+    ("family", "name"): 8,
+    ("family", "rel"): 12,
+}
+
+
+def check_gfx_text(doc, r):
+    """⭐ 그래픽 안의 글자가 잘리지 않는가.
+
+    연표·관계도는 글자가 길면 **말없이 잘라서** 그린다. 잘렸다는 표시도 없다.
+    실제로 연표에 '아버지가 장남에게 9억 8,000만 원'(21자)을 넣었더니
+    화면에는 '아버지가 장남에게 9억 8,0' 까지만 나왔다 — 금액이 반토막 났다.
+    렌더링은 성공하므로 영상을 끝까지 봐야만 발견된다. 여기서 미리 막는다."""
+    bad = []
+    for _a, cut in all_cuts(doc):
+        g = cut.get("gfx") or {}
+        kind = g.get("type")
+        rows = g.get("items") if kind == "timeline" else \
+            g.get("nodes") if kind == "family" else None
+        for row in (rows or []):
+            for field, cap in ((k[1], v) for k, v in GFX_LIMIT.items() if k[0] == kind):
+                t = str(row.get(field, ""))
+                if len(t) > cap:
+                    bad.append(f"{cut.get('id')} {kind}.{field} {len(t)}자(한도 {cap}) '{t}'")
+    if bad:
+        r.error("그래픽 글자", "화면에서 잘린다: " + " / ".join(bad[:4]))
+    else:
+        r.ok("연표·관계도 글자가 잘리지 않는다")
+
+
 def check_tags(doc, r):
     """대본이 스스로 표시해 둔 컷들. 없으면 쇼츠와 검수가 짐작에 의존하게 된다."""
     found = {}
@@ -575,6 +608,57 @@ def check_anonymization(doc, r):
                         f"{' …' if len(seen) > 5 else ''}")
     else:
         r.ok("금액이 모두 백만원 단위")
+
+
+def _screen_text(doc):
+    """화면에 실제로 글자로 뜨는 것만 모은다.
+
+    자막(text)과 그래픽(gfx) 안의 글자다. 유튜브 설명글이나 5막 법령 해설 원문은
+    화면에 안 뜨므로 넣지 않는다 — 여기 들어가면 '설명글에만 있는 금액'이
+    화면에 나온 것처럼 잘못 통과한다."""
+    def walk(v, out):
+        if isinstance(v, str):
+            out.append(v)
+        elif isinstance(v, dict):
+            for k, x in v.items():
+                if k != "type":                  # 'amount' 같은 종류 이름은 글자가 아니다
+                    walk(x, out)
+        elif isinstance(v, list):
+            for x in v:
+                walk(x, out)
+
+    out = []
+    for _a, cut in all_cuts(doc):
+        out.append(cut.get("text") or "")
+        walk(cut.get("gfx"), out)
+    for s in doc.get("shorts", []):
+        for cut in s.get("cuts", []):
+            out.append(cut.get("text") or "")
+            walk(cut.get("gfx"), out)
+    return "\n".join(out)
+
+
+def check_amount_onscreen(doc, r):
+    """⭐ 선언한 금액이 화면에 한 번이라도 나오는가.
+
+    EP001 에서 실제로 있었던 일이다. 장남이 미리 받아간 9억 8,000만 원은
+    이 사건에서 장남이 진 **이유** 그 자체인데, 자막에도 그래픽에도 한 번도 안 떴다.
+    제목과 썸네일은 '9억'을 내걸었는데 영상은 그 숫자를 끝내 보여주지 않았다.
+    시청자는 왜 졌는지 모른 채 12분을 본 셈이다.
+
+    amounts_used 에 적어 놓고 화면에 안 쓸 거면 애초에 적지 말아야 한다."""
+    declared = doc.get("anonymization", {}).get("amounts_used", [])
+    if not declared:
+        return
+
+    screen = _screen_text(doc)
+    missing = [a for a in declared if (a.get("value") or "") not in screen]
+    if missing:
+        r.error("금액", "amounts_used 에 있는데 화면에 한 번도 안 나오는 금액: "
+                + ", ".join(f"{a.get('value')}({a.get('label')})" for a in missing)
+                + " — 자막이나 그래픽에 넣어야 시청자가 이해한다")
+    else:
+        r.ok(f"선언한 금액 {len(declared)}종 모두 화면에 나온다")
 
 
 def check_law(doc, r):
@@ -687,9 +771,11 @@ def validate_doc(doc, mf=None, with_shorts=True):
     check_stakes(doc, r)
     check_flashback(doc, r)
     check_tags(doc, r)
+    check_gfx_text(doc, r)
     check_blackout(doc, r)
     check_nametags(doc, r)
     check_anonymization(doc, r)
+    check_amount_onscreen(doc, r)
     check_law(doc, r)
     if with_shorts:
         check_shorts(doc, r)
