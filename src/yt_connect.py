@@ -193,8 +193,9 @@ def main():
     if not refresh:
         die("갱신 토큰이 오지 않았습니다.",
             "이미 연결한 적이 있는 계정이면 구글이 토큰을 다시 주지 않습니다.\n"
-            "[구글 계정 → 보안 → 서드파티 앱](https://myaccount.google.com/connections) 에서\n"
-            "이 앱의 연결을 지우고 다시 실행해 주십시오.\n")
+            "[이 주소](https://myaccount.google.com/connections) 를 열어 **Third-party apps "
+            "with account access** (구글 계정 화면은 영어면 이 이름, 한글이면 '타사 앱 및 서비스')"
+            "목록에서 이 앱을 찾아 연결을 지우고 다시 실행해 주십시오.\n")
 
     # ⑤ 받은 토큰이 진짜 되는지 그 자리에서 확인한다
     who, _ = post(TOKEN_URL, {
