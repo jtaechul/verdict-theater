@@ -1,1 +1,23 @@
-[]
+[
+  {
+    "episode": "EP001",
+    "video_id": "bPfk75S25Pw",
+    "kind": "short1",
+    "offset_days": 1,
+    "planned": true
+  },
+  {
+    "episode": "EP001",
+    "video_id": "P7qOYCpOEaQ",
+    "kind": "short2",
+    "offset_days": 2,
+    "planned": true
+  },
+  {
+    "episode": "EP001",
+    "video_id": "IWdqLT-ZLL4",
+    "kind": "short3",
+    "offset_days": 4,
+    "planned": true
+  }
+]
