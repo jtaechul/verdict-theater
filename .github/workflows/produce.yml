@@ -103,6 +103,28 @@ jobs:
           echo "ep=$EP" >> "$GITHUB_OUTPUT"
           echo "회차: $EP"
 
+      # ⭐ **만들기 전에 대본을 검사한다.**
+      #    예전에는 대본 생성 때만 검사했다. 그래서 사람이 손으로 고친 대본이나
+      #    규칙이 추가되기 전에 만들어 둔 옛 대본이 **검사 없이** 영상까지 갔다.
+      #    12분 렌더링과 음성 값을 다 쓴 뒤에 잘못을 발견하면 늦다 — 여기서 막는다.
+      - name: 대본 검사 (오류가 있으면 만들지 않는다)
+        run: |
+          set -o pipefail
+          EP="${{ steps.pick.outputs.ep }}"
+          if ! python3 src/validate_script.py "data/scripts/$EP.json" 2>&1 | tee check.log; then
+            {
+              echo "## 대본에 오류가 있어 영상을 만들지 않았습니다"
+              echo ""
+              echo "아래 오류를 고친 뒤 다시 실행하십시오."
+              echo ""
+              echo '```'
+              grep -E "ERROR" check.log | head -20
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::대본 검사에서 오류가 나왔습니다. 요약 화면을 보십시오."
+            exit 1
+          fi
+
       # 제미나이로 만든 배경에는 오른쪽 아래에 로고가 박혀 나온다.
       # 렌더 전에 자동으로 지운다. 이미 지운 그림은 건너뛴다.
       - name: 배경 워터마크 지우기
