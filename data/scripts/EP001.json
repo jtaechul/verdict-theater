@@ -68,11 +68,11 @@
     {
       "code": "F50A",
       "name": "이정임",
-      "age": 68,
+      "age": 72,
       "role": "어머니",
-      "nametag": "이정임 · 68세 · 어머니",
+      "nametag": "이정임 · 72세 · 어머니",
       "voice": "v_F50A",
-      "note": "40년간 남편 내조, 가족을 지킨 어머니"
+      "note": "50년간 남편 내조, 가족을 지킨 어머니"
     },
     {
       "code": "M50A",
@@ -164,7 +164,7 @@
           "text": "남편의 장례가 끝나기도 전에, 큰아들이 내민 것은 소장이었습니다.",
           "gfx": {
             "type": "nametag",
-            "text": "이정임 · 68세 · 어머니"
+            "text": "이정임 · 72세 · 어머니"
           },
           "sfx": null,
           "amb": "amb_funeral",
@@ -216,7 +216,7 @@
             }
           ],
           "speaker": "narrator",
-          "text": "평생 가족을 지킨 어머니는 남편을 잃은 슬픔 속에서 고소를 당했습니다.",
+          "text": "평생 가족을 지킨 어머니는 남편을 잃은 슬픔 속에서 소송을 당했습니다.",
           "gfx": {
             "type": "nametag",
             "text": "김성훈 · 48세 · 차남"
@@ -268,15 +268,15 @@
             }
           ],
           "speaker": "narrator",
-          "text": "정임 씨는 40년을 남편과 함께했습니다.",
+          "text": "정임 씨는 50년을 남편과 함께했습니다.",
           "gfx": {
             "type": "nametag",
-            "text": "이정임 · 68세 · 어머니"
+            "text": "이정임 · 72세 · 어머니"
           },
           "sfx": null,
           "amb": "amb_home",
           "blackout": false,
-          "flashback_label": "사십 년 전"
+          "flashback_label": "오십 년 전"
         },
         {
           "id": "A1-02",
@@ -979,7 +979,7 @@
             }
           ],
           "speaker": "v_F50A",
-          "text": "성일이가... 나랑 너희를 상대로 고소를 했다는 거니?",
+          "text": "성일이가... 나랑 너희를 상대로 소송을 냈다는 거니?",
           "gfx": null,
           "sfx": null,
           "amb": "amb_home",
@@ -2782,7 +2782,7 @@
           "text": "장례식이 끝나자마자 소장이 날아왔습니다.",
           "gfx": {
             "type": "nametag",
-            "text": "이정임 · 68세 · 어머니"
+            "text": "이정임 · 72세 · 어머니"
           },
           "sfx": null,
           "amb": "amb_funeral"
@@ -2848,7 +2848,7 @@
           "text": "분노한 어머니가 서랍 속 각서를 꺼냈습니다.",
           "gfx": {
             "type": "nametag",
-            "text": "이정임 · 68세 · 어머니"
+            "text": "이정임 · 72세 · 어머니"
           },
           "sfx": "sfx_paper",
           "amb": "amb_home"
@@ -2870,7 +2870,7 @@
           "text": "네가 예전에 쓴 상속포기서다!",
           "gfx": {
             "type": "nametag",
-            "text": "이정임 · 68세 · 어머니"
+            "text": "이정임 · 72세 · 어머니"
           },
           "sfx": null,
           "amb": "amb_home"
@@ -2936,7 +2936,7 @@
           "text": "하지만 사건은 여기서 끝나지 않았습니다.",
           "gfx": {
             "type": "nametag",
-            "text": "이정임 · 68세 · 어머니"
+            "text": "이정임 · 72세 · 어머니"
           },
           "sfx": null,
           "amb": "amb_home"
@@ -2958,7 +2958,7 @@
           "text": "결말은 본편에서 확인하세요.",
           "gfx": {
             "type": "nametag",
-            "text": "이정임 · 68세 · 어머니"
+            "text": "이정임 · 72세 · 어머니"
           },
           "sfx": null,
           "amb": "amb_home"
@@ -3110,7 +3110,7 @@
           "text": "결국 늙은 어머니가 모은 돈을 털었습니다.",
           "gfx": {
             "type": "nametag",
-            "text": "이정임 · 68세 · 어머니"
+            "text": "이정임 · 72세 · 어머니"
           },
           "sfx": null,
           "amb": "amb_street"
@@ -3132,7 +3132,7 @@
           "text": "내 자식들 싸우는 꼴 더는 못 본다.",
           "gfx": {
             "type": "nametag",
-            "text": "이정임 · 68세 · 어머니"
+            "text": "이정임 · 72세 · 어머니"
           },
           "sfx": null,
           "amb": "amb_home"
@@ -3240,7 +3240,7 @@
           "text": "새벽부터 밤까지 몸을 깎아 키운 자식.",
           "gfx": {
             "type": "nametag",
-            "text": "이정임 · 68세 · 어머니"
+            "text": "이정임 · 72세 · 어머니"
           },
           "sfx": null,
           "amb": "amb_street"
@@ -3284,7 +3284,7 @@
           "text": "하지만 남편 장례식 날 소장이 날아왔죠.",
           "gfx": {
             "type": "nametag",
-            "text": "이정임 · 68세 · 어머니"
+            "text": "이정임 · 72세 · 어머니"
           },
           "sfx": null,
           "amb": "amb_funeral"
@@ -3325,10 +3325,10 @@
             "scale": 1.4
           },
           "speaker": "v_F50A",
-          "text": "내가 지킨 집인데... 네가 다 가져가느냐.",
+          "text": "내가 지킨 집인데... 네가 다 가져가겠다는 거냐.",
           "gfx": {
             "type": "nametag",
-            "text": "이정임 · 68세 · 어머니"
+            "text": "이정임 · 72세 · 어머니"
           },
           "sfx": null,
           "amb": "amb_home"
@@ -3350,7 +3350,7 @@
           "text": "빚까지 안기자 어머니는 통장을 털었습니다.",
           "gfx": {
             "type": "nametag",
-            "text": "이정임 · 68세 · 어머니"
+            "text": "이정임 · 72세 · 어머니"
           },
           "sfx": null,
           "amb": "amb_street"
@@ -3394,7 +3394,7 @@
           "text": "집은 지켰지만, 큰아들은 잃었습니다.",
           "gfx": {
             "type": "nametag",
-            "text": "이정임 · 68세 · 어머니"
+            "text": "이정임 · 72세 · 어머니"
           },
           "sfx": null,
           "amb": "amb_home"
@@ -3416,7 +3416,7 @@
           "text": "적막한 거실엔 어머니의 눈물만 남았습니다.",
           "gfx": {
             "type": "nametag",
-            "text": "이정임 · 68세 · 어머니"
+            "text": "이정임 · 72세 · 어머니"
           },
           "sfx": "sfx_tear",
           "amb": "amb_home"
@@ -3435,10 +3435,10 @@
             "scale": 1.35
           },
           "speaker": "narrator",
-          "text": "돈 때문에 남이 된 자식이, 곁에 있습니까?",
+          "text": "돈 때문에 남이 된 자식, 당신에게도 있습니까?",
           "gfx": {
             "type": "nametag",
-            "text": "이정임 · 68세 · 어머니"
+            "text": "이정임 · 72세 · 어머니"
           },
           "sfx": null,
           "amb": "amb_home"

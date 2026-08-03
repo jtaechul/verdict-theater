@@ -661,6 +661,132 @@ def check_amount_onscreen(doc, r):
         r.ok(f"선언한 금액 {len(declared)}종 모두 화면에 나온다")
 
 
+ical = {"십": 10, "이십": 20, "삼십": 30, "사십": 40, "오십": 50,
+        "육십": 60, "칠십": 70, "팔십": 80, "구십": 90}
+
+
+def _years(text):
+    """글에서 '○○년' 의 햇수를 뽑는다. '50년' 과 '오십 년' 을 모두 읽는다.
+    없으면 None. 여러 개면 첫 번째."""
+    t = text or ""
+    m = re.search(r"(\d{1,3})\s*년", t)
+    if m:
+        return int(m.group(1))
+    m = re.search(r"(구십|팔십|칠십|육십|오십|사십|삼십|이십|십)\s*년", t)
+    return ical[m.group(1)] if m else None
+
+
+PARENT_ROLES = ("어머니", "아버지", "모친", "부친")
+CHILD_ROLES = ("장남", "차남", "삼남", "장녀", "차녀", "삼녀", "아들", "딸")
+MIN_BIRTH_AGE = 18          # 부모가 자식을 낳을 수 있는 최소 나이
+
+
+def check_ages(doc, r):
+    """⭐ 나이와 세월이 서로 맞는가.
+
+    EP001 에 실제로 있던 일이다. 어머니 68세 · 장남 50세 인데
+    나레이션은 '정임 씨는 40년을 남편과 함께했습니다' 라고 했다.
+    셈해 보면 어머니가 18세에 장남을 낳았고, 그 장남은 **결혼보다 10년 먼저**
+    태어난 것이 된다. 상속 이야기는 시청자가 가족 관계를 직접 따라 그리며 보기 때문에
+    이런 어긋남이 바로 눈에 걸린다.
+
+    두 가지를 본다.
+      1) 부모 나이 - 자식 나이 ≥ 18
+      2) '○○년을 함께' 같은 결혼 세월 ≥ 맏이 나이"""
+    chars = doc.get("characters", [])
+    def ages(roles):
+        return [(c.get("name"), c.get("role"), c.get("age")) for c in chars
+                if c.get("role") in roles and isinstance(c.get("age"), int)]
+
+    parents, kids = ages(PARENT_ROLES), ages(CHILD_ROLES)
+    bad = []
+    for pn, pr, pa in parents:
+        for kn, kr, ka in kids:
+            if pa - ka < MIN_BIRTH_AGE:
+                bad.append(f"{pr} {pn}({pa}세) → {kr} {kn}({ka}세) = {pa - ka}세에 출산")
+    if bad:
+        r.error("나이", f"부모가 {MIN_BIRTH_AGE}세 전에 낳은 셈이 된다: " + " / ".join(bad[:4]))
+    elif parents and kids:
+        r.ok(f"부모·자식 나이 차 {MIN_BIRTH_AGE}세 이상 ({len(parents)}×{len(kids)}쌍)")
+
+    # 결혼 세월 ≥ 맏이 나이. 아니면 맏이가 결혼보다 먼저 태어난 것이 된다.
+    eldest = max((a for _n, _r, a in kids), default=None)
+    if eldest is None:
+        return
+    blob = "\n".join((c.get("text") or "") for _a, c in all_cuts(doc))
+    spans = [(m.group(0), int(m.group(1))) for m in
+             re.finditer(r"(\d{1,2})\s*년(?:을|간|\s*동안|\s*가까이)?\s*"
+                         r"(?=[^\n]{0,12}?(남편|아내|부부|함께|같이|살))", blob)]
+    short = [(t, y) for t, y in spans if y < eldest]
+    if short:
+        r.error("나이", "결혼 세월이 맏이 나이보다 짧다 — 맏이가 결혼 전에 태어난 셈: "
+                + ", ".join(f"'{t.strip()}'({y}년) < 맏이 {eldest}세" for t, y in short[:3]))
+    elif spans:
+        r.ok(f"결혼 세월 {spans[0][1]}년 ≥ 맏이 {eldest}세")
+
+    # 같은 컷 안에서 회상 시점 자막과 자막 속 햇수가 어긋나지 않는가.
+    # A1-01 이 실제로 그랬다 — 화면 위에는 '사십 년 전', 자막에는 '50년을 함께'.
+    # 두 글자가 같은 화면에 동시에 떠 있어서 곧바로 눈에 걸린다.
+    clash = []
+    for _a, cut in all_cuts(doc):
+        lab_y = _years(cut.get("flashback_label") or "")
+        txt_y = _years(cut.get("text") or "")
+        if lab_y and txt_y and lab_y != txt_y:
+            clash.append(f"{cut.get('id')} 시점 '{cut['flashback_label']}'({lab_y}년)"
+                         f" ↔ 자막 {txt_y}년")
+    if clash:
+        r.error("나이", "한 컷 안에서 햇수가 서로 다르다: " + " / ".join(clash[:3]))
+    else:
+        r.ok("회상 시점 자막과 자막 속 햇수가 어긋나지 않는다")
+
+
+# 형사 사건에서만 쓰는 말. 민사 사건 대본에 나오면 틀린 말이다.
+# 낱말 → 대신 써야 할 말
+CRIMINAL_WORDS = {
+    "고소": "소송",       # 고소는 '죄를 지었으니 처벌해 달라' 는 형사 신고다
+    "고발": "소송",
+    "피고소": "피고",
+    "기소": "제소",
+    "무죄": "청구 기각",
+    "유죄": "청구 인용",
+    "형량": "판결",
+    "징역": "—",
+    "벌금": "—",
+}
+# 민사 사건 종류. 이 말이 case_type 에 들어 있으면 형사 낱말을 쓰면 안 된다.
+CIVIL_HINTS = ("상속", "유류분", "이혼", "재산분할", "손해배상", "부당이득",
+               "대여금", "임대차", "명도", "청구", "확인", "등기")
+
+
+def check_criminal_words(doc, r):
+    """⭐ 민사 사건인데 형사 낱말을 쓰지 않았는가.
+
+    실제로 EP001(상속회복청구 — 민사)에서 '어머니는 고소를 당했습니다',
+    '나랑 너희를 상대로 고소를 했다는 거니?' 라고 나갔다.
+    고소는 '죄를 지었으니 처벌해 달라' 고 경찰·검찰에 내는 **형사** 신고다.
+    상속 다툼은 형사가 아니다. 게다가 같은 대본 바로 앞 컷은 '소송을 걸었다'
+    라고 제대로 쓰고 있어서, 한 사건을 두 가지 말로 부르고 있었다.
+
+    이 채널은 진짜 판결을 다룬다. 법을 아는 시청자가 가장 먼저 잡아내는 대목이다."""
+    case = str(doc.get("meta", {}).get("case_type") or "")
+    if not any(h in case for h in CIVIL_HINTS):
+        return                                   # 형사 사건이면 검사하지 않는다
+
+    hits = []
+    for _a, cut in all_cuts(doc):
+        t = cut.get("text") or ""
+        for w, alt in CRIMINAL_WORDS.items():
+            if w in t:
+                hits.append(f"{cut.get('id')} '{w}'"
+                            + (f" → '{alt}'" if alt != "—" else " (민사에 없는 말)"))
+    if hits:
+        r.error("법률 용어",
+                f"민사 사건({case})인데 형사 낱말을 썼다: " + " / ".join(hits[:5])
+                + (f" 외 {len(hits) - 5}건" if len(hits) > 5 else ""))
+    else:
+        r.ok(f"민사 사건({case})에 형사 낱말 없음")
+
+
 def check_law(doc, r):
     law = doc.get("law", {})
     refs = law.get("refs_from_case", [])
@@ -776,6 +902,8 @@ def validate_doc(doc, mf=None, with_shorts=True):
     check_nametags(doc, r)
     check_anonymization(doc, r)
     check_amount_onscreen(doc, r)
+    check_criminal_words(doc, r)
+    check_ages(doc, r)
     check_law(doc, r)
     if with_shorts:
         check_shorts(doc, r)
