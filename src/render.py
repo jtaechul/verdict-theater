@@ -459,7 +459,6 @@ def _solve_char(c, cut, W, H, vertical, gfx_bottom, banded=False):
     h0 = sprite.height
     f_pad = top_pad(sprite) / h0                   # 그림 위쪽의 빈 띠
     f_chin = chin_y(sprite) / h0
-    head_frac = max(0.0, f_chin - f_pad)           # 그림에서 '머리'가 차지하는 비율
     cap = target_h
 
     if kind in ("bust", "face"):
@@ -490,7 +489,6 @@ def _solve_char(c, cut, W, H, vertical, gfx_bottom, banded=False):
     # hw — 그림 높이 1픽셀당 머리 폭. 화면에 나올 머리 폭은 `키 × hw` 다.
     return {"code": ccode, "pose": pose, "sprite": sprite, "kind": kind,
             "edge": edge, "target_h": target_h, "cap": cap, "room": room,
-            "head_frac": head_frac, "head_px": target_h * head_frac,
             "hw": head_width(sprite, pose) / max(1, h0)}
 
 

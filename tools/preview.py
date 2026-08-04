@@ -30,6 +30,7 @@ def main():
     W, H = (1080, 1920) if vertical else (1920, 1080)
 
     doc = json.loads((ROOT / "data" / "scripts" / "EP001.json").read_text(encoding="utf-8"))
+    R.set_cast(doc)          # 이름표를 그 사람 옆에 붙이려면 배역 명단이 필요하다
     cuts = [c for a in doc["acts"] for c in a["cuts"]]
 
     TH = 560 if vertical else 400
