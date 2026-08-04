@@ -297,6 +297,15 @@ jobs:
             --out build --shorts --narration build/voice "${ARGS[@]}" 2>&1 | tee render.log
           ls -la build/*.mp4
 
+      # ⭐ 썸네일을 만든다. 대본에서 금액·인물·제목을 뽑아 한 장 그린다.
+      #    유튜브 기본 썸네일은 영상 한 프레임이라 글자가 없다 — 조회수가 여기서 갈린다.
+      #    비용 0원(코드가 그린다). 실패해도 영상 제작은 계속한다.
+      - name: 썸네일 만들기
+        if: always() && hashFiles('build/longform.mp4') != ''
+        run: |
+          python3 src/thumb.py "data/scripts/${{ steps.pick.outputs.ep }}.json" \
+            --out build/thumb.jpg 2>&1 | tee thumb.log || true
+
       # ⭐ 관리자 페이지에서 바로 보려면 영상이 어딘가에 남아 있어야 한다.
       #    실행이 끝나면 작업 공간은 통째로 사라지기 때문이다.
       #
@@ -317,12 +326,15 @@ jobs:
 
           # 같은 회차를 다시 만들면 예전 것을 갈아끼운다
           gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          # 썸네일도 같이 올린다 — 관리자 페이지가 여기서 가져다 보여주고 내려받게 한다.
+          FILES=(build/*.mp4)
+          [ -f build/thumb.jpg ] && FILES+=(build/thumb.jpg)
           gh release create "$TAG" \
             --title "$EP 영상" \
             --notes "관리자 페이지에서 보기 위한 파일입니다. 저장소 커밋이 아닙니다." \
             --prerelease \
-            build/*.mp4
-          echo "보관함: $TAG"
+            "${FILES[@]}"
+          echo "보관함: $TAG (${#FILES[@]}개)"
 
           # 최근 3편만 남긴다. 편당 100MB 안팎이라 그냥 두면 계속 쌓인다.
           #

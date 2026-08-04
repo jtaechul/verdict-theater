@@ -194,6 +194,22 @@ def upload_video(token, path, title, description, tags, vertical=False):
         return json.loads(r.read())["id"]
 
 
+def set_thumbnail(token, video_id, path):
+    """썸네일을 올린다. **1280×720 JPEG · 2MB 이하** (유튜브 상한).
+
+    ⚠️ `youtube.force-ssl` 권한이 있어야 한다. 자막·고정댓글과 같은 권한이라
+       이미 받아 두었다(yt_verify.py 가 매번 확인한다).
+    유튜브가 기본으로 뽑는 자동 썸네일은 영상 한 프레임이라 글자가 없다.
+    이 채널은 **금액을 큰 글씨로 내건 썸네일**이 곧 조회수라 반드시 갈아 끼운다."""
+    req = urllib.request.Request(
+        f"{UPLOAD}/thumbnails/set?" + urllib.parse.urlencode(
+            {"videoId": video_id, "uploadType": "media"}),
+        data=path.read_bytes(), method="POST",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "image/jpeg"})
+    with urllib.request.urlopen(req, timeout=180) as r:
+        return json.loads(r.read())
+
+
 def upload_caption(token, video_id, srt_path):
     meta = {"snippet": {"videoId": video_id, "language": "ko",
                         "name": "한국어", "isDraft": False}}
@@ -268,6 +284,18 @@ def cmd_private(args):
     print(f"{ep} 업로드 중 ({video.stat().st_size / 1e6:.0f}MB) …")
     vid = upload_video(token, video, title, desc, tags)
     print(f"  영상 ID {vid} — 비공개")
+
+    # ⭐ 썸네일을 갈아 끼운다. 유튜브 기본값은 영상 한 프레임이라 글자가 없다.
+    #    없으면 조용히 넘어간다 — 썸네일 때문에 업로드가 실패하면 안 된다.
+    thumb = Path(args.thumb) if getattr(args, "thumb", "") else video.parent / "thumb.jpg"
+    if thumb.exists():
+        try:
+            set_thumbnail(token, vid, thumb)
+            print(f"  썸네일 등록 ({thumb.stat().st_size / 1024:.0f}KB)")
+        except Exception as e:
+            print(f"  썸네일 등록 실패(넘어감): {e}")
+    else:
+        print(f"  썸네일 없음 — 유튜브 자동 썸네일이 쓰인다 ({thumb})")
 
     srt = video.with_suffix(".srt")
     build_srt(doc, durs, srt)
@@ -344,6 +372,27 @@ def cmd_shorts(args):
     return 0
 
 
+def cmd_thumb(args):
+    """이미 올라간 영상의 썸네일만 갈아 끼운다.
+
+    관리자 페이지의 **'다시 만들기'** 버튼이 쓰는 길이다. 영상을 다시 만들지 않고
+    그림 한 장만 바꾼다 — 값이 0원이고 몇 초면 끝난다.
+    아직 유튜브에 올린 적이 없으면 조용히 넘어간다(그림은 이미 만들어졌으므로 실패가 아니다)."""
+    ep = args.episode
+    thumb = Path(args.thumb)
+    if not thumb.exists():
+        print(f"썸네일 파일이 없다: {thumb}")
+        return 2
+    row = _load(EPISODES, {}).get(ep) or {}
+    vid = row.get("longform_id")
+    if not vid:
+        print(f"{ep} 는 아직 유튜브에 올라가지 않았다 — 유튜브 썸네일은 건드리지 않는다.")
+        return 0
+    set_thumbnail(access_token(), vid, thumb)
+    print(f"유튜브 썸네일 교체: https://youtu.be/{vid}  ({thumb.stat().st_size / 1024:.0f}KB)")
+    return 0
+
+
 def cmd_publish(args):
     ep = args.episode
     eps = _load(EPISODES, {})
@@ -398,10 +447,15 @@ def main():
     p.add_argument("episode")
     p.add_argument("--video", default="build/longform.mp4")
     p.add_argument("--narration", default="")
+    p.add_argument("--thumb", default="", help="썸네일 JPEG (비우면 영상 옆 thumb.jpg)")
 
     s = sub.add_parser("shorts", help="쇼츠 3편을 비공개로 올린다")
     s.add_argument("episode")
     s.add_argument("--dir", default="build")
+
+    t = sub.add_parser("thumb", help="이미 올라간 영상의 썸네일만 갈아 끼운다")
+    t.add_argument("episode")
+    t.add_argument("--thumb", default="build/thumb.jpg")
 
     b = sub.add_parser("publish", help="비공개 → 공개")
     b.add_argument("episode")
@@ -413,6 +467,8 @@ def main():
             return cmd_private(args)
         if args.cmd == "shorts":
             return cmd_shorts(args)
+        if args.cmd == "thumb":
+            return cmd_thumb(args)
         return cmd_publish(args)
     except RuntimeError as e:
         print(f"❌ {e}")

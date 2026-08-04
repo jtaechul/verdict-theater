@@ -46,7 +46,12 @@ const WORKFLOWS = [
              { k: 'what', label: '무엇을', type: 'select',
                opts: ['롱폼', '쇼츠 1번 (궁금증형)', '쇼츠 2번 (분노형)', '쇼츠 3번 (사이다형)'] }] },
   { file: 'stats.yml', name: '5. 성과 보기', desc: '조회수·지속률·KPI 점검', inputs: [] },
+  // hidden — 실행 목록에는 안 보이고 '영상 보기' 화면의 [다시 만들기] 버튼만 부른다.
+  // 여기 적어 두는 이유는 /api/run 이 **이 명단에 있는 것만** 실행하기 때문이다.
+  { file: 'thumbnail.yml', name: '썸네일 다시 만들기', desc: '', inputs: [], hidden: true },
 ];
+
+const THUMB_NAME = 'thumb.jpg';           // 릴리스 자산에 들어 있는 썸네일 파일명
 
 // 릴리스 자산 파일명 → 사람이 읽는 이름
 const VIDEO_LABEL = {
@@ -282,6 +287,8 @@ function home() {
 
   h += '<div class="card"><h2>실행</h2>';
   WF.forEach((w, i) => {
+    // hidden 은 버튼 전용이라 목록에 안 띄운다. 자리(i)는 그대로 둔다 — run(i) 가 쓴다.
+    if (w.hidden) return;
     h += '<div class="wf"><b>' + esc(w.name) + '</b><small>' + esc(w.desc) + '</small>';
     w.inputs.forEach(inp => {
       h += '<label>' + esc(inp.label);
@@ -318,6 +325,7 @@ const mb = (b) => (b >= 1048576 ? Math.round(b/1048576) + 'MB' : Math.round(b/10
 // 영상은 저장소에 커밋하지 않는다. 제작 워크플로가 릴리스 자산으로 올려 두고,
 // 이 페이지가 그것을 스트리밍한다. 최근 3편만 남는다.
 let VIDS = [];
+let THUMB = null;
 
 async function videos(ep) {
   VIEW = 'video';
@@ -325,14 +333,63 @@ async function videos(ep) {
   let j = {};
   try { j = await (await fetch('/api/videos?ep=' + encodeURIComponent(ep))).json(); } catch (e) {}
   VIDS = j.items || [];
+  THUMB = j.thumb || null;
   if (!VIDS.length) {
     document.getElementById('app').innerHTML =
-      '<div class="card"><div class="empty">이 회차의 영상이 없습니다.<br>'
-      + '<b>3. 영상 만들기</b>를 실행하면 여기에서 바로 보실 수 있습니다.</div>'
-      + '<button class="ghost" onclick="home()">← 목록</button></div>';
+      '<button class="ghost" onclick="home()">← 목록</button><div style="height:12px"></div>'
+      + thumbCard(ep)
+      + '<div class="card"><div class="empty">이 회차의 <b>영상</b>이 없습니다.<br>'
+      + '<b>3. 영상 만들기</b>를 실행하면 여기에서 바로 보실 수 있습니다.</div></div>';
+    scrollTo(0, 0);
     return;
   }
   play(ep, 0);
+}
+
+// ── 썸네일 ─────────────────────────────────────────────
+// 유튜브에서 조회수의 절반은 썸네일이 만든다. 그런데 폰에는 그림판이 없다.
+// 그래서 ① 만들어진 것을 여기서 보여주고 ② 사진첩에 받고 ③ 마음에 안 들면
+// 문구를 바꿔 다시 만든다 — 이 세 가지를 버튼으로만 되게 했다.
+function thumbCard(ep) {
+  let h = '<div class="card"><h2>썸네일</h2>';
+  if (!THUMB) {
+    h += '<div class="empty">아직 썸네일이 없습니다.<br>'
+      + '아래 <b>다시 만들기</b>를 누르면 대본에서 만들어 드립니다.</div>';
+  } else {
+    h += '<img src="/api/thumb?id=' + THUMB.id + '" alt="썸네일" '
+      + 'style="width:100%;border-radius:12px;background:#000;display:block">';
+    h += '<div style="color:#9599ab;font-size:13px;margin:9px 0 0">'
+      + '1280×720 · ' + mb(THUMB.size) + ' · 유튜브에 자동으로 등록됩니다</div>';
+    h += '<div class="btns"><a class="mini gold" download="' + esc(ep) + '_thumb.jpg" '
+      + 'href="/api/thumb?id=' + THUMB.id + '&amp;dl=' + encodeURIComponent(ep) + '">썸네일 다운받기</a></div>';
+  }
+  // ⭐ 고를 것은 메뉴로 보여준다. '다시 만들기'가 매번 같은 그림을 뱉으면
+  //    버튼이 아무 소용이 없으므로, 어떤 문구로 만들지 여기서 고르게 한다.
+  h += '<label>문구 고르기 (바꿔 누르면 다른 그림이 나옵니다)'
+    + '<select id="tv"><option>문구 1</option><option>문구 2</option><option>문구 3</option></select></label>';
+  h += '<div style="height:10px"></div>'
+    + '<button class="ghost" onclick="remakeThumb(\\'' + ep + '\\')">다시 만들기</button>';
+  h += '<div style="color:#9599ab;font-size:13px;margin-top:9px">'
+    + '만드는 데 <b>1분쯤</b> 걸립니다. 값은 들지 않습니다(코드가 그립니다).<br>'
+    + '다 되면 아래 <b>새로 불러오기</b>를 눌러 확인하십시오.</div>';
+  h += '<div style="height:8px"></div>'
+    + '<button class="ghost" onclick="videos(\\'' + ep + '\\')">새로 불러오기</button>';
+  h += '</div>';
+  return h;
+}
+
+async function remakeThumb(ep) {
+  const v = (document.getElementById('tv') || {}).value || '문구 1';
+  toast('썸네일 다시 만드는 중… (' + v + ')');
+  let j = {};
+  try {
+    const r = await fetch('/api/run', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file: 'thumbnail.yml', inputs: { episode: ep, variant: v } }) });
+    j = await r.json();
+  } catch (e) { j = { ok: false, error: '연결이 끊겼습니다' }; }
+  if (!j.ok) { toast('실패: ' + (j.error || '알 수 없는 이유'), 6000); return; }
+  toast('시작했습니다. 1분쯤 뒤 [새로 불러오기]를 누르십시오.', 8000);
 }
 
 function play(ep, i) {
@@ -350,6 +407,8 @@ function play(ep, i) {
   h += '<div style="color:#9599ab;font-size:13px;margin:10px 0 4px">'
     + esc(v.label) + ' · ' + mb(v.size) + '</div>';
   h += '</div>';
+
+  h += thumbCard(ep);
 
   if (VIDS.length > 1) {
     h += '<div class="card"><h2>이 회차의 영상</h2>';
@@ -523,7 +582,10 @@ export default {
         const videos = {};
         (Array.isArray(rels) ? rels : []).forEach((r) => {
           const m = /^video-(.+)$/.exec(r.tag_name || '');
-          if (m) videos[m[1]] = (r.assets || []).filter((a) => a.name.endsWith('.mp4')).length;
+          // 썸네일만 있고 영상은 아직 없는 회차도 '영상 보기'로 들어갈 수 있어야 한다
+          // (썸네일을 먼저 만들어 보는 경우). 그래서 그림도 함께 센다.
+          if (m) videos[m[1]] = (r.assets || [])
+            .filter((a) => a.name.endsWith('.mp4') || a.name === THUMB_NAME).length;
         });
         let assets = null;
         if (manifest) {
@@ -550,12 +612,49 @@ export default {
         try { rel = await gh(env, `/repos/${REPO}/releases/tags/video-${ep}`); } catch { rel = null; }
         const order = Object.keys(VIDEO_LABEL);           // 본편 → 쇼츠 1·2·3 순서
         const rank = (n) => (order.indexOf(n) < 0 ? 99 : order.indexOf(n));
-        const items = ((rel && rel.assets) || [])
+        const assets = (rel && rel.assets) || [];
+        const items = assets
           .filter((a) => a.name.endsWith('.mp4'))
           .map((a) => ({ id: a.id, name: a.name, size: a.size,
                          label: VIDEO_LABEL[a.name] || a.name }))
           .sort((x, y) => rank(x.name) - rank(y.name));
-        return Response.json({ ep, items, at: rel ? rel.published_at : null });
+        // 썸네일은 영상이 아니라 그림이라 목록과 따로 돌려준다.
+        // 화면에서 보여주고 내려받게 하려면 자산 번호가 필요하다.
+        const t = assets.find((a) => a.name === THUMB_NAME);
+        const thumb = t ? { id: t.id, size: t.size } : null;
+        return Response.json({ ep, items, thumb, at: rel ? rel.published_at : null });
+      }
+
+      // 썸네일 보여주기 / 내려받기.
+      //   /api/video 는 Content-Type 을 video/mp4 로 못 박아 두어 그림에 쓸 수 없다.
+      //   `dl` 이 붙으면 브라우저가 **파일로 저장**하게 한다 — 아이폰 사파리는
+      //   이 머리말이 있어야 '파일 앱에 저장' 을 띄운다. 없으면 그냥 화면에 띄우고 만다.
+      if (url.pathname === '/api/thumb') {
+        const id = url.searchParams.get('id') || '';
+        const dl = url.searchParams.get('dl') || '';
+        if (!/^\d+$/.test(id)) return new Response('bad id', { status: 400 });
+        const r0 = await fetch(`${GH}/repos/${REPO}/releases/assets/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${env.GH_TOKEN}`,
+            'Accept': 'application/octet-stream',
+            'User-Agent': 'verdict-theater-admin',
+            'X-GitHub-Api-Version': '2022-11-28',
+          },
+          redirect: 'manual',
+        });
+        const loc = r0.headers.get('Location');
+        const up = loc ? await fetch(loc) : r0;
+        if (!up.ok) return new Response('썸네일을 가져오지 못했습니다 (' + up.status + ')', { status: 502 });
+        const h = new Headers();
+        h.set('Content-Type', 'image/jpeg');
+        h.set('Cache-Control', 'private, no-store');
+        if (dl) {
+          const safe = /^EP\d{3}$|^SAMPLE_\w+$/.test(dl) ? dl : 'thumb';
+          h.set('Content-Disposition', `attachment; filename="${safe}_thumb.jpg"`);
+        }
+        const len = up.headers.get('Content-Length');
+        if (len) h.set('Content-Length', len);
+        return new Response(up.body, { status: 200, headers: h });
       }
 
       // 영상 스트리밍.
