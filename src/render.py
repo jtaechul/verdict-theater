@@ -1136,23 +1136,66 @@ TARGET_DB = {
 _db_cache = {}
 
 
-def mean_db(path, ss=0.0, t=0.0):
+def mean_db(path, ss=0.0, t=0.0, af=""):
     """파일(또는 그 일부)의 평균 음량(dB). 한 번만 재고 기억해 둔다.
 
     `ss`·`t` 를 주면 그 구간만 잰다. 전환음은 파일 전체가 아니라 잘라 쓰는 구간의
-    크기를 맞춰야 하기 때문이다 — 앞뒤 여백까지 넣어 재면 실제보다 작게 나온다."""
-    key = (str(path), round(ss, 3), round(t, 3))
+    크기를 맞춰야 하기 때문이다 — 앞뒤 여백까지 넣어 재면 실제보다 작게 나온다.
+    `af` 를 주면 그 필터를 건 뒤의 크기를 잰다(고음이 얼마나 되는지 잴 때 쓴다)."""
+    key = (str(path), round(ss, 3), round(t, 3), af)
     if key not in _db_cache:
         cmd = ["ffmpeg", "-hide_banner", "-nostats"]
         if ss:
             cmd += ["-ss", f"{ss:.3f}"]
         if t:
             cmd += ["-t", f"{t:.3f}"]
-        r = subprocess.run(cmd + ["-i", str(path), "-af", "volumedetect",
+        chain = (af + "," if af else "") + "volumedetect"
+        r = subprocess.run(cmd + ["-i", str(path), "-af", chain,
                                   "-f", "null", "-"], capture_output=True, text=True)
         m = re.search(r"mean_volume:\s*(-?[\d.]+) dB", r.stderr)
         _db_cache[key] = float(m.group(1)) if m else -30.0
     return _db_cache[key]
+
+
+# ── ⭐ 영상이 시작하자마자 나던 "치지직" ────────────────────
+#
+# 손님 지적: "왜 자꾸 최초 영상 시작할 때 치지직 거리는 소리가 나는 거야?"
+#
+# 실측으로 잡았다. 완성된 소리의 첫 2초를 0.1초 단위로 갈라 재 보니
+#     0.0~0.3초   5kHz 위 에너지  0.5~1.4%   ← 조용하다
+#     0.4~0.9초   5kHz 위 에너지  52~63%     ← **여기가 '치지직' 이다**
+#     1.0초~      5kHz 위 에너지  1.8~2.5%   ← 다시 조용해진다
+# 0.42초는 첫 컷의 효과음(sfx_paper)이 들어오도록 되어 있던 자리다.
+#
+# 음원 자체가 문제였다 — 효과음 14개를 전부 재 보니
+#     paper 80.9% · tear 79.1%   ← 사실상 '쉬익' 하는 잡음이다
+#     나머지 12개는 전부 39% 이하
+# 예전 처리(highshelf 5kHz -8dB)로는 71%까지밖에 못 내렸다. 턱없이 모자랐다.
+#
+# 두 가지를 함께 고친다.
+#   ① 잡음스러운 음원만 **재서 골라내** 4kHz 저역통과를 두 번 건다 (71% → 15%)
+#      파일을 재서 정하므로, 나중에 좋은 음원으로 갈아 끼우면 필터가 저절로 풀린다
+#   ② 첫 컷의 효과음은 **여는 페이드(0.7초)가 끝난 뒤**에 낸다
+HISS_ABOVE = 5000           # 이 주파수 위를 '고음' 으로 본다
+HISS_SHARE = 0.55           # 고음이 이 몫을 넘으면 '쉬익' 소리로 본다
+TAME_HISS = "lowpass=f=4000,lowpass=f=4000"     # 쉬익 소리용 (실측 71% → 15%)
+TAME_NORM = "highshelf=f=5000:g=-8"             # 보통 효과음 — 날만 살짝 죽인다
+OPEN_SFX_DELAY = 900        # 첫 컷 효과음을 이만큼(ms) 늦춘다. OPEN_FADE 뒤로 보낸다
+
+
+def hiss_share(path):
+    """이 소리의 에너지 중 고음(5kHz 위)이 차지하는 몫 (0~1).
+
+    ⚠️ numpy 없이 **ffmpeg 만으로** 잰다. 저역통과를 걸기 전후의 음량 차이가 곧 몫이다.
+       렌더링 쪽에는 numpy 가 없을 수 있어서, 있다고 가정하면 검사가 조용히 꺼진다."""
+    full = mean_db(path)
+    low = mean_db(path, af=f"lowpass=f={HISS_ABOVE},lowpass=f={HISS_ABOVE}")
+    return max(0.0, min(1.0, 1.0 - 10 ** ((low - full) / 10.0)))
+
+
+def tame_sfx(path):
+    """이 효과음에 걸 필터. **파일을 재서** 정한다 — 이름으로 짐작하지 않는다."""
+    return TAME_HISS if hiss_share(path) > HISS_SHARE else TAME_NORM
 
 
 def gain_db(path, kind, ss=0.0, t=0.0):
@@ -1262,13 +1305,15 @@ def build_audio(doc, durs, workdir, narration_dir=None):
 
         sfx = audio_path("sfx", cut["sfx"]) if cut.get("sfx") else None
         if sfx:
-            # ⚠️ 고음을 조금 깎는다. 종이 부스럭 소리는 에너지의 **81%가 5kHz 위**라
-            #    (실측) 그대로 틀면 "치시식" 하고 쏜다. 50~60대 시청자에게는
-            #    이 대역이 특히 피로하다. 소리는 살리고 날만 죽인다(81% → 71%).
-            # ⚠️ 첫 컷은 한 박자 더 늦춘다. 영상이 열리자마자 효과음이 터지지 않게.
-            delay = 420 if i == 0 else 120
+            # ⭐ 필터를 **파일마다 재서** 정한다 (tame_sfx 위 설명 참고).
+            #    종이·종이찢는 소리는 에너지의 80%가 5kHz 위라 사실상 잡음이다.
+            #    예전에는 전부 같은 shelf 하나로 처리해 71% 밖에 못 내렸고,
+            #    그것이 영상 시작 0.4초의 "치지직" 이었다.
+            # ⚠️ 첫 컷은 **여는 페이드가 끝난 뒤**로 늦춘다. 예전 420ms 는 페이드
+            #    한가운데라, 소리가 커지는 도중에 잡음이 겹쳐 더 거슬렸다.
+            delay = OPEN_SFX_DELAY if i == 0 else 120
             inputs += ["-i", str(sfx)]
-            filters.append(f"[{mixn}:a]highshelf=f=5000:g=-8,adelay={delay}|{delay},"
+            filters.append(f"[{mixn}:a]{tame_sfx(sfx)},adelay={delay}|{delay},"
                            f"volume={gain_db(sfx, 'sfx'):.1f}dB[a{mixn}]")
             mixn += 1
 
