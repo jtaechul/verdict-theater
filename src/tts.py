@@ -274,6 +274,51 @@ def check_style():
         raise LLMError("두 인물이 같은 목소리 이름을 씁니다 — 소리로 구분되지 않습니다.")
 
 
+# ── ⭐ 이번 실행에 든 값 ────────────────────────────────
+#
+# 손님 지적: "제미나이 토큰이 2만원이 넘는다. TTS 에 이렇게 많이 쓰는 게 이해가 안 된다."
+#
+# 그때까지 **아무도 실제 값을 몰랐다.** 짐작으로만 이야기하고 있었다.
+# API 응답에 `usageMetadata` 로 정확한 토큰 수가 오는데 그냥 버리고 있었다.
+# 이제 실행이 끝날 때마다 몇 회·몇 토큰·대략 얼마인지 찍는다.
+#
+# 실측 (대사 34자 한 컷)
+#     입력  88 토큰(글자)  ·  출력  269 토큰(소리)   → 소리 1초당 약 41 토큰
+# 한 편(144컷·4,181자) 기준 약 45,000 토큰 ≈ **500원**.
+# 즉 TTS 는 한 편에 500원짜리다 — 2만원의 원인이 아니다(그림 쪽이다).
+TTS_USD_IN = float(os.environ.get("TTS_USD_IN", "0.50"))     # 입력 100만 토큰당 달러
+TTS_USD_OUT = float(os.environ.get("TTS_USD_OUT", "10.0"))   # 오디오 100만 토큰당 달러
+USD_KRW = float(os.environ.get("USD_KRW", "1470"))
+
+
+class Spend:
+    """이번 실행에서 쓴 토큰을 센다. 값이 눈에 보여야 줄일 수 있다."""
+
+    def __init__(self):
+        self.calls = self.tin = self.tout = 0
+
+    def add(self, usage):
+        if not usage:
+            return
+        self.calls += 1
+        self.tin += int(usage.get("promptTokenCount") or 0)
+        for d in (usage.get("candidatesTokensDetails") or []):
+            if d.get("modality") == "AUDIO":
+                self.tout += int(d.get("tokenCount") or 0)
+
+    def won(self):
+        return (self.tin / 1e6 * TTS_USD_IN + self.tout / 1e6 * TTS_USD_OUT) * USD_KRW
+
+    def line(self):
+        if not self.calls:
+            return "이번 실행에서 새로 만든 음성 없음 — 값 0원 (전부 재사용)"
+        return (f"이번 실행 음성 {self.calls}회 · 글자 {self.tin:,}토큰 + "
+                f"소리 {self.tout:,}토큰 → 약 {self.won():,.0f}원")
+
+
+SPEND = Spend()
+
+
 def quota_note(e):
     """429 본문에서 **어떤 한도**에 걸렸는지 읽어 사람이 읽는 한 줄로.
 
@@ -633,6 +678,8 @@ def synth_one(key, model, text, speaker, out_mp3, rotate=False):
             },
         },
     }, timeout=180, label=speaker, rotate=rotate)
+
+    SPEND.add(res.get("usageMetadata"))
 
     parts = (res.get("candidates") or [{}])[0].get("content", {}).get("parts", [])
     blob = next((p["inlineData"] for p in parts if "inlineData" in p), None)
@@ -1235,6 +1282,11 @@ def main():
     if used:
         # 한쪽 모델만 두들기면 다시 429 가 난다. 골고루 갔는지 여기서 바로 보인다.
         print("  모델별: " + " · ".join(f"{m} {n}컷" for m, n in used.items()))
+    # ⭐ 값을 찍는다. 재사용이 잘 되고 있는지 이 한 줄로 바로 보인다.
+    reused = ok - SPEND.calls
+    print(f"  💰 {SPEND.line()}")
+    if reused > 0:
+        print(f"     (만들어 둔 음성 {reused}컷을 그대로 다시 썼다 — 그만큼 값이 안 나갔다)")
 
     # 소리가 자주 끊기면 그것은 "영상이 나왔다" 가 아니라 "음성이 실패했다" 이다.
     # 예전에는 여기서 0 을 돌려줘서, 소리 없는 영상이 성공으로 올라갈 수 있었다.

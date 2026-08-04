@@ -195,8 +195,9 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: build/voice
-          key: voice-${{ steps.pick.outputs.ep }}-${{ steps.fp.outputs.hash }}-n${{ inputs.limit }}
+          key: voice-${{ steps.pick.outputs.ep }}-${{ steps.fp.outputs.hash }}
           # 대본이 조금 바뀌었으면 예전 것이라도 가져와 바뀐 컷만 새로 만든다.
+          # (어느 컷을 다시 만들지는 tts.py 의 prune_stale 이 '조리법'으로 판단한다)
           restore-keys: |
             voice-${{ steps.pick.outputs.ep }}-
 
@@ -252,14 +253,25 @@ jobs:
       #
       # ⚠️ 열쇠에 대본 지문이 들어간다. 대본을 고치면 열쇠가 바뀌므로 **매번 새로 보관**한다.
       #    cache-hit 이 참일 때만 건너뛴다(그때는 이미 똑같은 것이 들어 있다).
+      #
+      # ⭐⭐ **시험 실행(--limit)은 절대 보관하지 않는다.** 손님이 "영상을 몇 번
+      #    다시 만드는지 모르겠다" 며 비용을 지적해 찾아낸 구멍이다.
+      #      · 예전 열쇠는 `voice-EP001-{지문}-n{limit}` 이라 시험(n12)과 전체(n0)가
+      #        **다른 칸**에 저장됐다.
+      #      · 되살릴 때는 `restore-keys: voice-EP001-` 로 **가장 최근 것**을 가져온다.
+      #      · 그래서 전체(144컷)를 만들어 둔 뒤 시험(12컷)을 한 번만 돌리면,
+      #        시험 캐시가 더 최근이라 **다음 전체 실행이 12컷만 되살리고
+      #        132컷을 다시 만든다.** 한 편 값이 통째로 또 나간다.
+      #    이제 전체 실행(limit=0)만 보관한다. 시험은 되살려 쓰기만 하고 남기지 않는다.
       - name: 만든 음성 보관 (다음 실행에서 재사용)
         if: always() && inputs.voice != '무음으로 시험'
+             && inputs.limit == '0'
              && steps.voicecache.outputs.cache-hit != 'true'
              && steps.voicecount.outputs.n != '0'
         uses: actions/cache/save@v4
         with:
           path: build/voice
-          key: voice-${{ steps.pick.outputs.ep }}-${{ steps.fp.outputs.hash }}-n${{ inputs.limit }}
+          key: voice-${{ steps.pick.outputs.ep }}-${{ steps.fp.outputs.hash }}
 
       - name: 렌더링 (롱폼 16:9 + 쇼츠 9:16)
         run: |
