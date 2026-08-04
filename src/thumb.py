@@ -256,7 +256,8 @@ def main():
     q = save(img, a.out)
     p = Path(a.out)
     print(f"썸네일 → {p}  {W}x{H}  {p.stat().st_size / 1024:.0f}KB (품질 {q})")
-    print(f"  작은 줄: {hook_line(doc, a.variant)}  (문구 {a.variant})")
+    # 사람에게는 1·2·3 으로 보인다 (버튼의 '문구 1' 과 숫자를 맞춘다)
+    print(f"  작은 줄: {hook_line(doc, a.variant)}  (문구 {a.variant + 1})")
     print(f"  큰 줄  : {money_line(doc)}")
     print(f"  인물   : {', '.join(f'{c}({r})' for c, r in cast(doc))}")
     return 0

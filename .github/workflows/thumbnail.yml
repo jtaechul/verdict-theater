@@ -63,9 +63,11 @@ jobs:
           set -euo pipefail
           EP="${{ inputs.episode }}"
           if [ -z "$EP" ]; then
+            # ⚠️ `|| true` 가 없으면 대본이 하나도 없을 때 pipefail 로 여기서 그냥 죽어
+            #    아래의 친절한 안내가 나오지 않는다 (grep 은 못 찾으면 1 을 돌려준다).
             EP=$(ls -1 data/scripts/EP*.json 2>/dev/null \
                  | grep -v '\.eval\.\|\.shorts\.' | sort | tail -1 \
-                 | xargs -n1 basename | sed 's/\.json//')
+                 | xargs -r -n1 basename | sed 's/\.json//' || true)
           fi
           if [ -z "$EP" ] || [ ! -f "data/scripts/$EP.json" ]; then
             echo "## 대본이 없습니다" >> "$GITHUB_STEP_SUMMARY"
