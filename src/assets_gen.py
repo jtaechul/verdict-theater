@@ -255,17 +255,46 @@ CHAR_LOOK = {
 }
 
 
-def pick_image_model(key):
-    override = os.environ.get("GEMINI_IMAGE_MODEL")
+# ⭐ 그림 종류마다 **다른 모델**을 쓴다 (손님 선택 · 2026-08-04)
+#
+# 손님 지적: "편당 비용이 이렇게 비싼 건 말이 안 된다."
+# 실측해 보니 값의 대부분은 음성이 아니라 **그림**이었다(음성은 편당 약 500원).
+#
+# ⚠️ 그런데 비싼 모델이 뽑힌 것은 **의도가 아니라 사고**였다.
+#    예전 코드는 `cands.sort(key=lambda n: ("preview" in n, len(n)))` —
+#    "미리보기 아닌 것 중 이름 짧은 것" 이었다. '안정판을 고르자' 는 뜻이었는데
+#    하필 이름이 가장 짧은 것이 **가장 비싼 gemini-3-pro-image** 였다.
+#    목소리를 성격 대신 '높이' 만 보고 골랐던 것과 똑같은 실수다.
+#
+# 이제 종류별로 이름을 적어 둔다. 자동 정렬에 맡기지 않는다.
+#   배경 — 화면에서 **14px 블러 + 22% 어둡게** 처리해 깔개로만 쓴다.
+#          비싼 모델로 만들어도 차이가 보이지 않는다 → 싼 flash 로 내린다.
+#   인물 — 얼굴이 화면을 크게 차지한다. 품질이 곧 채널의 얼굴이므로 pro 를 유지한다.
+IMAGE_MODEL_ORDER = {
+    "bg":   ["gemini-3.1-flash-image", "gemini-2.5-flash-image",
+             "gemini-3.1-flash-lite-image"],
+    "char": ["gemini-3-pro-image", "gemini-3.1-flash-image"],
+}
+
+
+def pick_image_model(key, kind="char"):
+    """이 종류의 그림을 만들 모델. 없으면 None.
+
+    환경변수로 덮어쓸 수 있다 — 전체는 `GEMINI_IMAGE_MODEL`,
+    배경만은 `GEMINI_IMAGE_MODEL_BG`."""
+    override = (os.environ.get(f"GEMINI_IMAGE_MODEL_{kind.upper()}")
+                or os.environ.get("GEMINI_IMAGE_MODEL"))
     if override:
         return override.strip()
     data = _get(f"{BASE}/models?key={key}&pageSize=200")
     names = [m["name"].split("/", 1)[-1] for m in data.get("models", [])]
-    cands = [n for n in names if "image" in n.lower() and "embed" not in n.lower()]
-    if not cands:
-        return None
-    cands.sort(key=lambda n: ("preview" in n, len(n)))
-    return cands[0]
+    have = {n for n in names if "image" in n.lower() and "embed" not in n.lower()}
+    for want in IMAGE_MODEL_ORDER.get(kind, []):
+        if want in have:
+            return want
+    # 적어 둔 것이 하나도 없을 때만 자동으로 고른다. 그때도 **싼 쪽 먼저**.
+    cands = sorted(have, key=lambda n: (0 if "flash" in n else 1, "preview" in n, len(n)))
+    return cands[0] if cands else None
 
 
 def gen_image(key, model, prompt, out_path):
@@ -314,12 +343,13 @@ def cmd_images(args):
     if not key:
         print("❌ GEMINI_API_KEY 가 없다. 이미지 생성은 열쇠가 필요하다.")
         return 2
-    model = pick_image_model(key)
-    if not model:
+    # 배경과 인물은 **다른 모델**을 쓴다 (IMAGE_MODEL_ORDER 설명 참고).
+    models = {k: pick_image_model(key, k) for k in ("bg", "char")}
+    if not any(models.values()):
         print("❌ 이미지를 만들 수 있는 모델을 찾지 못했다.")
         print("   GEMINI_IMAGE_MODEL 환경변수로 모델 이름을 직접 지정할 수 있다.")
         return 2
-    print(f"이미지 모델: {model}")
+    print(f"이미지 모델 — 배경 {models['bg']} · 인물 {models['char']}")
 
     jobs = []
     if args.what in ("bg", "all"):
@@ -343,9 +373,10 @@ def cmd_images(args):
     made = 0
     for kind, code, path, prompt in jobs:
         try:
-            gen_image(key, model, prompt, path)
+            m = models.get(kind) or models.get("char") or models.get("bg")
+            gen_image(key, m, prompt, path)
             made += 1
-            print(f"  {kind} {code} → {path.name}")
+            print(f"  {kind} {code} → {path.name}  ({m})")
             if kind == "char":
                 process_sheet(path, code)
         except Exception as e:
