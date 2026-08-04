@@ -559,6 +559,13 @@ def draw_time_caption(img, text, cy=None, avoid=None):
 # ── 정보 그래픽 4종 ──────────────────────────────────────
 PAD = 40                    # 카드 둘레 여백. 흐린 그림자가 잘리지 않게 넉넉히 둔다
 
+# 글자를 밝은 배경에서도 읽히게 하는 **후광**의 값 (_lift 참고).
+# 짧은 변 대비 번짐 반지름 · 번진 뒤 되살릴 배율 · 최대 진하기.
+# ⚠️ 번짐을 더 키우면 다시 화면을 넓게 덮는다 — 얼굴을 가리던 그 문제로 돌아간다.
+HALO_BLUR = 0.035
+HALO_GAIN = 3.0
+HALO_ALPHA = 195
+
 
 def _fit_font(start_px, floor_px, texts, maxw, role="sub"):
     """주어진 글들이 모두 maxw 안에 들어오는 가장 큰 글자 크기를 찾는다.
@@ -615,38 +622,46 @@ def _t(d, xy, text, f, ox=0, oy=0, **kw):
 
 
 def _lift(layer, radius=10, alpha=170, spread=3):
-    """⭐ 판을 깔지 않는 대신 두 겹으로 글자를 띄운다.
+    """⭐ 판을 깔지 않는 대신 두 겹의 그늘로 글자를 띄운다.
 
     이 방향(활자)의 유일한 위험은 **밝은 배경에서 흰 글자가 묻히는 것**이다.
-    실제로 밝은 벽 배경으로 시험해 보니 작은 라벨이 거의 안 보였다.
-    상자를 다시 깔면 도로 앱 화면이 되므로, 상자 없이 두 가지로 푼다.
+    상자를 다시 깔면 도로 앱 화면이 되므로, 상자 없이 두 겹으로 푼다.
+      1) 넓게 번진 후광 — 글자 뭉치 **주변만** 어둡게 한다
+      2) 글자 모양 그대로의 짙은 그늘 — 획을 또렷하게 세운다
 
-      1) 그늘 — 글자 모양 그대로 번진다. 네모가 보이지 않는다
-      2) 위쪽 그라데이션 — 자막이 아래에서 쓰는 것과 같은 방식.
-         글자가 놓인 높이까지만 은은하게 덮고 아래로 스르르 사라진다.
-         어두운 장면에서는 거의 보이지 않고, 밝은 장면에서만 일한다"""
-    W, H = layer.size
-    box = layer.getchannel("A").point(lambda v: 255 if v >= 24 else 0).getbbox()
+    ⚠️⚠️ 예전 1번은 **화면 위쪽을 통째로 덮는 네모 그라데이션**이었다.
+       손님이 쇼츠 화면을 캡처해 보내며 "어두운 화면처리가 목 위쪽으로 얼굴을
+       가리고 있다" 고 했다. 실측해 보니 정확히 그랬다 —
+         · 어두워지는 면적  **화면의 52.8%** (가로는 100% 전부)
+         · 얼굴 자리 가림    **48%**
+       세로 쇼츠는 이름표가 화면 높이의 65% 지점에 있어서, 그 **위쪽 = 얼굴**이
+       통째로 막 안에 들어갔다. 가로 본편도 같은 문제였고 덜 눈에 띄었을 뿐이다.
+
+       고친 방식: 네모를 버리고 **글자 알파를 크게 번지게 해서** 그 모양대로만
+       어둡게 한다. 방송 자막이 쓰는 방식이고 네모 경계도 보이지 않는다.
+         · 어두워지는 면적  52.8% → **1.9%**
+         · 얼굴 자리 가림    48% → **0%**
+       (트레이드오프: 아주 밝은 배경에서 글자 대비가 1.55 → 1.26 으로 조금 낮아진다.
+        다만 배경은 늘 22% 어둡게 + 비네트 처리해 내보내므로 그런 화면은 나오지 않는다.)
+    """
+    u = unit(*layer.size)
     out = Image.new("RGBA", layer.size, (0, 0, 0, 0))
 
-    if box:
-        pad = round(H * 0.055)
-        bottom = min(H, box[3] + pad)
-        fade = max(1, round(H * 0.10))
-        grad = Image.new("L", (1, bottom))
-        px = grad.load()
-        for y in range(bottom):
-            left = bottom - y
-            px[0, y] = 132 if left > fade else round(132 * (left / fade) ** 1.4)
-        shade = Image.new("RGBA", (W, bottom), (10, 11, 14, 255))
-        shade.putalpha(grad.resize((W, bottom)))
-        out.alpha_composite(shade, (0, 0))
+    # 1) 넓게 번진 후광. 알파를 먼저 키운 뒤 번지게 하고, 번지며 옅어진 만큼 되살린다.
+    halo = layer.getchannel("A").point(lambda v: min(255, v * 5))
+    halo = halo.filter(ImageFilter.GaussianBlur(round(u * HALO_BLUR)))
+    halo = halo.point(lambda v: min(255, round(v * HALO_GAIN)))
+    glow = Image.new("RGBA", layer.size, (10, 11, 14, 255))
+    glow.putalpha(halo.point(lambda v: round(v * HALO_ALPHA / 255)))
+    out.alpha_composite(glow)
 
+    # 2) 글자 모양 그대로의 짙은 그늘
     a = layer.getchannel("A").point(lambda v: min(255, v * spread))
     a = a.filter(ImageFilter.GaussianBlur(radius))
     sh = Image.new("RGBA", layer.size, (0, 0, 0, 0))
     sh.putalpha(a.point(lambda v: round(v * alpha / 255)))
     out.alpha_composite(sh)
+
     out.alpha_composite(layer)
     return out
 

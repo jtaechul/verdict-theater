@@ -236,11 +236,14 @@ VOICE_STYLE = {
 #   Umbriel 134Hz · Rasalgethi 147Hz · Iapetus 151Hz · Orus 167Hz
 #   Sulafat 198Hz · Vindemiatrix 198Hz · Erinome 200Hz · Gacrux 186Hz
 #   Charon 82Hz (2.5 기준 — 나레이터)
+# ⭐ 아래 다섯(해설·장남·차남·어머니·재판장)은 **손님이 실제로 듣고 확정한 값**이다
+#    (cast_5_voices 샘플). 임의로 바꾸지 마라. 나머지 셋(F50B·F70·M70)은
+#    EP001 에 대사가 없어 아직 귀로 확인하지 못했다 — 처음 쓰는 회차에서 들어보고 정한다.
 VOICE_NAME = {
     "narrator": "Charon",       # Informative(설명하는) 82Hz  — 낮고 차분한 해설
     "v_F50A":   "Sulafat",      # Warm(따뜻한)      198Hz — 오래 참아온 어머니
     "v_F50B":   "Erinome",      # Clear(맑은)       200Hz — 정 없이 또렷한 여자
-    "v_M50A":   "Algenib",      # Gravelly(걸걸한)  120Hz — 서늘한 맏아들 (손님 확인)
+    "v_M50A":   "Algenib",      # Gravelly(걸걸한)  120Hz — 서늘한 맏아들
     "v_M50B":   "Schedar",      # Even(평탄한)      129Hz — 눌려 살아온 동생
     "v_F70":    "Vindemiatrix", # Gentle(부드러운)  198Hz — 기운 없는 할머니
     "v_M70":    "Enceladus",    # Breathy(숨섞인)   131Hz — 병든 노인의 쉰 목소리
