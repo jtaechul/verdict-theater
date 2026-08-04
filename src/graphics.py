@@ -495,7 +495,7 @@ def draw_top_line(img, text, box=None):
     return Image.alpha_composite(img.convert("RGBA"), _lift(layer, radius=round(u * 0.011)))
 
 
-def draw_time_caption(img, text, cy=None):
+def draw_time_caption(img, text, cy=None, avoid=None):
     """회상으로 들어갈 때 화면 가운데 잠깐 뜨는 시점 자막 — '십수 년 전'.
 
     색만 세피아로 바뀌면 시청자는 '화면이 이상해졌다' 로 본다.
@@ -521,6 +521,15 @@ def draw_time_caption(img, text, cy=None):
     half = max(tw // 2 + round(u * 0.055), round(u * 0.13))
     lw = max(2, round(u * 0.0025))
     gap = round(u * 0.030)
+
+    # ⚠️ avoid — 이 y 아래로는 내려가지 않는다. 렌더러가 **인물의 머리 꼭대기**를
+    #    넣어 준다. 기본 자리(화면 높이의 30%)는 상반신 컷에서는 머리 위였지만,
+    #    전신 컷은 인물이 작아 머리가 그보다 위에 온다 — 그러면 '아버지 생전' 이
+    #    얼굴을 가로지른다(A2-09 에서 실제로 그랬다).
+    if avoid is not None:
+        over = (cy + line_h(f) + gap * 2) - avoid
+        if over > 0:
+            cy = max(round(H * 0.045), cy - over)
 
     d.line([(cx - half, cy - gap), (cx + half, cy - gap)], fill=_pale(0.62) + (190,), width=lw)
     d.text((cx - tw // 2, cy), text, font=f, fill=_pale(0.02))

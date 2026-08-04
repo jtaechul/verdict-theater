@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""대본의 모든 컷에서 인물 배치를 재어 일곱 가지 약속을 검사한다.
+"""대본의 모든 컷에서 인물 배치를 재어 여덟 가지 약속을 검사한다.
 
     python3 tools/check_place.py
 
@@ -9,6 +9,7 @@
   3) 머리 위도 잘리면 안 된다.
   4) 자막이 얼굴을 덮으면 안 된다. (자막 띠가 있는 컷은 애초에 해당 없음)
   5) ⭐ **두 인물이 서로 겹치면 안 된다.**
+  5-2) ⭐ **같은 컷에 선 두 사람의 머리 크기가 비슷해야** 한다.
   6) ⭐ **이름표가 다른 인물을 덮으면 안 된다.** (주인 본인은 덮어도 된다)
   7) ⭐ **이름표가 주인보다 남에게 더 가까이 붙으면 안 된다.**
 
@@ -38,6 +39,11 @@ import graphics as G  # noqa: E402
 import render as R  # noqa: E402
 
 
+# 같은 컷에 선 두 사람의 머리 크기 차이 한도.
+# 듣는 사람을 일부러 12% 줄이므로(render.LISTEN_SCALE) 1/0.88 = 1.14 는 정상이다.
+HEAD_TOL = 1.20
+
+
 def overlap(a, b):
     """두 네모가 겹치는 넓이(픽셀). 안 겹치면 0."""
     w = min(a[2], b[2]) - max(a[0], b[0])
@@ -53,7 +59,7 @@ def main():
     cuts = [c for a in doc["acts"] for c in a["cuts"]]
 
     bad_bottom, bad_side, bad_top, bad_face = [], [], [], []
-    bad_overlap, bad_tag, bad_near = [], [], []
+    bad_overlap, bad_tag, bad_near, bad_head = [], [], [], []
     n = 0
     for W, H, vert in ((1920, 1080, False), (1080, 1920, True)):
         for i, cut in enumerate(cuts):
@@ -100,6 +106,18 @@ def main():
                             f"{'세로' if vert else '가로'} {cid:6s} "
                             f"{here[a]['code']} ↔ {here[b]['code']} 가 {ov:,}px² 겹친다")
 
+            # 5-2) 같은 컷에 선 두 사람의 **머리 크기**가 비슷한가.
+            #      한 사람만 크면 같은 방에 있는 것으로 안 보인다. 실제로 A1-30 에서
+            #      어머니 머리가 아들 머리의 세 배로 나갔다(머리 재는 방법이 틀려서).
+            #      말하는 사람이 듣는 사람보다 조금 큰 것은 일부러 넣은 연출이다.
+            if len(here) == 2 and all(p.get("head") for p in here):
+                hs = sorted(p["head"] for p in here)
+                if hs[1] / max(1, hs[0]) > HEAD_TOL:
+                    bad_head.append(
+                        f"{'세로' if vert else '가로'} {cid:6s} 머리 크기가 "
+                        f"{hs[1] / hs[0]:.2f}배 차이 — "
+                        + " ↔ ".join(f"{p['code']} {p['head']}px" for p in here))
+
             # 6) 이름표가 **다른** 인물을 덮는가
             spec = cut.get("gfx") or {}
             if spec.get("type") == "nametag" and here:
@@ -142,6 +160,7 @@ def main():
                 ("머리 위 잘림", bad_top),
                 ("자막이 얼굴을 덮음", bad_face),
                 ("인물끼리 겹침", bad_overlap),
+                ("머리 크기가 서로 다름", bad_head),
                 ("이름표가 남을 덮음", bad_tag),
                 ("이름표가 엉뚱한 사람 쪽에 붙음", bad_near))
     for name, rows in rows_all:

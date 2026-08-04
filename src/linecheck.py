@@ -143,6 +143,18 @@ def main():
                 crop.resize((crop.width * 2, crop.height * 2), Image.NEAREST) \
                     .save(out / f"{f.parent.name}_{f.stem}.png")
 
+    # ⭐ 머리가 잘려 나간 그림도 함께 본다.
+    #    실측: M50A/full_back 은 목 위가 통째로 날아가 **머리 없는 양복 상반신**만
+    #    남아 있었는데, 파일이 있으니 렌더러가 그대로 화면에 세웠고 두 컷이
+    #    마네킹 같은 몸통으로 나갔다(A2-09 · A4-09). 렌더러는 이제 이런 그림을
+    #    비슷한 포즈로 갈아 끼우지만, **원본은 다시 만들어야** 한다.
+    import render as R                                   # noqa: E402
+    headless = [f"{f.parent.name}/{f.stem}" for f in files if R.is_headless(f, f.stem)]
+    if headless:
+        print(f"\n머리가 잘린 그림 {len(headless)}장 — {', '.join(headless)}")
+        print("→ 렌더링은 비슷한 포즈로 대신 채웁니다. "
+              "원본은 char_sheet.py --redo 로 다시 만드십시오.")
+
     if bad:
         print(f"\n칸 선이 남은 그림 {len(bad)}장 / 검사 {len(files)}장")
         print("→ char_sheet.py --redo 로 그 포즈만 다시 만드십시오 (한 장에 한 포즈).")

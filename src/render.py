@@ -91,10 +91,38 @@ POSE_ALT = {
 }
 
 
+# ⭐ **머리가 잘려 나간 그림은 쓰지 않는다.**
+#    실측: assets/char/M50A/full_back.png 은 시트를 자를 때 목 위가 통째로 날아가
+#    **머리 없는 양복 상반신**만 남아 있었다. 그런데도 렌더러는 아무 말 없이 그것을
+#    화면에 세웠고, A2-09·A4-09 두 컷이 마네킹 같은 몸통으로 나갔다.
+#    파일이 있으니 '있다' 고 판단한 것이 문제였다 — 있는 것과 쓸 만한 것은 다르다.
+#
+#    가리는 법: 머리 폭 ÷ 그림에서 가장 넓은 줄. 머리가 있으면 어깨가 훨씬 넓어
+#    이 값이 작다(실측 full_·bust_ 24장 전부 0.66 이하). 머리가 없으면 맨 위가
+#    곧 어깨라 1 에 가깝다(full_back 0.86).
+#    얼굴 컷(face_)은 머리가 곧 가장 넓은 부분이라(0.95) 검사에서 뺀다.
+HEADLESS_RATIO = 0.75
+_headless = {}
+
+
+def is_headless(path, pose):
+    """머리가 잘려 나간 그림인가. 한 번만 재고 기억해 둔다."""
+    if pose.split("_")[0] == "face":
+        return False
+    key = str(path)
+    if key not in _headless:
+        s = Image.open(path).convert("RGBA")
+        widest = max(_row_widths(s)[0] or [1]) or 1
+        _headless[key] = head_width(s, pose) / widest > HEADLESS_RATIO
+    return _headless[key]
+
+
 def char_path(code, pose):
     p = ASSETS / "char" / code / f"{pose}.png"
-    if p.exists():
+    if p.exists() and not is_headless(p, pose):
         return p
+    if p.exists():
+        MISSING["char"].add(f"{code}/{pose} — 머리가 잘린 그림이라 쓰지 않는다")
 
     # ⚠️ 없다고 곧바로 회색 실루엣으로 떨어뜨리지 않는다.
     #    시트를 만들 때 모델이 칸 하나를 덜 그리는 일이 있는데(실측: 12칸 중 11명),
@@ -103,7 +131,7 @@ def char_path(code, pose):
     kind, _, mood = pose.partition("_")
     for alt in POSE_ALT.get(mood, ()):
         q = ASSETS / "char" / code / f"{kind}_{alt}.png"
-        if q.exists():
+        if q.exists() and not is_headless(q, f"{kind}_{alt}"):
             MISSING["char"].add(f"{code}/{pose} → {kind}_{alt} 로 대신")
             return q
     MISSING["char"].add(f"{code}/{pose}")
@@ -325,6 +353,45 @@ def chin_y(sprite):
     return bot                            # 얼굴만 있는 그림 — 그림 아래끝이 턱이다
 
 
+# ⭐ 머리 크기를 재는 구간 — 그림 맨 위에서 이 비율만큼이 '머리' 다.
+#    포즈 종류로 구간만 정하고, **크기는 실제로 잰다.**
+#    (얼굴 컷은 머리가 화면을 거의 채우고, 전신은 머리가 위쪽 15% 안에 있다.)
+HEAD_WINDOW = {"face": 0.34, "bust": 0.30, "full": 0.14}
+
+
+def _row_widths(sprite):
+    """실루엣의 줄별 가로 폭과 (맨 위, 맨 아래) 줄. 여러 곳에서 함께 쓴다."""
+    a = sprite.getchannel("A").point(lambda v: 255 if v > 200 else 0)
+    W, H = a.size
+    px = a.load()
+    step = max(1, W // 160)
+    ws = []
+    for y in range(H):
+        xs = [x for x in range(0, W, step) if px[x, y]]
+        ws.append((max(xs) - min(xs) + step) if xs else 0)
+    solid = [y for y, w in enumerate(ws) if w > W * 0.04]
+    return (ws, solid[0], solid[-1]) if solid else (ws, 0, H - 1)
+
+
+def head_width(sprite, pose):
+    """머리의 **가로 폭**(픽셀). 두 사람이 '같은 크기로 서 있다' 는 것은 결국
+    머리 크기가 같다는 뜻이다.
+
+    ⭐ 왜 '턱 위치' 가 아니라 '머리 폭' 인가 (실측으로 갈아탄 이유)
+       예전에는 머리 높이(그림 위 ~ 턱)로 크기를 맞췄다. 그런데 턱을 찾는 방법이
+       **줄 폭이 갑자기 넓어지는 곳** 이라서, 곱슬머리처럼 위가 넓게 퍼진 그림에서는
+       이마를 턱으로 잘못 잡았다. 38장을 전부 그려 확인한 결과
+         · 얼굴 컷 4장에서 이마에 선이 그였고
+         · 전신 7장에서 정수리에 선이 그였으며
+         · 상반신 8장은 아예 못 찾아 그림 맨 아래를 턱으로 삼았다
+       그 잘못된 값으로 크기를 맞추니, 한 화면에서 어머니 머리가 아들 머리의
+       **세 배**로 나왔다(A1-30). 폭은 그림 위쪽 구간에서 가장 넓은 줄 하나만
+       고르면 되므로 훨씬 안전하다 — 38장 전부 머리 한가운데에 맞았다."""
+    ws, top, bot = _row_widths(sprite)
+    n = max(4, int((bot - top) * HEAD_WINDOW.get(pose.split("_")[0], 0.30)))
+    return max(ws[top:top + n] or [1]) or 1
+
+
 def top_pad(sprite):
     """그림 맨 위에서 **인물(흰 테두리 포함)이 시작되기까지** 비어 있는 픽셀.
 
@@ -420,9 +487,11 @@ def _solve_char(c, cut, W, H, vertical, gfx_bottom, banded=False):
         cap = min(hi, wide)                                 # 더 키울 수 있는 한계
         target_h = int(max(lo, min(target_h, cap)) if lo <= cap else cap)
 
+    # hw — 그림 높이 1픽셀당 머리 폭. 화면에 나올 머리 폭은 `키 × hw` 다.
     return {"code": ccode, "pose": pose, "sprite": sprite, "kind": kind,
             "edge": edge, "target_h": target_h, "cap": cap, "room": room,
-            "head_frac": head_frac, "head_px": target_h * head_frac}
+            "head_frac": head_frac, "head_px": target_h * head_frac,
+            "hw": head_width(sprite, pose) / max(1, h0)}
 
 
 # ── ⭐ 인물이 서로 겹치지 않게 하는 장치 ────────────────────
@@ -633,18 +702,20 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False):
     #    한 사람은 크고 한 사람은 절반만 하게 나온다(실측: 판사 옆 김성일).
     #    그래서 먼저 각자 풀고, **가장 큰 머리에 나머지를 맞춘다.**
     plan = [_solve_char(c, cut, W, H, vertical, gfx_bottom, banded) for c in chars]
-    heads = [p["head_px"] for p in plan if p["head_px"] > 0]
-    if len(heads) > 1:
-        want_head = max(heads)
-        for p in plan:
-            if p["head_px"] <= 0 or p["head_frac"] <= 0:
-                continue
-            # 키우기만 한다 — 줄이면 자막이 얼굴을 덮는다.
-            # ⚠️ '정보 카드를 넘지 않게' 로 묶어 봤더니, 카드가 뜬 컷에서 한 사람만
-            #    인형처럼 작아졌다(판결 선고 컷). 카드 글자는 인물 **위에** 덧그려지므로
-            #    조금 겹쳐도 읽는 데 지장이 없다. 크기가 어긋나는 쪽이 훨씬 나쁘다.
-            grow = min(p["cap"], want_head / p["head_frac"])
-            p["target_h"] = int(max(p["target_h"], grow))
+    fit = [p for p in plan if p["hw"] > 0]
+    if len(fit) > 1:
+        # 각자 '뜻한 머리 폭' 과 '낼 수 있는 가장 큰 머리 폭'
+        want_px = [p["target_h"] * p["hw"] for p in fit]
+        cap_px = [p["cap"] * p["hw"] for p in fit]
+        # ⭐ 모두가 낼 수 있는 가장 큰 머리에 맞춘다. 그 값을 '원래 뜻한 범위' 안으로
+        #    한 번 더 눌러, 아무도 필요 이상으로 커지거나 작아지지 않게 한다.
+        want = max(min(want_px), min(min(cap_px), max(want_px)))
+        for p in fit:
+            new = min(p["cap"], want / p["hw"])
+            # ⚠️ **줄이는 것은 자막 띠가 있을 때만** 한다. 띠가 없으면 자막이 화면 위에
+            #    떠 있어서, 인물을 줄이면 자막이 얼굴을 덮는다.
+            #    (지금 본편·쇼츠 둘 다 띠를 쓰므로 사실상 늘 줄일 수 있다.)
+            p["target_h"] = int(new if banded else max(p["target_h"], new))
 
     # ⭐ 말하는 사람과 듣는 사람을 가른다.
     #    듣는 사람을 **먼저** 그려 뒤로 보내고, 조금 줄이고 어둡게 한다.
@@ -763,6 +834,8 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False):
                 w=sprite.width, h=sprite.height,
                 bleed=bottom_bleed(sprite), edge=q["edge"],
                 chin=chin_y(sprite), banded=banded, rect=q["rect"],
+                head=head_width(sprite, q["pose"]),   # 화면에 나온 머리 폭
+                listening=q["listening"],
                 # 띠가 있으면 자막이 무대 밖이라 얼굴을 덮을 수가 없다.
                 sub_top=(None if banded else
                          G.subtitle_top(cut.get("text", ""), W, H, vertical))))
@@ -886,7 +959,11 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False):
             sb = sub_layer.getbbox()
             if sb:
                 cy = max(int(H * 0.09), sb[1] - int(H * 0.055))
-        gfx_layer = G.draw_time_caption(gfx_layer, when, cy=cy)
+        # 인물 머리 꼭대기 — 시점 자막이 이 아래로 내려오면 얼굴을 가로지른다.
+        ink_top = min((q["rect"][1] for q in placed), default=None)
+        gfx_layer = G.draw_time_caption(
+            gfx_layer, when, cy=cy,
+            avoid=None if ink_top is None else ink_top - int(H * 0.012))
     return move, gfx_layer, sub_layer
 
 
