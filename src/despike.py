@@ -132,6 +132,71 @@ def despike(sp, scale=4, thin=25, back=29):
     return (out.crop(bb) if bb else out), max(1, len(comps) - 1)
 
 
+# ── 어깨 좌우로 삐죽 튀어나온 것 ────────────────────────────
+BOTTOM_ZONE = 0.30      # 아래 30% 안에서 '가장 넓은 줄' 을 찾는다
+MAX_TRIM = 0.15         # 그래도 키의 15% 넘게는 자르지 않는다 (몸이 뭉텅 날아가면 안 된다)
+MIN_BULGE = 0.03        # 폭 대비 3% 넘게 들어갔을 때만 손댄다
+
+
+def _row_span(mask, y, W):
+    """그 줄의 (왼끝, 오른끝, 폭). 비어 있으면 (0, 0, 0).
+
+    한 줄씩 잘라 getbbox 를 쓴다 — 파이썬으로 픽셀을 하나씩 도는 것보다 훨씬 빠르다."""
+    bb = mask.crop((0, y, W, y + 1)).getbbox()
+    return (bb[0], bb[2] - 1, bb[2] - bb[0]) if bb else (0, 0, 0)
+
+
+def flatten_bottom(sp):
+    """어깨가 **불룩 나왔다가 다시 좁아지며** 생기는 좌우 삐죽이를 없앤다.
+
+    무엇이 문제였나
+        상반신(bust·face) 그림은 가슴께에서 끊긴 컷아웃이라, 아래로 갈수록
+        어깨가 가장 넓은 채로 화면 밖으로 나가야 한다. 그런데 AI 가 만든 그림은
+        아래를 **둥글게 마무리**해 놓았다 — 어깨에서 제일 넓어졌다가 바닥으로
+        갈수록 다시 좁아진다. 거기에 흰 테두리가 둘러지면서 좌우 맨 끝이
+        **뾰족한 삼각형**으로 튀어나와 보인다. 실측: 38장 중 29장이 그랬다.
+
+    어떻게 없애나
+        아래쪽에서 **가장 넓은 줄을 찾아 거기서 수평으로 자른다.**
+        그러면 그 줄이 곧 바닥이 되어 어깨가 제일 넓은 채로 끝난다 —
+        나왔다 들어가는 자리가 아예 없어지므로 삐죽이도 없다.
+        **지우기만 하고 없는 픽셀을 지어내지 않는다.**
+
+    ⚠️ 전신(full_*)에는 쓰지 않는다. 전신은 팔이 가장 넓고 발이 좁은 것이
+       당연해서, 같은 규칙을 대면 **다리가 잘린다.** (부르는 쪽에서 거른다)"""
+    a = sp.getchannel("A")
+    W, H = sp.size
+    mask = a.point(lambda v: 255 if v > 40 else 0)
+    bb = mask.getbbox()
+    if not bb:
+        return sp, 0
+    top, bot = bb[1], bb[3] - 1
+    ink = bot - top
+    if ink < 40:
+        return sp, 0
+
+    lo = max(top, bot - int(ink * BOTTOM_ZONE))
+    span = {y: _row_span(mask, y, W) for y in range(lo, bot + 1)}
+    zone = [y for y, s in span.items() if s[2]]
+    if not zone:
+        return sp, 0
+    wy = max(zone, key=lambda y: span[y][2])
+    if (span[wy][2] - span[bot][2]) / W <= MIN_BULGE:
+        return sp, 0                      # 이미 아래로 갈수록 넓다 — 손댈 것 없다
+
+    # ⚠️ 너무 많이 잘려야 한다면 **아예 손대지 않는다.** 두 가지 이유다.
+    #    ① 그런 그림은 얼굴만 딴 컷이라, 제일 넓은 곳이 어깨가 아니라 **머리카락**이다.
+    #       거기서 자르면 턱과 목이 날아간다 (실측: F50A/face_anger).
+    #    ② 조금씩 잘라 두면 이 스크립트를 다시 돌릴 때마다 또 잘린다.
+    #       에셋 만들기에서 매번 도는 스크립트라 **몇 번을 돌려도 결과가 같아야** 한다.
+    if bot - wy > ink * MAX_TRIM:
+        return sp, 0
+
+    out = sp.crop((0, 0, W, wy + 1))
+    nb = out.getchannel("A").point(lambda v: 255 if v > 20 else 0).getbbox()
+    return (out.crop(nb) if nb else out), bot - wy
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry", action="store_true", help="지우지 않고 확인만")
@@ -143,17 +208,28 @@ def main():
         want = {s.strip() for s in args.only.split(",") if s.strip()}
         files = [f for f in files if f.parent.name in want]
 
-    total = 0
+    total = flat = 0
     for f in files:
         sp = Image.open(f).convert("RGBA")
         out, n = despike(sp)
-        if not n:
-            continue
-        total += 1
-        print(f"  {f.parent.name}/{f.stem:14} 조각 {n}개 제거  {sp.size} → {out.size}")
-        if not args.dry:
+        if n:
+            total += 1
+            print(f"  {f.parent.name}/{f.stem:14} 조각 {n}개 제거  {sp.size} → {out.size}")
+
+        # ⭐ 전신(full_*)은 건드리지 않는다 — 팔이 넓고 발이 좁은 것이 정상이라
+        #    같은 규칙을 대면 다리가 잘린다.
+        if not f.name.startswith("full"):
+            out2, cut = flatten_bottom(out)
+            if cut:
+                flat += 1
+                print(f"  {f.parent.name}/{f.stem:14} 어깨 삐죽이 — 아래 {cut}줄 잘라냄"
+                      f"  {out.size} → {out2.size}")
+                out = out2
+
+        if out.size != sp.size and not args.dry:
             out.save(f)
-    print(f"\n{total}장에서 어깨 조각을 지웠다 (전체 {len(files)}장)"
+
+    print(f"\n조각 제거 {total}장 · 어깨 삐죽이 제거 {flat}장 (전체 {len(files)}장)"
           + ("   [--dry — 저장하지 않았다]" if args.dry else ""))
     return 0
 

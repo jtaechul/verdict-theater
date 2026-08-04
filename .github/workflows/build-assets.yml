@@ -79,6 +79,18 @@ jobs:
               python3 src/assets_gen.py check 2>&1 | tee build.log || true ;;
           esac
 
+      # ⭐ 인물 그림을 만든 **직후, 커밋하기 전에** 실루엣을 다듬는다.
+      #    AI 가 만든 상반신 그림은 아래를 둥글게 마무리해 놓아서, 어깨가 제일
+      #    넓어졌다가 다시 좁아진다. 거기에 흰 테두리가 둘러지면 좌우 맨 끝이
+      #    **뾰족한 삼각형**으로 튀어나와 보인다 (실측: 38장 중 26장이 그랬다).
+      #
+      #    ⚠️ despike.py 는 예전부터 있었는데 **아무 데서도 부르지 않고 있었다.**
+      #       그래서 삐죽이가 그대로 영상까지 나갔다. 여기서 부른다.
+      #    몇 번을 돌려도 결과가 같게 만들어 두었으므로 매번 돌려도 안전하다.
+      - name: 인물 실루엣 다듬기 (어깨 삐죽이 제거)
+        if: always()
+        run: python3 src/despike.py 2>&1 | tee despike.log || true
+
       - name: 남은 것 확인
         if: always()
         run: python3 src/assets_gen.py check 2>&1 | tee check.log || true
