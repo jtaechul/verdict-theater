@@ -652,19 +652,42 @@ def _spaced(text, gap="  "):
     return gap.join(list(str(text).replace(" ", "")))
 
 
-def nametag_block(text, W, H):
-    """이름표가 차지하는 높이(픽셀). 자막과 겹치는지 미리 재려고 쓴다."""
+def _nametag_fonts(text, W, H):
+    """이름표의 두 줄과 글꼴. 크기 계산과 그리기가 **같은 값**을 쓰게 한곳에 둔다."""
     u = unit(W, H)
     head, _, tail = str(text).partition("·")
+    head, tail = head.strip(), tail.strip()
     maxw = int(W * (0.80 if H > W else 0.52))
-    fn = _fit_font(*_px("name", u), [head.strip()], maxw, role="label")
-    if not tail.strip():
-        return line_h(fn) + round(u * 0.028)
-    ft = _fit_font(*_px("name_sub", u), [tail.strip()], maxw, role="body")
-    return line_h(fn) + round(u * 0.012) + line_h(ft) + round(u * 0.028)
+    fn = _fit_font(*_px("name", u), [head], maxw, role="label")
+    ft = _fit_font(*_px("name_sub", u), [tail], maxw, role="body") if tail else None
+    return head, tail, fn, ft
 
 
-def g_nametag(text, W=1920, H=1080, bottom=None):
+NAMETAG_MARGIN = 0.055      # 이름표를 화면 가장자리에서 띄우는 비율
+NAMETAG_RULE = 0.075        # 이름 위 강조선의 길이 (짧은 변 대비)
+
+
+def nametag_size(text, W, H):
+    """이름표 덩어리의 **(폭, 높이)** 픽셀.
+
+    렌더러가 '이 이름표를 왼쪽에 두면 옆 사람을 덮는가' 를 미리 재는 데 쓴다.
+    짐작하지 않고 실제 글꼴로 재야 맞는다 — 이름 길이가 회차마다 다르다."""
+    u = unit(W, H)
+    head, tail, fn, ft = _nametag_fonts(text, W, H)
+    w = max(text_w(head, fn), round(u * NAMETAG_RULE))
+    h = line_h(fn) + round(u * 0.028)
+    if ft:
+        w = max(w, text_w(tail, ft))
+        h += round(u * 0.012) + line_h(ft)
+    return w, h
+
+
+def nametag_block(text, W, H):
+    """이름표가 차지하는 높이(픽셀). 자막과 겹치는지 미리 재려고 쓴다."""
+    return nametag_size(text, W, H)[1]
+
+
+def g_nametag(text, W=1920, H=1080, bottom=None, align="left"):
     """인물 이름표 — 강조색 짧은 선 하나와 이름만. 판도 상자도 없다.
 
     ⭐ 이름과 나머지를 나눠 두 줄로 앉힌다.
@@ -678,28 +701,41 @@ def g_nametag(text, W=1920, H=1080, bottom=None):
         세로 쇼츠에서 자막이 얼굴을 피해 **위로 올라오면** 이름표 기본 자리
         (화면 높이의 65.5%)와 정면으로 겹친다. 실제로 겹쳐서 '김성일 50세 장남'이
         자막에 통째로 가려졌다. 그럴 때 렌더러가 새 아래끝을 찍어 준다.
-        **비켜나는 쪽은 늘 이름표다** — 자막은 읽는 중에 움직이면 안 된다."""
+        **비켜나는 쪽은 늘 이름표다** — 자막은 읽는 중에 움직이면 안 된다.
+
+    align — 'left'(기본) 또는 'right'. 이름표를 화면 오른쪽에 붙인다.
+        ⭐ 왜 필요한가. 이름표는 늘 화면 **왼쪽 끝**에 그려졌다. 두 사람이 선 컷에서
+           오른쪽 사람의 이름표를 띄우면, 그 이름이 **왼쪽 사람 옆에** 붙는다.
+           실제로 '김성훈 · 48세 · 차남' 이 왼쪽에 선 어머니 옆에 붙어 나갔고
+           (손님 화면 캡처), '재판장' 이 장남 옆에 붙은 컷도 있었다.
+           이름표는 딱지다 — 붙일 사람 옆에 있어야 한다. 렌더러가 실제 배치를 재서
+           덜 가리는 쪽을 골라 여기로 알려준다."""
     u = unit(W, H)
     out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(out)
 
-    head, _, tail = str(text).partition("·")
-    head, tail = head.strip(), tail.strip()
-    maxw = int(W * (0.80 if H > W else 0.52))
-    fn = _fit_font(*_px("name", u), [head], maxw, role="label")
-    ft = _fit_font(*_px("name_sub", u), [tail], maxw, role="body") if tail else None
+    head, tail, fn, ft = _nametag_fonts(text, W, H)
+    bw, _bh = nametag_size(text, W, H)
 
     gap = round(u * 0.012)
     block = line_h(fn) + (gap + line_h(ft) if ft else 0)
-    x = round(W * 0.055)
+    m = round(W * NAMETAG_MARGIN)
+    right = (align == "right")
+    x0 = max(m, W - m - bw) if right else m         # 덩어리의 왼쪽 끝
     base = bottom if bottom else round(H * (0.50 if H > W else 0.655))
     y = max(round(u * 0.040), base - block)                 # 아래끝 기준으로 위로 쌓는다
 
-    d.line([(x, y - round(u * 0.028)), (x + round(u * 0.075), y - round(u * 0.028))],
+    def put(s, f, yy, fill):
+        """오른쪽에 붙일 때는 줄도 오른쪽으로 맞춘다 — 방송 로워서드와 같은 방식."""
+        _t(d, (x0 + (bw - text_w(s, f)) if right else x0, yy), s, f, fill=fill)
+
+    rule = round(u * NAMETAG_RULE)
+    rx = (x0 + bw - rule) if right else x0
+    d.line([(rx, y - round(u * 0.028)), (rx + rule, y - round(u * 0.028))],
            fill=ACCENT, width=max(3, round(u * 0.005)))
-    _t(d, (x, y), head, fn, fill=_pale(0.02))
+    put(head, fn, y, _pale(0.02))
     if ft:
-        _t(d, (x, y + line_h(fn) + gap), tail, ft, fill=_pale(0.42))
+        put(tail, ft, y + line_h(fn) + gap, _pale(0.42))
     return _lift(out, radius=round(u * 0.009))
 
 
@@ -836,7 +872,8 @@ def render_gfx(spec, W=1920, H=1080):
     if not fn:
         return None
     if t == "nametag":
-        return fn(spec.get("text", ""), W, H, bottom=spec.get("_bottom"))
+        return fn(spec.get("text", ""), W, H, bottom=spec.get("_bottom"),
+                  align=spec.get("_align", "left"))
     if t == "amount":
         return fn(spec.get("value", ""), spec.get("note", ""), W, H)
     if t == "timeline":
@@ -964,12 +1001,20 @@ def check_frame(script_path):
         sub_max = W * (1 - 2 * SAFE)
         for c in cuts:
             if c.get("gfx"):
-                lay = render_gfx(c["gfx"], W, H)
-                if lay:
+                # ⚠️ 이름표는 **좌·우 두 자리**로 그려질 수 있다(렌더러가 인물 배치를 보고
+                #    고른다). 왼쪽만 검사하면 오른쪽으로 갔을 때 글자가 잘려도 못 잡는다.
+                shots = [c["gfx"]]
+                if c["gfx"].get("type") == "nametag":
+                    shots.append({**c["gfx"], "_align": "right"})
+                for spec in shots:
+                    lay = render_gfx(spec, W, H)
+                    if not lay:
+                        continue
                     # 띠는 일부러 화면 끝까지 뻗는다. 글자만 안전 여백 안에 있으면 된다.
                     for bx0, _by0, bx1, _by1 in _TEXT_BOXES:
                         if bx0 < limit or bx1 > W - limit:
-                            bad.append(f"{tag} {c['id']} {c['gfx'].get('type')} "
+                            side = spec.get("_align", "left")
+                            bad.append(f"{tag} {c['id']} {spec.get('type')}({side}) "
                                        f"글자 {bx0}~{bx1} (화면 {W}, 여백 {limit:.0f} 필요)")
                             break
             txt = (c.get("text") or "").strip()

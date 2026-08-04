@@ -313,7 +313,7 @@
             {
               "code": "F50A",
               "pose": "bust_sad",
-              "pos": "left",
+              "pos": "right",
               "scale": 0.95
             }
           ],
@@ -475,13 +475,13 @@
             {
               "code": "M50A",
               "pose": "bust_neutral",
-              "pos": "center",
+              "pos": "left",
               "scale": 1.1
             },
             {
               "code": "M70",
               "pose": "bust_neutral",
-              "pos": "center",
+              "pos": "right",
               "scale": 1.1
             }
           ],
@@ -527,7 +527,7 @@
             {
               "code": "M50A",
               "pose": "bust_sad",
-              "pos": "right",
+              "pos": "left",
               "scale": 1.1
             },
             {

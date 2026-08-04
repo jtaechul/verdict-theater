@@ -145,6 +145,36 @@ jobs:
           python3 src/linecheck.py > line.log 2>&1 || true
           cat line.log
 
+      # ⭐ **화면을 실제로 그려 보고 검사한다.** 대본 검사만으로는 못 잡는 것이 있다.
+      #
+      #    8월 4일에 손님이 캡처해 보낸 두 가지가 그랬다.
+      #      · 아버지와 어머니가 **같은 자리에 포개져** 머리가 두 겹으로 나왔다
+      #      · 오른쪽에 선 차남의 이름표가 **왼쪽 어머니 옆에** 붙어 나갔다
+      #    둘 다 렌더링은 아무 오류 없이 성공한다. 영상을 눈으로 봐야만 드러나는데
+      #    114컷 × 가로·세로 = 228장을 사람이 다 볼 수는 없다.
+      #
+      #    이제 렌더러가 스스로 겹침을 풀고 이름표를 주인 옆에 붙이지만,
+      #    **고쳤다고 믿지 않고 매 회차 다시 잰다.** 1분이면 끝난다.
+      - name: 화면 배치 검사 (겹침·잘림·이름표)
+        run: |
+          set -o pipefail
+          EP="${{ steps.pick.outputs.ep }}"
+          FAIL=0
+          python3 src/graphics.py --check "data/scripts/$EP.json" 2>&1 | tee frame.log || FAIL=1
+          python3 tools/check_place.py "$EP" 2>&1 | tee place.log || FAIL=1
+          if [ "$FAIL" != "0" ]; then
+            {
+              echo "## 화면 배치에 문제가 있어 영상을 만들지 않았습니다"
+              echo ""
+              echo '```'
+              tail -n 40 frame.log
+              tail -n 40 place.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::화면 배치 검사에서 문제가 나왔습니다. 요약 화면을 보십시오."
+            exit 1
+          fi
+
       # ⭐ 만들어 둔 음성을 다시 쓴다 — 이 워크플로에서 돈이 드는 곳은 여기뿐이다.
       #
       #    실행할 때마다 작업 공간이 새것이라, 예전에는 렌더링에서 실패하고 다시 눌러도

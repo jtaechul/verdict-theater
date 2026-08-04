@@ -532,6 +532,41 @@ def check_blackout(doc, r):
         r.ok("막 전환 검은 화면이 각 막 마지막 컷에만 있다")
 
 
+def check_char_layout(doc, r):
+    """⭐ 한 컷에 선 인물들이 **서로 다른 자리**에 서 있는가.
+
+    실제로 있었던 일 (손님이 화면을 캡처해 보내 확인)
+        A1-03 이 아버지와 어머니를 **둘 다 `pos:"left"`** 로 적었다.
+        렌더러는 적힌 대로 두 사람을 같은 자리에 세웠고, 뒤에 선 아버지는
+        어머니 뒤로 완전히 사라진 채 **흰 테두리만 머리 둘레에 남았다.**
+        화면에는 '머리가 두 겹인 어머니' 가 나왔는데 이름표는 '김재복 · 아버지' 였다.
+        A1-09(center+center) · A1-11(right+right) 도 같은 실수였다.
+
+    ⚠️ 렌더러는 이제 겹치면 스스로 흩어 놓는다(render.assign_slots). 그래도 여기서
+       잡는 이유는, **대본이 뜻한 자리와 화면에 나온 자리가 달라지기 때문**이다.
+       '왼쪽에 아버지, 오른쪽에 어머니' 를 대본이 정하게 두는 편이 낫다."""
+    bad, blank = [], []
+    for _a, cut in all_cuts(doc):
+        chars = cut.get("chars") or []
+        if len(chars) < 2:
+            continue
+        cid = cut.get("id", "?")
+        pos = [c.get("pos") for c in chars]
+        if any(p is None for p in pos):
+            blank.append(f"{cid}({[c.get('code') for c in chars]})")
+        eff = [p or "center" for p in pos]
+        if len(set(eff)) < len(eff):
+            bad.append(f"{cid}: " + ", ".join(
+                f"{c.get('code')}={p}" for c, p in zip(chars, eff)))
+    if bad:
+        r.error("인물 배치", "한 컷에서 두 인물이 **같은 자리**에 선다 — 화면에서 포개진다: "
+                + " / ".join(bad[:5]))
+    if blank:
+        r.error("인물 배치", f"두 명 이상인데 pos 가 빠졌다: {', '.join(blank[:5])}")
+    if not bad and not blank:
+        r.ok("한 컷에 선 인물들이 서로 다른 자리에 있다")
+
+
 def check_nametags(doc, r):
     """인물이 처음 나오는 컷에 네임태그가 있어야 한다.
     고정 배우 7명을 회차마다 다른 역으로 쓰므로, 없으면 누가 누군지 알 수 없다."""
@@ -978,6 +1013,7 @@ def validate_doc(doc, mf=None, with_shorts=True):
     check_tags(doc, r)
     check_gfx_text(doc, r)
     check_blackout(doc, r)
+    check_char_layout(doc, r)
     check_nametags(doc, r)
     check_anonymization(doc, r)
     check_amount_onscreen(doc, r)

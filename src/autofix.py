@@ -137,7 +137,30 @@ def autofix(doc):
         doc["meta"]["cut_count"] = n
         notes.append(f"meta.cut_count 를 실제 컷 수({n})로 맞췄다")
 
-    # 6. 금액을 백만원 단위로 (money.py 와 같은 규칙)
+    # 6. ⭐ 같은 자리에 겹쳐 세운 인물을 갈라놓는다.
+    #    두 명이 한 컷에 있으면 자리는 왼쪽·오른쪽 둘뿐이다 — 정답이 하나로 정해진다.
+    #    (대본에 적힌 좌→오른 순서는 지킨다. 둘 다 같은 값이면 쓰인 순서대로.)
+    #    실제로 아버지와 어머니를 둘 다 `"left"` 로 적은 컷이 있었고, 화면에는
+    #    머리가 두 겹인 어머니 한 사람만 나온 채 이름표는 '아버지' 였다.
+    #    이것 하나 때문에 대본 전문을 다시 쓰게 할 이유가 없다.
+    order = {"left": 0, "center": 1, "right": 2}
+    seats = 0
+    for _act, c in _all(doc):
+        chars = c.get("chars") or []
+        if len(chars) != 2:
+            continue
+        pos = [ch.get("pos") for ch in chars]
+        if pos[0] in ("left", "right") and pos[1] in ("left", "right") \
+                and pos[0] != pos[1]:
+            continue                                  # 이미 갈라져 있다
+        rank = sorted(range(2), key=lambda i: (order.get(pos[i], 1), i))
+        for side, i in zip(("left", "right"), rank):
+            chars[i]["pos"] = side
+        seats += 1
+    if seats:
+        notes.append(f"같은 자리에 포개져 있던 인물 {seats}컷을 왼쪽·오른쪽으로 갈랐다")
+
+    # 7. 금액을 백만원 단위로 (money.py 와 같은 규칙)
     before = money.untidy(json.dumps(doc, ensure_ascii=False))
     if before:
         doc.update(money.tidy_doc(doc))

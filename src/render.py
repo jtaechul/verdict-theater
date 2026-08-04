@@ -344,6 +344,16 @@ def bottom_bleed(sprite):
     solid_bottom = box[3] if box else sprite.height
     return (sprite.height - solid_bottom) + round(sprite.height * CHAR_OUTLINE) + 2
 
+
+def ink_rect(sprite):
+    """이 그림에서 **눈에 보이는 부분**의 네모 (x0, y0, x1, y1).
+
+    흰 테두리까지 포함한다 — 두 인물의 테두리가 서로 닿기만 해도 겹쳐 보이기 때문이다.
+    아주 옅은 그림자(알파 40 미만)는 뺀다. 그것까지 세면 그림 전체가 잡혀
+    "언제나 겹친다" 가 되어 검사가 헛돈다."""
+    box = sprite.getchannel("A").point(lambda v: 255 if v > 40 else 0).getbbox()
+    return box or (0, 0, sprite.width, sprite.height)
+
 # 확대 연출(zoompan)이 매 프레임 가장자리를 깎아내는 최대 비율.
 # ZOOM_MAX 까지 확대되므로 각 변에서 (1 - 1/ZOOM_MAX)/2 만큼 사라진다.
 ZOOM_START = 1.0            # 첫 프레임은 **자르지 않는다** (예전 1.02 는 시작부터 2% 손실)
@@ -415,6 +425,183 @@ def _solve_char(c, cut, W, H, vertical, gfx_bottom, banded=False):
             "head_frac": head_frac, "head_px": target_h * head_frac}
 
 
+# ── ⭐ 인물이 서로 겹치지 않게 하는 장치 ────────────────────
+#
+# 실제로 일어난 일 (손님이 화면을 캡처해 보내 확인)
+#   대본 A1-03 이 아버지와 어머니를 **둘 다 `pos:"left"`** 로 적었다.
+#   렌더러는 적힌 대로 두 사람을 같은 자리에 세웠고, 뒤에 선 아버지는
+#   어머니 뒤로 완전히 사라진 채 **흰 테두리만 머리 둘레에 남았다.**
+#   화면에는 '머리가 두 겹인 어머니' 가 나왔고, 이름표는 '김재복 · 아버지' 였다.
+#   같은 실수가 A1-09 · A1-11 에도 있었다 (center+center, right+right).
+#
+# 고치는 방법은 두 겹이다.
+#   1) **자리 배정** — 겹치는 pos 를 받으면 적힌 대로 세우지 않고 고르게 흩는다
+#   2) **실측 후 재배치** — 자리가 달라도 그림이 넓으면 여전히 닿는다.
+#      다 키운 뒤 보이는 폭을 재서, 겹치면 떼어 놓고 그래도 안 되면 함께 줄인다
+# 대본이 틀려도 화면은 틀리지 않는다 — 검사기(validate_script)는 대본을 따로 잡는다.
+SLOT_X = {"left": 0.27, "center": 0.5, "right": 0.73}
+# 인원수별 기본 자리. 2명은 기존 left/right 와 **같은 값**이라, 제대로 적힌 대본은
+# 배치가 한 픽셀도 바뀌지 않는다.
+SLOT_SPREAD = {1: (0.5,), 2: (0.27, 0.73), 3: (0.17, 0.5, 0.83)}
+CHAR_GAP = 0.030            # 두 인물 사이에 최소로 두는 틈 (화면 폭 대비)
+
+
+def assign_slots(chars, vertical):
+    """각 인물이 설 가로 자리(화면 폭 대비 비율)를 정한다.
+
+    pos 가 서로 다르게 제대로 적혀 있으면 **그대로** 쓴다.
+    하나라도 겹치거나 비어 있으면 적힌 좌→우 순서만 지킨 채 고르게 흩는다."""
+    n = len(chars)
+    if vertical or n <= 1:
+        return [0.5] * n
+    want = [c.get("pos") for c in chars]
+    named = [w for w in want if w in SLOT_X]
+    if len(named) == n and len(set(named)) == n:
+        return [SLOT_X[w] for w in want]
+
+    base = SLOT_SPREAD.get(n) or tuple(
+        0.5 + (i - (n - 1) / 2) * (0.66 / max(1, n - 1)) for i in range(n))
+    # 적힌 자리의 좌→오른 순서는 지킨다. 같은 자리끼리는 대본에 적힌 순서대로.
+    rank = sorted(range(n), key=lambda i: (SLOT_X.get(want[i], 0.5), i))
+    out = [0.5] * n
+    for k, i in enumerate(rank):
+        out[i] = base[k]
+    return out
+
+
+def solve_row(spans, W, edge, gap):
+    """보이는 폭들(왼→오른 순)을 한 줄에 겹치지 않게 앉힌다.
+
+    돌려주는 것 — (모두에게 곱할 축소 배율, [보이는 부분의 왼쪽 끝, …])
+    다 합쳐도 자리가 모자라면 **다 같이** 줄인다. 한쪽만 줄이면 머리 크기가 어긋난다."""
+    room = W - 2 * edge
+    need = sum(spans) + gap * (len(spans) - 1)
+    k = 1.0
+    if need > room:
+        k = max(0.35, (room - gap * (len(spans) - 1)) / max(1.0, sum(spans)))
+        spans = [s * k for s in spans]
+        need = sum(spans) + gap * (len(spans) - 1)
+    x = edge + (room - need) / 2
+    lefts = []
+    for s in spans:
+        lefts.append(x)
+        x += s + gap
+    return k, lefts
+
+
+# ⭐ 이름표를 **그 사람 옆에** 붙이기 위한 배역 명단 (이름 → 인물 코드).
+#    이름표에는 '김성훈' 이라고 이름만 적혀 있고, 컷에는 'M50B' 라고 코드만 있다.
+#    둘을 잇는 다리가 없으면 이름표가 누구 것인지 렌더러가 알 수 없어서,
+#    늘 화면 왼쪽에 붙였다 — 그래서 **오른쪽에 선 차남의 이름표가 왼쪽 어머니 옆에**
+#    붙는 일이 생겼다(손님 화면 캡처). main() 이 대본을 읽을 때 채워 둔다.
+CAST = {}
+
+
+def set_cast(doc):
+    """대본의 배역 명단으로 '이름 → 코드' 다리를 놓는다."""
+    CAST.clear()
+    for ch in (doc.get("characters") or []):
+        nm = str(ch.get("nametag") or ch.get("name") or "").split("·")[0].strip()
+        if nm and ch.get("code"):
+            CAST[nm] = ch["code"]
+    return CAST
+
+
+def tag_owner(spec, chars):
+    """이름표가 가리키는 인물의 코드. 알 수 없으면 None."""
+    if not spec or spec.get("type") != "nametag":
+        return None
+    on = [c.get("code") for c in chars]
+    code = CAST.get(str(spec.get("text", "")).split("·")[0].strip())
+    if code and code in on:
+        return code
+    return on[0] if len(on) == 1 else None
+
+
+def decollide(placed, W, gap, reseat):
+    """다 키워 놓은 인물들이 **실제로 겹치는지 재서** 겹치면 떼어 놓는다.
+
+    자리(pos)를 서로 다르게 줘도 그림이 넓으면 여전히 닿는다 — 흰 테두리끼리
+    스치기만 해도 화면에서는 한 덩어리로 보인다. 그래서 마지막에 한 번 더 잰다.
+    떼어 놓을 자리가 모자라면 **다 같이** 줄인다(한쪽만 줄이면 머리 크기가 어긋난다)."""
+    if len(placed) < 2:
+        return
+    for q in placed:
+        r = ink_rect(q["sprite"])
+        q["_vis"] = (q["x"] + r[0], q["x"] + r[2])
+    seq = sorted(placed, key=lambda q: q["_vis"][0])
+    if all(seq[k]["_vis"][1] + gap <= seq[k + 1]["_vis"][0] for k in range(len(seq) - 1)):
+        return                                  # 이미 안 겹친다 — 한 픽셀도 손대지 않는다
+
+    edge = max(q["edge"] for q in placed)
+    k, lefts = solve_row([q["_vis"][1] - q["_vis"][0] for q in seq], W, edge, gap)
+    for q, left in zip(seq, lefts):
+        if k < 0.999:
+            s = q["sprite"]
+            q["sprite"] = s.resize((max(1, round(s.width * k)),
+                                    max(1, round(s.height * k))), Image.LANCZOS)
+            q["y"] = reseat(q["sprite"], q["kind"])
+        q["x"] = int(round(left - ink_rect(q["sprite"])[0]))
+    for q in placed:
+        q.pop("_vis", None)
+
+
+def nametag_align(spec, chars, placed, W, H, bottom=None):
+    """이름표를 화면 **왼쪽·오른쪽 중 어디**에 붙일지 정한다.
+
+    두 가지를 재서 고른다.
+      1) 그 자리에 두면 **다른 인물을 가리는가** (많이 가리는 쪽은 탈락)
+      2) 같으면 **이름표 주인에게 더 가까운 쪽**
+
+    주인 본인을 조금 덮는 것은 상관없다 — 자기 이름표다. 남을 덮으면 그 사람 이름으로
+    읽힌다. 실제로 그래서 차남의 이름표가 어머니 이름표로 보였다."""
+    owner = tag_owner(spec, chars)
+    if owner is None or not placed:
+        return "left"
+    tw, th = G.nametag_size(spec.get("text", ""), W, H)
+    base = bottom if bottom else round(H * (0.50 if H > W else 0.655))
+    top = base - th
+    m = round(W * G.NAMETAG_MARGIN)
+
+    who = next((q for q in placed if q["code"] == owner), None)
+    others = [q for q in placed if q is not who]
+
+    def score(x0):
+        x1 = x0 + tw
+        hide = sum(max(0, min(x1, o["rect"][2]) - max(x0, o["rect"][0]))
+                   for o in others if o["rect"][3] > top and o["rect"][1] < base)
+        near = (abs((x0 + x1) / 2 - (who["rect"][0] + who["rect"][2]) / 2)
+                if who else 0)
+        return hide, near
+
+    left, right = score(m), score(max(m, W - m - tw))
+    # ⚠️ **왼쪽이 기본이다.** 컷마다 이름표가 좌우로 옮겨 다니면 시청자가 눈으로
+    #    찾아야 한다 — 방송 자막은 늘 같은 자리에 있어야 읽힌다.
+    #    그래서 오른쪽으로는 '확실히 나을 때만' 옮긴다. 화면 한 명뿐인 컷처럼
+    #    좌우가 비슷하면 왼쪽에 그대로 둔다.
+    if right[0] < left[0] or (right[0] == left[0] and right[1] < left[1] - W * 0.10):
+        return "right"
+    return "left"
+
+
+def pick_one(cut, chars):
+    """세로 쇼츠는 한 명만 세운다 — **누구를 남길지** 고른다.
+
+    ⚠️ 예전에는 무조건 첫 번째(chars[0])를 남겼다. 그래서 이름표가 두 번째 인물을
+       가리키는 컷에서는 **이름표에 적힌 사람이 화면에서 사라진 채** 엉뚱한 사람 옆에
+       이름이 붙었다(A4-01: 화면엔 장남, 이름표는 '재판장').
+    ① 이름표에 적힌 사람  ② 말하는 사람  ③ 그래도 없으면 첫 번째"""
+    want = tag_owner(cut.get("gfx"), chars)
+    if not want:
+        sp = cut.get("speaker") or "narrator"
+        if sp not in ("narrator", ""):
+            want = sp[2:] if sp.startswith("v_") else sp
+    for c in chars:
+        if c.get("code") == want:
+            return [c]
+    return chars[:1]
+
+
 def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False):
     """**무대 한 판**을 그린다. banded 면 자막은 그리지 않는다(띠가 맡는다)."""
     code = cut.get("bg", "")
@@ -437,7 +624,7 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False):
 
     chars = cut.get("chars") or []
     if vertical and len(chars) > 1:
-        chars = chars[:1]                       # 세로는 한 명만. 두 명이면 화면이 죽는다
+        chars = pick_one(cut, chars)            # 세로는 한 명만. 두 명이면 화면이 죽는다
     head_top, face_bottom = H, 0                # 실제로 앉힌 인물의 위·아래 얼굴선
 
     # ⭐ 같은 컷에 선 사람들은 **머리 크기가 같아야** 한다.
@@ -467,10 +654,34 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False):
     solo = (talker in on) and len(chars) > 1        # 화면에 말하는 사람이 있고 둘 이상일 때만
     order = sorted(range(len(chars)),
                    key=lambda i: chars[i].get("code") == talker)   # 듣는 사람 먼저
-    for i in order:
-        c, p = chars[i], plan[i]
+
+    # ⭐ 자리는 대본이 적은 대로 쓰되, **겹치면 흩는다** (assign_slots 설명 참조).
+    slots = assign_slots(chars, vertical)
+
+    def seat(sprite, kind, avoid_gfx=False):
+        """이 그림을 무대에 앉힐 y. 아래끝을 바닥에 붙이는 것이 원칙이다."""
+        if kind == "full":
+            # 전신은 발이 화면 바닥에 닿아야 한다. 얼굴을 가운데로 끌어올리면 다리가 잘린다.
+            y = H - sprite.height - int(H * 0.06)
+            if y + sprite.height >= H - int(H * CHAR_BOTTOM_ZONE):
+                y = H - sprite.height + bottom_bleed(sprite)
+        else:
+            # 인물의 진짜 아래끝(흰 테두리 제외)을 화면 바닥에 붙인다
+            y = H - sprite.height + bottom_bleed(sprite)
+        # 세로에서는 위쪽 정보 카드를 피해야 한다
+        if avoid_gfx and vertical and gfx_bottom and y < gfx_bottom + int(H * 0.035):
+            y = gfx_bottom + int(H * 0.035)
+        return y
+
+    # ── ① 각자 크기와 자리를 푼다. 아직 그리지 않는다 ──────────
+    #    ⚠️ 예전에는 여기서 곧바로 그렸다. 그래서 두 사람이 겹쳐도 알 방법이 없었다 —
+    #       먼저 그린 사람은 이미 배경에 박혀 있었기 때문이다.
+    #       다 풀어 놓고 재 본 뒤에 그려야 겹침을 고칠 수 있다.
+    placed = []
+    for i, c in enumerate(chars):
+        p = plan[i]
         ccode, pose, sprite = p["code"], p["pose"], p["sprite"]
-        target_h, kind, edge = p["target_h"], p["kind"], p["edge"]
+        target_h, kind = p["target_h"], p["kind"]
         listening = solo and ccode != talker
         if listening:
             target_h = max(1, int(target_h * LISTEN_SCALE))
@@ -487,24 +698,9 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False):
 
         edge = int(min(W, H) * ZOOM_EDGE) + 4      # 확대 연출이 깎아내는 몫 + 여유
 
-        if vertical:
-            x = (W - sprite.width) // 2
-        else:
-            slot = {"left": 0.27, "center": 0.5, "right": 0.73}.get(c.get("pos", "center"), 0.5)
-            x = int(W * slot) - sprite.width // 2
-
-        if kind == "full":
-            # 전신은 발이 화면 바닥에 닿아야 한다. 얼굴을 가운데로 끌어올리면 다리가 잘린다.
-            y = H - sprite.height - int(H * 0.06)
-            if y + sprite.height >= H - int(H * CHAR_BOTTOM_ZONE):
-                y = H - sprite.height + bottom_bleed(sprite)
-        else:
-            # 인물의 진짜 아래끝(흰 테두리 제외)을 화면 바닥에 붙인다
-            y = H - sprite.height + bottom_bleed(sprite)
-
-        # 세로에서는 위쪽 정보 카드를 피해야 한다
-        if vertical and gfx_bottom and y < gfx_bottom + int(H * 0.035):
-            y = gfx_bottom + int(H * 0.035)
+        x = ((W - sprite.width) // 2 if vertical
+             else int(W * slots[i]) - sprite.width // 2)
+        y = seat(sprite, kind, avoid_gfx=True)
 
         # ⭐ 머리 위와 좌우는 **절대 자르지 않는다.**
         #    ⚠️ 예전 가로 배치는 `edge - sprite.width // 4` 로 클램프해서
@@ -522,12 +718,7 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False):
                     room_h / sprite.height if kind != "full" else 1.0)
             sprite = sprite.resize((max(1, round(sprite.width * k)),
                                     max(1, round(sprite.height * k))), Image.LANCZOS)
-            if kind == "full":
-                y = H - sprite.height - int(H * 0.06)
-                if y + sprite.height >= H - int(H * CHAR_BOTTOM_ZONE):
-                    y = H - sprite.height + bottom_bleed(sprite)
-            else:
-                y = H - sprite.height + bottom_bleed(sprite)
+            y = seat(sprite, kind)
             x = (W - sprite.width) // 2 if vertical else x
 
         # 안전망 — 전신은 자막이 얼굴을 덮으면 위로 올린다.
@@ -547,6 +738,20 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False):
         if kind != "full":
             y = max(edge, H - sprite.height + bottom_bleed(sprite))
 
+        placed.append(dict(code=ccode, pose=pose, sprite=sprite, kind=kind,
+                           edge=edge, x=x, y=y, listening=listening))
+
+    # ── ② 서로 겹치면 떼어 놓는다 ────────────────────────────
+    decollide(placed, W, round(W * CHAR_GAP), lambda s, k: seat(s, k))
+    for q in placed:                                # 눈에 보이는 네모(이름표 자리 계산용)
+        r = ink_rect(q["sprite"])
+        q["rect"] = (q["x"] + r[0], q["y"] + r[1], q["x"] + r[2], q["y"] + r[3])
+
+    # ── ③ 그린다. 듣는 사람을 먼저 그려 뒤로 보낸다 ────────────
+    for i in order:
+        q = placed[i]
+        sprite, x, y = q["sprite"], q["x"], q["y"]
+
         # 화면 밖으로 나가는 부분은 여기서 잘라낸다.
         # alpha_composite 는 대상 밖으로 나가는 그림을 받지 않으므로 미리 맞춰 준다.
         if PLACE_LOG is not None:                   # 검수용 — 평소에는 None 이라 비용 0
@@ -554,15 +759,15 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False):
             #    검수 스크립트는 반드시 이 H 로 재야 한다. 화면 전체 높이로 재면
             #    띠 높이(238px)만큼 "인물이 떠 있다" 는 헛경보가 컷마다 나온다.
             PLACE_LOG.append(dict(
-                code=ccode, pose=pose, W=W, H=H, x=x, y=y,
+                code=q["code"], pose=q["pose"], W=W, H=H, x=x, y=y,
                 w=sprite.width, h=sprite.height,
-                bleed=bottom_bleed(sprite), edge=edge,
-                chin=chin_y(sprite), banded=banded,
+                bleed=bottom_bleed(sprite), edge=q["edge"],
+                chin=chin_y(sprite), banded=banded, rect=q["rect"],
                 # 띠가 있으면 자막이 무대 밖이라 얼굴을 덮을 수가 없다.
                 sub_top=(None if banded else
                          G.subtitle_top(cut.get("text", ""), W, H, vertical))))
 
-        if listening:
+        if q["listening"]:
             # 밝기만 낮춘다. 알파는 그대로 둬야 흰 테두리가 반투명해지지 않는다.
             rgb = ImageEnhance.Brightness(sprite.convert("RGB")).enhance(LISTEN_DIM)
             dim = rgb.convert("RGBA")
@@ -578,6 +783,18 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False):
 
         head_top = min(head_top, y)
         face_bottom = max(face_bottom, y + chin_y(sprite))
+
+    # ⭐ 이름표를 **그 사람 쪽**에 다시 그린다.
+    #    맨 위에서 그릴 때는 인물을 아직 안 앉혀서 누가 어디 섰는지 알 수 없었다.
+    #    이제 실제 배치를 알므로, 남을 가리지 않으면서 주인에게 가까운 쪽을 고른다.
+    spec = cut.get("gfx") or {}
+    nt_align = "left"
+    if spec.get("type") == "nametag" and placed:
+        nt_align = nametag_align(spec, chars, placed, W, H)
+        if nt_align != "left":
+            moved = G.render_gfx({**spec, "_align": nt_align}, W, H)
+            if moved is not None:
+                gfx = moved
 
     # 그래픽과 자막을 **따로** 돌려준다.
     # 둘을 한 장으로 합치면 함께 움직일 수밖에 없는데, 자막은 절대 움직이면 안 되고
@@ -596,7 +813,6 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False):
     #    (가로 본편은 인물이 크게 들어가므로 이 일이 생기지 않는다 — 실측 0건)
     sub_top_over = None
     text = cut.get("text", "")
-    spec = cut.get("gfx") or {}
     # ⭐ 쌓는 순서는 **위에서부터 자막 → 이름표 → 인물**이다.
     #    이름표는 그 인물이 누구인지 알려주는 딱지다. 딱지는 붙일 대상 옆에 있어야
     #    한다 — 인물에서 멀면 누구 이름인지 헷갈린다.
@@ -645,7 +861,12 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False):
             if want - need < sb[3] + int(H * 0.012):         # 자막 그늘과 닿으면
                 want = sb[3] + int(H * 0.012) + need         #   그늘 바로 아래로
             if want - need >= int(H * 0.04) and want <= H:
-                moved = G.render_gfx({**spec, "_bottom": int(want)}, W, H)
+                # 옮긴 뒤에도 **어느 쪽에 붙일지**는 다시 잰다 — 높이가 달라지면
+                # 옆 사람과 겹치는 범위도 달라진다.
+                moved = G.render_gfx(
+                    {**spec, "_bottom": int(want),
+                     "_align": nametag_align(spec, chars, placed, W, H, bottom=int(want))},
+                    W, H)
                 if moved is not None:
                     gfx_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
                     gfx_layer = Image.alpha_composite(gfx_layer, moved)
@@ -1294,6 +1515,9 @@ def main():
 
     sp = Path(args.script)
     doc = json.loads(sp.read_text(encoding="utf-8"))
+    # 이름표를 그 사람 옆에 붙이려면 '이름 → 인물 코드' 다리가 필요하다.
+    # 쇼츠 대본에는 배역 명단이 없으므로 여기서 한 번 채워 둔다.
+    set_cast(doc)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     nar = args.narration or None
