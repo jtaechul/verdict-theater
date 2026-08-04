@@ -511,6 +511,32 @@ def recipe(speaker, model, text=""):
 #    연기가 필요한 쪽(등장인물)이 좋은 모델을 갖고, 해설은 2.5 로도 충분하다.
 CHAR_MODEL_ORDER = ["gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts"]
 
+# ⭐⭐ 해설(나레이터) 목소리 모델 — **이름으로 못 박는다. 자리로 고르지 않는다.**
+#
+#    ❗ 여기가 "해설 목소리가 자꾸 바뀐다" 의 원인이었다.
+#       예전 코드는 `pin["narrator"] = order[-1]` — 즉 **"목록의 맨 뒤 모델"** 이었다.
+#       그런데 그 목록은 실행할 때마다 구글 API 에 물어서 받아온다(tts_models).
+#       걸러내는 조건이 '이름에 tts 가 들어가면 전부' 라서, 구글이 새 preview 모델을
+#       하나 내놓거나 하나 내리기만 해도 **맨 뒤가 바뀌고 = 해설 모델이 바뀌었다.**
+#       목소리 이름은 'Charon' 으로 똑같은데 모델이 다르면 음높이·말맛이 달라진다
+#       (실측: 같은 이름이 모델에 따라 86Hz ↔ 186Hz). 그래서 딴 사람으로 들렸다.
+#
+#    ❗ 값도 여기서 샜다. 조리법(recipe)에 모델 이름이 들어가므로 해설 모델이 바뀌면
+#       prune_stale 이 **쌓아 둔 해설 음성 64컷을 통째로 지우고 다시 만든다.**
+#       회차를 다시 돌릴 때마다 64회분을 새로 물어낸 셈이다.
+#
+#    이제 이름을 못 박는다. 목록이 어떻게 바뀌든 해설은 이 모델만 쓴다.
+#    2.5 인 이유는 위 주석대로 — 연기가 필요한 등장인물이 좋은 쪽(3.1)을 갖고,
+#    해설은 2.5 로 충분하다. 하루 한도도 모델별로 갈려 둘 다 100회 아래로 들어간다.
+NARRATOR_MODEL = "gemini-2.5-flash-preview-tts"
+
+
+class NarratorModelMissing(LLMError):
+    """해설 목소리 모델을 오늘 쓸 수 없다. **다른 모델로 대신 만들지 않는다.**
+
+    대신 만들면 그 회차만 해설이 딴 사람이 되고, 다음 회차에 원래 모델이 돌아오면
+    또 원래대로 바뀐다. 손님이 겪은 '해설 목소리가 자꾸 바뀐다' 가 이 왕복이다."""
+
 
 def _pref(models):
     """CHAR_MODEL_ORDER 에 적힌 순서대로. 목록에 없는 모델은 뒤에 붙인다."""
@@ -528,20 +554,41 @@ def pin_models(speakers, models):
       둘 다 모델당 한도(분당 10, 우리 설정 8) 아래다.
 
     등장인물이 **좋은 쪽**을 가져간다. 나레이터는 해설이라 음높이가 조금 높아도
-    어색하지 않지만, 등장인물은 나이·성별이 정해져 있어 어긋나면 바로 들킨다."""
+    어색하지 않지만, 등장인물은 나이·성별이 정해져 있어 어긋나면 바로 들킨다.
+
+    ⭐ **누구에게도 '모르는 모델' 을 못 박지 않는다.**
+       구글이 API 목록에 새 preview 모델을 끼워 넣으면 예전 코드는 그것을 그대로
+       배정했다. 회차마다 목소리가 갈아치워진 이유다. 이제 못 박는 후보는
+       우리가 이름을 아는 모델(CHAR_MODEL_ORDER)뿐이다 — 모르는 모델은 풀 안에
+       남아 **비상시 대타로만** 쓰인다."""
     if not models:
         return {}
     order = _pref(models)
+    # 아는 모델만 못 박기 후보로 쓴다. 하나도 없으면 어쩔 수 없이 있는 대로.
+    known = [m for m in order if m in CHAR_MODEL_ORDER] or order
     pin = {}
-    rest = [s for s in speakers if s != "narrator"]
-    if "narrator" in speakers and len(order) > 1:
-        pin["narrator"] = order[-1]            # 나레이터는 뒤쪽 모델
-        others = order[:-1]
-    else:
-        if "narrator" in speakers:
-            pin["narrator"] = order[0]         # 모델이 하나뿐 — 같이 쓸 수밖에 없다
-        others = order
-    for i, s in enumerate(sorted(rest)):
+    rest = sorted(s for s in speakers if s != "narrator")
+
+    if "narrator" in speakers:
+        # ⭐ 자리(order[-1])가 아니라 **이름**으로 고른다. 목록이 흔들려도 안 바뀐다.
+        #
+        # ⭐ 없으면 **대타를 세우지 않고 멈춘다.** 이것이 이 함수의 핵심 약속이다.
+        #    대타를 세우면 그 회차만 해설이 딴 사람이 되고, 다음에 원래 모델이
+        #    돌아오면 또 원래 목소리로 바뀐다 — 손님이 겪은 "자꾸 바뀐다" 가 바로
+        #    이 왕복이다. 게다가 바뀔 때마다 해설 64컷을 다시 만들어 값까지 나간다.
+        #    잠깐 못 만드는 편이, 딴 목소리로 만들어 놓고 다시 만드는 것보다 싸고 낫다.
+        if NARRATOR_MODEL not in known:
+            raise NarratorModelMissing(
+                f"해설 목소리 모델({NARRATOR_MODEL})을 오늘은 쓸 수 없습니다.\n"
+                f"      오늘 쓸 수 있는 모델: {', '.join(known) or '없음'}\n"
+                "      다른 모델로 대신 만들면 해설 목소리가 딴 사람이 되므로 만들지 않았습니다.\n"
+                "      보통 몇 시간 뒤면 돌아옵니다 — '3. 영상 만들기' 를 나중에 다시 눌러주십시오.\n"
+                "      (이미 만들어 둔 음성은 그대로 있어, 다시 눌러도 값이 더 들지 않습니다.)")
+        pin["narrator"] = NARRATOR_MODEL
+
+    # 등장인물은 해설이 쓰는 모델을 빼고 나눠 쓴다 (하루 한도가 모델별이라 갈라야 한다).
+    others = [m for m in known if m != pin.get("narrator")] or known
+    for i, s in enumerate(rest):
         pin[s] = others[i % len(others)]
     return pin
 
@@ -771,7 +818,23 @@ def make_one(pool, key, text, speaker, path, tries=0, pinned=None):
             #    성공률 검사가 그만큼 헐거워져 소리 빈 영상이 통과할 뻔했다.
             last = last or dead
             break
-        model = (pool.wait_for(pinned) or pool.acquire()) if pinned else pool.acquire()
+        if pinned:
+            model = pool.wait_for(pinned)
+            # ⭐ **해설은 대타를 세우지 않는다.**
+            #    못 박은 모델이 죽었을 때 다른 모델로 만들면 해설이 그 자리부터
+            #    딴 사람이 된다. 부른 쪽이 그것을 보고 해설 64컷을 통째로 다시
+            #    만드는데(switched 처리), 그러면 ① 그 회차 해설이 지난 회차와
+            #    다른 목소리가 되고 ② 64회분 값이 또 나간다.
+            #    해설만은 여기서 실패로 두고, 위쪽 한도 처리가 실행을 멈추게 한다.
+            if model is None and speaker == "narrator":
+                last = last or QuotaExhausted(
+                    f"해설 목소리 모델({pinned})의 오늘 몫이 끝났습니다. "
+                    "다른 모델로 대신 만들면 해설 목소리가 바뀌므로 만들지 않습니다.")
+                break
+            if model is None:
+                model = pool.acquire()
+        else:
+            model = pool.acquire()
         if model is None:
             last = last or dead
             break
@@ -1095,7 +1158,14 @@ def main():
     # ⭐ 인물마다 모델을 **못 박는다.** 같은 목소리 이름이라도 모델이 다르면
     #    다른 사람으로 들린다(실측 113~157Hz). 여기서 정한 짝은 끝까지 안 바뀐다.
     speakers = sorted({c.get("speaker", "narrator") for c in cuts})
-    pin = pin_models(speakers, cheap or pool.models)
+    try:
+        pin = pin_models(speakers, cheap or pool.models)
+    except NarratorModelMissing as e:
+        # 여기서 멈추는 편이 낫다. 딴 목소리로 만들어 놓으면 손님이 영상을 보고
+        # 다시 만들라고 할 텐데, 그때 값이 두 번 나간다.
+        print("", file=sys.stderr)
+        print(f"오류: {e}", file=sys.stderr)
+        return 1
     print("  인물별 고정 목소리 —")
     for s in speakers:
         print(f"    {s:10s} {VOICE_NAME.get(s, 'Charon'):10s} {pin.get(s, '?')}")
