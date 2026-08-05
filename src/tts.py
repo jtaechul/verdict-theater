@@ -26,7 +26,9 @@ import hashlib
 import json
 import math
 import os
+import re
 import shutil
+import statistics
 import subprocess
 import sys
 import time
@@ -614,6 +616,11 @@ def prune_stale(out, cuts, pin):
         pdone = json.loads(pbook.read_text(encoding="utf-8"))
     except Exception:
         pdone = {}
+    tbook = out / "timbre.json"
+    try:
+        tdone = json.loads(tbook.read_text(encoding="utf-8"))
+    except Exception:
+        tdone = {}
 
     killed = 0
     for c in cuts:
@@ -628,12 +635,15 @@ def prune_stale(out, cuts, pin):
             p.with_suffix(".silent").unlink(missing_ok=True)
             old.pop(cid, None)
             pdone.pop(cid, None)
+            tdone.pop(cid, None)
             killed += 1
     if killed:
         print(f"  지난 실행의 음성 {killed}컷이 지금 설정과 달라 지웠다 — 그 컷만 다시 만든다")
         book.write_text(json.dumps(old, ensure_ascii=False), encoding="utf-8")
         if pbook.exists():
             pbook.write_text(json.dumps(pdone, ensure_ascii=False), encoding="utf-8")
+        if tbook.exists():
+            tbook.write_text(json.dumps(tdone, ensure_ascii=False), encoding="utf-8")
     return old
 
 
@@ -920,6 +930,127 @@ PITCH_MAX = float(os.environ.get("TTS_PITCH_MAX", "2.0"))
 #   모델에게 그 한 줄만 다시 읽히면 대개 제 높이로 나온다 — 한 번 부르는 값이면 된다.
 PITCH_REDO = float(os.environ.get("TTS_PITCH_REDO", "3.0"))
 PITCH_REDO_TRIES = max(0, int(os.environ.get("TTS_PITCH_REDO_TRIES", "2")))
+
+
+# ── 음색(얇고 하이톤) 이 튀는 컷 다시 읽히기 ────────────────
+#
+# ⭐ 손님이 세 번 지적했다: "해설이 중간에 한 번씩 **얇고 하이톤**으로 나온다."
+#
+#    왜 후보정만으로는 안 되나
+#      렌더링에서 저음·고음 균형을 인물 평균 쪽으로 당기지만 **최대 ±4dB** 이다.
+#      그보다 크게 벗어난 컷은 억지로 당기면 소리가 뭉개진다.
+#      제미나이가 그 한 줄만 다르게 읽어 버린 것이므로 **다시 읽히는 것이 정답**이다.
+#      (음높이가 크게 튄 컷을 다시 읽히는 장치가 이미 있다 — 같은 방식이다.)
+#
+# ⚠️ 값이 든다. 그래서 **한 실행에 최대 MAX_REDO 컷만** 다시 읽는다.
+#    중앙값이 잘못 잡혀 64컷을 통째로 다시 읽는 일이 없어야 한다.
+TONE_LOW, TONE_HIGH = 300, 3500
+TONE_REDO = float(os.environ.get("TTS_TONE_REDO", "2.5"))   # 이만큼(dB) 벗어나면 다시 읽는다
+TONE_REDO_TRIES = max(0, int(os.environ.get("TTS_TONE_REDO_TRIES", "2")))
+TONE_MAX_REDO = max(0, int(os.environ.get("TTS_TONE_MAX_REDO", "6")))
+
+
+def _mean_db(path, af=""):
+    """평균 음량(dB). af 를 주면 그 필터를 건 뒤의 크기를 잰다. 못 재면 None."""
+    chain = (af + "," if af else "") + "volumedetect"
+    try:
+        r = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(path),
+                            "-af", chain, "-f", "null", "-"],
+                           capture_output=True, text=True, timeout=120)
+    except Exception:
+        return None
+    m = re.search(r"mean_volume:\s*(-?[\d.]+) dB", r.stderr)
+    return float(m.group(1)) if m else None
+
+
+def tone_of(path):
+    """그 소리의 (저음 비중, 고음 비중) — 전체 크기 대비 dB. 못 재면 None.
+
+    저음이 낮고 고음이 높을수록 '얇고 하이톤' 으로 들린다."""
+    full = _mean_db(path)
+    if full is None or full < -60:
+        return None
+    lo = _mean_db(path, f"lowpass=f={TONE_LOW}")
+    hi = _mean_db(path, f"highpass=f={TONE_HIGH}")
+    if lo is None or hi is None:
+        return None
+    return (lo - full, hi - full)
+
+
+def normalize_timbre(out, cuts, retake=None):
+    """음색이 크게 튄 컷을 **같은 목소리로 다시 읽힌다.**
+
+    두 번 실행해도 안전하다 — 살펴본 컷은 timbre.json 에 적어 두고 건너뛴다."""
+    if not shutil.which("ffmpeg") or retake is None or TONE_REDO_TRIES == 0:
+        return
+    book = out / "timbre.json"
+    try:
+        done = json.loads(book.read_text(encoding="utf-8"))
+    except Exception:
+        done = {}
+
+    by = {}
+    for c in cuts:
+        cid, sp = c.get("id"), c.get("speaker", "narrator")
+        p = out / f"{cid}.mp3"
+        if not p.exists() or p.with_suffix(".silent").exists():
+            continue
+        if not (c.get("text") or "").strip():
+            continue
+        t = done.get(cid) or tone_of(p)
+        if t:
+            by.setdefault(sp, []).append((cid, p, float(t[0]), float(t[1])))
+
+    if not by:
+        print("  ⚠️ 목소리 음색을 재지 못했다 — 음색 고르기를 건너뛴다")
+        return
+
+    redone = budget = 0
+    for sp, items in sorted(by.items()):
+        if len(items) < 5:                 # 표본이 적으면 중앙값을 못 믿는다
+            for cid, _p, lo, hi in items:
+                done[cid] = [lo, hi]
+            continue
+        mlo = statistics.median(x[2] for x in items)
+        mhi = statistics.median(x[3] for x in items)
+        name = "해설" if sp == "narrator" else sp
+        for cid, p, lo, hi in items:
+            gap = max(abs(lo - mlo), abs(hi - mhi))
+            if cid in done or gap <= TONE_REDO:
+                done[cid] = [lo, hi]
+                continue
+            if budget >= TONE_MAX_REDO:
+                print(f"    {cid} 도 음색이 튀지만 이번 실행 몫({TONE_MAX_REDO}컷)을"
+                      " 다 써서 넘어간다 — 다음에 다시 누르면 이어서 손본다")
+                continue
+            why = "얇고 높다" if (lo < mlo and hi > mhi) else "치우쳤다"
+            best, best_gap = None, gap
+            for _ in range(TONE_REDO_TRIES):
+                budget += 1
+                if not retake(cid):
+                    break
+                got = tone_of(p)
+                if not got:
+                    break
+                g2 = max(abs(got[0] - mlo), abs(got[1] - mhi))
+                if g2 < best_gap:
+                    best, best_gap = got, g2
+                if g2 <= TONE_REDO:
+                    break
+            if best_gap < gap:
+                redone += 1
+                print(f"    {cid} ({name}) 음색이 {why}(차이 {gap:.1f}dB)"
+                      f" → 다시 읽혀 {best_gap:.1f}dB 로 줄였다")
+            done[cid] = list(best) if best else [lo, hi]
+
+    try:
+        book.write_text(json.dumps(done, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+    if redone:
+        print(f"  목소리 음색 고르기: {redone}컷을 다시 읽혔다")
+    else:
+        print(f"  목소리 음색: {sum(len(v) for v in by.values())}컷 다 쟀다 — 크게 튄 것 없음")
 
 
 def normalize_pitch(out, cuts, retake=None):
@@ -1369,6 +1500,7 @@ def main():
         return False
 
     normalize_pitch(out, cuts, retake=retake)
+    normalize_timbre(out, cuts, retake=retake)
     try:
         (out / "recipe.json").write_text(json.dumps(book, ensure_ascii=False),
                                          encoding="utf-8")

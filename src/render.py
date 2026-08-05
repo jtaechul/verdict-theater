@@ -978,8 +978,7 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
        같이 확대돼 띠가 흔들리고, 무대 내용이 띠 위로 삐져나온다."""
     y0, y1 = stage_box(W, H, vertical)
     if (y0, y1) == (0, H):
-        mv, gx, sb = _stage_plates(cut, W, H, vertical, top_line)  # 띠 없음(예전 방식)
-        return mv, G.draw_logo(gx, W, H, vertical=vertical), sb
+        return _stage_plates(cut, W, H, vertical, top_line)        # 띠 없음(예전 방식)
 
     sh = y1 - y0
     s_move, s_gfx, _ = _stage_plates(cut, W, sh, vertical, top_line="", banded=True)
@@ -1008,11 +1007,6 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
     gfx.alpha_composite(hemlay, (0, max(0, y1 - hem)))
     if top_line:
         gfx = G.draw_top_line(gfx, top_line, box=(0, 0, W, y0))
-
-    # ⭐ 채널 로고 — **띠를 다 그린 뒤 전체 화면에** 얹는다.
-    #    무대 겹에 그리면 무대가 띠 아래로 옮겨 붙으면서 로고도 내려가 그림을 덮는다.
-    #    세로 쇼츠는 위 검은 띠(y0) 한가운데 — 유튜브가 거의 안 덮는 유일한 빈자리다.
-    gfx = G.draw_logo(gfx, W, H, vertical=vertical, band=y0)
 
     sub = G.draw_subtitle(Image.new("RGBA", (W, H), (0, 0, 0, 0)),
                           cut.get("text", ""), vertical=vertical,
@@ -1061,9 +1055,62 @@ def transitions(cuts):
     return out
 
 
+def drop_repeat_nametags(keep):
+    """**직전에 소개한 사람과 같으면 이름표를 다시 띄우지 않는다.**
+
+    ⭐ 손님 지적: "말할 때마다 장남을 소개하고, 다음 컷도 장남인데 또 이름표에
+                   이펙트를 준다. 직전에 나온 사람과 같으면 넣을 필요가 없다."
+       맞는 말이다. 이름표는 **누구인지 알려주는 소개**다. 방금 소개한 사람을
+       바로 또 소개하면 정보가 아니라 방해다. 게다가 이름표는 왼쪽에서 미끄러져
+       들어오는 연출이 붙어 있어, 같은 사람에게 연달아 붙으면 계속 덜컹거린다.
+
+    언제 다시 띄우나
+      · 사이에 **다른 사람**이 소개되었을 때만. 그때는 헷갈리므로 다시 알려준다.
+      ⚠️ 배경이 바뀌어도 다시 띄우지 않는다. 쇼츠는 컷마다 배경이 바뀌는데
+         (실측: 쇼츠 10컷이 배경 8종) 배경으로 판단하면 장남 → 장남이 그대로
+         두 번 다 뜬다. 손님이 지적한 것이 정확히 그 경우다.
+    """
+    out, last, n = [], None, 0
+    for cut, dur in keep:
+        g = cut.get("gfx") or {}
+        who = (str(g.get("text", "")).split("·")[0].strip()
+               if g.get("type") == "nametag" else None)
+        if who and who == last:
+            cut = {**cut, "gfx": None}
+            n += 1
+        elif who:
+            last = who
+        out.append((cut, dur))
+    return out, n
+
+
 # 등장 연출 시간(초). 짧게 — 길면 정보를 읽기 시작하는 시점이 늦어진다.
 GFX_IN = 0.38
 SUB_IN = 0.16
+
+_LOGO_PNG = {}
+
+
+def logo_png(workdir, W, H, vertical):
+    """채널 로고 겹을 **한 번만** 그려 파일로 두고, 모든 컷이 그 파일을 쓴다.
+
+    ⭐ 손님 지적: "컷 바뀔 때마다 계속 새로 이펙트를 줘서 새로 띄우지 말고
+                   한번 나온 거 가만히 냅둬."
+       맞는 말이다. 예전에는 로고를 그래픽 겹(gfx)에 같이 그렸는데, 그 겹은
+       컷마다 **떠오르며 나타나는 연출**(fade + 살짝 올라옴)을 받는다.
+       그래서 로고가 컷마다 다시 떠올랐다.
+       이제 로고만 **따로 된 겹**으로 빼서 페이드도 움직임도 주지 않는다.
+       장면 전환(검은 화면으로 잠기는 것)에는 같이 잠긴다 — 그건 화면 전체가
+       어두워지는 것이라 로고만 떠 있으면 오히려 이상하다."""
+    key = (str(workdir), W, H, bool(vertical))
+    if key not in _LOGO_PNG:
+        y0, _y1 = stage_box(W, H, vertical)
+        lay = G.draw_logo(Image.new("RGBA", (W, H), (0, 0, 0, 0)),
+                          W, H, vertical=vertical, band=y0)
+        p = Path(workdir) / f"logo_{W}x{H}.png"
+        lay.save(p)
+        _LOGO_PNG[key] = p
+    return _LOGO_PNG[key]
 
 
 def render_cut(cut, dur, workdir, idx, W, H, vertical=False, top_line="", trans=(None, None)):
@@ -1074,6 +1121,7 @@ def render_cut(cut, dur, workdir, idx, W, H, vertical=False, top_line="", trans=
     move.convert("RGB").save(mp)
     gfx_layer.save(gp)
     sub_layer.save(sp)
+    lp = logo_png(workdir, W, H, vertical)
 
     frames = max(2, int(dur * FPS))
     # 느린 확대 + 아주 약한 숨쉬기. 정지 이미지가 죽어 보이는 것을 막는다.
@@ -1101,7 +1149,10 @@ def render_cut(cut, dur, workdir, idx, W, H, vertical=False, top_line="", trans=
     vf += (f";[2:v]format=rgba,fade=t=in:st=0:d={GFX_IN}:alpha=1[g]"
            f";[v][g]overlay=x='{gx}':y='{gy}'[vg]"
            f";[3:v]format=rgba,fade=t=in:st=0:d={SUB_IN}:alpha=1[s]"
-           f";[vg][s]overlay=0:0[vt]")
+           f";[vg][s]overlay=0:0[vs]"
+           # ⭐ 로고 — 페이드도 움직임도 **없다.** 컷이 바뀌어도 그 자리에 가만히 있다.
+           f";[4:v]format=rgba[l]"
+           f";[vs][l]overlay=0:0[vt]")
 
     # 전환은 **맨 마지막에** 건다. 자막·그래픽까지 전부 합쳐진 뒤라야
     # 화면 전체가 함께 잠기고 함께 열린다.
@@ -1121,6 +1172,7 @@ def render_cut(cut, dur, workdir, idx, W, H, vertical=False, top_line="", trans=
     run(["ffmpeg", "-y", "-loglevel", "error",
          "-loop", "1", "-i", str(mp), "-loop", "1", "-i", str(gp),
          "-loop", "1", "-i", str(gp), "-loop", "1", "-i", str(sp),
+         "-loop", "1", "-i", str(lp),
          "-filter_complex", vf, "-map", "[vo]", "-t", f"{dur:.3f}",
          "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-r", str(FPS),
          str(out)])
@@ -1695,6 +1747,10 @@ def render(doc, outdir, vertical=False, cut_ids=None, narration_dir=None,
         keep = list(zip(all_cuts, durs_all))
     if limit:
         keep = keep[:limit]
+
+    keep, dropped = drop_repeat_nametags(keep)
+    if dropped:
+        print(f"    (직전과 같은 사람 이름표 {dropped}개는 다시 띄우지 않는다)")
 
     # 쇼츠는 전용 마무리 문장이 화면에 들어가야 규격(35~50초)을 채운다.
     # 대본은 그 시간을 est_sec 에 이미 계산해 두었다.
