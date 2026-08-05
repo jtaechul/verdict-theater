@@ -940,6 +940,7 @@ def normalize_pitch(out, cuts, retake=None):
         done = {}
 
     by_speaker = {}
+    tried = 0
     for c in cuts:
         cid, sp = c.get("id"), c.get("speaker", "narrator")
         p = out / f"{cid}.mp3"
@@ -947,9 +948,21 @@ def normalize_pitch(out, cuts, retake=None):
             continue                       # 무음은 잴 것이 없다
         if not (c.get("text") or "").strip():
             continue
+        tried += 1
         hz = done.get(cid) or measure_f0(p)
         if hz:
             by_speaker.setdefault(sp, []).append((cid, p, hz))
+
+    # ⭐ **몇 컷을 실제로 쟀는지 반드시 찍는다.**
+    #    예전에는 고칠 것이 없어도, 아예 못 재도 **똑같이 아무 말이 없었다.**
+    #    그래서 기록만 보고는 '높이는 괜찮았다' 인지 '높이를 안 봤다' 인지
+    #    구별할 수 없었다. 실제로 이것 때문에 원인을 한 번 잘못 짚었다.
+    got = sum(len(v) for v in by_speaker.values())
+    if got < tried:
+        print(f"  ⚠️ 목소리 높이: {tried}컷 중 {got}컷만 쟀다"
+              f" — 못 잰 {tried - got}컷은 높이 고르기에서 빠진다")
+    elif got:
+        print(f"  목소리 높이: {got}컷 다 쟀다")
 
     if not by_speaker:
         return
