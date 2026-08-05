@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
-"""컷아웃 어깨에 솟은 조각을 없앤다.
+"""인물 컷아웃에서 **뾰족하게 튀어나온 것**을 없앤다.
 
-    python3 src/despike.py                     assets/char 전체
-    python3 src/despike.py --dry               지우지 않고 몇 개인지만 본다
+    python3 src/despike.py                     assets/char 전체를 고친다
+    python3 src/despike.py --dry               고치지 않고 몇 개인지만 본다
+    python3 src/despike.py --check             검사만 — 남아 있으면 실패로 끝낸다
     python3 src/despike.py --only M50A,M50B
 
-무엇이 문제였나
-    인물 시트에서 여러 명이 어깨를 맞대고 붙어 나오면, 세로로 잘라 떼어낼 때
-    **옆 사람의 어깨 조각이 얇게 딸려온다.** 거기에 흰 테두리가 둘러지면서
-    어깨 좌우에 위로 뾰족하게 솟은 것이 생겼다.
+세 가지 일을 한다 (셋 다 원인이 다르다)
+    ① despike()         — 옆 사람에게서 딸려온 **가는 기둥 조각**
+    ② flatten_bottom()  — 아래가 둥글게 마무리돼 어깨가 나왔다 들어가며 생긴
+                          **좌우 삼각형 삐죽이**. 가장 넓은 줄에서 수평으로 자른다.
+    ③ drop_fragments()  — 몸에서 **완전히 떨어져 나온 짙은 조각**.
+                          테두리색으로 덮고, 불거진 실루엣을 몸 기준으로 되돌린다.
 
-어떻게 없애나
-    어깨선 **위쪽**만 따로 본다. 거기에는 원래 머리 하나만 있어야 한다.
-    머리 말고 다른 덩어리가 있으면 그것이 딸려온 조각이므로 지운다.
-    어깨 아래는 손대지 않는다 — 팔·다리가 잘리면 안 되기 때문이다.
+⚠️ ②만으로는 부족했다. ② 를 하고도 손님 화면에 뾰족한 것이 남아 ③ 을 만들었다.
+   ③ 의 조각은 **흰 테두리 띠 안쪽**에 들어앉아 있어서, 알파(투명도)만 보면
+   몸통과 한 덩어리로 보인다. 흰색을 빼고 봐야 갈라진다.
+
+⚠️ 몇 번을 돌려도 결과가 같아야 한다 — 에셋 만들기·영상 만들기에서 매번 돈다.
 """
 import argparse
 from pathlib import Path
@@ -197,18 +201,135 @@ def flatten_bottom(sp):
     return (out.crop(nb) if nb else out), bot - wy
 
 
+# ── 몸에서 떨어져 나온 조각 ────────────────────────────────
+FRAG_MAX = 0.02         # 몸통 넓이의 2% 아래면 '조각' 이다
+FRAG_MIN_PX = 60        # 이보다 작은 티끌은 어차피 눈에 안 보인다
+OUTLINE_R = 0.032       # 흰 테두리 두께(키 대비). render.CHAR_OUTLINE 과 맞춘다
+
+
+def _content_mask(sp):
+    """흰 테두리를 뺀 **알맹이**만 남긴 마스크.
+
+    테두리가 조각과 몸통을 하얗게 이어 붙여 놓기 때문에, 알파(투명도)만 보면
+    둘이 한 덩어리로 보인다. 흰색을 빼야 비로소 따로 떨어진 것이 드러난다."""
+    r, g, b, a = sp.split()
+    white = ImageChops.multiply(
+        ImageChops.multiply(r.point(lambda v: 255 if v > 200 else 0),
+                            g.point(lambda v: 255 if v > 200 else 0)),
+        b.point(lambda v: 255 if v > 200 else 0))
+    return ImageChops.subtract(a.point(lambda v: 255 if v > 128 else 0), white)
+
+
+def _dilate(mask, radius):
+    """마스크를 radius 만큼 **둥글게** 부풀린다.
+
+    ⚠️ MaxFilter(정사각형)로 부풀리면 모서리가 각져서, 잘린 자리가 네모나게
+       파여 보인다(실제로 그렇게 나와서 다시 만들었다). 흐림 + 문턱값이면
+       둥글게 퍼져 어깨선과 나란한 매끈한 곡선이 된다."""
+    return mask.filter(ImageFilter.GaussianBlur(radius * 0.62)) \
+               .point(lambda v: 255 if v > 8 else 0)
+
+
+def _outline_px(sp):
+    """이 그림의 **흰 테두리 두께**를 직접 잰다 (픽셀).
+
+    ⚠️ 코드에 박아 두면 안 된다. 실측해 보니 그림마다 다르고, 짐작했던 3% 가
+       아니라 **7%(70픽셀)** 였다. 짐작으로 잘랐다가 테두리를 통째로 깎아
+       11만 픽셀이 날아간 적이 있다. 그래서 매번 잰다.
+    줄마다 '알파 끝 ~ 알맹이 끝' 거리를 재고 **가장 작은 값**들을 쓴다 —
+    옆선이 비스듬한 줄은 실제보다 크게 나오므로, 가장 곧은 줄이 참값에 가깝다."""
+    W, H = sp.size
+    a = sp.getchannel("A").point(lambda v: 255 if v > 40 else 0)
+    c = _content_mask(sp)
+    gaps = []
+    for y in range(H // 8, H - H // 12, max(1, H // 60)):
+        ab = a.crop((0, y, W, y + 1)).getbbox()
+        cb = c.crop((0, y, W, y + 1)).getbbox()
+        if ab and cb:
+            gaps += [cb[0] - ab[0], ab[2] - cb[2]]
+    gaps = sorted(g for g in gaps if g > 0)
+    if not gaps:
+        return max(4, round(H * 0.03))
+    return max(4, gaps[len(gaps) // 5])          # 아래쪽 20% 지점 값
+
+
+def drop_fragments(sp):
+    """몸에서 **떨어져 나온 조각**과 그 조각만 감싼 흰 테두리를 함께 지운다.
+
+    무엇이 문제였나
+        손님이 동그라미 쳐 보낸 것이 이것이다. 어깨를 수평으로 잘라 큰 삐죽이를
+        없앤 뒤에도 **뾰족한 것이 남아** 있었다. 실측해 보니 M50B/bust_neutral
+        왼쪽 아래에 **가로 14 · 세로 51 픽셀짜리 짙은 조각**이, 몸(x≥96)과 완전히
+        떨어진 자리(x≤79)에 박혀 있었다. 인물 시트에서 옆 사람 옷자락이 딸려온 것이다.
+
+    왜 지금까지 못 잡았나
+        알파(투명도)만 보면 못 찾는다. **흰 테두리가 조각과 몸통을 이어 붙여**
+        한 덩어리로 만들어 놓기 때문이다. 흰색을 빼고 봐야 비로소 갈라진다.
+        기존 despike() 가 세 번 헛짚은 것도 같은 이유였다.
+
+    어떻게 없애나
+        ① 흰색을 뺀 알맹이만 남겨 덩어리를 센다 → 가장 큰 것이 몸통
+        ② 몸통 넓이의 2% 도 안 되는 덩어리가 있으면 그것이 조각이다
+        ③ 조각을 **테두리와 같은 흰색으로 덮는다** → 짙은 뾰족이가 사라진다
+        ④ 알파를 **몸통에서 테두리 두께만큼 부풀린 자리**로 제한한다
+           → 조각 때문에 밖으로 불거졌던 하얀 혹도 같이 없어진다
+
+    ⚠️ 지우기만 해서는 안 된다. 테두리 두께를 재 보니 **70픽셀(키의 7%)** 이라,
+       조각(몸에서 17픽셀 거리)은 **테두리 띠 안쪽**에 들어앉아 있었다.
+       그래서 '조각 주변을 오려낸다' 는 방법은 통하지 않는다 — 덮어야 한다.
+       (오려냈더니 실루엣이 네모나게 파여서 다시 만들었다.)
+
+    한 번 덮으면 조각이 사라지므로 다시 돌려도 더 할 일이 없다(같은 결과)."""
+    W, H = sp.size
+    comps = _components(_content_mask(sp), min_area=FRAG_MIN_PX)
+    if len(comps) < 2:
+        return sp, 0
+    comps.sort(key=len, reverse=True)
+    frags = [c for c in comps[1:] if len(c) < len(comps[0]) * FRAG_MAX]
+    if not frags:
+        return sp, 0
+
+    fbuf, bbuf = bytearray(W * H), bytearray(W * H)
+    for c in frags:
+        for i in c:
+            fbuf[i] = 255
+    for i in comps[0]:
+        bbuf[i] = 255
+    frag = Image.frombytes("L", (W, H), bytes(fbuf))
+    bod = Image.frombytes("L", (W, H), bytes(bbuf))
+
+    out = sp.copy()
+    # ③ 조각을 테두리색으로 덮는다. 조금 넉넉히 덮어야 가장자리 어두운 테가 안 남는다.
+    paint = _dilate(frag, max(3, round(H * 0.006)))
+    out.paste(Image.new("RGBA", sp.size, (255, 255, 255, 255)), (0, 0), paint)
+    out.putalpha(sp.getchannel("A"))
+
+    # ④ 몸통을 테두리 두께만큼 부풀린 자리까지만 남긴다 (실측 두께 × 여유)
+    keep = _dilate(bod, round(_outline_px(sp) * 1.25))
+    out.putalpha(ImageChops.darker(out.getchannel("A"), keep))
+
+    bb = out.getchannel("A").point(lambda v: 255 if v > 20 else 0).getbbox()
+    return (out.crop(bb) if bb else out), sum(len(c) for c in frags)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry", action="store_true", help="지우지 않고 확인만")
     ap.add_argument("--only", default="", help="이 인물만 (쉼표로 구분)")
+    # ⭐ 예방조치: 만들기 전에 한 번 더 확인하는 자리에서 쓴다.
+    #    남은 것이 있으면 **실패로 끝내** 삐죽이가 영상까지 가지 못하게 막는다.
+    ap.add_argument("--check", action="store_true",
+                    help="고치지 않고 검사만 — 남은 것이 있으면 실패로 끝낸다")
     args = ap.parse_args()
+    if args.check:
+        args.dry = True
 
     files = sorted(CHAR.glob("*/*.png"))
     if args.only:
         want = {s.strip() for s in args.only.split(",") if s.strip()}
         files = [f for f in files if f.parent.name in want]
 
-    total = flat = 0
+    total = flat = frag = 0
     for f in files:
         sp = Image.open(f).convert("RGBA")
         out, n = despike(sp)
@@ -226,11 +347,34 @@ def main():
                       f"  {out.size} → {out2.size}")
                 out = out2
 
-        if out.size != sp.size and not args.dry:
+        # ⭐ 몸에서 떨어져 나온 짙은 조각 — 손님이 동그라미 쳐 보낸 바로 그것.
+        #    전신에도 생기므로 포즈를 가리지 않고 본다.
+        #
+        #    ⚠️ **한 번으로 끝나지 않는다.** 큰 조각을 덮고 나면 그 뒤에 가려 있던
+        #       작은 조각이 새로 드러난다(실측: 1회차 23장 → 2회차 1장 → 3회차 0장).
+        #       한 번만 돌리면 남은 것이 그대로 영상까지 간다. 여기서 다 털어낸다.
+        npx = 0
+        for _ in range(4):
+            out3, k = drop_fragments(out)
+            if not k:
+                break
+            npx += k
+            out = out3
+        if npx:
+            frag += 1
+            print(f"  {f.parent.name}/{f.stem:14} 떨어져 나온 조각 {npx}px 덮음"
+                  f"  {sp.size} → {out.size}")
+
+        if (out.size != sp.size or out.tobytes() != sp.tobytes()) and not args.dry:
             out.save(f)
 
-    print(f"\n조각 제거 {total}장 · 어깨 삐죽이 제거 {flat}장 (전체 {len(files)}장)"
+    print(f"\n어깨 조각 {total}장 · 어깨 삐죽이 {flat}장 · 떨어져 나온 조각 {frag}장"
+          f" (전체 {len(files)}장)"
           + ("   [--dry — 저장하지 않았다]" if args.dry else ""))
+    if args.check and (total or flat or frag):
+        print("\n::error::인물 그림에 삐죽이·조각이 남아 있습니다."
+              " `python3 src/despike.py` 를 돌려 고친 뒤 다시 시도하십시오.")
+        return 1
     return 0
 
 

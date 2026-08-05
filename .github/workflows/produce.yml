@@ -175,6 +175,11 @@ jobs:
           FAIL=0
           python3 src/graphics.py --check "data/scripts/$EP.json" 2>&1 | tee frame.log || FAIL=1
           python3 tools/check_place.py "$EP" 2>&1 | tee place.log || FAIL=1
+          # ⭐ 예방조치 — 인물 그림에 삐죽이·떨어져 나온 조각이 남아 있으면 **여기서 멈춘다.**
+          #    바로 위에서 이미 다듬었으므로 평소에는 그냥 통과한다. 그래도 확인한다 —
+          #    다듬기가 새 모양을 못 잡고 지나가면 그대로 영상까지 나가기 때문이다.
+          #    (손님이 두 번 캡처해 보내고서야 발견한 문제라 사람 눈에만 맡길 수 없다)
+          python3 src/despike.py --check 2>&1 | tee spike.log || FAIL=1
           if [ "$FAIL" != "0" ]; then
             {
               echo "## 화면 배치에 문제가 있어 영상을 만들지 않았습니다"
@@ -182,6 +187,7 @@ jobs:
               echo '```'
               tail -n 40 frame.log
               tail -n 40 place.log
+              tail -n 20 spike.log
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
             echo "::error::화면 배치 검사에서 문제가 나왔습니다. 요약 화면을 보십시오."
