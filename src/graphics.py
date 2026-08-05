@@ -495,6 +495,9 @@ def draw_top_line(img, text, box=None):
     return Image.alpha_composite(img.convert("RGBA"), _lift(layer, radius=round(u * 0.011)))
 
 
+TIMECAP_ALPHA = 236     # 시점 자막 뒤 검은 판의 진하기 (255 = 완전한 검정)
+
+
 def draw_time_caption(img, text, cy=None, avoid=None):
     """회상으로 들어갈 때 화면 가운데 잠깐 뜨는 시점 자막 — '십수 년 전'.
 
@@ -542,17 +545,38 @@ def draw_time_caption(img, text, cy=None, avoid=None):
     #    영화가 시점 자막을 넣을 때 쓰는 방식이고, 자막 그늘과 같은 장치다.
     #    ⭐ 그늘은 _lift **앞에** 깐다. 뒤에 깔면 _lift 가 띠까지 글자로 착각해
     #      화면 위쪽 절반을 통째로 어둡게 만든다.
-    bh = line_h(f) + gap * 5
+    #    ⭐ 손님 지적: "검은 배경이 너무 얇다. 위아래로 조금 더 넓게 해줘.
+    #                   글씨 뒤쪽은 검은색으로 처리해도 될 것 같아."
+    #      예전에는 가운데조차 반쯤 비치는(160/255) 그늘이 **글자 높이만큼만** 있었다.
+    #      이제 ① 글자 뒤는 **거의 검은색**으로 꽉 채우고
+    #           ② 그 위아래로 **길게 흐려지며** 사라지게 한다.
+    #      띠를 붙인 티는 안 나면서 글자는 어떤 배경에서도 또렷하다.
+    top_rule = cy - gap                       # 위쪽 가는 선
+    bot_rule = cy + line_h(f) + gap           # 아래쪽 가는 선
+    margin = round(gap * 1.8)                 # 선 바깥으로 더 두는 검은 여유
+    fade = round(gap * 5.0)                   # 위아래로 흐려지며 사라지는 길이
+    p_top, p_bot = top_rule - margin, bot_rule + margin
+    bh = (p_bot - p_top) + fade * 2
+    y0 = p_top - fade
+
     band = Image.new("L", (1, bh))
     bp = band.load()
     for i in range(bh):
-        t = abs(i / max(1, bh - 1) - 0.5) * 2                # 가운데 0, 위아래 끝 1
-        bp[0, i] = int(160 * (1 - t) ** 1.5)
+        if i < fade:                                          # 위 — 서서히 진해짐
+            v = TIMECAP_ALPHA * (i / fade) ** 1.4
+        elif i >= bh - fade:                                  # 아래 — 서서히 옅어짐
+            v = TIMECAP_ALPHA * ((bh - 1 - i) / fade) ** 1.4
+        else:                                                 # 글자 뒤 — 꽉 찬 검정
+            v = TIMECAP_ALPHA
+        bp[0, i] = int(v)
     shade = Image.new("RGBA", (W, bh), (10, 11, 15, 255))
     shade.putalpha(band.resize((W, bh)))
+    if y0 < 0:                                # 화면 위로 넘치면 넘친 만큼 잘라 붙인다
+        shade = shade.crop((0, -y0, W, bh))
+        y0 = 0
 
     out = img.convert("RGBA")
-    out.alpha_composite(shade, (0, max(0, cy - round(gap * 2.4))))
+    out.alpha_composite(shade, (0, y0))
     return Image.alpha_composite(out, _lift(layer, radius=round(u * 0.011)))
 
 

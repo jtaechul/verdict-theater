@@ -1130,7 +1130,11 @@ def render_cut(cut, dur, workdir, idx, W, H, vertical=False, top_line="", trans=
 TARGET_DB = {
     "sfx": -22.0,       # 목소리(-16)보다 6 dB 아래 — 또렷이 들리되 말을 덮지 않는다
     "amb": -36.0,       # 20 dB 아래 — 공간이 느껴지는 정도
-    "bgm": -30.0,       # 14 dB 아래 — 말 밑에 깔리는 정도
+    # ⭐ 손님 지적: "배경음악 볼륨 좀 낮춰. 목소리가 잘 안 들려."
+    #    -30 → -36 (목소리 -16 보다 **20 dB 아래**). 6 dB 를 더 내렸다 —
+    #    사람 귀에는 소리 크기가 대략 절반으로 줄어든 정도다.
+    #    앰비언스(-36)와 같은 자리로 내려 '있는 줄 알지만 말을 안 가리는' 선이다.
+    "bgm": -36.0,       # 20 dB 아래 — 말 밑에 조용히 깔리는 정도
     "tr": -20.0,        # 전환음 — 4 dB 아래. 말이 아직 시작 전이라 조금 더 커도 된다
 }
 _db_cache = {}
@@ -1631,6 +1635,24 @@ def cut_durations(doc, narration_dir=None):
     return durs
 
 
+def same_line(a, b):
+    """두 문장이 **사실상 같은 말인지** 본다 (마침표·물음표·공백 차이는 무시).
+
+    대본이 넣은 마무리 문장과 렌더러가 붙이려는 문장이 같은지 가리는 데 쓴다.
+    글자 그대로 비교하면 마침표 하나 차이로 '다르다' 가 되어 또 두 번 나온다."""
+    def n(s):
+        return re.sub(r"[\s.!?…·,\"'‘’“”]", "", s or "")
+    return bool(n(a)) and n(a) == n(b)
+
+
+def needs_outro(last_text, outro_line):
+    """마무리 컷을 **따로 붙여야 하는지** 판단한다. 렌더러와 검사기가 같이 쓴다.
+
+    ⭐ 판단 규칙을 두 군데에 따로 적으면 언젠가 서로 달라져서 또 새어 나간다.
+       그래서 여기 한 곳에만 둔다."""
+    return bool(outro_line) and not same_line(last_text, outro_line)
+
+
 def make_outro_cut(last_cut, text, sec=4.2):
     """쇼츠 마무리 컷. 본문 마지막 컷의 배경을 그대로 쓴다.
 
@@ -1669,10 +1691,20 @@ def render(doc, outdir, vertical=False, cut_ids=None, narration_dir=None,
 
     # 쇼츠는 전용 마무리 문장이 화면에 들어가야 규격(35~50초)을 채운다.
     # 대본은 그 시간을 est_sec 에 이미 계산해 두었다.
+    #
+    # ⚠️ **여기가 "마지막 자막이 두 번 나온다" 의 원인이었다.**
+    #    예전에는 조건 없이 마무리 컷을 하나 더 붙였다. 그런데 대본 쪽이 바뀌어
+    #    이제는 **마무리 문장을 진짜 컷으로(S1-10) 이미 넣어 준다.**
+    #    그래서 같은 문장이 두 번 나왔다 — 대본이 넣은 것 + 여기서 붙인 것.
+    #    (실측: S1-10 "결말은 본편에서 확인하세요." + S1-10-out 같은 문장)
+    #    대본에 이미 있으면 붙이지 않는다. 없는 옛 대본을 위해 붙이는 길은 남긴다.
     outro_cut = None
     if short and short.get("outro_line") and keep:
-        outro_cut = make_outro_cut(keep[-1][0], short["outro_line"])
-        keep = keep + [(outro_cut, outro_cut["sec"])]
+        if needs_outro(keep[-1][0].get("text"), short["outro_line"]):
+            outro_cut = make_outro_cut(keep[-1][0], short["outro_line"])
+            keep = keep + [(outro_cut, outro_cut["sec"])]
+        else:
+            print("    (마무리 문장이 대본에 이미 있어 따로 붙이지 않는다)")
 
     print(f"  {name}: 컷 {len(keep)}개 · {sum(d for _, d in keep):.1f}초 · {W}x{H}")
     segs = []

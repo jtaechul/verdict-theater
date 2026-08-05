@@ -965,6 +965,48 @@ def check_shorts(doc, r):
         r.ok("쇼츠 3편 구간·길이·도입/마무리 정상")
 
 
+def check_short_dup(sdoc, r):
+    """쇼츠에서 **같은 말이 두 번 나오지 않는지** 본다.
+
+    왜 필요한가 — 실제로 새어 나갔다.
+        대본 쪽이 바뀌어 마무리 문장을 **진짜 컷으로**(S1-10) 넣어 주게 됐는데,
+        렌더러는 예전대로 `outro_line` 을 **한 번 더** 붙이고 있었다.
+        그래서 쇼츠 3편 모두 마지막 자막이 두 번 나왔다.
+        렌더링은 아무 오류 없이 성공하므로 **눈으로 보기 전에는 알 수 없었다.**
+
+    ⚠️ 같은 말인지 가리는 규칙은 **렌더러와 똑같은 함수**를 쓴다.
+       따로 만들면 언젠가 서로 달라져서 또 새어 나간다."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from render import needs_outro, same_line  # noqa: E402
+
+    bad = 0
+    for s in sdoc.get("shorts", []):
+        no = s.get("no")
+        cuts = s.get("cuts") or []
+        texts = [(c.get("text") or "").strip() for c in cuts]
+        ids = [c.get("id") for c in cuts]
+        # ⭐ **렌더러가 실제로 만들 자막 목록**을 그대로 흉내 낸다.
+        #    대본만 봐서는 못 잡는다 — 마지막 자막이 두 번 나온 것은 렌더러가
+        #    마무리 문장을 한 번 더 붙였기 때문이었다. 붙이는 판단은 렌더러와
+        #    **같은 함수(needs_outro)** 를 써서 규칙이 어긋날 수 없게 한다.
+        if texts and needs_outro(texts[-1], s.get("outro_line")):
+            texts = texts + [(s.get("outro_line") or "").strip()]
+            ids = ids + [f"{ids[-1]}-out"]
+        # ① 연달아 같은 말이 나오는 컷
+        for i in range(len(texts) - 1):
+            if same_line(texts[i], texts[i + 1]):
+                bad += 1
+                r.error(f"쇼츠{no}", f"{ids[i]}·{ids[i + 1]} 이 같은 말이다"
+                                     f" — 화면에 두 번 나온다: 「{texts[i][:24]}」")
+        # ② 도입 문장이 첫 두 컷에 겹쳐 들어간 경우
+        if len(texts) > 1 and same_line(s.get("intro_line"), texts[0]) \
+                and same_line(texts[0], texts[1]):
+            bad += 1
+            r.error(f"쇼츠{no}", "도입 문장이 컷으로도 들어 있어 두 번 나온다")
+    if not bad:
+        r.ok("쇼츠 자막이 겹치지 않음 (마지막 문장 두 번 나오기 방지)")
+
+
 def check_youtube(doc, r):
     y = doc.get("youtube", {})
     ch = y.get("chapters", [])
@@ -990,7 +1032,7 @@ def check_youtube(doc, r):
             r.ok("제목 후보 3개, 모두 30자 이내")
 
 
-def validate_doc(doc, mf=None, with_shorts=True):
+def validate_doc(doc, mf=None, with_shorts=True, shorts_doc=None):
     """대본 dict 를 검사해 Report 를 돌려준다. 다른 코드(script.py)가 불러 쓴다.
 
     with_shorts=False 는 **쇼츠를 만들기 전** 단계에서 쓴다.
@@ -1023,6 +1065,10 @@ def validate_doc(doc, mf=None, with_shorts=True):
     check_law(doc, r)
     if with_shorts:
         check_shorts(doc, r)
+        # ⭐ 쇼츠 **실제 대본 파일**(.shorts.json)까지 본다. 여기에만 컷 글자가 있어서,
+        #    지금까지 '마지막 자막 두 번' 같은 것을 검사할 방법이 아예 없었다.
+        if shorts_doc:
+            check_short_dup(shorts_doc, r)
     check_youtube(doc, r)
     return r
 
@@ -1055,7 +1101,17 @@ def main():
     print(f"검사 대상: {path}")
     print(f"사건: {doc.get('meta', {}).get('case_id')} · {doc.get('meta', {}).get('case_type')}")
     print()
-    return validate_doc(doc).dump()
+    # 쇼츠 대본이 옆에 있으면 같이 검사한다 (없으면 그냥 넘어간다)
+    sdoc = None
+    shp = path.parent / (path.stem + ".shorts.json")
+    if shp.exists():
+        try:
+            sdoc = json.loads(shp.read_text(encoding="utf-8"))
+            print(f"쇼츠 대본도 함께 검사: {shp.name}")
+            print()
+        except Exception as e:
+            print(f"쇼츠 대본을 읽지 못했다({e}) — 쇼츠 검사는 건너뛴다")
+    return validate_doc(doc, shorts_doc=sdoc).dump()
 
 
 if __name__ == "__main__":
