@@ -40,5 +40,26 @@
     "kind": "short3",
     "offset_days": 4,
     "planned": true
+  },
+  {
+    "episode": "EP001",
+    "video_id": "gHaEKWKtZQA",
+    "kind": "short1",
+    "offset_days": 1,
+    "planned": true
+  },
+  {
+    "episode": "EP001",
+    "video_id": "x9qOrs-_hAI",
+    "kind": "short2",
+    "offset_days": 2,
+    "planned": true
+  },
+  {
+    "episode": "EP001",
+    "video_id": "DplftgUC6Gc",
+    "kind": "short3",
+    "offset_days": 4,
+    "planned": true
   }
 ]
