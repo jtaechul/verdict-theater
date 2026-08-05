@@ -1261,6 +1261,68 @@ def transition_sounds(cuts, durs):
 
 
 # ── 소리 ────────────────────────────────────────────────
+# ── 인물별 목소리 크기 고르기 ──────────────────────────────
+# ⭐ **왜 필요한가** — 지금까지 나레이션을 volume=1.0 으로, 즉 **손도 안 대고**
+#    그대로 섞고 있었다. 제미나이는 같은 모델·같은 목소리로 불러도 컷마다
+#    크기가 들쭉날쭉하게 나온다. 그러면 같은 사람인데 **가까웠다 멀어졌다**
+#    하는 것처럼 들려서, 손님 귀에는 '목소리가 중간중간 바뀐다' 로 느껴진다.
+#
+# ⭐ **인물마다 따로** 맞춘다. 전부 같은 크기로 밀어 버리면 힘없는 노인과
+#    소리치는 장남이 같은 크기가 되어 연기가 죽는다. 그 인물의 **자기 평균**에
+#    맞추면, 인물 사이의 차이는 남고 한 인물 안의 흔들림만 사라진다.
+#
+# ⭐ 값이 0원이다 — 이미 만들어 둔 소리의 볼륨만 조절한다. 다시 만들지 않는다.
+VOICE_GAIN_MAX = 6.0        # 한 컷을 이만큼(dB) 넘게는 올리거나 내리지 않는다
+VOICE_GAIN_MIN = 0.3        # 이보다 작은 차이는 귀에 안 들린다 — 손대지 않는다
+_GAIN = {}                  # {컷id: 보정값 dB}
+
+
+def set_voice_gains(doc, narration_dir):
+    """컷마다 볼륨을 얼마나 올리고 내릴지 미리 계산해 둔다.
+
+    본편 대본 기준으로 한 번만 계산한다. 쇼츠는 같은 소리 파일을 쓰므로
+    (nar_id 로 이어진다) 여기서 정한 값을 그대로 쓴다."""
+    _GAIN.clear()
+    if not narration_dir:
+        return
+    by = {}
+    for act in doc.get("acts", []):
+        for c in act.get("cuts", []):
+            if not (c.get("text") or "").strip():
+                continue
+            p = Path(narration_dir) / f"{c.get('nar_id', c['id'])}.mp3"
+            if not p.exists() or p.with_suffix(".silent").exists():
+                continue
+            db = mean_db(p)
+            if db is None or db < -60:        # 무음에 가까운 것은 기준에서 뺀다
+                continue
+            by.setdefault(c.get("speaker", "narrator"), []).append((c["id"], db))
+
+    # ⚠️ mean_db 는 **재기에 실패해도 조용히 -30.0 을 돌려준다.** 그러면 모든 컷이
+    #    똑같아 보여 '고를 것이 없다' 로 지나간다 — 안 재고 통과시키는 셈이다.
+    #    이 프로젝트에서 이런 조용한 실패로 원인을 두 번 잘못 짚었다. 여기서 막는다.
+    allv = [d for items in by.values() for _, d in items]
+    if allv and len(set(round(d, 1) for d in allv)) == 1:
+        print(f"  ⚠️ 목소리 크기를 재지 못했습니다 ({len(allv)}컷이 전부 {allv[0]:.1f}dB)"
+              " — 크기 고르기를 건너뜁니다")
+        _GAIN.clear()
+        return
+
+    for sp, items in sorted(by.items()):
+        vals = sorted(d for _, d in items)
+        mid = vals[len(vals) // 2]
+        spread = vals[int(len(vals) * 0.9)] - vals[int(len(vals) * 0.1)] if len(vals) >= 5 else 0.0
+        n = 0
+        for cid, db in items:
+            g = max(-VOICE_GAIN_MAX, min(VOICE_GAIN_MAX, mid - db))
+            if abs(g) >= VOICE_GAIN_MIN:
+                _GAIN[cid] = g
+                n += 1
+        name = "해설" if sp == "narrator" else sp
+        print(f"  목소리 크기 고르기 — {name:8s} {len(items):3d}컷"
+              f" 가운데 {mid:6.1f}dB 폭 {spread:4.1f}dB → {n}컷 손봄")
+
+
 def build_audio(doc, durs, workdir, narration_dir=None):
     """나레이션 + 앰비언스 + 효과음 + 음악을 하나로 섞는다.
 
@@ -1299,8 +1361,10 @@ def build_audio(doc, durs, workdir, narration_dir=None):
             if cand.exists():
                 nar = cand
         if nar:
+            # ⭐ volume=1.0 (손 안 댐) 이었다. 이제 그 인물의 평균 크기에 맞춘다.
+            g = _GAIN.get(cut.get("nar_id", cut["id"]), 0.0)
             inputs += ["-i", str(nar)]
-            filters.append(f"[{mixn}:a]adelay=250|250,volume=1.0[a{mixn}]")
+            filters.append(f"[{mixn}:a]adelay=250|250,volume={g:+.1f}dB[a{mixn}]")
             mixn += 1
 
         sfx = audio_path("sfx", cut["sfx"]) if cut.get("sfx") else None
@@ -1641,6 +1705,9 @@ def main():
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     nar = args.narration or None
+
+    # ⭐ 본편·쇼츠를 그리기 **전에** 한 번만 계산한다. 4번 그리면서 4번 재면 낭비다.
+    set_voice_gains(doc, nar)
 
     print(f"렌더링: {sp.name}")
     render(doc, out, vertical=False, narration_dir=nar, limit=args.limit, name="longform")
