@@ -1277,15 +1277,47 @@ VOICE_GAIN_MIN = 0.3        # 이보다 작은 차이는 귀에 안 들린다 �
 _GAIN = {}                  # {컷id: 보정값 dB}
 
 
+# ── 목소리 **음색(톤)** 고르기 ─────────────────────────────
+# ⭐ 손님 지적(컷 H05): "이 부분 해설이 **얇고 하이톤**으로 갑자기 다르다."
+#
+#    크기를 맞춰도 이건 안 고쳐진다. **얇다 = 음색** 문제이지 크기가 아니다.
+#    음높이(f0)도 아니다 — 높이는 이미 반음 안으로 맞춰 두었다(normalize_pitch).
+#    같은 사람이라도 **저음이 빠지고 고음이 세면** '얇고 하이톤' 으로 들린다.
+#    제미나이는 같은 목소리로 불러도 컷마다 이 균형이 달라진다.
+#
+#    그래서 컷마다 저음·고음이 전체 대비 얼마나 되는지 재고, 그 인물의 평균
+#    균형 쪽으로 당긴다. 이미 만들어 둔 소리를 손보는 것이라 **값이 0원**이다.
+TONE_LOW = 300              # 이 아래를 '저음' 으로 본다 (Hz)
+TONE_HIGH = 3500            # 이 위를 '고음' 으로 본다 (Hz)
+TONE_MAX = 4.0              # 한 컷을 이만큼(dB) 넘게는 손대지 않는다 — 과하면 어색해진다
+TONE_MIN = 0.8              # 이보다 작은 차이는 귀에 안 들린다
+_TONE = {}                  # {컷id: ffmpeg 필터 문자열}
+
+
+def _tone_filter(g_low, g_high):
+    parts = []
+    if abs(g_low) >= TONE_MIN:
+        parts.append(f"bass=g={g_low:.1f}:f={TONE_LOW}:w=0.7")
+    if abs(g_high) >= TONE_MIN:
+        parts.append(f"treble=g={g_high:.1f}:f={TONE_HIGH}:w=0.7")
+    return ",".join(parts)
+
+
 def set_voice_gains(doc, narration_dir):
-    """컷마다 볼륨을 얼마나 올리고 내릴지 미리 계산해 둔다.
+    """컷마다 **음색과 볼륨**을 얼마나 손볼지 미리 계산해 둔다.
 
     본편 대본 기준으로 한 번만 계산한다. 쇼츠는 같은 소리 파일을 쓰므로
-    (nar_id 로 이어진다) 여기서 정한 값을 그대로 쓴다."""
+    (nar_id 로 이어진다) 여기서 정한 값을 그대로 쓴다.
+
+    순서가 중요하다 — **음색을 먼저 맞추고, 그 결과의 크기를 다시 재서** 볼륨을
+    맞춘다. 음색을 건드리면 전체 크기도 조금 달라지기 때문이다."""
     _GAIN.clear()
+    _TONE.clear()
     if not narration_dir:
         return
-    by = {}
+
+    # ① 컷마다 저음·고음이 전체 대비 얼마나 되는지 잰다
+    raw = {}
     for act in doc.get("acts", []):
         for c in act.get("cuts", []):
             if not (c.get("text") or "").strip():
@@ -1296,19 +1328,37 @@ def set_voice_gains(doc, narration_dir):
             db = mean_db(p)
             if db is None or db < -60:        # 무음에 가까운 것은 기준에서 뺀다
                 continue
-            by.setdefault(c.get("speaker", "narrator"), []).append((c["id"], db))
+            lo = mean_db(p, af=f"lowpass=f={TONE_LOW}") - db
+            hi = mean_db(p, af=f"highpass=f={TONE_HIGH}") - db
+            raw.setdefault(c.get("speaker", "narrator"), []).append((c["id"], p, db, lo, hi))
 
     # ⚠️ mean_db 는 **재기에 실패해도 조용히 -30.0 을 돌려준다.** 그러면 모든 컷이
     #    똑같아 보여 '고를 것이 없다' 로 지나간다 — 안 재고 통과시키는 셈이다.
     #    이 프로젝트에서 이런 조용한 실패로 원인을 두 번 잘못 짚었다. 여기서 막는다.
-    allv = [d for items in by.values() for _, d in items]
+    allv = [d for items in raw.values() for _, _, d, _, _ in items]
     if allv and len(set(round(d, 1) for d in allv)) == 1:
-        print(f"  ⚠️ 목소리 크기를 재지 못했습니다 ({len(allv)}컷이 전부 {allv[0]:.1f}dB)"
-              " — 크기 고르기를 건너뜁니다")
+        print(f"  ⚠️ 목소리를 재지 못했습니다 ({len(allv)}컷이 전부 {allv[0]:.1f}dB)"
+              " — 크기·음색 고르기를 건너뜁니다")
         _GAIN.clear()
+        _TONE.clear()
         return
 
-    for sp, items in sorted(by.items()):
+    for sp, raws in sorted(raw.items()):
+        # ② 인물의 '평균 음색' 을 정하고, 컷마다 그쪽으로 당긴다
+        mlo = sorted(x[3] for x in raws)[len(raws) // 2]
+        mhi = sorted(x[4] for x in raws)[len(raws) // 2]
+        odd = []
+        for cid, p, db, lo, hi in raws:
+            gl = max(-TONE_MAX, min(TONE_MAX, mlo - lo))
+            gh = max(-TONE_MAX, min(TONE_MAX, mhi - hi))
+            f = _tone_filter(gl, gh)
+            if f:
+                _TONE[cid] = f
+                odd.append((abs(gl) + abs(gh), cid, gl, gh))
+
+        # ③ 음색을 맞춘 **뒤의** 크기를 다시 재서 볼륨을 맞춘다
+        items = [(cid, mean_db(p, af=_TONE[cid]) if cid in _TONE else db)
+                 for cid, p, db, lo, hi in raws]
         vals = sorted(d for _, d in items)
         mid = vals[len(vals) // 2]
         spread = vals[int(len(vals) * 0.9)] - vals[int(len(vals) * 0.1)] if len(vals) >= 5 else 0.0
@@ -1319,8 +1369,23 @@ def set_voice_gains(doc, narration_dir):
                 _GAIN[cid] = g
                 n += 1
         name = "해설" if sp == "narrator" else sp
-        print(f"  목소리 크기 고르기 — {name:8s} {len(items):3d}컷"
-              f" 가운데 {mid:6.1f}dB 폭 {spread:4.1f}dB → {n}컷 손봄")
+        print(f"  목소리 고르기 — {name:8s} {len(items):3d}컷"
+              f"  크기 가운데 {mid:6.1f}dB 폭 {spread:4.1f}dB → {n}컷"
+              f" · 음색 {len(odd)}컷")
+        # ⭐ **가장 튀는 컷을 이름으로 찍는다.** 손님이 "이 부분" 이라고 짚었을 때
+        #    기록에서 바로 찾을 수 있어야 한다. H05 처럼 눈으로 확인하려는 것이다.
+        for _, cid, gl, gh in sorted(odd, reverse=True)[:3]:
+            why = []
+            if gl >= TONE_MIN:
+                why.append("저음이 빠져 얇았음")
+            elif gl <= -TONE_MIN:
+                why.append("저음이 과했음")
+            if gh <= -TONE_MIN:
+                why.append("고음이 세서 날카로웠음")
+            elif gh >= TONE_MIN:
+                why.append("고음이 죽어 먹먹했음")
+            print(f"      {cid:8s} 저음 {gl:+.1f}dB 고음 {gh:+.1f}dB"
+                  f"  ({' · '.join(why) or '조정'})")
 
 
 def build_audio(doc, durs, workdir, narration_dir=None):
@@ -1364,7 +1429,11 @@ def build_audio(doc, durs, workdir, narration_dir=None):
             # ⭐ volume=1.0 (손 안 댐) 이었다. 이제 그 인물의 평균 크기에 맞춘다.
             g = _GAIN.get(cut.get("nar_id", cut["id"]), 0.0)
             inputs += ["-i", str(nar)]
-            filters.append(f"[{mixn}:a]adelay=250|250,volume={g:+.1f}dB[a{mixn}]")
+            # 음색을 먼저 맞추고 그다음 크기를 맞춘다 (set_voice_gains 와 같은 순서)
+            tone = _TONE.get(cut.get("nar_id", cut["id"]), "")
+            filters.append(f"[{mixn}:a]adelay=250|250,"
+                           + (tone + "," if tone else "")
+                           + f"volume={g:+.1f}dB[a{mixn}]")
             mixn += 1
 
         sfx = audio_path("sfx", cut["sfx"]) if cut.get("sfx") else None

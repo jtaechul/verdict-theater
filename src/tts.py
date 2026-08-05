@@ -604,6 +604,17 @@ def prune_stale(out, cuts, pin):
         old = json.loads(book.read_text(encoding="utf-8"))
     except Exception:
         old = {}
+    # ⭐ 높이 기록(pitch.json)도 같이 지운다.
+    #    normalize_pitch 는 **한 번 '괜찮음' 으로 적힌 컷을 영원히 다시 안 본다**
+    #    (`if cid in done: continue`). 그래서 소리를 새로 만들어도 높이 기록만
+    #    옛것으로 남으면, 새 소리가 아무리 튀어도 검사 대상에서 빠져 버린다.
+    #    지운 컷은 높이 기록에서도 빼서 반드시 다시 재게 한다.
+    pbook = out / "pitch.json"
+    try:
+        pdone = json.loads(pbook.read_text(encoding="utf-8"))
+    except Exception:
+        pdone = {}
+
     killed = 0
     for c in cuts:
         cid = c.get("id")
@@ -616,10 +627,13 @@ def prune_stale(out, cuts, pin):
             p.unlink()
             p.with_suffix(".silent").unlink(missing_ok=True)
             old.pop(cid, None)
+            pdone.pop(cid, None)
             killed += 1
     if killed:
         print(f"  지난 실행의 음성 {killed}컷이 지금 설정과 달라 지웠다 — 그 컷만 다시 만든다")
         book.write_text(json.dumps(old, ensure_ascii=False), encoding="utf-8")
+        if pbook.exists():
+            pbook.write_text(json.dumps(pdone, ensure_ascii=False), encoding="utf-8")
     return old
 
 
