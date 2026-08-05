@@ -497,6 +497,56 @@ def draw_top_line(img, text, box=None):
 
 TIMECAP_ALPHA = 236     # 시점 자막 뒤 검은 판의 진하기 (255 = 완전한 검정)
 
+# ── 채널 로고 ─────────────────────────────────────────────
+# ⭐ 왜 넣나 — ① 화면만 봐서는 어느 채널 것인지 알 수 없다 ② 도용 재업로드를 막는다
+#    ③ 12분을 잠깐씩 넘겨 보는 사람에게도 채널 이름이 남는다.
+#
+# ⭐ **어디에 넣느냐가 중요하다.**
+#    세로 쇼츠의 **맨 아래**는 최악이다 — 유튜브가 그 위에 채널명·제목·소리 표시·
+#    진행바를 스스로 덮어씌운다. 넣어도 가려져서 안 보인다.
+#    쇼츠는 **위쪽 검은 띠**(실측 1920 중 165픽셀)가 비어 있고 유튜브가 거의 안 덮는다.
+#    가로 본편은 덮는 UI 가 없으므로 오른쪽 위 구석에 조용히 둔다.
+LOGO_TEXT = "판결극장"
+LOGO_ALPHA_H = 118      # 가로 본편 — 있는 줄은 알지만 그림을 방해하지 않는 정도
+LOGO_ALPHA_V = 214      # 세로 쇼츠 — 원래 비어 있는 검은 띠 위라 또렷해도 된다
+
+
+def draw_logo(layer, W, H, vertical=False, band=0):
+    """채널 이름을 화면에 얹는다. 글자만 — 배경 그림은 쓰지 않는다.
+
+    배경이 있는 이미지를 구석에 붙이면 네모난 판이 그대로 보여 지저분하다.
+
+    band — 화면 위쪽 **검은 띠의 높이**(픽셀). 세로 쇼츠는 이 띠 한가운데 넣는다.
+           ⚠️ 반드시 **띠를 그린 뒤 전체 화면**에 대고 불러야 한다. 무대 겹에 그리면
+              무대가 띠 아래로 통째로 옮겨 붙으면서 로고도 같이 내려가 그림을 덮는다
+              (실제로 그렇게 나와서 고쳤다)."""
+    u = unit(W, H)
+    size = round(u * (0.050 if vertical else 0.032))
+    if vertical and band:
+        size = min(size, round(band * 0.46))   # 띠보다 커지지 않게
+    f = font(size, role="serif")
+    t = _spaced(LOGO_TEXT, " ")            # 자간을 살짝 벌려 격식 있게
+    tw, th = text_w(t, f), line_h(f)
+    alpha = LOGO_ALPHA_V if vertical else LOGO_ALPHA_H
+
+    if vertical:
+        x = (W - tw) // 2                  # 위 검은 띠 한가운데
+        y = round((band - th) / 2) - round(size * 0.10) if band else round(H * 0.028)
+        y = max(round(u * 0.010), y)
+    else:
+        x = W - tw - round(u * 0.055)      # 오른쪽 위 구석
+        y = round(u * 0.048)
+
+    mark = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(mark)
+    d.text((x, y), t, font=f, fill=_pale(0.06) + (alpha,))
+    # 로고 카드와 같은 붉은 밑줄 — 얇게. 이것 하나로 '그 채널' 이 된다.
+    rw = max(1, round(size * 0.045))
+    d.line([(x + round(tw * 0.16), y + th + round(size * 0.16)),
+            (x + round(tw * 0.84), y + th + round(size * 0.16))],
+           fill=ACCENT + (alpha,), width=rw)
+    return Image.alpha_composite(layer, mark)
+
 
 def draw_time_caption(img, text, cy=None, avoid=None):
     """회상으로 들어갈 때 화면 가운데 잠깐 뜨는 시점 자막 — '십수 년 전'.

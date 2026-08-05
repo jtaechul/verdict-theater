@@ -962,6 +962,7 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False):
         gfx_layer = G.draw_time_caption(
             gfx_layer, when, cy=cy,
             avoid=None if ink_top is None else ink_top - int(H * 0.012))
+
     return move, gfx_layer, sub_layer
 
 
@@ -977,7 +978,8 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
        같이 확대돼 띠가 흔들리고, 무대 내용이 띠 위로 삐져나온다."""
     y0, y1 = stage_box(W, H, vertical)
     if (y0, y1) == (0, H):
-        return _stage_plates(cut, W, H, vertical, top_line)      # 띠 없음(예전 방식)
+        mv, gx, sb = _stage_plates(cut, W, H, vertical, top_line)  # 띠 없음(예전 방식)
+        return mv, G.draw_logo(gx, W, H, vertical=vertical), sb
 
     sh = y1 - y0
     s_move, s_gfx, _ = _stage_plates(cut, W, sh, vertical, top_line="", banded=True)
@@ -1006,6 +1008,11 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
     gfx.alpha_composite(hemlay, (0, max(0, y1 - hem)))
     if top_line:
         gfx = G.draw_top_line(gfx, top_line, box=(0, 0, W, y0))
+
+    # ⭐ 채널 로고 — **띠를 다 그린 뒤 전체 화면에** 얹는다.
+    #    무대 겹에 그리면 무대가 띠 아래로 옮겨 붙으면서 로고도 내려가 그림을 덮는다.
+    #    세로 쇼츠는 위 검은 띠(y0) 한가운데 — 유튜브가 거의 안 덮는 유일한 빈자리다.
+    gfx = G.draw_logo(gfx, W, H, vertical=vertical, band=y0)
 
     sub = G.draw_subtitle(Image.new("RGBA", (W, H), (0, 0, 0, 0)),
                           cut.get("text", ""), vertical=vertical,
