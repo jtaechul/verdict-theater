@@ -78,16 +78,22 @@ FRAME = {
     #    48%밖에 안 됐다 — 상체가 중간 위로 못 올라오는 이유가 이것이다.
     #    → 허리까지 넣어 **세로로 긴 비율**로 만들고, 어깨 양옆에 여백을 둔다.
     #      그러면 가로에 안 막혀 더 커지고, 어깨가 잘릴 일도 없다.
+    # ⭐ 어깨 여백을 **숫자로** 적는다. '넓은 여백' 이라고만 적어 두었더니
+    #    어깨가 칸 끝까지 차서 옆 사람과 맞닿았다(LAYOUT 의 SPACING 주석 참고).
     "face": "a chest-up portrait in PORTRAIT orientation, clearly taller than it is "
             "wide. The WHOLE head including all the hair is visible with clear empty "
-            "space above it. BOTH shoulders are fully inside the frame with a wide "
-            "empty margin on the left and right of the shoulders — the shoulders must "
-            "never touch the left or right edge. The body is cut off just below the "
-            "chest. The chin sits near the vertical middle of the picture",
+            "space above it. BOTH shoulders are drawn complete and end well inside the "
+            "cell: the shoulder tips reach at most the middle 70% of the cell's width, "
+            "leaving 15% or more pure green beyond each shoulder tip. "
+            "The body is cut off just below the "
+            "chest, and that cut edge runs straight and level across the picture. "
+            "The chin sits near the vertical middle of the picture",
     "bust": "a waist-up shot in PORTRAIT orientation, clearly taller than it is wide. "
-            "The whole head is visible with empty space above it, BOTH shoulders fully "
-            "inside the frame with a wide empty margin left and right of the shoulders "
-            "so they never touch the edges, and the body cut off at the waist. "
+            "The whole head is visible with empty space above it. BOTH shoulders are "
+            "drawn complete and end well inside the cell: the shoulder tips reach at "
+            "most the middle 70% of the cell's width, leaving 15% or more pure green "
+            "beyond each shoulder tip. The body is cut off at the waist, and that cut "
+            "edge runs straight and level across the picture. "
             "The chin sits near the vertical middle",
     "full": "the entire body from head to feet, standing in the middle of the cell",
 }
@@ -158,7 +164,28 @@ def sheet_prompt(code, poses, cols, rows):
         #    마젠타는 사진 안 어디에도 없다 — 피부·남색 양복·검은 법복·흰 셔츠·흰머리
         #    무엇도 '초록이 가장 낮고 빨강·파랑이 둘 다 높다' 를 만족하지 않는다.
         #    그래서 잘라내기 전에 degrid 가 확실히 골라 지운다.
-        f"  - Leave a clear band of pure green between every figure — they must never touch or overlap.\n"
+        # ⭐ 여백은 **숫자로** 못 박는다.
+        #    예전에는 "a clear band of pure green", "a wide empty margin" 처럼
+        #    말로만 적었다. '넓게' 가 얼마인지 모델이 알 수 없으니 지켜질 리가 없다.
+        #    실제로 인물들이 어깨를 맞대고 나왔고, 잘라낼 때 억지로 갈라내느라
+        #    **옆 사람 옷자락 조각**이 딸려와 화면에 뾰족이로 나왔다(23장).
+        #    그래서 ① 몇 %인지 ② 무엇이 가장 넓은 부분인지 ③ 안 맞으면 무엇을
+        #    포기해야 하는지 ④ 이 그림이 나중에 어떻게 쓰이는지 를 전부 적는다.
+        f"  - SPACING — this is a hard requirement, not a preference:\n"
+        f"    · Each figure must fit inside the MIDDLE 70% of its own cell's width.\n"
+        f"      That leaves at least 15% of the cell width as pure green on the figure's\n"
+        f"      left AND at least 15% as pure green on its right.\n"
+        f"    · The SHOULDERS are the widest part of a person. Draw both shoulders complete,\n"
+        f"      and make sure pure green is visible beyond BOTH shoulder tips.\n"
+        f"      Hands, elbows and hair count as part of the figure's width too.\n"
+        f"    · No two figures may come closer to each other than that green gap.\n"
+        f"      Nothing of one figure may ever enter a neighbouring figure's cell.\n"
+        f"    · If a figure does not fit with that much green around it, DRAW IT SMALLER.\n"
+        f"      Never crop it, never shift it to the edge, never shrink the green gap.\n"
+        f"  - WHY this matters: this sheet is cut apart automatically along the pure green.\n"
+        f"    If two figures touch, the cutter slices through both and each one keeps a\n"
+        f"    torn scrap of its neighbour. A generous green gap is more important than\n"
+        f"    figure size — always choose the gap.\n"
         f"  - ⚠️ EVERY figure is COMPLETE and fully inside its own cell, with pure green visible on all\n"
         f"    four sides of it. Never let a head, hair, shoulder or hand touch or run off the edge of\n"
         f"    the image or of its cell. For close-ups, the whole head including all the hair must fit\n"

@@ -312,6 +312,49 @@ def drop_fragments(sp):
     return (out.crop(bb) if bb else out), sum(len(c) for c in frags)
 
 
+# ── 남은 뾰족이를 곡선으로 다듬기 ──────────────────────────
+SMOOTH_R = 0.30         # 테두리 두께 대비 다듬는 반지름
+SMOOTH_MIN = 200        # 이만큼도 안 깎이면 손대지 않은 것으로 본다
+
+
+def smooth_edge(sp):
+    """실루엣에 남은 **가는 뾰족이를 깎아 곡선으로** 만든다. 값이 들지 않는다.
+
+    왜 안전한가 (이 함수의 근거)
+        이 그림들의 실루엣은 **몸을 흰 테두리로 60~70픽셀 부풀린 모양**이다.
+        그러니 실루엣에는 원래 **가는 부분이 있을 수 없다** — 머리카락 한 올도
+        손가락도 그 두꺼운 테두리 안에 들어 있어 겉모양은 통통하다.
+        따라서 테두리 두께의 3할(약 20픽셀)보다 가는 돌기는 **무조건 잘못 붙은 것**이다.
+        그것만 깎으므로 사람 몸은 건드리지 않는다.
+
+    어떻게
+        '열기(opening)' — 깎았다가 같은 만큼 다시 부풀린다. 가는 돌기는 깎이는
+        단계에서 끊어져 돌아오지 못하고, 두꺼운 몸통은 그대로 돌아온다.
+        마지막에 원래 알파와 **겹치는 부분만** 남기므로 **없던 살이 붙지 않는다.**"""
+    a = sp.getchannel("A")
+    W, H = sp.size
+    solid = a.point(lambda v: 255 if v > 40 else 0)
+    r = max(3, round(_outline_px(sp) * SMOOTH_R))
+
+    s = 4
+    sw, sh = max(1, W // s), max(1, H // s)
+    k = max(3, (r // s) * 2 + 1)
+    small = solid.resize((sw, sh), Image.BILINEAR).point(lambda v: 255 if v > 110 else 0)
+    opened = small.filter(ImageFilter.MinFilter(k)).filter(ImageFilter.MaxFilter(k))
+    keep = opened.resize((W, H), Image.BILINEAR).point(lambda v: 255 if v > 90 else 0)
+    keep = keep.filter(ImageFilter.GaussianBlur(max(1, r * 0.2)))   # 계단 자국을 눕힌다
+
+    cut = ImageChops.subtract(solid, keep.point(lambda v: 255 if v > 40 else 0))
+    n = sum(i * c for i, c in enumerate(cut.histogram())) // 255
+    if n < SMOOTH_MIN:
+        return sp, 0
+
+    out = sp.copy()
+    out.putalpha(ImageChops.darker(a, keep))
+    bb = out.getchannel("A").point(lambda v: 255 if v > 20 else 0).getbbox()
+    return (out.crop(bb) if bb else out), n
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry", action="store_true", help="지우지 않고 확인만")
@@ -329,7 +372,7 @@ def main():
         want = {s.strip() for s in args.only.split(",") if s.strip()}
         files = [f for f in files if f.parent.name in want]
 
-    total = flat = frag = 0
+    total = flat = frag = smooth = 0
     for f in files:
         sp = Image.open(f).convert("RGBA")
         out, n = despike(sp)
@@ -365,13 +408,21 @@ def main():
             print(f"  {f.parent.name}/{f.stem:14} 떨어져 나온 조각 {npx}px 덮음"
                   f"  {sp.size} → {out.size}")
 
+        # ⭐ 마지막으로 남은 가는 뾰족이를 곡선으로 다듬는다 (값 0원).
+        #    앞의 세 가지가 못 잡은 모양이 있어도 여기서 둥글게 눕힌다.
+        out4, sn = smooth_edge(out)
+        if sn:
+            smooth += 1
+            print(f"  {f.parent.name}/{f.stem:14} 뾰족이 {sn}px 를 곡선으로 다듬음")
+            out = out4
+
         if (out.size != sp.size or out.tobytes() != sp.tobytes()) and not args.dry:
             out.save(f)
 
     print(f"\n어깨 조각 {total}장 · 어깨 삐죽이 {flat}장 · 떨어져 나온 조각 {frag}장"
-          f" (전체 {len(files)}장)"
+          f" · 곡선 다듬기 {smooth}장 (전체 {len(files)}장)"
           + ("   [--dry — 저장하지 않았다]" if args.dry else ""))
-    if args.check and (total or flat or frag):
+    if args.check and (total or flat or frag or smooth):
         print("\n::error::인물 그림에 삐죽이·조각이 남아 있습니다."
               " `python3 src/despike.py` 를 돌려 고친 뒤 다시 시도하십시오.")
         return 1
