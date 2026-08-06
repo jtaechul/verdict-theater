@@ -200,13 +200,26 @@ jobs:
       #    음성 113개를 처음부터 다시 만들었다. 재시도 한 번에 한 편 값이 통째로 또 나갔다.
       #    대본이 그대로면 음성도 그대로다 — 대본 내용으로 열쇠를 만들어 보관했다 재사용한다.
       #    대본을 고치면 열쇠가 달라져 자동으로 새로 만든다.
+      #
+      #    ⚠️ 열쇠에는 **대본 지문 + 음성 처리 지문(tts.py)** 두 가지가 들어간다.
+      #       음성 처리 지문이 없으면 이런 구멍이 생긴다 —
+      #         · 보관함 열쇠는 한 번 쓰면 덮어쓸 수 없다(깃허브 규칙).
+      #         · 그래서 열쇠가 그대로면 아래 보관 단계를 건너뛴다.
+      #         · 그러면 **이번 실행에서 고친 음성이 통째로 버려지고**, 다음 실행은
+      #           안 고친 옛 음성을 다시 꺼내 또 고친다 → 같은 값이 매번 또 나간다.
+      #       실제로 2026-08-06 에 이 구멍을 찾았다. 음높이 고치기가 매 실행 약 6원씩
+      #       영원히 나갈 뻔했다. 이제 tts.py 를 고치면 열쇠가 바뀌어 **고친 음성이 남는다.**
+      #       (열쇠가 바뀌어도 아래 restore-keys 로 옛 음성을 그대로 되살려 쓰므로,
+      #        음성을 새로 만드는 값은 들지 않는다.)
       - name: 대본 지문 (음성 재사용 열쇠)
         id: fp
         run: |
           set -euo pipefail
           H=$(sha256sum "data/scripts/${{ steps.pick.outputs.ep }}.json" | cut -c1-16)
+          V=$(sha256sum src/tts.py | cut -c1-8)
           echo "hash=$H" >> "$GITHUB_OUTPUT"
-          echo "대본 지문: $H"
+          echo "voice=$V" >> "$GITHUB_OUTPUT"
+          echo "대본 지문: $H · 음성 처리 지문: $V"
 
       - name: 만들어 둔 음성 불러오기
         id: voicecache
@@ -214,10 +227,13 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: build/voice
-          key: voice-${{ steps.pick.outputs.ep }}-${{ steps.fp.outputs.hash }}
-          # 대본이 조금 바뀌었으면 예전 것이라도 가져와 바뀐 컷만 새로 만든다.
+          key: voice-${{ steps.pick.outputs.ep }}-${{ steps.fp.outputs.hash }}-${{ steps.fp.outputs.voice }}
+          # 열쇠가 안 맞으면 아래 순서로 **가장 비슷한 것**을 가져온다.
+          #   ① 같은 대본의 옛 음성 (음성 처리만 바뀐 경우 — 소리는 그대로 재사용)
+          #   ② 그 회차의 아무 음성   (대본이 조금 바뀐 경우 — 바뀐 컷만 새로 만든다)
           # (어느 컷을 다시 만들지는 tts.py 의 prune_stale 이 '조리법'으로 판단한다)
           restore-keys: |
+            voice-${{ steps.pick.outputs.ep }}-${{ steps.fp.outputs.hash }}-
             voice-${{ steps.pick.outputs.ep }}-
 
       - name: 나레이션 만들기
@@ -282,8 +298,13 @@ jobs:
       # 음성을 만들자마자 곧바로 보관한다. 잡이 끝날 때 저장하면, 뒤의 렌더링에서
       # 실패했을 때 방금 돈 주고 만든 음성이 통째로 날아간다 — 막으려던 바로 그 상황이다.
       #
-      # ⚠️ 열쇠에 대본 지문이 들어간다. 대본을 고치면 열쇠가 바뀌므로 **매번 새로 보관**한다.
-      #    cache-hit 이 참일 때만 건너뛴다(그때는 이미 똑같은 것이 들어 있다).
+      # ⚠️ 열쇠에 대본 지문 + 음성 처리 지문이 들어간다. 둘 중 하나라도 바뀌면 열쇠가
+      #    바뀌므로 **새로 보관**한다. cache-hit 이 참일 때만 건너뛴다 — 그때는 꺼내 온
+      #    음성이 이미 지금 방식으로 손본 것이라, 이번에 또 손볼 것이 없기 때문이다.
+      #
+      # ⭐ 여기서 보관하는 것은 **손을 다 본 음성**이다. tts.py 가 음높이를 고른 뒤에
+      #    이 단계가 돈다. 그래서 다음 실행은 이미 고쳐진 소리를 꺼내 쓰고,
+      #    같은 컷을 다시 읽히느라 값을 또 쓰지 않는다.
       #
       # ⭐⭐ **시험 실행(--limit)은 절대 보관하지 않는다.** 손님이 "영상을 몇 번
       #    다시 만드는지 모르겠다" 며 비용을 지적해 찾아낸 구멍이다.
@@ -302,7 +323,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: build/voice
-          key: voice-${{ steps.pick.outputs.ep }}-${{ steps.fp.outputs.hash }}
+          key: voice-${{ steps.pick.outputs.ep }}-${{ steps.fp.outputs.hash }}-${{ steps.fp.outputs.voice }}
 
       - name: 렌더링 (롱폼 16:9 + 쇼츠 9:16)
         run: |

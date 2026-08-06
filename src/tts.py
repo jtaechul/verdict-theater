@@ -607,10 +607,11 @@ def prune_stale(out, cuts, pin):
     except Exception:
         old = {}
     # ⭐ 높이 기록(pitch.json)도 같이 지운다.
-    #    normalize_pitch 는 **한 번 '괜찮음' 으로 적힌 컷을 영원히 다시 안 본다**
-    #    (`if cid in done: continue`). 그래서 소리를 새로 만들어도 높이 기록만
-    #    옛것으로 남으면, 새 소리가 아무리 튀어도 검사 대상에서 빠져 버린다.
-    #    지운 컷은 높이 기록에서도 빼서 반드시 다시 재게 한다.
+    #    이제 pitch.json 은 '다시 읽혀 봤지만 안 돼서 포기한 컷' 만 담는다.
+    #    소리를 새로 만들면 그 포기 기록은 옛 소리에 대한 판정이라 뜻이 없다 —
+    #    새 소리는 한 번 더 시도해 볼 자격이 있으므로 같이 지운다.
+    #    (2026-08-06 이전에는 '괜찮음' 기록이었고, 그것 때문에 H05 가 영원히
+    #     검사에서 빠졌다. 지금은 판단에 아예 안 쓴다 — normalize_pitch 설명 참조.)
     pbook = out / "pitch.json"
     try:
         pdone = json.loads(pbook.read_text(encoding="utf-8"))
@@ -922,14 +923,61 @@ def measure_f0(path):
 
 # 인물별 중앙값에서 이만큼(반음) 넘게 벗어난 컷만 손본다. 그 이하는 사람이 못 느낀다.
 PITCH_TOL = float(os.environ.get("TTS_PITCH_TOL", "1.0"))
-# 손보더라도 이 이상은 절대 안 옮긴다. 많이 옮기면 목소리가 기계처럼 변한다.
-PITCH_MAX = float(os.environ.get("TTS_PITCH_MAX", "2.0"))
-# 이만큼(반음) 넘게 벗어난 컷은 **음을 옮기지 않고 다시 만든다.**
-#   실측: 장남 대사 하나가 174Hz 로 나왔다(다른 대사는 110Hz 안팎). 62Hz 차이다.
-#   이런 것은 억지로 내리면(최대 2반음) 155Hz 에 그쳐 여전히 튀고, 소리도 뭉개진다.
-#   모델에게 그 한 줄만 다시 읽히면 대개 제 높이로 나온다 — 한 번 부르는 값이면 된다.
+# 이만큼(반음) 넘게 벗어난 컷은 **음을 옮기기 전에 먼저 다시 읽힌다.**
+#   실측(2026-08-06, EP001 해설 64컷): 가운뎃값 83.8Hz 인데 H05 가 136.8Hz —
+#   +8.5반음이다. 12반음이 한 옥타브이니 거의 한 옥타브 위, 그냥 다른 사람 목소리다.
+#   이런 것은 다시 읽히는 편이 가장 자연스럽다(컷당 약 3원).
 PITCH_REDO = float(os.environ.get("TTS_PITCH_REDO", "3.0"))
 PITCH_REDO_TRIES = max(0, int(os.environ.get("TTS_PITCH_REDO_TRIES", "2")))
+# 한 실행에서 다시 읽힐 수 있는 최대 컷 수(값 폭주 방지).
+#   음색 쪽과 달리 여기서는 몫이 떨어져도 **아무 일도 안 일어나지 않는다** —
+#   못 읽힌 컷은 아래 ②(공짜 후보정)에서 끝까지 눌러 맞춘다. 그래서 안전하다.
+PITCH_MAX_REDO = max(0, int(os.environ.get("TTS_PITCH_MAX_REDO", "4")))
+
+
+def _pitch_filter(ratio):
+    """음높이를 ratio 배로 옮기는 ffmpeg 필터. **길이는 그대로 둔다.**
+
+    두 가지 방법이 있고, 둘은 결과가 아주 다르다.
+
+    rubberband  목소리 굵기(포먼트 — 성대가 아니라 입·목구멍이 만드는 울림)를
+                그대로 두고 음높이만 옮긴다. 같은 사람이 낮게 말하는 소리가 된다.
+    asetrate    테이프를 느리게 감는 것과 같다. 음높이와 함께 굵기까지 끌려간다.
+                그래서 내리면 목소리가 굵다 못해 먹먹해지고, 올리면 얇아진다.
+
+    ⭐ 지금까지 asetrate 만 썼다. 그래서 '음을 많이 옮기면 기계 소리가 난다' 며
+       최대 2반음으로 묶어 뒀고, 8.5반음 튄 컷은 손도 못 댔다.
+       rubberband 는 우분투 ffmpeg 에 이미 들어 있다(실측 확인: 137Hz→85Hz,
+       길이 4.056초 → 4.056초 그대로). 있으면 이쪽을 쓴다."""
+    if _has_rubberband():
+        return f"rubberband=pitch={ratio:.5f}:formant=preserved"
+    return (f"asetrate=24000*{ratio:.5f},aresample=24000,"
+            f"atempo={1 / ratio:.5f}")
+
+
+_RUBBERBAND = None
+
+
+def _has_rubberband():
+    """이 컴퓨터의 ffmpeg 에 rubberband 가 들어 있나. 한 번만 확인하고 기억한다."""
+    global _RUBBERBAND
+    if _RUBBERBAND is None:
+        try:
+            r = subprocess.run(["ffmpeg", "-hide_banner", "-filters"],
+                               capture_output=True, text=True, timeout=30)
+            _RUBBERBAND = " rubberband " in r.stdout
+        except Exception:
+            _RUBBERBAND = False
+    return _RUBBERBAND
+
+
+def _pitch_max():
+    """한 컷을 최대 몇 반음까지 옮겨도 되나.
+
+    rubberband 는 굵기를 지키므로 크게 옮겨도 사람 목소리로 남는다 → 사실상 무제한.
+    asetrate 밖에 없으면 2반음이 한계다(그 이상은 목소리가 변한다)."""
+    return float(os.environ.get("TTS_PITCH_MAX",
+                                "12.0" if _has_rubberband() else "2.0"))
 
 
 # ── 음색(얇고 하이톤) 이 튀는 컷 다시 읽히기 ────────────────
@@ -948,6 +996,19 @@ TONE_LOW, TONE_HIGH = 300, 3500
 TONE_REDO = float(os.environ.get("TTS_TONE_REDO", "2.5"))   # 이만큼(dB) 벗어나면 다시 읽는다
 TONE_REDO_TRIES = max(0, int(os.environ.get("TTS_TONE_REDO_TRIES", "2")))
 TONE_MAX_REDO = max(0, int(os.environ.get("TTS_TONE_MAX_REDO", "6")))
+
+# ⭐ 2026-08-06 손님 선택: **끈다.** 켜려면 TTS_TIMBRE_RETAKE=1.
+#
+#    왜 껐나 — 측정으로 판명됐다.
+#      · 손님이 세 번 지적한 컷(H05)의 음색 숫자는 **정상**이었다(저음 +0.1, 고음 +0.2).
+#        문제는 음색이 아니라 음높이(+8.5반음)였다. 이 장치는 엉뚱한 곳을 고치고 있었다.
+#      · 효과도 들쭉날쭉했다. 실측: H04 는 6.4dB→0.8dB 로 좋아졌지만
+#        A1-17 은 6.6dB→6.1dB 로 사실상 그대로였다(값만 나갔다).
+#      · 값이 계속 나갔다. 누를 때마다 본편 6컷 + 쇼츠 6컷 = 약 35원씩, 매번.
+#    음색 보정 자체가 없어지는 것은 아니다 — 렌더링(render.py set_voice_gains)에서
+#    저음·고음 균형을 **값 0원으로** 계속 맞춘다. 여기서 끄는 것은 '다시 읽히기' 뿐이다.
+TIMBRE_RETAKE = os.environ.get("TTS_TIMBRE_RETAKE", "0").strip().lower() \
+    not in ("", "0", "off", "no", "false")
 
 
 def _mean_db(path, af=""):
@@ -978,9 +1039,13 @@ def tone_of(path):
 
 
 def normalize_timbre(out, cuts, retake=None):
-    """음색이 크게 튄 컷을 **같은 목소리로 다시 읽힌다.**
+    """음색이 크게 튄 컷을 **같은 목소리로 다시 읽힌다.** (기본값: 꺼짐)
 
     두 번 실행해도 안전하다 — 살펴본 컷은 timbre.json 에 적어 두고 건너뛴다."""
+    if not TIMBRE_RETAKE:
+        # 조용히 넘어가지 않는다. 꺼져 있다는 것이 기록에 남아야 나중에 헷갈리지 않는다.
+        print("  음색 다시 읽기: 꺼져 있다 (렌더링에서 값 0원으로 보정한다)")
+        return
     if not shutil.which("ffmpeg") or retake is None or TONE_REDO_TRIES == 0:
         return
     book = out / "timbre.json"
@@ -1054,20 +1119,40 @@ def normalize_timbre(out, cuts, retake=None):
 
 
 def normalize_pitch(out, cuts, retake=None):
-    """인물마다 목소리 높이를 **중앙값으로 맞춘다.**
+    """인물마다 목소리 높이를 **가운뎃값으로 맞춘다.**
 
     왜 필요한가
-        같은 모델·같은 목소리인데도 대사의 감정에 따라 높이가 흔들린다
-        (실측: 장남 6개 대사가 108~132Hz, 폭 24Hz). 대화 중에 이만큼 오르내리면
-        같은 사람으로 안 들린다. 지시문으로는 안 잡혔다(폭 23Hz — 차이 없음).
+        컷 하나하나가 제미나이를 따로 부르는 별개의 호출이라, 같은 모델·같은 목소리를
+        지정해도 높이가 호출마다 흔들린다. 실측(2026-08-06, EP001 해설 64컷):
+        가운뎃값 83.8Hz, 보통 컷은 ±1.7반음 안인데 **H05 한 컷만 136.8Hz(+8.5반음)** 였다.
+        12반음이 한 옥타브이니 거의 한 옥타브 위 — 듣는 사람에게는 그냥 다른 사람이다.
 
-    어떻게
-        컷마다 높이를 재고, 그 인물의 중앙값에서 반음(PITCH_TOL) 넘게 벗어난 것만
-        중앙값 쪽으로 끌어당긴다. 최대 2반음까지만 — 그 이상 옮기면 기계 소리가 난다.
-        ffmpeg 의 asetrate 로 음을 옮기고 atempo 로 길이를 되돌려, **길이는 그대로**다.
-        (길이가 변하면 자막·컷 길이와 어긋난다.)
+    ⭐ 왜 예전 코드는 이걸 못 잡았나 (2026-08-06 원인 규명 · 같은 실수 반복 금지)
+        장치는 이미 있었다. 3반음 넘으면 다시 읽히고 1반음 넘으면 음을 옮기게 돼 있었다.
+        그런데 제작 기록에는 `목소리 높이: 114컷 다 쟀다` 뒤로 **고쳤다는 줄이 한 줄도
+        없었다.** 재고도 하나도 안 고친 것이다. 이유가 셋이었다.
+          ① `pitch.json` 수첩에 한 번 적힌 컷은 `if cid in done: continue` 로
+             **파일을 열어보지도 않고 영원히 건너뛰었다.** H05 가 여기 걸렸다.
+          ② 게다가 높이를 잴 때도 `done.get(cid) or measure_f0(p)` 로 **수첩의 옛
+             숫자를 먼저 썼다.** 소리를 새로 만들어도 옛 숫자로 판단했다.
+          ③ 어렵게 통과해도 최대 2반음까지만 옮길 수 있었다. 8.5반음짜리는
+             6.5반음이 남아 여전히 다른 사람 목소리다.
+        그래서 이렇게 바꿨다.
+          ① **수첩을 판단에 쓰지 않는다. 매번 실제 파일을 다시 잰다.**
+             (수첩은 '다시 읽히다 실패해서 포기한 컷' 만 적어 둔다 — 그 컷을 매 실행
+              다시 읽히면 값만 나가기 때문이다. 판단에는 절대 안 쓴다.)
+          ② 손볼 폭 제한을 푼다 — rubberband 는 굵기를 지키므로 크게 옮겨도 된다.
+          ③ 많이 튄 컷부터 손본다. 예전 음색 쪽은 컷 번호 순으로 돌다가 몫을 다 써서
+             **정작 손님이 지적한 컷에 닿지도 못했다.** 같은 실수를 여기서 반복 안 한다.
 
-    두 번 실행해도 안전하다 — 손본 컷은 pitch.json 에 적어 두고 건너뛴다."""
+    어떻게 (손님 선택 2026-08-06: "다시 읽히고, 안 되면 눌러 맞추기")
+        ① 3반음(PITCH_REDO) 넘게 튄 컷은 **그 줄만 새로 읽힌다** (컷당 약 3원).
+           가장 많이 튄 컷부터, 한 실행에 최대 PITCH_MAX_REDO 컷까지.
+        ② 그러고도 1반음(PITCH_TOL) 넘게 남은 컷은 **음을 옮겨 가운뎃값에 맞춘다.**
+           값 0원 — 이미 만들어 둔 파일만 손본다. 길이는 그대로라 자막이 안 밀린다.
+        ②가 항상 받쳐 주므로 ①이 실패하든 몫이 떨어지든 **문제가 남지 않는다.**
+
+    두 번 실행해도 안전하다 — 맞춘 컷은 다음 실행에서 가운뎃값으로 측정되어 손대지 않는다."""
     if not shutil.which("ffmpeg"):
         return
     try:
@@ -1077,12 +1162,18 @@ def normalize_pitch(out, cuts, retake=None):
         print("  ⚠️ numpy 가 없어 목소리 높이 고르기를 건너뛴다"
               " (인물 목소리가 컷마다 흔들릴 수 있다)")
         return
+
+    # 수첩 — **판단에는 안 쓴다.** 다시 읽히다 실패해 포기한 컷만 적는다.
+    #        (안 적으면 그 컷을 누를 때마다 다시 읽혀 값이 계속 나간다.)
     book = out / "pitch.json"
-    done = {}
     try:
-        done = json.loads(book.read_text(encoding="utf-8"))
+        gave_up = json.loads(book.read_text(encoding="utf-8"))
     except Exception:
-        done = {}
+        gave_up = {}
+    if not isinstance(gave_up, dict):
+        gave_up = {}
+    # 옛 형식({컷: 숫자})은 '괜찮다고 적어 둔 기록' 이라 이제 뜻이 없다 — 버린다.
+    gave_up = {k: v for k, v in gave_up.items() if isinstance(v, dict)}
 
     by_speaker = {}
     tried = 0
@@ -1094,9 +1185,9 @@ def normalize_pitch(out, cuts, retake=None):
         if not (c.get("text") or "").strip():
             continue
         tried += 1
-        hz = done.get(cid) or measure_f0(p)
+        hz = measure_f0(p)                 # ⭐ 언제나 실제 파일을 다시 잰다
         if hz:
-            by_speaker.setdefault(sp, []).append((cid, p, hz))
+            by_speaker.setdefault(sp, []).append([cid, p, hz])
 
     # ⭐ **몇 컷을 실제로 쟀는지 반드시 찍는다.**
     #    예전에는 고칠 것이 없어도, 아예 못 재도 **똑같이 아무 말이 없었다.**
@@ -1107,86 +1198,103 @@ def normalize_pitch(out, cuts, retake=None):
         print(f"  ⚠️ 목소리 높이: {tried}컷 중 {got}컷만 쟀다"
               f" — 못 잰 {tried - got}컷은 높이 고르기에서 빠진다")
     elif got:
-        print(f"  목소리 높이: {got}컷 다 쟀다")
+        way = "굵기를 지키며" if _has_rubberband() else "(rubberband 없음 — 최대 2반음만)"
+        print(f"  목소리 높이: {got}컷 다 쟀다 {way}")
 
     if not by_speaker:
         return
     import statistics
 
     def off(hz, mid):
-        """중앙값에서 몇 반음 벗어났나."""
+        """가운뎃값에서 몇 반음 벗어났나."""
         return 12.0 * math.log2(hz / mid) if hz > 0 and mid > 0 else 0.0
 
-    redone = fixed = 0
+    limit = _pitch_max()
+    redone = fixed = budget = 0
+    worst = []
     for sp, items in by_speaker.items():
-        if len(items) < 3:                 # 표본이 적으면 중앙값을 못 믿는다
+        if len(items) < 3:                 # 표본이 적으면 가운뎃값을 못 믿는다
             continue
+        name = "해설" if sp == "narrator" else sp
         mid = statistics.median(h for _, _, h in items)
 
-        # ① 크게 튄 컷은 **다시 읽힌다.** 음을 억지로 옮기는 것보다 자연스럽다.
-        if retake is not None:
-            fresh = []
-            for cid, p, hz in items:
-                if cid in done or abs(off(hz, mid)) <= PITCH_REDO:
-                    fresh.append((cid, p, hz))
+        # ── ① 크게 튄 컷은 **다시 읽힌다.** 많이 튄 것부터. ──
+        if retake is not None and PITCH_REDO_TRIES:
+            for it in sorted(items, key=lambda x: -abs(off(x[2], mid))):
+                cid, p, hz = it
+                gap = abs(off(hz, mid))
+                if gap <= PITCH_REDO:
+                    break                  # 정렬돼 있으니 여기서부터는 다 괜찮다
+                if cid in gave_up:
+                    continue               # 전에 다시 읽혀 봤지만 안 됐다 → ②에 맡긴다
+                if budget >= PITCH_MAX_REDO:
+                    print(f"    {cid} ({name}) 도 {off(hz, mid):+.1f}반음 튀지만 이번 실행"
+                          f" 몫({PITCH_MAX_REDO}컷)을 다 썼다 → 음을 옮겨 맞춘다(0원)")
                     continue
                 # ⚠️ 다시 읽히기 전에 **원본을 챙겨 둔다.**
                 #    다시 만들기가 실패하면(한도 소진 등) 그 컷이 통째로 사라진다 —
                 #    조금 튀는 목소리보다 소리가 아예 없는 것이 훨씬 나쁘다.
                 keep = p.with_suffix(".keep")
                 shutil.copyfile(p, keep)
-                best, best_hz = None, hz
+                best_hz = None
                 for _ in range(PITCH_REDO_TRIES):
+                    budget += 1
                     p.unlink(missing_ok=True)
                     if not retake(cid):
                         break
-                    got = measure_f0(p)
-                    if not got:
+                    fresh = measure_f0(p)
+                    if not fresh:
                         break
-                    if abs(off(got, mid)) < abs(off(best_hz, mid)):
-                        best, best_hz = got, got
-                    if abs(off(got, mid)) <= PITCH_TOL:
+                    if best_hz is None or abs(off(fresh, mid)) < abs(off(best_hz, mid)):
+                        best_hz = fresh
+                    if abs(off(fresh, mid)) <= PITCH_TOL:
                         break
-                if not p.exists() or best is None:
-                    keep.replace(p)            # 원본을 되돌린다
-                    best, best_hz = None, hz
-                else:
-                    keep.unlink(missing_ok=True)
-                if best is not None:
-                    redone += 1
-                    print(f"    {cid} ({sp}) 목소리가 {hz:.0f}Hz 로 크게 튀어 다시 읽혔다"
-                          f" → {best_hz:.0f}Hz (인물 중앙값 {mid:.0f}Hz)")
-                fresh.append((cid, p, best_hz))
-            items = fresh
+                if not p.exists() or best_hz is None or \
+                        abs(off(best_hz, mid)) >= abs(off(hz, mid)):
+                    keep.replace(p)                    # 원본이 그나마 낫다 → 되돌린다
+                    gave_up[cid] = {"hz": round(hz, 1)}
+                    print(f"    {cid} ({name}) {hz:.0f}Hz({off(hz, mid):+.1f}반음) —"
+                          f" 다시 읽혀도 나아지지 않았다 → 음을 옮겨 맞춘다(0원)")
+                    continue
+                keep.unlink(missing_ok=True)
+                redone += 1
+                print(f"    {cid} ({name}) {hz:.0f}Hz({off(hz, mid):+.1f}반음) 로 크게 튀어"
+                      f" 다시 읽혔다 → {best_hz:.0f}Hz({off(best_hz, mid):+.1f}반음)")
+                if abs(off(best_hz, mid)) > PITCH_REDO:
+                    gave_up[cid] = {"hz": round(best_hz, 1)}   # 아직 크다 → 그만 부른다
+                it[2] = best_hz
             mid = statistics.median(h for _, _, h in items)
 
-        # ② 남은 잔잔한 흔들림은 음을 조금 옮겨 맞춘다(최대 2반음).
+        # ── ② 남은 흔들림은 음을 옮겨 가운뎃값에 맞춘다 (값 0원) ──
         for cid, p, hz in items:
-            if cid in done:
-                continue                   # 이미 손본 컷
             semitone = off(hz, mid)
             if abs(semitone) <= PITCH_TOL:
-                done[cid] = hz             # 손댈 필요 없음. 다시 재지 않게 적어 둔다
-                continue
-            move = max(-PITCH_MAX, min(PITCH_MAX, -semitone))
-            r = 2 ** (move / 12.0)
+                continue                   # 사람이 못 느끼는 차이다. 손대면 손해다
+            move = max(-limit, min(limit, -semitone))
+            ratio = 2 ** (move / 12.0)
             tmp = p.with_suffix(".fix.mp3")
             try:
                 subprocess.run(
-                    ["ffmpeg", "-y", "-loglevel", "error", "-i", str(p), "-af",
-                     f"asetrate=24000*{r:.5f},aresample=24000,atempo={1 / r:.5f}",
-                     "-b:a", "160k", str(tmp)], check=True, timeout=120)
+                    ["ffmpeg", "-y", "-loglevel", "error", "-i", str(p),
+                     "-af", _pitch_filter(ratio), "-b:a", "160k", str(tmp)],
+                    check=True, timeout=120)
                 tmp.replace(p)
-                done[cid] = hz * r
                 fixed += 1
+                worst.append((abs(semitone), cid, name, hz, hz * ratio))
             except Exception:
                 tmp.unlink(missing_ok=True)
+                print(f"    ⚠️ {cid} ({name}) 음 옮기기에 실패했다 — 그대로 둔다")
+
     if redone:
-        print(f"  목소리가 튄 {redone}컷을 다시 읽혔다")
+        print(f"  목소리가 크게 튄 {redone}컷을 다시 읽혔다")
     if fixed:
-        print(f"  목소리 높이 고르기: {fixed}컷을 인물 중앙값 쪽으로 당겼다")
+        print(f"  목소리 높이 고르기: {fixed}컷을 가운뎃값 쪽으로 옮겼다")
+        for gap, cid, name, a, b in sorted(worst, reverse=True)[:3]:
+            print(f"    {cid} ({name}) {a:.0f}Hz → {b:.0f}Hz ({gap:.1f}반음 옮김)")
+    if not redone and not fixed and got:
+        print("  목소리 높이: 가운뎃값에서 1반음 넘게 벗어난 컷이 없다 — 손댈 것 없음")
     try:
-        book.write_text(json.dumps(done, ensure_ascii=False), encoding="utf-8")
+        book.write_text(json.dumps(gave_up, ensure_ascii=False), encoding="utf-8")
     except Exception:
         pass
 

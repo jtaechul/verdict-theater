@@ -66,16 +66,20 @@ jobs:
           [ -n "$EP" ] || { echo "::error::대본이 없습니다."; exit 1; }
           echo "ep=$EP" >> "$GITHUB_OUTPUT"
           echo "hash=$(sha256sum "data/scripts/$EP.json" | cut -c1-16)" >> "$GITHUB_OUTPUT"
+          echo "voice=$(sha256sum src/tts.py | cut -c1-8)" >> "$GITHUB_OUTPUT"
           echo "회차: $EP"
 
       # ⭐ 영상 만들기가 저장해 둔 음성을 그대로 꺼내 온다. 새로 만들지 않는다.
+      #    열쇠는 영상 만들기와 **똑같은 규칙**이어야 한다(대본 지문 + 음성 처리 지문).
+      #    다르면 옛 음성을 재서 "아직도 튄다" 는 엉뚱한 결과가 나온다.
       - name: 만들어 둔 음성 꺼내기
         id: cache
         uses: actions/cache/restore@v4
         with:
           path: build/voice
-          key: voice-${{ steps.pick.outputs.ep }}-${{ steps.pick.outputs.hash }}
+          key: voice-${{ steps.pick.outputs.ep }}-${{ steps.pick.outputs.hash }}-${{ steps.pick.outputs.voice }}
           restore-keys: |
+            voice-${{ steps.pick.outputs.ep }}-${{ steps.pick.outputs.hash }}-
             voice-${{ steps.pick.outputs.ep }}-
 
       - name: 재기
