@@ -56,7 +56,7 @@ const WORKFLOWS = [
   { file: 'voicefix.yml', name: '목소리 고치고 들어보기',
     desc: '새 방식으로 만들어 고치기 전↔후를 나란히 들려준다 · 기본은 15원짜리 시험',
     inputs: [{ k: 'scope', label: '얼마나', type: 'select',
-               opts: ['훅 4줄만 시험 (약 15원)', '한 편 전부 (약 400원)'] },
+               opts: ['문제 구간만 시험 (약 25원)', '한 편 전부 (약 400원)'] },
              { k: 'episode', label: '회차 (비우면 가장 최근)', type: 'text', def: '' },
              { k: 'cut', label: '들어볼 컷', type: 'text', def: 'H05' }] },
   // hidden — 실행 목록에는 안 보이고 '영상 보기' 화면의 [다시 만들기] 버튼만 부른다.
