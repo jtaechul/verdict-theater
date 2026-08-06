@@ -164,6 +164,8 @@ jobs:
             echo ""
             echo '```'
             cat before.log 2>/dev/null || true
-            grep -E "목소리|Hz|비교 영상" fix.log demo.log 2>/dev/null | head -40 || true
+            # 💰 줄도 반드시 넣는다 — 이번에 값이 얼마나 나갔는지 손님이 바로 보셔야 한다.
+            grep -E "목소리|Hz|비교 영상|💰|음성 [0-9]+개" fix.log demo.log 2>/dev/null \
+              | head -40 || true
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
