@@ -200,6 +200,25 @@ def need_ffmpeg():
 #    ("speed_check"), 배속을 건 쪽이 낫다고 하셨다. 임의로 1.0 으로 되돌리지 마라.
 #    길이에도 영향이 있다 — 새 말투는 예전보다 느려서, 배속까지 빼면
 #    한 편이 12.0분 설계 대비 약 14분이 된다(배속을 두면 12.7분).
+# ⭐ 지시문 맨 앞에 **그 사람이 누구인지(몸)** 를 못 박는다 — 손님 지적(2026-08-06).
+#
+#    왜: 제미나이는 컷마다 따로 부르는 별개의 호출이라, 같은 목소리 이름을 줘도
+#        **매번 조금씩 다른 사람**을 만들어 낸다. 예전 지시문은 '어떻게 말하는가'
+#        (조용히·느리게)만 적혀 있고 '누구인가'(나이·성별·목소리 굵기)가 없었다.
+#        그래서 모델이 매번 사람을 새로 상상했다.
+#        손님 말씀 그대로다 — "한 캐릭터를 명확히 정해서 그 사람이 말하게 해야 한다."
+#    ⚠️ 이 글을 고치면 조리법이 바뀌어 음성을 전부 다시 만든다(의도한 것이다).
+BODY = {
+    "narrator": "50대 남성. 낮고 두꺼운 중저음. 목이 굵고 울림이 깊다.",
+    "v_F50A":   "예순두 살 여성. 중간 높이. 목소리에 세월이 배어 조금 갈라진다.",
+    "v_F50B":   "쉰다섯 살 여성. 중간 높이. 맑지만 차갑고 단단하다.",
+    "v_M50A":   "쉰 살 남성. 중간 높이의 또렷한 남자 목소리. 매끄럽고 차분하다.",
+    "v_M50B":   "마흔여덟 살 남성. 형보다 조금 낮고 두툼하다. 울림이 무겁다.",
+    "v_F70":    "일흔셋 여성. 높고 가늘다. 숨이 섞여 떨린다.",
+    "v_M70":    "일흔다섯 남성. 낮고 쉬었다. 바람이 새는 소리가 섞인다.",
+    "v_JUDGE":  "50대 남성. 낮고 단단한 중저음. 울림이 크고 또렷하다.",
+}
+
 VOICE_STYLE = {
     "narrator": ("한 가족에게 실제로 있었던 일을 들려주는 해설자다. "
                  "사연을 아는 사람이 조용히 이야기하듯, 문장 끝을 눌러 말한다.", 1.12),
@@ -491,7 +510,8 @@ def recipe(speaker, model, text=""):
        조리법이 그대로**였고 캐시에 있던 옛 말투가 그대로 재사용됐다.
        '로봇 같다' 를 고쳐 놓고도 옛 소리가 나가는 일이 생긴다."""
     voice = VOICE_NAME.get(speaker, "Charon")
-    style, speed = VOICE_STYLE.get(speaker, VOICE_STYLE["narrator"])
+    speed = VOICE_STYLE.get(speaker, VOICE_STYLE["narrator"])[1]
+    style = persona(speaker)          # ⭐ '누구인지' 까지 포함된 글로 해시한다
     h = hashlib.sha1(((text or "").strip() + "\x00" + style)
                      .encode("utf-8")).hexdigest()[:10]
     # ⚠️ **만드는 방식**도 조리법에 들어간다.
@@ -738,8 +758,20 @@ def rate_from_mime(mime):
     return 24000
 
 
+def persona(speaker):
+    """그 인물이 **누구인지 + 어떻게 말하는지**. 한 곳에서만 만든다.
+
+    한 곳에서 만들어야 하는 이유: 컷마다 만들 때와 묶어서 만들 때 이 글이 다르면
+    같은 인물인데 두 방식의 목소리가 달라진다 — 이어 붙이면 바로 티가 난다."""
+    style, _ = VOICE_STYLE.get(speaker, VOICE_STYLE["narrator"])
+    body = BODY.get(speaker, "")
+    head = f"너는 처음부터 끝까지 **같은 한 사람**이다. {body}" if body else ""
+    return f"{head}\n{style}".strip()
+
+
 def synth_one(key, model, text, speaker, out_mp3, rotate=False):
-    style, speed = VOICE_STYLE.get(speaker, VOICE_STYLE["narrator"])
+    style, speed = persona(speaker), VOICE_STYLE.get(
+        speaker, VOICE_STYLE["narrator"])[1]
     voice = VOICE_NAME.get(speaker, "Charon")
     # ⭐ '읽어라' 가 아니라 '말해라' 다.
     #    '읽어라' 는 글을 낭독하라는 뜻이라 모델이 또박또박 읽어 버린다.
@@ -957,7 +989,8 @@ def plan_groups(cuts, out):
 
 def synth_group(key, model, lines, speaker, out_mp3, rotate=False):
     """여러 줄을 **한 번에** 읽혀 mp3 한 개로 받는다. (자르기는 split_group 이 한다)"""
-    style, speed = VOICE_STYLE.get(speaker, VOICE_STYLE["narrator"])
+    style, speed = persona(speaker), VOICE_STYLE.get(
+        speaker, VOICE_STYLE["narrator"])[1]
     voice = VOICE_NAME.get(speaker, "Charon")
     body = "\n\n".join(t for _, t in lines)
     # ⭐ '문장 사이에 쉬어라' 를 분명히 시킨다. 그 쉼이 나중에 자르는 자리가 된다.
@@ -1304,12 +1337,20 @@ def _has_rubberband():
 
 
 def _pitch_max():
-    """한 컷을 최대 몇 반음까지 옮겨도 되나.
+    """한 컷을 최대 몇 반음까지 옮겨도 되나. **2반음.**
 
-    rubberband 는 굵기를 지키므로 크게 옮겨도 사람 목소리로 남는다 → 사실상 무제한.
-    asetrate 밖에 없으면 2반음이 한계다(그 이상은 목소리가 변한다)."""
-    return float(os.environ.get("TTS_PITCH_MAX",
-                                "12.0" if _has_rubberband() else "2.0"))
+    ⚠️ 2026-08-06: 12반음(사실상 무제한)에서 2반음으로 되돌렸다. 왜인지 꼭 기억할 것.
+       rubberband 가 목소리 굵기를 지켜 주니 크게 옮겨도 된다고 봤다. **틀렸다.**
+       실측: H05 를 8.6반음 내렸더니(137Hz → 83Hz) 손님이 듣고
+       "그냥 목소리가 기괴하게 들린다" 고 하셨다. 숫자는 맞췄는데 소리를 망친 것이다.
+       굵기를 지킨다는 것은 '많이 옮겨도 된다' 는 뜻이 아니다 — 많이 옮기면
+       기계로 만진 티가 그대로 난다.
+
+       이제 **사람이 못 알아채는 만큼만** 옮긴다. 그보다 크게 벗어난 컷은
+       억지로 끌어내리지 않는다. 다시 읽히거나, 그래도 안 되면
+       voiceguard 가 영상 제작을 막고 어느 컷인지 알려준다.
+       튀는 목소리보다 **망가진 목소리가 더 나쁘다.**"""
+    return float(os.environ.get("TTS_PITCH_MAX", "2.0"))
 
 
 # ── 음색(얇고 하이톤) 이 튀는 컷 다시 읽히기 ────────────────
@@ -1544,9 +1585,25 @@ def normalize_pitch(out, cuts, retake=None):
     limit = _pitch_max()
     redone = fixed = budget = 0
     worst = []
+
+    # ⭐ **인물 순서가 아니라 '얼마나 벗어났는가' 순서로 손본다.**
+    #
+    #    2026-08-06 실측 사고 — 이번 실행 몫이 4컷인데, 인물 순서대로 돌다가
+    #    맨 앞 인물(장남)이 그 4컷을 다 써 버렸다. 그래서 **이 회차에서 가장 많이
+    #    벗어난 컷이자 손님이 세 번 지적한 H05(+8.6반음)** 는 다시 읽히지도 못하고
+    #    억지로 음만 옮겨져 "기괴한 소리" 가 됐다.
+    #    음색 쪽에서 똑같은 실수를 했고 다시는 안 하겠다고 적어 뒀는데, 여기서 또 했다.
+    #    이제 **회차 전체에서 가장 심한 컷부터** 몫을 쓴다.
+    order = []
     for sp, items in by_speaker.items():
         if len(items) < 3:                 # 표본이 적으면 가운뎃값을 못 믿는다
             continue
+        mid0 = statistics.median(h for _, _, h in items)
+        order.append((max(abs(off(h, mid0)) for _, _, h in items), sp))
+    order.sort(reverse=True)
+
+    for _, sp in order:
+        items = by_speaker[sp]
         name = "해설" if sp == "narrator" else sp
         mid = statistics.median(h for _, _, h in items)
 
@@ -1602,6 +1659,14 @@ def normalize_pitch(out, cuts, retake=None):
             semitone = off(hz, mid)
             if abs(semitone) <= PITCH_TOL:
                 continue                   # 사람이 못 느끼는 차이다. 손대면 손해다
+            if abs(semitone) > PITCH_TOL + limit:
+                # ⭐ 너무 많이 벗어났다 → **손대지 않는다.**
+                #    2반음만 끌어내려 봐야 여전히 튀고, 기계로 만진 티만 더해진다.
+                #    (실측: 8.6반음짜리를 억지로 옮겼더니 "기괴하다" 는 말을 들었다)
+                #    이런 컷은 voiceguard 가 잡아 영상 제작 자체를 막는다.
+                print(f"    ⚠️ {cid} ({name}) {hz:.0f}Hz({semitone:+.1f}반음) —"
+                      " 너무 많이 벗어나 손대지 않는다 (억지로 옮기면 소리가 망가진다)")
+                continue
             move = max(-limit, min(limit, -semitone))
             ratio = 2 ** (move / 12.0)
             tmp = p.with_suffix(".fix.mp3")

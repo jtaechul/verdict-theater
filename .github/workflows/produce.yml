@@ -117,6 +117,7 @@ jobs:
           set -o pipefail
           python3 tools/voice_test_split.py
           python3 tools/voice_test_group.py
+          python3 tools/voice_test_pitch.py
 
       - name: 대본 검사 (오류가 있으면 만들지 않는다)
         run: |
