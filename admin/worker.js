@@ -47,10 +47,12 @@ const WORKFLOWS = [
                opts: ['롱폼', '쇼츠 1번 (궁금증형)', '쇼츠 2번 (분노형)', '쇼츠 3번 (사이다형)'] }] },
   { file: 'stats.yml', name: '5. 성과 보기', desc: '조회수·지속률·KPI 점검', inputs: [] },
   { file: 'voicecheck.yml', name: '음성 점검 (값 0원)',
-    desc: '해설 목소리가 얼마나 흔들리는지 재기만 · 3분',
+    desc: '해설 목소리를 컷마다 재서 어느 컷이 왜 튀는지 숫자로 · 3분',
     inputs: [{ k: 'episode', label: '회차 (비우면 가장 최근)', type: 'text', def: '' },
              { k: 'who', label: '누구를', type: 'select',
-               opts: ['해설만', '전부 (해설 + 등장인물)'] }] },
+               opts: ['해설만', '전부 (해설 + 등장인물)'] },
+             { k: 'cut', label: '반드시 볼 컷 (목소리가 튀는 컷)', type: 'text',
+               def: 'H05,A1-15' }] },
   // hidden — 실행 목록에는 안 보이고 '영상 보기' 화면의 [다시 만들기] 버튼만 부른다.
   // 여기 적어 두는 이유는 /api/run 이 **이 명단에 있는 것만** 실행하기 때문이다.
   { file: 'thumbnail.yml', name: '썸네일 다시 만들기', desc: '', inputs: [], hidden: true },

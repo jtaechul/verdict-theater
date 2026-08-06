@@ -26,6 +26,10 @@ on:
         options:
           - '해설만'
           - '전부 (해설 + 등장인물)'
+      cut:
+        description: '반드시 볼 컷 (쉼표로 구분) — 목소리가 튀는 컷 이름'
+        required: false
+        default: 'H05,A1-15'
 
 permissions:
   contents: read
@@ -89,10 +93,10 @@ jobs:
             exit 1
           fi
           echo "음성 파일 $(ls build/voice/*.mp3 2>/dev/null | wc -l)개를 꺼냈습니다"
-          WHO=""
-          [ "${{ inputs.who }}" = "해설만" ] && WHO="--who narrator"
+          WHO="--who narrator"
+          [ "${{ inputs.who }}" != "해설만" ] && WHO="--who ''"
           python3 src/voicecheck.py "data/scripts/$EP.json" \
-            --voice build/voice $WHO 2>&1 | tee voice.log
+            --voice build/voice $WHO --cut "${{ inputs.cut }}" 2>&1 | tee voice.log
 
       - name: 결과 화면
         if: always()
