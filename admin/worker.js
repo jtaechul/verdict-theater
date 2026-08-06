@@ -53,6 +53,10 @@ const WORKFLOWS = [
                opts: ['해설만', '전부 (해설 + 등장인물)'] },
              { k: 'cut', label: '반드시 볼 컷 (목소리가 튀는 컷)', type: 'text',
                def: 'H05,A1-15' }] },
+  { file: 'voicefix.yml', name: '목소리 고치고 들어보기 (약 6원)',
+    desc: '튀는 컷을 고치고, 고치기 전↔후를 나란히 붙인 1분 영상으로 만든다 · 5분',
+    inputs: [{ k: 'episode', label: '회차 (비우면 가장 최근)', type: 'text', def: '' },
+             { k: 'cut', label: '들어볼 컷', type: 'text', def: 'H05,A1-15' }] },
   // hidden — 실행 목록에는 안 보이고 '영상 보기' 화면의 [다시 만들기] 버튼만 부른다.
   // 여기 적어 두는 이유는 /api/run 이 **이 명단에 있는 것만** 실행하기 때문이다.
   { file: 'thumbnail.yml', name: '썸네일 다시 만들기', desc: '', inputs: [], hidden: true },
@@ -60,8 +64,12 @@ const WORKFLOWS = [
 
 const THUMB_NAME = 'thumb.jpg';           // 릴리스 자산에 들어 있는 썸네일 파일명
 
-// 릴리스 자산 파일명 → 사람이 읽는 이름
+// 릴리스 자산 파일명 → 사람이 읽는 이름.
+// ⭐ 순서가 화면 순서다. '목소리 확인' 을 맨 앞에 둬서, 만들어져 있으면
+//    '영상 보기' 를 눌렀을 때 **바로 이것이 재생**되게 한다(한 번만 누르면 되도록).
+//    영상 만들기를 다시 돌리면 이 파일은 저절로 사라지고 본편이 다시 맨 앞이 된다.
 const VIDEO_LABEL = {
+  'voicecheck.mp4': '목소리 확인 · 고치기 전 ↔ 고친 후',
   'longform.mp4': '본편 (가로)',
   'short1.mp4': '쇼츠 1번 · 궁금증형',
   'short2.mp4': '쇼츠 2번 · 분노형',

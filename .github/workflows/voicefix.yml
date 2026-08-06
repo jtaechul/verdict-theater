@@ -1,0 +1,169 @@
+name: 목소리 고치고 들어보기
+
+# 튀는 해설 컷을 **실제로 고치고**, 고치기 전과 후를 나란히 붙인 **비교 영상**을 만든다.
+#
+# 왜 이 워크플로가 따로 있나
+#   "고쳤습니다" 라는 말만으로는 아무 소용이 없다. 손님은 **귀로 확인**하셔야 한다.
+#   그런데 영상 한 편을 통째로 다시 만들면 한 시간이 걸리고, 12분짜리에서 문제의
+#   한 줄을 찾아 듣는 것도 일이다. 그래서 문제의 컷과 그 앞뒤만 잘라
+#   **1분짜리 비교 영상**으로 만들어 관리자 페이지에서 바로 재생되게 한다.
+#
+# 값
+#   음성을 새로 만들지 않는다(만들어 둔 것을 꺼내 쓴다).
+#   크게 튄 컷 한두 개만 다시 읽히므로 **약 6원**, 아주 나빠도 24원을 넘지 않는다.
+#   여기서 고친 소리는 보관함에 남으므로, 나중에 영상을 만들 때 **또 값이 들지 않는다.**
+
+on:
+  workflow_dispatch:
+    inputs:
+      episode:
+        description: '회차 (비우면 가장 최근 회차)'
+        required: false
+        default: ''
+      cut:
+        description: '들어볼 컷 (쉼표로 구분)'
+        required: false
+        default: 'H05,A1-15'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: produce            # 영상 만들기와 같은 보관함을 건드리므로 겹치면 안 된다
+  cancel-in-progress: false
+
+jobs:
+  voicefix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 도구 준비
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-nanum
+          python3 -m pip install --quiet Pillow numpy
+          # ⚠️ rubberband 가 있어야 목소리 굵기를 지키며 음높이를 옮길 수 있다.
+          #    없으면 최대 2반음까지만 옮겨져 크게 튄 컷이 안 잡힌다 — 미리 확인한다.
+          if ffmpeg -hide_banner -filters 2>/dev/null | grep -q ' rubberband '; then
+            echo "rubberband: 있음 (목소리 굵기를 지키며 음높이를 옮긴다)"
+          else
+            echo "::warning::rubberband 가 없습니다. 음높이를 최대 2반음까지만 옮깁니다."
+          fi
+
+      - name: 회차 정하기
+        id: pick
+        run: |
+          set -euo pipefail
+          EP="${{ inputs.episode }}"
+          if [ -z "$EP" ]; then
+            EP=$(ls -1 data/scripts/EP*.json 2>/dev/null \
+                 | grep -v '\.eval\.\|\.shorts\.' | sort | tail -1 \
+                 | xargs -r -n1 basename | sed 's/\.json//' || true)
+          fi
+          [ -n "$EP" ] || { echo "::error::대본이 없습니다."; exit 1; }
+          echo "ep=$EP" >> "$GITHUB_OUTPUT"
+          echo "hash=$(sha256sum "data/scripts/$EP.json" | cut -c1-16)" >> "$GITHUB_OUTPUT"
+          echo "voice=$(sha256sum src/tts.py | cut -c1-8)" >> "$GITHUB_OUTPUT"
+          echo "회차: $EP"
+
+      # 영상 만들기와 **똑같은 열쇠 규칙**을 쓴다. 다르면 엉뚱한 소리를 꺼내 온다.
+      - name: 만들어 둔 음성 꺼내기
+        id: voicecache
+        uses: actions/cache/restore@v4
+        with:
+          path: build/voice
+          key: voice-${{ steps.pick.outputs.ep }}-${{ steps.pick.outputs.hash }}-${{ steps.pick.outputs.voice }}
+          restore-keys: |
+            voice-${{ steps.pick.outputs.ep }}-${{ steps.pick.outputs.hash }}-
+            voice-${{ steps.pick.outputs.ep }}-
+
+      - name: 음성이 있는지 확인
+        run: |
+          set -euo pipefail
+          N=$(find build/voice -name '*.mp3' 2>/dev/null | wc -l | tr -d ' ')
+          echo "꺼내 온 음성: ${N}컷"
+          if [ "$N" = "0" ]; then
+            {
+              echo "## 보관해 둔 음성이 없습니다"
+              echo ""
+              echo "**3. 영상 만들기** 를 한 번 돌린 뒤에 다시 눌러 주십시오."
+              echo "(보관함은 7일 동안 안 쓰면 저절로 지워집니다)"
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::보관해 둔 음성이 없습니다."
+            exit 1
+          fi
+
+      # ⭐ 고치기 **전** 소리를 먼저 챙겨 둔다. 안 그러면 비교할 대상이 사라진다.
+      - name: 고치기 전 소리 챙겨 두기
+        run: |
+          set -o pipefail
+          python3 src/voicedemo.py "data/scripts/${{ steps.pick.outputs.ep }}.json" \
+            --voice build/voice --keep build/demo_before \
+            --cut "${{ inputs.cut }}" --stage before 2>&1 | tee before.log
+
+      # tts.py 는 이미 있는 컷을 다시 만들지 않는다(그대로 재사용).
+      # 그래서 여기서 실제로 하는 일은 **음높이 고르기뿐**이다 — 크게 튄 컷만 다시 읽는다.
+      - name: 목소리 고치기
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TTS_PER_MODEL_RPM: 8
+        run: |
+          set -o pipefail
+          python3 src/tts.py "data/scripts/${{ steps.pick.outputs.ep }}.json" \
+            --out build/voice 2>&1 | tee fix.log
+
+      - name: 비교 영상 만들기
+        run: |
+          set -o pipefail
+          python3 src/voicedemo.py "data/scripts/${{ steps.pick.outputs.ep }}.json" \
+            --voice build/voice --keep build/demo_before \
+            --cut "${{ inputs.cut }}" --stage build \
+            --out build/voicecheck.mp4 2>&1 | tee demo.log
+          ls -la build/voicecheck.mp4
+
+      # ⭐ 고친 소리를 보관한다. 이걸 안 하면 다음에 영상 만들 때 **같은 값을 또 쓴다.**
+      - name: 고친 음성 보관
+        if: always() && steps.voicecache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: build/voice
+          key: voice-${{ steps.pick.outputs.ep }}-${{ steps.pick.outputs.hash }}-${{ steps.pick.outputs.voice }}
+
+      # 관리자 페이지의 '영상 보기' 에서 바로 재생된다.
+      # 영상 만들기를 다시 돌리면 이 릴리스가 통째로 갈아끼워져 저절로 사라진다.
+      - name: 관리자 페이지에 올리기
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          EP="${{ steps.pick.outputs.ep }}"
+          TAG="video-$EP"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "$EP 영상" --prerelease \
+              --notes "관리자 페이지에서 보기 위한 파일입니다. 저장소 커밋이 아닙니다."
+          fi
+          gh release upload "$TAG" build/voicecheck.mp4 --clobber
+          echo "올렸습니다: $TAG / voicecheck.mp4"
+
+      - name: 결과 화면
+        if: always()
+        run: |
+          {
+            echo "## 목소리 고치고 들어보기 — ${{ steps.pick.outputs.ep }}"
+            echo ""
+            echo "관리자 페이지 → **영상 보기** → 맨 위 **목소리 확인** 을 재생하십시오."
+            echo "고치기 전 → 고친 후 순서로, 앞뒤 문장과 함께 들으실 수 있습니다."
+            echo ""
+            echo '```'
+            cat before.log 2>/dev/null || true
+            grep -E "목소리|Hz|비교 영상" fix.log demo.log 2>/dev/null | head -40 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
