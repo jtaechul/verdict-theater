@@ -494,7 +494,13 @@ def recipe(speaker, model, text=""):
     style, speed = VOICE_STYLE.get(speaker, VOICE_STYLE["narrator"])
     h = hashlib.sha1(((text or "").strip() + "\x00" + style)
                      .encode("utf-8")).hexdigest()[:10]
-    return f"{model}|{voice}|{speed:.2f}|{h}"
+    # ⚠️ **만드는 방식**도 조리법에 들어간다.
+    #    2026-08-06 에 '컷마다 따로 부르기' → '묶어서 한 번에 읽히기' 로 바꿨다.
+    #    이 표시가 없으면, 방식을 바꿔도 조리법이 같아 보여서 **옛 방식으로 만든
+    #    음성이 그대로 재사용된다** — 바꾼 보람이 하나도 없다.
+    #    (같은 이유로 대사·지시문도 여기 들어간다. 위 설명 참고)
+    way = "g1" if GROUP_ON else "s1"
+    return f"{model}|{voice}|{speed:.2f}|{h}|{way}"
 
 
 # 등장인물(대사)에 쓸 모델의 **선호 순서**. 목록 순서가 아니라 이 순서를 따른다.
@@ -885,6 +891,325 @@ def make_one(pool, key, text, speaker, path, tries=0, pinned=None):
     return last, None
 
 
+# ── ⭐ 한 번에 이어서 읽히기 — 목소리를 하나로 유지하는 **뿌리 해결** ──────────
+#
+# 무엇이 문제였나 (2026-08-06 확정)
+#   컷 하나하나가 제미나이를 **따로 부르는 별개의 호출**이다. 그래서 같은 모델·같은
+#   목소리를 지정해도 호출마다 조금씩 **다른 사람**이 만들어진다.
+#   손님이 H04·H05·A1-01 세 줄을 나란히 듣고 "셋 다 목소리가 다르다" 고 하셨다.
+#   그때 H05 의 음높이는 이미 맞춰 둔 뒤였다(136.8Hz → 83.3Hz, 앞뒤 평균 81.6Hz).
+#   **높이를 맞췄는데도 다른 사람으로 들렸다** — 그러면 원인은 높이가 아니다.
+#
+# 왜 후보정으로는 절대 못 고치나
+#   사람이 '누구 목소리인지' 알아듣는 것은 높이가 아니라 **울림(포먼트)** 이다.
+#   목구멍·입 모양이 만드는 소리의 색이고, 사람마다 고정이다. 노래를 높게 부르든
+#   낮게 부르든 그 사람인 줄 아는 이유가 이것이다.
+#   이미 만들어진 소리에서 **다른 사람을 같은 사람으로 바꿀 수는 없다.**
+#   음높이 맞추기·음색 EQ 는 전부 이 벽 앞에서 멈춘다. 이틀을 여기 썼고 다 빗나갔다.
+#
+# 그래서 만드는 쪽을 바꾼다
+#   한 번의 호출 안에서는 모델이 **같은 사람을 유지**한다. 그러니 인물별로 여러 줄을
+#   한 통에 이어서 읽힌 뒤, 무음을 찾아 도로 컷마다 잘라 쓴다.
+#     지금    해설 64번 호출 → 조금씩 다른 64명
+#     바꾸면  해설  4번 호출 → 한 통 안에서는 완전히 같은 사람
+#
+# ⚠️ 자르는 지점이 어긋나면 자막과 소리가 통째로 밀린다 — 영상이 못 쓰게 된다.
+#    그래서 **자른 뒤 반드시 검사**하고, 하나라도 이상하면 그 묶음은 통째로 버리고
+#    예전 방식(컷마다 따로)으로 되돌린다. 되돌리면 값이 조금 더 들 뿐, 영상은 멀쩡하다.
+GROUP_ON = os.environ.get("TTS_GROUP", "1").strip().lower() \
+    not in ("0", "off", "no", "false")
+GROUP_MAX_CHARS = int(os.environ.get("TTS_GROUP_CHARS", "700"))   # 한 통에 넣을 최대 글자
+GROUP_MAX_LINES = int(os.environ.get("TTS_GROUP_LINES", "20"))    # 한 통에 넣을 최대 줄
+
+
+def plan_groups(cuts, out):
+    """아직 안 만든 컷을 **인물별로, 대본 차례대로** 묶는다.
+
+    차례를 지키는 이유: 영상에서 바로 이어 붙는 줄들이 같은 통에 들어가야 한다.
+    손님이 지적한 H05→A1-01 이 그런 자리다(막은 다르지만 화면에서는 연속이다).
+    글자 수로 끊으므로 실제로 훅+1막 해설이 한 통에 들어간다."""
+    cur, groups = {}, []
+
+    def flush(sp):
+        g = cur.pop(sp, None)
+        if g:
+            groups.append((sp, g))
+
+    for c in cuts:
+        sp = c.get("speaker", "narrator")
+        text = (c.get("text") or "").strip()
+        if not text:
+            continue
+        p = out / f"{c['id']}.mp3"
+        if p.exists() and not p.with_suffix(".silent").exists():
+            continue                       # 이미 있는 컷은 건드리지 않는다
+        g = cur.setdefault(sp, [])
+        if g and (sum(len(x[1]) for x in g) + len(text) > GROUP_MAX_CHARS
+                  or len(g) >= GROUP_MAX_LINES):
+            flush(sp)
+            g = cur.setdefault(sp, [])
+        g.append((c["id"], text))
+    for sp in list(cur):
+        flush(sp)
+    # 두 줄 이상인 묶음만 뜻이 있다. 한 줄짜리는 예전 방식과 같으므로 그냥 둔다.
+    return [(sp, g) for sp, g in groups if len(g) >= 2]
+
+
+def synth_group(key, model, lines, speaker, out_mp3, rotate=False):
+    """여러 줄을 **한 번에** 읽혀 mp3 한 개로 받는다. (자르기는 split_group 이 한다)"""
+    style, speed = VOICE_STYLE.get(speaker, VOICE_STYLE["narrator"])
+    voice = VOICE_NAME.get(speaker, "Charon")
+    body = "\n\n".join(t for _, t in lines)
+    # ⭐ '문장 사이에 쉬어라' 를 분명히 시킨다. 그 쉼이 나중에 자르는 자리가 된다.
+    #    번호를 붙이지 말라고 못 박는다 — 붙이면 "일번" 을 소리 내어 읽어 버린다.
+    prompt = (f"{style}\n"
+              "아래 대사들을 위에서부터 차례대로 말해라. "
+              "대사와 대사 사이에는 반드시 1초 이상 충분히 쉬어라. "
+              "번호나 다른 말을 덧붙이지 말고, 대사만 그대로 말해라:\n"
+              f"{body}")
+
+    res = _post_retry(f"{BASE}/models/{model}:generateContent?key={key}", {
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "responseModalities": ["AUDIO"],
+            "speechConfig": {
+                "voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}
+            },
+        },
+    }, timeout=300, label=f"{speaker}×{len(lines)}", rotate=rotate)
+
+    SPEND.add(res.get("usageMetadata"))
+    parts = (res.get("candidates") or [{}])[0].get("content", {}).get("parts", [])
+    blob = next((p["inlineData"] for p in parts if "inlineData" in p), None)
+    if not blob:
+        raise LLMError("음성 데이터가 오지 않았다")
+
+    pcm = base64.b64decode(blob["data"])
+    tmp = out_mp3.with_suffix(".wav")
+    pcm_to_wav(pcm, tmp, rate=rate_from_mime(blob.get("mimeType")))
+    if not shutil.which("ffmpeg"):
+        tmp.replace(out_mp3)
+        return out_mp3
+    # 배속은 **자르기 전에** 통째로 건다. 컷마다 따로 걸던 것과 결과가 같아야 한다.
+    af = f"atempo={speed:.3f}" if abs(speed - 1.0) > 0.01 else "anull"
+    try:
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(tmp),
+                        "-af", af, "-b:a", "160k", str(out_mp3)], check=True)
+    finally:
+        tmp.unlink(missing_ok=True)
+    return out_mp3
+
+
+def _silences(path, noise_db, min_dur):
+    """무음 구간의 **한가운데** 시각 목록. 여기가 자를 후보다."""
+    try:
+        r = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(path),
+                            "-af", f"silencedetect=noise={noise_db}dB:d={min_dur}",
+                            "-f", "null", "-"],
+                           capture_output=True, text=True, timeout=300)
+    except Exception:
+        return []
+    mids, start = [], None
+    for m in re.finditer(r"silence_(start|end):\s*(-?[\d.]+)", r.stderr):
+        if m.group(1) == "start":
+            start = float(m.group(2))
+        elif start is not None:
+            mids.append((start + float(m.group(2))) / 2.0)
+            start = None
+    return mids
+
+
+def _pick_cuts(cands, want, total, fracs):
+    """후보 무음 중 want 개를, **글자 수로 기대한 자리**에 가장 가깝게 고른다.
+
+    쉼표에서도 쉬므로 후보가 필요한 개수보다 많이 나온다. 아무거나 고르면 안 되고,
+    '앞에서 몇 %쯤에 있어야 하는가' 에 가장 잘 맞는 조합을 골라야 한다."""
+    n = len(cands)
+    if n < want or want <= 0:
+        return None
+    INF = float("inf")
+    dp = [[INF] * n for _ in range(want)]
+    bk = [[-1] * n for _ in range(want)]
+    for i in range(n):
+        dp[0][i] = abs(cands[i] - fracs[0] * total)
+    for j in range(1, want):
+        best, bi = INF, -1
+        for i in range(n):
+            if i > 0 and dp[j - 1][i - 1] < best:
+                best, bi = dp[j - 1][i - 1], i - 1
+            if best < INF:
+                dp[j][i] = best + abs(cands[i] - fracs[j] * total)
+                bk[j][i] = bi
+    end = min(range(n), key=lambda i: dp[want - 1][i])
+    if dp[want - 1][end] == INF:
+        return None
+    picked, i = [0] * want, end
+    for j in range(want - 1, -1, -1):
+        picked[j] = i
+        i = bk[j][i]
+    return [cands[k] for k in picked]
+
+
+# 잘라낸 도막의 **앞뒤 빈 소리를 잘라낸다.**
+#   자르는 자리는 쉼의 한가운데다. 그래서 그냥 자르면 도막 앞뒤에 0.5초씩 빈 소리가
+#   붙는다. 그대로 두면 컷이 시작되고 나서 한참 뒤에 말이 시작돼 화면과 어긋난다.
+#   컷마다 따로 만든 음성은 곧바로 말이 시작되므로, 거기에 맞춘다.
+#   앞은 0.10초, 뒤는 0.15초만 남긴다(딱 붙이면 말머리가 잘린 것처럼 들린다).
+TRIM_EDGE = (
+    "silenceremove=start_periods=1:start_silence=0.10:start_threshold=-45dB:detection=peak,"
+    "areverse,"
+    "silenceremove=start_periods=1:start_silence=0.15:start_threshold=-45dB:detection=peak,"
+    "areverse"
+)
+
+
+def split_group(big, lines, out):
+    """한 통으로 받은 소리를 **컷마다 잘라** 낸다. 못 믿겠으면 None 을 돌려준다.
+
+    검사 (하나라도 걸리면 통째로 버린다 — 어긋난 자막보다 값 조금 더 쓰는 것이 낫다)
+      ① 자를 자리를 필요한 만큼 못 찾으면 실패
+      ② 도막 하나가 0.4초보다 짧으면 실패 (말이 잘렸다는 뜻)
+      ③ 글자당 길이가 가운뎃값의 45%~220% 를 벗어나면 실패 (엉뚱한 데서 잘랐다)"""
+    total = _duration(big)
+    if total <= 0:
+        return None
+    n = len(lines)
+    chars = [len(t) for _, t in lines]
+    tot_ch = sum(chars) or 1
+    acc, fracs = 0, []
+    for k in range(n - 1):
+        acc += chars[k]
+        fracs.append(acc / tot_ch)
+
+    # 무음 기준을 넉넉한 쪽부터 좁혀 가며 후보를 찾는다. 모델이 시킨 만큼
+    # 길게 안 쉬는 경우가 있어, 한 가지 기준만 쓰면 그때마다 통째로 실패한다.
+    picked = None
+    for noise, dur in ((-35, 0.45), (-35, 0.30), (-30, 0.25), (-40, 0.25), (-30, 0.18)):
+        cands = [c for c in _silences(big, noise, dur) if 0.3 < c < total - 0.3]
+        got = _pick_cuts(cands, n - 1, total, fracs)
+        if got:
+            picked = got
+            break
+    if picked is None:
+        print(f"      자를 자리를 못 찾았다({n}줄) — 이 묶음은 컷마다 따로 만든다")
+        return None
+
+    bounds = [0.0] + picked + [total]
+    segs = [(bounds[k], bounds[k + 1]) for k in range(n)]
+    if any(b - a < 0.4 for a, b in segs):
+        print(f"      너무 짧은 도막이 생겼다({n}줄) — 이 묶음은 컷마다 따로 만든다")
+        return None
+    per = [(b - a) / max(1, ch) for (a, b), ch in zip(segs, chars)]
+    mid = statistics.median(per)
+    bad = [i for i, v in enumerate(per) if not (0.45 * mid <= v <= 2.2 * mid)]
+    if bad:
+        who = ", ".join(lines[i][0] for i in bad[:3])
+        print(f"      길이가 글자 수와 안 맞는 도막이 있다({who}) — 컷마다 따로 만든다")
+        return None
+
+    made = []
+    for (cid, _t), (a, b) in zip(lines, segs):
+        p = out / f"{cid}.mp3"
+        try:
+            # ⚠️ -ss/-t 는 반드시 **-i 앞**에 둔다. 뒤에 두면 잘라내기가 필터보다
+            #    나중에 일어나, 앞뒤 빈 소리 잘라내기가 도막이 아니라 **파일 전체**에
+            #    걸린다(실측으로 걸렸다 — 도막 길이가 하나도 안 줄었다).
+            subprocess.run(["ffmpeg", "-y", "-loglevel", "error",
+                            "-ss", f"{a:.3f}", "-t", f"{b - a:.3f}", "-i", str(big),
+                            "-af", TRIM_EDGE,
+                            "-b:a", "160k", str(p)], check=True, timeout=120)
+            p.with_suffix(".silent").unlink(missing_ok=True)
+            made.append(cid)
+        except Exception:
+            for x in made:                 # 반쯤 만들다 만 것을 남기지 않는다
+                (out / f"{x}.mp3").unlink(missing_ok=True)
+            print(f"      자르다 실패했다({cid}) — 이 묶음은 컷마다 따로 만든다")
+            return None
+    return made
+
+
+def _duration(path):
+    r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                        "-of", "csv=p=0", str(path)], capture_output=True, text=True)
+    try:
+        return float(r.stdout.strip())
+    except (ValueError, AttributeError):
+        return 0.0
+
+
+def _one_group(pool, key, sp, lines, out, pin, book, depth=0):
+    """묶음 하나를 만들어 자른다. 실패하면 **반으로 쪼개 한 번만 더** 해 본다.
+
+    왜 반으로 쪼개나
+        한 번에 받을 수 있는 소리 길이에 한도가 있을 수 있다. 그 한도에 걸리면
+        소리가 도중에 끊겨 오고, 검사에서 걸러진다. 그때 그냥 포기하면
+        컷마다 따로 만들기로 되돌아가 **목소리가 다시 흩어진다.**
+        반으로 줄이면 대개 들어간다 — 목소리를 지키는 쪽이 훨씬 낫다.
+        (한도가 아니라 딴 이유로 실패한 것이면 반쪽도 실패하고, 그때 되돌아간다)"""
+    model = pin.get(sp)
+    if not model:
+        return set()
+    name = "해설" if sp == "narrator" else sp
+    tag = str(lines[0][0]).replace("/", "_")
+    big = out / f"_group_{tag}_{depth}.mp3"
+    err = None
+    for _ in range(2):
+        try:
+            if pool.wait_for(model) is None:
+                raise LLMError("이 모델의 오늘 몫이 끝났다")
+            synth_group(key, model, lines, sp, big)
+            err = None
+            break
+        except Exception as e:
+            err = e
+            pool.penalize(model, 5)
+    made = None
+    if err is None:
+        made = split_group(big, lines, out)
+    else:
+        print(f"    {name} {len(lines)}줄 묶음을 못 받았다({type(err).__name__})")
+    big.unlink(missing_ok=True)
+
+    if made:
+        for cid, text in lines:
+            book[cid] = recipe(sp, model, text)
+        print(f"    {name} {len(made)}컷을 한 통으로 만들어 잘랐다"
+              f" ({lines[0][0]} ~ {lines[-1][0]})")
+        return set(made)
+
+    if depth < 1 and len(lines) >= 4:
+        half = len(lines) // 2
+        print(f"    {name} {len(lines)}줄을 {half}+{len(lines) - half} 로 쪼개 다시 해 본다")
+        got = _one_group(pool, key, sp, lines[:half], out, pin, book, depth + 1)
+        got |= _one_group(pool, key, sp, lines[half:], out, pin, book, depth + 1)
+        return got
+    print(f"    {name} {lines[0][0]}~{lines[-1][0]} 는 컷마다 따로 만든다")
+    return set()
+
+
+def make_groups(pool, key, cuts, out, pin, book):
+    """묶음마다 한 번씩 불러 만들고 잘라 넣는다. 성공한 컷 이름을 돌려준다.
+
+    실패한 묶음은 **아무것도 남기지 않는다.** 그러면 뒤따르는 컷마다 만들기가
+    없는 컷만 예전 방식으로 채운다 — 영상은 어떤 경우에도 온전하다."""
+    if not GROUP_ON or not shutil.which("ffmpeg"):
+        return set()
+    groups = plan_groups(cuts, out)
+    if not groups:
+        return set()
+    n_lines = sum(len(g) for _, g in groups)
+    print(f"  한 번에 이어서 읽히기: {len(groups)}묶음 · {n_lines}컷"
+          f" — 한 통 안에서는 목소리가 안 바뀐다")
+
+    done = set()
+    for sp, lines in groups:
+        done |= _one_group(pool, key, sp, lines, out, pin, book)
+    if done:
+        print(f"  한 번에 읽히기로 {len(done)}컷 완성"
+              f" (컷마다 따로 만든 것은 {n_lines - len(done)}컷)")
+    return done
+
+
 def measure_f0(path):
     """목소리 높이(Hz) 중앙값. 못 재면 None.
 
@@ -921,8 +1246,15 @@ def measure_f0(path):
     return float(np.median(got)) if len(got) >= 3 else None
 
 
-# 인물별 중앙값에서 이만큼(반음) 넘게 벗어난 컷만 손본다. 그 이하는 사람이 못 느낀다.
-PITCH_TOL = float(os.environ.get("TTS_PITCH_TOL", "1.0"))
+# 인물별 가운뎃값에서 이만큼(반음) 넘게 벗어난 컷만 손본다.
+#
+# ⚠️ 2026-08-06: 1.0 → 2.0 으로 올렸다. 왜인지 반드시 기억할 것.
+#    1.0 으로 뒀더니 **114컷 중 64컷**이 음높이 가공을 거쳤다(실측). 절반이 넘는다.
+#    그런데 실제로 잰 자연스러운 흔들림 폭은 ±1.7반음이었다 — 즉 멀쩡한 컷을
+#    무더기로 손대고 있었다. 손댄 컷과 안 댄 컷이 섞이면 **가공 흔적의 차이**가
+#    새로 생겨, 고치려던 것과 똑같은 문제를 내가 만들어 낸다.
+#    이제 잰 값(±1.7반음) 밖으로 나간 것만 손본다.
+PITCH_TOL = float(os.environ.get("TTS_PITCH_TOL", "2.0"))
 # 이만큼(반음) 넘게 벗어난 컷은 **음을 옮기기 전에 먼저 다시 읽힌다.**
 #   실측(2026-08-06, EP001 해설 64컷): 가운뎃값 83.8Hz 인데 H05 가 136.8Hz —
 #   +8.5반음이다. 12반음이 한 옥타브이니 거의 한 옥타브 위, 그냥 다른 사람 목소리다.
@@ -1457,7 +1789,14 @@ def main():
                              pinned=pin.get(pspeak))
         if err is None:
             print(f"  열쇠 확인: 정상 ({used})")
-            book[probe["id"]] = recipe(pspeak, used, probe.get("text") or "")
+            # ⭐ 묶어서 읽힐 때는 **이 한 컷을 버린다.**
+            #    이것만 혼자 만들어진 컷이라, 같은 인물의 나머지 줄과 목소리가 다르다.
+            #    바로 위 설명에 적힌 사고("첫 대사만 125Hz")와 똑같은 일이 된다.
+            #    한 번 더 부르는 값(약 3원)이 들지만, 첫 대사가 튀는 것보다 훨씬 낫다.
+            if GROUP_ON:
+                (out / f"{probe['id']}.mp3").unlink(missing_ok=True)
+            else:
+                book[probe["id"]] = recipe(pspeak, used, probe.get("text") or "")
         else:
             note = quota_note(err.__cause__ if err.__cause__ is not None else err)
             print(f"  ⚠️ 열쇠 확인 실패({type(err).__name__})"
@@ -1480,6 +1819,14 @@ def main():
                           " 한 편에 약 144회가 듭니다)", file=sys.stderr)
                     return 1
             print("     GEMINI_API_KEY 가 결제 걸린 프로젝트의 열쇠인지 확인하십시오.")
+
+    # ⭐ **먼저 묶어서 한 번에 읽힌다.** 이것이 목소리를 하나로 유지하는 뿌리 해결이다.
+    #    실패한 묶음은 아무것도 안 남기므로, 바로 아래 '컷마다 만들기' 가 그 컷들을
+    #    예전 방식으로 채운다. 어떤 경우에도 영상은 온전하다.
+    try:
+        make_groups(pool, key, cuts, out, pin, book)
+    except Exception as e:                 # 여기서 죽으면 음성이 통째로 안 나온다
+        print(f"  ⚠️ 한 번에 읽히기가 실패했다({type(e).__name__}) — 컷마다 따로 만든다")
 
     ok = fail = 0
     streak = 0

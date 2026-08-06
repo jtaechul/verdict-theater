@@ -58,6 +58,15 @@ jobs:
             echo "::warning::rubberband 가 없습니다. 음높이를 최대 2반음까지만 옮깁니다."
           fi
 
+      # ⭐ **자르기가 멀쩡한지 먼저 확인한다.** 값이 나가기 전에.
+      #    묶어서 읽힌 소리를 잘못 자르면 자막과 소리가 통째로 밀려 영상을 못 쓴다.
+      #    제미나이를 부르지 않고(값 0원) 가짜 소리로 20초 만에 검사한다.
+      - name: 자르기 검사 (값 0원 · 여기서 막으면 돈이 안 나간다)
+        run: |
+          set -o pipefail
+          python3 tools/voice_test_split.py
+          python3 tools/voice_test_group.py
+
       - name: 회차 정하기
         id: pick
         run: |

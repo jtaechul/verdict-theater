@@ -31,6 +31,13 @@ from tts import measure_f0                      # noqa: E402
 from graphics import font_path                  # noqa: E402
 from PIL import Image, ImageDraw, ImageFont      # noqa: E402
 
+# ⭐ **실제 영상과 같은 조건으로 들려준다.**
+#    실제 영상은 렌더링 단계에서 컷마다 음량과 저음·고음 균형을 맞춘 뒤 재생한다.
+#    비교 영상에서 이것을 빼먹었더니, 날것 그대로 이어 붙어서 **실제 영상보다
+#    차이가 크게 들렸다.** 손님이 그 상태를 듣고 판단하셨다 — 내 잘못이다.
+#    이제 같은 보정을 걸어, 여기서 들리는 것이 곧 영상에서 들릴 것이 되게 한다.
+import render                                    # noqa: E402
+
 W, H = 1280, 720
 BG, FG, DIM, GOLD = (16, 17, 22), (238, 240, 246), (150, 154, 170), (226, 178, 84)
 GAP = 0.35                                       # 문장 사이 쉼(초)
@@ -109,6 +116,19 @@ def card(png, title, sub, lines, hot, note):
     img.save(png)
 
 
+def fix_like_video(src, cid, dst):
+    """실제 영상에 들어갈 때와 **똑같이** 음색·음량을 손본 사본을 만든다."""
+    tone = render._TONE.get(cid, "")
+    gain = render._GAIN.get(cid, 0.0)
+    chain = ",".join(x for x in (tone, f"volume={gain:+.1f}dB") if x) or "anull"
+    try:
+        run(["ffmpeg", "-v", "error", "-y", "-i", str(src), "-af", chain,
+             "-b:a", "160k", str(dst)])
+        return dst
+    except Exception:
+        return src                       # 보정에 실패하면 날것이라도 들려준다
+
+
 def segment(work, tag, mp3s, png, out_mp4):
     """그림 한 장 + 이어 붙인 소리 = 도막 영상 하나."""
     sil = work / "sil.mp3"
@@ -172,6 +192,14 @@ def main():
     shutil.rmtree(work, ignore_errors=True)
     work.mkdir(parents=True, exist_ok=True)
 
+    # 실제 영상이 쓰는 것과 **같은 보정값**을 여기서 계산해 둔다.
+    try:
+        render.set_voice_gains(doc, vdir)
+        print(f"  실제 영상과 같은 보정을 건다 (음량 {len(render._GAIN)}컷 ·"
+              f" 음색 {len(render._TONE)}컷)")
+    except Exception as e:
+        print(f"  ⚠️ 보정값을 못 구했다({type(e).__name__}) — 날것으로 들려준다")
+
     parts = []
     for t in targets:
         before, cut, after = neighbours(cuts, t)
@@ -186,28 +214,40 @@ def main():
         others = [h for h in others if h]
         base = sum(others) / len(others) if others else None
 
-        def note(hz):
-            if not hz or not base:
-                return "앞뒤 문장과 견주어 들어 보십시오."
-            return (f"이 도막의 가운데 줄 {hz:.0f}Hz · 앞뒤 문장 평균 {base:.0f}Hz"
-                    f" (차이가 작을수록 같은 사람으로 들립니다)")
+        def note(which):
+            hz = old_hz if which == "old" else new_hz
+            src_dir = keep if which == "old" else vdir
+            got = [measure_f0(src_dir / f"{c['id']}.mp3")
+                   for c in row if (src_dir / f"{c['id']}.mp3").exists()]
+            got = [h for h in got if h]
+            if len(got) < 2:
+                return "세 줄이 같은 사람으로 들리는지 견주어 보십시오."
+            gap = max(got) - min(got)
+            way = ("컷마다 따로 만들었습니다" if which == "old"
+                   else "세 줄을 한 통에 이어서 만들었습니다")
+            return (f"{way} · 세 줄의 높이 {min(got):.0f}~{max(got):.0f}Hz"
+                    f" (차이 {gap:.0f}Hz — 작을수록 같은 사람입니다)")
 
         for tag, src, title, sub in (
-                ("old", keep, "고치기 전", f"{t} — 손님이 지적하신 그 부분"),
-                ("new", vdir, "고친 후", f"{t} — 같은 문장을 다시")):
+                ("old", keep, "고치기 전", f"{t} 앞뒤 — 컷마다 따로 만든 소리"),
+                ("new", vdir, "고친 후", f"{t} 앞뒤 — 한 통으로 이어서 만든 소리")):
             png = work / f"{t}_{tag}.png"
             hz = old_hz if tag == "old" else new_hz
-            card(png, title, sub, lines, t, note(hz))
+            card(png, title, sub, lines, t, note(tag))
             mp3s = []
             for c in row:
-                # 가운데 한 줄만 그 시점의 것을 쓰고, 앞뒤는 지금 것을 쓴다
-                # (앞뒤는 손댄 적이 없으므로 어느 쪽이든 같다).
-                d = src if c["id"] == t else vdir
+                # ⭐ 앞뒤 문장도 **그 시점의 것**을 쓴다.
+                #    손님이 "H04·H05·A1-01 셋 다 다르다" 고 하셨다. 그러면 가운데
+                #    한 줄만 바꿔 들려주는 것은 답이 안 된다 — 세 줄 전부를
+                #    고치기 전 / 고친 후로 나란히 들려드려야 판단하실 수 있다.
+                d = src
                 p = d / f"{c['id']}.mp3"
                 if not p.exists():
                     p = vdir / f"{c['id']}.mp3"
                 if p.exists():
-                    mp3s.append(p)
+                    # 실제 영상과 같은 음색·음량 보정을 걸어 들려준다
+                    mp3s.append(fix_like_video(
+                        p, c["id"], work / f"{t}_{tag}_{c['id']}.mp3"))
             if not mp3s:
                 continue
             mp4 = work / f"{t}_{tag}.mp4"
