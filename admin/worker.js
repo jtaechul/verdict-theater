@@ -53,10 +53,12 @@ const WORKFLOWS = [
                opts: ['해설만', '전부 (해설 + 등장인물)'] },
              { k: 'cut', label: '반드시 볼 컷 (목소리가 튀는 컷)', type: 'text',
                def: 'H05,A1-15' }] },
-  { file: 'voicefix.yml', name: '목소리 고치고 들어보기 (약 6원)',
-    desc: '튀는 컷을 고치고, 고치기 전↔후를 나란히 붙인 1분 영상으로 만든다 · 5분',
-    inputs: [{ k: 'episode', label: '회차 (비우면 가장 최근)', type: 'text', def: '' },
-             { k: 'cut', label: '들어볼 컷', type: 'text', def: 'H05,A1-15' }] },
+  { file: 'voicefix.yml', name: '목소리 고치고 들어보기',
+    desc: '새 방식으로 만들어 고치기 전↔후를 나란히 들려준다 · 기본은 15원짜리 시험',
+    inputs: [{ k: 'scope', label: '얼마나', type: 'select',
+               opts: ['훅 4줄만 시험 (약 15원)', '한 편 전부 (약 400원)'] },
+             { k: 'episode', label: '회차 (비우면 가장 최근)', type: 'text', def: '' },
+             { k: 'cut', label: '들어볼 컷', type: 'text', def: 'H05' }] },
   // hidden — 실행 목록에는 안 보이고 '영상 보기' 화면의 [다시 만들기] 버튼만 부른다.
   // 여기 적어 두는 이유는 /api/run 이 **이 명단에 있는 것만** 실행하기 때문이다.
   { file: 'thumbnail.yml', name: '썸네일 다시 만들기', desc: '', inputs: [], hidden: true },

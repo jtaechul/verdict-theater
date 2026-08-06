@@ -24,6 +24,20 @@ on:
         description: '들어볼 컷 (쉼표로 구분)'
         required: false
         default: 'H05,A1-15'
+      scope:
+        description: '얼마나 만들까요'
+        required: true
+        default: '훅 4줄만 시험 (약 15원)'
+        type: choice
+        options:
+          # ⭐ 기본값이 **가장 싼 것**이다.
+          #    새 방식(묶어서 한 통에 읽히기)이 진짜로 되는지는 제미나이를 불러 봐야
+          #    안다 — 가짜 음성으로는 '문장 사이에 쉬어 주는가' 를 알 수 없다.
+          #    그 답 하나를 얻는 데 한 편(400원)을 다 쓸 이유가 없다.
+          #    훅 해설 4줄(H02~H05, 145자 · 24초)이면 똑같이 알 수 있고 15원이다.
+          #    게다가 그 4줄이 **손님이 지적하신 H04·H05 를 그대로 포함**한다.
+          - '훅 4줄만 시험 (약 15원)'
+          - '한 편 전부 (약 400원)'
 
 permissions:
   contents: write
@@ -134,8 +148,18 @@ jobs:
           TTS_PER_MODEL_RPM: 8
         run: |
           set -o pipefail
-          python3 src/tts.py "data/scripts/${{ steps.pick.outputs.ep }}.json" \
-            --out build/voice 2>&1 | tee fix.log
+          EP="${{ steps.pick.outputs.ep }}"
+          if [ "${{ inputs.scope }}" = "한 편 전부 (약 400원)" ]; then
+            python3 src/tts.py "data/scripts/$EP.json" --out build/voice 2>&1 | tee fix.log
+          else
+            # ⭐ 훅 해설 4줄만 지우고 다시 만든다 → 묶음 하나(호출 1번) 로 만들어진다.
+            #    지우지 않으면 이미 있는 컷이라 건너뛰어 아무 일도 안 일어난다.
+            echo "훅 해설 4줄만 새 방식으로 다시 만듭니다 (H02~H05 · 약 15원)"
+            rm -f build/voice/H02.mp3 build/voice/H03.mp3 \
+                  build/voice/H04.mp3 build/voice/H05.mp3
+            python3 src/tts.py "data/scripts/$EP.json" --out build/voice \
+              --only H02,H03,H04,H05 2>&1 | tee fix.log
+          fi
 
       # 사람 귀 대신 기계가 먼저 듣는다. 여기서는 멈추지 않고 **결과 화면에 적어** 둔다 —
       # 이 워크플로는 어차피 손님이 직접 들으시려고 누르는 것이기 때문이다.
