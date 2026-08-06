@@ -68,6 +68,17 @@ jobs:
           python3 tools/voice_test_group.py
           python3 tools/voice_test_pitch.py
 
+      # ⭐ **전체 흐름을 가짜 제미나이로 끝까지 돌려 본다** (10분 · 값 0원).
+      #    이 워크플로는 한 편 음성을 통째로 다시 만든다 — 400원 안팎이 나간다.
+      #    지금까지 사고는 늘 **함수와 함수가 이어지는 자리**에서 났다(조리법이 안 바뀌어
+      #    옛 음성 재사용 · 열쇠 확인용 한 컷만 따로 만들어짐 · 몫을 앞 인물이 다 씀).
+      #    함수 하나씩만 보면 셋 다 멀쩡하다. 그래서 여기서 main() 을 통째로 돌린다.
+      #    10분 더 기다리는 것이 400원을 헛되이 쓰는 것보다 낫다.
+      - name: 전체 흐름 시험 (값 0원 · 10분)
+        run: |
+          set -o pipefail
+          python3 tools/voice_test_e2e.py
+
       - name: 회차 정하기
         id: pick
         run: |

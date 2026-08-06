@@ -134,6 +134,29 @@ check("아무것도 안 만든다(예전 방식이 맡는다)", not done3 and no
 tts.GROUP_ON = True
 
 print("\n" + "=" * 72)
+print("  시험 5 — 묶어 읽기가 안 통하는 모델이면 **두 번 만에 그만두나** (값 아끼기)")
+print("=" * 72)
+fresh()
+
+
+def never_pauses(key, model, lines, speaker, out_mp3, rotate=False):
+    """쉬지 않고 붙여 읽는 모델 — 자를 수가 없다. 실제로 있을 수 있는 경우다."""
+    CALLS.append((speaker, len(lines)))
+    sec = sum(max(1.0, len(t) / 6.0) for _, t in lines)
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi",
+                    "-i", f"sine=frequency=110:duration={sec:.2f}:sample_rate=24000",
+                    "-b:a", "160k", str(out_mp3)], check=True)
+    return out_mp3
+
+
+tts.synth_group = never_pauses
+done5 = tts.make_groups(FakePool(), "k", cuts, T, PIN, {})
+check("아무 컷도 안 만들었다(예전 방식이 맡는다)", not done5, f"{len(done5)}컷")
+# 묶음 2개 × (본판 1 + 반쪽 2) = 최대 6번. 8묶음을 다 시도하면 18번이 넘는다.
+check("두 묶음까지만 시도하고 멈췄다", len(CALLS) <= 6,
+      f"호출 {len(CALLS)}번 (안 막으면 18번 넘게 나간다)")
+
+print("\n" + "=" * 72)
 print("  모두 통과" if not fails else f"  실패 {len(fails)}건: {fails}")
 print("=" * 72)
 sys.exit(1 if fails else 0)

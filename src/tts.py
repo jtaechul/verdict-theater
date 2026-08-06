@@ -1231,12 +1231,29 @@ def make_groups(pool, key, cuts, out, pin, book):
     if not groups:
         return set()
     n_lines = sum(len(g) for _, g in groups)
+    # ⭐ **작은 묶음부터 시도한다.** 값을 아끼기 위해서다.
+    #    묶어 읽기가 이 모델에서 아예 안 통하면 앞의 두 묶음에서 드러난다(아래 miss).
+    #    그 두 번을 20줄짜리(약 100초)로 태우면 120원이 날아가고, 5줄짜리(약 20초)로
+    #    태우면 25원이면 끝난다. **못 쓰는 것을 알아내는 값**을 최대한 싸게 만든다.
+    groups.sort(key=lambda g: sum(len(t) for _, t in g[1]))
     print(f"  한 번에 이어서 읽히기: {len(groups)}묶음 · {n_lines}컷"
-          f" — 한 통 안에서는 목소리가 안 바뀐다")
+          f" — 한 통 안에서는 목소리가 안 바뀐다 (작은 묶음부터)")
 
-    done = set()
+    # ⚠️ **값이 새는 것을 막는 안전장치.**
+    #    묶어 읽기가 이 모델에서 아예 안 통하는 경우(자를 만큼 안 쉬어 준다든지),
+    #    8묶음을 전부 시도하면 8번 값을 다 쓰고 **그 뒤에 컷마다 또 만든다** —
+    #    한 편 값을 두 번 내는 셈이다. 한 묶음이 100초짜리라 결코 싸지 않다.
+    #    그래서 **연속 두 묶음이 통째로 실패하면 그만둔다.** 낭비를 두 번으로 막고,
+    #    나머지는 예전 방식(컷마다)이 조용히 맡는다.
+    done, miss = set(), 0
     for sp, lines in groups:
-        done |= _one_group(pool, key, sp, lines, out, pin, book)
+        if miss >= 2:
+            print(f"    {'해설' if sp == 'narrator' else sp} {len(lines)}줄 —"
+                  " 앞의 두 묶음이 잇따라 실패해 더 시도하지 않는다 (값 아끼기)")
+            continue
+        got = _one_group(pool, key, sp, lines, out, pin, book)
+        miss = 0 if got else miss + 1
+        done |= got
     if done:
         print(f"  한 번에 읽히기로 {len(done)}컷 완성"
               f" (컷마다 따로 만든 것은 {n_lines - len(done)}컷)")
