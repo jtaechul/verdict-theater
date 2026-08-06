@@ -1151,12 +1151,23 @@ def split_group(big, lines, out):
                             "-ss", f"{a:.3f}", "-t", f"{b - a:.3f}", "-i", str(big),
                             "-af", TRIM_EDGE,
                             "-b:a", "160k", str(p)], check=True, timeout=120)
+            # ⭐ **잘라낸 도막에 소리가 진짜 들어 있는지 확인한다.**
+            #    앞뒤 빈 소리 잘라내기(TRIM_EDGE)가 도막을 통째로 먹어 버릴 수 있다 —
+            #    모델이 그 줄을 웅얼거리거나 건너뛰면 그 구간이 거의 무음이기 때문이다.
+            #    그러면 **자막은 뜨는데 목소리가 안 나오는 컷**이 된다. 최악이다.
+            #    길이만 보면 안 된다. 무음도 길이는 있다 — 크기까지 잰다.
+            got = _duration(p)
+            db = _mean_db(p)
+            if got < 0.35 or db is None or db < -50:
+                raise LLMError(f"도막에 소리가 없다({got:.2f}초"
+                               f"{'' if db is None else f' · {db:.0f}dB'})")
             p.with_suffix(".silent").unlink(missing_ok=True)
             made.append(cid)
-        except Exception:
+        except Exception as e:
             for x in made:                 # 반쯤 만들다 만 것을 남기지 않는다
                 (out / f"{x}.mp3").unlink(missing_ok=True)
-            print(f"      자르다 실패했다({cid}) — 이 묶음은 컷마다 따로 만든다")
+            p.unlink(missing_ok=True)      # 만들다 만 이 컷도 지운다
+            print(f"      {cid} 도막이 쓸 수 없다({e}) — 이 묶음은 컷마다 따로 만든다")
             return None
     return made
 

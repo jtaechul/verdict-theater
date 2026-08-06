@@ -107,6 +107,45 @@ run("중간에 끊긴 4줄", L,
     [("말", 4.0), ("쉼", 1.0), ("말", 3.4), ("쉼", 1.0), ("말", 0.5)], False)
 
 print("\n" + "=" * 72)
+print("  시험 6 — 한 줄을 **웅얼거려 거의 안 들리는** 경우 → 거절해야 한다")
+print("=" * 72)
+# 왜 이 시험이 있나 (2026-08-06)
+#   모델이 한 줄을 아주 작게 읽으면, 무음 검출로는 안 잡히고 길이도 멀쩡하다.
+#   그런데 앞뒤 빈 소리를 잘라내면 그 도막이 통째로 사라진다 →
+#   **자막은 뜨는데 목소리가 안 나오는 컷**이 된다. 영상에서 가장 나쁜 사고다.
+#   길이만 재면 못 잡는다 — 소리 크기까지 재야 잡힌다.
+T.mkdir(parents=True, exist_ok=True)
+big6 = T / "big6.mp3"
+secs = [4.0, 3.4, 4.8, 4.4]
+ins, chain, k = [], [], 0
+for i, sec in enumerate(secs):
+    if i:
+        ins += ["-f", "lavfi", "-i", f"anullsrc=r=24000:cl=mono:d=1.0"]
+        chain.append(f"[{k}:a]")
+        k += 1
+    ins += ["-f", "lavfi", "-i", tone(sec)]
+    if i == 2:                                   # 세 번째 줄만 -60dB (웅얼거림)
+        chain.append(f"[m{k}]")
+        pre = f"[{k}:a]volume=-60dB[m{k}];"
+    else:
+        chain.append(f"[{k}:a]")
+        pre = ""
+    chain.insert(0, pre) if pre else None
+    k += 1
+head = "".join(x for x in chain if x.endswith(";"))
+body = "".join(x for x in chain if not x.endswith(";"))
+subprocess.run(["ffmpeg", "-v", "error", "-y"] + ins +
+               ["-filter_complex", head + body + f"concat=n={k}:v=0:a=1[a]",
+                "-map", "[a]", "-b:a", "160k", str(big6)], check=True)
+for cid, _ in L:
+    (T / f"{cid}.mp3").unlink(missing_ok=True)
+made6 = tts.split_group(big6, L, T)
+check("웅얼거린 줄이 있으면 거절한다", not made6,
+      "(결과: 잘랐다 — 위험!)" if made6 else "(결과: 거절)")
+left6 = [c for c, _ in L if (T / f"{c}.mp3").exists()]
+check("거절할 때 반쪽 파일을 안 남긴다", not left6, f"남은 것 {left6}")
+
+print("\n" + "=" * 72)
 print("  모두 통과" if not fails else f"  실패 {len(fails)}건: {fails}")
 print("=" * 72)
 sys.exit(1 if fails else 0)
