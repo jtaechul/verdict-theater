@@ -104,6 +104,39 @@ def mmss(sec):
     return f"{int(sec) // 60}:{int(sec) % 60:02d}"
 
 
+# ── 검색 해시태그 ────────────────────────────────────────
+#
+# 유튜브 규칙 두 가지를 알고 정한다.
+#   ① 설명란 해시태그는 **앞 3개만** 제목 위에 뜬다.
+#      그리고 **15개를 넘으면 유튜브가 전부 무시한다.** 많이 쓰면 손해다.
+#   ② 태그 필드(안 보이는 것)는 500자까지 들어간다. 검색 순위 영향은 작지만
+#      오타·유사어를 잡아 준다. 여기는 넉넉히 채우는 것이 이득이다.
+# → 보이는 것은 3개, 안 보이는 것은 많이. 지금까지는 반대로 하고 있었다.
+#
+# 태그는 세 층으로 만든다.
+#   1층 고정   채널 정체성. **AI 에 맡기지 않는다** — 매회 흔들리면 채널이 안 쌓인다.
+#   2층 법률   그 사건의 법률 용어. 대본이 뽑는다.
+#   3층 일상어 사람들이 **실제로 검색창에 치는 말**. 대본이 뽑는다.
+#              50~60대는 '특별수익' 이라고 안 친다. '형제 재산 싸움' 이라고 친다.
+FIXED_TAGS = ["판결극장", "실화사연", "법률상식", "판례", "가족이야기"]
+SHOWN_TAGS = 3          # 설명란에 글자로 보일 개수 (제목 위에 뜨는 것도 3개다)
+
+
+def all_tags(doc):
+    """1층(고정) + 대본이 뽑은 것. 순서를 지키고 중복만 없앤다.
+
+    ⚠️ 고정층을 **뒤에** 붙인다. 앞 3개가 화면에 보이는 자리라,
+       그 자리는 그 사건을 가리키는 말이어야 한다('상속' 이 '실화사연' 보다 낫다).
+       다만 채널 이름은 맨 앞에 한 번 둔다 — 채널을 각인시키는 자리다."""
+    got = [t.strip().lstrip("#") for t in (doc.get("youtube", {}).get("tags") or [])]
+    out, seen = [], set()
+    for t in ["판결극장"] + got + FIXED_TAGS:
+        if t and t not in seen:
+            seen.add(t)
+            out.append(t)
+    return out[:15]                    # 유튜브가 무시하기 시작하는 선 아래로 묶는다
+
+
 def build_description(doc, durs):
     """설명란. 줄거리(모델) + 챕터 + 관련 법령 + 고지문(시스템 고정)."""
     y = doc.get("youtube", {})
@@ -136,10 +169,10 @@ def build_description(doc, durs):
         out.append("")
 
     out.append(NOTICE)
-    tags = y.get("tags", [])
+    tags = all_tags(doc)
     if tags:
         out.append("")
-        out.append(" ".join(f"#{t}" for t in tags[:5]))
+        out.append(" ".join(f"#{t}" for t in tags[:SHOWN_TAGS]))
     return "\n".join(out).strip()
 
 
@@ -413,7 +446,7 @@ def meta_for(doc, sh, durs, what):
         return {
             "title": doc["meta"]["title_candidates"][0],
             "description": build_description(doc, durs),
-            "tags": doc.get("youtube", {}).get("tags", [])[:15],
+            "tags": all_tags(doc),          # 안 보이는 검색용 — 넉넉히
             "pinned": doc.get("youtube", {}).get("pinned_comment", ""),
         }
     no = what.replace("short", "")
