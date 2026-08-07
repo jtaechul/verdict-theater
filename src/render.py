@@ -1858,6 +1858,11 @@ def main():
     ap.add_argument("--shorts", action="store_true", help="쇼츠 3편도 만든다")
     ap.add_argument("--limit", type=int, default=0, help="앞 N컷만 (시험용)")
     ap.add_argument("--narration", default="", help="TTS mp3 폴더 ({컷id}.mp3)")
+    # ⭐ 영상 하나만 다시 만들기 (관리자 페이지의 '이 영상만 다시 만들기' 버튼).
+    #    한 편이 마음에 안 들 때 네 개를 다 다시 만들면 50분이 걸린다.
+    #    쇼츠 한 편만 다시 만들면 5분이면 끝난다.
+    ap.add_argument("--only", default="",
+                    help="하나만 만든다: longform / short1 / short2 / short3")
     args = ap.parse_args()
 
     if not shutil.which("ffmpeg"):
@@ -1876,9 +1881,19 @@ def main():
     # ⭐ 본편·쇼츠를 그리기 **전에** 한 번만 계산한다. 4번 그리면서 4번 재면 낭비다.
     set_voice_gains(doc, nar)
 
-    print(f"렌더링: {sp.name}")
-    render(doc, out, vertical=False, narration_dir=nar, limit=args.limit, name="longform")
+    only = (args.only or "").strip()
+    if only and only not in ("longform", "short1", "short2", "short3"):
+        print(f"❌ --only 값이 잘못됐다: {only}")
+        return 2
+    print(f"렌더링: {sp.name}" + (f"  ({only} 만)" if only else ""))
+    if not only or only == "longform":
+        render(doc, out, vertical=False, narration_dir=nar, limit=args.limit,
+               name="longform")
 
+    if only == "longform":
+        return 0
+    if only:
+        args.shorts = True          # 쇼츠 하나만 지정했으면 쇼츠 경로로 들어간다
     if args.shorts and args.limit:
         # --limit 은 "배관이 도는지 빨리 보자" 는 뜻이다. 그런데 쇼츠는 --limit 을 받지 않아
         # 3편(약 150초)을 통째로 만든다. 4컷짜리 시험에서 쇼츠가 몇 배 더 오래 걸린다.
@@ -1901,6 +1916,8 @@ def main():
         else:
             print(f"  쇼츠 {len(shorts)}편 — 출처: {src}")
             for s in shorts:
+                if only and f"short{s.get('no')}" != only:
+                    continue
                 sdoc = shorts_doc(s)
                 if sdoc:
                     # 쇼츠 대본이 세로용으로 **다시 쓴 컷**을 그대로 쓴다.

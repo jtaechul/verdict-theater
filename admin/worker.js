@@ -37,11 +37,15 @@ const WORKFLOWS = [
                opts: ['자동 (Claude 우선)', 'Claude', 'Gemini'] },
              { k: 'gate_limit', label: '심사 판례 수', type: 'text', def: '10' },
              { k: 'episode', label: "회차 ('쇼츠만 다시' 일 때만)", type: 'text', def: '' }] },
-  { file: 'produce.yml', name: '3. 영상 만들기', desc: '렌더링 + 유튜브 비공개 업로드',
+  { file: 'produce.yml', name: '3. 영상 만들기', desc: '영상까지만 만든다 · 유튜브는 영상 보고 따로',
     inputs: [{ k: 'voice', label: '나레이션', type: 'select', opts: ['음성 생성', '무음으로 시험'] },
-             { k: 'upload', label: '업로드', type: 'select', opts: ['롱폼만', '롱폼 + 쇼츠', '올리지 않음'] },
+             { k: 'only', label: '하나만 다시 만들기', type: 'select',
+               opts: ['', 'longform', 'short1', 'short2', 'short3'] },
              { k: 'limit', label: '앞 N컷만 (0=전체)', type: 'text', def: '0' }] },
-  { file: 'publish.yml', name: '4. 공개하기', desc: '검수 끝난 영상을 공개로',
+  // 2026-08-07 부터 '영상 보기' 에서 바로 공개로 올린다 → 이 버튼은 목록에서 감춘다.
+  // 워크플로는 남겨 둔다: 예전에 비공개로 올려 둔 영상을 공개로 바꿀 때 쓴다.
+  { file: 'publish.yml', name: '4. 공개하기 (예전 방식)', hidden: true,
+    desc: '예전에 비공개로 올린 영상을 공개로',
     inputs: [{ k: 'episode', label: '회차', type: 'text', def: '' },
              { k: 'what', label: '무엇을', type: 'select',
                opts: ['롱폼', '쇼츠 1번 (궁금증형)', '쇼츠 2번 (분노형)', '쇼츠 3번 (사이다형)'] }] },
@@ -62,6 +66,7 @@ const WORKFLOWS = [
   // hidden — 실행 목록에는 안 보이고 '영상 보기' 화면의 [다시 만들기] 버튼만 부른다.
   // 여기 적어 두는 이유는 /api/run 이 **이 명단에 있는 것만** 실행하기 때문이다.
   { file: 'thumbnail.yml', name: '썸네일 다시 만들기', desc: '', inputs: [], hidden: true },
+  { file: 'youtube-upload.yml', name: '유튜브에 올리기', desc: '', inputs: [], hidden: true },
 ];
 
 const THUMB_NAME = 'thumb.jpg';           // 릴리스 자산에 들어 있는 썸네일 파일명
@@ -343,6 +348,7 @@ const mb = (b) => (b >= 1048576 ? Math.round(b/1048576) + 'MB' : Math.round(b/10
 // 이 페이지가 그것을 스트리밍한다. 최근 3편만 남는다.
 let VIDS = [];
 let THUMB = null;
+let META = null;
 
 async function videos(ep) {
   VIEW = 'video';
@@ -351,6 +357,7 @@ async function videos(ep) {
   try { j = await (await fetch('/api/videos?ep=' + encodeURIComponent(ep))).json(); } catch (e) {}
   VIDS = j.items || [];
   THUMB = j.thumb || null;
+  META = j.meta || null;
   if (!VIDS.length) {
     document.getElementById('app').innerHTML =
       '<button class="ghost" onclick="home()">← 목록</button><div style="height:12px"></div>'
@@ -367,6 +374,101 @@ async function videos(ep) {
 // 유튜브에서 조회수의 절반은 썸네일이 만든다. 그런데 폰에는 그림판이 없다.
 // 그래서 ① 만들어진 것을 여기서 보여주고 ② 사진첩에 받고 ③ 마음에 안 들면
 // 문구를 바꿔 다시 만든다 — 이 세 가지를 버튼으로만 되게 했다.
+// ── 유튜브에 올리기 + 올라갈 내용 미리보기 ─────────────────
+//
+// 왜 여기인가 (손님 지시 2026-08-07)
+//   "영상 제작까지만 하고, 영상을 보고 나서 그 영상 밑에 유튜브 업로드 버튼을 만들어 줘."
+//   영상을 눈으로 확인한 **바로 그 자리**에서 올리는 것이 맞다.
+//   그리고 무엇이 올라가는지(설명·목차·해시태그)를 **올리기 전에** 볼 수 있어야 한다.
+//
+// ⚠️ 바로 공개로 올라간다. 되돌리려면 유튜브 앱에서 지워야 한다 → 확인을 한 번 더 받는다.
+function whatOf(name) {
+  return (name || '').replace(/\.mp4$/, '');       // longform.mp4 → longform
+}
+
+function uploadCard(ep, v) {
+  const what = whatOf(v.name);
+  const m = META && META.videos && META.videos[what];
+  let h = '<div class="card"><h2>유튜브에 올리기</h2>';
+
+  if (!m) {
+    h += '<div class="empty">올라갈 내용이 아직 없습니다.<br>'
+      + '<b>3. 영상 만들기</b>를 다시 실행하면 만들어집니다.</div>';
+  } else {
+    h += '<div style="font-size:13px;line-height:1.75">';
+    h += '<div style="color:#9599ab">제목</div>'
+      + '<div style="margin:2px 0 12px;font-weight:600">' + esc(m.title) + '</div>';
+    h += '<div style="color:#9599ab">설명 · 목차 · 해시태그</div>'
+      + '<pre style="white-space:pre-wrap;word-break:break-word;margin:4px 0 12px;'
+      + 'padding:12px;background:#141621;border-radius:10px;font:13px/1.7 inherit;'
+      + 'max-height:340px;overflow:auto">' + esc(m.description) + '</pre>';
+    if (m.pinned) {
+      h += '<div style="color:#9599ab">고정 댓글</div>'
+        + '<div style="margin:2px 0 4px">' + esc(m.pinned) + '</div>';
+    }
+    h += '</div>';
+  }
+
+  h += '<div style="height:10px"></div>'
+    + '<button onclick="doUpload(\'' + ep + '\',\'' + what + '\')">'
+    + '유튜브에 올리기 · 즉시 공개</button>'
+    + '<div style="color:#9599ab;font-size:13px;margin-top:9px">'
+    + '누르면 <b>바로 공개</b>로 올라갑니다. 되돌리려면 유튜브 앱에서 직접 지우셔야 합니다.<br>'
+    + '올리기 전에 확인을 한 번 더 여쭙습니다.</div>';
+
+  h += '<div style="height:12px"></div>'
+    + '<button class="ghost" onclick="remakeOne(\'' + ep + '\',\'' + what + '\')">'
+    + '이 영상만 다시 만들기</button>'
+    + '<div style="color:#9599ab;font-size:13px;margin-top:9px">'
+    + '이것 하나만 새로 만듭니다. 나머지 영상은 그대로 둡니다.<br>'
+    + '음성은 이미 만들어 둔 것을 그대로 쓰므로 <b>값이 들지 않습니다.</b></div>';
+  h += '</div>';
+  return h;
+}
+
+async function doUpload(ep, what) {
+  const label = (VIDEO_LABEL_JS[what + '.mp4'] || what);
+  if (!confirm('「' + label + '」 을(를) 유튜브에 **즉시 공개**로 올립니다.\n\n'
+             + '되돌리려면 유튜브 앱에서 직접 지우셔야 합니다.\n올릴까요?')) return;
+  toast('유튜브에 올리는 중… (몇 분 걸립니다)');
+  let j = {};
+  try {
+    const r = await fetch('/api/run', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file: 'youtube-upload.yml',
+                             inputs: { episode: ep, what: what } }) });
+    j = await r.json();
+  } catch (e) { j = { ok: false, error: '연결이 끊겼습니다' }; }
+  if (!j.ok) { toast('실패: ' + (j.error || '알 수 없는 이유'), 6000); return; }
+  toast('올리기 시작했습니다. 다 되면 텔레그램으로 알려드립니다.', 9000);
+}
+
+async function remakeOne(ep, what) {
+  if (!confirm('「' + (VIDEO_LABEL_JS[what + '.mp4'] || what) + '」 만 다시 만듭니다.\n'
+             + '음성은 그대로 쓰므로 값이 들지 않습니다. 진행할까요?')) return;
+  toast('다시 만드는 중…');
+  let j = {};
+  try {
+    const r = await fetch('/api/run', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file: 'produce.yml',
+                             inputs: { episode: ep, only: what,
+                                       voice: '음성 생성', upload: '올리지 않음',
+                                       limit: '0' } }) });
+    j = await r.json();
+  } catch (e) { j = { ok: false, error: '연결이 끊겼습니다' }; }
+  if (!j.ok) { toast('실패: ' + (j.error || '알 수 없는 이유'), 6000); return; }
+  toast('시작했습니다. 다 되면 [새로 불러오기] 를 눌러 확인하십시오.', 9000);
+}
+
+const VIDEO_LABEL_JS = {
+  'longform.mp4': '본편 (가로)',
+  'short1.mp4': '쇼츠 1번 · 궁금증형',
+  'short2.mp4': '쇼츠 2번 · 분노형',
+  'short3.mp4': '쇼츠 3번 · 사이다형',
+  'voicecheck.mp4': '목소리 확인',
+};
+
 function thumbCard(ep) {
   let h = '<div class="card"><h2>썸네일</h2>';
   if (!THUMB) {
@@ -425,6 +527,7 @@ function play(ep, i) {
     + esc(v.label) + ' · ' + mb(v.size) + '</div>';
   h += '</div>';
 
+  h += uploadCard(ep, v);
   h += thumbCard(ep);
 
   if (VIDS.length > 1) {
@@ -639,7 +742,21 @@ export default {
         // 화면에서 보여주고 내려받게 하려면 자산 번호가 필요하다.
         const t = assets.find((a) => a.name === THUMB_NAME);
         const thumb = t ? { id: t.id, size: t.size } : null;
-        return Response.json({ ep, items, thumb, at: rel ? rel.published_at : null });
+        // ⭐ 유튜브에 올라갈 제목·설명·목차·해시태그. 영상 만들 때 같이 보관해 둔 것이다.
+        //    **화면에 보여주는 것과 실제로 올라가는 것이 같아야** 하므로 같은 파일을 쓴다.
+        let meta = null;
+        const mj = assets.find((a) => a.name === 'meta.json');
+        if (mj) {
+          try {
+            const r0 = await fetch(`${GH}/repos/${REPO}/releases/assets/${mj.id}`, {
+              headers: { 'Authorization': `Bearer ${env.GH_TOKEN}`,
+                         'Accept': 'application/octet-stream',
+                         'User-Agent': 'verdict-theater-admin' } });
+            if (r0.ok) meta = await r0.json();
+          } catch { meta = null; }
+        }
+        return Response.json({ ep, items, thumb, meta,
+                               at: rel ? rel.published_at : null });
       }
 
       // 썸네일 보여주기 / 내려받기.

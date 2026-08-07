@@ -110,11 +110,20 @@ def build_description(doc, durs):
     out = [y.get("description_body", "").strip(), ""]
 
     # 챕터 — 어르신은 다시 찾아보기를 쓴다. 첫 항목은 반드시 0:00
+    #
+    # ⭐ 제목은 **대본이 쓴 것**을 쓴다(손님 선택 2026-08-07).
+    #    막 이름('1막','2막')은 정확하지만 아무도 안 누른다.
+    #    대본이 지어 준 제목은 '덫에 걸린 사냥꾼' 처럼 궁금하게 만든다 — 그게 목차의 일이다.
+    # ⚠️ **시각은 대본에 적힌 값을 쓰지 않는다.** 실제 컷 길이를 더해서 낸다.
+    #    대본의 sec 은 예상치이고, 실제 영상은 음성 길이에 맞춰 늘었다 줄었다 한다.
+    #    어긋나면 목차를 눌렀을 때 엉뚱한 데로 간다.
+    labels = [c.get("label") for c in y.get("chapters", []) if c.get("label")]
     out.append("── 목차 ──")
     t = 0.0
     i = 0
-    for act in doc.get("acts", []):
-        out.append(f"{mmss(t)} {act.get('title', act['id'])}")
+    for k, act in enumerate(doc.get("acts", [])):
+        name = labels[k] if k < len(labels) else act.get("title", act["id"])
+        out.append(f"{mmss(t)} {name}")
         n = len(act.get("cuts", []))
         t += sum(durs[i:i + n])
         i += n
@@ -153,7 +162,8 @@ def build_srt(doc, durs, path):
 
 
 # ── 업로드 ──────────────────────────────────────────────
-def upload_video(token, path, title, description, tags, vertical=False):
+def upload_video(token, path, title, description, tags, vertical=False,
+                 privacy="private"):
     """재개 가능 업로드. 큰 파일이라 한 번에 밀어 넣지 않는다."""
     meta = {
         "snippet": {
@@ -164,7 +174,9 @@ def upload_video(token, path, title, description, tags, vertical=False):
             "defaultLanguage": "ko",
         },
         "status": {
-            "privacyStatus": "private",         # 반드시 비공개로 올린다. 검수 후 공개
+            # ⭐ 2026-08-07 부터 관리자 페이지에서 **바로 공개**로도 올린다.
+            #    영상을 눈으로 보고 누르는 버튼이라 따로 검수 단계가 필요 없다.
+            "privacyStatus": privacy,
             "selfDeclaredMadeForKids": False,
             "license": "youtube",
             "embeddable": True,
@@ -393,6 +405,118 @@ def cmd_thumb(args):
     return 0
 
 
+
+def meta_for(doc, sh, durs, what):
+    """유튜브에 올라갈 **제목·설명·해시태그**를 만든다. 화면 미리보기와 실제 업로드가
+    반드시 **같은 함수**를 써야 한다 — 따로 만들면 보여준 것과 올라간 것이 달라진다."""
+    if what == "longform":
+        return {
+            "title": doc["meta"]["title_candidates"][0],
+            "description": build_description(doc, durs),
+            "tags": doc.get("youtube", {}).get("tags", [])[:15],
+            "pinned": doc.get("youtube", {}).get("pinned_comment", ""),
+        }
+    no = what.replace("short", "")
+    for x in (sh or {}).get("shorts", []):
+        if str(x.get("no")) == no:
+            y = x.get("youtube", {}) or {}
+            t = (y.get("title") or doc["meta"]["title_candidates"][0])[:80]
+            return {
+                "title": f"{t} #Shorts",
+                "description": (y.get("description_body", "") + "\n\n" + NOTICE).strip(),
+                "tags": y.get("tags", [])[:15],
+                "pinned": "",
+            }
+    return None
+
+
+WHATS = ("longform", "short1", "short2", "short3")
+
+
+def cmd_meta(args):
+    """올라갈 내용을 meta.json 으로 뽑는다. **영상과 같이 보관**해 두고, 나중에
+    올릴 때 그대로 쓴다 — 그래야 화면에 보여드린 목차 시각과 실제 영상이 안 어긋난다."""
+    ep = args.episode
+    doc = json.loads((SCRIPTS / f"{ep}.json").read_text(encoding="utf-8"))
+    shp = SCRIPTS / f"{ep}.shorts.json"
+    sh = json.loads(shp.read_text(encoding="utf-8")) if shp.exists() else {}
+    durs = cut_durations(doc, args.narration or None)
+    out = {"episode": ep, "videos": {}}
+    for w in WHATS:
+        m = meta_for(doc, sh, durs, w)
+        if m:
+            out["videos"][w] = m
+    Path(args.out).write_text(json.dumps(out, ensure_ascii=False, indent=2),
+                              encoding="utf-8")
+    print(f"올라갈 내용을 적었다: {args.out} ({len(out['videos'])}편)")
+    for w, m in out["videos"].items():
+        print(f"  {w:9s} {m['title'][:46]}")
+    return 0
+
+
+def cmd_public(args):
+    """**바로 공개**로 올린다. 관리자 페이지에서 영상을 눈으로 본 뒤 누르는 버튼이다.
+
+    meta.json 이 있으면 그것을 쓴다 — 영상과 함께 보관된 것이라 목차 시각이 정확하다.
+    없으면 대본에서 그때그때 만든다(예전 영상 대비)."""
+    ep, what = args.episode, args.what
+    if what not in WHATS:
+        print(f"무엇을 올릴지 잘못됐다: {what}")
+        return 2
+    video = Path(args.video)
+    if not video.exists():
+        print(f"영상이 없다: {video}")
+        return 2
+
+    m = None
+    mp = Path(args.meta) if args.meta else video.parent / "meta.json"
+    if mp.exists():
+        try:
+            m = json.loads(mp.read_text(encoding="utf-8")).get("videos", {}).get(what)
+            print(f"보관된 내용을 쓴다: {mp}")
+        except Exception:
+            m = None
+    if not m:
+        doc = json.loads((SCRIPTS / f"{ep}.json").read_text(encoding="utf-8"))
+        shp = SCRIPTS / f"{ep}.shorts.json"
+        sh = json.loads(shp.read_text(encoding="utf-8")) if shp.exists() else {}
+        m = meta_for(doc, sh, cut_durations(doc, args.narration or None), what)
+        print("보관된 내용이 없어 대본에서 새로 만든다")
+    if not m:
+        print(f"{what} 의 올릴 내용을 못 만들었다")
+        return 2
+
+    token = access_token()
+    print(f"{ep} {what} 올리는 중 ({video.stat().st_size / 1e6:.0f}MB) — **바로 공개** …")
+    vid = upload_video(token, video, m["title"], m["description"], m["tags"],
+                       vertical=what != "longform", privacy="public")
+    print(f"  올라갔다: https://youtu.be/{vid}  (공개)")
+
+    thumb = Path(args.thumb) if args.thumb else video.parent / "thumb.jpg"
+    if what == "longform" and thumb.exists():
+        try:
+            set_thumbnail(token, vid, thumb)
+            print("  썸네일 등록")
+        except Exception as e:
+            print(f"  썸네일 등록 실패(넘어감): {e}")
+
+    if m.get("pinned"):
+        try:
+            post_comment(token, vid, m["pinned"])
+            print("  고정 댓글 등록")
+        except Exception as e:
+            print(f"  고정 댓글 실패(넘어감): {e}")
+
+    eps = _load(EPISODES, {})
+    row = eps.setdefault(ep, {})
+    if what == "longform":
+        row["longform_id"] = vid
+    else:
+        row.setdefault("shorts", []).append(vid)
+    row["stage"] = "published"
+    _save(EPISODES, eps)
+    return 0
+
 def cmd_publish(args):
     ep = args.episode
     eps = _load(EPISODES, {})
@@ -461,8 +585,25 @@ def main():
     b.add_argument("episode")
     b.add_argument("--shorts", default="", help="쇼츠 번호 (1/2/3). 비우면 롱폼")
 
+    m = sub.add_parser("meta", help="올라갈 제목·설명·해시태그를 파일로 뽑는다")
+    m.add_argument("episode")
+    m.add_argument("--narration", default="")
+    m.add_argument("--out", default="build/meta.json")
+
+    u = sub.add_parser("public", help="영상 하나를 **바로 공개**로 올린다")
+    u.add_argument("episode")
+    u.add_argument("--what", default="longform", help="longform / short1 / short2 / short3")
+    u.add_argument("--video", default="build/longform.mp4")
+    u.add_argument("--meta", default="", help="meta.json (비우면 영상 옆)")
+    u.add_argument("--thumb", default="")
+    u.add_argument("--narration", default="")
+
     args = ap.parse_args()
     try:
+        if args.cmd == "meta":
+            return cmd_meta(args)
+        if args.cmd == "public":
+            return cmd_public(args)
         if args.cmd == "private":
             return cmd_private(args)
         if args.cmd == "shorts":

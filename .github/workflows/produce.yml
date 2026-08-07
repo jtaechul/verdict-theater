@@ -34,15 +34,23 @@ on:
           - '음성 생성'
           - '무음으로 시험'
           - '시험 실행에도 음성 만들기'
+      only:
+        description: '하나만 다시 만들기 (비우면 전부)'
+        required: false
+        default: ''
+        type: choice
+        options: ['', 'longform', 'short1', 'short2', 'short3']
       upload:
-        description: '유튜브 업로드'
+        description: '유튜브 업로드 — 이제 관리자 페이지에서 영상 보고 올립니다'
         required: true
-        default: '롱폼만'
+        default: '올리지 않음'
         type: choice
         options:
-          - '롱폼만'
-          - '롱폼 + 쇼츠'
+          # ⭐ 2026-08-07 부터 기본은 **안 올림**이다.
+          #    영상을 눈으로 본 뒤 관리자 페이지에서 올린다(그때 바로 공개로 올라간다).
           - '올리지 않음'
+          - '롱폼만 (비공개)'
+          - '롱폼 + 쇼츠 (비공개)'
 
 permissions:
   contents: write
@@ -381,6 +389,8 @@ jobs:
           set -o pipefail
           ARGS=()
           if [ "${{ inputs.limit }}" != "0" ]; then ARGS+=(--limit "${{ inputs.limit }}"); fi
+          # 하나만 다시 만들기 — 쇼츠 한 편이면 50분이 아니라 5분이면 끝난다
+          if [ -n "${{ inputs.only }}" ]; then ARGS+=(--only "${{ inputs.only }}"); fi
           python3 src/render.py "data/scripts/${{ steps.pick.outputs.ep }}.json" \
             --out build --shorts --narration build/voice "${ARGS[@]}" 2>&1 | tee render.log
           ls -la build/*.mp4
@@ -403,6 +413,16 @@ jobs:
       #    그래서 규칙을 어기지 않으면서 관리자 페이지가 스트리밍할 수 있다.
       #
       #    유튜브에 올리기 **전에** 한다. 업로드가 실패해도 영상은 남아야 한다.
+      # ⭐ 유튜브에 올라갈 **제목·설명·목차·해시태그**를 영상과 같이 보관한다.
+      #    나중에 관리자 페이지에서 올릴 때 이 파일을 그대로 쓴다 —
+      #    목차 시각을 실제 영상 길이로 계산해 두므로 눌렀을 때 안 어긋난다.
+      - name: 올라갈 내용 만들기 (제목·설명·목차·해시태그)
+        if: hashFiles('build/*.mp4') != ''
+        run: |
+          set -o pipefail
+          python3 src/upload.py meta "${{ steps.pick.outputs.ep }}" \
+            --narration build/voice --out build/meta.json
+
       - name: 관리자 페이지에서 볼 수 있게 보관 (릴리스 자산)
         if: hashFiles('build/*.mp4') != ''
         env:
@@ -412,17 +432,26 @@ jobs:
           EP="${{ steps.pick.outputs.ep }}"
           TAG="video-$EP"
 
-          # 같은 회차를 다시 만들면 예전 것을 갈아끼운다
-          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          # ⚠️ **하나만 다시 만들었으면 릴리스를 지우면 안 된다.**
+          #    지우면 이번에 안 만든 나머지 영상까지 같이 사라진다.
+          if [ -z "${{ inputs.only }}" ]; then
+            gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          fi
           # 썸네일도 같이 올린다 — 관리자 페이지가 여기서 가져다 보여주고 내려받게 한다.
           FILES=(build/*.mp4)
           [ -f build/thumb.jpg ] && FILES+=(build/thumb.jpg)
+          [ -f build/meta.json ] && FILES+=(build/meta.json)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${FILES[@]}" --clobber
+            echo "보관함 갱신: $TAG (${#FILES[@]}개)"
+          else
           gh release create "$TAG" \
             --title "$EP 영상" \
             --notes "관리자 페이지에서 보기 위한 파일입니다. 저장소 커밋이 아닙니다." \
             --prerelease \
             "${FILES[@]}"
           echo "보관함: $TAG (${#FILES[@]}개)"
+          fi
 
           # 최근 3편만 남긴다. 편당 100MB 안팎이라 그냥 두면 계속 쌓인다.
           #
@@ -440,7 +469,7 @@ jobs:
           done
 
       - name: 유튜브 업로드 (비공개)
-        if: inputs.upload != '올리지 않음'
+        if: startsWith(inputs.upload, '롱폼')
         env:
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
