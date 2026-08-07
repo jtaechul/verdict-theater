@@ -76,8 +76,16 @@ jobs:
         with:
           node-version: '20'
 
-      - name: 문법 검사
-        run: node --check admin/worker.js
+      - name: 문법 검사 (바깥 코드 + 브라우저 코드)
+        run: |
+          set -o pipefail
+          node --check admin/worker.js
+          # ⭐ 바깥 파일만 보면 안 된다.
+          #    화면에 뜨는 코드는 worker.js 안의 **템플릿 문자열 속**에 들어 있어서
+          #    node --check 는 그것을 그냥 글자로 볼 뿐이다.
+          #    2026-08-07 에 그 안쪽이 깨진 채 초록불로 배포됐고, 관리자 페이지가
+          #    '불러오는 중…' 에서 영영 멈췄다. 이제 안쪽까지 뽑아 검사하고 돌려 본다.
+          node tools/check_admin.mjs
 
       - name: 배포 + 비밀값 등록
         working-directory: admin
