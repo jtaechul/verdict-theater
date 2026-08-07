@@ -1671,8 +1671,17 @@ def normalize_pitch(out, cuts, retake=None):
         name = "해설" if sp == "narrator" else sp
         mid = statistics.median(h for _, _, h in items)
 
-        # ── ① 크게 튄 컷은 **다시 읽힌다.** 많이 튄 것부터. ──
-        if retake is not None and PITCH_REDO_TRIES:
+        # ── ① 크게 튄 컷은 다시 읽힌다 — **기본: 끔** (PITCH_FIX 켤 때만) ──
+        #
+        # ⭐ 2026-08-07 실측 사고로 껐다. 왜인지 반드시 기억할 것.
+        #   묶어 읽기가 들어온 뒤에는 한 통 안의 컷들이 **이미 같은 사람**이다.
+        #   그 안에서 높이가 벌어지는 것은 연기다 — 애원하는 대사는 높고,
+        #   차갑게 말하는 대사는 낮다. 배우는 원래 그렇게 읽는다.
+        #   그런데 이 장치가 그 '연기 컷' 을 튀었다고 보고 **한 줄씩 따로** 다시
+        #   읽혔다. 따로 부르면 다른 사람이 되는 것이 바로 우리가 고친 병이다.
+        #   실측: 장남 A3-06 을 따로 다시 읽혔더니 그 컷이 회차 최악(-7.7반음)이 됐다.
+        #   고치는 장치가 병을 도로 옮기고 있었다. 값도 매번 나갔다.
+        if retake is not None and PITCH_REDO_TRIES and PITCH_FIX:
             for it in sorted(items, key=lambda x: -abs(off(x[2], mid))):
                 cid, p, hz = it
                 gap = abs(off(hz, mid))

@@ -37,6 +37,17 @@ from tts import measure_f0  # noqa: E402
 WARN = float(__import__("os").environ.get("VT_VOICE_WARN", "3.0"))   # 반음
 STOP = float(__import__("os").environ.get("VT_VOICE_STOP", "5.0"))   # 반음
 SPREAD_STOP = float(__import__("os").environ.get("VT_VOICE_SPREAD", "5.0"))
+
+# ⭐ 2026-08-07: **중단은 해설에만 건다. 등장인물(대사)은 경고만.**
+#
+#   첫 실전에서 이 검사가 장남(폭 9.1반음)·차남(폭 9.6반음)을 막았다. 그런데
+#   그 컷들은 **한 통(호출 1번)으로 만들어진 것**이었다 — 같은 사람인 것은
+#   만들어진 방식이 보장한다. 폭이 큰 이유는 연기다: 애원하는 대사는 높고
+#   차갑게 말하는 대사는 낮다. 배우는 원래 그렇게 읽는다.
+#   위 문턱값(3·5반음)은 해설, 즉 **담담한 낭독**을 재서 정한 값이다
+#   (실측: 해설 64컷의 자연스러운 폭 ±1.7반음). 낭독의 자로 연기를 재면
+#   멀쩡한 연기를 전부 '다른 사람' 으로 오판한다 — 실제로 그랬다.
+#   해설은 원래 지적받은 문제이자 담담해야 하는 소리라 그대로 엄격하게 지킨다.
 MIN_CUTS = 5            # 이보다 적으면 가운뎃값을 못 믿는다
 
 
@@ -100,18 +111,24 @@ def main():
         offs = sorted(((abs(semitone(h, mid)), cid, h) for cid, h in items), reverse=True)
         vals = sorted(semitone(h, mid) for _, h in items)
         spread = vals[int(len(vals) * 0.9)] - vals[int(len(vals) * 0.1)]
+        hard = sp == "narrator"            # 중단 권한은 해설에만 있다 (위 설명 참조)
         worst = offs[0]
-        mark = "  ← 중단" if worst[0] > STOP else ("  ← 경고" if worst[0] > WARN else "")
+        mark = ("  ← 중단" if hard and worst[0] > STOP else
+                ("  ← 경고" if worst[0] > WARN else ""))
         print(f"    {name:10s}{len(items):4d}{mid:10.1f}Hz{spread:7.1f}반음"
               f"   {worst[1]} {worst[2]:.0f}Hz({semitone(worst[2], mid):+.1f}반음){mark}")
 
         for gap, cid, hz in offs:
-            if gap > STOP:
+            if hard and gap > STOP:
                 stops.append(f"{name} {cid} — {hz:.0f}Hz ({semitone(hz, mid):+.1f}반음)")
             elif gap > WARN:
                 warns.append(f"{name} {cid} — {hz:.0f}Hz ({semitone(hz, mid):+.1f}반음)")
         if spread > SPREAD_STOP:
-            stops.append(f"{name} 전체 폭 {spread:.1f}반음 — 한 사람으로 안 들린다")
+            if hard:
+                stops.append(f"{name} 전체 폭 {spread:.1f}반음 — 한 사람으로 안 들린다")
+            else:
+                warns.append(f"{name} 전체 폭 {spread:.1f}반음 — 대사 연기라 감정 폭일"
+                             " 수 있음. 영상에서 귀로 확인 요망")
 
     print()
     if stops:
@@ -124,7 +141,8 @@ def main():
               " (음성 보관함을 지우고 '3. 영상 만들기' 를 다시 누르면 새로 만듭니다)")
         return 1
     if warns:
-        print(f"⚠️ 조금 튀는 컷이 {len(warns)}개 있습니다 (영상은 만듭니다).")
+        print(f"⚠️ 살펴볼 컷이 {len(warns)}개 있습니다 (영상은 만듭니다 —"
+          " 등장인물 대사의 높낮이는 연기일 수 있어 막지 않습니다).")
         for s in warns[:8]:
             print(f"    {s}")
         return 0

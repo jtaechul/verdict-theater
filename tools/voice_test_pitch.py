@@ -62,10 +62,25 @@ def retake(cid):
 
 
 print("=" * 72)
-print("  시험 1 — 다시 읽히는 몫을 **가장 심한 컷부터** 쓰나 (H05 에 닿나)")
+print("  시험 1 — 기본값: **아무 컷도 따로 다시 읽지 않는다** (2026-08-07)")
 print("=" * 72)
+# 왜: 묶어 읽기 뒤에는 한 통 안이 이미 같은 사람이다. 튄 컷을 한 줄씩 따로
+# 다시 부르면 그 컷만 딴 사람이 된다 — 실측으로 장남 A3-06 이 그렇게 최악이 됐다.
+# 소리는 안 건드리고, 흩어짐은 voiceguard 가 알려 준다.
 setup()
 tts.normalize_pitch(T, CUTS, retake=retake)
+check("기본값에서는 제미나이를 안 부른다", not CALLED, f"부른 컷={CALLED}")
+check("소리를 안 건드린다", abs(f0("H05") - 137) < 6, f"H05 → {f0('H05'):.0f}Hz (137 그대로)")
+
+print("\n" + "=" * 72)
+print("  시험 1b — 일부러 켜면(PITCH_FIX) 가장 심한 컷부터 다시 읽나")
+print("=" * 72)
+setup()
+tts.PITCH_FIX = True
+try:
+    tts.normalize_pitch(T, CUTS, retake=retake)
+finally:
+    tts.PITCH_FIX = False
 check("H05 를 다시 읽혔다", "H05" in CALLED, f"부른 컷={CALLED}")
 check("H05 가 제 높이로 왔다", abs(f0("H05") - 84) < 6, f"→ {f0('H05'):.0f}Hz")
 
