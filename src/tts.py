@@ -519,7 +519,7 @@ def recipe(speaker, model, text=""):
     #    이 표시가 없으면, 방식을 바꿔도 조리법이 같아 보여서 **옛 방식으로 만든
     #    음성이 그대로 재사용된다** — 바꾼 보람이 하나도 없다.
     #    (같은 이유로 대사·지시문도 여기 들어간다. 위 설명 참고)
-    way = "g2" if GROUP_ON else "s1"   # g2 = 줄마다 연기 금지 지시문
+    way = "g3" if GROUP_ON else "s1"   # g3 = 연기 금지 + 소리 안 만짐
     return f"{model}|{voice}|{speed:.2f}|{h}|{way}"
 
 
@@ -1326,6 +1326,21 @@ def measure_f0(path):
 #    새로 생겨, 고치려던 것과 똑같은 문제를 내가 만들어 낸다.
 #    이제 잰 값(±1.7반음) 밖으로 나간 것만 손본다.
 PITCH_TOL = float(os.environ.get("TTS_PITCH_TOL", "2.0"))
+
+# ⭐⭐ 2026-08-07 손님 명령: **"다른 효과 넣지 말고 그냥 한번에 생성만 하라."**
+#
+#   왜 이 명령이 나왔나 — 손님이 정확히 짚으셨다.
+#     지난 시험에서 H05 는 새로 만들었고 A1-15 는 안 만들었다. 그래서 A1-15 에는
+#     **내가 어제 기계로 음을 옮긴 흔적**이 그대로 남았다.
+#     손님: "A1-15 만 특정효과가 들어가서 이상해. H05 부분과 A1 부분 목소리가 달라."
+#     맞는 말이다. **손댄 컷과 안 댄 컷이 섞이는 것 자체가 목소리를 다르게 만든다.**
+#
+#   묶어서 한 통에 만들면 그 안에서는 이미 같은 사람이다. 거기에 기계 손질을 더하면
+#   고치는 것이 아니라 **새로 어긋나게 만드는 것**이다. 그래서 끈다.
+#   벗어난 컷은 손대지 않고 voiceguard 가 이름을 찍어 알려 준다 — 그러면 그 줄만
+#   다시 만들면 된다. 소리를 만지는 것보다 다시 만드는 것이 항상 낫다.
+PITCH_FIX = os.environ.get("TTS_PITCH_FIX", "0").strip().lower() \
+    not in ("", "0", "off", "no", "false")
 # 이만큼(반음) 넘게 벗어난 컷은 **음을 옮기기 전에 먼저 다시 읽힌다.**
 #   실측(2026-08-06, EP001 해설 64컷): 가운뎃값 83.8Hz 인데 H05 가 136.8Hz —
 #   +8.5반음이다. 12반음이 한 옥타브이니 거의 한 옥타브 위, 그냥 다른 사람 목소리다.
@@ -1612,6 +1627,9 @@ def normalize_pitch(out, cuts, retake=None):
         way = "굵기를 지키며" if _has_rubberband() else "(rubberband 없음 — 최대 2반음만)"
         print(f"  목소리 높이: {got}컷 다 쟀다 {way}")
 
+    if not PITCH_FIX:
+        print("  음높이 손대기: 꺼져 있다"
+          " (소리를 만지지 않는다 — 벗어난 컷은 목소리 검사가 알려 준다)")
     if not by_speaker:
         return
     import statistics
@@ -1692,7 +1710,9 @@ def normalize_pitch(out, cuts, retake=None):
                 it[2] = best_hz
             mid = statistics.median(h for _, _, h in items)
 
-        # ── ② 남은 흔들림은 음을 옮겨 가운뎃값에 맞춘다 (값 0원) ──
+        # ── ② 남은 흔들림은 음을 옮겨 가운뎃값에 맞춘다 (기본: 끔) ──
+        if not PITCH_FIX:
+            continue
         for cid, p, hz in items:
             semitone = off(hz, mid)
             if abs(semitone) <= PITCH_TOL:
