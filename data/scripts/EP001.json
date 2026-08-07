@@ -8,8 +8,8 @@
       "어머니에게 소송 걸었던 장남, 지분 0원 된 사연"
     ],
     "logline": "이미 9억을 받아간 장남이 유류분 소송을 걸었다가 상속 지분마저 0원이 된 가족의 이야기.",
-    "runtime_sec": 720,
-    "cut_count": 114,
+    "runtime_sec": 725.0,
+    "cut_count": 115,
     "episode": "EP001"
   },
   "anonymization": {
@@ -2633,7 +2633,7 @@
       "id": "act5",
       "title": "5막",
       "start_sec": 689,
-      "end_sec": 720,
+      "end_sec": 725.0,
       "bgm": "outro",
       "cuts": [
         {
@@ -2727,8 +2727,22 @@
           "gfx": null,
           "sfx": null,
           "amb": "amb_home",
-          "blackout": true,
+          "blackout": false,
           "tag": "question"
+        },
+        {
+          "id": "A5-05-sub",
+          "sec": 5.0,
+          "bg": "home_living_day",
+          "flashback": false,
+          "chars": [],
+          "speaker": "narrator",
+          "text": "다음 이야기도 놓치지 않으시려면, 구독 버튼을 눌러 두십시오.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": true,
+          "tag": "cta"
         }
       ]
     }
