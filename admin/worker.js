@@ -410,14 +410,14 @@ function uploadCard(ep, v) {
   }
 
   h += '<div style="height:10px"></div>'
-    + '<button onclick="doUpload(\'' + ep + '\',\'' + what + '\')">'
+    + '<button onclick="doUpload(\\'' + ep + '\\',\\'' + what + '\\')">'
     + '유튜브에 올리기 · 즉시 공개</button>'
     + '<div style="color:#9599ab;font-size:13px;margin-top:9px">'
     + '누르면 <b>바로 공개</b>로 올라갑니다. 되돌리려면 유튜브 앱에서 직접 지우셔야 합니다.<br>'
     + '올리기 전에 확인을 한 번 더 여쭙습니다.</div>';
 
   h += '<div style="height:12px"></div>'
-    + '<button class="ghost" onclick="remakeOne(\'' + ep + '\',\'' + what + '\')">'
+    + '<button class="ghost" onclick="remakeOne(\\'' + ep + '\\',\\'' + what + '\\')">'
     + '이 영상만 다시 만들기</button>'
     + '<div style="color:#9599ab;font-size:13px;margin-top:9px">'
     + '이것 하나만 새로 만듭니다. 나머지 영상은 그대로 둡니다.<br>'
@@ -428,8 +428,8 @@ function uploadCard(ep, v) {
 
 async function doUpload(ep, what) {
   const label = (VIDEO_LABEL_JS[what + '.mp4'] || what);
-  if (!confirm('「' + label + '」 을(를) 유튜브에 **즉시 공개**로 올립니다.\n\n'
-             + '되돌리려면 유튜브 앱에서 직접 지우셔야 합니다.\n올릴까요?')) return;
+  if (!confirm('「' + label + '」 을(를) 유튜브에 **즉시 공개**로 올립니다.\\n\\n'
+             + '되돌리려면 유튜브 앱에서 직접 지우셔야 합니다.\\n올릴까요?')) return;
   toast('유튜브에 올리는 중… (몇 분 걸립니다)');
   let j = {};
   try {
@@ -444,7 +444,7 @@ async function doUpload(ep, what) {
 }
 
 async function remakeOne(ep, what) {
-  if (!confirm('「' + (VIDEO_LABEL_JS[what + '.mp4'] || what) + '」 만 다시 만듭니다.\n'
+  if (!confirm('「' + (VIDEO_LABEL_JS[what + '.mp4'] || what) + '」 만 다시 만듭니다.\\n'
              + '음성은 그대로 쓰므로 값이 들지 않습니다. 진행할까요?')) return;
   toast('다시 만드는 중…');
   let j = {};
