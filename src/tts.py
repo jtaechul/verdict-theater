@@ -519,7 +519,10 @@ def recipe(speaker, model, text=""):
     #    이 표시가 없으면, 방식을 바꿔도 조리법이 같아 보여서 **옛 방식으로 만든
     #    음성이 그대로 재사용된다** — 바꾼 보람이 하나도 없다.
     #    (같은 이유로 대사·지시문도 여기 들어간다. 위 설명 참고)
-    way = "g3" if GROUP_ON else "s1"   # g3 = 손님이 귀로 통과시킨 지시문
+    # g4 (2026-08-07): 자르는 지점 계산을 고쳤다(긴 쉼 기준). g3 시절 음성은
+    # **뒷문장이 옆 컷으로 넘어간 채** 보관돼 있어서, 표시를 올려 전부 새로 만든다.
+    # 지시문·목소리는 그대로다 — 소리 톤은 안 바뀌고 잘리는 자리만 바로잡힌다.
+    way = "g4" if GROUP_ON else "s1"
     return f"{model}|{voice}|{speed:.2f}|{h}|{way}"
 
 
@@ -1052,7 +1055,10 @@ def synth_group(key, model, lines, speaker, out_mp3, rotate=False):
 
 
 def _silences(path, noise_db, min_dur):
-    """무음 구간의 **한가운데** 시각 목록. 여기가 자를 후보다."""
+    """무음 구간 목록 — (한가운데 시각, 길이). 여기가 자를 후보다.
+
+    길이를 같이 돌려주는 이유: 자를 자리를 **쉼의 길이로** 고르기 때문이다
+    (아래 split_group 설명 참조). 긴 쉼 = 줄 사이, 짧은 쉼 = 줄 안."""
     try:
         r = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(path),
                             "-af", f"silencedetect=noise={noise_db}dB:d={min_dur}",
@@ -1060,36 +1066,44 @@ def _silences(path, noise_db, min_dur):
                            capture_output=True, text=True, timeout=300)
     except Exception:
         return []
-    mids, start = [], None
+    out, start = [], None
     for m in re.finditer(r"silence_(start|end):\s*(-?[\d.]+)", r.stderr):
         if m.group(1) == "start":
             start = float(m.group(2))
         elif start is not None:
-            mids.append((start + float(m.group(2))) / 2.0)
+            end = float(m.group(2))
+            out.append(((start + end) / 2.0, end - start))
             start = None
-    return mids
+    return out
 
 
 def _pick_cuts(cands, want, total, fracs):
-    """후보 무음 중 want 개를, **글자 수로 기대한 자리**에 가장 가깝게 고른다.
+    """(예비용) 후보 무음 중 want 개를 **글자 수로 기대한 자리**에 가장 가깝게 고른다.
 
-    쉼표에서도 쉬므로 후보가 필요한 개수보다 많이 나온다. 아무거나 고르면 안 되고,
-    '앞에서 몇 %쯤에 있어야 하는가' 에 가장 잘 맞는 조합을 골라야 한다."""
+    ⚠️ 2026-08-07 사고로 **예비 수단으로 강등**됐다. 왜인지 반드시 기억할 것.
+       이 계산의 '기대 자리' 는 글자 수 비율 × 전체 길이다. 그런데 전체 길이에는
+       **문장 사이 쉼이 들어 있다** (19줄이면 쉼만 약 18초). 쉼을 무시한 기대 자리는
+       뒤로 갈수록 실제보다 앞으로 밀리고, 그러면 줄 **안의** 쉼("괜찮아요. ↕ 형은…")
+       이 경계로 뽑힌다 → 뒷부분이 옆 컷으로 넘어간다.
+       실제로 그렇게 됐다 — 자막은 다 떠 있는데 소리는 뒷문장이 없었다.
+       이제 1차 선택은 **쉼의 길이**로 한다(아래 _pick_by_pause). 이 함수는
+       길이로 못 가릴 때(쉼 길이가 고만고만할 때)만 나선다."""
     n = len(cands)
     if n < want or want <= 0:
         return None
     INF = float("inf")
+    pos = [c[0] for c in cands]
     dp = [[INF] * n for _ in range(want)]
     bk = [[-1] * n for _ in range(want)]
     for i in range(n):
-        dp[0][i] = abs(cands[i] - fracs[0] * total)
+        dp[0][i] = abs(pos[i] - fracs[0] * total)
     for j in range(1, want):
         best, bi = INF, -1
         for i in range(n):
             if i > 0 and dp[j - 1][i - 1] < best:
                 best, bi = dp[j - 1][i - 1], i - 1
             if best < INF:
-                dp[j][i] = best + abs(cands[i] - fracs[j] * total)
+                dp[j][i] = best + abs(pos[i] - fracs[j] * total)
                 bk[j][i] = bi
     end = min(range(n), key=lambda i: dp[want - 1][i])
     if dp[want - 1][end] == INF:
@@ -1099,6 +1113,42 @@ def _pick_cuts(cands, want, total, fracs):
         picked[j] = i
         i = bk[j][i]
     return [cands[k] for k in picked]
+
+
+def _pick_by_pause(cands, want):
+    """자를 자리를 **쉼의 길이**로 고른다 — 가장 긴 쉼 want 개.
+
+    왜 이것이 1차인가: 모델에게 '대사 사이에는 1초 이상 쉬어라' 고 시킨다.
+    그래서 줄 **사이** 쉼은 길고, 줄 **안** 쉼(마침표·쉼표)은 짧다.
+    길이로 고르면 위치를 짐작할 필요가 아예 없다 — 말이 빨라지든 느려지든
+    긴 쉼은 긴 쉼이다. (위치 짐작이 어떻게 사고를 냈는지는 _pick_cuts 참조)"""
+    if len(cands) < want or want <= 0:
+        return None
+    top = sorted(cands, key=lambda c: -c[1])[:want]
+    return sorted(top, key=lambda c: c[0])       # 시간 순으로 되돌린다
+
+
+def _check_segs(segs, chars, lines, why):
+    """잘린 도막들이 말이 되는지. 걸리면 이유를 찍고 False.
+
+    글자당 시간은 **쉼을 뺀 말 시간**으로 잰다. 도막 길이에는 양끝 쉼의 절반씩이
+    들어 있어서, 짧은 줄일수록 쉼이 상대적으로 커져 예전 검사(도막 길이 기준)는
+    문턱을 넉넉히(45~220%) 풀어야 했고, 그 틈으로 잘못 잘린 도막이 통과했다."""
+    n = len(chars)
+    if any(b - a < 0.4 for (a, b, _l, _r) in segs):
+        print(f"      너무 짧은 도막이 생겼다({n}줄) — {why}")
+        return False
+    per = []
+    for (a, b, lp, rp), ch in zip(segs, chars):
+        speech = (b - a) - (lp + rp) / 2.0       # 양끝 쉼의 내 몫(절반)을 뺀다
+        per.append(max(0.05, speech) / max(1, ch))
+    mid = statistics.median(per)
+    bad = [i for i, v in enumerate(per) if not (0.5 * mid <= v <= 2.0 * mid)]
+    if bad:
+        who = ", ".join(lines[i][0] for i in bad[:3])
+        print(f"      길이가 글자 수와 안 맞는 도막이 있다({who}) — {why}")
+        return False
+    return True
 
 
 # 잘라낸 도막의 **앞뒤 빈 소리를 잘라낸다.**
@@ -1133,33 +1183,34 @@ def split_group(big, lines, out):
         fracs.append(acc / tot_ch)
 
     # 무음 기준을 넉넉한 쪽부터 좁혀 가며 후보를 찾는다. 모델이 시킨 만큼
-    # 길게 안 쉬는 경우가 있어, 한 가지 기준만 쓰면 그때마다 통째로 실패한다.
-    picked = None
+    # 길게 안 쉬는 경우가 있어, 한 가지 기준만 쓰면 그때마다 실패한다.
+    #
+    # 고르는 순서 (2026-08-07 사고 후):
+    #   1차 — **가장 긴 쉼** n-1개 (줄 사이 쉼은 1초 이상으로 시켰으니 제일 길다)
+    #   2차 — 글자 수 위치 짐작 (쉼 길이가 고만고만해서 1차로 못 가릴 때만)
+    # 어느 쪽이든 **쉼을 뺀 말 시간**으로 글자당 길이를 검사해 통과해야 쓴다.
+    segs = None
     for noise, dur in ((-35, 0.45), (-35, 0.30), (-30, 0.25), (-40, 0.25), (-30, 0.18)):
-        cands = [c for c in _silences(big, noise, dur) if 0.3 < c < total - 0.3]
-        got = _pick_cuts(cands, n - 1, total, fracs)
-        if got:
-            picked = got
+        cands = [c for c in _silences(big, noise, dur)
+                 if 0.3 < c[0] < total - 0.3]
+        for how, picked in (("긴 쉼", _pick_by_pause(cands, n - 1)),
+                            ("위치 짐작", _pick_cuts(cands, n - 1, total, fracs))):
+            if not picked:
+                continue
+            bounds = [(0.0, 0.0)] + picked + [(total, 0.0)]
+            try_segs = [(bounds[k][0], bounds[k + 1][0],
+                         bounds[k][1], bounds[k + 1][1]) for k in range(n)]
+            if _check_segs(try_segs, chars, lines, f"{how} 후보는 버린다"):
+                segs = try_segs
+                break
+        if segs:
             break
-    if picked is None:
+    if segs is None:
         print(f"      자를 자리를 못 찾았다({n}줄) — 이 묶음은 컷마다 따로 만든다")
         return None
 
-    bounds = [0.0] + picked + [total]
-    segs = [(bounds[k], bounds[k + 1]) for k in range(n)]
-    if any(b - a < 0.4 for a, b in segs):
-        print(f"      너무 짧은 도막이 생겼다({n}줄) — 이 묶음은 컷마다 따로 만든다")
-        return None
-    per = [(b - a) / max(1, ch) for (a, b), ch in zip(segs, chars)]
-    mid = statistics.median(per)
-    bad = [i for i, v in enumerate(per) if not (0.45 * mid <= v <= 2.2 * mid)]
-    if bad:
-        who = ", ".join(lines[i][0] for i in bad[:3])
-        print(f"      길이가 글자 수와 안 맞는 도막이 있다({who}) — 컷마다 따로 만든다")
-        return None
-
     made = []
-    for (cid, _t), (a, b) in zip(lines, segs):
+    for (cid, _t), (a, b, _lp, _rp) in zip(lines, segs):
         p = out / f"{cid}.mp3"
         try:
             # ⚠️ -ss/-t 는 반드시 **-i 앞**에 둔다. 뒤에 두면 잘라내기가 필터보다
