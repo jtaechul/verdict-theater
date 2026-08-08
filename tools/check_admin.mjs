@@ -47,19 +47,77 @@ globalThis.document = {
 };
 globalThis.window = globalThis;
 globalThis.location = { href: '', pathname: '/', reload() {} };
+// ⭐ 빈 값이 아니라 **진짜 같은 값**을 준다.
+//    빈 목록이면 화면을 그리는 코드(회차 카드·대기열 카드·실행 카드)가 거의
+//    안 돌아, 그 안의 잘못을 못 잡는다. 실제로 8월 7일 무한로딩이 그런 자리였다.
+const FAKE_STATE = {
+  episodes: { EP001: { stage: 'rendering', case_type: '상속', gate_score: 82,
+                       script_score: 90, longform_id: 'abc123' } },
+  queue: [
+    { case_id: '234921', 사건명: "상속회복청구'등'의 소", machine_score: 80,
+      gate_pass: true, one_line: '형이 다 가져갔다' },
+    { case_id: '77437', case_type: '유언무효', gate_score: 40, gate_pass: false },
+    { case_id: '184051', case_type: '상속재산회복', machine_score: 70 },
+  ],
+  runs: [{ name: '3. 영상 만들기', at: new Date().toISOString(), conclusion: 'success' }],
+  videos: { EP001: 4 },
+  assets: { have: 30, need: 38 },
+  items: [],
+};
 globalThis.fetch = async () => ({
   status: 200, ok: true,
-  json: async () => ({ episodes: {}, queue: [], runs: [], videos: {}, items: [] }),
+  json: async () => FAKE_STATE,
 });
 globalThis.scrollTo = () => {};
 globalThis.alert = () => {};
 globalThis.confirm = () => false;
 
+let api;
 try {
-  new Function(readFileSync(js, 'utf8'))();
+  api = new Function(readFileSync(js, 'utf8')
+                   + '\n;return {home, setS: (v) => { S = v; }};')();
 } catch (e) {
   console.error(`❌ 브라우저 코드가 첫 실행에서 죽는다 — 페이지가 '불러오는 중…' 에서 멈춘다`);
   console.error(`   ${e.constructor.name}: ${e.message}`);
+  process.exit(1);
+}
+
+// ③ 첫 화면을 **실제 값으로 한 번 그려 본다.** 그리다 죽으면 화면이 멈춘다.
+let painted = '';
+globalThis.document.getElementById = () => ({
+  set innerHTML(v) { painted += v; }, get innerHTML() { return painted; },
+  value: '', style: {},
+});
+try {
+  api.setS(FAKE_STATE);
+  api.home();
+} catch (e) {
+  console.error('❌ 첫 화면을 그리다 죽는다 — 페이지가 빈 채로 멈춘다');
+  console.error(`   ${e.constructor.name}: ${e.message}`);
+  process.exit(1);
+}
+
+// ④ 그려진 화면의 **버튼 속 코드**를 하나씩 문법 검사한다.
+//    2026-08-07 무한로딩이 바로 이 자리였다: 소재 이름에 따옴표가 들어가면
+//    onclick 안의 코드가 깨지는데, 바깥 파일은 멀쩡해 보여 검사를 통과했다.
+//    (FAKE_STATE 의 사건명에 일부러 작은따옴표를 넣어 뒀다)
+const unesc = (s) => s.replace(/&amp;/g, '&').replace(/&lt;/g, '<')
+                      .replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+let nHandler = 0;
+for (const m of painted.matchAll(/onclick="([^"]*)"/g)) {
+  const code = unesc(m[1]);
+  nHandler++;
+  try {
+    new Function('event', code);
+  } catch (e) {
+    console.error('❌ 버튼 속 코드가 깨졌다 — 누르면 아무 일도 안 일어나거나 화면이 멈춘다');
+    console.error(`   버튼 코드: ${code.slice(0, 90)}`);
+    console.error(`   ${e.constructor.name}: ${e.message}`);
+    process.exit(1);
+  }
+}
+if (!nHandler) {
+  console.error('❌ 화면에 버튼이 하나도 안 그려졌다 — 화면 그리기가 도중에 멈춘 것이다');
   process.exit(1);
 }
 

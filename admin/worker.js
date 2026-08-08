@@ -24,24 +24,61 @@ const BRANCH = 'main';
 const GH = 'https://api.github.com';
 
 const WORKFLOWS = [
-  { file: 'build-assets.yml', name: '0. 에셋 만들기', desc: '캐릭터·배경·소리. 한 번만',
-    inputs: [{ k: 'what', label: '무엇을', type: 'select',
-               opts: ['소리 (비용 0원)', '캐릭터 한 명 시험', '캐릭터 전부', '배경 전부', '빠진 것 확인만'] }] },
-  { file: 'collect.yml', name: '1. 판례 수집', desc: '판례를 받아 기계 선정',
-    inputs: [{ k: 'max_calls', label: '호출 수', type: 'text', def: '180' },
-             { k: 'queries', label: '검색어 (비우면 전부)', type: 'text', def: '' }] },
-  { file: 'script.yml', name: '2. 대본 만들기', desc: '소재 심사 + 12분 대본 + 쇼츠',
-    inputs: [{ k: 'mode', label: '무엇을', type: 'select',
-               opts: ['둘다', '소재 심사만', '대본 생성만', '쇼츠만 다시'] },
-             { k: 'writer', label: '대본을 쓸 곳', type: 'select',
-               opts: ['자동 (Claude 우선)', 'Claude', 'Gemini'] },
-             { k: 'gate_limit', label: '심사 판례 수', type: 'text', def: '10' },
-             { k: 'episode', label: "회차 ('쇼츠만 다시' 일 때만)", type: 'text', def: '' }] },
-  { file: 'produce.yml', name: '3. 영상 만들기', desc: '영상까지만 만든다 · 유튜브는 영상 보고 따로',
-    inputs: [{ k: 'voice', label: '나레이션', type: 'select', opts: ['음성 생성', '무음으로 시험'] },
-             { k: 'only', label: '하나만 다시 만들기', type: 'select',
-               opts: ['', 'longform', 'short1', 'short2', 'short3'] },
-             { k: 'limit', label: '앞 N컷만 (0=전체)', type: 'text', def: '0' }] },
+  // ⚠️ 각 항목의 **보내는 값**(opts 의 문자열 또는 {v:...})은 워크플로가 아는 글자
+  //    그대로여야 한다. 쉬운 말은 **보이는 글**(t)과 help 에만 쓴다.
+  //    (2026-08-08 손님: "알아듣기 어려운 부분은 전부 쉽게 알아보게 바꿔")
+  { file: 'build-assets.yml', name: '0. 그림·소리 만들기',
+    desc: '영상에 쓸 등장인물 그림, 배경 그림, 효과음을 만듭니다 (처음에 한 번만)',
+    inputs: [{ k: 'what', label: '무엇을 만들까요', type: 'select',
+               help: '효과음은 값이 들지 않습니다. 그림은 한 장씩 값이 듭니다.',
+               opts: [{ v: '소리 (비용 0원)', t: '효과음 (0원)' },
+                      { v: '캐릭터 한 명 시험', t: '등장인물 한 명만 시험 삼아' },
+                      { v: '캐릭터 전부', t: '등장인물 전부' },
+                      { v: '배경 전부', t: '배경 그림 전부' },
+                      { v: '빠진 것 확인만', t: '빠진 그림이 있는지 확인만 (0원)' }] }] },
+
+  { file: 'collect.yml', name: '1. 재판 기록 모으기',
+    desc: '나라의 판례 자료실에서 실제 재판 기록을 받아와, 쓸 만한 것만 골라 대기열에 쌓습니다',
+    inputs: [{ k: 'max_calls', label: '자료실에 물어볼 횟수', type: 'text', def: '180',
+               help: '자료실이 하루 200번까지만 답해 줍니다. 그래서 180이 기본값입니다. '
+                   + '그대로 두고 실행하시면 됩니다. (한 번 물으면 기록 여러 건이 옵니다)' },
+             { k: 'queries', label: '찾을 낱말', type: 'text', def: '',
+               help: '비워 두면 미리 정해 둔 낱말 40개(상속·유언 등)로 모두 찾습니다. 그대로 두십시오.' }] },
+
+  { file: 'script.yml', name: '2. 대본 만들기',
+    desc: '재판 기록을 골라 12분 본편 대본과 쇼츠 3편 대본을 씁니다 (약 10분)',
+    inputs: [{ k: 'mode', label: '어디까지 할까요', type: 'select',
+               help: '보통은 맨 위 그대로 두십시오. 소재 고르기와 대본 쓰기를 한 번에 합니다.',
+               opts: [{ v: '둘다', t: '소재 고르고 대본까지 (보통 이것)' },
+                      { v: '소재 심사만', t: '소재 고르기만 (대본은 안 씀)' },
+                      { v: '대본 생성만', t: '이미 고른 소재로 대본만' },
+                      { v: '쇼츠만 다시', t: '쇼츠 대본만 다시 쓰기' }] },
+             { k: 'writer', label: '대본을 쓸 AI', type: 'select',
+               help: '그대로 두십시오. 앞의 AI가 막히면 저절로 다른 AI가 이어서 씁니다.',
+               opts: [{ v: '자동 (Claude 우선)', t: '자동 (권장)' },
+                      { v: 'Claude', t: 'Claude 로만' },
+                      { v: 'Gemini', t: 'Gemini 로만' }] },
+             { k: 'gate_limit', label: '살펴볼 기록 수', type: 'text', def: '10',
+               help: '대기열 위에서부터 몇 건을 AI가 읽어보고 고를지입니다. 10이면 넉넉합니다.' },
+             { k: 'episode', label: '회차 번호', type: 'text', def: '',
+               help: "위에서 '쇼츠 대본만 다시 쓰기' 를 골랐을 때만 적습니다 (예: EP001). 보통은 비워 두십시오." }] },
+
+  { file: 'produce.yml', name: '3. 영상 만들기',
+    desc: '대본으로 본편·쇼츠 영상을 만듭니다 (약 40분). 유튜브에는 영상을 보신 뒤 따로 올립니다',
+    inputs: [{ k: 'voice', label: '목소리', type: 'select',
+               help: '보통은 맨 위 그대로. 이미 만들어 둔 목소리는 다시 사지 않고 그대로 씁니다.',
+               opts: [{ v: '음성 생성', t: '목소리 넣기 (보통 이것)' },
+                      { v: '무음으로 시험', t: '소리 없이 화면만 확인 (0원)' }] },
+             { k: 'only', label: '어떤 영상을', type: 'select',
+               help: '하나만 골라 그것만 다시 만들 수 있습니다. 목소리는 그대로 쓰므로 값이 안 듭니다.',
+               opts: [{ v: '', t: '전부 (본편 + 쇼츠 3편)' },
+                      { v: 'longform', t: '본편만 (가로 12분)' },
+                      { v: 'short1', t: '쇼츠 1번만' },
+                      { v: 'short2', t: '쇼츠 2번만' },
+                      { v: 'short3', t: '쇼츠 3번만' }] },
+             { k: 'limit', label: '앞부분만 시험', type: 'text', def: '0',
+               help: '0이면 전체를 만듭니다. 숫자를 넣으면 그 개수의 장면만 빠르게 만들어 화면을 확인합니다.' }] },
+
   // 2026-08-07 부터 '영상 보기' 에서 바로 공개로 올린다 → 이 버튼은 목록에서 감춘다.
   // 워크플로는 남겨 둔다: 예전에 비공개로 올려 둔 영상을 공개로 바꿀 때 쓴다.
   { file: 'publish.yml', name: '4. 공개하기 (예전 방식)', hidden: true,
@@ -49,20 +86,32 @@ const WORKFLOWS = [
     inputs: [{ k: 'episode', label: '회차', type: 'text', def: '' },
              { k: 'what', label: '무엇을', type: 'select',
                opts: ['롱폼', '쇼츠 1번 (궁금증형)', '쇼츠 2번 (분노형)', '쇼츠 3번 (사이다형)'] }] },
-  { file: 'stats.yml', name: '5. 성과 보기', desc: '조회수·지속률·KPI 점검', inputs: [] },
-  { file: 'voicecheck.yml', name: '음성 점검 (값 0원)',
-    desc: '해설 목소리를 컷마다 재서 어느 컷이 왜 튀는지 숫자로 · 3분',
-    inputs: [{ k: 'episode', label: '회차 (비우면 가장 최근)', type: 'text', def: '' },
-             { k: 'who', label: '누구를', type: 'select',
-               opts: ['해설만', '전부 (해설 + 등장인물)'] },
-             { k: 'cut', label: '반드시 볼 컷 (목소리가 튀는 컷)', type: 'text',
-               def: 'H05,A1-15' }] },
+
+  { file: 'stats.yml', name: '5. 성과 보기',
+    desc: '올린 영상이 얼마나 보였는지 — 조회수, 끝까지 본 비율 등을 확인합니다 (0원)',
+    inputs: [] },
+
+  { file: 'voicecheck.yml', name: '목소리 점검 (0원)',
+    desc: '장면마다 목소리 높낮이를 재서, 어느 장면이 왜 튀는지 숫자로 보여줍니다 (약 3분)',
+    inputs: [{ k: 'episode', label: '회차 번호', type: 'text', def: '',
+               help: '비워 두면 가장 최근 회차를 봅니다 (예: EP001).' },
+             { k: 'who', label: '누구 목소리를', type: 'select',
+               opts: [{ v: '해설만', t: '해설(내레이션)만' },
+                      { v: '전부 (해설 + 등장인물)', t: '전부 (해설 + 등장인물)' }] },
+             { k: 'cut', label: '꼭 확인할 장면', type: 'text', def: 'H05,A1-15',
+               help: '장면 번호입니다. 영상 자막 아래 표시와 같습니다. 쉼표로 여러 개.' }] },
+
   { file: 'voicefix.yml', name: '목소리 고치고 들어보기',
-    desc: '새 방식으로 만들어 고치기 전↔후를 나란히 들려준다 · 기본은 15원짜리 시험',
-    inputs: [{ k: 'scope', label: '얼마나', type: 'select',
-               opts: ['문제 구간만 시험 (약 25원)', '한 편 전부 (약 400원)'] },
-             { k: 'episode', label: '회차 (비우면 가장 최근)', type: 'text', def: '' },
-             { k: 'cut', label: '들어볼 컷', type: 'text', def: 'H05' }] },
+    desc: '목소리를 새로 만들어 고치기 전↔후를 나란히 들려줍니다',
+    inputs: [{ k: 'scope', label: '얼마나 고칠까요', type: 'select',
+               help: '먼저 싼 쪽으로 들어보시고, 괜찮으면 전부 고치시길 권합니다.',
+               opts: [{ v: '문제 구간만 시험 (약 25원)', t: '문제된 부분만 (약 25원)' },
+                      { v: '한 편 전부 (약 400원)', t: '한 편 전부 (약 400원)' }] },
+             { k: 'episode', label: '회차 번호', type: 'text', def: '',
+               help: '비워 두면 가장 최근 회차입니다.' },
+             { k: 'cut', label: '들어볼 장면', type: 'text', def: 'H05',
+               help: '장면 번호입니다. 쉼표로 여러 개 적을 수 있습니다.' }] },
+
   // hidden — 실행 목록에는 안 보이고 '영상 보기' 화면의 [다시 만들기] 버튼만 부른다.
   // 여기 적어 두는 이유는 /api/run 이 **이 명단에 있는 것만** 실행하기 때문이다.
   { file: 'thumbnail.yml', name: '썸네일 다시 만들기', desc: '', inputs: [], hidden: true },
@@ -84,9 +133,9 @@ const VIDEO_LABEL = {
 };
 
 const STAGE_LABEL = {
-  selected: '소재 선정', scripting: '대본 작성 중', evaluated: '대본 완료',
-  rendering: '영상 제작 중', uploaded_private: '검수 대기', approved: '승인됨',
-  published: '공개됨',
+  selected: '소재만 고름', scripting: '대본 쓰는 중', evaluated: '대본 다 됨',
+  rendering: '영상 만드는 중', uploaded_private: '유튜브에 비공개로 올림',
+  approved: '공개 준비됨', published: '유튜브 공개됨',
 };
 
 // ── GitHub 호출 (토큰은 여기서만 쓰인다) ───────────────────
@@ -273,15 +322,15 @@ function home() {
 
   let h = '';
   h += '<div class="card"><h2>지금 상태</h2>';
-  h += row('소재 대기열', (S.queue||[]).length + '건');
-  h += row('제작 가능 (심사 통과)', ready.length + '건');
-  h += row('심사 안 한 판례', ungated.length + '건');
-  h += row('만든 회차', eps.length + '편');
-  h += row('에셋', (S.assets ? S.assets.have + ' / ' + S.assets.need : '-'));
+  h += row('모아 둔 재판 기록', (S.queue||[]).length + '건');
+  h += row('대본 만들 수 있는 소재', ready.length + '건');
+  h += row('아직 안 살펴본 기록', ungated.length + '건');
+  h += row('지금까지 만든 편수', eps.length + '편');
+  h += row('그림·소리 준비', (S.assets ? S.assets.have + ' / ' + S.assets.need + ' 개' : '-'));
   h += '</div>';
 
   h += '<div class="card"><h2>회차</h2>';
-  if (!eps.length) h += '<div class="empty">아직 만든 회차가 없습니다.<br>아래 <b>2. 대본 만들기</b>를 눌러 시작하십시오.</div>';
+  if (!eps.length) h += '<div class="empty">아직 만든 영상이 없습니다.<br>아래 <b>2. 대본 만들기</b>를 눌러 시작하십시오.</div>';
   eps.forEach(([id, v]) => {
     const st = STAGE[v.stage] || v.stage || '-';
     const cls = v.stage === 'published' ? 'ok' : (v.stage === 'uploaded_private' ? 'wait' : 'go');
@@ -291,16 +340,17 @@ function home() {
     if (v.longform_id) btns += '<a class="mini" target="_blank" rel="noopener" '
       + 'href="https://youtu.be/' + esc(v.longform_id) + '">유튜브</a>';
     h += '<div class="ep"><div class="ep-top"><div><b>' + id + '</b>'
-      + '<small>' + esc(v.case_type||'') + ' · 소재 ' + (v.gate_score??'-') + '점 · 대본 ' + (v.script_score??'-') + '점</small></div>'
+      + '<small>' + esc(v.case_type||'') + ' · 소재 점수 ' + (v.gate_score??'-') + '점 · 대본 점수 ' + (v.script_score??'-') + '점</small></div>'
       + '<span class="pill ' + cls + '">' + st + '</span></div>'
       + '<div class="btns">' + btns + '</div></div>';
   });
   h += '</div>';
 
-  h += '<div class="card"><h2>대기열 (점수순)</h2>';
-  if (!(S.queue||[]).length) h += '<div class="empty">판례가 없습니다. <b>1. 판례 수집</b>을 먼저 누르십시오.</div>';
+  h += '<div class="card"><h2>소재 대기열 <small style="font-weight:400;color:#9599ab">'
+     + '— 점수가 높을수록 이야기가 잘 나오는 재판 기록입니다</small></h2>';
+  if (!(S.queue||[]).length) h += '<div class="empty">모아 둔 기록이 없습니다. <b>1. 재판 기록 모으기</b>를 먼저 누르십시오.</div>';
   (S.queue||[]).slice(0, 12).forEach(q => {
-    const mark = q.gate_pass ? '' : (q.gate_score == null ? ' <span class="pill">심사 전</span>' : ' <span class="pill">폐기</span>');
+    const mark = q.gate_pass ? '' : (q.gate_score == null ? ' <span class="pill">아직 안 살펴봄</span>' : ' <span class="pill">쓰지 않기로 함</span>');
     const nm = q.case_type || q['사건명'] || ('판례 ' + q.case_id);
     // 심사에서 이미 떨어진 소재(폐기)는 버튼을 안 단다. 나머지는 눌러도 안전하다 —
     // '둘다' 모드라 심사부터 하고, 떨어지면 대본을 만들지 않고 멈추기 때문이다.
@@ -319,7 +369,8 @@ function home() {
   });
   h += '</div>';
 
-  h += '<div class="card"><h2>실행</h2>';
+  h += '<div class="card"><h2>실행 <small style="font-weight:400;color:#9599ab">'
+     + '— 위에서부터 차례대로 누르시면 됩니다</small></h2>';
   WF.forEach((w, i) => {
     // hidden 은 버튼 전용이라 목록에 안 띄운다. 자리(i)는 그대로 둔다 — run(i) 가 쓴다.
     if (w.hidden) return;
@@ -327,10 +378,19 @@ function home() {
     w.inputs.forEach(inp => {
       h += '<label>' + esc(inp.label);
       if (inp.type === 'select')
-        h += '<select id="i_'+i+'_'+inp.k+'">' + inp.opts.map(o => '<option>' + esc(o) + '</option>').join('') + '</select>';
+        // opts 는 '값' 또는 {v:보내는 값, t:보이는 글}. 보내는 값은 워크플로가 아는
+        // 글자 그대로여야 하므로, 쉬운 말은 **보이는 글**에만 쓴다.
+        h += '<select id="i_'+i+'_'+inp.k+'">' + inp.opts.map(o => {
+          const v = (o && o.v !== undefined) ? o.v : o;
+          const t = (o && o.t !== undefined) ? o.t : (o === '' ? '(전체)' : o);
+          return '<option value="' + esc(v) + '">' + esc(t) + '</option>';
+        }).join('') + '</select>';
       else
         h += '<input id="i_'+i+'_'+inp.k+'" value="' + esc(inp.def || '') + '">';
       h += '</label>';
+      if (inp.help)
+        h += '<div style="color:#9599ab;font-size:12.5px;margin:-6px 0 10px;line-height:1.5">'
+           + esc(inp.help) + '</div>';
     });
     h += '<div style="height:12px"></div><button onclick="run(' + i + ')">실행</button></div>';
   });
@@ -632,10 +692,10 @@ function render(ep, d, sh) {
   h += '<div class="card"><h2>' + ep + '</h2>';
   h += '<div style="font-size:18px;font-weight:700;margin-bottom:6px">' + esc((m.title_candidates||[''])[0]) + '</div>';
   h += '<div style="color:#9599ab;font-size:14px;margin-bottom:12px">' + esc(m.logline||'') + '</div>';
-  h += row('길이', mmss(total) + ' · ' + cuts.length + '컷');
-  h += row('사건 유형', esc(m.case_type||'-'));
+  h += row('영상 길이', mmss(total) + ' · 장면 ' + cuts.length + '개');
+  h += row('무슨 사건인가', esc(m.case_type||'-'));
   (a.amounts_used||[]).forEach(x => { h += row(esc(x.label), esc(x.value)); });
-  h += row('인용 조문', esc(((d.law||{}).refs_from_case||[]).join(', ') || '없음'));
+  h += row('근거가 된 법 조항', esc(((d.law||{}).refs_from_case||[]).join(', ') || '없음'));
   h += '</div>';
 
   h += '<div class="card"><h2>등장인물</h2>';
@@ -645,14 +705,15 @@ function render(ep, d, sh) {
   });
   h += '</div>';
 
-  h += '<div class="card"><h2>먼저 볼 세 곳</h2>';
+  h += '<div class="card"><h2>먼저 볼 세 곳 <small style="font-weight:400;color:#9599ab">'
+     + '— 여기만 보셔도 대본이 괜찮은지 알 수 있습니다</small></h2>';
   const first = ((d.acts||[])[0]||{}).cuts||[];
-  if (first[0]) h += hi('3초 관문 · 첫 컷 ' + first[0].sec + '초',
+  if (first[0]) h += hi('맨 처음 ' + first[0].sec + '초 — 여기서 사람이 남거나 떠납니다',
     who(first[0].speaker) + ': 「' + esc(first[0].text) + '」');
   const ang = tag('anger_line');
-  if (ang) h += hi('분노 대사 · 쇼츠 2번이 될 한 줄', who(ang.speaker) + ': 「' + esc(ang.text) + '」');
+  if (ang) h += hi('가장 화나는 대사 — 쇼츠 2번이 될 한 줄', who(ang.speaker) + ': 「' + esc(ang.text) + '」');
   const ver = tag('verdict');
-  if (ver) h += hi('판결 · 금액이 박히는 순간', esc(ver.text));
+  if (ver) h += hi('판결 — 금액이 나오는 순간', esc(ver.text));
   h += '</div>';
 
   if (sh && (sh.shorts||[]).length) {
