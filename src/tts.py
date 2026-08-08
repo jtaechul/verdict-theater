@@ -22,6 +22,7 @@
 
 import argparse
 import base64
+import bisect
 import hashlib
 import json
 import math
@@ -523,12 +524,17 @@ def recipe(speaker, model, text="", way=None):
     # **뒷문장이 옆 컷으로 넘어간 채** 보관돼 있어서, 표시를 올려 전부 새로 만든다.
     # 지시문·목소리는 그대로다 — 소리 톤은 안 바뀌고 잘리는 자리만 바로잡힌다.
     #
+    # g5 (2026-08-08): '긴 쉼' 방식도 A1-18("바쁘잖니. 네가…")에서 빗나갔다 —
+    # 배우가 줄 안에서 줄 사이보다 길게 쉬었다. 쉼·글자 함께 보기(_pick_best)로
+    # 고치고 표시를 올린다. ⭐ 이번에는 '한 통 원본'이 보관돼 있으므로
+    # **새로 부르지 않고 다시 자르기만 한다 — 0원** (지난번 650원과 다른 점).
+    #
     # ⭐ way 인자(2026-08-08): 컷마다 따로 만든 음성은 **자르기와 무관하다** —
     #    한 통을 자른 적이 없기 때문이다. 그래서 따로 만든 컷은 way="s1" 로 적는다.
     #    다음에 자르기를 또 고쳐 g4→g5 로 올려도 s1 컷은 지워지지 않는다.
     #    (묶어 만든 컷은 잘린 자리가 파일에 박혀 있으므로 g표시를 그대로 따른다)
     if way is None:
-        way = "g4" if GROUP_ON else "s1"
+        way = "g5" if GROUP_ON else "s1"
     return f"{model}|{voice}|{speed:.2f}|{h}|{way}"
 
 
@@ -1154,6 +1160,69 @@ def _pick_cuts(cands, want, total, fracs):
     return [cands[k] for k in picked]
 
 
+def _pick_best(cands, want, total, chars):
+    """자를 자리 고르기 1차 — **쉼의 길이와 글자 분량을 함께** 본다.
+
+    왜 (2026-08-08 · A1-18 "너희 형은 바쁘잖니. 네가 고생이 많다." 사고):
+      '가장 긴 쉼'만 보면, 배우가 줄 **안**의 마침표에서 줄 사이보다 길게
+      쉬어 버린 경우(연기) 그 자리를 경계로 뽑는다 → 뒷문장이 옆 컷으로 넘어간다.
+      '글자 위치 짐작'만 보면 쉼 시간을 무시해 딴 사고가 난다(_pick_cuts 참조).
+      그래서 둘을 합친다: 도막마다 (쉼을 뺀) **말 시간 ÷ 글자 수**가 고르게
+      나오는 나눔 가운데, **긴 쉼을 자르는 자리로 쓰는** 쪽을 고른다.
+      말이 빨라지고 느려져도(실측 1.6배) 글자 맞춤이 무너지지 않도록,
+      벌점은 비율의 로그로 재고 쉼 보너스가 동률을 가른다."""
+    m = len(cands)
+    if m < want or want <= 0:
+        return None
+    share = [c / (sum(chars) or 1) for c in chars]
+    tot_speech = max(0.5, total - sum(d for _, d in cands))
+    ts = [c[0] for c in cands]
+    cum = [0.0]
+    for _, d in cands:
+        cum.append(cum[-1] + d)
+
+    def speech(a, da, b, db):
+        i, j = bisect.bisect_right(ts, a), bisect.bisect_left(ts, b)
+        return max(0.05, (b - a) - (cum[j] - cum[i]) - da / 2.0 - db / 2.0)
+
+    def pen(a, da, b, db, k):
+        return abs(math.log(speech(a, da, b, db)
+                            / max(0.05, share[k] * tot_speech)))
+
+    BONUS = 1.0          # 쉼 1초(log1p≈0.69)가 글자 벌점 0.69 만큼의 값어치
+    INF = float("inf")
+    dp = [[INF] * m for _ in range(want)]
+    bk = [[-1] * m for _ in range(want)]
+    for j in range(m):
+        t, d = cands[j]
+        dp[0][j] = pen(0.0, 0.0, t, d, 0) - BONUS * math.log1p(d)
+    for i in range(1, want):
+        for j in range(i, m):
+            t, d = cands[j]
+            for k in range(i - 1, j):
+                if dp[i - 1][k] >= INF:
+                    continue
+                v = (dp[i - 1][k] + pen(cands[k][0], cands[k][1], t, d, i)
+                     - BONUS * math.log1p(d))
+                if v < dp[i][j]:
+                    dp[i][j], bk[i][j] = v, k
+    best, bj = INF, -1
+    for j in range(want - 1, m):
+        if dp[want - 1][j] >= INF:
+            continue
+        v = dp[want - 1][j] + pen(cands[j][0], cands[j][1], total, 0.0, want)
+        if v < best:
+            best, bj = v, j
+    if bj < 0:
+        return None
+    picked, j = [], bj
+    for i in range(want - 1, -1, -1):
+        picked.append(cands[j])
+        j = bk[i][j]
+    picked.reverse()
+    return picked
+
+
 def _pick_by_pause(cands, want):
     """자를 자리를 **쉼의 길이**로 고른다 — 가장 긴 쉼 want 개.
 
@@ -1187,6 +1256,17 @@ def _check_segs(segs, chars, lines, why):
         who = ", ".join(lines[i][0] for i in bad[:3])
         print(f"      길이가 글자 수와 안 맞는 도막이 있다({who}) — {why}")
         return False
+    # ⭐ 이웃 짝 검사 (2026-08-08 · A1-18 사고가 이 검사를 빠져나가 영상까지 갔다):
+    #    뒷문장이 옆 컷으로 넘어가면 **모자란 도막 + 남아도는 옆 도막**이 짝으로
+    #    생긴다. 각각은 위의 넉넉한 띠(50~200%) 안에 들 수 있지만(실측 52%·155%),
+    #    바로 이웃한 두 도막이 반대 방향으로 함께 벗어나는 일은 정상 낭독에는 없다
+    #    (말 빠르기 들쭉날쭉은 67%·133% 수준 — 시험 7 기준). 짝으로 보면 잡힌다.
+    for i in range(len(per) - 1):
+        lo, hi = min(per[i], per[i + 1]), max(per[i], per[i + 1])
+        if lo < 0.62 * mid and hi > 1.45 * mid:
+            print(f"      이웃 도막 길이가 서로 어긋난다"
+                  f"({lines[i][0]}·{lines[i + 1][0]}) — {why}")
+            return False
     return True
 
 
@@ -1236,7 +1316,8 @@ def split_group(big, lines, out):
         # 있는 것만 후보로 삼는다.
         cands = [c for c in _silences(big, noise, dur)
                  if c[0] - c[1] / 2 > 0.15 and c[0] + c[1] / 2 < total - 0.15]
-        for how, picked in (("긴 쉼", _pick_by_pause(cands, n - 1)),
+        for how, picked in (("쉼·글자 맞춤", _pick_best(cands, n - 1, total, chars)),
+                            ("긴 쉼", _pick_by_pause(cands, n - 1)),
                             ("위치 짐작", _pick_cuts(cands, n - 1, total, fracs))):
             if not picked:
                 continue
@@ -1606,6 +1687,222 @@ def align_narrator(pool, key, cuts, out, pin, book, gmap):
         pass
     if spread > ALIGN_SPREAD:
         print(f"  ⚠️ 해설 통 폭이 아직 {spread:.1f}반음이다 — 검사기가 알려줄 것이다")
+
+
+# ─────────────────────────────────────────────────────────────────────
+# 받아쓰기 대조 (2026-08-08 손님 지시: "나레이션 누락되는 거 없도록")
+#
+# 지금까지의 자르기 검사는 전부 **길이로 짐작**한다 — 그래서 A1-19(g3),
+# A1-18(g4) 두 번이나 "자막엔 있는데 소리엔 없는 문장"이 빠져나가 영상까지 갔다.
+# 여기서는 만든 소리를 AI에게 **받아 적게 해 대본과 글자로 대조**한다.
+# 내용을 직접 확인하는 것이라 이 사고 유형을 원천에서 잡는다.
+# 값: 통마다 한 번씩 묶어 부르므로 한 편에 약 3~5원.
+# ─────────────────────────────────────────────────────────────────────
+
+STT_ON = os.environ.get("VT_STT", "1").strip().lower() \
+    not in ("", "0", "off", "no", "false")
+STT_MODEL = os.environ.get("VT_STT_MODEL", "gemini-2.5-flash")
+STT_GAP = 1.5              # 조각 사이에 넣는 무음(초) — 경계 표시
+STT_FIX_MAX = 2            # 한 실행에서 통째로 다시 만드는 통의 최대 수 (돈 제한)
+
+
+def transcribe_pieces(key, files):
+    """조각 mp3 들을 무음으로 이어 붙여 **한 번에** 받아 적게 한다.
+
+    돌려주는 것: 조각별 받아 적은 글(파일 수와 같은 길이) 또는 None(전사 실패).
+    조각마다 따로 부르면 145번 호출이라 속도 제한에 걸린다 — 그래서 묶는다."""
+    if not files:
+        return []
+    tmp = files[0].parent / "_stt_batch.mp3"
+    ins, chain, k = [], [], 0
+    for i, p in enumerate(files):
+        if i:
+            ins += ["-f", "lavfi", "-t", f"{STT_GAP}",
+                    "-i", "anullsrc=r=24000:cl=mono"]
+            chain.append(f"[{k}:a]")
+            k += 1
+        ins += ["-i", str(p)]
+        chain.append(f"[{k}:a]")
+        k += 1
+    try:
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error"] + ins +
+                       ["-filter_complex",
+                        "".join(chain) + f"concat=n={k}:v=0:a=1[a]",
+                        "-map", "[a]", "-b:a", "96k", str(tmp)],
+                       check=True, timeout=300)
+        blob = base64.b64encode(tmp.read_bytes()).decode("ascii")
+    except Exception:
+        return None
+    finally:
+        tmp.unlink(missing_ok=True)
+
+    prompt = (f"첨부한 음성은 한국어 문장 조각 {len(files)}개를 무음으로 나눠 이어"
+              " 붙인 것이다. 각 조각을 들리는 그대로 받아 적어라."
+              " 조각마다 정확히 한 줄씩, 순서대로, 번호나 다른 말 없이 적어라.")
+    try:
+        res = _post_retry(
+            f"{BASE}/models/{STT_MODEL}:generateContent?key={key}",
+            {"contents": [{"role": "user", "parts": [
+                {"text": prompt},
+                {"inlineData": {"mimeType": "audio/mp3", "data": blob}}]}]},
+            timeout=300, label=f"받아쓰기×{len(files)}")
+    except Exception:
+        return None
+    SPEND.add(res.get("usageMetadata"))
+    parts = (res.get("candidates") or [{}])[0].get("content", {}).get("parts", [])
+    text = "".join(p.get("text", "") for p in parts)
+    got = [re.sub(r"^\s*\d+[.)]\s*", "", ln).strip()
+           for ln in text.splitlines() if ln.strip()]
+    if len(got) != len(files):
+        # 조각 수가 안 맞으면 반으로 쪼개 다시 — 그래도 안 되면 포기(None)
+        if len(files) >= 2:
+            h = len(files) // 2
+            a = transcribe_pieces(key, files[:h])
+            b = transcribe_pieces(key, files[h:])
+            if a is not None and b is not None:
+                return a + b
+        return None
+    return got
+
+
+def _norm_ko(s):
+    return re.sub(r"[^가-힣a-zA-Z0-9]", "", s or "")
+
+
+def _piece_ok(expected, got):
+    """받아 적은 글에 대사의 **머리와 꼬리**가 다 있는지. 조금 다르게 적힌 것은 봐준다.
+
+    꼬리가 없으면 = 뒷문장이 옆 컷으로 넘어갔다(A1-18 사고).
+    머리가 다르면 = 옆 컷의 꼬리가 이 컷 머리에 붙었다(같은 사고의 반대쪽)."""
+    import difflib
+    e, g = _norm_ko(expected), _norm_ko(got)
+    if not e:
+        return True
+    if not g:
+        return False
+    tail = e[-6:]
+    tail_ok = tail in g[-(len(tail) + 8):] or difflib.SequenceMatcher(
+        None, tail, g[-(len(tail) + 4):]).ratio() >= 0.5
+    head = e[:6]
+    head_ok = head in g[:len(head) + 8] or difflib.SequenceMatcher(
+        None, head, g[:len(head) + 4]).ratio() >= 0.5
+    return tail_ok and head_ok
+
+
+def stt_verify(pool, key, cuts, out, pin, book, gmap):
+    """모든 컷을 받아 적어 대본과 대조한다. 어긋난 통은 통째로 다시 만든다.
+
+    돌려주는 것: True = 영상으로 가도 된다 / False = 사람이 봐야 한다(렌더링 중단).
+    전사 자체가 안 되면(모델 장애·키 없음) **막지 않고** 크게 알린다 —
+    '확인 못 함'으로 영상 전체를 세우면 장애 때마다 발이 묶이기 때문이다."""
+    if not STT_ON or not key:
+        return True
+    todo = [c for c in cuts if (c.get("text") or "").strip()
+            and (out / f"{c['id']}.mp3").exists()
+            and not (out / f"{c['id']}.silent").exists()]
+    if not todo:
+        return True
+
+    def batches(items):
+        """통(take)별로 묶고, 이름표 없는 컷은 10개씩 묶는다."""
+        by_sig, solo, order = {}, [], []
+        for c in items:
+            sig = gmap.get(c["id"])
+            if sig:
+                if sig not in by_sig:
+                    order.append(sig)
+                by_sig.setdefault(sig, []).append(c)
+            else:
+                solo.append(c)
+        got = [(sig, by_sig[sig]) for sig in order]
+        for i in range(0, len(solo), 10):
+            got.append((None, solo[i:i + 10]))
+        return got
+
+    def check_batch(sig, group):
+        files = [out / f"{c['id']}.mp3" for c in group]
+        texts = transcribe_pieces(key, files)
+        if texts is None:
+            return None
+        return [c for c, t in zip(group, texts)
+                if not _piece_ok(c.get("text", ""), t)]
+
+    bad, unread = {}, 0
+    n_checked = 0
+    for sig, group in batches(todo):
+        miss = check_batch(sig, group)
+        if miss is None:
+            unread += len(group)
+            continue
+        n_checked += len(group)
+        if miss:
+            bad[sig] = (group, miss)
+    if unread:
+        print(f"  ⚠️ 받아쓰기 대조: {unread}컷은 전사가 안 돼 확인 못 했다")
+    if not bad:
+        if n_checked:
+            print(f"  받아쓰기 대조: {n_checked}컷 전부 대본과 맞다")
+        return True
+
+    for sig, (group, miss) in bad.items():
+        print(f"  ⚠️ 받아쓰기 대조: {', '.join(c['id'] for c in miss)} —"
+              " 대사의 머리/꼬리가 소리에 없다")
+
+    # ── 자동 수선: 어긋난 통은 **통째로 새로 읽혀** 다시 자른다 ──
+    #    (원본 통도 지운다 — 그 통의 소리·자름을 더는 믿을 수 없다.
+    #     낱개로 고치면 목소리가 흩어지는 옛 병이 재발한다. 통 값 약 30~60원.)
+    still = []
+    fixed = 0
+    for sig, (group, miss) in bad.items():
+        if fixed >= STT_FIX_MAX:
+            still += [c["id"] for c in miss]
+            continue
+        fixed += 1
+        sp = group[0].get("speaker", "narrator")
+        lines = [(c["id"], c["text"].strip()) for c in group]
+        name = "해설" if sp == "narrator" else sp
+        print(f"    {name} {lines[0][0]}~{lines[-1][0]} 통을 새로 읽혀 다시 맞춘다"
+              f" ({fixed}/{STT_FIX_MAX})")
+        for cid, _ in lines:
+            (out / f"{cid}.mp3").unlink(missing_ok=True)
+            gmap.pop(cid, None)
+        if sig:
+            (out / f"_master_{sig}.mp3").unlink(missing_ok=True)
+        newg = {}
+        _one_group(pool, key, sp, lines, out, pin, book, gbook=newg)
+        gmap.update(newg)
+        # 통으로 못 만든 컷은 낱개로 채운다 (없는 것보다 낫다)
+        for c in group:
+            p = out / f"{c['id']}.mp3"
+            if not p.exists():
+                e, m2 = make_one(pool, key, c["text"].strip(), sp, p,
+                                 pinned=pin.get(sp))
+                if e is None:
+                    book[c["id"]] = recipe(sp, m2, c["text"].strip(), way="s1")
+        holes = [c["id"] for c in group if not (out / f"{c['id']}.mp3").exists()]
+        if holes:
+            still += holes                 # 소리 자체를 못 만들었다 — 사람이 봐야 한다
+            continue
+        miss2 = check_batch(sig, group)
+        if miss2 is None:
+            print("    다시 만든 통은 전사가 안 돼 확인 못 했다 — 그대로 쓴다")
+        elif miss2:
+            still += [c["id"] for c in miss2]
+
+    try:
+        (out / "groups.json").write_text(json.dumps(gmap, ensure_ascii=False),
+                                         encoding="utf-8")
+    except Exception:
+        pass
+    if still:
+        print("", file=sys.stderr)
+        print(f"오류: 받아쓰기 대조에서 {len(still)}컷의 대사가 소리와 안 맞습니다"
+              f" ({', '.join(still[:6])}).", file=sys.stderr)
+        print("      다시 만들어도 안 맞아, 사람이 들어봐야 합니다."
+              " 렌더링을 멈춥니다.", file=sys.stderr)
+        return False
+    print("  받아쓰기 대조: 수선 후 전부 대본과 맞다")
+    return True
 
 
 def measure_f0(path):
@@ -2397,17 +2694,28 @@ def main():
     # ⭐ 컷마다 '어느 통에서 나왔는지' 를 남기고, 해설 통끼리 높이를 맞춘다.
     #    2026-08-08: 검사기가 통 하나 높았던 해설(폭 5.1반음)을 막아 실행이
     #    실패했다. 여기서 미리 재고, 벌어진 통만 소액으로 다시 읽혀 맞춘다.
+    gmap = {}
     try:
         gmap = map_groups(cuts, out, pin, gbook)
         align_narrator(pool, key, cuts, out, pin, book, gmap)
     except Exception as e:
         print(f"  ⚠️ 해설 통 맞추기를 건너뛴다({type(e).__name__})")
 
+    # ⭐ 받아쓰기 대조 — 자막에 있는 문장이 소리에도 다 있는지 **내용으로** 확인.
+    #    어긋난 통은 여기서 다시 만들고, 그래도 안 맞으면 렌더링 전에 멈춘다.
+    stt_ok = True
+    try:
+        stt_ok = stt_verify(pool, key, cuts, out, pin, book, gmap)
+    except Exception as e:
+        print(f"  ⚠️ 받아쓰기 대조를 건너뛴다({type(e).__name__})")
+
     try:
         (out / "recipe.json").write_text(json.dumps(book, ensure_ascii=False),
                                          encoding="utf-8")
     except Exception:
         pass
+    if not stt_ok:
+        return 1                # 조리법·이름표는 적어 뒀다 — 보관함은 그대로 산다
 
     # ⭐ 마지막으로 인물마다 목소리 높이를 고른다. 같은 모델·같은 목소리인데도
     #    대사 감정에 따라 24Hz 씩 흔들려(실측) 같은 사람으로 안 들리기 때문이다.

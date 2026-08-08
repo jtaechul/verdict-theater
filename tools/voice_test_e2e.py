@@ -102,15 +102,28 @@ def install_fakes(drift=True):
                        check=True)
         return out_mp3
 
+    def fake_stt(key, files):
+        # 받아쓰기 대조는 제 시험(voice_test_stt.py)이 어긋난 경우까지 본다.
+        # 여기서는 '소리가 대본대로 들렸다'고 되돌려 흐름만 잇는다.
+        return [ECHO.get(f.stem, "") for f in files]
+
     tts.tts_models = fake_models
     tts.synth_one = fake_one
     tts.synth_group = fake_group
+    tts.transcribe_pieces = fake_stt
+
+
+ECHO = {}          # 컷 id → 대본 문장 (가짜 받아쓰기가 돌려줄 값)
 
 
 def run_main(out, extra=()):
     argv = sys.argv
     sys.argv = ["tts.py", str(ROOT / "data/scripts/EP001.json"), "--out", str(out), *extra]
     try:
+        doc_ = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+        ECHO.clear()
+        ECHO.update({c["id"]: (c.get("text") or "")
+                     for a in doc_["acts"] for c in a["cuts"]})
         return tts.main()
     finally:
         sys.argv = argv
@@ -196,6 +209,9 @@ install_fakes()
 argv = sys.argv
 sys.argv = ["tts.py", str(tmp_script), "--out", str(OUT)]
 try:
+    ECHO.clear()
+    ECHO.update({c["id"]: (c.get("text") or "")
+                 for a in doc["acts"] for c in a["cuts"]})   # 고친 대본 기준으로
     tts.main()
 finally:
     sys.argv = argv

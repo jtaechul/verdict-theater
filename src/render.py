@@ -1359,6 +1359,15 @@ TONE_MAX = float(os.environ.get("VT_TONE_MAX", "0"))
 TONE_MIN = 0.8              # 이보다 작은 차이는 귀에 안 들린다
 _TONE = {}                  # {컷id: ffmpeg 필터 문자열}
 
+# ⭐ 전체 배속 (2026-08-08 손님 지시: "지금보다 1.2배 더 빠르게").
+#    음성은 이미 만들 때 1.12배로 빨라져 있고, 여기서 **조립할 때** 1.2배를
+#    더 건다(합계 약 1.34배). 높낮이는 안 변한다(atempo 는 박자만 바꾼다).
+#    ⚠️ 여기서 거는 이유: 만들 때 배속을 바꾸면 조리법이 바뀌어 음성 전체를
+#    다시 사야 한다(약 650원). 조립 단계는 이미 산 소리를 그대로 쓰므로 0원이고,
+#    마음에 안 들면 이 숫자만 고쳐 다시 조립하면 된다.
+#    컷 길이(대본 초)도 같은 비율로 줄여 화면 전환까지 함께 빨라진다.
+TEMPO = max(0.5, min(2.0, float(os.environ.get("VT_TEMPO", "1.2"))))
+
 
 def _tone_filter(g_low, g_high):
     parts = []
@@ -1497,7 +1506,8 @@ def build_audio(doc, durs, workdir, narration_dir=None):
             inputs += ["-i", str(nar)]
             # 음색을 먼저 맞추고 그다음 크기를 맞춘다 (set_voice_gains 와 같은 순서)
             tone = _TONE.get(cut.get("nar_id", cut["id"]), "")
-            filters.append(f"[{mixn}:a]adelay=250|250,"
+            tempo = f"atempo={TEMPO:.3f}," if abs(TEMPO - 1.0) > 0.001 else ""
+            filters.append(f"[{mixn}:a]{tempo}adelay=250|250,"
                            + (tone + "," if tone else "")
                            + f"volume={g:+.1f}dB[a{mixn}]")
             mixn += 1
@@ -1688,11 +1698,13 @@ def cut_durations(doc, narration_dir=None):
     durs = []
     for act in doc["acts"]:
         for c in act["cuts"]:
-            d = float(c.get("sec", 6.0))
+            # 배속(TEMPO)만큼 대본 초도 줄인다 — 말만 빨라지고 화면이 그대로면
+            # 컷 뒤가 빈 채로 남아 오히려 늘어진다. 쉼 0.6초는 그대로 둔다.
+            d = float(c.get("sec", 6.0)) / TEMPO
             if narration_dir:
                 p = Path(narration_dir) / f"{c.get('nar_id', c['id'])}.mp3"
                 if p.exists():
-                    d = max(d, ffprobe_dur(p) + 0.6)
+                    d = max(d, ffprobe_dur(p) / TEMPO + 0.6)
             durs.append(round(d, 3))
     return durs
 

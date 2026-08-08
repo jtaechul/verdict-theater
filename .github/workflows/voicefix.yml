@@ -82,6 +82,7 @@ jobs:
           python3 tools/voice_test_group.py
           python3 tools/voice_test_pitch.py
           python3 tools/voice_test_guard.py
+          python3 tools/voice_test_stt.py
 
       # 전체 흐름 시험(tools/voice_test_e2e.py)은 **여기에 넣지 않는다.**
       #   가짜 음성 500개를 ffmpeg 로 만드느라 18분이 걸린다. 12분짜리 영상을

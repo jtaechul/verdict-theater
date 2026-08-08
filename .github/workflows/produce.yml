@@ -127,6 +127,7 @@ jobs:
           python3 tools/voice_test_group.py
           python3 tools/voice_test_pitch.py
           python3 tools/voice_test_guard.py
+          python3 tools/voice_test_stt.py
 
       # ⭐ 영상 맨 끝에 구독 유도 한 컷을 붙인다 (손님 선택 2026-08-07).
       #    대본에 컷으로 넣어야 **음성도 만들어지고** 자막·길이가 자동으로 따라온다.

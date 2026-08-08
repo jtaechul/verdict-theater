@@ -205,6 +205,45 @@ if made7:
           f"가장 큰 길이 오차 {worst7:.2f}초")
 
 print("\n" + "=" * 72)
+print("  시험 8 — 2026-08-08 실제 사고 재현: 줄 **안**의 쉼이 줄 사이보다 길다")
+print("=" * 72)
+# A1-18 "너희 형은 바쁘잖니. 네가 고생이 많다." — 어머니가 마침표에서 **연기로
+# 길게(1.4초)** 쉬었다. 줄 사이 쉼은 1.0초. '가장 긴 쉼' 규칙은 그 연기 쉼을
+# 자르는 자리로 골랐고, 뒷문장("네가 고생이 많다")이 옆 컷으로 넘어갔다.
+# 글자당 길이 검사(50~200%)도 그 정도(52%)는 통과시켜 **영상까지 나갔다.**
+# 새 방식(쉼·글자 함께)은 글자 분량이 맞아떨어지는 나눔을 골라야 한다.
+# 말 빠르기 들쭉날쭉(4번째 줄 1.5배 느림)까지 겹쳐도 버텨야 진짜 통과다.
+T.mkdir(parents=True, exist_ok=True)
+big8 = T / "big8.mp3"
+GAP8 = 1.0
+# 5줄 × 21자. 2번째 줄이 두 문장(1.6초 + **1.4초 쉼** + 1.6초), 4번째 줄은 느리다.
+parts8 = [("말", 3.0), ("쉼", GAP8),
+          ("말", 1.6), ("쉼", 1.4), ("말", 1.6), ("쉼", GAP8),
+          ("말", 3.0), ("쉼", GAP8),
+          ("말", 4.5), ("쉼", GAP8),
+          ("말", 3.0)]
+L8 = [(f"D{i}", "가" * 21) for i in range(1, 6)]
+build(parts8, big8)
+for cid, _ in L8:
+    (T / f"{cid}.mp3").unlink(missing_ok=True)
+made8 = tts.split_group(big8, L8, T)
+check("연기 쉼(1.4초)에 안 속고 잘랐다", bool(made8) and len(made8) == 5,
+      f"(잘린 컷 {0 if not made8 else len(made8)}/5)")
+if made8:
+    # 도막마다 '말' 이 통째로 들어갔는지 — 특히 D2가 두 문장(1.6+1.4+1.6=4.6초)을
+    # 다 담아야 한다. 반만 담겼으면(1.6초) 사고 재발이다.
+    want8 = {"D1": 3.0, "D2": 4.6, "D3": 3.0, "D4": 4.5, "D5": 3.0}
+    worst8 = 0.0
+    for cid, _t in L8:
+        r = subprocess.run(["ffprobe", "-v", "error", "-show_entries",
+                            "format=duration", "-of", "csv=p=0", str(T / f"{cid}.mp3")],
+                           capture_output=True, text=True)
+        got = float(r.stdout.strip())
+        worst8 = max(worst8, abs(got - want8[cid] - 0.25))   # 양끝 쉼 0.10+0.15 몫
+    check("뒷문장까지 통째로 제 컷에 들어갔다", worst8 < 0.6,
+          f"가장 큰 길이 오차 {worst8:.2f}초")
+
+print("\n" + "=" * 72)
 print("  모두 통과" if not fails else f"  실패 {len(fails)}건: {fails}")
 print("=" * 72)
 sys.exit(1 if fails else 0)
