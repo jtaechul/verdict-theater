@@ -301,9 +301,21 @@ function home() {
   if (!(S.queue||[]).length) h += '<div class="empty">판례가 없습니다. <b>1. 판례 수집</b>을 먼저 누르십시오.</div>';
   (S.queue||[]).slice(0, 12).forEach(q => {
     const mark = q.gate_pass ? '' : (q.gate_score == null ? ' <span class="pill">심사 전</span>' : ' <span class="pill">폐기</span>');
+    const nm = q.case_type || q['사건명'] || ('판례 ' + q.case_id);
+    // 심사에서 이미 떨어진 소재(폐기)는 버튼을 안 단다. 나머지는 눌러도 안전하다 —
+    // '둘다' 모드라 심사부터 하고, 떨어지면 대본을 만들지 않고 멈추기 때문이다.
+    // ⚠️ 소재 이름을 onclick 문자열에 직접 끼우지 않는다(따옴표가 들어 있으면
+    //    페이지가 통째로 깨진다 — 8월 7일 무한로딩 사고와 같은 유형). data- 로 넘긴다.
+    const canGo = q.gate_pass || q.gate_score == null;
+    const btn = canGo && q.case_id
+      ? '<div class="btns" style="margin-top:6px"><button class="mini" '
+        + 'data-cid="' + esc(String(q.case_id)) + '" data-nm="' + esc(nm) + '" '
+        + 'onclick="makeScript(this.dataset.cid, this.dataset.nm)">이 소재로 대본 만들기</button></div>'
+      : '';
     h += '<div class="q"><b>' + (q.gate_score ?? q.machine_score ?? '-') + '점</b>'
-      + esc(q.case_type || q['사건명'] || '') + mark
-      + '<div style="color:#9599ab;font-size:13px;margin-top:3px">' + esc(q.one_line || '') + '</div></div>';
+      + esc(nm) + mark
+      + '<div style="color:#9599ab;font-size:13px;margin-top:3px">' + esc(q.one_line || '') + '</div>'
+      + btn + '</div>';
   });
   h += '</div>';
 
@@ -441,6 +453,23 @@ async function doUpload(ep, what) {
   } catch (e) { j = { ok: false, error: '연결이 끊겼습니다' }; }
   if (!j.ok) { toast('실패: ' + (j.error || '알 수 없는 이유'), 6000); return; }
   toast('올리기 시작했습니다. 다 되면 텔레그램으로 알려드립니다.', 9000);
+}
+
+async function makeScript(cid, nm) {
+  if (!confirm('「' + nm + '」 소재로 대본을 만듭니다.\\n\\n'
+             + '먼저 소재 심사를 하고, 떨어지면 대본을 만들지 않고 멈춥니다.\\n'
+             + '완성되면 텔레그램으로 알려드립니다. 진행할까요?')) return;
+  toast('대본 만들기를 시작하는 중…');
+  let j = {};
+  try {
+    const r = await fetch('/api/run', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file: 'script.yml',
+                             inputs: { mode: '둘다', 'case': String(cid) } }) });
+    j = await r.json();
+  } catch (e) { j = { ok: false, error: '연결이 끊겼습니다' }; }
+  if (!j.ok) { toast('실패: ' + (j.error || '알 수 없는 이유'), 6000); return; }
+  toast('시작했습니다 (10분 안팎). 완성 알림이 오면 대본을 읽어보시고, 괜찮으면 [3. 영상 만들기] 를 누르십시오.', 9000);
 }
 
 async function remakeOne(ep, what) {
