@@ -968,12 +968,15 @@ GROUP_MAX_CHARS = int(os.environ.get("TTS_GROUP_CHARS", "700"))   # 한 통에 �
 GROUP_MAX_LINES = int(os.environ.get("TTS_GROUP_LINES", "20"))    # 한 통에 넣을 최대 줄
 
 
-def plan_groups(cuts, out):
+def plan_groups(cuts, out, everything=False):
     """아직 안 만든 컷을 **인물별로, 대본 차례대로** 묶는다.
 
     차례를 지키는 이유: 영상에서 바로 이어 붙는 줄들이 같은 통에 들어가야 한다.
     손님이 지적한 H05→A1-01 이 그런 자리다(막은 다르지만 화면에서는 연속이다).
-    글자 수로 끊으므로 실제로 훅+1막 해설이 한 통에 들어간다."""
+    글자 수로 끊으므로 실제로 훅+1막 해설이 한 통에 들어간다.
+
+    everything=True 면 이미 만든 컷도 포함해 **대본 전체의 묶음 설계도**를 돌려준다.
+    (컷이 어느 통에서 나왔는지 이름표를 붙일 때 쓴다 — map_groups 참조)"""
     cur, groups = {}, []
 
     def flush(sp):
@@ -987,7 +990,7 @@ def plan_groups(cuts, out):
         if not text:
             continue
         p = out / f"{c['id']}.mp3"
-        if p.exists() and not p.with_suffix(".silent").exists():
+        if not everything and p.exists() and not p.with_suffix(".silent").exists():
             continue                       # 이미 있는 컷은 건드리지 않는다
         g = cur.setdefault(sp, [])
         if g and (sum(len(x[1]) for x in g) + len(text) > GROUP_MAX_CHARS
@@ -1290,7 +1293,7 @@ def _duration(path):
         return 0.0
 
 
-def _one_group(pool, key, sp, lines, out, pin, book, depth=0):
+def _one_group(pool, key, sp, lines, out, pin, book, depth=0, gbook=None):
     """묶음 하나를 만들어 자른다. 실패하면 **반으로 쪼개 한 번만 더** 해 본다.
 
     왜 반으로 쪼개나
@@ -1320,6 +1323,8 @@ def _one_group(pool, key, sp, lines, out, pin, book, depth=0):
         if made:
             for cid, text in lines:
                 book[cid] = recipe(sp, model, text)
+                if gbook is not None:
+                    gbook[cid] = keep.stem[len("_master_"):]
             print(f"    {name} 보관된 원본을 다시 잘라 {len(made)}컷"
                   f" ({lines[0][0]} ~ {lines[-1][0]}) — 새로 부르지 않음(0원)")
             return set(made)
@@ -1353,6 +1358,8 @@ def _one_group(pool, key, sp, lines, out, pin, book, depth=0):
         big.replace(keep)
         for cid, text in lines:
             book[cid] = recipe(sp, model, text)
+            if gbook is not None:
+                gbook[cid] = keep.stem[len("_master_"):]
         print(f"    {name} {len(made)}컷을 한 통으로 만들어 잘랐다"
               f" ({lines[0][0]} ~ {lines[-1][0]})")
         return set(made)
@@ -1361,14 +1368,14 @@ def _one_group(pool, key, sp, lines, out, pin, book, depth=0):
     if depth < 1 and len(lines) >= 4:
         half = len(lines) // 2
         print(f"    {name} {len(lines)}줄을 {half}+{len(lines) - half} 로 쪼개 다시 해 본다")
-        got = _one_group(pool, key, sp, lines[:half], out, pin, book, depth + 1)
-        got |= _one_group(pool, key, sp, lines[half:], out, pin, book, depth + 1)
+        got = _one_group(pool, key, sp, lines[:half], out, pin, book, depth + 1, gbook)
+        got |= _one_group(pool, key, sp, lines[half:], out, pin, book, depth + 1, gbook)
         return got
     print(f"    {name} {lines[0][0]}~{lines[-1][0]} 는 컷마다 따로 만든다")
     return set()
 
 
-def make_groups(pool, key, cuts, out, pin, book):
+def make_groups(pool, key, cuts, out, pin, book, gbook=None):
     """묶음마다 한 번씩 불러 만들고 잘라 넣는다. 성공한 컷 이름을 돌려준다.
 
     실패한 묶음은 **아무것도 남기지 않는다.** 그러면 뒤따르는 컷마다 만들기가
@@ -1399,13 +1406,206 @@ def make_groups(pool, key, cuts, out, pin, book):
             print(f"    {'해설' if sp == 'narrator' else sp} {len(lines)}줄 —"
                   " 앞의 두 묶음이 잇따라 실패해 더 시도하지 않는다 (값 아끼기)")
             continue
-        got = _one_group(pool, key, sp, lines, out, pin, book)
+        got = _one_group(pool, key, sp, lines, out, pin, book, gbook=gbook)
         miss = 0 if got else miss + 1
         done |= got
     if done:
         print(f"  한 번에 읽히기로 {len(done)}컷 완성"
               f" (컷마다 따로 만든 것은 {n_lines - len(done)}컷)")
     return done
+
+
+# ─────────────────────────────────────────────────────────────────────
+# 컷 → 통(take) 이름표 (groups.json)
+#
+# 2026-08-08 실패의 교훈: 목소리 검사가 컷 단위로만 재서, **같은 통에서 나온
+# 컷의 억양**(H02 +4.6반음)까지 '다른 사람'으로 오판해 실행을 막았다.
+# "한 통 안은 같은 목소리" 는 만든 방식이 보장하는 사실이므로, 어느 컷이
+# 어느 통에서 나왔는지를 파일로 남겨 검사기(voiceguard)와 아래 맞추기가 쓴다.
+# ─────────────────────────────────────────────────────────────────────
+
+def load_groups(out):
+    try:
+        return json.loads((out / "groups.json").read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def map_groups(cuts, out, pin, gbook):
+    """모든 컷에 '어느 통에서 나왔는지'(master_sig)를 붙여 groups.json 에 남긴다.
+
+    근거가 있는 것만 적는다 —
+      ① 이번 실행이 직접 만든 컷(gbook)          : 확실
+      ② 지난 실행이 남긴 기록(groups.json)        : 확실
+      ③ 보관된 원본(_master_*.mp3)이 있는 묶음    : 원본이 곧 증거
+    근거 없는 컷(컷마다 따로 만든 것)은 적지 않는다 — 그 컷은 저 혼자 한 통이다.
+    ③에서 반쪽 통도 본다: _one_group 은 실패 시 딱 한 번 반으로 쪼개므로,
+    통짜 원본이 없으면 앞반쪽·뒷반쪽 원본을 찾아 본다."""
+    gmap = load_groups(out)
+    gmap.update(gbook or {})
+    for sp, lines in plan_groups(cuts, out, everything=True):
+        model = pin.get(sp)
+        if not model:
+            continue
+        parts = []
+        if (out / f"_master_{master_sig(sp, model, lines)}.mp3").exists():
+            parts = [lines]
+        elif len(lines) >= 4:
+            half = len(lines) // 2
+            parts = [lines[:half], lines[half:]]
+        for part in parts:
+            sig = master_sig(sp, model, part)
+            if (out / f"_master_{sig}.mp3").exists():
+                for cid, _ in part:
+                    gmap.setdefault(cid, sig)
+    try:
+        (out / "groups.json").write_text(json.dumps(gmap, ensure_ascii=False),
+                                         encoding="utf-8")
+    except Exception:
+        pass
+    return gmap
+
+
+# 해설 통끼리 허용하는 높이 차. 검사기(voiceguard)의 SPREAD 문턱과 같아야 한다 —
+# 여기서 이만큼 못 맞추면 검사기가 막고, 여기서 맞추면 검사기가 통과시킨다.
+ALIGN_SPREAD = float(os.environ.get("VT_ALIGN_SPREAD", "5.0"))
+ALIGN_TRIES = int(os.environ.get("VT_ALIGN_TRIES", "2"))
+
+
+def align_narrator(pool, key, cuts, out, pin, book, gmap):
+    """해설 통(take)끼리 목소리 높이가 벌어졌으면 **가장 벗어난 통만** 다시 읽힌다.
+
+    왜 통 단위인가
+        한 통 안은 같은 목소리다(만든 방식이 보장). 통끼리는 호출이 달라서
+        어긋날 수 있다 — 2026-08-08 실측: 해설 통 하나가 다른 통들보다 높아
+        전체 폭 5.1반음으로 검사가 멈췄다. 컷 하나만 다시 만들면 목소리가
+        더 흩어진다(옛 병). 그래서 통째로만 다시 읽힌다.
+    돈
+        보통 0원(이미 맞으면 재지 않고 끝). 벌어졌을 때만 통당 한 번 호출
+        (약 30~60원), 최대 ALIGN_TRIES 번. **다시 읽혀서 오히려 더 벌어지면
+        예전 통을 되살린다** — 시도해서 더 나빠지는 일은 없다.
+    """
+    if not GROUP_ON or ALIGN_TRIES <= 0 or not key:
+        return
+    # 지난 실행이 도중에 죽어 남긴 챙겨두기 폴더가 있으면 지운다
+    shutil.rmtree(out / "_align_bak", ignore_errors=True)
+    narr = [c for c in cuts if c.get("speaker", "narrator") == "narrator"
+            and (c.get("text") or "").strip()]
+    text_of = {c["id"]: c["text"].strip() for c in narr}
+    f0 = {}
+
+    def hz(cid):
+        if cid not in f0:
+            p = out / f"{cid}.mp3"
+            f0[cid] = measure_f0(p) if (
+                p.exists() and not p.with_suffix(".silent").exists()) else None
+        return f0[cid]
+
+    def takes(m):
+        """통별 (컷 목록, 높이 가운뎃값). 2컷 이상 잰 통만 — 1컷 통은 억양에 흔들린다."""
+        got = {}
+        for c in narr:
+            sig = m.get(c["id"])
+            if sig:
+                got.setdefault(sig, []).append(c["id"])
+        meds = {}
+        for sig, cids in got.items():
+            vals = [v for v in (hz(c) for c in cids) if v]
+            if len(vals) >= 2:
+                meds[sig] = (cids, statistics.median(vals))
+        return meds
+
+    def spread_of(meds):
+        if len(meds) < 2:
+            return 0.0
+        vals = [12.0 * math.log2(v) for _, v in meds.values()]
+        return max(vals) - min(vals)
+
+    meds = takes(gmap)
+    spread = spread_of(meds)
+    if len(meds) < 2 or spread <= ALIGN_SPREAD:
+        if len(meds) >= 2:
+            print(f"  해설 통 맞추기: {len(meds)}통 폭 {spread:.1f}반음 — 손댈 것 없음")
+        return
+
+    order = {c["id"]: i for i, c in enumerate(narr)}
+    for t in range(ALIGN_TRIES):
+        # 다시 읽힐 통 고르기: **다른 통들의 가운데**에서 가장 벗어난 통.
+        # (자기를 뺀 나머지 기준이라야 공정하다 — 통이 2개뿐이면 서로 똑같이
+        #  벗어난 것이 되므로, 대본에서 나중에 나오는 통을 고른다: 앞 통이
+        #  이미 들려준 목소리가 기준이 되는 편이 자연스럽다)
+        def _off(kv):
+            others = [v for s2, (_, v) in meds.items() if s2 != kv[0]]
+            return abs(12.0 * math.log2(kv[1][1] / statistics.median(others)))
+        # 반올림해서 견주는 이유: 통이 2개면 서로의 벗어남이 수학적으로 같은데,
+        # 소수점 끝자리가 달라 동점 처리가 안 되면 앞 통을 고르는 수가 있다.
+        sig, (cids, med) = max(
+            meds.items(), key=lambda kv: (round(_off(kv), 3), order.get(kv[1][0][0], 0)))
+        center = statistics.median(
+            v for s2, (_, v) in meds.items() if s2 != sig)
+        off = 12.0 * math.log2(med / center)
+        print(f"  해설 통 맞추기: 전체 폭 {spread:.1f}반음 — "
+              f"{cids[0]}~{cids[-1]} 통({off:+.1f}반음)을 다시 읽힌다 ({t + 1}/{ALIGN_TRIES})")
+
+        # 예전 통을 챙겨 둔다 — 새 통이 더 나쁘면 되돌린다
+        bak = out / "_align_bak"
+        bak.mkdir(exist_ok=True)
+        master = out / f"_master_{sig}.mp3"
+        saved = []
+        for f in [out / f"{c}.mp3" for c in cids] + [master]:
+            if f.exists():
+                f.replace(bak / f.name)
+                saved.append(f.name)
+        for c in cids:
+            gmap.pop(c, None)
+            f0.pop(c, None)
+
+        masters_before = {p.name for p in out.glob("_master_*.mp3")}
+        newg = {}
+        lines = [(c, text_of[c]) for c in cids if c in text_of]
+        made = _one_group(pool, key, "narrator", lines, out, pin, book, gbook=newg)
+
+        ok_new = False
+        if made and len(made) == len(lines):
+            cand = dict(gmap)
+            cand.update(newg)
+            meds2 = takes(cand)
+            spread2 = spread_of(meds2)
+            if spread2 < spread - 0.1:
+                ok_new = True
+                gmap.update(newg)
+                meds, spread = meds2, spread2
+                print(f"    새 통이 더 낫다 — 폭 {spread:.1f}반음")
+
+        if not ok_new:
+            # 새 통을 지우고 예전 통을 되살린다 (더 나빠지지는 않는다)
+            for c in cids:
+                (out / f"{c}.mp3").unlink(missing_ok=True)
+                (out / f"{c}.mp3").with_suffix(".silent").unlink(missing_ok=True)
+                gmap.pop(c, None)
+                f0.pop(c, None)
+            for p in out.glob("_master_*.mp3"):
+                if p.name not in masters_before:
+                    p.unlink(missing_ok=True)
+            for name in saved:
+                (bak / name).replace(out / name)
+            for c in cids:
+                gmap[c] = sig
+            for c, txt in lines:
+                book[c] = recipe("narrator", pin.get("narrator"), txt)
+            print(f"    새 통이 더 낫지 않다 — 예전 통을 그대로 둔다 (폭 {spread:.1f}반음)")
+
+        shutil.rmtree(bak, ignore_errors=True)
+        if spread <= ALIGN_SPREAD:
+            break
+
+    try:
+        (out / "groups.json").write_text(json.dumps(gmap, ensure_ascii=False),
+                                         encoding="utf-8")
+    except Exception:
+        pass
+    if spread > ALIGN_SPREAD:
+        print(f"  ⚠️ 해설 통 폭이 아직 {spread:.1f}반음이다 — 검사기가 알려줄 것이다")
 
 
 def measure_f0(path):
@@ -2083,8 +2283,9 @@ def main():
     # ⭐ **먼저 묶어서 한 번에 읽힌다.** 이것이 목소리를 하나로 유지하는 뿌리 해결이다.
     #    실패한 묶음은 아무것도 안 남기므로, 바로 아래 '컷마다 만들기' 가 그 컷들을
     #    예전 방식으로 채운다. 어떤 경우에도 영상은 온전하다.
+    gbook = {}      # 이번 실행이 만든 컷 → 어느 통에서 나왔나 (groups.json 재료)
     try:
-        make_groups(pool, key, cuts, out, pin, book)
+        make_groups(pool, key, cuts, out, pin, book, gbook)
     except Exception as e:                 # 여기서 죽으면 음성이 통째로 안 나온다
         print(f"  ⚠️ 한 번에 읽히기가 실패했다({type(e).__name__}) — 컷마다 따로 만든다")
 
@@ -2192,6 +2393,15 @@ def main():
                 keep.replace(p)                # 예전 음성이라도 살려 둔다
             else:
                 silent(p, float(c.get("sec", 6.0)) - 0.6)
+
+    # ⭐ 컷마다 '어느 통에서 나왔는지' 를 남기고, 해설 통끼리 높이를 맞춘다.
+    #    2026-08-08: 검사기가 통 하나 높았던 해설(폭 5.1반음)을 막아 실행이
+    #    실패했다. 여기서 미리 재고, 벌어진 통만 소액으로 다시 읽혀 맞춘다.
+    try:
+        gmap = map_groups(cuts, out, pin, gbook)
+        align_narrator(pool, key, cuts, out, pin, book, gmap)
+    except Exception as e:
+        print(f"  ⚠️ 해설 통 맞추기를 건너뛴다({type(e).__name__})")
 
     try:
         (out / "recipe.json").write_text(json.dumps(book, ensure_ascii=False),

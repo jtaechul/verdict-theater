@@ -11,49 +11,93 @@
 
     ⚠️ 이 검사는 '고치는 코드' 와 **따로** 돈다. 고치는 코드가 통째로 망가져도
        (예: 묶어 읽기가 전부 실패해 예전 방식으로 되돌아가도) 여기서 잡힌다.
-       고치는 쪽과 검사하는 쪽이 같은 코드를 쓰면, 그 코드가 틀렸을 때 둘 다 속는다.
 
 무엇을 재나
-    인물마다 컷의 **목소리 높이(Hz)** 를 재서, 그 인물 가운뎃값에서 몇 반음
-    벗어났는지 본다. 12반음이 한 옥타브다.
-      3반음 넘게 벗어난 컷  → 경고 (사람 귀에 '어?' 하는 정도)
-      5반음 넘게 벗어난 컷  → 중단 (그냥 다른 사람이다. 영상을 만들면 안 된다)
-      인물의 전체 폭이 5반음 넘음 → 중단 (한 사람이 아니다)
+    인물마다 컷의 **목소리 높이(Hz)** 를 재서 가운뎃값에서 몇 반음 벗어났는지 본다.
+    12반음이 한 옥타브다.
 
-    실측 기준값
-      정상: 해설 64컷의 자연스러운 흔들림 폭 ±1.7반음
-      사고: H05 가 +8.6반음 · 장남이 88~182Hz(12.7반음)
+⭐ 2026-08-08 — **통(take) 단위로 판정한다.**
+    해설은 여러 줄을 '한 통'(호출 1번)으로 만들어 자른다. **한 통 안은 같은
+    목소리라는 것을 만든 방식이 보장한다.** 그런데 이 검사가 컷 단위로만 재서,
+    같은 통에서 나온 컷의 억양(H02 +4.6반음 — 극적인 훅 문장)까지 '다른 사람'
+    으로 오판해 멀쩡한 실행을 막았다(전체 폭 5.1반음 > 문턱 5.0).
+    이제 tts.py 가 남기는 이름표(groups.json: 컷 → 통)를 읽어
+      · **통끼리** 가운뎃값 차이가 크면 → 중단 (진짜 다른 사람처럼 들린다)
+      · 통 **안**에서 튀는 컷 → 경고만 (같은 통 = 같은 사람. 억양이다)
+      · 이름표가 없는 컷(따로 만든 컷) → 예전처럼 컷 단위로 엄격히
+    이름표 파일이 아예 없으면(옛 캐시) 예전 방식 그대로 돈다.
+
+    중단은 여전히 **해설에만** 건다. 등장인물 대사의 높낮이는 연기라 경고만 한다
+    (2026-08-07 실측: 장남 폭 9.1반음이 전부 한 통에서 나온 연기였다).
 """
 
 import argparse
 import json
+import math
+import os
 import statistics
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+os.environ.setdefault("GEMINI_API_KEY", "")     # 재기만 한다 — 모델은 안 부른다
 from tts import measure_f0  # noqa: E402
 
-WARN = float(__import__("os").environ.get("VT_VOICE_WARN", "3.0"))   # 반음
-STOP = float(__import__("os").environ.get("VT_VOICE_STOP", "5.0"))   # 반음
-SPREAD_STOP = float(__import__("os").environ.get("VT_VOICE_SPREAD", "5.0"))
-
-# ⭐ 2026-08-07: **중단은 해설에만 건다. 등장인물(대사)은 경고만.**
-#
-#   첫 실전에서 이 검사가 장남(폭 9.1반음)·차남(폭 9.6반음)을 막았다. 그런데
-#   그 컷들은 **한 통(호출 1번)으로 만들어진 것**이었다 — 같은 사람인 것은
-#   만들어진 방식이 보장한다. 폭이 큰 이유는 연기다: 애원하는 대사는 높고
-#   차갑게 말하는 대사는 낮다. 배우는 원래 그렇게 읽는다.
-#   위 문턱값(3·5반음)은 해설, 즉 **담담한 낭독**을 재서 정한 값이다
-#   (실측: 해설 64컷의 자연스러운 폭 ±1.7반음). 낭독의 자로 연기를 재면
-#   멀쩡한 연기를 전부 '다른 사람' 으로 오판한다 — 실제로 그랬다.
-#   해설은 원래 지적받은 문제이자 담담해야 하는 소리라 그대로 엄격하게 지킨다.
+WARN = float(os.environ.get("VT_VOICE_WARN", "3.0"))   # 반음
+STOP = float(os.environ.get("VT_VOICE_STOP", "5.0"))   # 반음
+SPREAD_STOP = float(os.environ.get("VT_VOICE_SPREAD", "5.0"))
 MIN_CUTS = 5            # 이보다 적으면 가운뎃값을 못 믿는다
 
 
 def semitone(hz, mid):
-    import math
     return 12.0 * math.log2(hz / mid) if hz > 0 and mid > 0 else 0.0
+
+
+def narrator_by_takes(items, gmap, warns, stops):
+    """해설을 통 단위로 판정한다. 표에 찍을 (가운뎃값, 폭, 통 설명줄들)을 돌려준다.
+
+    items = [(cid, hz)] · gmap = {cid: 통 이름표}"""
+    takes, solo = {}, []
+    for cid, hz in items:
+        sig = gmap.get(cid)
+        if sig:
+            takes.setdefault(sig, []).append((cid, hz))
+        else:
+            solo.append((cid, hz))
+
+    mid = statistics.median(h for _, h in items)
+    lines = []
+
+    # ① 통끼리 — 가운뎃값의 폭이 크면 진짜 다른 사람처럼 들린다 → 중단
+    meds = {sig: statistics.median(h for _, h in got) for sig, got in takes.items()}
+    spread = 0.0
+    if len(meds) >= 2:
+        vals = sorted(12.0 * math.log2(v) for v in meds.values())
+        spread = vals[-1] - vals[0]
+        for sig, got in sorted(takes.items(), key=lambda kv: kv[1][0][0]):
+            off = semitone(meds[sig], mid)
+            lines.append(f"      통 {got[0][0]}~{got[-1][0]} ({len(got)}컷)"
+                         f" {meds[sig]:.0f}Hz({off:+.1f}반음)")
+        if spread > SPREAD_STOP:
+            stops.append(f"해설 통끼리 폭 {spread:.1f}반음 — 통이 서로 다른 사람처럼 들린다")
+
+    # ② 통 안에서 튀는 컷 — 같은 통 = 같은 사람. 억양이므로 경고만.
+    for sig, got in takes.items():
+        for cid, hz in got:
+            gap = semitone(hz, meds[sig])
+            if abs(gap) > WARN:
+                warns.append(f"해설 {cid} — 제 통 안에서 {gap:+.1f}반음"
+                             " (같은 통이라 같은 사람 — 억양으로 보임)")
+
+    # ③ 이름표 없는 컷(따로 만든 컷)은 저마다 딴 호출이다 → 예전처럼 엄격히
+    for cid, hz in solo:
+        gap = abs(semitone(hz, mid))
+        if gap > STOP:
+            stops.append(f"해설 {cid} — {hz:.0f}Hz ({semitone(hz, mid):+.1f}반음, 따로 만든 컷)")
+        elif gap > WARN:
+            warns.append(f"해설 {cid} — {hz:.0f}Hz ({semitone(hz, mid):+.1f}반음)")
+
+    return mid, spread, lines
 
 
 def main():
@@ -73,6 +117,11 @@ def main():
     if not vdir.is_dir():
         print(f"❌ 음성 폴더가 없다: {vdir}")
         return 2
+
+    try:
+        gmap = json.loads((vdir / "groups.json").read_text(encoding="utf-8"))
+    except Exception:
+        gmap = {}
 
     by = {}
     seen = set()
@@ -107,6 +156,21 @@ def main():
         if len(items) < MIN_CUTS:
             print(f"    {name:10s}{len(items):4d}   (컷이 적어 건너뜀)")
             continue
+
+        if sp == "narrator" and any(c in gmap for c, _ in items):
+            # ⭐ 통 단위 판정 (위 설명 참조)
+            mid, spread, take_lines = narrator_by_takes(items, gmap, warns, stops)
+            offs = sorted(((abs(semitone(h, mid)), cid, h) for cid, h in items),
+                          reverse=True)
+            worst = offs[0]
+            mark = "  ← 중단" if spread > SPREAD_STOP else \
+                   ("  ← 경고" if worst[0] > WARN else "")
+            print(f"    {name:10s}{len(items):4d}{mid:10.1f}Hz{spread:7.1f}반음"
+                  f"   {worst[1]} {worst[2]:.0f}Hz({semitone(worst[2], mid):+.1f}반음){mark}")
+            for ln in take_lines:
+                print(ln)
+            continue
+
         mid = statistics.median(h for _, h in items)
         offs = sorted(((abs(semitone(h, mid)), cid, h) for cid, h in items), reverse=True)
         vals = sorted(semitone(h, mid) for _, h in items)
@@ -137,12 +201,13 @@ def main():
             print(f"    {s}")
         if len(stops) > 12:
             print(f"    … 그 밖에 {len(stops) - 12}건")
-        print("\n   이 컷들을 다시 만들어야 합니다."
-              " (음성 보관함을 지우고 '3. 영상 만들기' 를 다시 누르면 새로 만듭니다)")
+        print("\n   '3. 영상 만들기' 를 그냥 다시 누르십시오 — 만든 음성은 보관되어"
+              "\n   있고, 다음 실행이 벗어난 통만 소액(통당 약 30~60원)으로 다시 읽혀"
+              "\n   맞춥니다. 보관함을 지울 필요 없습니다.")
         return 1
     if warns:
         print(f"⚠️ 살펴볼 컷이 {len(warns)}개 있습니다 (영상은 만듭니다 —"
-          " 등장인물 대사의 높낮이는 연기일 수 있어 막지 않습니다).")
+              " 같은 통 안의 높낮이와 등장인물 연기는 막지 않습니다).")
         for s in warns[:8]:
             print(f"    {s}")
         return 0
