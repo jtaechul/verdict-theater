@@ -200,6 +200,36 @@ changed = len(CALLS["one"]) + len(CALLS["group"])
 check("고친 컷만 다시 만든다", 1 <= changed <= 3, f"호출 {changed}번")
 
 print("\n" + "=" * 74)
+print("  시험 6 — 자르기를 또 고쳐도(조리법 표시 변경) 보관된 원본으로 0원에 되사나")
+print("=" * 74)
+# 2026-08-08 g3→g4 사고의 재발 방지 장치를 시험한다. 그때는 '한 통 원본'을 지워
+# 버린 탓에, 자르기만 고치고도 한 편을 통째로 새로 만들어야 했다(약 650원).
+# 이제는 원본이 캐시에 남으므로, 같은 상황(조리법 표시가 올라 컷이 전부 지워짐)에서
+# **새로 부르는 일 없이** 다시 자르기만 해야 한다.
+install_fakes()
+_orig_recipe = tts.recipe
+
+
+def bumped_recipe(speaker, model, text="", way=None):
+    """자르기 방식이 g4→g5 로 오른 미래를 흉내 낸다. 따로 만든 컷(s1)은 그대로다."""
+    r = _orig_recipe(speaker, model, text, way)
+    return r if r.endswith("|s1") else r + "×g5모의"
+
+
+tts.recipe = bumped_recipe
+try:
+    rc = run_main(OUT)
+finally:
+    tts.recipe = _orig_recipe
+missing6 = [c for c in WANT if not (OUT / f"{c}.mp3").exists()]
+check("정상 종료", rc in (0, None), f"종료코드={rc}")
+check("모든 컷이 다시 만들어졌다", not missing6, f"빠진 것 {len(missing6)}개")
+check("묶음을 새로 부르지 않았다 — 0원", len(CALLS["group"]) == 0,
+      f"묶음 호출 {len(CALLS['group'])}번")
+check("낱개도 거의 안 불렀다", len(CALLS["one"]) <= 3,
+      f"낱개 호출 {len(CALLS['one'])}번 (열쇠 확인 몫)")
+
+print("\n" + "=" * 74)
 print("  모두 통과" if not fails else f"  실패 {len(fails)}건: {fails}")
 print("=" * 74)
 sys.exit(1 if fails else 0)

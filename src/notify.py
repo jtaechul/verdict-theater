@@ -113,7 +113,8 @@ def voice_line():
     voice = BUILD / "voice"
     if not voice.is_dir():
         return None
-    total = len(list(voice.glob("*.mp3")))
+    # _master_*.mp3 는 컷이 아니라 '한 통 원본' 보관본이다 — 컷 수에서 뺀다
+    total = len([p for p in voice.glob("*.mp3") if not p.name.startswith("_")])
     if not total:
         return None
     quiet = len(list(voice.glob("*.silent")))

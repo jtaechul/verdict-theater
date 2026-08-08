@@ -119,7 +119,8 @@ jobs:
       - name: 음성이 있는지 확인
         run: |
           set -euo pipefail
-          N=$(find build/voice -name '*.mp3' 2>/dev/null | wc -l | tr -d ' ')
+          # _master_*.mp3 는 컷이 아니라 '한 통 원본' 보관본이다 — 컷 수에서 뺀다
+          N=$(find build/voice -name '*.mp3' ! -name '_*' 2>/dev/null | wc -l | tr -d ' ')
           echo "꺼내 온 음성: ${N}컷"
           if [ "$N" = "0" ]; then
             {

@@ -495,7 +495,7 @@ class QuotaExhausted(LLMError):
 #      → 다 만든 뒤 인물별 중앙값으로 끌어당긴다(normalize_pitch).
 # ─────────────────────────────────────────────────────────────────────
 
-def recipe(speaker, model, text=""):
+def recipe(speaker, model, text="", way=None):
     """이 컷을 '무엇으로 만들었는지' 한 줄. 하나라도 다르면 다시 만들어야 한다.
 
     ⚠️ **대사 자체가 들어가야 한다.**
@@ -522,7 +522,13 @@ def recipe(speaker, model, text=""):
     # g4 (2026-08-07): 자르는 지점 계산을 고쳤다(긴 쉼 기준). g3 시절 음성은
     # **뒷문장이 옆 컷으로 넘어간 채** 보관돼 있어서, 표시를 올려 전부 새로 만든다.
     # 지시문·목소리는 그대로다 — 소리 톤은 안 바뀌고 잘리는 자리만 바로잡힌다.
-    way = "g4" if GROUP_ON else "s1"
+    #
+    # ⭐ way 인자(2026-08-08): 컷마다 따로 만든 음성은 **자르기와 무관하다** —
+    #    한 통을 자른 적이 없기 때문이다. 그래서 따로 만든 컷은 way="s1" 로 적는다.
+    #    다음에 자르기를 또 고쳐 g4→g5 로 올려도 s1 컷은 지워지지 않는다.
+    #    (묶어 만든 컷은 잘린 자리가 파일에 박혀 있으므로 g표시를 그대로 따른다)
+    if way is None:
+        way = "g4" if GROUP_ON else "s1"
     return f"{model}|{voice}|{speed:.2f}|{h}|{way}"
 
 
@@ -659,8 +665,13 @@ def prune_stale(out, cuts, pin):
         if not p.exists():
             continue
         speaker = c.get("speaker", "narrator")
-        want = recipe(speaker, pin.get(speaker, ""), c.get("text") or "")
-        if old.get(cid) != want:
+        # 두 가지 적힘새를 다 인정한다 — 묶어 만든 컷(g표시)과 따로 만든 컷(s1).
+        # 따로 만든 컷은 자르기와 무관하므로, 자르기 표시가 g4→g5 로 올라가도
+        # 지우지 않는다(지우면 멀쩡한 음성을 돈 주고 또 만든다).
+        model_ = pin.get(speaker, "")
+        text_ = c.get("text") or ""
+        if old.get(cid) not in (recipe(speaker, model_, text_),
+                                recipe(speaker, model_, text_, way="s1")):
             p.unlink()
             p.with_suffix(".silent").unlink(missing_ok=True)
             old.pop(cid, None)
@@ -990,11 +1001,13 @@ def plan_groups(cuts, out):
     return [(sp, g) for sp, g in groups if len(g) >= 2]
 
 
-def synth_group(key, model, lines, speaker, out_mp3, rotate=False):
-    """여러 줄을 **한 번에** 읽혀 mp3 한 개로 받는다. (자르기는 split_group 이 한다)"""
-    style, speed = persona(speaker), VOICE_STYLE.get(
-        speaker, VOICE_STYLE["narrator"])[1]
-    voice = VOICE_NAME.get(speaker, "Charon")
+def group_prompt(speaker, lines):
+    """묶어 읽히기에 보내는 글(지시문 + 대사 전문)을 만든다.
+
+    따로 뗀 이유: 잘 만들어진 '한 통 원본'(_master_*.mp3)을 보관해 두고 다음
+    실행에서 다시 쓰려면, **무엇으로 만든 원본인지**를 이름표(master_sig)에
+    새겨야 한다. 통의 소리를 결정하는 것이 바로 이 글이므로, 글을 만드는 곳을
+    한 군데로 모아 이름표와 실제 요청이 절대 어긋나지 않게 한다."""
     body = "\n\n".join(t for _, t in lines)
     # ⭐ '문장 사이에 쉬어라' 를 분명히 시킨다. 그 쉼이 나중에 자르는 자리가 된다.
     #    번호를 붙이지 말라고 못 박는다 — 붙이면 "일번" 을 소리 내어 읽어 버린다.
@@ -1005,7 +1018,7 @@ def synth_group(key, model, lines, speaker, out_mp3, rotate=False):
     #    묶어 만드는 목적은 **한 사람을 유지하는 것**이지 연기를 시키는 것이 아니다.
     #    그래서 여기서는 '누구인지'만 주고, 나머지는 **고르게 읽으라**고만 한다.
     who = BODY.get(speaker, "")
-    prompt = ("\n".join(x for x in (
+    return ("\n".join(x for x in (
         f"너는 {who}" if who else "",
         "아래 대사들을 위에서부터 차례대로 말해라.",
         "⚠️ 처음부터 끝까지 **같은 목소리, 같은 높이, 같은 크기, 같은 속도**로 말해라.",
@@ -1021,6 +1034,29 @@ def synth_group(key, model, lines, speaker, out_mp3, rotate=False):
         "대사와 대사 사이에는 반드시 1초 이상 충분히 쉬어라.",
         "번호나 다른 말을 덧붙이지 말고, 대사만 그대로 말해라:",
     ) if x) + f"\n{body}")
+
+
+def master_sig(speaker, model, lines):
+    """'한 통 원본' 보관본의 이름표. 통의 소리를 결정하는 재료 — 모델·목소리·배속·
+    보낸 글(지시문+대사 전문) — 를 전부 녹여 만든다. 하나라도 다르면 이름이 달라져
+    재사용되지 않는다.
+
+    ⚠️ 자르는 방식(recipe 의 way 표시)은 **일부러 뺀다.** 원본 한 통은 자르기 전
+       소리라서 자르는 방식과 무관하다. 그래서 나중에 자르기를 또 고치더라도
+       (g4→g5) 보관해 둔 원본을 그대로 꺼내 **다시 자르기만 하면 된다 — 0원.**
+       2026-08-08 g3→g4 때는 원본을 지워 버린 탓에 자르기만 고치고도 한 편을
+       통째로 새로 만들어야 했다(약 650원). 그 값이 다시는 안 나가게 하는 장치다."""
+    voice = VOICE_NAME.get(speaker, "Charon")
+    speed = VOICE_STYLE.get(speaker, VOICE_STYLE["narrator"])[1]
+    raw = f"{model}|{voice}|{speed:.2f}|{group_prompt(speaker, lines)}"
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
+
+
+def synth_group(key, model, lines, speaker, out_mp3, rotate=False):
+    """여러 줄을 **한 번에** 읽혀 mp3 한 개로 받는다. (자르기는 split_group 이 한다)"""
+    speed = VOICE_STYLE.get(speaker, VOICE_STYLE["narrator"])[1]
+    voice = VOICE_NAME.get(speaker, "Charon")
+    prompt = group_prompt(speaker, lines)
 
     res = _post_retry(f"{BASE}/models/{model}:generateContent?key={key}", {
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
@@ -1269,6 +1305,28 @@ def _one_group(pool, key, sp, lines, out, pin, book, depth=0):
     name = "해설" if sp == "narrator" else sp
     tag = str(lines[0][0]).replace("/", "_")
     big = out / f"_group_{tag}_{depth}.mp3"
+    keep = out / f"_master_{master_sig(sp, model, lines)}.mp3"
+
+    # ⭐ 0원 경로 — 지난 실행이 보관해 둔 '한 통 원본'이 있으면 **부르지 않는다.**
+    #    자르는 방식만 바뀌어 컷을 전부 다시 만들어야 할 때가 여기에 해당한다.
+    #    원본은 자르기 전 소리라 그대로 쓸 수 있고, 다시 자르기만 하면 된다.
+    if keep.exists():
+        try:
+            shutil.copyfile(keep, big)
+            made = split_group(big, lines, out)
+        except Exception:
+            made = None
+        big.unlink(missing_ok=True)
+        if made:
+            for cid, text in lines:
+                book[cid] = recipe(sp, model, text)
+            print(f"    {name} 보관된 원본을 다시 잘라 {len(made)}컷"
+                  f" ({lines[0][0]} ~ {lines[-1][0]}) — 새로 부르지 않음(0원)")
+            return set(made)
+        # 보관본이 안 잘리면(파일이 상했거나 검사가 세졌거나) 지우고 새로 받는다.
+        keep.unlink(missing_ok=True)
+        print(f"    {name} 보관된 원본이 안 잘려 새로 받는다")
+
     err = None
     for _ in range(2):
         try:
@@ -1285,14 +1343,20 @@ def _one_group(pool, key, sp, lines, out, pin, book, depth=0):
         made = split_group(big, lines, out)
     else:
         print(f"    {name} {len(lines)}줄 묶음을 못 받았다({type(err).__name__})")
-    big.unlink(missing_ok=True)
 
     if made:
+        # ⭐ 잘 잘린 통의 원본은 지우지 않고 캐시에 보관한다(_master_*.mp3).
+        #    g3→g4 자르기 수리 때 원본이 없어서 한 편을 통째로 새로 만들었다(약 650원).
+        #    보관해 두면 다음 수리부터는 다시 자르기만 하면 된다 — 0원.
+        #    ⚠️ 검사(split_group)에 **통과한 통만** 보관한다. 떨어진 통을 보관하면
+        #    다음 실행마다 그 통으로 또 떨어지는 것을 되풀이하기 때문이다.
+        big.replace(keep)
         for cid, text in lines:
             book[cid] = recipe(sp, model, text)
         print(f"    {name} {len(made)}컷을 한 통으로 만들어 잘랐다"
               f" ({lines[0][0]} ~ {lines[-1][0]})")
         return set(made)
+    big.unlink(missing_ok=True)
 
     if depth < 1 and len(lines) >= 4:
         half = len(lines) // 2
@@ -1991,7 +2055,8 @@ def main():
             if GROUP_ON:
                 (out / f"{probe['id']}.mp3").unlink(missing_ok=True)
             else:
-                book[probe["id"]] = recipe(pspeak, used, probe.get("text") or "")
+                book[probe["id"]] = recipe(pspeak, used, probe.get("text") or "",
+                                           way="s1")
         else:
             note = quota_note(err.__cause__ if err.__cause__ is not None else err)
             print(f"  ⚠️ 열쇠 확인 실패({type(err).__name__})"
@@ -2062,7 +2127,7 @@ def main():
             ok += 1
             streak = 0
             used[_used] = used.get(_used, 0) + 1
-            book[c["id"]] = recipe(speaker, _used, text)
+            book[c["id"]] = recipe(speaker, _used, text, way="s1")
             if _used != pin.get(speaker):
                 # 못 박은 모델이 죽어 다른 모델로 만들어졌다. 그대로 두면 이 인물
                 # 목소리가 도중에 바뀐다 — 아래에서 이 인물 컷을 전부 다시 만든다.
@@ -2103,7 +2168,9 @@ def main():
         mine = [c for c in cuts
                 if c.get("speaker", "narrator") == sp and (c.get("text") or "").strip()]
         stale = [c for c in mine
-                 if book.get(c["id"]) != recipe(sp, pin[sp], c.get("text") or "")]
+                 if book.get(c["id"]) not in (
+                     recipe(sp, pin[sp], c.get("text") or ""),
+                     recipe(sp, pin[sp], c.get("text") or "", way="s1"))]
         if not stale:
             continue
         print(f"  {sp} 목소리를 {pin[sp]} 로 통일한다 — {len(stale)}컷 다시 만듦")
@@ -2118,7 +2185,7 @@ def main():
             p.with_suffix(".silent").unlink(missing_ok=True)
             err, m2 = make_one(pool, key, c["text"].strip(), sp, p, pinned=pin[sp])
             if err is None:
-                book[c["id"]] = recipe(sp, m2, c.get("text") or "")
+                book[c["id"]] = recipe(sp, m2, c.get("text") or "", way="s1")
                 if keep:
                     keep.unlink(missing_ok=True)
             elif keep:
@@ -2145,7 +2212,7 @@ def main():
         e, m2 = make_one(pool, key, (c.get("text") or "").strip(), sp,
                          out / f"{cid}.mp3", tries=1, pinned=pin.get(sp))
         if e is None:
-            book[cid] = recipe(sp, m2, (c.get("text") or "").strip())
+            book[cid] = recipe(sp, m2, (c.get("text") or "").strip(), way="s1")
             return True
         return False
 

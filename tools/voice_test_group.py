@@ -155,6 +155,27 @@ check("아무 컷도 안 만들었다(예전 방식이 맡는다)", not done5, f
 # 묶음 2개 × (본판 1 + 반쪽 2) = 최대 6번. 8묶음을 다 시도하면 18번이 넘는다.
 check("두 묶음까지만 시도하고 멈췄다", len(CALLS) <= 6,
       f"호출 {len(CALLS)}번 (안 막으면 18번 넘게 나간다)")
+# 검사에 떨어진 통은 보관하면 안 된다 — 다음 실행마다 그 통으로 또 떨어진다
+check("떨어진 통은 보관하지 않았다", not list(T.glob("_master_*.mp3")),
+      f"{len(list(T.glob('_master_*.mp3')))}통")
+
+print("\n" + "=" * 72)
+print("  시험 6 — 자르기만 또 고쳐도 보관된 원본으로 다시 자르나 (0원)")
+print("=" * 72)
+fresh()
+tts.synth_group = fake_synth()
+done6 = tts.make_groups(FakePool(), "k", cuts, T, PIN, {})
+masters = sorted(T.glob("_master_*.mp3"))
+check("잘 잘린 통의 원본이 보관됐다", len(masters) >= 5, f"{len(masters)}통")
+# 자르기 방식이 바뀌면 컷은 전부 지워진다(조리법 표시가 달라서) — 그 상황을 흉내 낸다
+for c in want:
+    (T / f"{c}.mp3").unlink(missing_ok=True)
+n_before = len(CALLS)
+done6b = tts.make_groups(FakePool(), "k", cuts, T, PIN, {})
+check("모든 컷이 다시 만들어졌다", len(done6b) == len(want),
+      f"{len(done6b)}/{len(want)}컷")
+check("한 번도 새로 부르지 않았다 — 0원", len(CALLS) == n_before,
+      f"새 호출 {len(CALLS) - n_before}번")
 
 print("\n" + "=" * 72)
 print("  모두 통과" if not fails else f"  실패 {len(fails)}건: {fails}")
