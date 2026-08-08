@@ -13,6 +13,14 @@ name: 3. 영상 만들기
 #    실행이 끝나면 작업 공간이 통째로 사라진다.
 
 on:
+  # ⭐ 표식 파일(.trigger/produce)이 바뀌면 자동으로 돈다 (2026-08-08).
+  #    까닭: 손님이 버튼을 누른 뒤 코드가 고쳐지면 **그 실행에는 고친 것이 안 들어간다.**
+  #    실제로 7분 차이로 그렇게 되어 영상 한 편을 헛만들었다. 이제 고친 사람이
+  #    직접 시동을 걸 수 있어 '고쳐 놓고 눌러 달라 → 옛 코드로 돎' 이 사라진다.
+  #    버튼(아래 workflow_dispatch)은 그대로라 손님 사용법은 안 바뀐다.
+  push:
+    paths:
+      - '.trigger/produce'
   workflow_dispatch:
     inputs:
       episode:
@@ -64,6 +72,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 180
 
+    # ⚠️ 표식 파일로 돌 때는 inputs 가 **전부 빈 값**이다. 그대로 쓰면
+    #    'limit == 0' 같은 검사가 어긋나 음성 보관을 건너뛰는 등 조용히 망가진다.
+    #    그래서 기본값을 여기서 정하고, 아래 단계들은 env 만 쓴다.
+    env:
+      EPISODE: ${{ inputs.episode || '' }}
+      VOICE:   ${{ inputs.voice   || '음성 생성' }}
+      ONLY:    ${{ inputs.only    || '' }}
+      LIMIT:   ${{ inputs.limit   || '0' }}
+      UPLOAD:  ${{ inputs.upload  || '올리지 않음' }}
+
 
     steps:
       - uses: actions/checkout@v4
@@ -100,7 +118,7 @@ jobs:
       - name: 회차 정하기
         id: pick
         run: |
-          EP="${{ inputs.episode }}"
+          EP="${{ env.EPISODE }}"
           if [ -z "$EP" ]; then
             EP=$(ls -1 data/scripts/EP*.json 2>/dev/null | grep -v '\.eval\.\|\.shorts\.' | sort | tail -1 | xargs -n1 basename | sed 's/\.json//')
           fi
@@ -251,7 +269,7 @@ jobs:
 
       - name: 만들어 둔 음성 불러오기
         id: voicecache
-        if: inputs.voice != '무음으로 시험'
+        if: env.VOICE != '무음으로 시험'
         uses: actions/cache/restore@v4
         with:
           path: build/voice
@@ -279,13 +297,13 @@ jobs:
           set -o pipefail
           ARGS=()
           SILENT=0
-          [ "${{ inputs.voice }}" = "무음으로 시험" ] && SILENT=1
+          [ "${{ env.VOICE }}" = "무음으로 시험" ] && SILENT=1
           # ⭐ **시험 실행(앞 N컷)은 자동으로 무음**으로 돌린다 (손님 선택 2026-08-04).
           #    시험은 화면을 보려고 누르는 것이라 소리가 필요 없는데, 예전에는
           #    누를 때마다 그만큼 음성 값이 나갔다. 소리까지 확인하고 싶으면
           #    나레이션에서 **'시험 실행에도 음성 만들기'** 를 고르면 된다.
-          if [ "${{ inputs.limit }}" != "0" ] \
-             && [ "${{ inputs.voice }}" != "시험 실행에도 음성 만들기" ]; then
+          if [ "${{ env.LIMIT }}" != "0" ] \
+             && [ "${{ env.VOICE }}" != "시험 실행에도 음성 만들기" ]; then
             SILENT=1
             echo "시험 실행이라 음성을 만들지 않습니다 (값 0원)."
             echo "  소리까지 보시려면 나레이션에서 '시험 실행에도 음성 만들기' 를 고르십시오."
@@ -294,14 +312,14 @@ jobs:
           # ⚠️ 앞 N컷만 렌더링할 때는 음성도 N컷만 만든다.
           #    예전에는 --limit 을 렌더링에만 줬다. 10컷만 보려는데 음성은 113컷을
           #    다 만들려 했고, 그래서 속도 제한(429)에 걸렸다. 돈도 11배로 나간다.
-          if [ "${{ inputs.limit }}" != "0" ]; then ARGS+=(--limit "${{ inputs.limit }}"); fi
+          if [ "${{ env.LIMIT }}" != "0" ]; then ARGS+=(--limit "${{ env.LIMIT }}"); fi
           python3 src/tts.py "data/scripts/${{ steps.pick.outputs.ep }}.json" \
             --out build/voice "${ARGS[@]}" 2>&1 | tee tts.log
 
           # 쇼츠는 세로 화면에 맞춰 **대사를 짧게 다시 쓴다.** 본편 음성을 그대로 붙이면
           # 자막과 소리가 어긋나고, 길이도 규격(35~50초)을 훌쩍 넘는다.
           # 시험 렌더링(--limit)일 때는 쇼츠를 안 만들므로 음성도 만들지 않는다.
-          if [ "${{ inputs.limit }}" = "0" ] && [ "${{ inputs.voice }}" != "무음으로 시험" ]; then
+          if [ "${{ env.LIMIT }}" = "0" ] && [ "${{ env.VOICE }}" != "무음으로 시험" ]; then
             python3 src/tts.py "data/scripts/${{ steps.pick.outputs.ep }}.json" \
               --out build/voice --shorts 2>&1 | tee -a tts.log
           fi
@@ -351,8 +369,8 @@ jobs:
       #        132컷을 다시 만든다.** 한 편 값이 통째로 또 나간다.
       #    이제 전체 실행(limit=0)만 보관한다. 시험은 되살려 쓰기만 하고 남기지 않는다.
       - name: 만든 음성 보관 (다음 실행에서 재사용)
-        if: always() && inputs.voice != '무음으로 시험'
-             && inputs.limit == '0'
+        if: always() && env.VOICE != '무음으로 시험'
+             && env.LIMIT == '0'
              && steps.voicecache.outputs.cache-hit != 'true'
              && steps.voicecount.outputs.n != '0'
         uses: actions/cache/save@v4
@@ -373,7 +391,7 @@ jobs:
       #    ⚠️ 음성을 **보관한 뒤** 에 검사한다. 여기서 멈춰도 만든 음성은 안 날아간다 —
       #       다시 눌렀을 때 같은 값이 또 나가면 안 된다.
       - name: 목소리가 한결같은지 검사 (값 0원 · 흩어졌으면 여기서 멈춘다)
-        if: inputs.voice != '무음으로 시험' && inputs.limit == '0'
+        if: env.VOICE != '무음으로 시험' && env.LIMIT == '0'
         run: |
           set -o pipefail
           EP="${{ steps.pick.outputs.ep }}"
@@ -397,9 +415,9 @@ jobs:
         run: |
           set -o pipefail
           ARGS=()
-          if [ "${{ inputs.limit }}" != "0" ]; then ARGS+=(--limit "${{ inputs.limit }}"); fi
+          if [ "${{ env.LIMIT }}" != "0" ]; then ARGS+=(--limit "${{ env.LIMIT }}"); fi
           # 하나만 다시 만들기 — 쇼츠 한 편이면 50분이 아니라 5분이면 끝난다
-          if [ -n "${{ inputs.only }}" ]; then ARGS+=(--only "${{ inputs.only }}"); fi
+          if [ -n "${{ env.ONLY }}" ]; then ARGS+=(--only "${{ env.ONLY }}"); fi
           python3 src/render.py "data/scripts/${{ steps.pick.outputs.ep }}.json" \
             --out build --shorts --narration build/voice "${ARGS[@]}" 2>&1 | tee render.log
           ls -la build/*.mp4
@@ -443,7 +461,7 @@ jobs:
 
           # ⚠️ **하나만 다시 만들었으면 릴리스를 지우면 안 된다.**
           #    지우면 이번에 안 만든 나머지 영상까지 같이 사라진다.
-          if [ -z "${{ inputs.only }}" ]; then
+          if [ -z "${{ env.ONLY }}" ]; then
             gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
           fi
           # 썸네일도 같이 올린다 — 관리자 페이지가 여기서 가져다 보여주고 내려받게 한다.
@@ -478,7 +496,7 @@ jobs:
           done
 
       - name: 유튜브 업로드 (비공개)
-        if: startsWith(inputs.upload, '롱폼')
+        if: startsWith(env.UPLOAD, '롱폼')
         env:
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
@@ -512,7 +530,7 @@ jobs:
           fi
           python3 src/upload.py private "${{ steps.pick.outputs.ep }}" \
             --video build/longform.mp4 --narration build/voice 2>&1 | tee upload.log
-          if [ "${{ inputs.upload }}" = "롱폼 + 쇼츠" ]; then
+          if [ "${{ env.UPLOAD }}" = "롱폼 + 쇼츠" ]; then
             python3 src/upload.py shorts "${{ steps.pick.outputs.ep }}" --dir build 2>&1 | tee -a upload.log
           fi
 
@@ -543,7 +561,7 @@ jobs:
               echo ""
               echo "> 영상 파일은 저장소에 커밋하지 않습니다."
               echo "> **관리자 페이지에서 바로 보실 수 있습니다** — 회차 옆 \`영상 보기\` 버튼."
-              if [ "${{ inputs.upload }}" != "올리지 않음" ]; then
+              if [ "${{ env.UPLOAD }}" != "올리지 않음" ]; then
                 echo "> 유튜브에도 비공개로 올라갔습니다."
               fi
             fi
