@@ -1091,7 +1091,7 @@ SUB_IN = 0.16
 _LOGO_PNG = {}
 
 
-def logo_png(workdir, W, H, vertical):
+def logo_png(workdir, W, H, vertical, blank=False):
     """채널 로고 겹을 **한 번만** 그려 파일로 두고, 모든 컷이 그 파일을 쓴다.
 
     ⭐ 손님 지적: "컷 바뀔 때마다 계속 새로 이펙트를 줘서 새로 띄우지 말고
@@ -1102,12 +1102,22 @@ def logo_png(workdir, W, H, vertical):
        이제 로고만 **따로 된 겹**으로 빼서 페이드도 움직임도 주지 않는다.
        장면 전환(검은 화면으로 잠기는 것)에는 같이 잠긴다 — 그건 화면 전체가
        어두워지는 것이라 로고만 떠 있으면 오히려 이상하다."""
-    key = (str(workdir), W, H, bool(vertical))
+    key = (str(workdir), W, H, bool(vertical), bool(blank))
     if key not in _LOGO_PNG:
-        y0, _y1 = stage_box(W, H, vertical)
-        lay = G.draw_logo(Image.new("RGBA", (W, H), (0, 0, 0, 0)),
-                          W, H, vertical=vertical, band=y0)
-        p = Path(workdir) / f"logo_{W}x{H}.png"
+        if blank:
+            # ⭐ 2026-08-08 손님 지적: "쇼츠 영상 위에 글씨가 겹치잖아!!!"
+            #    쇼츠 첫 컷은 위 검은 띠에 **상황 한 줄**(장례식날 전달된 소장)을
+            #    앉힌다. 그런데 채널 이름(판결극장)도 같은 띠 한가운데에 그려서
+            #    글자 두 개가 그대로 포개졌다. 띠 높이가 165픽셀이라 둘이 못 들어간다.
+            #    → 상황 한 줄이 있는 컷에서는 **채널 이름을 그리지 않는다.**
+            #      (그 컷은 2~3초뿐이고, 나머지 컷에는 채널 이름이 그대로 나온다)
+            lay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+            p = Path(workdir) / f"logo_blank_{W}x{H}.png"
+        else:
+            y0, _y1 = stage_box(W, H, vertical)
+            lay = G.draw_logo(Image.new("RGBA", (W, H), (0, 0, 0, 0)),
+                              W, H, vertical=vertical, band=y0)
+            p = Path(workdir) / f"logo_{W}x{H}.png"
         lay.save(p)
         _LOGO_PNG[key] = p
     return _LOGO_PNG[key]
@@ -1121,7 +1131,8 @@ def render_cut(cut, dur, workdir, idx, W, H, vertical=False, top_line="", trans=
     move.convert("RGB").save(mp)
     gfx_layer.save(gp)
     sub_layer.save(sp)
-    lp = logo_png(workdir, W, H, vertical)
+    # 상황 한 줄이 띠에 들어가는 컷에서는 채널 이름을 빼 겹침을 막는다
+    lp = logo_png(workdir, W, H, vertical, blank=bool(top_line))
 
     frames = max(2, int(dur * FPS))
     # 느린 확대 + 아주 약한 숨쉬기. 정지 이미지가 죽어 보이는 것을 막는다.

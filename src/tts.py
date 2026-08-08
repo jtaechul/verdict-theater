@@ -990,6 +990,8 @@ def plan_groups(cuts, out, everything=False):
         if g:
             groups.append((sp, g))
 
+    part = {}          # 인물별로 '지금 담고 있는 묶음이 어느 편 것인지'
+
     for c in cuts:
         sp = c.get("speaker", "narrator")
         text = (c.get("text") or "").strip()
@@ -998,6 +1000,17 @@ def plan_groups(cuts, out, everything=False):
         p = out / f"{c['id']}.mp3"
         if not everything and p.exists() and not p.with_suffix(".silent").exists():
             continue                       # 이미 있는 컷은 건드리지 않는다
+        # ⭐ 2026-08-08 손님 지적: "쇼츠는 자막하고 나레이션이 하나도 안 맞아."
+        #    원인은 **쇼츠 3편의 해설 20줄을 한 통에 몰아 만든 것**이었다.
+        #    한 통을 20조각으로 자르는데, 경계 하나만 어긋나면 그 뒤가 **전부 한 칸씩
+        #    밀린다** — 자막은 4번인데 소리는 3번이 나오는 식이라 말이 안 이어진다.
+        #    이제 편이 바뀌면 통을 끊는다(_grp). 한 편은 해설 8줄이라 훨씬 안전하고,
+        #    어긋나도 그 편 하나로 피해가 갇힌다. (편끼리는 따로 보는 영상이라
+        #    통이 달라져도 상관없다)
+        grp = c.get("_grp")
+        if sp in cur and part.get(sp) != grp:
+            flush(sp)
+        part[sp] = grp
         g = cur.setdefault(sp, [])
         if g and (sum(len(x[1]) for x in g) + len(text) > GROUP_MAX_CHARS
                   or len(g) >= GROUP_MAX_LINES):
@@ -2449,7 +2462,10 @@ def main():
             print(f"쇼츠 대본이 없다: {shp}")
             return 2
         sh = json.loads(shp.read_text(encoding="utf-8"))
-        cuts = [c for s_ in sh.get("shorts", []) for c in (s_.get("cuts") or [])]
+        # ⭐ 편 번호를 붙인다 — 한 통이 **여러 편에 걸치지 않게** 하려는 것이다
+        #    (위 plan_groups 의 _grp 설명 참조)
+        cuts = [dict(c, _grp=i) for i, s_ in enumerate(sh.get("shorts", []))
+                for c in (s_.get("cuts") or [])]
         cuts = [c for c in cuts if c.get("id")]
         print(f"쇼츠 대본의 나레이션 {len(cuts)}컷을 만든다")
     else:

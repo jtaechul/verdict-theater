@@ -477,6 +477,19 @@ def draw_top_line(img, text, box=None):
     lines = _wrap_px(text, f, inner)
     lh, gap = line_h(f), round(f.size * 0.14)
 
+    # ⭐ 2026-08-08 — 띠 **안에 반드시 들어가게** 글자 크기를 줄인다.
+    #    예전에는 띠(172픽셀)보다 큰 덩이(217픽셀)를 그대로 그려서 아래 그림 위로
+    #    삐져나왔다. 손님이 지적한 '글씨 겹침' 의 나머지 절반이다.
+    if box:
+        room = (box[3] - box[1]) - round(u * 0.024)      # 위아래 여백을 뺀 높이
+        for _ in range(12):
+            block = len(lines) * lh + (len(lines) - 1) * gap + round(u * 0.030)
+            if block <= room or f.size <= 12:
+                break
+            f = font(int(f.size * 0.92), role="label")
+            lines = _wrap_px(text, f, inner)
+            lh, gap = line_h(f), round(f.size * 0.14)
+
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
     if box:
