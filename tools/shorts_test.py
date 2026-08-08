@@ -100,7 +100,32 @@ check("한 통이 12줄을 넘지 않는다 (자를 경계가 적을수록 안�
       f"가장 큰 통 {worst}줄 (예전에는 20줄이었다)")
 
 print("\n" + "=" * 72)
-print("  시험 3 — 편을 안 나누면 예전처럼 20줄 한 통이 된다 (시험이 뜻있음을 확인)")
+print("  시험 3 — 이름표를 지운 컷도 **소리를 받는가** (컷이 통째로 빠지던 것)")
+print("=" * 72)
+# 2026-08-08 실제 사고: 이름표를 지울 때 컷이 사본으로 바뀌는데, 소리 쪽에서
+# 그 사본을 못 알아봐 **컷 3개의 소리가 통째로 빠지고** 뒤가 전부 앞으로 당겨졌다.
+# (쇼츠 1편 실측: 계획 35.7초 → 나온 영상 25.7초, 자막과 소리가 끝까지 어긋남)
+s1 = sh["shorts"][0]
+sdoc = {"acts": [{"id": "S1", "cuts": s1["cuts"], "bgm": "hook"}]}
+all_cuts = [c for a in sdoc["acts"] for c in a["cuts"]]
+keep = [(c, 3.0) for c in all_cuts]
+keep, dropped = R.drop_repeat_nametags(keep)
+check("이름표를 지운 컷이 실제로 있다 (시험이 뜻있음)", dropped > 0, f"{dropped}개")
+sub = R.subdoc_for(sdoc, keep)
+n = sum(len(a["cuts"]) for a in sub["acts"])
+check("소리로 넘어가는 컷 수가 화면 컷 수와 같다", n == len(keep),
+      f"소리 {n}컷 · 화면 {len(keep)}컷")
+ids_sub = [c["id"] for a in sub["acts"] for c in a["cuts"]]
+check("차례도 그대로다", ids_sub == [c["id"] for c, _ in keep])
+
+# 예전 방식(메모리 번호로 고르기)이면 몇 개나 빠지는지 — 시험이 진짜를 잡는지 확인
+kept_ids = {id(c) for c, _ in keep}
+old_n = sum(1 for a in sdoc["acts"] for c in a["cuts"] if id(c) in kept_ids)
+check("예전 방식이었다면 컷이 빠졌다", old_n < len(keep),
+      f"예전 {old_n}컷 / 지금 {n}컷 (화면은 {len(keep)}컷)")
+
+print("\n" + "=" * 72)
+print("  시험 4 — 편을 안 나누면 예전처럼 20줄 한 통이 된다 (시험이 뜻있음을 확인)")
 print("=" * 72)
 plain = [{k: v for k, v in c.items() if k != "_grp"} for c in cuts]
 OUT2 = Path(tempfile.mkdtemp(prefix="vt-shorts-old-"))

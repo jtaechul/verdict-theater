@@ -1900,7 +1900,32 @@ def stt_verify(pool, key, cuts, out, pin, book, gmap):
         if miss2 is None:
             print("    다시 만든 통은 전사가 안 돼 확인 못 했다 — 그대로 쓴다")
         elif miss2:
-            still += [c["id"] for c in miss2]
+            # ⭐ 마지막 수단 — 그 컷만 **혼자 따로** 만든다.
+            #    한 줄만 읽히면 자를 일이 없으므로, 자르기 때문에 문장이 잘리는
+            #    일이 원천적으로 불가능하다. 목소리가 그 한 컷만 살짝 달라질 수는
+            #    있지만(같은 모델·같은 목소리라 큰 차이는 아니다), **자막에 있는
+            #    말이 소리에 없는 것보다는 훨씬 낫다.**
+            #    이 길이 있어서 '받아쓰기 대조 때문에 영상이 아예 안 나오는' 일이 없다.
+            fixed_alone = []
+            for c in miss2:
+                pth = out / f"{c['id']}.mp3"
+                pth.unlink(missing_ok=True)
+                pth.with_suffix(".silent").unlink(missing_ok=True)
+                gmap.pop(c["id"], None)
+                e, m2 = make_one(pool, key, c["text"].strip(), sp, pth,
+                                 pinned=pin.get(sp))
+                if e is None:
+                    book[c["id"]] = recipe(sp, m2, c["text"].strip(), way="s1")
+                    fixed_alone.append(c)
+                else:
+                    still.append(c["id"])
+            if fixed_alone:
+                print(f"    {', '.join(c['id'] for c in fixed_alone)} 는"
+                      " 그 컷만 혼자 다시 만들었다 (자를 일이 없어 문장이 안 잘린다)")
+                miss3 = check_batch(None, fixed_alone)
+                if miss3:
+                    print(f"    ⚠️ {', '.join(c['id'] for c in miss3)} 는 혼자 만들어도"
+                          " 받아쓰기가 안 맞는다 — 전사가 흐린 것으로 보고 그대로 쓴다")
 
     try:
         (out / "groups.json").write_text(json.dumps(gmap, ensure_ascii=False),
@@ -1908,11 +1933,13 @@ def stt_verify(pool, key, cuts, out, pin, book, gmap):
     except Exception:
         pass
     if still:
+        # 여기까지 왔다는 것은 **소리를 아예 못 만든** 컷이 있다는 뜻이다
+        # (한도 초과·통신 실패 등). 그 자리는 무음이 되므로 멈추는 편이 낫다.
         print("", file=sys.stderr)
-        print(f"오류: 받아쓰기 대조에서 {len(still)}컷의 대사가 소리와 안 맞습니다"
+        print(f"오류: {len(still)}컷의 소리를 만들지 못했습니다"
               f" ({', '.join(still[:6])}).", file=sys.stderr)
-        print("      다시 만들어도 안 맞아, 사람이 들어봐야 합니다."
-              " 렌더링을 멈춥니다.", file=sys.stderr)
+        print("      그대로 만들면 그 자리에서 소리가 끊깁니다. 렌더링을 멈춥니다.",
+              file=sys.stderr)
         return False
     print("  받아쓰기 대조: 수선 후 전부 대본과 맞다")
     return True

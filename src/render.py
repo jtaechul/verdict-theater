@@ -1755,6 +1755,36 @@ def make_outro_cut(last_cut, text, sec=4.2):
     return c
 
 
+def subdoc_for(doc, keep):
+    """소리를 만들 때 넘길 '고른 컷만 남긴 대본'. 컷 순서·개수가 keep 과 똑같아야 한다.
+
+    ⚠️⚠️ 2026-08-08 — 여기가 "쇼츠 자막과 나레이션이 하나도 안 맞는다" 의 진짜 원인이었다.
+       예전에는 `id(c)`(파이썬이 붙인 메모리 번호)로 골랐다. 그런데 바로 앞에서
+       drop_repeat_nametags 가 이름표를 지울 때 컷을 **사본**으로 바꾼다
+       (`{**cut, "gfx": None}`). 사본은 메모리 번호가 달라 이 걸러내기에서 통째로
+       빠졌다. 실측(쇼츠 1편): 컷 10개인데 **소리 조각이 7개**만 만들어졌고,
+       빠진 자리부터 소리가 앞으로 당겨져 자막과 소리가 끝까지 어긋났다
+       (영상 35.7초 계획 → 25.7초로 나옴). 손님이 "S1-04는 나레이션이 아예 안 나온다",
+       "앞뒤 개연성이 없다" 고 한 것이 이것이다.
+       이제 keep 에 있는 컷을 **그대로** 쓰고, 막은 컷 id 로 되찾는다."""
+    act_of = {c["id"]: i for i, a in enumerate(doc["acts"]) for c in a["cuts"]}
+    sub, cur, bucket = {"acts": []}, None, []
+    for c, _d in keep:
+        ai = act_of.get(c.get("id"), cur if cur is not None else 0)
+        if bucket and ai != cur:
+            sub["acts"].append({**doc["acts"][cur], "cuts": bucket})
+            bucket = []
+        cur = ai
+        bucket.append(c)
+    if bucket:
+        sub["acts"].append({**doc["acts"][cur], "cuts": bucket})
+
+    n_cut = sum(len(a["cuts"]) for a in sub["acts"])
+    if n_cut != len(keep):                 # 다시는 조용히 어긋나지 않게 여기서 멈춘다
+        raise SystemExit(f"소리에 넘길 컷 수가 안 맞는다: {n_cut} vs {len(keep)}")
+    return sub
+
+
 def render(doc, outdir, vertical=False, cut_ids=None, narration_dir=None,
            limit=0, name="longform", short=None):
     outdir = Path(outdir)
@@ -1814,15 +1844,17 @@ def render(doc, outdir, vertical=False, cut_ids=None, narration_dir=None,
          "-i", str(lst), "-c", "copy", str(silent)])
 
     # 소리는 막별 음악을 깔아야 하므로 '고른 컷만 남긴 대본'을 다시 만들어 넘긴다.
-    # 막 순서와 컷 순서가 keep 과 같아야 길이가 어긋나지 않는다.
-    kept_ids = {id(c) for c, _ in keep}
-    sub = {"acts": []}
-    for act in doc["acts"]:
-        picked = [c for c in act["cuts"] if id(c) in kept_ids]
-        if picked:
-            sub["acts"].append({**act, "cuts": picked})
-    if outro_cut is not None and sub["acts"]:
-        sub["acts"][-1]["cuts"] = sub["acts"][-1]["cuts"] + [outro_cut]
+    # 막 순서와 컷 순서가 keep 과 **정확히 같아야** 소리와 그림이 안 어긋난다.
+    #
+    # ⚠️⚠️ 2026-08-08 — 여기가 "쇼츠 자막과 나레이션이 하나도 안 맞는다" 의 진짜 원인이었다.
+    #    예전에는 `id(c)`(파이썬이 붙인 메모리 번호)로 골랐다. 그런데 바로 위
+    #    drop_repeat_nametags 가 이름표를 지울 때 컷을 **사본**으로 바꾼다
+    #    (`{**cut, "gfx": None}`). 사본은 메모리 번호가 달라 이 걸러내기에서 통째로
+    #    빠졌다. 실측(쇼츠 1편): 컷 10개인데 **소리 조각이 7개**만 만들어졌고,
+    #    빠진 자리부터 소리가 앞으로 당겨져 **자막과 소리가 끝까지 어긋났다.**
+    #    (손님: "S1-04는 나레이션이 아예 안 나온다", "앞뒤 개연성이 없다")
+    #    이제 keep 에 있는 컷을 **그대로** 쓰고, 막은 컷 id 로 되찾는다.
+    sub = subdoc_for(doc, keep)
     audio = build_audio(sub, [d for _, d in keep], work, narration_dir)
 
     final = outdir / f"{name}.mp4"

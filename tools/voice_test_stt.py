@@ -144,16 +144,57 @@ check("막지 않는다", ok is True)
 check("아무것도 새로 안 만든다", not SYNTH, f"호출 {len(SYNTH)}번")
 
 print("\n" + "=" * 72)
-print("  시험 4 — 다시 만들어도 안 맞으면 렌더링 전에 멈춘다")
+print("  시험 4 — 통을 다시 만들어도 안 맞으면 **그 컷만 혼자** 만들고 계속 간다")
+print("=" * 72)
+# 손님 요구(2026-08-08): "영상 제작 누르면 또 실패하는 거 아니야? 그런 일 없게 해."
+# 받아쓰기가 안 맞는다고 영상을 통째로 못 만들면 그것도 실패다.
+# 한 줄만 혼자 읽히면 **자를 일이 없어** 문장이 잘릴 수 없다 — 그 길로 빠져나간다.
+gmap = build(V)
+SYNTH.clear()
+ALONE = []
+tts.transcribe_pieces = \
+    lambda key, files: [TEXT[f.stem][:8] if f.stem == "D2" else TEXT[f.stem]
+                        for f in files]
+
+
+def fake_one(pool, key, text, speaker, out_mp3, tries=2, pinned=None):
+    ALONE.append(out_mp3.stem)
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi",
+                    "-i", "sine=frequency=95:duration=3:sample_rate=24000",
+                    "-b:a", "160k", str(out_mp3)], check=True)
+    return None, "m"
+
+
+tts.make_one = fake_one
+book4 = {}
+ok = tts.stt_verify(FakePool(), "k", CUTS, V, PIN, book4, gmap)
+check("영상은 계속 만든다 (멈추지 않는다)", ok is True)
+check("문제 컷만 혼자 다시 만들었다", ALONE == ["D2"], f"{ALONE}")
+check("혼자 만든 컷의 조리법이 적혔다", book4.get("D2", "").endswith("|s1"),
+      book4.get("D2", "(없음)"))
+check("통 수선은 한 번만 시도했다", len(SYNTH) == 1, f"호출 {len(SYNTH)}번")
+
+print("\n" + "=" * 72)
+print("  시험 5 — 소리를 아예 못 만들면 그때는 멈춘다 (무음이 나가면 안 된다)")
 print("=" * 72)
 gmap = build(V)
 SYNTH.clear()
+tts.make_one = lambda *a, **k: (RuntimeError("한도 초과"), None)
+
+
+def synth_hole(key, model, lines, speaker, out_mp3, rotate=False):
+    SYNTH.append(len(lines))
+    raise tts.LLMError("한도 초과")     # 통도 못 만들고 낱개도 못 만드는 상황
+
+
+tts.synth_group = synth_hole
 tts.transcribe_pieces = \
     lambda key, files: [TEXT[f.stem][:8] if f.stem == "D2" else TEXT[f.stem]
                         for f in files]
 ok = tts.stt_verify(FakePool(), "k", CUTS, V, PIN, {}, gmap)
 check("멈춘다(False)", ok is False)
-check("수선은 한 번만 시도했다", len(SYNTH) == 1, f"호출 {len(SYNTH)}번")
+gone = [c for c in A if not (V / f"{c}.mp3").exists()]
+check("소리가 비어 있는 컷이 실제로 생겼다", bool(gone), f"{len(gone)}컷")
 
 print("\n" + "=" * 72)
 print("  모두 통과" if not fails else f"  실패 {len(fails)}건: {fails}")
