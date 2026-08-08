@@ -1191,8 +1191,12 @@ def split_group(big, lines, out):
     # 어느 쪽이든 **쉼을 뺀 말 시간**으로 글자당 길이를 검사해 통과해야 쓴다.
     segs = None
     for noise, dur in ((-35, 0.45), (-35, 0.30), (-30, 0.25), (-40, 0.25), (-30, 0.18)):
+        # 파일 맨 앞·뒤에 붙은 무음은 자를 자리가 아니다. 한가운데(c[0])만 보면
+        # 긴 꼬리 무음(예: 끝에 2초)이 후보로 들어와 '가장 긴 쉼' 으로 뽑힌다 —
+        # 그러면 마지막 줄이 빈 도막이 된다. 무음의 **양 끝**이 파일 안쪽에
+        # 있는 것만 후보로 삼는다.
         cands = [c for c in _silences(big, noise, dur)
-                 if 0.3 < c[0] < total - 0.3]
+                 if c[0] - c[1] / 2 > 0.15 and c[0] + c[1] / 2 < total - 0.15]
         for how, picked in (("긴 쉼", _pick_by_pause(cands, n - 1)),
                             ("위치 짐작", _pick_cuts(cands, n - 1, total, fracs))):
             if not picked:

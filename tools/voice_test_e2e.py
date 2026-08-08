@@ -67,14 +67,29 @@ def install_fakes(drift=True):
                 "v_M50B": 147, "v_JUDGE": 120}.get(speaker, 110)
         # ⭐ 한 통 안에서는 **끝까지 같은 목소리** — 이것이 새 방식의 핵심이다
         hz = base * (2 ** (((len(CALLS["group"]) * 5) % 7 - 3) / 12.0)) if drift else base
+        # ⭐ 2026-08-07 사고를 반영해 실전처럼 심술궂게 만든다:
+        #    줄마다 말 빠르기가 다르고(느린 줄은 1.6배), 긴 줄은 중간에
+        #    마침표 쉼(0.55초)을 넣는다. 자르기가 이걸 견뎌야 진짜 통과다.
         ins, chain, k = [], [], 0
         for i, (_cid, t) in enumerate(lines):
             if i:
                 ins += ["-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono:d=1.0"]
                 chain.append(f"[{k}:a]")
                 k += 1
+            sec = max(1.2, len(t) / 6.0) * (1.6 if i % 3 == 2 else 1.0)
+            if len(t) >= 20:               # 긴 줄은 반으로 나눠 사이에 쉼
+                ins += ["-f", "lavfi",
+                        "-i", f"sine=frequency={hz:.1f}:duration={sec / 2:.2f}"
+                              ":sample_rate=24000",
+                        "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono:d=0.55",
+                        "-f", "lavfi",
+                        "-i", f"sine=frequency={hz:.1f}:duration={sec / 2:.2f}"
+                              ":sample_rate=24000"]
+                chain += [f"[{k}:a]", f"[{k + 1}:a]", f"[{k + 2}:a]"]
+                k += 3
+                continue
             ins += ["-f", "lavfi",
-                    "-i", f"sine=frequency={hz:.1f}:duration={max(1.2, len(t) / 6.0):.2f}"
+                    "-i", f"sine=frequency={hz:.1f}:duration={sec:.2f}"
                           ":sample_rate=24000"]
             chain.append(f"[{k}:a]")
             k += 1
