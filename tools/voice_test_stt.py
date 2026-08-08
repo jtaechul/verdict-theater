@@ -197,6 +197,35 @@ gone = [c for c in A if not (V / f"{c}.mp3").exists()]
 check("소리가 비어 있는 컷이 실제로 생겼다", bool(gone), f"{len(gone)}컷")
 
 print("\n" + "=" * 72)
+print("  시험 6 — 받아쓰기 모델을 **이름으로 짐작하지 않고 목록에서 고른다**")
+print("=" * 72)
+# 2026-08-08 실제 실행: 'gemini-2.5-flash' 로 못 박아 뒀는데 그 이름이 안 통해
+# 115컷 전부 '확인 못 했다' 로 지나갔다. 지켜준다던 장치가 조용히 놀고 있었다.
+import types  # noqa: E402
+FAKE_LIST = {"models": [
+    {"name": "models/gemini-2.5-pro", "supportedGenerationMethods": ["generateContent"]},
+    {"name": "models/gemini-2.5-flash", "supportedGenerationMethods": ["generateContent"]},
+    {"name": "models/gemini-3.1-flash", "supportedGenerationMethods": ["generateContent"]},
+    {"name": "models/gemini-3.1-flash-lite", "supportedGenerationMethods": ["generateContent"]},
+    {"name": "models/gemini-3.1-flash-tts-preview", "supportedGenerationMethods": ["generateContent"]},
+    {"name": "models/text-embedding-004", "supportedGenerationMethods": ["embedContent"]},
+]}
+
+
+class _Resp:
+    def read(self): return json.dumps(FAKE_LIST).encode()
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+
+
+tts.urllib.request.urlopen = lambda *a, **k: _Resp()
+got = tts.stt_models("k")
+check("소리를 못 내는 도구(임베딩)는 뺀다", "text-embedding-004" not in got)
+check("음성 합성 전용(tts)도 뺀다", not any("tts" in g for g in got), f"{got}")
+check("싼 flash 를 먼저 고른다", "flash" in got[0], f"1순위 {got[0]}")
+check("lite 는 뒤로 미룬다", not got[0].endswith("lite"), f"{got}")
+
+print("\n" + "=" * 72)
 print("  모두 통과" if not fails else f"  실패 {len(fails)}건: {fails}")
 print("=" * 72)
 sys.exit(1 if fails else 0)

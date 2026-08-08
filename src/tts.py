@@ -1714,9 +1714,52 @@ def align_narrator(pool, key, cuts, out, pin, book, gmap):
 
 STT_ON = os.environ.get("VT_STT", "1").strip().lower() \
     not in ("", "0", "off", "no", "false")
-STT_MODEL = os.environ.get("VT_STT_MODEL", "gemini-2.5-flash")
 STT_GAP = 1.5              # 조각 사이에 넣는 무음(초) — 경계 표시
 STT_FIX_MAX = 2            # 한 실행에서 통째로 다시 만드는 통의 최대 수 (돈 제한)
+_STT = {"model": None, "mime": None, "dead": False}   # 한 번 통한 조합을 기억한다
+
+
+def _stt_rank(name):
+    low = name.lower()
+    ver = 0.0
+    for tok in low.replace("-", " ").split():
+        try:
+            ver = max(ver, float(tok))
+        except ValueError:
+            pass
+    return (0 if "flash" in low else 1,        # flash 가 싸다
+            1 if "lite" in low else 0,         # lite 는 알아듣기가 약할 수 있다
+            -ver, len(name))
+
+
+def stt_models(key):
+    """소리를 **받아 적을 수 있는** 모델 목록 — 싼 것부터.
+
+    ⚠️ 2026-08-08: 예전에는 'gemini-2.5-flash' 라고 이름을 못 박아 뒀다. 그런데
+       실제 실행에서 **115컷 전부 '전사가 안 돼 확인 못 했다'** 로 나왔다 —
+       그 이름이 이 열쇠로는 안 통했던 것이다. 지켜준다던 장치가 조용히 놀고
+       있었던 셈이다. 이제 이름을 짐작하지 않고 **모델 목록에 물어봐서** 고른다."""
+    override = os.environ.get("VT_STT_MODEL")
+    if override:
+        return [override.strip()]
+    try:
+        req = urllib.request.Request(f"{BASE}/models?key={key}&pageSize=200",
+                                     headers={"User-Agent": "verdict-theater/1.0"})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            data = json.loads(r.read().decode("utf-8"))
+    except Exception:
+        return ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash"]
+    got = []
+    for m in (data or {}).get("models", []):
+        n = m.get("name", "").split("/", 1)[-1]
+        low = n.lower()
+        if not n or any(x in low for x in ("tts", "embed", "image", "veo", "imagen")):
+            continue
+        if "generateContent" not in (m.get("supportedGenerationMethods") or []):
+            continue
+        got.append(n)
+    got.sort(key=_stt_rank)
+    return got[:4] or ["gemini-2.5-flash"]
 
 
 def transcribe_pieces(key, files):
@@ -1752,15 +1795,43 @@ def transcribe_pieces(key, files):
     prompt = (f"첨부한 음성은 한국어 문장 조각 {len(files)}개를 무음으로 나눠 이어"
               " 붙인 것이다. 각 조각을 들리는 그대로 받아 적어라."
               " 조각마다 정확히 한 줄씩, 순서대로, 번호나 다른 말 없이 적어라.")
-    try:
-        res = _post_retry(
-            f"{BASE}/models/{STT_MODEL}:generateContent?key={key}",
+    def ask(model, mime):
+        return _post_retry(
+            f"{BASE}/models/{model}:generateContent?key={key}",
             {"contents": [{"role": "user", "parts": [
                 {"text": prompt},
-                {"inlineData": {"mimeType": "audio/mp3", "data": blob}}]}]},
+                {"inlineData": {"mimeType": mime, "data": blob}}]}]},
             timeout=300, label=f"받아쓰기×{len(files)}")
-    except Exception:
+
+    if _STT["dead"]:
         return None
+    res = None
+    if _STT["model"]:                       # 지난번에 통한 조합이 있으면 그것만 쓴다
+        try:
+            res = ask(_STT["model"], _STT["mime"])
+        except Exception as e:
+            print(f"      받아쓰기 실패({type(e).__name__}: {str(e)[:80]})")
+            return None
+    else:
+        why = []
+        for model in stt_models(key):
+            for mime in ("audio/mp3", "audio/mpeg"):
+                try:
+                    res = ask(model, mime)
+                    _STT["model"], _STT["mime"] = model, mime
+                    print(f"      받아쓰기 모델: {model} ({mime})")
+                    break
+                except Exception as e:
+                    why.append(f"{model} {mime} → {type(e).__name__} {str(e)[:60]}")
+            if res is not None:
+                break
+        if res is None:
+            # 두 번 세 번 더 두드려 봐야 시간만 간다. 이번 실행은 확인을 접는다.
+            _STT["dead"] = True
+            print("      ⚠️ 받아쓰기를 할 모델을 못 찾았다 — 이번 실행은 확인을 건너뛴다")
+            for w in why[:4]:
+                print(f"         {w}")
+            return None
     SPEND.add(res.get("usageMetadata"))
     parts = (res.get("candidates") or [{}])[0].get("content", {}).get("parts", [])
     text = "".join(p.get("text", "") for p in parts)
