@@ -27,6 +27,14 @@ on:
           - 'short1'
           - 'short2'
           - 'short3'
+      mode:
+        description: "연습이면 올리지 않고 되는지만 봅니다"
+        required: false
+        default: '진짜로 올리기'
+        type: choice
+        options:
+          - '진짜로 올리기'
+          - '연습 (올리지 않고 확인만)'
 
 # ⚠️ write 여야 한다. 올린 뒤 state/episodes.json 에 '공개됨' 을 적어 되돌려 놓는다.
 #    예전에는 read 였고 적어 넣는 단계도 없었다 → 올려 놓고도 관리자 페이지에는
@@ -113,9 +121,11 @@ jobs:
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
         run: |
           set -o pipefail
+          DRY=""
+          [ "${{ inputs.mode }}" = "연습 (올리지 않고 확인만)" ] && DRY="--dry"
           python3 src/upload.py public "${{ inputs.episode }}" \
             --what "${{ inputs.what }}" \
-            --video "build/${{ inputs.what }}.mp4" 2>&1 | tee up.log
+            --video "build/${{ inputs.what }}.mp4" $DRY 2>&1 | tee up.log
 
       # ⭐ 올린 사실을 저장소에 적어 되돌려 놓는다.
       #    upload.py 는 state/episodes.json 에 '공개됨' 과 영상 번호를 적지만,

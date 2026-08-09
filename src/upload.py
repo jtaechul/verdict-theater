@@ -538,13 +538,35 @@ def cmd_public(args):
         print(f"{what} 의 올릴 내용을 못 만들었다")
         return 2
 
+    # 유튜브 열쇠가 살아 있는지 여기서 판가름난다 — 안 되면 여기서 멈춘다.
     token = access_token()
+    thumb = Path(args.thumb) if args.thumb else video.parent / "thumb.jpg"
+
+    # ⭐ 연습(dry) — **올리지 않고** 여기까지가 되는지만 본다.
+    #    2026-08-09 손님: "즉시공개 버튼 작동되는지 다시 한번 검증해서 정상 작동되도록 조치해."
+    #    진짜로 올려서 확인하면 되돌릴 수 없다(유튜브에 공개로 올라가 버린다).
+    #    그래서 **올리기 직전까지 전부 실제로 해 보고** 마지막 한 걸음만 멈춘다:
+    #      영상 꺼내기 · 올릴 내용 읽기 · 유튜브 열쇠로 출입증 받기 — 여기까지 되면
+    #      남은 것은 파일을 보내는 일뿐이다.
+    if getattr(args, "dry", False):
+        print(f"\n── 연습입니다. 올리지 않았습니다 ──")
+        print(f"  영상      {video} ({video.stat().st_size / 1e6:.0f}MB)")
+        print(f"  유튜브 열쇠 정상 (출입증을 받았습니다)")
+        print(f"  제목      {m['title']}")
+        print(f"  설명      {len(m['description'])}자")
+        print(f"  해시태그   {len(m.get('tags') or [])}개 · "
+              f"{' '.join('#' + t for t in (m.get('tags') or [])[:6])}")
+        print(f"  썸네일     {'있음 ' + str(thumb) if thumb.exists() else '없음'}")
+        print(f"  고정 댓글  {'있음' if m.get('pinned') else '없음'}")
+        print(f"  공개 여부  public (바로 공개)")
+        print("\n  → 여기까지 모두 정상입니다. 실제로 누르시면 그대로 올라갑니다.")
+        return 0
+
     print(f"{ep} {what} 올리는 중 ({video.stat().st_size / 1e6:.0f}MB) — **바로 공개** …")
     vid = upload_video(token, video, m["title"], m["description"], m["tags"],
                        vertical=what != "longform", privacy="public")
     print(f"  올라갔다: https://youtu.be/{vid}  (공개)")
 
-    thumb = Path(args.thumb) if args.thumb else video.parent / "thumb.jpg"
     if what == "longform" and thumb.exists():
         try:
             set_thumbnail(token, vid, thumb)
@@ -649,6 +671,8 @@ def main():
     u.add_argument("--meta", default="", help="meta.json (비우면 영상 옆)")
     u.add_argument("--thumb", default="")
     u.add_argument("--narration", default="")
+    u.add_argument("--dry", action="store_true",
+                   help="연습 — 올리기 직전까지만 해 보고 실제로는 올리지 않는다")
 
     args = ap.parse_args()
     try:

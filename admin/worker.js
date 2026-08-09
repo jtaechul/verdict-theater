@@ -538,7 +538,14 @@ function uploadCard(ep, v) {
     + '유튜브에 올리기 · 즉시 공개</button>'
     + '<div style="color:#9599ab;font-size:13px;margin-top:9px">'
     + '누르면 <b>바로 공개</b>로 올라갑니다. 되돌리려면 유튜브 앱에서 직접 지우셔야 합니다.<br>'
-    + '올리기 전에 확인을 한 번 더 여쭙습니다.</div>';
+    + '올리기 전에 확인을 한 번 더 여쭙습니다.</div>'
+    // 진짜로 올리지 않고 '되는지' 만 보는 길. 되돌릴 수 없는 일을 하기 전에 쓴다.
+    + '<div style="height:10px"></div>'
+    + '<button class="mini" onclick="doUpload(\\'' + ep + '\\',\\'' + what + '\\',1)">'
+    + '먼저 연습해 보기 (올리지 않음)</button>'
+    + '<div style="color:#9599ab;font-size:13px;margin-top:9px">'
+    + '유튜브에 올리지 않고, <b>올리기 직전까지</b> 되는지만 확인합니다.<br>'
+    + '유튜브 열쇠·영상·제목·설명이 준비됐는지 여기서 알 수 있습니다.</div>';
 
   h += '<div style="height:12px"></div>'
     + '<button class="ghost" onclick="remakeOne(\\'' + ep + '\\',\\'' + what + '\\')">'
@@ -571,30 +578,39 @@ async function watchRun(file, since, onDone, everySec = 10, maxMin = 30) {
   setTimeout(tick, 6000);
 }
 
-async function doUpload(ep, what) {
+async function doUpload(ep, what, dry) {
   const label = (VIDEO_LABEL_JS[what + '.mp4'] || what);
-  if (!confirm('「' + label + '」 을(를) 유튜브에 **즉시 공개**로 올립니다.\\n\\n'
-             + '되돌리려면 유튜브 앱에서 직접 지우셔야 합니다.\\n올릴까요?')) return;
-  toast('유튜브에 올리는 중… (몇 분 걸립니다)');
+  if (dry) {
+    if (!confirm('「' + label + '」 을(를) 올리는 데 문제가 없는지 확인만 합니다.\\n\\n'
+               + '유튜브에는 **올리지 않습니다.**\\n해볼까요?')) return;
+  } else if (!confirm('「' + label + '」 을(를) 유튜브에 **즉시 공개**로 올립니다.\\n\\n'
+                    + '되돌리려면 유튜브 앱에서 직접 지우셔야 합니다.\\n올릴까요?')) {
+    return;
+  }
+  toast(dry ? '확인하는 중…' : '유튜브에 올리는 중… (몇 분 걸립니다)');
   const since = Date.now();
+  const inputs = { episode: ep, what: what };
+  if (dry) inputs.mode = '연습 (올리지 않고 확인만)';
   let j = {};
   try {
     const r = await fetch('/api/run', { method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ file: 'youtube-upload.yml',
-                             inputs: { episode: ep, what: what } }) });
+      body: JSON.stringify({ file: 'youtube-upload.yml', inputs: inputs }) });
     j = await r.json();
   } catch (e) { j = { ok: false, error: '연결이 끊겼습니다' }; }
   if (!j.ok) { toast('실패: ' + (j.error || '알 수 없는 이유'), 8000); return; }
-  toast('올리는 중입니다. 이 화면을 켜 두시면 결과를 여기에 알려드립니다.', 12000);
+  toast(dry ? '확인하는 중입니다. 이 화면을 켜 두시면 결과를 알려드립니다.'
+            : '올리는 중입니다. 이 화면을 켜 두시면 결과를 여기에 알려드립니다.', 12000);
   watchRun('youtube-upload.yml', since, (r) => {
     if (r.conclusion === 'success') {
-      toast('「' + label + '」 유튜브에 공개로 올라갔습니다.', 12000);
-      load();
+      toast(dry ? '이상 없습니다. 지금 누르시면 그대로 올라갑니다.'
+                : '「' + label + '」 유튜브에 공개로 올라갔습니다.', 12000);
+      if (!dry) load();
     } else if (r.conclusion === 'timeout') {
       toast('아직 끝나지 않았습니다. 잠시 뒤 [작업] 화면에서 확인해 주십시오.', 12000);
     } else {
-      toast('올리지 못했습니다 (' + (CONCL[r.conclusion] || r.conclusion || '알 수 없음')
+      toast((dry ? '확인에서 문제가 나왔습니다 (' : '올리지 못했습니다 (')
+            + (CONCL[r.conclusion] || r.conclusion || '알 수 없음')
             + '). [작업] 화면의 최근 실행에서 까닭을 볼 수 있습니다.', 15000);
     }
   });
