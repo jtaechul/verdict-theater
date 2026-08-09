@@ -81,7 +81,7 @@ const WORKFLOWS = [
 
   // 2026-08-09 손님: "나중에도 이러면 어떡해. 목소리를 바꾸고 싶은 사람이 있으면
   //                   어떻게 해야 되는지도 방법을 같이 고민해서 제안해 줘."
-  { file: 'voiceaudition.yml', name: '목소리 오디션 (30개 들어보기)', rare: true,
+  { file: 'voiceaudition.yml', name: '목소리 오디션 다시 만들기',
     desc: '목소리 30개를 같은 대사로 읽혀 한 파일로 들려드립니다. 한 번 약 280원, 그 뒤로는 0원',
     inputs: [{ k: 'dry', label: '실제로 만들까요', type: 'select',
                help: "'계획만' 을 고르면 값이 얼마나 들지만 알려드리고 끝납니다 (0원).",
@@ -376,70 +376,18 @@ function home() {
   });
   h += '</div>';
 
-  // ⭐ 등장인물마다 어떤 목소리를 쓰는지 보여주고, 여기서 바로 바꾸게 한다.
-  //    (2026-08-09 손님: "목소리별 등장인물도 괜찮은데 이걸 바꿀 수가 없잖아.
-  //                      바꿀 수 있는 기능도 관리자 페이지에 적용을 좀 해줘.")
-  //    예전에는 코드를 고쳐야만 바뀌었다 — 손님이 직접 하실 수 없었다.
-  if ((S.voiceList||[]).length) {
-    const ROLES = [['v_M50A','장남'],['v_M50B','차남'],['v_F50A','어머니'],
-                   ['v_F50B','며느리'],['v_M70','아버지'],['v_F70','할머니'],
-                   ['v_JUDGE','재판장'],['narrator','해설']];
-    const now = S.cast || {};
-    const hzOf = {}; S.voiceList.forEach(v => { hzOf[v.name] = v.hz; });
-    h += '<div class="card"><h2>등장인물 목소리</h2>';
-    h += '<table style="width:100%;margin-bottom:10px">';
-    ROLES.forEach(([k, ko]) => {
-      const v = now[k];
-      const hz = v ? hzOf[v] : null;
-      h += '<tr><td style="padding:4px 0;color:#e6e8f0">' + esc(ko) + '</td>'
-        + '<td style="text-align:right;color:#9599ab;font-size:13px">'
-        + (v ? esc(v) + (hz ? ' · ' + Math.round(hz) + 'Hz' : '')
-             : '<span style="color:#6b6f80">기본값</span>') + '</td></tr>';
-    });
-    h += '</table>';
-    h += '<label>누구를<select id="cv_who">'
-      + ROLES.map(([k, ko]) => '<option value="' + k + '">' + esc(ko) + '</option>').join('')
-      + '</select></label>';
-    h += '<label>어떤 목소리로<select id="cv_voice">'
-      + S.voiceList.map(v => {
-          const band = v.hz < 155 ? '남자' : (v.hz < 165 ? '애매' : '여자');
-          return '<option value="' + esc(v.name) + '">' + esc(v.name)
-               + ' · ' + Math.round(v.hz) + 'Hz · ' + band + '</option>';
-        }).join('') + '</select></label>';
-    h += '<div style="color:#9599ab;font-size:12.5px;margin:-6px 0 10px;line-height:1.5">'
-      + '위 <b>목소리 오디션</b>에서 들어보시고 고르십시오. 남자 배역에 여자 음역을 '
-      + '고르면 저장되지 않고 알려드립니다.</div>';
-    h += '<button onclick="changeVoice()">이 목소리로 바꾸기</button>';
-    h += '<div style="color:#9599ab;font-size:13px;margin-top:9px">'
-      + '바꾸는 것만으로는 <b>값이 들지 않습니다.</b> 다음에 [영상 만들기] 를 누르실 때 '
-      + '<b>그 사람 대사만</b> 새로 만들어집니다 (장남이면 60~100원).</div>';
-    h += '</div>';
-  }
-
-  // 목소리 오디션(30개). 이름을 누르면 그 목소리가 나오는 자리로 넘어간다.
-  // ⚠️ 예전에는 이 카드가 아예 없어서, 손님이 오디션을 돌려 놓고도
-  //    **어디서 듣는지 알 수가 없으셨다** (2026-08-09 지적).
-  if (S.audition) {
-    h += '<div class="card"><h2>목소리 오디션 (30개)</h2>'
-      + '<div style="color:#9599ab;font-size:13px;margin-bottom:9px">'
-      + '낮은 목소리부터 이어 붙였습니다 · ' + mb(S.audition.size)
-      + (S.audition.at ? ' · ' + esc(ago(S.audition.at)) + ' 만듦' : '') + '<br>'
-      + '<b>이름을 누르면 그 목소리부터 들립니다.</b></div>'
-      + '<audio id="auplay" controls preload="none" style="width:100%"'
-      + ' src="/api/audio?id=' + S.audition.id + '"></audio>'
-      + '<div id="aulist" style="margin-top:10px;color:#9599ab;font-size:13px">'
-      + '목록 불러오는 중…</div></div>';
-  }
-
-  // ⭐ 메뉴를 둘로 나눈다 (2026-08-09 손님: "왜 이렇게 쓸데없는 메뉴가 많아").
-  //    늘 쓰는 넷만 펼쳐 두고, 가끔 쓰는 것은 접어 둔다. 안 그러면 화면이 길어져
-  //    아래쪽 카드(들어보기 같은 것)를 못 찾으신다 — 실제로 그런 일이 있었다.
+  // ⭐ 실행 차례대로 한 카드에 담는다 (2026-08-09 손님 두 차례 지적).
+  //    ① "쓸데없는 메뉴가 많아"        → 가끔 쓰는 것은 접어 둔다
+  //    ② "등장인물 목소리는 대본 아래쪽에 배치되는 게 정상이고, 감추기가 가능해야 해"
+  //       → 목소리 일은 **대본을 쓴 뒤, 영상을 만들기 전**에 하는 것이 순서다.
+  //         그 자리에 접힌 채로 넣는다.
   h += '<div class="card"><h2>실행 <small style="font-weight:400;color:#9599ab">'
      + '— 위에서부터 차례대로 누르시면 됩니다</small></h2>';
-  h += wfList(false);
-  h += '<details style="margin-top:6px"><summary style="cursor:pointer;color:#9599ab;'
-     + 'font-size:14px;padding:8px 0">가끔 쓰는 것 (처음 준비 · 목소리 · 효과음)</summary>'
-     + wfList(true) + '</details>';
+  h += wfList(['collect.yml', 'script.yml']);
+  h += fold('목소리 고르기 (등장인물 목소리 · 오디션)', voiceBlock());
+  h += wfList(['produce.yml', 'stats.yml']);
+  h += fold('가끔 쓰는 것 (처음 준비 · 효과음)',
+            wfList(['build-assets.yml', 'sfx.yml']));
   h += '</div>';
 
   if ((S.runs||[]).length) {
@@ -492,13 +440,85 @@ async function fillAudition() {
   box.innerHTML = s + '</table>';
 }
 
-// 실행 메뉴 한 덩이를 그린다. rare=true 면 '가끔 쓰는 것' 만 그린다.
-// ⚠️ 자리(i)는 WF 전체 기준이어야 한다 — run(i) 가 그 번호로 찾기 때문이다.
-function wfList(rare) {
+// 목소리 관련을 한 묶음으로 그린다 — **대본 아래, 영상 만들기 위**에 접힌 채로 들어간다.
+// (2026-08-09 손님: "등장인물 목소리는 대본 아래쪽에 배치되는 게 정상일 듯하고,
+//                   감추기가 가능해야 해." — 목소리 일은 대본을 쓴 뒤에 하는 것이 순서다)
+function voiceBlock() {
   let h = '';
-  WF.forEach((w, i) => {
+
+  // ① 지금 누가 어떤 목소리를 쓰는지 + 바꾸기
+  if ((S.voiceList||[]).length) {
+    const ROLES = [['v_M50A','장남'],['v_M50B','차남'],['v_F50A','어머니'],
+                   ['v_F50B','며느리'],['v_M70','아버지'],['v_F70','할머니'],
+                   ['v_JUDGE','재판장'],['narrator','해설']];
+    const now = S.cast || {};
+    const hzOf = {}; S.voiceList.forEach(v => { hzOf[v.name] = v.hz; });
+    h += '<div class="wf"><b>등장인물 목소리</b>'
+      + '<small>지금 누가 어떤 목소리를 쓰는지 보고, 여기서 바꿉니다</small>';
+    h += '<table style="width:100%;margin:8px 0 12px">';
+    ROLES.forEach(([k, ko]) => {
+      const v = now[k];
+      const hz = v ? hzOf[v] : null;
+      h += '<tr><td style="padding:4px 0;color:#e6e8f0">' + esc(ko) + '</td>'
+        + '<td style="text-align:right;color:#9599ab;font-size:13px">'
+        + (v ? esc(v) + (hz ? ' · ' + Math.round(hz) + 'Hz' : '')
+             : '<span style="color:#6b6f80">기본값</span>') + '</td></tr>';
+    });
+    h += '</table>';
+    h += '<label>누구를<select id="cv_who">'
+      + ROLES.map(([k, ko]) => '<option value="' + k + '">' + esc(ko) + '</option>').join('')
+      + '</select></label>';
+    h += '<label>어떤 목소리로<select id="cv_voice">'
+      + S.voiceList.map(v => {
+          const band = v.hz < 155 ? '남자' : (v.hz < 165 ? '애매' : '여자');
+          return '<option value="' + esc(v.name) + '">' + esc(v.name)
+               + ' · ' + Math.round(v.hz) + 'Hz · ' + band + '</option>';
+        }).join('') + '</select></label>';
+    h += '<div style="color:#9599ab;font-size:12.5px;margin:-6px 0 10px;line-height:1.5">'
+      + '아래 <b>오디션</b>에서 들어보시고 고르십시오. 남자 배역에 여자 음역을 '
+      + '고르면 저장되지 않고 알려드립니다.</div>';
+    h += '<button onclick="changeVoice()">이 목소리로 바꾸기</button>';
+    h += '<div style="color:#9599ab;font-size:13px;margin-top:9px">'
+      + '바꾸는 것만으로는 <b>값이 들지 않습니다.</b> 다음에 [영상 만들기] 를 누르실 때 '
+      + '<b>그 사람 대사만</b> 새로 만들어집니다 (장남이면 60~100원).</div>';
+    h += '</div>';
+  }
+
+  // ② 오디션 들어보기 (이름을 누르면 그 목소리 자리로 넘어간다)
+  if (S.audition) {
+    h += '<div class="wf"><b>오디션 들어보기 (30개)</b>'
+      + '<small>낮은 목소리부터 이어 붙였습니다 · ' + mb(S.audition.size)
+      + (S.audition.at ? ' · ' + esc(ago(S.audition.at)) + ' 만듦' : '') + '</small>'
+      + '<div style="color:#9599ab;font-size:13px;margin:8px 0">'
+      + '<b>이름을 누르면 그 목소리부터 들립니다.</b></div>'
+      + '<audio id="auplay" controls preload="none" style="width:100%"'
+      + ' src="/api/audio?id=' + S.audition.id + '"></audio>'
+      + '<div id="aulist" style="margin-top:10px;color:#9599ab;font-size:13px">'
+      + '목록 불러오는 중…</div></div>';
+  }
+
+  // ③ 오디션을 새로 만드는 메뉴 (값이 드는 것이라 맨 아래)
+  h += wfList(['voiceaudition.yml']);
+  return h;
+}
+
+// 접었다 폈다 하는 묶음. 기본은 **접힌 채**로 둔다 (화면이 짧아야 찾기 쉽다).
+function fold(title, inner) {
+  return '<details style="margin-top:6px"><summary style="cursor:pointer;'
+       + 'color:#9599ab;font-size:14px;padding:8px 0">' + esc(title) + '</summary>'
+       + '<div style="padding-top:4px">' + inner + '</div></details>';
+}
+
+// 실행 메뉴에서 **정해진 것만 정해진 차례로** 그린다.
+// ⚠️ 자리(i)는 WF 전체 기준이어야 한다 — run(i) 가 그 번호로 찾기 때문이다.
+//    그래서 files 로 걸러도 i 는 WF 안에서의 번호를 그대로 쓴다.
+function wfList(files) {
+  let h = '';
+  files.forEach((f) => {
+    const i = WF.findIndex((x) => x.file === f);
+    if (i < 0) return;
+    const w = WF[i];
     if (w.hidden) return;                 // 버튼 전용이라 목록에 안 띄운다
-    if (!!w.rare !== !!rare) return;
     h += '<div class="wf"><b>' + esc(w.name) + '</b><small>' + esc(w.desc) + '</small>';
     w.inputs.forEach(inp => {
       h += '<label>' + esc(inp.label);
