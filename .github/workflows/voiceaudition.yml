@@ -53,8 +53,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
+    # ⚠️ 표식 파일(push)로 돌면 inputs 가 비어 있다.
+    #    그때 **값이 드는 쪽이 기본이 되면 안 된다** — 표식 파일을 건드릴 때마다
+    #    280원이 나갈 수 있다. 그래서 기본을 '목록만 다시 만들기(0원)' 로 둔다.
+    #    실제로 만들려면 관리자 페이지에서 골라 누르셔야 한다.
     env:
       ONLY: ${{ inputs.only || '' }}
+      MODE: ${{ inputs.dry || '목록만 다시 만들기 (0원)' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -86,7 +91,7 @@ jobs:
       #    30개를 한 파일에 이어 붙여 놓고 어느 소리가 누구인지 알려 주지 않았다.
       #    여기서 무음을 찾아 '누가 몇 초에 나오는지' 를 적어 준다. 제미나이를 안 부른다.
       - name: 목록만 다시 만들기 (값 0원)
-        if: inputs.dry == '목록만 다시 만들기 (0원)'
+        if: env.MODE == '목록만 다시 만들기 (0원)'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -101,14 +106,14 @@ jobs:
             --out build/audition/audition_index.json 2>&1 | tee au.log
 
       - name: 목소리 30개 만들어 재기
-        if: inputs.dry != '목록만 다시 만들기 (0원)'
+        if: env.MODE != '목록만 다시 만들기 (0원)'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           set -o pipefail
           ARGS=()
           [ -n "$ONLY" ] && ARGS+=(--only "$ONLY")
-          [ "${{ inputs.dry }}" = "예 (계획만 보기 · 0원)" ] && ARGS+=(--dry)
+          [ "$MODE" = "예 (계획만 보기 · 0원)" ] && ARGS+=(--dry)
           python3 tools/voice_audition.py --out build/audition "${ARGS[@]}" 2>&1 | tee au.log
           # 만들었으면 '누가 몇 초에 나오는지' 목록도 바로 만들어 둔다
           if [ -f build/audition/voices_all.mp3 ]; then
