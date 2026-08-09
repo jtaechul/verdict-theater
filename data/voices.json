@@ -8,10 +8,10 @@
     "Puck·Algenib·Gacrux — 같은 실수를 세 번 했다. 그래서 코드로 막는다."
   ],
   "_주의": [
-    "음높이는 **모델이 바뀌면 통째로 달라진다** (실측: 같은 이름이 86Hz ↔ 186Hz).",
-    "그래서 어느 모델로 쟀는지 함께 적는다. 모델을 바꾸면 오디션을 다시 돌려야 한다.",
-    "아래 값은 주석에 적혀 있던 실측값을 옮긴 것이다(seeded).",
-    "[목소리 오디션] 을 한 번 돌리면 30개 전부를 실제로 재서 이 파일을 다시 쓴다."
+    "음높이는 **모델이 바뀌면 통째로 달라진다** — 실측: Charon 이 2.5 에서 82Hz, 3.1 에서 157Hz.",
+    "그래서 목소리마다 **어느 모델로 쟀는지**를 함께 적는다.",
+    "검사는 그 배역이 실제로 쓰는 모델로 잰 값만 쓴다. 다르면 '모른다' 로 두고 경고만 한다.",
+    "해설(narrator)만 2.5 를 쓰므로, 해설을 판단하려면 2.5 로도 한 번 재야 한다."
   ],
   "model": "gemini-3.1-flash-tts-preview",
   "narrator_model": "gemini-2.5-flash-preview-tts",
@@ -19,123 +19,153 @@
   "voices": {
     "Charon": {
       "hz": 156.9,
-      "note": "Informative 설명하는"
+      "note": "Informative 설명하는",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Algenib": {
       "hz": 134.5,
-      "note": "Gravelly 걸걸한"
+      "note": "Gravelly 걸걸한",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Algieba": {
       "hz": 135.0,
-      "note": "Smooth 매끄러운"
+      "note": "Smooth 매끄러운",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Schedar": {
       "hz": 183.9,
-      "note": "Even 평탄한"
+      "note": "Even 평탄한",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Enceladus": {
       "hz": 134.5,
-      "note": "Breathy 숨섞인"
+      "note": "Breathy 숨섞인",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Umbriel": {
       "hz": 126.0,
-      "note": "Easy-going 느긋한"
+      "note": "Easy-going 느긋한",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Rasalgethi": {
       "hz": 163.3,
-      "note": "Informative 설명하는"
+      "note": "Informative 설명하는",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Iapetus": {
       "hz": 181.8,
-      "note": "Clear 맑은"
+      "note": "Clear 맑은",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Orus": {
       "hz": 162.4,
-      "note": "Firm 단단한"
+      "note": "Firm 단단한",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Gacrux": {
       "hz": 172.0,
-      "note": "Mature 원숙한 — 이름과 달리 여자 음역이다"
+      "note": "Mature 원숙한 — 이름과 달리 여자 음역이다",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Sulafat": {
       "hz": 211.9,
-      "note": "Warm 따뜻한"
+      "note": "Warm 따뜻한",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Vindemiatrix": {
       "hz": 192.8,
-      "note": "Gentle 부드러운"
+      "note": "Gentle 부드러운",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Erinome": {
       "hz": 205.1,
-      "note": "Clear 맑은"
+      "note": "Clear 맑은",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Achernar": {
       "hz": 190.5,
-      "note": ""
+      "note": "",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Achird": {
       "hz": 117.6,
-      "note": ""
+      "note": "",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Alnilam": {
       "hz": 129.6,
-      "note": ""
+      "note": "",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Aoede": {
       "hz": 202.5,
-      "note": ""
+      "note": "",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Autonoe": {
       "hz": 167.6,
-      "note": ""
+      "note": "",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Callirrhoe": {
       "hz": 213.3,
-      "note": ""
+      "note": "",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Despina": {
       "hz": 202.5,
-      "note": ""
+      "note": "",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Fenrir": {
       "hz": 149.5,
-      "note": ""
+      "note": "",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Kore": {
       "hz": 190.5,
-      "note": ""
+      "note": "",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Laomedeia": {
       "hz": 175.8,
-      "note": ""
+      "note": "",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Leda": {
       "hz": 207.8,
-      "note": ""
+      "note": "",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Puck": {
       "hz": 213.3,
-      "note": ""
+      "note": "",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Pulcherrima": {
       "hz": 126.5,
-      "note": ""
+      "note": "",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Sadachbia": {
       "hz": 117.7,
-      "note": ""
+      "note": "",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Sadaltager": {
       "hz": 179.8,
-      "note": ""
+      "note": "",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Zephyr": {
       "hz": 195.1,
-      "note": ""
+      "note": "",
+      "model": "gemini-3.1-flash-tts-preview"
     },
     "Zubenelgenubi": {
       "hz": 126.5,
-      "note": ""
+      "note": "",
+      "model": "gemini-3.1-flash-tts-preview"
     }
   }
 }
