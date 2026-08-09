@@ -37,8 +37,10 @@ on:
           - 'narrator'
           - 'all'
 
+# ⚠️ write 여야 한다. 만든 mp3 를 보관함(릴리스)에 올리는 데 필요하다.
+#    read 로 두었더니 소리는 다 만들어 놓고 마지막에 403 으로 실패했다(2026-08-09 첫 실행).
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: voicesample
