@@ -14,6 +14,6 @@
 아래 셋은 예전에 **기계가 만든 순수 전자음**(진짜 녹음이 아님)이었다.
 `tools/sfx_quality.py` 가 잡아내며, 진짜 녹음으로 바뀌기 전까지는 영상에 깔리지 않는다.
 
-- `clock.mp3` — 1400Hz 를 1초 간격으로 두 번 (= 6분30초의 그 "삑 삑")
-- `phone.mp3` — 1000Hz 순수음
-- `heartbeat.mp3` — 52Hz 순수음
+- `clock.mp3` — freesound #527517 clock.wav by Narjara (http://creativecommons.org/publicdomain/zero/1.0/) https://freesound.org/people/Narjara/sounds/527517/
+- `phone.mp3` — freesound #458866 Telephone ringtone by Raclure (http://creativecommons.org/publicdomain/zero/1.0/) https://freesound.org/people/Raclure/sounds/458866/
+- `heartbeat.mp3` — freesound #856171 Racing Panic Heartbeat Adrenaline Pulse by brktkrgll (http://creativecommons.org/publicdomain/zero/1.0/) https://freesound.org/people/brktkrgll/sounds/856171/
