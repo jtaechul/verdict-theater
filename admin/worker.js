@@ -462,6 +462,21 @@ function home() {
   });
   h += '</div>';
 
+  // 목소리 오디션(30개). 이름을 누르면 그 목소리가 나오는 자리로 넘어간다.
+  // ⚠️ 예전에는 이 카드가 아예 없어서, 손님이 오디션을 돌려 놓고도
+  //    **어디서 듣는지 알 수가 없으셨다** (2026-08-09 지적).
+  if (S.audition) {
+    h += '<div class="card"><h2>목소리 오디션 (30개)</h2>'
+      + '<div style="color:#9599ab;font-size:13px;margin-bottom:9px">'
+      + '낮은 목소리부터 이어 붙였습니다 · ' + mb(S.audition.size)
+      + (S.audition.at ? ' · ' + esc(ago(S.audition.at)) + ' 만듦' : '') + '<br>'
+      + '<b>이름을 누르면 그 목소리부터 들립니다.</b></div>'
+      + '<audio id="auplay" controls preload="none" style="width:100%"'
+      + ' src="/api/audio?id=' + S.audition.id + '"></audio>'
+      + '<div id="aulist" style="margin-top:10px;color:#9599ab;font-size:13px">'
+      + '목록 불러오는 중…</div></div>';
+  }
+
   // 만들어 둔 목소리 파일이 있으면 여기서 바로 들으실 수 있게 한다.
   // (2026-08-09 손님: "장남 목소리 한번 다시 들려줄래? mp3 파일로 하나만 올려줘봐.")
   if ((S.voices||[]).length) {
@@ -492,6 +507,48 @@ function home() {
   }
 
   document.getElementById('app').innerHTML = h;
+  if (S.audition) fillAudition();
+}
+
+// 오디션 목록을 채운다 — 이름을 누르면 그 목소리 자리로 넘어간다.
+// (30개를 이어 붙여 놓고 누가 누군지 안 알려 주면 고를 수가 없다)
+async function fillAudition() {
+  const box = document.getElementById('aulist');
+  if (!box) return;
+  let j = { items: [] };
+  try {
+    j = await (await fetch('/api/auditionindex?id=' + (S.audition.index || ''),
+                           { cache: 'no-store' })).json();
+  } catch (e) {}
+  const items = j.items || [];
+  if (!items.length) {
+    box.innerHTML = '아직 목록이 없습니다. [작업] 화면의 <b>목소리 오디션</b>에서 '
+      + "<b>'목록만 다시 만들기 (0원)'</b> 을 한 번 눌러 주십시오.";
+    return;
+  }
+  const used = { Algenib: '장남', Fenrir: '차남', Algieba: '재판장',
+                 Enceladus: '아버지', Sulafat: '어머니', Erinome: '며느리',
+                 Vindemiatrix: '할머니', Charon: '해설' };
+  let s = '<table style="width:100%">';
+  items.forEach((it) => {
+    const t = it.start == null ? '' : mmss(it.start);
+    const band = it.hz < 155 ? '남자' : (it.hz < 165 ? '애매' : '여자');
+    const mine = used[it.name] ? ' <b style="color:#e8c37a">← ' + used[it.name] + '</b>' : '';
+    s += '<tr><td style="padding:5px 0">'
+      + (it.start == null ? '' : '<button class="mini" data-t="' + it.start
+         + '" onclick="seekAudition(this)">' + t + '</button> ')
+      + '<b style="color:#e6e8f0">' + esc(it.name) + '</b>'
+      + ' <small>' + Math.round(it.hz) + 'Hz · ' + band + '</small>' + mine
+      + '</td></tr>';
+  });
+  box.innerHTML = s + '</table>';
+}
+
+function seekAudition(el) {
+  const a = document.getElementById('auplay');
+  if (!a) return;
+  a.currentTime = parseFloat(el.getAttribute('data-t') || '0');
+  a.play().catch(() => {});
 }
 
 const row = (k, v) => '<div class="row"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>';
@@ -973,6 +1030,7 @@ export default {
         ]);
         const videos = {};
         const voices = [];
+        let audition = null;
         (Array.isArray(rels) ? rels : []).forEach((r) => {
           const m = /^video-(.+)$/.exec(r.tag_name || '');
           // 썸네일만 있고 영상은 아직 없는 회차도 '영상 보기'로 들어갈 수 있어야 한다
@@ -984,6 +1042,15 @@ export default {
           if (v) (r.assets || []).filter((a) => a.name.endsWith('.mp3'))
             .forEach((a) => voices.push({ ep: v[1], who: a.name.replace(/\.mp3$/, ''),
                                           id: a.id, size: a.size }));
+          // ⚠️ 목소리 오디션(30개)은 보관함 이름이 달라 위 규칙에 안 걸렸다.
+          //    그래서 **만들어 놓고도 화면에 안 떴다** (2026-08-09 손님 지적).
+          if ((r.tag_name || '') === 'voice-audition') {
+            const mp3 = (r.assets || []).find((a) => a.name === 'voices_all.mp3');
+            const idx = (r.assets || []).find((a) => a.name === 'audition_index.json');
+            if (mp3) audition = { id: mp3.id, size: mp3.size,
+                                  index: idx ? idx.id : null,
+                                  at: mp3.updated_at || mp3.created_at };
+          }
         });
         let assets = null;
         if (manifest) {
@@ -997,6 +1064,7 @@ export default {
           assets,
           videos,
           voices,
+          audition,
           runs: (runsRes.workflow_runs || []).map((r) => ({
             name: r.name, conclusion: r.conclusion, status: r.status, at: r.created_at,
           })),
@@ -1019,6 +1087,22 @@ export default {
           found: true, id: run.id, status: run.status,
           conclusion: run.conclusion, at: run.created_at, url: run.html_url,
         });
+      }
+
+      // 오디션에서 **누가 몇 초에 나오는지** 목록.
+      // 이게 없으면 30개를 이어 붙인 파일을 들어도 지금 나오는 소리가 누구인지
+      // 알 수가 없다 — 들려주기만 하고 고를 수는 없다 (2026-08-09 손님 지적).
+      if (url.pathname === '/api/auditionindex') {
+        const id = url.searchParams.get('id') || '';
+        if (!/^\d+$/.test(id)) return Response.json({ items: [] });
+        try {
+          const r0 = await fetch(`${GH}/repos/${REPO}/releases/assets/${id}`, {
+            headers: { 'Authorization': `Bearer ${env.GH_TOKEN}`,
+                       'Accept': 'application/octet-stream',
+                       'User-Agent': 'verdict-theater-admin' } });
+          if (!r0.ok) return Response.json({ items: [] });
+          return Response.json(await r0.json());
+        } catch { return Response.json({ items: [] }); }
       }
 
       // 그 회차에 어떤 영상이 있는지

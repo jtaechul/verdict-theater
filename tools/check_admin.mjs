@@ -66,12 +66,21 @@ const FAKE_STATE = {
            { ep: 'EP001', who: 'v_M50A__same', id: 123458, size: 981549 },
            { ep: 'EP001', who: 'v_M50A__down3', id: 123459, size: 981549 },
            { ep: 'EP001', who: 'narrator', id: 123457, size: 2400000 }],
+  // 오디션 카드도 그려 본다 (2026-08-09: 만들어 놓고 화면에 안 띄운 자리)
+  audition: { id: 777, size: 3419085, index: 778, at: new Date().toISOString() },
   assets: { have: 30, need: 38 },
   items: [],
 };
-globalThis.fetch = async () => ({
+// ⚠️ 주소에 따라 다른 답을 준다. 한 가지만 돌려주면 오디션 목록이 늘 비어서,
+//    그 안의 버튼(seekAudition)이 **한 번도 검사되지 않는다.**
+const FAKE_AUDITION = { total: 150, items: [
+  { n: 1, name: 'Achird', hz: 117.6, start: 0, dur: 5.1 },
+  { n: 2, name: 'Algenib', hz: 134.5, start: 5.1, dur: 5.3 },
+  { n: 3, name: 'Sulafat', hz: 211.9, start: 10.4, dur: 5.0 },
+]};
+globalThis.fetch = async (u) => ({
   status: 200, ok: true,
-  json: async () => FAKE_STATE,
+  json: async () => (String(u).includes('/api/auditionindex') ? FAKE_AUDITION : FAKE_STATE),
 });
 globalThis.scrollTo = () => {};
 globalThis.alert = () => {};
@@ -80,7 +89,7 @@ globalThis.confirm = () => false;
 let api;
 try {
   api = new Function(readFileSync(js, 'utf8')
-                   + '\n;return {home, thumbCard, setS: (v) => { S = v; },'
+                   + '\n;return {home, thumbCard, fillAudition, setS: (v) => { S = v; },'
                    + ' setTHUMB: (v) => { THUMB = v; }};')();
 } catch (e) {
   console.error(`❌ 브라우저 코드가 첫 실행에서 죽는다 — 페이지가 '불러오는 중…' 에서 멈춘다`);
@@ -102,6 +111,12 @@ try {
   console.error(`   ${e.constructor.name}: ${e.message}`);
   process.exit(1);
 }
+
+// ③-1 **오디션 목록이 채워지기를 기다린다.**
+//     ⚠️ 여기서 fillAudition() 을 직접 부르면 안 된다. 그러면 '함수는 멀쩡한데
+//        home() 이 부르지 않는' 상태를 못 잡는다 — 실제로 그 구멍을 확인했다.
+//        home() 이 스스로 불러 채우기를 기다려야 진짜 화면과 같아진다.
+for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 0));
 
 // ③-2 **썸네일 카드도 그려 본다.** 여기 버튼(다운받기·다시 만들기)이
 //     2026-08-09 에 손님을 저장 화면에 가둔 자리다 — 첫 화면에는 안 나오므로
@@ -143,6 +158,11 @@ if (!nHandler) {
 // ⑤ 썸네일 버튼이 **실제로 검사에 들어왔는지** 확인한다.
 //    thumbCard 를 못 그리면 위 검사가 조용히 건너뛰어, 손님을 가둔 그 버튼이
 //    다시 깨져도 초록불이 뜬다. 검사를 안 한 것을 통과로 보면 안 된다.
+if (!painted.includes('seekAudition(')) {
+  console.error('❌ 오디션 목록이 검사에 안 들어왔다 — 이름을 눌러 넘어가는 버튼을 못 봤다');
+  console.error('   (2026-08-09 손님이 "확인할 방법이 없잖아" 라고 한 그 화면이다)');
+  process.exit(1);
+}
 if (!painted.includes('saveThumb(')) {
   console.error('❌ 썸네일 카드가 검사에 안 들어왔다 — 그 안의 버튼을 검사하지 못했다');
   console.error('   (2026-08-09 손님이 갇힌 [썸네일 다운받기] 가 바로 그 버튼이다)');

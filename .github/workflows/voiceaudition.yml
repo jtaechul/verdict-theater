@@ -37,6 +37,9 @@ on:
         options:
           - '아니오 (실제로 만듭니다)'
           - '예 (계획만 보기 · 0원)'
+          # 이미 만들어 둔 소리는 그대로 두고, '누가 몇 초에 나오는지' 목록만 다시 만든다.
+          # 제미나이를 부르지 않으므로 값이 0원이다.
+          - '목록만 다시 만들기 (0원)'
 
 permissions:
   contents: write
@@ -78,7 +81,27 @@ jobs:
           fi
           echo "열쇠 있습니다."
 
+      # ⭐ 값 0원 길 — 이미 보관함에 있는 소리를 그대로 두고 **목록만** 다시 만든다.
+      #    (2026-08-09 손님: "삼십 개 들어보기 했는데 이걸 확인할 방법이 없잖아.")
+      #    30개를 한 파일에 이어 붙여 놓고 어느 소리가 누구인지 알려 주지 않았다.
+      #    여기서 무음을 찾아 '누가 몇 초에 나오는지' 를 적어 준다. 제미나이를 안 부른다.
+      - name: 목록만 다시 만들기 (값 0원)
+        if: inputs.dry == '목록만 다시 만들기 (0원)'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -o pipefail
+          mkdir -p build/audition
+          gh release download "voice-audition" --pattern "voices_all.mp3" \
+            --dir build/audition --clobber
+          gh release download "voice-audition" --pattern "audition_order.txt" \
+            --dir build/audition --clobber
+          python3 tools/audition_index.py build/audition/voices_all.mp3 \
+            --order build/audition/audition_order.txt \
+            --out build/audition/audition_index.json 2>&1 | tee au.log
+
       - name: 목소리 30개 만들어 재기
+        if: inputs.dry != '목록만 다시 만들기 (0원)'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
@@ -87,6 +110,12 @@ jobs:
           [ -n "$ONLY" ] && ARGS+=(--only "$ONLY")
           [ "${{ inputs.dry }}" = "예 (계획만 보기 · 0원)" ] && ARGS+=(--dry)
           python3 tools/voice_audition.py --out build/audition "${ARGS[@]}" 2>&1 | tee au.log
+          # 만들었으면 '누가 몇 초에 나오는지' 목록도 바로 만들어 둔다
+          if [ -f build/audition/voices_all.mp3 ]; then
+            python3 tools/audition_index.py build/audition/voices_all.mp3 \
+              --order build/audition/audition_order.txt \
+              --out build/audition/audition_index.json 2>&1 | tee -a au.log
+          fi
 
       - name: 결과 화면
         if: always()
@@ -105,16 +134,21 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          F=build/audition/audition_all.mp3
-          [ -f "$F" ] || { echo "들어보기 파일이 없습니다."; exit 0; }
-          cp "$F" build/audition/voices_all.mp3
+          cd build/audition 2>/dev/null || { echo "만든 것이 없습니다."; exit 0; }
+          [ -f audition_all.mp3 ] && cp audition_all.mp3 voices_all.mp3
+          UP=()
+          for f in voices_all.mp3 audition_order.txt audition_index.json; do
+            [ -f "$f" ] && UP+=("$f")
+          done
+          [ ${#UP[@]} -gt 0 ] || { echo "올릴 것이 없습니다."; exit 0; }
+          cd ../..
+          FILES=(); for f in "${UP[@]}"; do FILES+=("build/audition/$f"); done
           gh release view "voice-audition" >/dev/null 2>&1 \
-            && gh release upload "voice-audition" build/audition/voices_all.mp3 \
-                 build/audition/audition_order.txt --clobber \
+            && gh release upload "voice-audition" "${FILES[@]}" --clobber \
             || gh release create "voice-audition" --title "목소리 오디션" \
-                 --notes "낮은 목소리부터 이어 붙였습니다. 순서는 audition_order.txt 참고." \
-                 --prerelease build/audition/voices_all.mp3 build/audition/audition_order.txt
-          echo "보관함: voice-audition"
+                 --notes "낮은 목소리부터 이어 붙였습니다. 누가 몇 초에 나오는지는 audition_index.json 참고." \
+                 --prerelease "${FILES[@]}"
+          echo "보관함: voice-audition (${#FILES[@]}개)"
 
       # ⭐ 잰 높이표를 저장소에 적어 둔다 — 배역-목소리 검사가 이 파일을 읽는다.
       - name: 높이표 적어 두기
