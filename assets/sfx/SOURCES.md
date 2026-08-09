@@ -16,5 +16,5 @@ clock 은 1400Hz 를 1초 간격으로 두 번 울리는 것, 곧 손님이 들�
 `tools/sfx_quality.py` 가 이런 것을 잡아내며, 진짜 녹음이 아니면 영상에 깔리지 않는다.
 
 - `clock.mp3` — freesound #527517 clock.wav by Narjara (http://creativecommons.org/publicdomain/zero/1.0/) https://freesound.org/people/Narjara/sounds/527517/
-- `phone.mp3` — freesound #458866 Telephone ringtone by Raclure (http://creativecommons.org/publicdomain/zero/1.0/) https://freesound.org/people/Raclure/sounds/458866/
 - `heartbeat.mp3` — freesound #856171 Racing Panic Heartbeat Adrenaline Pulse by brktkrgll (http://creativecommons.org/publicdomain/zero/1.0/) https://freesound.org/people/brktkrgll/sounds/856171/
+- `phone.mp3` — freesound #431669 8746.wav by oldbunny (http://creativecommons.org/publicdomain/zero/1.0/) https://freesound.org/people/oldbunny/sounds/431669/
