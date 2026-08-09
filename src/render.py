@@ -41,6 +41,7 @@ from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import graphics as G  # noqa: E402
+import timelabel as TL  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
@@ -572,6 +573,31 @@ def set_cast(doc):
         if nm and ch.get("code"):
             CAST[nm] = ch["code"]
     return CAST
+
+
+def fix_time_labels(doc):
+    """회상 시점 자막이 **그림과 어긋나면** 안전한 말로 바꾼다.
+
+    2026-08-09 손님 지적: 화면 위에는 '아버지 생전' 인데 인물은 지금 나이 그대로였다.
+    젊은 시절 그림이 없으므로 시대를 못 박는 자막은 쓸 수 없다
+    (규칙은 `src/timelabel.py` 한곳에 모아 뒀다).
+
+    ⚠️ 대본 검사에서 걸러도 여기서 **한 번 더** 본다. 사람이 손으로 고친 대본이나
+       규칙이 생기기 전에 만들어 둔 옛 대본이 검사를 거치지 않고 화면까지 갈 수 있다."""
+    changed = []
+    for a in doc.get("acts", []) or []:
+        for c in a.get("cuts", []) or []:
+            old = (c.get("flashback_label") or "").strip()
+            if not old:
+                continue
+            new = TL.safe_label(c, doc)
+            if new != old:
+                c["flashback_label"] = new
+                changed.append((c.get("id"), old, new))
+    for cid, old, new in changed:
+        print(f"  시점 자막 고침 {cid}: '{old}' → '{new}'"
+              f"  (그림이 그 나이가 아니다)")
+    return changed
 
 
 def tag_owner(spec, chars):
@@ -1939,6 +1965,9 @@ def main():
     # 이름표를 그 사람 옆에 붙이려면 '이름 → 인물 코드' 다리가 필요하다.
     # 쇼츠 대본에는 배역 명단이 없으므로 여기서 한 번 채워 둔다.
     set_cast(doc)
+    # ⭐ 회상 시점 자막이 그림과 어긋나지 않게 **그리기 직전에** 한 번 더 손본다.
+    #    ('아버지 생전' 인데 화면에는 지금 나이 그대로 — 2026-08-09 손님 지적)
+    fix_time_labels(doc)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     nar = args.narration or None

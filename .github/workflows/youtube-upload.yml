@@ -28,8 +28,11 @@ on:
           - 'short2'
           - 'short3'
 
+# ⚠️ write 여야 한다. 올린 뒤 state/episodes.json 에 '공개됨' 을 적어 되돌려 놓는다.
+#    예전에는 read 였고 적어 넣는 단계도 없었다 → 올려 놓고도 관리자 페이지에는
+#    여전히 '안 올림' 으로 보이고, 손님이 또 누르면 같은 영상이 두 번 올라간다.
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: youtube-upload
@@ -46,18 +49,44 @@ jobs:
         with:
           python-version: '3.12'
 
+      # ⭐ 2026-08-09 13:11 실측 — 손님이 버튼을 누르자 **18초 만에 죽었다**:
+      #      ModuleNotFoundError: No module named 'PIL'
+      #    upload.py 가 render.py 를 부르고, render.py 는 맨 윗줄에서 Pillow(그림
+      #    라이브러리)를 부르는데 이 워크플로에는 Pillow 가 없었다.
+      #    upload.py 쪽은 '늦게 부르기' 로 고쳤고(보관된 meta.json 이 있으면 아예
+      #    안 부른다), 여기서도 **깔아 둔다** — 옛 회차처럼 meta.json 이 없어서
+      #    대본에서 목차를 새로 계산해야 할 때를 위해서다.
+      - name: 도구 준비
+        run: python3 -m pip install --quiet Pillow
+
+      # ⚠️ 열쇠는 **셋 다** 있어야 한다. 예전에는 REFRESH_TOKEN 하나만 봤다 —
+      #    나머지가 없으면 한참 뒤에 알 수 없는 오류로 죽어 원인을 못 찾는다.
       - name: 열쇠 확인
+        env:
+          CID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          CSEC: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          RTOK: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
         run: |
-          set -euo pipefail
-          if [ -z "${{ secrets.YOUTUBE_REFRESH_TOKEN }}" ]; then
+          set -uo pipefail
+          MISS=""
+          [ -n "${CID:-}"  ] || MISS="$MISS YOUTUBE_CLIENT_ID"
+          [ -n "${CSEC:-}" ] || MISS="$MISS YOUTUBE_CLIENT_SECRET"
+          [ -n "${RTOK:-}" ] || MISS="$MISS YOUTUBE_REFRESH_TOKEN"
+          if [ -n "$MISS" ]; then
             {
-              echo "## 유튜브 열쇠가 없습니다"
+              echo "## 유튜브 열쇠가 모자랍니다"
               echo ""
-              echo "저장소 → Settings → Secrets → \`YOUTUBE_REFRESH_TOKEN\` 을 등록하십시오."
+              echo "없는 것:"
+              for m in $MISS; do echo "- \`$m\`"; done
+              echo ""
+              echo "저장소 → Settings → Secrets and variables → Actions →"
+              echo "Secrets 탭에서 등록하십시오."
+              echo "(관리자 페이지의 [유튜브 연결] 을 돌리면 세 가지가 한 번에 나옵니다)"
             } >> "$GITHUB_STEP_SUMMARY"
-            echo "::error::유튜브 열쇠가 없습니다."
+            echo "::error::유튜브 열쇠가 모자랍니다:$MISS"
             exit 1
           fi
+          echo "유튜브 열쇠 3가지 모두 있습니다."
 
       - name: 보관해 둔 영상 꺼내기
         env:
@@ -87,6 +116,24 @@ jobs:
           python3 src/upload.py public "${{ inputs.episode }}" \
             --what "${{ inputs.what }}" \
             --video "build/${{ inputs.what }}.mp4" 2>&1 | tee up.log
+
+      # ⭐ 올린 사실을 저장소에 적어 되돌려 놓는다.
+      #    upload.py 는 state/episodes.json 에 '공개됨' 과 영상 번호를 적지만,
+      #    그것은 **일회용 컴퓨터(러너) 안의 파일**이라 여기서 커밋하지 않으면
+      #    작업이 끝나는 순간 사라진다. 그러면 관리자 페이지는 계속 '안 올림'
+      #    으로 보이고, 손님이 또 눌러 같은 영상이 두 번 올라간다.
+      - name: 올린 사실 적어 두기
+        if: always()
+        run: |
+          git config user.name  "verdict-theater-bot"
+          git config user.email "actions@github.com"
+          git add state 2>/dev/null || true
+          git diff --cached --quiet && { echo "적을 것이 없다."; exit 0; }
+          git commit -m "공개 업로드: ${{ inputs.episode }} ${{ inputs.what }} [skip ci]"
+          for i in 1 2 3 4; do
+            git push origin HEAD:main && break
+            sleep $((2**i)); git pull --rebase origin main || true
+          done
 
       - name: 결과 화면
         if: always()

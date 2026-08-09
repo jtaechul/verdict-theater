@@ -87,15 +87,31 @@ const WORKFLOWS = [
              { k: 'what', label: '무엇을', type: 'select',
                opts: ['롱폼', '쇼츠 1번 (궁금증형)', '쇼츠 2번 (분노형)', '쇼츠 3번 (사이다형)'] }] },
 
-  { file: 'sfx.yml', name: '효과음 받아오기 (Pixabay)',
-    desc: '법정 발소리 같은 효과음을 Pixabay 에서 받아 넣습니다 (0원)',
+  // 2026-08-09 손님: "장남 목소리 한번 다시 들려줄래? mp3 파일로 하나만 올려줘봐."
+  { file: 'voicesample.yml', name: '목소리 들어보기',
+    desc: '등장인물 대사만 뽑아 mp3 한 개로 묶어 줍니다. 만든 소리를 쓰므로 0원입니다',
+    inputs: [{ k: 'who', label: '누구 목소리', type: 'select',
+               help: '그 사람 대사만 이어 붙여 한 파일로 만듭니다. 아래 [들어보기] 에서 재생됩니다.',
+               opts: [{ v: 'v_M50A', t: '장남' }, { v: 'v_M50B', t: '차남' },
+                      { v: 'v_F50A', t: '어머니' }, { v: 'v_M70', t: '아버지' },
+                      { v: 'v_JUDGE', t: '재판장' }, { v: 'narrator', t: '해설' },
+                      { v: 'all', t: '전부 (한 사람에 한 파일씩)' }] },
+             { k: 'episode', label: '회차', type: 'text', def: '',
+               help: '비워 두면 가장 최근 회차를 씁니다.' }] },
+
+  { file: 'sfx.yml', name: '효과음 받아오기',
+    desc: '발소리·시계 같은 효과음을 Freesound 에서 진짜 녹음으로 받아 넣습니다 (0원)',
     inputs: [{ k: 'name', label: '어떤 효과음', type: 'select',
                help: '고른 소리를 새로 받아 넣습니다. 지금 쓰는 것은 덮어씁니다.',
-               opts: [{ v: 'footsteps', t: '발소리' }, { v: 'door', t: '문 여닫는 소리' },
-                      { v: 'gavel', t: '의사봉' }, { v: 'paper', t: '종이 넘기는 소리' }] },
-             { k: 'query', label: '무엇을 찾을까요 (영어)', type: 'text',
-               def: 'footsteps hall',
-               help: '영어로 적어야 잘 찾습니다. 예: footsteps hall · courtroom gavel' },
+               opts: [{ v: 'clock phone heartbeat', t: '가짜 소리 3가지 한꺼번에 (권장)' },
+                      { v: 'clock', t: '시계 초침' }, { v: 'phone', t: '전화벨' },
+                      { v: 'heartbeat', t: '심장 뛰는 소리' },
+                      { v: 'footsteps', t: '발소리' }, { v: 'door', t: '문 여닫는 소리' },
+                      { v: 'gavel', t: '의사봉' }, { v: 'paper', t: '종이 넘기는 소리' },
+                      { v: 'all', t: '전부 다시 받기' }] },
+             { k: 'query', label: '무엇을 찾을까요 (영어)', type: 'text', def: '',
+               help: '보통은 비워 두십시오 — 소리마다 알맞은 말이 이미 정해져 있습니다. '
+                   + '여러 소리를 한꺼번에 받을 때는 반드시 비워 두셔야 합니다.' },
              { k: 'install', label: '바로 넣을까요', type: 'select',
                help: "'듣기만' 을 고르면 후보만 받아 두고 지금 소리는 그대로 둡니다.",
                opts: [{ v: 'best', t: '기계가 고른 1순위를 바로 넣기' },
@@ -312,6 +328,11 @@ const mmss = (s) => Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2
 const CONCL = { success:'성공', failure:'실패', cancelled:'취소됨', skipped:'건너뜀',
                 timed_out:'시간 초과', action_required:'조치 필요', neutral:'-' };
 
+// 목소리 기호도 마찬가지 — 화면에는 사람 말로 띄운다.
+const WHO_LABEL = { v_M50A:'장남 목소리', v_M50B:'차남 목소리', v_F50A:'어머니 목소리',
+                    v_F50B:'며느리 목소리', v_M70:'아버지 목소리', v_F70:'할머니 목소리',
+                    v_JUDGE:'재판장 목소리', narrator:'해설 목소리' };
+
 function ago(iso) {
   if (!iso) return '';
   const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -409,6 +430,23 @@ function home() {
     h += '<div style="height:12px"></div><button onclick="run(' + i + ')">실행</button></div>';
   });
   h += '</div>';
+
+  // 만들어 둔 목소리 파일이 있으면 여기서 바로 들으실 수 있게 한다.
+  // (2026-08-09 손님: "장남 목소리 한번 다시 들려줄래? mp3 파일로 하나만 올려줘봐.")
+  if ((S.voices||[]).length) {
+    h += '<div class="card"><h2>들어보기</h2>';
+    S.voices.forEach(v => {
+      h += '<div style="margin:0 0 14px">'
+        + '<div style="font-size:15px;margin-bottom:6px">' + esc(WHO_LABEL[v.who] || v.who)
+        + ' <small style="color:#9599ab">· ' + esc(v.ep) + ' · ' + mb(v.size) + '</small></div>'
+        + '<audio controls preload="none" style="width:100%"'
+        + ' src="/api/audio?id=' + v.id + '"></audio>'
+        + '<div style="margin-top:6px"><a href="/api/audio?id=' + v.id
+        + '&dl=' + encodeURIComponent(v.ep + '_' + v.who) + '"'
+        + ' style="color:#8ab4ff;font-size:13px">파일로 저장하기</a></div></div>';
+    });
+    h += '</div>';
+  }
 
   if ((S.runs||[]).length) {
     h += '<div class="card"><h2>최근 실행</h2><table>';
@@ -512,11 +550,33 @@ function uploadCard(ep, v) {
   return h;
 }
 
+// 작업이 끝날 때까지 지켜보다가 **결과를 화면에 알려준다.**
+// ⚠️ 예전에는 시작만 시켜 놓고 "텔레그램으로 알려드립니다" 하고 끝냈다.
+//    텔레그램 열쇠가 등록돼 있지 않아 아무 소식도 오지 않았고, 실제로
+//    2026-08-09 13:11 의 업로드는 18초 만에 죽었는데 손님은 그 사실을 몰랐다.
+async function watchRun(file, since, onDone, everySec = 10, maxMin = 30) {
+  const until = Date.now() + maxMin * 60000;
+  let started = false;
+  const tick = async () => {
+    if (Date.now() > until) { onDone({ conclusion: 'timeout' }); return; }
+    let j = null;
+    try { j = await (await fetch('/api/lastrun?file=' + encodeURIComponent(file))).json(); }
+    catch (e) { j = null; }
+    if (j && j.found && new Date(j.at).getTime() >= since - 60000) {
+      started = true;
+      if (j.status === 'completed') { onDone(j); return; }
+    }
+    setTimeout(tick, everySec * 1000);
+  };
+  setTimeout(tick, 6000);
+}
+
 async function doUpload(ep, what) {
   const label = (VIDEO_LABEL_JS[what + '.mp4'] || what);
   if (!confirm('「' + label + '」 을(를) 유튜브에 **즉시 공개**로 올립니다.\\n\\n'
              + '되돌리려면 유튜브 앱에서 직접 지우셔야 합니다.\\n올릴까요?')) return;
   toast('유튜브에 올리는 중… (몇 분 걸립니다)');
+  const since = Date.now();
   let j = {};
   try {
     const r = await fetch('/api/run', { method: 'POST',
@@ -525,8 +585,19 @@ async function doUpload(ep, what) {
                              inputs: { episode: ep, what: what } }) });
     j = await r.json();
   } catch (e) { j = { ok: false, error: '연결이 끊겼습니다' }; }
-  if (!j.ok) { toast('실패: ' + (j.error || '알 수 없는 이유'), 6000); return; }
-  toast('올리기 시작했습니다. 다 되면 텔레그램으로 알려드립니다.', 9000);
+  if (!j.ok) { toast('실패: ' + (j.error || '알 수 없는 이유'), 8000); return; }
+  toast('올리는 중입니다. 이 화면을 켜 두시면 결과를 여기에 알려드립니다.', 12000);
+  watchRun('youtube-upload.yml', since, (r) => {
+    if (r.conclusion === 'success') {
+      toast('「' + label + '」 유튜브에 공개로 올라갔습니다.', 12000);
+      load();
+    } else if (r.conclusion === 'timeout') {
+      toast('아직 끝나지 않았습니다. 잠시 뒤 [작업] 화면에서 확인해 주십시오.', 12000);
+    } else {
+      toast('올리지 못했습니다 (' + (CONCL[r.conclusion] || r.conclusion || '알 수 없음')
+            + '). [작업] 화면의 최근 실행에서 까닭을 볼 수 있습니다.', 15000);
+    }
+  });
 }
 
 async function makeScript(cid, nm) {
@@ -804,12 +875,18 @@ export default {
           gh(env, `/repos/${REPO}/releases?per_page=30`).catch(() => []),
         ]);
         const videos = {};
+        const voices = [];
         (Array.isArray(rels) ? rels : []).forEach((r) => {
           const m = /^video-(.+)$/.exec(r.tag_name || '');
           // 썸네일만 있고 영상은 아직 없는 회차도 '영상 보기'로 들어갈 수 있어야 한다
           // (썸네일을 먼저 만들어 보는 경우). 그래서 그림도 함께 센다.
           if (m) videos[m[1]] = (r.assets || [])
             .filter((a) => a.name.endsWith('.mp4') || a.name === THUMB_NAME).length;
+          // 목소리 들어보기 파일 (2026-08-09 손님: "장남 목소리 mp3 로 하나 올려줘봐")
+          const v = /^voice-sample-(.+)$/.exec(r.tag_name || '');
+          if (v) (r.assets || []).filter((a) => a.name.endsWith('.mp3'))
+            .forEach((a) => voices.push({ ep: v[1], who: a.name.replace(/\.mp3$/, ''),
+                                          id: a.id, size: a.size }));
         });
         let assets = null;
         if (manifest) {
@@ -822,9 +899,28 @@ export default {
           queue: Array.isArray(queue) ? queue : [],
           assets,
           videos,
+          voices,
           runs: (runsRes.workflow_runs || []).map((r) => ({
             name: r.name, conclusion: r.conclusion, status: r.status, at: r.created_at,
           })),
+        });
+      }
+
+      // 작업 하나가 지금 어떻게 되었는지 (버튼이 결과를 화면에 보여주려고 쓴다)
+      // ⚠️ 예전에는 "다 되면 텔레그램으로 알려드립니다" 하고 끝냈다. 그런데 텔레그램
+      //    열쇠가 등록돼 있지 않아 **아무 소식도 오지 않았다** — 2026-08-09 13:11 의
+      //    업로드 실패를 손님이 알 길이 없었다. 이제 화면이 직접 결과를 보여준다.
+      if (url.pathname === '/api/lastrun') {
+        const file = url.searchParams.get('file') || '';
+        if (!WORKFLOWS.some((w) => w.file === file))
+          return Response.json({ error: '알 수 없는 작업' }, { status: 400 });
+        const r = await gh(env,
+          `/repos/${REPO}/actions/workflows/${file}/runs?per_page=1`).catch(() => null);
+        const run = r && (r.workflow_runs || [])[0];
+        if (!run) return Response.json({ found: false });
+        return Response.json({
+          found: true, id: run.id, status: run.status,
+          conclusion: run.conclusion, at: run.created_at, url: run.html_url,
         });
       }
 
@@ -861,6 +957,37 @@ export default {
         }
         return Response.json({ ep, items, thumb, meta,
                                at: rel ? rel.published_at : null });
+      }
+
+      // 목소리 들어보기 파일 재생 / 내려받기 (보관함의 mp3 를 그대로 흘려보낸다).
+      //   손님은 아이폰만 쓰시므로, 화면에서 재생 버튼만 누르면 되어야 한다.
+      if (url.pathname === '/api/audio') {
+        const id = url.searchParams.get('id') || '';
+        const dl = url.searchParams.get('dl') || '';
+        if (!/^\d+$/.test(id)) return new Response('bad id', { status: 400 });
+        const r0 = await fetch(`${GH}/repos/${REPO}/releases/assets/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${env.GH_TOKEN}`,
+            'Accept': 'application/octet-stream',
+            'User-Agent': 'verdict-theater-admin',
+            'X-GitHub-Api-Version': '2022-11-28',
+          },
+          redirect: 'manual',
+        });
+        const loc = r0.headers.get('Location');
+        const up = loc ? await fetch(loc) : r0;
+        if (!up.ok)
+          return new Response('소리를 가져오지 못했습니다 (' + up.status + ')', { status: 502 });
+        const h = new Headers();
+        h.set('Content-Type', 'audio/mpeg');
+        h.set('Cache-Control', 'private, no-store');
+        if (dl) {
+          const safe = String(dl).replace(/[^A-Za-z0-9_-]/g, '') || 'voice';
+          h.set('Content-Disposition', `attachment; filename="${safe}.mp3"`);
+        }
+        const len = up.headers.get('Content-Length');
+        if (len) h.set('Content-Length', len);
+        return new Response(up.body, { status: 200, headers: h });
       }
 
       // 썸네일 보여주기 / 내려받기.

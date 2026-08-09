@@ -31,9 +31,28 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from render import cut_durations  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def cut_durations(*a, **kw):
+    """컷마다 몇 초인지 — 목차 시각을 매길 때만 쓴다.
+
+    ⚠️ **여기서 늦게 불러온다(lazy import).** 예전에는 파일 맨 위에서
+       `from render import cut_durations` 를 했는데, render.py 는 그림을 그리는
+       파일이라 맨 윗줄에서 Pillow(PIL, 그림 라이브러리)를 부른다.
+       그래서 **그림과 아무 상관없는 올리기 작업까지** Pillow 가 있어야 돌았다.
+
+       실제로 2026-08-09 13:11, 손님이 [유튜브에 올리기 · 즉시 공개] 를 누르자
+       18초 만에 `ModuleNotFoundError: No module named 'PIL'` 로 죽었다
+       (그 워크플로에는 Pillow 를 깔지 않는다). 버튼이 작동하지 않은 원인이 이것이다.
+
+       보관해 둔 meta.json 이 있으면 이 함수는 아예 불리지 않으므로,
+       늦게 불러오면 Pillow 없이도 올리기가 끝까지 간다."""
+    from render import cut_durations as _f
+    return _f(*a, **kw)
+
+
 SCRIPTS = ROOT / "data" / "scripts"
 EPISODES = ROOT / "state" / "episodes.json"
 CAL = ROOT / "state" / "calendar.json"

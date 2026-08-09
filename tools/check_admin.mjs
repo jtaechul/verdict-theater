@@ -61,6 +61,9 @@ const FAKE_STATE = {
   ],
   runs: [{ name: '3. 영상 만들기', at: new Date().toISOString(), conclusion: 'success' }],
   videos: { EP001: 4 },
+  // 목소리 들어보기 카드도 실제로 그려 본다 (2026-08-09 추가)
+  voices: [{ ep: 'EP001', who: 'v_M50A', id: 123456, size: 981549 },
+           { ep: 'EP001', who: 'narrator', id: 123457, size: 2400000 }],
   assets: { have: 30, need: 38 },
   items: [],
 };

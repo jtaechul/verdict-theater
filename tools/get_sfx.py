@@ -29,6 +29,9 @@ import urllib.request
 import wave
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from sfx_quality import BEEP_TONALITY, tone_ratio       # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 SFX = ROOT / "assets" / "sfx"
 PIXABAY = "https://pixabay.com/api/audio/"
@@ -36,6 +39,44 @@ FREESOUND = "https://freesound.org/apiv2/search/text/"
 
 # 법정 걸음. 사람이 천천히 걸으면 분당 60~80걸음이다(지금 것은 131 — 그래서 싸구려다).
 WANT_BPM = (55, 85)
+
+# ── 소리마다 '무엇이 맞는 소리인가' 기준 ────────────────────────────
+#    2026-08-09: 여기 있던 clock·phone·heartbeat·monitor 는 **소리가 아니라
+#    기계가 만든 삑** 이었다(1400·1000·52·880Hz 순수음). 손님이 6분30초에서
+#    "삑 삑" 을 듣고 빼 달라고 하셨다. 그래서 진짜 녹음으로 받아 온다.
+#      bpm        — 규칙적으로 울리는 소리의 분당 횟수(없으면 안 본다)
+#      beats_min  — 최소 몇 번은 울려야 그 소리로 들린다
+#      bright     — 이보다 높으면 얇고 쨍한 소리라 감점
+PROFILES = {
+    "footsteps": {"query": "footsteps hall walking", "bpm": (55, 85),
+                  "beats_min": 3, "bright": 1200, "trim": 6.0,
+                  "what": "법정 복도 걸음"},
+    "clock":     {"query": "wall clock ticking", "bpm": (50, 130),
+                  "beats_min": 3, "bright": 3000, "trim": 5.0,
+                  "what": "벽시계 초침 (똑딱)"},
+    "phone":     {"query": "old telephone bell ring", "bpm": None,
+                  "beats_min": 0, "bright": 3000, "trim": 4.0,
+                  "what": "옛날 전화벨"},
+    "heartbeat": {"query": "human heartbeat chest", "bpm": (45, 100),
+                  "beats_min": 2, "bright": 800, "trim": 4.0,
+                  "what": "심장 뛰는 소리"},
+    "door":      {"query": "wooden door open close", "bpm": None,
+                  "beats_min": 0, "bright": 2500, "trim": 3.0,
+                  "what": "문 여닫는 소리"},
+    "paper":     {"query": "paper document handling", "bpm": None,
+                  "beats_min": 0, "bright": 6000, "trim": 3.0,
+                  "what": "서류 넘기는 소리"},
+    "stamp":     {"query": "rubber stamp on paper", "bpm": None,
+                  "beats_min": 0, "bright": 3000, "trim": 2.0,
+                  "what": "도장 찍는 소리"},
+    "gavel":     {"query": "judge gavel wood", "bpm": None,
+                  "beats_min": 0, "bright": 2000, "trim": 2.0,
+                  "what": "의사봉 소리"},
+}
+
+
+def profile(name):
+    return PROFILES.get(name, PROFILES["footsteps"])
 
 # ⚠️ 2026-08-09 실측 — **Pixabay 소리 API 는 일반 열쇠로 안 열린다.**
 #    같은 열쇠로 사진 검색·영상 검색은 정상(3건)인데 /api/audio/ 만 403 이다
@@ -190,102 +231,99 @@ def measure(path):
     return {"sec": len(x) / sr, "steps": len(hits), "bpm": bpm, "center": cen}
 
 
-def score(m):
-    """법정 발소리로 얼마나 맞나. 클수록 좋다."""
+def score(m, prof=None):
+    """그 자리에 얼마나 맞는 소리인가. 클수록 좋다. (prof 는 PROFILES 의 한 줄)"""
+    prof = prof or PROFILES["footsteps"]
     if not m:
         return 0.0
     s = 100.0
-    lo, hi = WANT_BPM
-    if m["bpm"]:
-        if m["bpm"] < lo:
-            s -= (lo - m["bpm"]) * 1.2
-        elif m["bpm"] > hi:
-            s -= (m["bpm"] - hi) * 1.2          # 빠를수록 크게 깎는다
-    else:
-        s -= 25
-    if m["steps"] < 3:
+    lo, hi = prof.get("bpm") or (0, 0)
+    if lo or hi:
+        if m["bpm"]:
+            if m["bpm"] < lo:
+                s -= (lo - m["bpm"]) * 1.2
+            elif m["bpm"] > hi:
+                s -= (m["bpm"] - hi) * 1.2      # 빠를수록 크게 깎는다
+        else:
+            s -= 25
+    if m["steps"] < prof.get("beats_min", 3):
         s -= 20                                  # 두어 발로는 걸어오는 느낌이 안 난다
     if m["sec"] > 12:
         s -= (m["sec"] - 12) * 2                 # 너무 길면 컷에 안 맞는다
-    s -= max(0.0, m["center"] - 1200) / 40.0     # 얇고 쨍한 소리는 감점
+    s -= max(0.0, m["center"] - prof.get("bright", 1200)) / 40.0   # 얇고 쨍하면 감점
     return round(s, 1)
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("name", help="효과음 이름 (assets/sfx/{이름}.mp3)")
-    ap.add_argument("--query", default="footsteps hall")
-    ap.add_argument("--install", default="", help="best 또는 후보 번호")
-    ap.add_argument("--out", default="build/sfx")
-    ap.add_argument("--trim", type=float, default=6.0, help="설치할 때 최대 길이(초)")
-    a = ap.parse_args()
+def one(name, query, install, out_dir, trim, source, key):
+    """소리 하나를 받아 고르고(원하면) 설치한다. 0=성공, 1=실패."""
+    prof = profile(name)
+    query = query or prof["query"]
+    trim = trim if trim is not None else prof.get("trim", 6.0)
 
-    # Freesound 를 먼저 본다 (소리를 공식으로 주는 곳). 없으면 Pixabay.
-    source, which, key = None, None, ""
-    for src in ("freesound", "pixabay"):
-        which, key = api_key(src)
-        if key:
-            source = src
-            break
-    if not key:
-        print("오류: 소리를 받아올 열쇠가 없습니다.", file=sys.stderr)
-        print(f"      Freesound: {', '.join(KEY_NAMES['freesound'])}", file=sys.stderr)
-        print(f"      Pixabay:   {', '.join(KEY_NAMES['pixabay'])}", file=sys.stderr)
-        return 2
-    print(f"소리 받아올 곳: {source} (열쇠 {which} 등록돼 있습니다)")
-
-    out = Path(a.out)
+    print(f"\n{'=' * 72}")
+    print(f"■ {name}  ({prof.get('what', '')})   찾는 말: '{query}'")
+    out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     try:
-        found = (search_freesound(key, a.query) if source == "freesound"
-                 else search(key, a.query))
+        found = (search_freesound(key, query) if source == "freesound"
+                 else search(key, query))
     except Exception as e:
-        print(f"오류: 검색 실패 — {type(e).__name__}: {e}", file=sys.stderr)
+        print(f"  오류: 검색 실패 — {type(e).__name__}: {e}", file=sys.stderr)
         try:
             diagnose(key)
         except Exception:
             pass
         return 1
     if not found:
-        print(f"'{a.query}' 로 나온 소리가 없습니다. --query 를 바꿔 보십시오.")
+        print(f"  '{query}' 로 나온 소리가 없습니다. 찾는 말을 바꿔 보십시오.")
         return 1
 
-    print(f"\n'{a.query}' 로 찾은 소리 {len(found)}개")
-    print(f"  {'번호':4s}{'점수':>6s}{'분당걸음':>9s}{'길이':>8s}{'묵직함':>9s}  이름")
-    print("  " + "-" * 70)
+    print(f"  찾은 소리 {len(found)}개")
+    print(f"  {'번호':4s}{'점수':>6s}{'분당':>7s}{'길이':>8s}{'묵직함':>9s}"
+          f"{'몰린정도':>9s}  이름")
+    print("  " + "-" * 78)
     rows = []
     for i, h in enumerate(found, 1):
         url = _audio_url(h)
         if not url:
             continue
-        p = out / f"{a.name}_{i:02d}.mp3"
+        p = out / f"{name}_{i:02d}.mp3"
         try:
             p.write_bytes(get(url, timeout=120))
         except Exception as e:
             print(f"  {i:<4d} (내려받기 실패 {type(e).__name__})")
             continue
         m = measure(p)
-        sc = score(m)
-        rows.append((sc, i, p, h, m))
-        nm = str(h.get("tags") or h.get("name") or h.get("title") or "")[:32]
+        sc = score(m, prof)
+        # ⭐ 기계가 만든 '삑' 은 아무리 점수가 높아도 안 쓴다.
+        #    바로 이것 때문에 손님이 6분30초에서 "삑 삑" 을 들으셨다.
+        tone = tone_ratio(p)
+        beep = tone is not None and tone >= BEEP_TONALITY
+        if beep:
+            sc = -999.0
+        rows.append((sc, i, p, h, m, tone))
+        nm = str(h.get("tags") or h.get("name") or h.get("title") or "")[:28]
+        tstr = f"{tone * 100:8.0f}%" if tone is not None else f"{'-':>9s}"
         if m:
-            print(f"  {i:<4d}{sc:6.1f}{m['bpm']:9.0f}{m['sec']:7.1f}초"
-                  f"{m['center']:8.0f}Hz  {nm}")
+            print(f"  {i:<4d}{sc:6.1f}{m['bpm']:7.0f}{m['sec']:7.1f}초"
+                  f"{m['center']:8.0f}Hz{tstr}  {nm}"
+                  + ("   ⚠ 삑 소리 — 안 씁니다" if beep else ""))
         else:
-            print(f"  {i:<4d}{sc:6.1f}{'-':>9s}{'-':>8s}{'-':>9s}  {nm}")
+            print(f"  {i:<4d}{sc:6.1f}{'-':>7s}{'-':>8s}{'-':>9s}{tstr}  {nm}"
+                  + ("   ⚠ 삑 소리 — 안 씁니다" if beep else ""))
 
-    if not rows:
-        print("쓸 수 있는 후보가 없습니다.")
+    usable = [r for r in rows if r[0] > -900]
+    if not usable:
+        print("  쓸 수 있는 후보가 없습니다"
+              + (" (전부 삑 소리였습니다)." if rows else "."))
         return 1
-    rows.sort(reverse=True, key=lambda x: x[0])
-    best = rows[0]
+    usable.sort(reverse=True, key=lambda x: x[0])
+    best = usable[0]
     print(f"\n  기계가 고른 1순위: {best[1]}번 (점수 {best[0]})")
-    print(f"  기준: 법정 걸음 분당 {WANT_BPM[0]}~{WANT_BPM[1]}"
-          f" · 지금 쓰는 것은 분당 131(너무 빠름)")
 
-    listen = out / f"{a.name}_listen.mp3"
+    listen = out / f"{name}_listen.mp3"
     ins, chain, k = [], [], 0
-    for _sc, _i, p, _h, _m in sorted(rows, key=lambda x: x[1]):
+    for _sc, _i, p, _h, _m, _t in sorted(rows, key=lambda x: x[1]):
         ins += ["-i", str(p)]
         chain.append(f"[{k}:a]")
         k += 1
@@ -301,35 +339,97 @@ def main():
     except Exception:
         pass
 
-    if a.install:
-        pick = best if a.install == "best" else \
-            next((r for r in rows if str(r[1]) == str(a.install)), None)
-        if not pick:
-            print(f"오류: {a.install} 번 후보가 없습니다.", file=sys.stderr)
-            return 1
-        SFX.mkdir(parents=True, exist_ok=True)
-        dst = SFX / f"{a.name}.mp3"
-        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(pick[2]),
-                        "-t", f"{a.trim}", "-ac", "2",
-                        "-af", "loudnorm=I=-20:TP=-2", "-b:a", "192k", str(dst)],
-                       check=True)
-        h = pick[3]
-        note = SFX / "SOURCES.md"
-        line = (f"- `{a.name}.mp3` — {source} #{h.get('id')} "
-                f"{str(h.get('tags') or '')[:50]}"
-                + (f" by {h.get('user')}" if h.get('user') else "")
-                + (f" ({h.get('license')})" if h.get('license') else "")
-                + f" {h.get('pageURL') or ''}\n")
-        old = note.read_text(encoding="utf-8") if note.exists() else \
-            ("# 효과음 출처\n\n마음대로 써도 되는 소리만 씁니다"
-             " (Freesound CC0 · Pixabay 콘텐츠 라이선스).\n\n")
-        old = "".join(x for x in old.splitlines(keepends=True)
-                      if not x.startswith(f"- `{a.name}.mp3`"))
-        note.write_text(old + line, encoding="utf-8")
-        m2 = measure(dst)
-        print(f"\n  설치: {dst}"
-              + (f"  → 분당 {m2['bpm']:.0f}걸음 · {m2['sec']:.1f}초" if m2 else ""))
+    if not install:
+        return 0
+
+    pick = best if install == "best" else \
+        next((r for r in usable if str(r[1]) == str(install)), None)
+    if not pick:
+        print(f"  오류: {install} 번은 쓸 수 없는 후보입니다.", file=sys.stderr)
+        return 1
+    SFX.mkdir(parents=True, exist_ok=True)
+    dst = SFX / f"{name}.mp3"
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(pick[2]),
+                    "-t", f"{trim}", "-ac", "2",
+                    "-af", "loudnorm=I=-20:TP=-2", "-b:a", "192k", str(dst)],
+                   check=True)
+    # ⭐ 넣은 뒤 **다시 잰다.** 자르고 소리크기를 맞추는 사이에 성질이 바뀔 수 있다.
+    t2 = tone_ratio(dst)
+    if t2 is not None and t2 >= BEEP_TONALITY:
+        dst.unlink(missing_ok=True)
+        print(f"  ⚠ 넣고 보니 삑 소리였습니다(몰린정도 {t2 * 100:.0f}%). 넣지 않았습니다.")
+        return 1
+
+    h = pick[3]
+    note = SFX / "SOURCES.md"
+    line = (f"- `{name}.mp3` — {source} #{h.get('id')} "
+            f"{str(h.get('tags') or '')[:50]}"
+            + (f" by {h.get('user')}" if h.get('user') else "")
+            + (f" ({h.get('license')})" if h.get('license') else "")
+            + f" {h.get('pageURL') or ''}\n")
+    old = note.read_text(encoding="utf-8") if note.exists() else \
+        ("# 효과음 출처\n\n마음대로 써도 되는 소리만 씁니다"
+         " (Freesound CC0 · Pixabay 콘텐츠 라이선스).\n\n")
+    old = "".join(x for x in old.splitlines(keepends=True)
+                  if not x.startswith(f"- `{name}.mp3`"))
+    note.write_text(old + line, encoding="utf-8")
+    m2 = measure(dst)
+    print(f"  설치: {dst}"
+          + (f"  → 분당 {m2['bpm']:.0f}번 · {m2['sec']:.1f}초" if m2 else "")
+          + (f" · 몰린정도 {t2 * 100:.0f}%" if t2 is not None else ""))
     return 0
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("name", nargs="+",
+                    help="효과음 이름 (여러 개 가능 · assets/sfx/{이름}.mp3)")
+    ap.add_argument("--query", default="",
+                    help="찾는 말. 안 주면 소리마다 정해진 말을 쓴다")
+    ap.add_argument("--install", default="", help="best 또는 후보 번호")
+    ap.add_argument("--out", default="build/sfx")
+    ap.add_argument("--trim", type=float, default=None,
+                    help="설치할 때 최대 길이(초). 안 주면 소리마다 정해진 값")
+    a = ap.parse_args()
+
+    names = a.name
+    if len(names) == 1 and names[0] == "all":
+        names = list(PROFILES)
+    if len(names) > 1 and a.query:
+        print("오류: 소리를 여러 개 받을 때는 --query 를 줄 수 없습니다"
+              " (소리마다 찾는 말이 다릅니다).", file=sys.stderr)
+        return 2
+
+    # Freesound 를 먼저 본다 (소리를 공식으로 주는 곳). 없으면 Pixabay.
+    source, which, key = None, None, ""
+    for src in ("freesound", "pixabay"):
+        which, key = api_key(src)
+        if key:
+            source = src
+            break
+    if not key:
+        print("오류: 소리를 받아올 열쇠가 없습니다.", file=sys.stderr)
+        print(f"      Freesound: {', '.join(KEY_NAMES['freesound'])}", file=sys.stderr)
+        print(f"      Pixabay:   {', '.join(KEY_NAMES['pixabay'])}", file=sys.stderr)
+        return 2
+    print(f"소리 받아올 곳: {source} (열쇠 {which} 등록돼 있습니다)")
+
+    bad = []
+    for nm in names:
+        try:
+            if one(nm, a.query, a.install, a.out, a.trim, source, key):
+                bad.append(nm)
+        except Exception as e:
+            print(f"  오류: {nm} — {type(e).__name__}: {e}", file=sys.stderr)
+            bad.append(nm)
+
+    print(f"\n{'=' * 72}")
+    ok = [n for n in names if n not in bad]
+    if ok:
+        print(f"된 것 {len(ok)}개: {' · '.join(ok)}")
+    if bad:
+        print(f"안 된 것 {len(bad)}개: {' · '.join(bad)}")
+    return 1 if len(bad) == len(names) else 0
 
 
 if __name__ == "__main__":

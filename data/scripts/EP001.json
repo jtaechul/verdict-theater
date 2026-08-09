@@ -221,7 +221,7 @@
             "type": "nametag",
             "text": "김성훈 · 48세 · 차남"
           },
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_funeral",
           "blackout": false
         },
@@ -276,7 +276,7 @@
           "sfx": null,
           "amb": "amb_home",
           "blackout": false,
-          "flashback_label": "오십 년 전"
+          "flashback_label": "이정임 씨의 기억"
         },
         {
           "id": "A1-02",
@@ -366,7 +366,7 @@
             "type": "nametag",
             "text": "김성일 · 50세 · 장남"
           },
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_funeral",
           "blackout": false
         },
@@ -464,7 +464,7 @@
           "sfx": "sfx_stamp",
           "amb": "amb_street",
           "blackout": false,
-          "flashback_label": "아버지 생전"
+          "flashback_label": "김성일 씨의 기억"
         },
         {
           "id": "A1-09",
@@ -540,7 +540,7 @@
           "speaker": "v_M50A",
           "text": "대출금 갚는 게 너무 벅차요. 이번만 해결해 주시면 알아서 할게요.",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },
@@ -635,7 +635,7 @@
           "sfx": null,
           "amb": "amb_home",
           "blackout": false,
-          "flashback_label": "형제가 자라던 때"
+          "flashback_label": "김성훈 씨의 기억"
         },
         {
           "id": "A1-16",
@@ -685,7 +685,7 @@
           "speaker": "narrator",
           "text": "자신의 힘으로 독립했고, 묵묵히 부모님 곁을 지켰죠.",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },
@@ -849,7 +849,7 @@
           "speaker": "v_F50A",
           "text": "내가 어떻게 지킨 집인데... 그걸 네가 다 가져가겠다는 거냐.",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },
@@ -895,7 +895,7 @@
           "speaker": "narrator",
           "text": "결국 장남의 고집에, 집과 상가는 자식들 이름으로 쪼개졌습니다.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_paper",
           "amb": "amb_street",
           "blackout": false
         },
@@ -981,7 +981,7 @@
           "speaker": "v_F50A",
           "text": "성일이가... 나랑 너희를 상대로 소송을 냈다는 거니?",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },
@@ -1001,7 +1001,7 @@
           "speaker": "narrator",
           "text": "이미 가져간 것이 가장 많은 장남이었습니다.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_stamp",
           "amb": "amb_home",
           "blackout": false
         },
@@ -1259,7 +1259,7 @@
           "sfx": null,
           "amb": "amb_home",
           "blackout": false,
-          "flashback_label": "아버지 생전"
+          "flashback_label": "김성일 씨의 기억"
         },
         {
           "id": "A2-10",
@@ -1466,7 +1466,7 @@
           "speaker": "narrator",
           "text": "'예금 찾아 드린다'는 옛날 문자 하나로 빚을 갚았다고 우기는 장남.",
           "gfx": null,
-          "sfx": "sfx_phone",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },
@@ -1486,7 +1486,7 @@
           "speaker": "narrator",
           "text": "하지만 법원은 그 가벼운 핑계를 믿어주지 않았습니다.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_footsteps",
           "amb": "amb_street",
           "blackout": false
         },
@@ -1652,7 +1652,7 @@
           "speaker": "narrator",
           "text": "장남의 욕심은 그렇게 스스로를 무너뜨리며 끝나는 듯했습니다.",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },
@@ -1865,7 +1865,7 @@
           "speaker": "narrator",
           "text": "성훈은 다급히 형을 찾아갔습니다. 형도 지분을 챙겨갔으니까요.",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_street",
           "blackout": false
         },
@@ -2070,7 +2070,7 @@
           "speaker": "v_F50A",
           "text": "내 새끼들끼리 빚 때문에 싸우는 꼴, 더는 못 본다.",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },
@@ -2230,7 +2230,7 @@
           "speaker": "narrator",
           "text": "그는 기가 차다는 듯 동생에게 전화를 걸었습니다.",
           "gfx": null,
-          "sfx": "sfx_phone",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },
@@ -2739,7 +2739,7 @@
           "speaker": "narrator",
           "text": "다음 이야기도 놓치지 않으시려면, 구독 버튼을 눌러 두십시오.",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": true,
           "tag": "cta"

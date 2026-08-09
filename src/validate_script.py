@@ -25,6 +25,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import money                                                # noqa: E402
+import timelabel as TL                                      # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -465,6 +466,22 @@ def check_flashback(doc, r):
         r.ok(f"회상 {starts}구간 모두 시점 표기 있음")
     if stray:
         r.warn("회상", f"회상 시작이 아닌데 시점 표기가 있다: {', '.join(stray[:6])}")
+
+    # ⭐ 시점 표기가 **그림과 어긋나지 않는가** (2026-08-09 손님 지적)
+    #    인물 그림은 한 나이만 있다. 그런데 '아버지 생전'·'오십 년 전' 이라고
+    #    못 박으면, 화면에는 지금 나이 그대로인 사람이 서 있어 글자와 그림이 따로 논다.
+    #    → '누구누구 씨의 기억' 처럼 언제인지를 주장하지 않는 말로 쓴다.
+    off = []
+    for c in cuts:
+        lab = (c.get("flashback_label") or "").strip()
+        if lab and not TL.is_safe(lab):
+            off.append(f"{c.get('id')} '{lab}'"
+                       f"(→ '{TL.suggest(c, doc)}')  걸린 말: {TL.era_claim(lab)}")
+    if off:
+        r.error("회상", "시점 표기가 그림과 어긋난다 — 인물은 지금 나이 그대로인데 "
+                        "자막만 그때라고 못 박았다: " + " / ".join(off[:4]))
+    elif starts:
+        r.ok("시점 표기가 그림과 어긋나지 않는다 (시대를 못 박지 않음)")
 
 
 # 그래픽이 글자를 잘라 버리는 한계. graphics.py 의 [:N] 과 반드시 같아야 한다.
