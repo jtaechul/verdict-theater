@@ -284,6 +284,116 @@ VOICE_NAME = {
 FLAT_WORDS = ("또박또박", "담담", "사무적", "무심하게", "감정 없이", "기계적")
 
 
+# ── 배역에 맞는 목소리 높이인가 ────────────────────────────────────
+#
+# ⭐⭐ 이 검사가 없어서 같은 실수를 **세 번** 했다 (Puck → Algenib → Gacrux).
+#     2026-08-09 손님: "장남 목소리 너무 가늘고 여자 같아."
+#     장남에게 준 Gacrux 는 186Hz — 어머니(198)·할머니(198)·여자(200) 옆자리다.
+#     높이표는 바로 위 주석에 적혀 있었는데 **사람이 읽는 글이라, 내가 안 보면 끝**이었다.
+#     손님은 영상을 다 만들고(400~700원·40분) 귀로 들어야 아셨다.
+#     이제 **만들기 전에 기계가 본다.**
+#
+# 기준 — 사람 목소리의 보통 높이
+#     어른 남자 85~155Hz · 어른 여자 165~255Hz (그 사이 155~165 는 애매한 구간)
+#     남자 배역에 165Hz 이상 = **여자 음역** → 멈춘다
+#     여자 배역에 155Hz 미만 = **남자 음역** → 멈춘다
+#     애매한 구간은 경고만 한다 — 귀로 판단하실 몫이다
+MALE_ROLES = ("narrator", "v_M50A", "v_M50B", "v_M70", "v_JUDGE")
+FEMALE_ROLES = ("v_F50A", "v_F50B", "v_F70")
+MALE_TOP = 155.0        # 이 위는 남자 배역에 어색하다
+FEMALE_BOTTOM = 165.0   # 이 아래는 여자 배역에 어색하다
+SIBLING_GAP = 15.0      # 형제·자매가 이보다 가까우면 섞여 들린다
+
+VOICES_JSON = Path(__file__).resolve().parent.parent / "data" / "voices.json"
+
+
+def voice_table():
+    """목소리 이름 → 잰 높이(Hz). 없으면 빈 표(그때는 검사를 건너뛴다)."""
+    try:
+        return json.loads(VOICES_JSON.read_text(encoding="utf-8")).get("voices") or {}
+    except Exception:
+        return {}
+
+
+def effective_hz(speaker, table=None):
+    """그 배역이 **실제로 들릴** 높이. 뒤에서 낮추는 처리까지 계산에 넣는다.
+
+    render.py 가 인물별로 목소리를 낮출 수 있다(VOICE_PITCH). 검사는 시청자가
+    실제로 듣는 소리를 봐야 하므로, 낮춘 뒤의 높이로 판단한다."""
+    table = voice_table() if table is None else table
+    row = table.get(VOICE_NAME.get(speaker, ""))
+    if not row or not row.get("hz"):
+        return None, 0.0
+    st = 0.0
+    try:                                # render 를 못 불러와도 검사는 돌아야 한다
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import render
+        st = float(render.VOICE_PITCH.get(speaker, 0.0))
+    except Exception:
+        st = 0.0
+    return float(row["hz"]) * (2.0 ** (st / 12.0)), st
+
+
+def check_voice_pitch():
+    """배역과 목소리 높이가 맞는가. 어긋나면 **만들기 전에** 멈춘다.
+
+    VT_VOICE_SKIP=1 을 주면 넘어간다 — 일부러 범위 밖 목소리를 쓰실 때의 길이다."""
+    table = voice_table()
+    if not table:
+        print("  ⚠️ 목소리 높이표(data/voices.json)가 없어 배역-높이 검사를 건너뜁니다.")
+        return
+    stop, warn, hz_of = [], [], {}
+    for sp in list(MALE_ROLES) + list(FEMALE_ROLES):
+        if sp not in VOICE_NAME:
+            continue
+        name = VOICE_NAME[sp]
+        hz, st = effective_hz(sp, table)
+        if hz is None:
+            warn.append(f"{sp}({name}) 높이를 모릅니다 — [목소리 오디션] 을 돌리십시오")
+            continue
+        hz_of[sp] = hz
+        low = f"{name} {hz:.0f}Hz" + (f" ({st:+.0f}반음 낮춘 뒤)" if st else "")
+        if sp in MALE_ROLES:
+            if hz >= FEMALE_BOTTOM:
+                stop.append(f"{sp} ← {low} · 남자 배역인데 **여자 음역**입니다"
+                            f" (남자는 {MALE_TOP:.0f}Hz 아래)")
+            elif hz > MALE_TOP:
+                warn.append(f"{sp} ← {low} · 남자치고 높습니다")
+        else:
+            if hz < MALE_TOP:
+                stop.append(f"{sp} ← {low} · 여자 배역인데 **남자 음역**입니다"
+                            f" (여자는 {FEMALE_BOTTOM:.0f}Hz 위)")
+            elif hz < FEMALE_BOTTOM:
+                warn.append(f"{sp} ← {low} · 여자치고 낮습니다")
+
+    # 형제·자매가 너무 가까우면 누가 말하는지 안 갈린다 (실제로 겪은 일이다)
+    for a, b, who in (("v_M50A", "v_M50B", "형제"), ("v_F50A", "v_F50B", "두 여자")):
+        if a in hz_of and b in hz_of and abs(hz_of[a] - hz_of[b]) < SIBLING_GAP:
+            warn.append(f"{who} 목소리가 {abs(hz_of[a] - hz_of[b]):.0f}Hz 밖에 안 벌어집니다"
+                        f" — 섞여 들릴 수 있습니다 ({SIBLING_GAP:.0f}Hz 이상 권장)")
+
+    for w in warn:
+        print(f"  ⚠️ 목소리 검사: {w}")
+    if not stop:
+        if not warn:
+            print(f"  ✓ 배역-목소리 높이 검사 통과 ({len(hz_of)}명)")
+        return
+    if os.environ.get("VT_VOICE_SKIP", "").strip() in ("1", "true", "yes"):
+        print("  ⚠️ 배역-목소리가 어긋나지만 VT_VOICE_SKIP 이 켜져 있어 그냥 진행합니다:")
+        for s in stop:
+            print(f"     - {s}")
+        return
+    raise LLMError(
+        "배역에 안 맞는 목소리가 있습니다. **영상을 만들기 전에 멈춥니다.**\n  "
+        + "\n  ".join(f"- {s}" for s in stop)
+        + "\n\n  고치는 방법"
+        "\n   ① [목소리 오디션] 을 돌려 30개를 들어보고 배역에 맞는 것을 고르십시오"
+        "\n   ② src/tts.py 의 VOICE_NAME 에서 그 사람 목소리를 바꾸십시오"
+        "\n      (그 사람 대사만 다시 만들어지므로 한 편 값이 다 들지 않습니다)"
+        "\n   ③ 살짝만 손보면 될 때는 render.py 의 VOICE_PITCH 로 낮추십시오 (값 0원)"
+        "\n\n  일부러 이 목소리를 쓰시려면 VT_VOICE_SKIP=1 로 넘길 수 있습니다.")
+
+
 def check_style():
     """연기 지시에 '감정 빼기' 말이 다시 섞이지 않았는지 본다.
 
@@ -300,6 +410,7 @@ def check_style():
             " 어떤 사람이 어떤 상황에서 하는 말인지로 바꾸십시오.")
     if dup:
         raise LLMError("두 인물이 같은 목소리 이름을 씁니다 — 소리로 구분되지 않습니다.")
+    check_voice_pitch()
 
 
 # ── ⭐ 이번 실행에 든 값 ────────────────────────────────

@@ -1,0 +1,131 @@
+name: 목소리 오디션 (한 번 약 280원)
+
+# **Gemini 목소리 30개를 같은 대사로 한 번씩 읽혀** 높이를 재고, 한 파일로 이어 붙인다.
+#
+# 왜 (2026-08-09 손님: "나중에도 이러면 어떡해.
+#                      목소리를 바꾸고 싶은 사람이 있으면 어떻게 해야 되는지도 제안해 줘.")
+#   같은 실수를 세 번 했다 — Puck(들뜬) · Algenib(쉰 목소리) · Gacrux(186Hz 여자 음역).
+#   셋 다 구글이 붙인 **설명만 보고** 고른 것이다. 들어보지도 재보지도 않았다.
+#   여기서 한 번에 다 들어보고 다 재 두면, 앞으로는 짐작할 일이 없다.
+#
+# 무엇이 남나
+#   ① data/voices.json — 목소리별 실측 높이. **배역-목소리 검사가 이 표를 쓴다.**
+#      (남자 배역에 여자 음역 목소리가 배정되면 영상 만들기가 멈춘다)
+#   ② 보관함에 audition_all.mp3 — 낮은 목소리부터 이어 붙인 파일.
+#      관리자 페이지 [들어보기] 에서 그대로 재생된다.
+#
+# 값: 짧은 대사 한 줄 × 30개 ≈ 2분 30초치 = **약 280원, 한 번만.**
+#     그 뒤로 누구 목소리를 바꾸든 이 파일을 다시 들으면 되므로 0원이다.
+#     ⚠️ 모델이 바뀌면 높이가 통째로 달라진다(실측: 같은 이름이 86Hz ↔ 186Hz).
+#        그때 한 번 더 돌리면 된다.
+
+on:
+  push:
+    paths:
+      - '.trigger/voiceaudition'
+  workflow_dispatch:
+    inputs:
+      only:
+        description: '이 목소리들만 (쉼표로 구분). 비우면 30개 전부'
+        required: false
+        default: ''
+      dry:
+        description: '값 쓰지 않고 얼마나 들지만 봅니다'
+        required: false
+        default: '아니오 (실제로 만듭니다)'
+        type: choice
+        options:
+          - '아니오 (실제로 만듭니다)'
+          - '예 (계획만 보기 · 0원)'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: voiceaudition
+  cancel-in-progress: false
+
+jobs:
+  audition:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    env:
+      ONLY: ${{ inputs.only || '' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 도구 준비
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          python3 -m pip install --quiet numpy
+
+      - name: 열쇠 확인
+        env:
+          K: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -z "${K:-}" ]; then
+            echo "## 제미나이 열쇠가 없습니다" >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::GEMINI_API_KEY 가 없습니다."
+            exit 1
+          fi
+          echo "열쇠 있습니다."
+
+      - name: 목소리 30개 만들어 재기
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          set -o pipefail
+          ARGS=()
+          [ -n "$ONLY" ] && ARGS+=(--only "$ONLY")
+          [ "${{ inputs.dry }}" = "예 (계획만 보기 · 0원)" ] && ARGS+=(--dry)
+          python3 tools/voice_audition.py --out build/audition "${ARGS[@]}" 2>&1 | tee au.log
+
+      - name: 결과 화면
+        if: always()
+        run: |
+          {
+            echo "## 목소리 오디션"
+            echo ""
+            echo '```'
+            tail -n 60 au.log 2>/dev/null || echo "(기록 없음)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # 들어보기 파일을 보관함에 — 관리자 페이지 [들어보기] 에서 재생된다.
+      - name: 보관함에 올리기
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          F=build/audition/audition_all.mp3
+          [ -f "$F" ] || { echo "들어보기 파일이 없습니다."; exit 0; }
+          cp "$F" build/audition/voices_all.mp3
+          gh release view "voice-audition" >/dev/null 2>&1 \
+            && gh release upload "voice-audition" build/audition/voices_all.mp3 \
+                 build/audition/audition_order.txt --clobber \
+            || gh release create "voice-audition" --title "목소리 오디션" \
+                 --notes "낮은 목소리부터 이어 붙였습니다. 순서는 audition_order.txt 참고." \
+                 --prerelease build/audition/voices_all.mp3 build/audition/audition_order.txt
+          echo "보관함: voice-audition"
+
+      # ⭐ 잰 높이표를 저장소에 적어 둔다 — 배역-목소리 검사가 이 파일을 읽는다.
+      - name: 높이표 적어 두기
+        if: always()
+        run: |
+          git config user.name  "verdict-theater-bot"
+          git config user.email "actions@github.com"
+          git add data/voices.json 2>/dev/null || true
+          git diff --cached --quiet && { echo "바뀐 것이 없습니다."; exit 0; }
+          git commit -m "목소리 높이표: 오디션으로 실측한 값으로 바꿈 [skip ci]"
+          for i in 1 2 3 4; do
+            git push origin HEAD:main && break
+            sleep $((2**i)); git pull --rebase origin main || true
+          done

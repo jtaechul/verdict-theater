@@ -1,0 +1,34 @@
+{
+  "_설명": "목소리 이름 → 실제로 잰 음높이(Hz). 배역에 맞는 목소리인지 코드가 이 표로 검사한다.",
+  "_왜": [
+    "2026-08-09 손님: '장남 목소리 너무 가늘고 여자 같아'.",
+    "장남에게 준 Gacrux 는 186Hz — 어머니(198)·할머니(198)·여자(200) 옆자리였다.",
+    "높이표가 사람이 읽는 주석으로만 있어서, 내가 안 보면 그냥 지나갔다.",
+    "이제 기계가 이 파일을 읽고 배역과 안 맞으면 영상 만들기를 멈춘다.",
+    "Puck·Algenib·Gacrux — 같은 실수를 세 번 했다. 그래서 코드로 막는다."
+  ],
+  "_주의": [
+    "음높이는 **모델이 바뀌면 통째로 달라진다** (실측: 같은 이름이 86Hz ↔ 186Hz).",
+    "그래서 어느 모델로 쟀는지 함께 적는다. 모델을 바꾸면 오디션을 다시 돌려야 한다.",
+    "아래 값은 주석에 적혀 있던 실측값을 옮긴 것이다(seeded).",
+    "[목소리 오디션] 을 한 번 돌리면 30개 전부를 실제로 재서 이 파일을 다시 쓴다."
+  ],
+  "model": "gemini-3.1-flash-tts-preview",
+  "narrator_model": "gemini-2.5-flash-preview-tts",
+  "measured": "seeded-from-comments",
+  "voices": {
+    "Charon": {"hz": 82, "model": "gemini-2.5-flash-preview-tts", "note": "Informative 설명하는"},
+    "Algenib": {"hz": 120, "note": "Gravelly 걸걸한"},
+    "Algieba": {"hz": 121, "note": "Smooth 매끄러운"},
+    "Schedar": {"hz": 129, "note": "Even 평탄한"},
+    "Enceladus": {"hz": 131, "note": "Breathy 숨섞인"},
+    "Umbriel": {"hz": 134, "note": "Easy-going 느긋한"},
+    "Rasalgethi": {"hz": 147, "note": "Informative 설명하는"},
+    "Iapetus": {"hz": 151, "note": "Clear 맑은"},
+    "Orus": {"hz": 167, "note": "Firm 단단한"},
+    "Gacrux": {"hz": 186, "note": "Mature 원숙한 — 이름과 달리 여자 음역이다"},
+    "Sulafat": {"hz": 198, "note": "Warm 따뜻한"},
+    "Vindemiatrix": {"hz": 198, "note": "Gentle 부드러운"},
+    "Erinome": {"hz": 200, "note": "Clear 맑은"}
+  }
+}
