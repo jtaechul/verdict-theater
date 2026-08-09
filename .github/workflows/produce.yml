@@ -157,6 +157,16 @@ jobs:
           set -o pipefail
           python3 tools/add_outro.py "data/scripts/${{ steps.pick.outputs.ep }}.json"
 
+      # ⭐ 효과음을 자동으로 깔아 준다 (손님 2026-08-09: "효과음이 너무 없어").
+      #    실측: EP001 115컷 중 효과음이 있는 컷이 18컷(15%) 뿐이었다.
+      #    대본을 다시 쓰면 값이 드니, 이미 쓴 대본에 코드가 규칙대로 깔아 준다.
+      #    (대사 낱말 우선 → 배경 → 세 컷에 하나꼴 · 같은 소리 연달아 금지)
+      #    몇 번을 돌려도 결과가 같다.
+      - name: 효과음 깔기 (값 0원)
+        run: |
+          set -o pipefail
+          python3 tools/add_sfx.py "data/scripts/${{ steps.pick.outputs.ep }}.json"
+
       - name: 대본 검사 (오류가 있으면 만들지 않는다)
         run: |
           set -o pipefail
