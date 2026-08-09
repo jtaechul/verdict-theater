@@ -91,18 +91,6 @@ const WORKFLOWS = [
                help: '비워 두면 30개 전부입니다. 몇 개만 다시 들으려면 이름을 쉼표로 '
                    + '적으십시오 (예: Orus,Umbriel,Iapetus).' }] },
 
-  // 2026-08-09 손님: "장남 목소리 한번 다시 들려줄래? mp3 파일로 하나만 올려줘봐."
-  { file: 'voicesample.yml', name: '목소리 들어보기', rare: true,
-    desc: '등장인물 대사만 뽑아 mp3 한 개로 묶어 줍니다. 만든 소리를 쓰므로 0원입니다',
-    inputs: [{ k: 'who', label: '누구 목소리', type: 'select',
-               help: '그 사람 대사만 이어 붙여 한 파일로 만듭니다. 아래 [들어보기] 에서 재생됩니다.',
-               opts: [{ v: 'v_M50A', t: '장남' }, { v: 'v_M50B', t: '차남' },
-                      { v: 'v_F50A', t: '어머니' }, { v: 'v_M70', t: '아버지' },
-                      { v: 'v_JUDGE', t: '재판장' }, { v: 'narrator', t: '해설' },
-                      { v: 'all', t: '전부 (한 사람에 한 파일씩)' }] },
-             { k: 'episode', label: '회차', type: 'text', def: '',
-               help: '비워 두면 가장 최근 회차를 씁니다.' }] },
-
   { file: 'sfx.yml', name: '효과음 받아오기', rare: true,
     desc: '발소리·시계 같은 효과음을 Freesound 에서 진짜 녹음으로 받아 넣습니다 (0원)',
     inputs: [{ k: 'name', label: '어떤 효과음', type: 'select',
@@ -317,25 +305,6 @@ const mmss = (s) => Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2
 const CONCL = { success:'성공', failure:'실패', cancelled:'취소됨', skipped:'건너뜀',
                 timed_out:'시간 초과', action_required:'조치 필요', neutral:'-' };
 
-// 목소리 기호도 마찬가지 — 화면에는 사람 말로 띄운다.
-const WHO_LABEL = { v_M50A:'장남 목소리', v_M50B:'차남 목소리', v_F50A:'어머니 목소리',
-                    v_F50B:'며느리 목소리', v_M70:'아버지 목소리', v_F70:'할머니 목소리',
-                    v_JUDGE:'재판장 목소리', narrator:'해설 목소리' };
-
-// 'v_M50A__down3' 처럼 뒤에 붙은 표시를 사람 말로 바꾼다.
-// (목소리를 얼마나 낮출지 귀로 고르실 때 쓰는 이름입니다. 파일 이름은 보관함에서
-//  깨지지 않게 영문으로 두고, 화면 글자는 여기서 붙입니다)
-function whoLabel(who) {
-  const s = String(who);
-  const i = s.indexOf('__');
-  if (i < 0) return WHO_LABEL[s] || s;
-  const base = WHO_LABEL[s.slice(0, i)] || s.slice(0, i);
-  const tag = s.slice(i + 2);
-  if (tag === 'same') return base + ' — 지금 그대로';
-  const m = /^down(\\d+)$/.exec(tag);
-  return base + (m ? ' — ' + m[1] + '반음 낮춤' : ' — ' + tag);
-}
-
 function ago(iso) {
   if (!iso) return '';
   const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -460,23 +429,6 @@ function home() {
       + ' src="/api/audio?id=' + S.audition.id + '"></audio>'
       + '<div id="aulist" style="margin-top:10px;color:#9599ab;font-size:13px">'
       + '목록 불러오는 중…</div></div>';
-  }
-
-  // 만들어 둔 목소리 파일이 있으면 여기서 바로 들으실 수 있게 한다.
-  // (2026-08-09 손님: "장남 목소리 한번 다시 들려줄래? mp3 파일로 하나만 올려줘봐.")
-  if ((S.voices||[]).length) {
-    h += '<div class="card"><h2>들어보기</h2>';
-    S.voices.forEach(v => {
-      h += '<div style="margin:0 0 14px">'
-        + '<div style="font-size:15px;margin-bottom:6px">' + esc(whoLabel(v.who))
-        + ' <small style="color:#9599ab">· ' + esc(v.ep) + ' · ' + mb(v.size) + '</small></div>'
-        + '<audio controls preload="none" style="width:100%"'
-        + ' src="/api/audio?id=' + v.id + '"></audio>'
-        + '<div style="margin-top:6px"><a href="/api/audio?id=' + v.id
-        + '&dl=' + encodeURIComponent(v.ep + '_' + v.who) + '"'
-        + ' style="color:#8ab4ff;font-size:13px">파일로 저장하기</a></div></div>';
-    });
-    h += '</div>';
   }
 
   // ⭐ 메뉴를 둘로 나눈다 (2026-08-09 손님: "왜 이렇게 쓸데없는 메뉴가 많아").
@@ -1087,7 +1039,6 @@ export default {
           gh(env, `/repos/${REPO}/releases?per_page=30`).catch(() => []),
         ]);
         const videos = {};
-        const voices = [];
         let audition = null;
         (Array.isArray(rels) ? rels : []).forEach((r) => {
           const m = /^video-(.+)$/.exec(r.tag_name || '');
@@ -1095,11 +1046,6 @@ export default {
           // (썸네일을 먼저 만들어 보는 경우). 그래서 그림도 함께 센다.
           if (m) videos[m[1]] = (r.assets || [])
             .filter((a) => a.name.endsWith('.mp4') || a.name === THUMB_NAME).length;
-          // 목소리 들어보기 파일 (2026-08-09 손님: "장남 목소리 mp3 로 하나 올려줘봐")
-          const v = /^voice-sample-(.+)$/.exec(r.tag_name || '');
-          if (v) (r.assets || []).filter((a) => a.name.endsWith('.mp3'))
-            .forEach((a) => voices.push({ ep: v[1], who: a.name.replace(/\.mp3$/, ''),
-                                          id: a.id, size: a.size }));
           // ⚠️ 목소리 오디션(30개)은 보관함 이름이 달라 위 규칙에 안 걸렸다.
           //    그래서 **만들어 놓고도 화면에 안 떴다** (2026-08-09 손님 지적).
           if ((r.tag_name || '') === 'voice-audition') {
@@ -1133,7 +1079,6 @@ export default {
           queue: Array.isArray(queue) ? queue : [],
           assets,
           videos,
-          voices,
           audition,
           cast,
           voiceList,

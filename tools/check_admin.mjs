@@ -61,11 +61,6 @@ const FAKE_STATE = {
   ],
   runs: [{ name: '3. 영상 만들기', at: new Date().toISOString(), conclusion: 'success' }],
   videos: { EP001: 4 },
-  // 목소리 들어보기 카드도 실제로 그려 본다 (2026-08-09 추가)
-  voices: [{ ep: 'EP001', who: 'v_M50A', id: 123456, size: 981549 },
-           { ep: 'EP001', who: 'v_M50A__same', id: 123458, size: 981549 },
-           { ep: 'EP001', who: 'v_M50A__down3', id: 123459, size: 981549 },
-           { ep: 'EP001', who: 'narrator', id: 123457, size: 2400000 }],
   // 오디션 카드도 그려 본다 (2026-08-09: 만들어 놓고 화면에 안 띄운 자리)
   audition: { id: 777, size: 3419085, index: 778, at: new Date().toISOString() },
   // 등장인물 목소리 카드도 그려 본다 (2026-08-09 추가)
