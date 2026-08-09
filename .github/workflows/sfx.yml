@@ -59,38 +59,43 @@ jobs:
           sudo apt-get install -y -qq ffmpeg
           python3 -m pip install --quiet numpy
 
-      - name: 열쇠 확인
+      # ⚠️ 열쇠 이름을 짐작하지 않는다. 2026-08-08 에 PIXABAY_API_KEY 등 네 가지를
+      #    찍어 놓고 찾았다가 "못 찾았다" 로 실패했다 — 손님은 분명히 등록해 두셨는데
+      #    내가 정한 이름과 달랐던 것이다. 이제 **등록된 열쇠 이름을 전부 훑어**
+      #    'pixabay' 가 들어간 것을 찾아 쓴다.
+      #    ⚠️ 값은 절대 찍지 않는다. 이름만 본다(깃허브가 값은 자동으로 가려 주지만,
+      #       애초에 찍지 않는 것이 맞다).
+      - name: Pixabay 열쇠 찾기 (이름이 무엇이든)
         env:
-          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
-          PIXABAY_KEY: ${{ secrets.PIXABAY_KEY }}
-          PIXABAY_TOKEN: ${{ secrets.PIXABAY_TOKEN }}
-          PIXABAY: ${{ secrets.PIXABAY }}
+          ALL_SECRETS: ${{ toJSON(secrets) }}
         run: |
-          # 값은 절대 찍지 않는다. **있는지 없는지**만 본다.
-          FOUND=""
-          for n in PIXABAY_API_KEY PIXABAY_KEY PIXABAY_TOKEN PIXABAY; do
-            v="$(printenv "$n" || true)"
-            [ -n "$v" ] && FOUND="$FOUND $n"
-          done
-          if [ -z "$FOUND" ]; then
+          set -o pipefail
+          NAME=$(printf '%s' "$ALL_SECRETS" | jq -r 'keys[]' | grep -i pixabay | head -1 || true)
+          if [ -z "$NAME" ]; then
             {
-              echo "## Pixabay 열쇠가 없습니다"
+              echo "## Pixabay 열쇠를 못 찾았습니다"
               echo ""
-              echo "저장소 **Settings → Secrets and variables → Actions** 에"
-              echo "\`PIXABAY_API_KEY\` 라는 이름으로 넣어 주십시오."
-              echo "(다른 이름으로 넣으셨다면 PIXABAY_KEY · PIXABAY_TOKEN · PIXABAY 도 찾습니다)"
+              echo "이 저장소에 등록된 열쇠 이름은 아래와 같습니다 (값은 안 보입니다):"
+              echo ""
+              echo '```'
+              printf '%s' "$ALL_SECRETS" | jq -r 'keys[]'
+              echo '```'
+              echo ""
+              echo "이 중에 Pixabay 것이 있으면 이름을 알려주시고,"
+              echo "없으면 **Settings → Secrets and variables → Actions** 에서"
+              echo "\`PIXABAY_API_KEY\` 로 등록해 주십시오."
             } >> "$GITHUB_STEP_SUMMARY"
-            echo "::error::Pixabay 열쇠를 못 찾았습니다."
+            echo "등록된 열쇠 이름:"
+            printf '%s' "$ALL_SECRETS" | jq -r 'keys[]'
+            echo "::error::Pixabay 열쇠를 못 찾았습니다. 요약 화면에 등록된 이름을 적어 뒀습니다."
             exit 1
           fi
-          echo "찾은 열쇠:$FOUND"
+          echo "찾은 열쇠 이름: $NAME"
+          VAL=$(printf '%s' "$ALL_SECRETS" | jq -r --arg n "$NAME" '.[$n]')
+          echo "::add-mask::$VAL"
+          echo "PIXABAY_API_KEY=$VAL" >> "$GITHUB_ENV"
 
       - name: 소리 받아서 고르기
-        env:
-          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
-          PIXABAY_KEY: ${{ secrets.PIXABAY_KEY }}
-          PIXABAY_TOKEN: ${{ secrets.PIXABAY_TOKEN }}
-          PIXABAY: ${{ secrets.PIXABAY }}
         run: |
           set -o pipefail
           ARGS=()
