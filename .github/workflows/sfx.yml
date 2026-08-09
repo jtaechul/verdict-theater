@@ -68,30 +68,55 @@ jobs:
       - name: Pixabay 열쇠 찾기 (이름이 무엇이든)
         env:
           ALL_SECRETS: ${{ toJSON(secrets) }}
+          ALL_VARS: ${{ toJSON(vars) }}
         run: |
           set -o pipefail
+          # ⚠️ 열쇠는 **두 군데**에 등록할 수 있다 (같은 화면의 다른 칸):
+          #      Settings → Secrets and variables → Actions
+          #        · Secrets 탭 (가려지는 값)   → secrets 로 읽는다
+          #        · Variables 탭 (안 가려지는 값) → vars 로 읽는다
+          #    2026-08-09: 손님이 "등록해 놨다" 하셨는데 secrets 에는 없었다.
+          #    한쪽만 보고 "없다" 고 하면 안 된다 — 둘 다 본다.
           NAME=$(printf '%s' "$ALL_SECRETS" | jq -r 'keys[]' | grep -i pixabay | head -1 || true)
+          FROM="Secrets"
+          if [ -z "$NAME" ]; then
+            NAME=$(printf '%s' "$ALL_VARS" | jq -r 'keys[]' | grep -i pixabay | head -1 || true)
+            FROM="Variables"
+          fi
           if [ -z "$NAME" ]; then
             {
               echo "## Pixabay 열쇠를 못 찾았습니다"
               echo ""
-              echo "이 저장소에 등록된 열쇠 이름은 아래와 같습니다 (값은 안 보입니다):"
+              echo "이 저장소(jtaechul/verdict-theater)에 등록된 것 전부입니다 (값은 안 보입니다)."
               echo ""
+              echo "**Secrets 탭**"
               echo '```'
               printf '%s' "$ALL_SECRETS" | jq -r 'keys[]'
               echo '```'
+              echo "**Variables 탭**"
+              echo '```'
+              printf '%s' "$ALL_VARS" | jq -r 'keys[]' || echo "(없음)"
+              echo '```'
               echo ""
-              echo "이 중에 Pixabay 것이 있으면 이름을 알려주시고,"
-              echo "없으면 **Settings → Secrets and variables → Actions** 에서"
-              echo "\`PIXABAY_API_KEY\` 로 등록해 주십시오."
+              echo "여기에 Pixabay 것이 안 보이면 셋 중 하나입니다:"
+              echo "1. **다른 저장소**에 등록됨 (이 저장소 것만 보입니다)"
+              echo "2. **Environment** 안에 등록됨 (그 이름을 알려주시면 맞추겠습니다)"
+              echo "3. 아직 등록 전"
+              echo ""
+              echo "가장 빠른 길: 이 저장소 **Settings → Secrets and variables → Actions"
+              echo "→ Secrets 탭 → New repository secret** 에서 \`PIXABAY_API_KEY\` 로 등록."
             } >> "$GITHUB_STEP_SUMMARY"
-            echo "등록된 열쇠 이름:"
+            echo "Secrets 탭:"
             printf '%s' "$ALL_SECRETS" | jq -r 'keys[]'
+            echo "Variables 탭:"
+            printf '%s' "$ALL_VARS" | jq -r 'keys[]' || echo "(없음)"
             echo "::error::Pixabay 열쇠를 못 찾았습니다. 요약 화면에 등록된 이름을 적어 뒀습니다."
             exit 1
           fi
-          echo "찾은 열쇠 이름: $NAME"
-          VAL=$(printf '%s' "$ALL_SECRETS" | jq -r --arg n "$NAME" '.[$n]')
+          echo "찾은 열쇠: $NAME ($FROM 탭)"
+          SRC="$ALL_SECRETS"
+          [ "$FROM" = "Variables" ] && SRC="$ALL_VARS"
+          VAL=$(printf '%s' "$SRC" | jq -r --arg n "$NAME" '.[$n]')
           echo "::add-mask::$VAL"
           echo "PIXABAY_API_KEY=$VAL" >> "$GITHUB_ENV"
 
