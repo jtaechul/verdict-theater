@@ -27,7 +27,7 @@ const WORKFLOWS = [
   // ⚠️ 각 항목의 **보내는 값**(opts 의 문자열 또는 {v:...})은 워크플로가 아는 글자
   //    그대로여야 한다. 쉬운 말은 **보이는 글**(t)과 help 에만 쓴다.
   //    (2026-08-08 손님: "알아듣기 어려운 부분은 전부 쉽게 알아보게 바꿔")
-  { file: 'build-assets.yml', name: '0. 그림·소리 만들기',
+  { file: 'build-assets.yml', name: '그림·소리 만들기 (처음 한 번)', rare: true,
     desc: '영상에 쓸 등장인물 그림, 배경 그림, 효과음을 만듭니다 (처음에 한 번만)',
     inputs: [{ k: 'what', label: '무엇을 만들까요', type: 'select',
                help: '효과음은 값이 들지 않습니다. 그림은 한 장씩 값이 듭니다.',
@@ -79,17 +79,9 @@ const WORKFLOWS = [
              { k: 'limit', label: '앞부분만 시험', type: 'text', def: '0',
                help: '0이면 전체를 만듭니다. 숫자를 넣으면 그 개수의 장면만 빠르게 만들어 화면을 확인합니다.' }] },
 
-  // 2026-08-07 부터 '영상 보기' 에서 바로 공개로 올린다 → 이 버튼은 목록에서 감춘다.
-  // 워크플로는 남겨 둔다: 예전에 비공개로 올려 둔 영상을 공개로 바꿀 때 쓴다.
-  { file: 'publish.yml', name: '4. 공개하기 (예전 방식)', hidden: true,
-    desc: '예전에 비공개로 올린 영상을 공개로',
-    inputs: [{ k: 'episode', label: '회차', type: 'text', def: '' },
-             { k: 'what', label: '무엇을', type: 'select',
-               opts: ['롱폼', '쇼츠 1번 (궁금증형)', '쇼츠 2번 (분노형)', '쇼츠 3번 (사이다형)'] }] },
-
   // 2026-08-09 손님: "나중에도 이러면 어떡해. 목소리를 바꾸고 싶은 사람이 있으면
   //                   어떻게 해야 되는지도 방법을 같이 고민해서 제안해 줘."
-  { file: 'voiceaudition.yml', name: '목소리 오디션 (30개 들어보기)',
+  { file: 'voiceaudition.yml', name: '목소리 오디션 (30개 들어보기)', rare: true,
     desc: '목소리 30개를 같은 대사로 읽혀 한 파일로 들려드립니다. 한 번 약 280원, 그 뒤로는 0원',
     inputs: [{ k: 'dry', label: '실제로 만들까요', type: 'select',
                help: "'계획만' 을 고르면 값이 얼마나 들지만 알려드리고 끝납니다 (0원).",
@@ -100,7 +92,7 @@ const WORKFLOWS = [
                    + '적으십시오 (예: Orus,Umbriel,Iapetus).' }] },
 
   // 2026-08-09 손님: "장남 목소리 한번 다시 들려줄래? mp3 파일로 하나만 올려줘봐."
-  { file: 'voicesample.yml', name: '목소리 들어보기',
+  { file: 'voicesample.yml', name: '목소리 들어보기', rare: true,
     desc: '등장인물 대사만 뽑아 mp3 한 개로 묶어 줍니다. 만든 소리를 쓰므로 0원입니다',
     inputs: [{ k: 'who', label: '누구 목소리', type: 'select',
                help: '그 사람 대사만 이어 붙여 한 파일로 만듭니다. 아래 [들어보기] 에서 재생됩니다.',
@@ -111,7 +103,7 @@ const WORKFLOWS = [
              { k: 'episode', label: '회차', type: 'text', def: '',
                help: '비워 두면 가장 최근 회차를 씁니다.' }] },
 
-  { file: 'sfx.yml', name: '효과음 받아오기',
+  { file: 'sfx.yml', name: '효과음 받아오기', rare: true,
     desc: '발소리·시계 같은 효과음을 Freesound 에서 진짜 녹음으로 받아 넣습니다 (0원)',
     inputs: [{ k: 'name', label: '어떤 효과음', type: 'select',
                help: '고른 소리를 새로 받아 넣습니다. 지금 쓰는 것은 덮어씁니다.',
@@ -129,30 +121,9 @@ const WORKFLOWS = [
                opts: [{ v: 'best', t: '기계가 고른 1순위를 바로 넣기' },
                       { v: '', t: '듣기만 하고 안 넣기' }] }] },
 
-  { file: 'stats.yml', name: '5. 성과 보기',
+  { file: 'stats.yml', name: '4. 성과 보기',
     desc: '올린 영상이 얼마나 보였는지 — 조회수, 끝까지 본 비율 등을 확인합니다 (0원)',
     inputs: [] },
-
-  { file: 'voicecheck.yml', name: '목소리 점검 (0원)',
-    desc: '장면마다 목소리 높낮이를 재서, 어느 장면이 왜 튀는지 숫자로 보여줍니다 (약 3분)',
-    inputs: [{ k: 'episode', label: '회차 번호', type: 'text', def: '',
-               help: '비워 두면 가장 최근 회차를 봅니다 (예: EP001).' },
-             { k: 'who', label: '누구 목소리를', type: 'select',
-               opts: [{ v: '해설만', t: '해설(내레이션)만' },
-                      { v: '전부 (해설 + 등장인물)', t: '전부 (해설 + 등장인물)' }] },
-             { k: 'cut', label: '꼭 확인할 장면', type: 'text', def: 'H05,A1-15',
-               help: '장면 번호입니다. 영상 자막 아래 표시와 같습니다. 쉼표로 여러 개.' }] },
-
-  { file: 'voicefix.yml', name: '목소리 고치고 들어보기',
-    desc: '목소리를 새로 만들어 고치기 전↔후를 나란히 들려줍니다',
-    inputs: [{ k: 'scope', label: '얼마나 고칠까요', type: 'select',
-               help: '먼저 싼 쪽으로 들어보시고, 괜찮으면 전부 고치시길 권합니다.',
-               opts: [{ v: '문제 구간만 시험 (약 25원)', t: '문제된 부분만 (약 25원)' },
-                      { v: '한 편 전부 (약 400원)', t: '한 편 전부 (약 400원)' }] },
-             { k: 'episode', label: '회차 번호', type: 'text', def: '',
-               help: '비워 두면 가장 최근 회차입니다.' },
-             { k: 'cut', label: '들어볼 장면', type: 'text', def: 'H05',
-               help: '장면 번호입니다. 쉼표로 여러 개 적을 수 있습니다.' }] },
 
   // hidden — 실행 목록에는 안 보이고 '영상 보기' 화면의 [다시 만들기] 버튼만 부른다.
   // 여기 적어 두는 이유는 /api/run 이 **이 명단에 있는 것만** 실행하기 때문이다.
@@ -435,33 +406,6 @@ function home() {
   });
   h += '</div>';
 
-  h += '<div class="card"><h2>실행 <small style="font-weight:400;color:#9599ab">'
-     + '— 위에서부터 차례대로 누르시면 됩니다</small></h2>';
-  WF.forEach((w, i) => {
-    // hidden 은 버튼 전용이라 목록에 안 띄운다. 자리(i)는 그대로 둔다 — run(i) 가 쓴다.
-    if (w.hidden) return;
-    h += '<div class="wf"><b>' + esc(w.name) + '</b><small>' + esc(w.desc) + '</small>';
-    w.inputs.forEach(inp => {
-      h += '<label>' + esc(inp.label);
-      if (inp.type === 'select')
-        // opts 는 '값' 또는 {v:보내는 값, t:보이는 글}. 보내는 값은 워크플로가 아는
-        // 글자 그대로여야 하므로, 쉬운 말은 **보이는 글**에만 쓴다.
-        h += '<select id="i_'+i+'_'+inp.k+'">' + inp.opts.map(o => {
-          const v = (o && o.v !== undefined) ? o.v : o;
-          const t = (o && o.t !== undefined) ? o.t : (o === '' ? '(전체)' : o);
-          return '<option value="' + esc(v) + '">' + esc(t) + '</option>';
-        }).join('') + '</select>';
-      else
-        h += '<input id="i_'+i+'_'+inp.k+'" value="' + esc(inp.def || '') + '">';
-      h += '</label>';
-      if (inp.help)
-        h += '<div style="color:#9599ab;font-size:12.5px;margin:-6px 0 10px;line-height:1.5">'
-           + esc(inp.help) + '</div>';
-    });
-    h += '<div style="height:12px"></div><button onclick="run(' + i + ')">실행</button></div>';
-  });
-  h += '</div>';
-
   // 목소리 오디션(30개). 이름을 누르면 그 목소리가 나오는 자리로 넘어간다.
   // ⚠️ 예전에는 이 카드가 아예 없어서, 손님이 오디션을 돌려 놓고도
   //    **어디서 듣는지 알 수가 없으셨다** (2026-08-09 지적).
@@ -493,6 +437,17 @@ function home() {
     });
     h += '</div>';
   }
+
+  // ⭐ 메뉴를 둘로 나눈다 (2026-08-09 손님: "왜 이렇게 쓸데없는 메뉴가 많아").
+  //    늘 쓰는 넷만 펼쳐 두고, 가끔 쓰는 것은 접어 둔다. 안 그러면 화면이 길어져
+  //    아래쪽 카드(들어보기 같은 것)를 못 찾으신다 — 실제로 그런 일이 있었다.
+  h += '<div class="card"><h2>실행 <small style="font-weight:400;color:#9599ab">'
+     + '— 위에서부터 차례대로 누르시면 됩니다</small></h2>';
+  h += wfList(false);
+  h += '<details style="margin-top:6px"><summary style="cursor:pointer;color:#9599ab;'
+     + 'font-size:14px;padding:8px 0">가끔 쓰는 것 (처음 준비 · 목소리 · 효과음)</summary>'
+     + wfList(true) + '</details>';
+  h += '</div>';
 
   if ((S.runs||[]).length) {
     h += '<div class="card"><h2>최근 실행</h2><table>';
@@ -542,6 +497,36 @@ async function fillAudition() {
       + '</td></tr>';
   });
   box.innerHTML = s + '</table>';
+}
+
+// 실행 메뉴 한 덩이를 그린다. rare=true 면 '가끔 쓰는 것' 만 그린다.
+// ⚠️ 자리(i)는 WF 전체 기준이어야 한다 — run(i) 가 그 번호로 찾기 때문이다.
+function wfList(rare) {
+  let h = '';
+  WF.forEach((w, i) => {
+    if (w.hidden) return;                 // 버튼 전용이라 목록에 안 띄운다
+    if (!!w.rare !== !!rare) return;
+    h += '<div class="wf"><b>' + esc(w.name) + '</b><small>' + esc(w.desc) + '</small>';
+    w.inputs.forEach(inp => {
+      h += '<label>' + esc(inp.label);
+      if (inp.type === 'select')
+        // opts 는 '값' 또는 {v:보내는 값, t:보이는 글}. 보내는 값은 워크플로가 아는
+        // 글자 그대로여야 하므로, 쉬운 말은 **보이는 글**에만 쓴다.
+        h += '<select id="i_'+i+'_'+inp.k+'">' + inp.opts.map(o => {
+          const v = (o && o.v !== undefined) ? o.v : o;
+          const t = (o && o.t !== undefined) ? o.t : (o === '' ? '(전체)' : o);
+          return '<option value="' + esc(v) + '">' + esc(t) + '</option>';
+        }).join('') + '</select>';
+      else
+        h += '<input id="i_'+i+'_'+inp.k+'" value="' + esc(inp.def || '') + '">';
+      h += '</label>';
+      if (inp.help)
+        h += '<div style="color:#9599ab;font-size:12.5px;margin:-6px 0 10px;line-height:1.5">'
+           + esc(inp.help) + '</div>';
+    });
+    h += '<div style="height:12px"></div><button onclick="run(' + i + ')">실행</button></div>';
+  });
+  return h;
 }
 
 function seekAudition(el) {
