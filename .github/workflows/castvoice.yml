@@ -1,0 +1,135 @@
+name: 등장인물 목소리 바꾸기 (값 0원)
+
+# 배역 하나의 목소리를 바꾼다. **바꾸기만 하고 값은 들지 않는다.**
+# 실제 음성은 다음에 [영상 만들기] 를 누르실 때 **그 사람 대사만** 새로 만들어진다
+# (장남이면 18컷 ≈ 60~100원. 한 편 400~700원을 다시 살 필요가 없다).
+#
+# 왜 (2026-08-09 손님: "목소리별 등장인물도 괜찮은데 이걸 바꿀 수가 없잖아.
+#                      바꿀 수 있는 기능도 관리자 페이지에 적용을 좀 해줘.")
+#   예전에는 내가 src/tts.py 를 고쳐야만 바뀌었다. 손님이 직접 못 바꾸셨다.
+#   이제 data/cast_voices.json 만 바뀌면 되므로 화면에서 고르실 수 있다.
+#
+# ⭐ 저장하기 **전에** 배역-목소리 검사를 돌린다.
+#   남자 배역에 여자 음역을 고르면 여기서 막고 되돌린다 — 영상을 만들다
+#   멈추면 그때는 이미 기다리신 뒤라 늦다.
+
+on:
+  workflow_dispatch:
+    inputs:
+      who:
+        description: '누구의 목소리를 바꿀까요'
+        required: true
+        type: choice
+        options:
+          - 'v_M50A'
+          - 'v_M50B'
+          - 'v_F50A'
+          - 'v_F50B'
+          - 'v_M70'
+          - 'v_F70'
+          - 'v_JUDGE'
+          - 'narrator'
+      voice:
+        description: '어떤 목소리로 (오디션에서 들은 이름)'
+        required: true
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: castvoice
+  cancel-in-progress: false
+
+jobs:
+  change:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 바꾸고 검사하기
+        env:
+          WHO: ${{ inputs.who }}
+          VOICE: ${{ inputs.voice }}
+        run: |
+          set -o pipefail
+          python3 - <<'PY' 2>&1 | tee cast.log
+          import json, os, sys
+          from pathlib import Path
+          sys.path.insert(0, "src")
+
+          who = os.environ["WHO"].strip()
+          voice = os.environ["VOICE"].strip()
+          p = Path("data/cast_voices.json")
+          d = json.loads(p.read_text(encoding="utf-8"))
+          cast = d.setdefault("cast", {})
+          before = cast.get(who)
+
+          # 있는 목소리인지부터 본다 — 오타로 없는 이름을 넣으면 소리가 안 만들어진다
+          table = json.loads(Path("data/voices.json").read_text(encoding="utf-8"))
+          names = table.get("voices") or {}
+          if voice not in names:
+              print(f"'{voice}' 는 없는 목소리입니다.")
+              print("쓸 수 있는 이름: " + ", ".join(sorted(names)))
+              sys.exit(1)
+
+          # 다른 사람이 이미 쓰고 있으면 막는다 (둘이 같은 소리면 구분이 안 된다)
+          import tts
+          used = {k: v for k, v in tts.VOICE_NAME.items() if k != who}
+          if voice in used.values():
+              other = [k for k, v in used.items() if v == voice][0]
+              print(f"'{voice}' 는 이미 {other} 가 쓰고 있습니다. 다른 것을 고르십시오.")
+              sys.exit(1)
+
+          cast[who] = voice
+          p.write_text(json.dumps(d, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          print(f"{who}: {before or '(기본값)'} → {voice}"
+                f"  ({names[voice].get('hz', '?')}Hz)")
+
+          # ⭐ 저장한 값으로 **배역-목소리 검사를 돌린다.** 어긋나면 되돌린다.
+          import importlib
+          importlib.reload(tts)
+          try:
+              tts.check_style()
+              print("\n검사 통과 — 다음에 [영상 만들기] 를 누르시면 이 목소리로 만들어집니다.")
+              print(f"({who} 대사만 새로 만들어집니다. 나머지는 그대로 씁니다)")
+          except Exception as e:
+              if before is None:
+                  cast.pop(who, None)
+              else:
+                  cast[who] = before
+              p.write_text(json.dumps(d, ensure_ascii=False, indent=2) + "\n",
+                           encoding="utf-8")
+              print("\n" + str(e))
+              print("\n→ 바꾸지 않고 되돌렸습니다.")
+              sys.exit(1)
+          PY
+
+      - name: 결과 화면
+        if: always()
+        run: |
+          {
+            echo "## 등장인물 목소리 바꾸기"
+            echo ""
+            echo '```'
+            cat cast.log 2>/dev/null || echo "(기록 없음)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 적어 두기
+        run: |
+          git config user.name  "verdict-theater-bot"
+          git config user.email "actions@github.com"
+          git add data/cast_voices.json 2>/dev/null || true
+          git diff --cached --quiet && { echo "바뀐 것이 없습니다."; exit 0; }
+          git commit -m "목소리 바꿈: ${{ inputs.who }} → ${{ inputs.voice }} [skip ci]"
+          for i in 1 2 3 4; do
+            git push origin HEAD:main && break
+            sleep $((2**i)); git pull --rebase origin main || true
+          done

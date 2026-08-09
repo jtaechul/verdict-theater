@@ -287,6 +287,27 @@ VOICE_NAME = {
     "v_JUDGE":  "Algieba",      # Smooth(매끄러운)  121Hz — 낮고 단단한 재판장
 }
 
+# ⭐ **관리자 페이지에서 바꾼 것이 있으면 그것을 쓴다.**
+#    (2026-08-09 손님: "목소리별 등장인물도 괜찮은데 이걸 바꿀 수가 없잖아.
+#                      바꿀 수 있는 기능도 관리자 페이지에 적용을 좀 해줘.")
+#    위 표는 **기본값**이다. 손님이 화면에서 고른 것은 data/cast_voices.json 에
+#    적히고, 여기서 덮어쓴다. 코드를 고치지 않아도 배역 목소리를 바꿀 수 있다.
+CAST_VOICES_JSON = Path(__file__).resolve().parent.parent / "data" / "cast_voices.json"
+
+
+def load_cast_voices():
+    """화면에서 바꾼 배역-목소리를 불러온다. 없거나 깨졌으면 기본값 그대로."""
+    try:
+        d = json.loads(CAST_VOICES_JSON.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    got = {k: v for k, v in (d.get("cast") or {}).items()
+           if k in VOICE_NAME and isinstance(v, str) and v}
+    return got
+
+
+VOICE_NAME.update(load_cast_voices())
+
 
 # 연기 지시에 들어가면 안 되는 말. 전부 '억양을 지워라' 는 뜻이다.
 # 이것들이 들어 있으면 출연진이 통째로 로봇처럼 읽는다 — 손님이 실제로 겪은 일이다.

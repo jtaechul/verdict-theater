@@ -127,6 +127,7 @@ const WORKFLOWS = [
 
   // hidden — 실행 목록에는 안 보이고 '영상 보기' 화면의 [다시 만들기] 버튼만 부른다.
   // 여기 적어 두는 이유는 /api/run 이 **이 명단에 있는 것만** 실행하기 때문이다.
+  { file: 'castvoice.yml', name: '등장인물 목소리 바꾸기', desc: '', inputs: [], hidden: true },
   { file: 'thumbnail.yml', name: '썸네일 다시 만들기', desc: '', inputs: [], hidden: true },
   { file: 'youtube-upload.yml', name: '유튜브에 올리기', desc: '', inputs: [], hidden: true },
 ];
@@ -406,6 +407,46 @@ function home() {
   });
   h += '</div>';
 
+  // ⭐ 등장인물마다 어떤 목소리를 쓰는지 보여주고, 여기서 바로 바꾸게 한다.
+  //    (2026-08-09 손님: "목소리별 등장인물도 괜찮은데 이걸 바꿀 수가 없잖아.
+  //                      바꿀 수 있는 기능도 관리자 페이지에 적용을 좀 해줘.")
+  //    예전에는 코드를 고쳐야만 바뀌었다 — 손님이 직접 하실 수 없었다.
+  if ((S.voiceList||[]).length) {
+    const ROLES = [['v_M50A','장남'],['v_M50B','차남'],['v_F50A','어머니'],
+                   ['v_F50B','며느리'],['v_M70','아버지'],['v_F70','할머니'],
+                   ['v_JUDGE','재판장'],['narrator','해설']];
+    const now = S.cast || {};
+    const hzOf = {}; S.voiceList.forEach(v => { hzOf[v.name] = v.hz; });
+    h += '<div class="card"><h2>등장인물 목소리</h2>';
+    h += '<table style="width:100%;margin-bottom:10px">';
+    ROLES.forEach(([k, ko]) => {
+      const v = now[k];
+      const hz = v ? hzOf[v] : null;
+      h += '<tr><td style="padding:4px 0;color:#e6e8f0">' + esc(ko) + '</td>'
+        + '<td style="text-align:right;color:#9599ab;font-size:13px">'
+        + (v ? esc(v) + (hz ? ' · ' + Math.round(hz) + 'Hz' : '')
+             : '<span style="color:#6b6f80">기본값</span>') + '</td></tr>';
+    });
+    h += '</table>';
+    h += '<label>누구를<select id="cv_who">'
+      + ROLES.map(([k, ko]) => '<option value="' + k + '">' + esc(ko) + '</option>').join('')
+      + '</select></label>';
+    h += '<label>어떤 목소리로<select id="cv_voice">'
+      + S.voiceList.map(v => {
+          const band = v.hz < 155 ? '남자' : (v.hz < 165 ? '애매' : '여자');
+          return '<option value="' + esc(v.name) + '">' + esc(v.name)
+               + ' · ' + Math.round(v.hz) + 'Hz · ' + band + '</option>';
+        }).join('') + '</select></label>';
+    h += '<div style="color:#9599ab;font-size:12.5px;margin:-6px 0 10px;line-height:1.5">'
+      + '위 <b>목소리 오디션</b>에서 들어보시고 고르십시오. 남자 배역에 여자 음역을 '
+      + '고르면 저장되지 않고 알려드립니다.</div>';
+    h += '<button onclick="changeVoice()">이 목소리로 바꾸기</button>';
+    h += '<div style="color:#9599ab;font-size:13px;margin-top:9px">'
+      + '바꾸는 것만으로는 <b>값이 들지 않습니다.</b> 다음에 [영상 만들기] 를 누르실 때 '
+      + '<b>그 사람 대사만</b> 새로 만들어집니다 (장남이면 60~100원).</div>';
+    h += '</div>';
+  }
+
   // 목소리 오디션(30개). 이름을 누르면 그 목소리가 나오는 자리로 넘어간다.
   // ⚠️ 예전에는 이 카드가 아예 없어서, 손님이 오디션을 돌려 놓고도
   //    **어디서 듣는지 알 수가 없으셨다** (2026-08-09 지적).
@@ -527,6 +568,38 @@ function wfList(rare) {
     h += '<div style="height:12px"></div><button onclick="run(' + i + ')">실행</button></div>';
   });
   return h;
+}
+
+// 배역 목소리를 바꾼다. 바꾸기만 하고 값은 들지 않는다 —
+// 실제 음성은 다음 [영상 만들기] 때 그 사람 대사만 새로 만들어진다.
+async function changeVoice() {
+  const who = (document.getElementById('cv_who') || {}).value || '';
+  const voice = (document.getElementById('cv_voice') || {}).value || '';
+  if (!who || !voice) return;
+  if (!confirm('목소리를 ' + voice + ' 로 바꿀까요?\\n\\n'
+             + '지금은 값이 들지 않습니다.\\n'
+             + '다음에 [영상 만들기] 를 누르실 때 그 사람 대사만 새로 만들어집니다.')) return;
+  toast('바꾸는 중…');
+  const since = Date.now();
+  let j = {};
+  try {
+    const r = await fetch('/api/run', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file: 'castvoice.yml', inputs: { who: who, voice: voice } }) });
+    j = await r.json();
+  } catch (e) { j = { ok: false, error: '연결이 끊겼습니다' }; }
+  if (!j.ok) { toast('실패: ' + (j.error || '알 수 없는 이유'), 8000); return; }
+  watchRun('castvoice.yml', since, (r) => {
+    if (r.conclusion === 'success') {
+      toast('바꿨습니다. 다음 [영상 만들기] 부터 이 목소리로 만들어집니다.', 10000);
+      load();
+    } else if (r.conclusion === 'timeout') {
+      toast('아직입니다. 잠시 뒤 새로고침해 주십시오.', 9000);
+    } else {
+      toast('바꾸지 못했습니다 — 배역에 안 맞는 높이일 수 있습니다. '
+            + '[작업] 화면의 최근 실행에서 까닭을 보십시오.', 14000);
+    }
+  }, 8, 5);
 }
 
 function seekAudition(el) {
@@ -1037,6 +1110,18 @@ export default {
                                   at: mp3.updated_at || mp3.created_at };
           }
         });
+        // ⭐ 지금 누가 어떤 목소리를 쓰는지 + 쓸 수 있는 목소리(높이 포함).
+        //    (2026-08-09 손님: "목소리별 등장인물 이걸 바꿀 수가 없잖아")
+        //    화면에서 바로 고르시게 하려면 이 둘이 필요하다.
+        const [castJson, voiceJson] = await Promise.all([
+          getJson(env, 'data/cast_voices.json'), getJson(env, 'data/voices.json'),
+        ]);
+        const cast = (castJson && castJson.cast) || {};
+        const voiceList = Object.entries((voiceJson && voiceJson.voices) || {})
+          .filter(([, v]) => v && v.hz)
+          .map(([name, v]) => ({ name, hz: v.hz }))
+          .sort((a, b) => a.hz - b.hz);
+
         let assets = null;
         if (manifest) {
           // 전부 세면 호출이 많아지므로, 대표적으로 배경만 세어 진행도를 짐작한다
@@ -1050,6 +1135,8 @@ export default {
           videos,
           voices,
           audition,
+          cast,
+          voiceList,
           runs: (runsRes.workflow_runs || []).map((r) => ({
             name: r.name, conclusion: r.conclusion, status: r.status, at: r.created_at,
           })),

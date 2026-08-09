@@ -68,6 +68,10 @@ const FAKE_STATE = {
            { ep: 'EP001', who: 'narrator', id: 123457, size: 2400000 }],
   // 오디션 카드도 그려 본다 (2026-08-09: 만들어 놓고 화면에 안 띄운 자리)
   audition: { id: 777, size: 3419085, index: 778, at: new Date().toISOString() },
+  // 등장인물 목소리 카드도 그려 본다 (2026-08-09 추가)
+  cast: { v_M50A: 'Algenib', v_M50B: 'Fenrir' },
+  voiceList: [{ name: 'Achird', hz: 117.6 }, { name: 'Algenib', hz: 134.5 },
+              { name: 'Sulafat', hz: 211.9 }],
   assets: { have: 30, need: 38 },
   items: [],
 };
@@ -158,6 +162,10 @@ if (!nHandler) {
 // ⑤ 썸네일 버튼이 **실제로 검사에 들어왔는지** 확인한다.
 //    thumbCard 를 못 그리면 위 검사가 조용히 건너뛰어, 손님을 가둔 그 버튼이
 //    다시 깨져도 초록불이 뜬다. 검사를 안 한 것을 통과로 보면 안 된다.
+if (!painted.includes('changeVoice(')) {
+  console.error('❌ 등장인물 목소리 카드가 검사에 안 들어왔다 — 바꾸는 버튼을 못 봤다');
+  process.exit(1);
+}
 if (!painted.includes('seekAudition(')) {
   console.error('❌ 오디션 목록이 검사에 안 들어왔다 — 이름을 눌러 넘어가는 버튼을 못 봤다');
   console.error('   (2026-08-09 손님이 "확인할 방법이 없잖아" 라고 한 그 화면이다)');
