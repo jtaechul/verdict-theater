@@ -36,6 +36,15 @@ on:
           - 'v_JUDGE'
           - 'narrator'
           - 'all'
+      pitch:
+        description: "목소리를 얼마나 낮출지 여러 단계로 만들어 비교 (값 0원)"
+        required: false
+        default: ''
+        type: choice
+        options:
+          - ''
+          - '0,-2,-3,-4,-5'
+          - '0,-3,-5,-7'
 
 # ⚠️ write 여야 한다. 만든 mp3 를 보관함(릴리스)에 올리는 데 필요하다.
 #    read 로 두었더니 소리는 다 만들어 놓고 마지막에 403 으로 실패했다(2026-08-09 첫 실행).
@@ -53,7 +62,10 @@ jobs:
 
     # ⚠️ 표식 파일(push)로 도는 경우 inputs 가 비어 있다 — 그때 쓸 기본값이다.
     env:
-      WHO: ${{ inputs.who || 'all' }}
+      WHO: ${{ inputs.who || 'v_M50A' }}
+      # 표식 파일로 돌 때는 장남 목소리 낮추기 비교를 기본으로 만든다
+      # (2026-08-09 손님: "장남 목소리 너무 가늘고 여자 같아")
+      PITCH: ${{ inputs.pitch || '0,-2,-3,-4,-5' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -112,8 +124,11 @@ jobs:
             exit 1
           fi
           echo "음성 파일 $(ls build/voice/*.mp3 2>/dev/null | wc -l)개를 꺼냈습니다"
+          ARGS=()
+          [ -n "$PITCH" ] && ARGS+=(--pitch-sweep "$PITCH")
           python3 tools/voice_sample.py "data/scripts/$EP.json" \
-            --voice build/voice --who "$WHO" --out build/sample 2>&1 | tee vs.log
+            --voice build/voice --who "$WHO" --out build/sample \
+            "${ARGS[@]}" 2>&1 | tee vs.log
 
       - name: 결과 화면
         if: always()

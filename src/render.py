@@ -1425,6 +1425,64 @@ def _tone_filter(g_low, g_high):
     return ",".join(parts)
 
 
+# ── 인물별 목소리 높이 내리기 (반음 단위 · 마이너스면 낮아진다) ──────────────
+#
+# 왜 (2026-08-09 손님: "장남 목소리 너무 가늘고 여자 같아서
+#                      조금 더 묵직하고 아저씨 같고 걸걸한 목소리로 바꿔야 될 것 같은데")
+#     맞는 지적이고 **내 잘못이다.** 장남에게 준 Gacrux 는 실측 **186Hz** 로,
+#     어머니(198Hz)·할머니(198Hz)·여자(200Hz) 옆자리다. 남자들(120~131Hz)과는
+#     60Hz 넘게 떨어져 있다. 구글이 붙인 'Mature(원숙한)' 라는 **설명만 보고
+#     같은 파일에 적혀 있는 높이표를 안 봤다.**
+#
+# 왜 여기서 고치나 — **값이 0원이기 때문이다.**
+#     목소리 이름을 바꾸면 그 인물 대사를 전부 다시 사야 한다. 여기서 하는 것은
+#     **이미 산 소리를 조립할 때 손보는 것**이라 몇 번을 고쳐도 0원이다.
+#     그래서 얼마나 내릴지도 짐작하지 않고 **여러 단계로 만들어 귀로 고르실 수 있다.**
+#
+# 얼마나 내릴 수 있나 (정직하게)
+#     186Hz 를 남자 음역(125Hz쯤)까지 내리려면 약 7반음이다. 그만큼 내리면
+#     소리가 늘어진 듯 부자연스러워진다. 3~4반음(150Hz쯤)이 자연스러운 한계다.
+#     즉 이 방법으로는 **'조금 더 묵직하게' 까지는 되지만 '완전히 다른 사람' 은 안 된다.**
+#     그 이상이 필요하면 목소리 이름을 바꿔야 하고, 그때는 값이 든다.
+VOICE_PITCH = {
+    # 장남만 손댄다 (손님 선택: "장남만 건드리기")
+    "v_M50A": float(os.environ.get("VT_PITCH_M50A", "-3.0")),
+}
+
+_RUBBERBAND = None
+
+
+def have_rubberband():
+    """음높이만 바꾸는 좋은 필터가 이 컴퓨터 ffmpeg 에 들어 있는가.
+
+    없어도 된다 — 없으면 '천천히 틀어 낮추고 빠르기를 되돌리는' 옛 방법을 쓴다."""
+    global _RUBBERBAND
+    if _RUBBERBAND is None:
+        try:
+            out = subprocess.run(["ffmpeg", "-hide_banner", "-filters"],
+                                 capture_output=True, text=True, check=True).stdout
+            _RUBBERBAND = " rubberband " in out
+        except Exception:
+            _RUBBERBAND = False
+    return _RUBBERBAND
+
+
+def _pitch_filter(semitones):
+    """목소리를 반음 단위로 내린다(마이너스면 낮아진다). **길이는 그대로다.**
+
+    ⚠️ 소리를 통째로 느리게 틀면 음이 낮아지지만 말이 늘어진다. 그래서 낮춘 만큼
+       빠르기를 되돌려 길이를 맞춘다. 이러면 성대뿐 아니라 **울림통까지 커진 것처럼**
+       들려서, 단순히 음만 낮춘 것보다 '덩치 큰 아저씨' 에 가깝다.
+    ⚠️ 파일마다 표본율이 달라도 되게 44100 으로 먼저 맞춘 뒤 손댄다."""
+    if abs(semitones) < 0.25:
+        return ""
+    k = 2.0 ** (semitones / 12.0)
+    if have_rubberband():
+        return f"rubberband=pitch={k:.5f}"
+    return (f"aresample=44100,asetrate={int(44100 * k)},"
+            f"aresample=44100,atempo={1.0 / k:.5f}")
+
+
 def set_voice_gains(doc, narration_dir):
     """컷마다 **음색과 볼륨**을 얼마나 손볼지 미리 계산해 둔다.
 
@@ -1466,6 +1524,14 @@ def set_voice_gains(doc, narration_dir):
         return
 
     for sp, raws in sorted(raw.items()):
+        # ⭐ 그 인물의 목소리를 낮출 것인가 (장남 — 손님 지적).
+        #    음색·크기를 재기 **전에** 붙인다. 낮추면 크기도 달라지므로,
+        #    낮춘 뒤의 소리를 재야 크기 맞추기가 맞아떨어진다.
+        pf = _pitch_filter(VOICE_PITCH.get(sp, 0.0))
+        if pf:
+            print(f"  목소리 낮추기 — {sp} {VOICE_PITCH[sp]:+.1f}반음"
+                  f" ({'좋은 방법' if have_rubberband() else '옛 방법'})")
+
         # ② 인물의 '평균 음색' 을 정하고, 컷마다 그쪽으로 당긴다
         mlo = sorted(x[3] for x in raws)[len(raws) // 2]
         mhi = sorted(x[4] for x in raws)[len(raws) // 2]
@@ -1473,7 +1539,7 @@ def set_voice_gains(doc, narration_dir):
         for cid, p, db, lo, hi in raws:
             gl = max(-TONE_MAX, min(TONE_MAX, mlo - lo))
             gh = max(-TONE_MAX, min(TONE_MAX, mhi - hi))
-            f = _tone_filter(gl, gh)
+            f = ",".join(x for x in (pf, _tone_filter(gl, gh)) if x)
             if f:
                 _TONE[cid] = f
                 odd.append((abs(gl) + abs(gh), cid, gl, gh))

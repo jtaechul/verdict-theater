@@ -333,6 +333,20 @@ const WHO_LABEL = { v_M50A:'장남 목소리', v_M50B:'차남 목소리', v_F50A
                     v_F50B:'며느리 목소리', v_M70:'아버지 목소리', v_F70:'할머니 목소리',
                     v_JUDGE:'재판장 목소리', narrator:'해설 목소리' };
 
+// 'v_M50A__down3' 처럼 뒤에 붙은 표시를 사람 말로 바꾼다.
+// (목소리를 얼마나 낮출지 귀로 고르실 때 쓰는 이름입니다. 파일 이름은 보관함에서
+//  깨지지 않게 영문으로 두고, 화면 글자는 여기서 붙입니다)
+function whoLabel(who) {
+  const s = String(who);
+  const i = s.indexOf('__');
+  if (i < 0) return WHO_LABEL[s] || s;
+  const base = WHO_LABEL[s.slice(0, i)] || s.slice(0, i);
+  const tag = s.slice(i + 2);
+  if (tag === 'same') return base + ' — 지금 그대로';
+  const m = /^down(\\d+)$/.exec(tag);
+  return base + (m ? ' — ' + m[1] + '반음 낮춤' : ' — ' + tag);
+}
+
 function ago(iso) {
   if (!iso) return '';
   const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -437,7 +451,7 @@ function home() {
     h += '<div class="card"><h2>들어보기</h2>';
     S.voices.forEach(v => {
       h += '<div style="margin:0 0 14px">'
-        + '<div style="font-size:15px;margin-bottom:6px">' + esc(WHO_LABEL[v.who] || v.who)
+        + '<div style="font-size:15px;margin-bottom:6px">' + esc(whoLabel(v.who))
         + ' <small style="color:#9599ab">· ' + esc(v.ep) + ' · ' + mb(v.size) + '</small></div>'
         + '<audio controls preload="none" style="width:100%"'
         + ' src="/api/audio?id=' + v.id + '"></audio>'
