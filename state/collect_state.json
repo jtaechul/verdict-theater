@@ -1,6 +1,6 @@
 {
-  "date": "2026-08-02",
-  "calls_today": 180,
+  "date": "2026-08-09",
+  "calls_today": 1,
   "queries": {
     "유류분": {
       "total": 88,
@@ -161,6 +161,10 @@
     "차용금": {
       "total": 43,
       "listed": true
+    },
+    "상간": {
+      "total": 0,
+      "listed": false
     }
   },
   "fetched": [
