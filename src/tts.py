@@ -265,7 +265,13 @@ VOICE_NAME = {
     "narrator": "Charon",       # Informative(설명하는) 82Hz  — 낮고 차분한 해설
     "v_F50A":   "Sulafat",      # Warm(따뜻한)      198Hz — 오래 참아온 어머니
     "v_F50B":   "Erinome",      # Clear(맑은)       200Hz — 정 없이 또렷한 여자
-    "v_M50A":   "Algenib",      # Gravelly(걸걸한)  120Hz — 서늘한 맏아들
+    # ⚠️ 2026-08-08 손님: "장남 목소리는 전혀 장남 같지 않아. 장남을 바꿔."
+    #    Algenib 은 Gravelly(걸걸한) 이라 **쉰 목소리**로 들렸다 — 쉰 살 맏아들의
+    #    무게가 아니라 그냥 목이 거친 사람이었다. 게다가 차남(Schedar·평탄한)과
+    #    높이가 가까워(실측 142.9Hz vs 121.2Hz) 형제가 섞여 들렸다.
+    #    Gacrux 는 구글이 Mature(원숙한) 라고 밝힌 목소리다 — 나이와 무게가 있고
+    #    '평탄한' 차남과 성격이 뚜렷이 갈린다.
+    "v_M50A":   "Gacrux",       # Mature(원숙한)    — 나이와 무게가 있는 맏아들
     "v_M50B":   "Schedar",      # Even(평탄한)      129Hz — 눌려 살아온 동생
     "v_F70":    "Vindemiatrix", # Gentle(부드러운)  198Hz — 기운 없는 할머니
     "v_M70":    "Enceladus",    # Breathy(숨섞인)   131Hz — 병든 노인의 쉰 목소리
