@@ -23,6 +23,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import urllib.error
 import urllib.parse
 import urllib.request
 import wave
@@ -47,10 +48,45 @@ def api_key():
     return None, ""
 
 
-def get(url, timeout=60):
-    req = urllib.request.Request(url, headers={"User-Agent": "verdict-theater/1.0"})
+# Pixabay 는 낯선 프로그램 이름을 막는 일이 있다(403). 브라우저처럼 보이게 한다.
+UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+      "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
+
+
+def get(url, timeout=60, ua=UA):
+    req = urllib.request.Request(url, headers={
+        "User-Agent": ua,
+        "Accept": "application/json, audio/mpeg, */*",
+        "Accept-Language": "ko,en;q=0.8",
+    })
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return r.read()
+
+
+def diagnose(key):
+    """403 이 났을 때 **열쇠 탓인지 주소 탓인지** 가린다.
+
+    사진 검색(/api/)은 문서에 있는 공식 주소다. 그것이 되면 열쇠는 멀쩡한 것이고,
+    소리(/api/audio/)만 막힌 것이다 — 그러면 다른 길을 찾아야 한다.
+    이 진단이 없으면 "열쇠가 틀렸나?" 를 계속 되묻게 된다."""
+    print("\n  ── 무엇이 막혔는지 확인 ──")
+    tests = [
+        ("사진 검색 (공식 주소)", f"https://pixabay.com/api/?key={key}&q=court&per_page=3"),
+        ("영상 검색 (공식 주소)", f"https://pixabay.com/api/videos/?key={key}&q=court&per_page=3"),
+        ("소리 검색 (문서에 없는 주소)", f"{PIXABAY}?key={key}&q=footsteps&per_page=3"),
+    ]
+    for label, url in tests:
+        for ua_name, ua in (("브라우저처럼", UA), ("프로그램 이름", "verdict-theater/1.0")):
+            try:
+                raw = get(url, timeout=30, ua=ua)
+                n = len(json.loads(raw.decode("utf-8")).get("hits") or [])
+                print(f"    {label:24s} [{ua_name}] 정상 — {n}건")
+                break
+            except urllib.error.HTTPError as e:
+                print(f"    {label:24s} [{ua_name}] HTTP {e.code}")
+            except Exception as e:
+                print(f"    {label:24s} [{ua_name}] {type(e).__name__}")
+    print("    → 사진·영상은 되는데 소리만 막히면, 소리 API 는 이 열쇠로 못 씁니다.")
 
 
 def _audio_url(hit):
@@ -164,6 +200,10 @@ def main():
         found = search(key, a.query)
     except Exception as e:
         print(f"오류: 검색 실패 — {type(e).__name__}: {e}", file=sys.stderr)
+        try:
+            diagnose(key)
+        except Exception:
+            pass
         return 1
     if not found:
         print(f"'{a.query}' 로 나온 소리가 없습니다. --query 를 바꿔 보십시오.")
