@@ -72,6 +72,8 @@ def main():
     ap.add_argument("audio")
     ap.add_argument("--order", required=True)
     ap.add_argument("--out", default="build/audition/audition_index.json")
+    ap.add_argument("--gap", type=float, default=0.6,
+                    help="목소리 사이에 넣은 무음의 길이(초). 이 길이에 가까운 것을 고른다")
     a = ap.parse_args()
 
     total = dur(a.audio)
@@ -85,13 +87,16 @@ def main():
     print(f"파일 {total:.1f}초 · 무음 {len(g)}군데 찾음 (필요한 것 {want}군데)")
 
     if len(g) > want:
-        # ⭐ **가장 긴 것부터 필요한 만큼만 고른다.**
-        #    넣은 무음(0.6초)이 말 중간 쉼보다 길다는 것은 확실하다.
-        #    실측: 처음에는 84군데가 잡혔다 — 말 중간 쉼까지 센 것이다.
-        g = sorted(sorted(g, key=lambda x: x[1] - x[0], reverse=True)[:want])
-        print(f"  → 긴 것부터 {want}군데만 골랐습니다")
+        # ⭐ **길이가 0.6초에 가까운 것**을 고른다. '가장 긴 것' 이 아니다.
+        #    ⚠️ 처음에는 긴 것부터 골랐다가 틀렸다 — 실측 결과 도막이
+        #       1.4초~11.6초로 벌어졌다(대사 한 줄은 5초 안팎이어야 한다).
+        #       말 속 쉼이 넣은 무음보다 긴 자리가 있었던 것이다.
+        #    우리가 넣은 것은 **정확히 a.gap 초**다. 그 길이에 가까운 순서로 고른다.
+        g = sorted(sorted(g, key=lambda x: abs((x[1] - x[0]) - a.gap))[:want])
+        print(f"  → 길이가 {a.gap}초에 가까운 {want}군데를 골랐습니다")
 
     starts = [0.0] + [e for _s, e in g]         # 목소리 시작 = 0초 + 무음이 끝나는 자리
+    segs = []
     if len(starts) != len(order):
         # 그래도 안 맞으면 **짐작해서 맞추지 않는다.** 틀린 자리를 알려 주면
         # 손님이 엉뚱한 목소리를 고르게 된다 — 없느니만 못하다.
@@ -99,16 +104,22 @@ def main():
               file=sys.stderr)
         starts = []
     else:
-        # 마지막 확인: 도막 하나하나가 말 한 줄만 한 길이인가 (너무 짧으면 잘못 잡은 것)
+        # ⭐ 마지막 확인 — 도막들이 **서로 비슷한 길이**인가.
+        #    같은 대사를 읽은 것이므로 길이가 크게 벌어질 수 없다.
+        #    ⚠️ 예전에는 '1초보다 긴가' 만 봤다. 그래서 1.4초와 11.6초가 섞인
+        #       엉터리 결과가 통과했다. 이제 가운뎃값과 견준다.
         segs = [(starts[i + 1] if i + 1 < len(starts) else total) - s
                 for i, s in enumerate(starts)]
-        if min(segs) < 1.0:
-            print(f"⚠️ 너무 짧은 도막이 있습니다({min(segs):.1f}초) — 자리를 적지 않습니다.",
-                  file=sys.stderr)
+        mid = sorted(segs)[len(segs) // 2]
+        bad = [f"{i + 1}번({v:.1f}초)" for i, v in enumerate(segs)
+               if v < mid * 0.5 or v > mid * 1.8]
+        print(f"  도막 {len(segs)}개 · 가운뎃값 {mid:.1f}초"
+              f" · 가장 짧은 것 {min(segs):.1f}초 · 가장 긴 것 {max(segs):.1f}초")
+        if bad:
+            print(f"⚠️ 길이가 크게 벌어진 도막이 있습니다: {', '.join(bad[:5])}"
+                  f"{' …' if len(bad) > 5 else ''}", file=sys.stderr)
+            print("   자리를 적지 않습니다 — 틀린 자리는 없느니만 못합니다.", file=sys.stderr)
             starts = []
-        else:
-            print(f"  도막 {len(segs)}개 · 가장 짧은 것 {min(segs):.1f}초"
-                  f" · 가장 긴 것 {max(segs):.1f}초")
 
     items = []
     for i, row in enumerate(order):

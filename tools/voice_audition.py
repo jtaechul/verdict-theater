@@ -169,6 +169,29 @@ def main():
             "\n".join(f"{i:2d}. {v}  {hz:.0f}Hz" for i, (hz, v) in enumerate(rows, 1)),
             encoding="utf-8")
 
+        # ⭐ **'누가 몇 초에 나오는지' 를 여기서 정확히 적는다.**
+        #    이어 붙이는 우리가 각 조각의 길이를 알고 있으므로 **재지 않아도 된다.**
+        #    ⚠️ 나중에 무음을 찾아 되짚는 방법은 틀렸다 — 말 속 쉼과 구분이 안 돼
+        #       도막이 1.4초~11.6초로 벌어진 적이 있다(2026-08-09 실측).
+        #       만들 때 적어 두면 그런 짐작이 아예 필요 없다.
+        items, t = [], 0.0
+        for i, (hz, v) in enumerate(rows, 1):
+            d = 0.0
+            try:
+                d = float(subprocess.run(
+                    ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                     "-of", "csv=p=0", str(out / got[v]["file"])],
+                    capture_output=True, text=True, check=True).stdout.strip())
+            except Exception:
+                pass
+            items.append({"n": i, "name": v, "hz": hz,
+                          "start": round(t, 2), "dur": round(d, 2)})
+            t += d + GAP
+        (out / "audition_index.json").write_text(
+            json.dumps({"total": round(t - GAP, 2), "items": items},
+                       ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(f"  누가 몇 초에 나오는지도 적었습니다 ({len(items)}개 · 만들면서 잰 값)")
+
     if failed:
         print(f"\n못 만든 것 {len(failed)}개: {', '.join(failed[:6])}")
     return 0
