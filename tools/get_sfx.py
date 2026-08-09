@@ -54,9 +54,12 @@ PROFILES = {
     "clock":     {"query": "wall clock ticking", "bpm": (50, 130),
                   "beats_min": 3, "bright": 3000, "trim": 5.0,
                   "what": "벽시계 초침 (똑딱)"},
-    "phone":     {"query": "old telephone bell ring", "bpm": None,
-                  "beats_min": 0, "bright": 3000, "trim": 4.0,
-                  "what": "옛날 전화벨"},
+    # ⚠️ 2026-08-09: 처음 받아 온 것은 1.8초에 여섯 번 울리는 **쨍한 전자음**이었다
+    #    (4kHz 위에 힘의 42%). 삑 소리는 아니지만 손님이 싫어하신 그 성질이다.
+    #    그래서 '쇠종이 울리는 옛 전화' 쪽으로 찾고, 얇고 쨍하면 크게 깎는다(bright 낮춤).
+    "phone":     {"query": "rotary telephone bell ringing analog", "bpm": None,
+                  "beats_min": 0, "bright": 1200, "trim": 4.0,
+                  "what": "전화벨 (쇠종이 울리는 옛 전화)"},
     "heartbeat": {"query": "human heartbeat chest", "bpm": (45, 100),
                   "beats_min": 2, "bright": 800, "trim": 4.0,
                   "what": "심장 뛰는 소리"},

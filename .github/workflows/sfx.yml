@@ -136,6 +136,18 @@ jobs:
           echo "::add-mask::$VAL"
           echo "$VARNAME=$VAL" >> "$GITHUB_ENV"
 
+      # 표식 파일로 돌 때는 그 파일에 적힌 이름을 쓴다 — 고칠 소리 하나만 콕 집기 위해서.
+      # (표식으로 돌면 inputs 가 비어 있어서, 없으면 위 기본값 전부를 다시 받게 된다.
+      #  멀쩡한 소리까지 다른 것으로 바뀌어 버리므로 이 길을 열어 둔다)
+      - name: 표식 파일에 적힌 이름 읽기
+        if: github.event_name == 'push'
+        run: |
+          L=$(head -1 .trigger/sfx 2>/dev/null | tr -d '\r' | xargs || true)
+          case "$L" in
+            ''|*[!a-z\ ]*) echo "표식에 이름이 없습니다 — 기본값($NAME)을 씁니다" ;;
+            *) echo "표식에 적힌 이름: $L"; echo "NAME=$L" >> "$GITHUB_ENV" ;;
+          esac
+
       - name: 소리 받아서 고르기
         run: |
           set -o pipefail
