@@ -57,9 +57,12 @@ PROFILES = {
     # ⚠️ 2026-08-09: 처음 받아 온 것은 1.8초에 여섯 번 울리는 **쨍한 전자음**이었다
     #    (4kHz 위에 힘의 42%). 삑 소리는 아니지만 손님이 싫어하신 그 성질이다.
     #    그래서 '쇠종이 울리는 옛 전화' 쪽으로 찾고, 얇고 쨍하면 크게 깎는다(bright 낮춤).
-    "phone":     {"query": "rotary telephone bell ringing analog", "bpm": None,
+    #    ⚠️ 'rotary telephone bell ringing analog' 로 찾았더니 **한 건도 안 나왔다**
+    #       (마음대로 쓸 수 있는 소리 + 길이 조건까지 걸리면 너무 좁다).
+    #       찾는 말은 넓게 두고, 고르는 자(bright)를 조여서 따뜻한 쪽을 뽑는다.
+    "phone":     {"query": "telephone bell ring", "bpm": None,
                   "beats_min": 0, "bright": 1200, "trim": 4.0,
-                  "what": "전화벨 (쇠종이 울리는 옛 전화)"},
+                  "what": "전화벨 (쇠종이 울리는 쪽으로)"},
     "heartbeat": {"query": "human heartbeat chest", "bpm": (45, 100),
                   "beats_min": 2, "bright": 800, "trim": 4.0,
                   "what": "심장 뛰는 소리"},
