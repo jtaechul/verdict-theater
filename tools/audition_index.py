@@ -22,8 +22,14 @@ import subprocess
 import sys
 from pathlib import Path
 
-GAP_MIN = 0.35          # 이보다 긴 무음이면 '목소리 사이' 로 본다 (넣은 것은 0.6초)
-SILENCE_DB = -45
+# ⚠️ 2026-08-09 실측 — 처음에는 -45dB·0.35초로 잡았더니 **84군데**가 나왔다(30개여야 한다).
+#    말 중간의 쉼(쉼표·문장 끝)까지 무음으로 센 것이다.
+#    목소리 사이에 넣은 것은 **완전한 디지털 무음 0.6초**이고, 말 중간의 쉼은
+#    방 소리가 조금이라도 남아 있다. 그래서 기준을 더 엄하게 잡는다.
+#    그래도 개수가 안 맞으면 **가장 긴 것 N-1개만** 고른다 — 넣은 무음이
+#    말 중간 쉼보다 길다는 것은 확실하므로, 짐작이 아니라 순서로 고르는 것이다.
+GAP_MIN = 0.45          # 넣은 것은 0.6초. 말 중간 쉼은 이보다 짧다
+SILENCE_DB = -55        # 넣은 것은 완전한 무음이다
 
 
 def dur(path):
@@ -75,16 +81,34 @@ def main():
         return 1
 
     g = gaps(a.audio)
-    # 목소리 시작 자리 = 0초 + 무음이 끝나는 자리들
-    starts = [0.0] + [e for _s, e in g]
-    print(f"파일 {total:.1f}초 · 무음 {len(g)}군데 → 도막 {len(starts)}개 · 목록 {len(order)}개")
+    want = len(order) - 1                       # 목소리 30개 → 사이는 29군데
+    print(f"파일 {total:.1f}초 · 무음 {len(g)}군데 찾음 (필요한 것 {want}군데)")
 
+    if len(g) > want:
+        # ⭐ **가장 긴 것부터 필요한 만큼만 고른다.**
+        #    넣은 무음(0.6초)이 말 중간 쉼보다 길다는 것은 확실하다.
+        #    실측: 처음에는 84군데가 잡혔다 — 말 중간 쉼까지 센 것이다.
+        g = sorted(sorted(g, key=lambda x: x[1] - x[0], reverse=True)[:want])
+        print(f"  → 긴 것부터 {want}군데만 골랐습니다")
+
+    starts = [0.0] + [e for _s, e in g]         # 목소리 시작 = 0초 + 무음이 끝나는 자리
     if len(starts) != len(order):
-        # 개수가 안 맞으면 **짐작해서 맞추지 않는다.** 틀린 자리를 알려 주면
+        # 그래도 안 맞으면 **짐작해서 맞추지 않는다.** 틀린 자리를 알려 주면
         # 손님이 엉뚱한 목소리를 고르게 된다 — 없느니만 못하다.
-        print("⚠️ 도막 수와 목록 수가 다릅니다. 자리를 적지 않고 이름만 적습니다.",
+        print(f"⚠️ 도막 {len(starts)}개 · 목록 {len(order)}개 — 자리를 적지 않고 이름만 적습니다.",
               file=sys.stderr)
         starts = []
+    else:
+        # 마지막 확인: 도막 하나하나가 말 한 줄만 한 길이인가 (너무 짧으면 잘못 잡은 것)
+        segs = [(starts[i + 1] if i + 1 < len(starts) else total) - s
+                for i, s in enumerate(starts)]
+        if min(segs) < 1.0:
+            print(f"⚠️ 너무 짧은 도막이 있습니다({min(segs):.1f}초) — 자리를 적지 않습니다.",
+                  file=sys.stderr)
+            starts = []
+        else:
+            print(f"  도막 {len(segs)}개 · 가장 짧은 것 {min(segs):.1f}초"
+                  f" · 가장 긴 것 {max(segs):.1f}초")
 
     items = []
     for i, row in enumerate(order):
