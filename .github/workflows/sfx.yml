@@ -77,12 +77,21 @@ jobs:
           #        · Variables 탭 (안 가려지는 값) → vars 로 읽는다
           #    2026-08-09: 손님이 "등록해 놨다" 하셨는데 secrets 에는 없었다.
           #    한쪽만 보고 "없다" 고 하면 안 된다 — 둘 다 본다.
-          NAME=$(printf '%s' "$ALL_SECRETS" | jq -r 'keys[]' | grep -i pixabay | head -1 || true)
-          FROM="Secrets"
-          if [ -z "$NAME" ]; then
-            NAME=$(printf '%s' "$ALL_VARS" | jq -r 'keys[]' | grep -i pixabay | head -1 || true)
-            FROM="Variables"
-          fi
+          # ⚠️ 2026-08-09 실측: **Pixabay 소리 API 는 이 열쇠로 안 열린다**(403).
+          #    같은 열쇠로 사진·영상은 정상인데 /api/audio/ 만 막힌다 — 웹사이트 내부용이다.
+          #    그래서 **Freesound 를 먼저** 찾는다(소리를 공식 API 로 주는 곳).
+          NAME=""; FROM=""; VARNAME=""
+          for want in freesound pixabay; do
+            for tab in Secrets Variables; do
+              SRC="$ALL_SECRETS"; [ "$tab" = "Variables" ] && SRC="$ALL_VARS"
+              HIT=$(printf '%s' "$SRC" | jq -r 'keys[]' | grep -i "$want" | head -1 || true)
+              if [ -n "$HIT" ]; then
+                NAME="$HIT"; FROM="$tab"
+                VARNAME=$([ "$want" = "freesound" ] && echo FREESOUND_TOKEN || echo PIXABAY_API_KEY)
+                break 2
+              fi
+            done
+          done
           if [ -z "$NAME" ]; then
             {
               echo "## Pixabay 열쇠를 못 찾았습니다"
@@ -98,13 +107,15 @@ jobs:
               printf '%s' "$ALL_VARS" | jq -r 'keys[]' || echo "(없음)"
               echo '```'
               echo ""
-              echo "여기에 Pixabay 것이 안 보이면 셋 중 하나입니다:"
-              echo "1. **다른 저장소**에 등록됨 (이 저장소 것만 보입니다)"
-              echo "2. **Environment** 안에 등록됨 (그 이름을 알려주시면 맞추겠습니다)"
-              echo "3. 아직 등록 전"
+              echo "소리를 받으려면 **Freesound** 열쇠가 필요합니다."
+              echo "(Pixabay 소리 API 는 2026-08-09 실측 결과 403 으로 막혀 있습니다 —"
+              echo " 같은 열쇠로 사진·영상은 되지만 소리만 안 열립니다)"
               echo ""
-              echo "가장 빠른 길: 이 저장소 **Settings → Secrets and variables → Actions"
-              echo "→ Secrets 탭 → New repository secret** 에서 \`PIXABAY_API_KEY\` 로 등록."
+              echo "1. https://freesound.org 가입 → 로그인"
+              echo "2. https://freesound.org/apiv2/apply/ 에서 API key 신청 (바로 나옵니다)"
+              echo "3. 이 저장소 **Settings → Secrets and variables → Actions"
+              echo "   → Secrets 탭 → New repository secret**"
+              echo "   이름 \`FREESOUND_TOKEN\`, 값에 받은 key 붙여넣기"
             } >> "$GITHUB_STEP_SUMMARY"
             echo "Secrets 탭:"
             printf '%s' "$ALL_SECRETS" | jq -r 'keys[]'
@@ -113,12 +124,12 @@ jobs:
             echo "::error::Pixabay 열쇠를 못 찾았습니다. 요약 화면에 등록된 이름을 적어 뒀습니다."
             exit 1
           fi
-          echo "찾은 열쇠: $NAME ($FROM 탭)"
+          echo "찾은 열쇠: $NAME ($FROM 탭) → $VARNAME 로 씁니다"
           SRC="$ALL_SECRETS"
           [ "$FROM" = "Variables" ] && SRC="$ALL_VARS"
           VAL=$(printf '%s' "$SRC" | jq -r --arg n "$NAME" '.[$n]')
           echo "::add-mask::$VAL"
-          echo "PIXABAY_API_KEY=$VAL" >> "$GITHUB_ENV"
+          echo "$VARNAME=$VAL" >> "$GITHUB_ENV"
 
       - name: 소리 받아서 고르기
         run: |

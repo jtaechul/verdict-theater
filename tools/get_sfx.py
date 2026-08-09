@@ -32,16 +32,24 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SFX = ROOT / "assets" / "sfx"
 PIXABAY = "https://pixabay.com/api/audio/"
+FREESOUND = "https://freesound.org/apiv2/search/text/"
 
 # 법정 걸음. 사람이 천천히 걸으면 분당 60~80걸음이다(지금 것은 131 — 그래서 싸구려다).
 WANT_BPM = (55, 85)
 
-# 열쇠 이름은 저장소마다 다를 수 있다. 있는 것을 찾아 쓴다.
-KEY_NAMES = ("PIXABAY_API_KEY", "PIXABAY_KEY", "PIXABAY_TOKEN", "PIXABAY")
+# ⚠️ 2026-08-09 실측 — **Pixabay 소리 API 는 일반 열쇠로 안 열린다.**
+#    같은 열쇠로 사진 검색·영상 검색은 정상(3건)인데 /api/audio/ 만 403 이다
+#    (브라우저처럼 위장해도 같다). 주소는 살아 있지만 웹사이트 내부용이다.
+#    그래서 소리는 **Freesound** 에서 받는다 — 여기는 공식 API 로 소리를 준다.
+#    Pixabay 길은 남겨 둔다(나중에 열릴 수도 있고, 사진·영상에는 쓸 수 있다).
+KEY_NAMES = {
+    "freesound": ("FREESOUND_TOKEN", "FREESOUND_API_KEY", "FREESOUND_KEY", "FREESOUND"),
+    "pixabay": ("PIXABAY_API_KEY", "PIXABAY_KEY", "PIXABAY_TOKEN", "PIXABAY"),
+}
 
 
-def api_key():
-    for n in KEY_NAMES:
+def api_key(source):
+    for n in KEY_NAMES[source]:
         v = os.environ.get(n, "").strip()
         if v:
             return n, v
@@ -111,6 +119,31 @@ def _audio_url(hit):
                     for e in (".mp3", ".ogg", ".m4a", ".wav")):
             return v
     return None
+
+
+def search_freesound(key, query, n=10, dur=(1.0, 10.0)):
+    """Freesound 에서 **마음대로 써도 되는(CC0)** 소리만 검색한다.
+
+    CC0 만 쓰는 이유: 유튜브에 올릴 것이라 출처 표기 의무가 없어야 뒤탈이 없다.
+    받는 것은 미리듣기 mp3(128kbps) 다 — 원본은 로그인 절차가 필요한데,
+    효과음 한두 개에 그 절차를 넣을 이유가 없다. 우리 영상 소리는 어차피
+    192kbps 로 다시 인코딩된다."""
+    q = urllib.parse.urlencode({
+        "query": query,
+        "filter": f'license:"Creative Commons 0" duration:[{dur[0]} TO {dur[1]}]',
+        "fields": "id,name,duration,license,previews,username,url",
+        "page_size": max(3, n),
+        "token": key,
+    })
+    data = json.loads(get(f"{FREESOUND}?{q}").decode("utf-8"))
+    out = []
+    for r in data.get("results", []):
+        url = (r.get("previews") or {}).get("preview-hq-mp3")
+        if url:
+            out.append({"id": r.get("id"), "tags": r.get("name"),
+                        "pageURL": r.get("url"), "audio": url,
+                        "license": r.get("license"), "user": r.get("username")})
+    return out
 
 
 def search(key, query, n=10):
@@ -187,17 +220,25 @@ def main():
     ap.add_argument("--trim", type=float, default=6.0, help="설치할 때 최대 길이(초)")
     a = ap.parse_args()
 
-    which, key = api_key()
+    # Freesound 를 먼저 본다 (소리를 공식으로 주는 곳). 없으면 Pixabay.
+    source, which, key = None, None, ""
+    for src in ("freesound", "pixabay"):
+        which, key = api_key(src)
+        if key:
+            source = src
+            break
     if not key:
-        print(f"오류: Pixabay 열쇠가 없습니다. 찾아본 이름: {', '.join(KEY_NAMES)}",
-              file=sys.stderr)
+        print("오류: 소리를 받아올 열쇠가 없습니다.", file=sys.stderr)
+        print(f"      Freesound: {', '.join(KEY_NAMES['freesound'])}", file=sys.stderr)
+        print(f"      Pixabay:   {', '.join(KEY_NAMES['pixabay'])}", file=sys.stderr)
         return 2
-    print(f"Pixabay 열쇠: {which} (등록돼 있습니다)")
+    print(f"소리 받아올 곳: {source} (열쇠 {which} 등록돼 있습니다)")
 
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     try:
-        found = search(key, a.query)
+        found = (search_freesound(key, a.query) if source == "freesound"
+                 else search(key, a.query))
     except Exception as e:
         print(f"오류: 검색 실패 — {type(e).__name__}: {e}", file=sys.stderr)
         try:
@@ -274,11 +315,14 @@ def main():
                        check=True)
         h = pick[3]
         note = SFX / "SOURCES.md"
-        line = (f"- `{a.name}.mp3` — Pixabay #{h.get('id')} "
-                f"{str(h.get('tags') or '')[:60]} "
-                f"{h.get('pageURL') or ''}\n")
+        line = (f"- `{a.name}.mp3` — {source} #{h.get('id')} "
+                f"{str(h.get('tags') or '')[:50]}"
+                + (f" by {h.get('user')}" if h.get('user') else "")
+                + (f" ({h.get('license')})" if h.get('license') else "")
+                + f" {h.get('pageURL') or ''}\n")
         old = note.read_text(encoding="utf-8") if note.exists() else \
-            "# 효과음 출처\n\nPixabay 콘텐츠 라이선스(출처 표기 없이 상업적 사용 가능).\n\n"
+            ("# 효과음 출처\n\n마음대로 써도 되는 소리만 씁니다"
+             " (Freesound CC0 · Pixabay 콘텐츠 라이선스).\n\n")
         old = "".join(x for x in old.splitlines(keepends=True)
                       if not x.startswith(f"- `{a.name}.mp3`"))
         note.write_text(old + line, encoding="utf-8")
