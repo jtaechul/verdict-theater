@@ -80,7 +80,8 @@ globalThis.confirm = () => false;
 let api;
 try {
   api = new Function(readFileSync(js, 'utf8')
-                   + '\n;return {home, setS: (v) => { S = v; }};')();
+                   + '\n;return {home, thumbCard, setS: (v) => { S = v; },'
+                   + ' setTHUMB: (v) => { THUMB = v; }};')();
 } catch (e) {
   console.error(`❌ 브라우저 코드가 첫 실행에서 죽는다 — 페이지가 '불러오는 중…' 에서 멈춘다`);
   console.error(`   ${e.constructor.name}: ${e.message}`);
@@ -98,6 +99,19 @@ try {
   api.home();
 } catch (e) {
   console.error('❌ 첫 화면을 그리다 죽는다 — 페이지가 빈 채로 멈춘다');
+  console.error(`   ${e.constructor.name}: ${e.message}`);
+  process.exit(1);
+}
+
+// ③-2 **썸네일 카드도 그려 본다.** 여기 버튼(다운받기·다시 만들기)이
+//     2026-08-09 에 손님을 저장 화면에 가둔 자리다 — 첫 화면에는 안 나오므로
+//     따로 그려 주지 않으면 아래 버튼 검사를 통째로 건너뛴다.
+try {
+  if (typeof api.setTHUMB === 'function')
+    api.setTHUMB({ id: 999, size: 172031, at: new Date().toISOString() });
+  if (typeof api.thumbCard === 'function') painted += api.thumbCard('EP001');
+} catch (e) {
+  console.error('❌ 썸네일 카드를 그리다 죽는다');
   console.error(`   ${e.constructor.name}: ${e.message}`);
   process.exit(1);
 }
@@ -123,6 +137,21 @@ for (const m of painted.matchAll(/onclick="([^"]*)"/g)) {
 }
 if (!nHandler) {
   console.error('❌ 화면에 버튼이 하나도 안 그려졌다 — 화면 그리기가 도중에 멈춘 것이다');
+  process.exit(1);
+}
+
+// ⑤ 썸네일 버튼이 **실제로 검사에 들어왔는지** 확인한다.
+//    thumbCard 를 못 그리면 위 검사가 조용히 건너뛰어, 손님을 가둔 그 버튼이
+//    다시 깨져도 초록불이 뜬다. 검사를 안 한 것을 통과로 보면 안 된다.
+if (!painted.includes('saveThumb(')) {
+  console.error('❌ 썸네일 카드가 검사에 안 들어왔다 — 그 안의 버튼을 검사하지 못했다');
+  console.error('   (2026-08-09 손님이 갇힌 [썸네일 다운받기] 가 바로 그 버튼이다)');
+  process.exit(1);
+}
+// 화면을 통째로 옮기는 링크가 다시 생기지 않았는지 본다 (아이폰이 갇히는 원인)
+if (/<a[^>]+download=[^>]+href="\/api\/thumb/.test(painted)) {
+  console.error('❌ 썸네일을 링크로 내려받고 있다 — 아이폰에서 저장 화면에 갇힌다');
+  console.error('   화면을 옮기지 말고 saveThumb() 처럼 그림만 받아야 한다');
   process.exit(1);
 }
 

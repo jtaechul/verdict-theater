@@ -184,7 +184,12 @@ const STAGE_LABEL = {
 async function gh(env, path, init = {}) {
   const r = await fetch(`${GH}${path}`, {
     ...init,
+    // ⚠️ **묵은 답을 쓰지 않는다.** 깃허브는 답에 '1분간 재사용해도 된다' 를 붙여 보낸다.
+    //    그대로 두면 썸네일을 새로 만들고 [새로 불러오기] 를 눌러도 **옛 그림 번호**가
+    //    돌아와 "안 바뀐다" 로 보인다 (2026-08-09 손님 지적).
+    cf: { cacheTtl: 0, cacheEverything: false },
     headers: {
+      'Cache-Control': 'no-cache',
       'Authorization': `Bearer ${env.GH_TOKEN}`,
       'Accept': 'application/vnd.github+json',
       'User-Agent': 'verdict-theater-admin',
@@ -504,7 +509,11 @@ async function videos(ep) {
   VIEW = 'video';
   document.getElementById('app').innerHTML = '<div class="empty">영상 목록 불러오는 중…</div>';
   let j = {};
-  try { j = await (await fetch('/api/videos?ep=' + encodeURIComponent(ep))).json(); } catch (e) {}
+  // ⚠️ 묵은 답을 쓰지 않는다 — [새로 불러오기] 인데 옛 것이 오면 뜻이 없다.
+  try {
+    j = await (await fetch('/api/videos?ep=' + encodeURIComponent(ep) + '&t=' + Date.now(),
+                           { cache: 'no-store' })).json();
+  } catch (e) {}
   VIDS = j.items || [];
   THUMB = j.thumb || null;
   META = j.meta || null;
@@ -691,12 +700,19 @@ function thumbCard(ep) {
     h += '<div class="empty">아직 썸네일이 없습니다.<br>'
       + '아래 <b>다시 만들기</b>를 누르면 대본에서 만들어 드립니다.</div>';
   } else {
-    h += '<img src="/api/thumb?id=' + THUMB.id + '" alt="썸네일" '
+    // ⚠️ 주소 뒤에 시각을 붙인다 — 안 붙이면 폰이 **전에 받아 둔 그림**을 그대로
+    //    다시 보여줘서, 새로 만들어도 "안 바뀐다" 로 보인다 (2026-08-09 손님 지적).
+    h += '<img src="/api/thumb?id=' + THUMB.id + '&amp;t=' + Date.now() + '" alt="썸네일" '
       + 'style="width:100%;border-radius:12px;background:#000;display:block">';
     h += '<div style="color:#9599ab;font-size:13px;margin:9px 0 0">'
-      + '1280×720 · ' + mb(THUMB.size) + ' · 유튜브에 자동으로 등록됩니다</div>';
-    h += '<div class="btns"><a class="mini gold" download="' + esc(ep) + '_thumb.jpg" '
-      + 'href="/api/thumb?id=' + THUMB.id + '&amp;dl=' + encodeURIComponent(ep) + '">썸네일 다운받기</a></div>';
+      + '1280×720 · ' + mb(THUMB.size)
+      + (THUMB.at ? ' · <b>' + esc(ago(THUMB.at)) + '</b> 만듦' : '')
+      + ' · 유튜브에 자동으로 등록됩니다</div>';
+    // ⚠️ 그냥 링크로 두면 아이폰이 **저장 화면으로 넘어가 버리고 되돌아올 수가 없다**
+    //    (관리자 페이지는 한 화면짜리라 화면이 바뀌면 통째로 사라진다 — 손님이 갇히셨다).
+    //    그래서 화면을 옮기지 않고, 그림만 받아서 저장한다.
+    h += '<div class="btns"><button class="mini gold" '
+      + 'onclick="saveThumb(\\'' + ep + '\\')">썸네일 다운받기</button></div>';
   }
   // ⭐ 고를 것은 메뉴로 보여준다. '다시 만들기'가 매번 같은 그림을 뱉으면
   //    버튼이 아무 소용이 없으므로, 어떤 문구로 만들지 여기서 고르게 한다.
@@ -713,9 +729,35 @@ function thumbCard(ep) {
   return h;
 }
 
+// 썸네일을 **화면을 옮기지 않고** 받는다.
+// ⚠️ 예전에는 그냥 링크(<a download href=...>)였다. 아이폰 사파리는 그 주소로
+//    **화면을 통째로 옮겨** 저장 화면을 띄우는데, 관리자 페이지는 한 화면짜리라
+//    그 순간 사라지고 되돌아올 길이 없다 — 손님이 그 화면에 갇히셨다(2026-08-09).
+//    이제 그림만 몰래 받아서(blob) 저장하므로 화면은 그대로 남는다.
+async function saveThumb(ep) {
+  if (!THUMB) return;
+  toast('썸네일 받는 중…');
+  try {
+    const r = await fetch('/api/thumb?id=' + THUMB.id + '&t=' + Date.now(),
+                          { cache: 'no-store' });
+    if (!r.ok) throw new Error('' + r.status);
+    const url = URL.createObjectURL(await r.blob());
+    const a = document.createElement('a');
+    a.href = url; a.download = ep + '_thumb.jpg';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 20000);
+    toast('받았습니다. 파일 앱이나 사진첩에서 확인하십시오.', 7000);
+  } catch (e) {
+    // 폰이 이 방법을 막으면, 새 창으로 연다 — 그래도 이 화면은 남는다.
+    toast('새 창에서 엽니다. 다 보시면 그 창만 닫으십시오.', 7000);
+    window.open('/api/thumb?id=' + THUMB.id + '&dl=' + encodeURIComponent(ep), '_blank');
+  }
+}
+
 async function remakeThumb(ep) {
   const v = (document.getElementById('tv') || {}).value || '문구 1';
   toast('썸네일 다시 만드는 중… (' + v + ')');
+  const since = Date.now();
   let j = {};
   try {
     const r = await fetch('/api/run', { method: 'POST',
@@ -724,7 +766,20 @@ async function remakeThumb(ep) {
     j = await r.json();
   } catch (e) { j = { ok: false, error: '연결이 끊겼습니다' }; }
   if (!j.ok) { toast('실패: ' + (j.error || '알 수 없는 이유'), 6000); return; }
-  toast('시작했습니다. 1분쯤 뒤 [새로 불러오기]를 누르십시오.', 8000);
+  // ⭐ 다 되면 **저절로 새로 불러온다.** 예전에는 "1분쯤 뒤에 눌러 보십시오" 라고만
+  //    했는데, 너무 일찍 누르면 옛 그림이 나와 "안 바뀐다" 로 보였다 (손님 지적).
+  toast('만드는 중입니다. 다 되면 저절로 새 그림이 뜹니다.', 12000);
+  watchRun('thumbnail.yml', since, (r) => {
+    if (r.conclusion === 'success') {
+      toast('새 썸네일이 나왔습니다 (' + v + ').', 8000);
+      videos(ep);
+    } else if (r.conclusion === 'timeout') {
+      toast('아직입니다. 잠시 뒤 [새로 불러오기]를 눌러 주십시오.', 9000);
+    } else {
+      toast('만들지 못했습니다 (' + (CONCL[r.conclusion] || r.conclusion || '알 수 없음')
+            + '). [작업] 화면에서 까닭을 볼 수 있습니다.', 12000);
+    }
+  }, 8, 6);
 }
 
 function play(ep, i) {
@@ -982,8 +1037,12 @@ export default {
           .sort((x, y) => rank(x.name) - rank(y.name));
         // 썸네일은 영상이 아니라 그림이라 목록과 따로 돌려준다.
         // 화면에서 보여주고 내려받게 하려면 자산 번호가 필요하다.
+        // ⭐ **만든 시각(at)도 함께 준다.** 이게 없으면 [다시 만들기] 를 눌러도
+        //    바뀐 건지 아닌지 알 수가 없다 — 문구만 바뀌면 그림이 비슷해서
+        //    '안 바뀐다' 로 보인다 (2026-08-09 손님 지적).
         const t = assets.find((a) => a.name === THUMB_NAME);
-        const thumb = t ? { id: t.id, size: t.size } : null;
+        const thumb = t ? { id: t.id, size: t.size,
+                            at: t.updated_at || t.created_at } : null;
         // ⭐ 유튜브에 올라갈 제목·설명·목차·해시태그. 영상 만들 때 같이 보관해 둔 것이다.
         //    **화면에 보여주는 것과 실제로 올라가는 것이 같아야** 하므로 같은 파일을 쓴다.
         let meta = null;
