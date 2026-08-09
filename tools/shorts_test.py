@@ -135,6 +135,20 @@ check("예전 방식이면 통 하나가 12줄을 넘는다", big > 12,
       f"가장 큰 통 {big}줄")
 
 print("\n" + "=" * 72)
+print("  시험 5 — 말 빠르기가 **합계 1.2배**를 넘지 않나 (발음 뭉개짐 방지)")
+print("=" * 72)
+# 2026-08-08: 목소리를 만들 때 이미 1.12배가 걸려 있는데 렌더링에서 1.2배를 또
+# 얹어 합계 1.34배가 됐고, 자음이 뭉개졌다. 합계가 얼마인지 코드가 알고 있어야 한다.
+check("목소리 쪽 배속과 렌더 쪽 배속을 곱하면 합계와 같다",
+      abs(R.SPEECH_SPEED * R.TEMPO - R.TEMPO_TOTAL) < 0.001,
+      f"{R.SPEECH_SPEED} × {R.TEMPO:.4f} = {R.SPEECH_SPEED * R.TEMPO:.3f}")
+check("합계가 1.25배를 넘지 않는다 (넘으면 발음이 뭉개진다)", R.TEMPO_TOTAL <= 1.25,
+      f"합계 {R.TEMPO_TOTAL}배")
+_speed = {v[1] for v in tts.VOICE_STYLE.values()}
+check("목소리 쪽 배속이 코드에 적힌 값과 맞다", R.SPEECH_SPEED in _speed,
+      f"대본 인물들의 배속 {sorted(_speed)}")
+
+print("\n" + "=" * 72)
 print("  모두 통과" if not fails else f"  실패 {len(fails)}건: {fails}")
 print("=" * 72)
 sys.exit(1 if fails else 0)
