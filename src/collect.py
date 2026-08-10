@@ -194,6 +194,43 @@ def topic_hits(body, topic):
     return sum(1 for w in tw if w in body)
 
 
+# ⭐ **갈래는 사건명이 정한다. 낱말은 확인용일 뿐이다.**
+#
+# 2026-08-10 손님 지적: "불륜 사건인데 왜 소유권말소등기 같은 게 들어있어?"
+# 확인해 보니 손님 말씀이 맞았다. 낱말이 본문 어딘가에 있기만 하면 통과시켰더니
+# 실제 다툼은 딴 것인 판결이 '불륜' 으로 들어와 있었다. 열어 본 13건의 실상:
+#   · 유류분 반환 판결에 아버지의 불륜이 **배경**으로 나온 것      → 다툼은 상속
+#   · 증여계약 해제 판결에 '정조의무' 가 의무 나열 중 한 번 나온 것 → 상관없음
+#   · 언론사 손해배상 판결에 '부정행위' 가 두 번 나온 것           → 상관없음
+# 진짜 상간자 위자료 소송은 **사건명이 「손해배상(기)」 이고, 불륜 이야기가
+# 판결문 전체에 걸쳐 여러 번** 나온다. 그 둘을 함께 본다.
+AFFAIR_NAMES = ["손해배상", "위자료"]        # 상간자 소송이 달고 오는 사건명
+AFFAIR_MIN = 3                               # 스치듯 한두 번은 '배경' 이지 다툼이 아니다
+INHERIT_NAMES = ["유류분", "상속", "소유권", "이전등기", "말소등기", "증여"]
+
+
+def affair_mentions(body):
+    """불륜 이야기가 판결문에 몇 번이나 나오는지 (종류가 아니라 횟수)."""
+    return sum(body.count(w) for w in TOPIC_WORDS["불륜"])
+
+
+def real_topic(case, topic):
+    """사건명까지 보고 **진짜 갈래**를 정한다. '' 를 돌려주면 대기열에 넣지 않는다."""
+    if topic != "불륜":
+        return topic
+    name = case.get("사건명", "")
+    body = case.get("판례내용", "")
+    if "이혼" in name:
+        return ""            # 이혼은 가사 사건이다. 상간자 소송(민사)이 아니다
+    if any(w in name for w in INHERIT_NAMES):
+        return "상속"        # 불륜은 배경이고 실제 다툼은 상속·재산이다
+    if not any(w in name for w in AFFAIR_NAMES):
+        return ""            # 상간자 소송이 달고 오는 사건명이 아니다
+    if affair_mentions(body) < AFFAIR_MIN:
+        return ""            # 한두 번 스친 것은 이 사건의 다툼이 아니다
+    return "불륜"
+
+
 def score(case, today, topic=""):
     """2차 — 본문을 보고 대본화 가능성에 점수를 매긴다.
 
@@ -306,6 +343,14 @@ def main():
     new_cases, hard_counts = [], {}
     ran = []            # 이번에 실제로 훑은 검색어별 결과 (관리자 페이지에서 보여준다)
     left = []           # 목록엔 올랐는데 예산이 모자라 못 받은 것 (다음 실행이 이어받는다)
+    # 이미 갖고 있는 판결의 사건번호. 같은 판결이 일련번호만 달라 또 들어오는 것을 막는다.
+    seen_no = set()
+    for f in CASES.glob("*.json"):
+        try:
+            seen_no.add((json.loads(f.read_text(encoding="utf-8")).get("사건번호") or "").strip())
+        except Exception:
+            pass
+    seen_no.discard("")
 
     print(f"검색어 {len(todo)}개 · 이번 실행 예산 {budget}회 "
           f"(오늘 누적 {st['calls_today']}/{DAILY_LIMIT})")
@@ -421,6 +466,24 @@ def main():
                 hard_counts[k] = hard_counts.get(k, 0) + 1
                 fetched.add(cid)
                 continue
+            # ⭐ 사건명까지 보고 진짜 갈래를 정한다. 낱말이 있어도 다툼이 딴 것이면 뺀다.
+            #    (2026-08-10 손님: "불륜 사건인데 왜 소유권말소등기 같은 게 들어있어?")
+            t2 = real_topic(case, topic)
+            if not t2:
+                k = f"{topic} 사건이 아님(다툼은 딴 것)"
+                hard_counts[k] = hard_counts.get(k, 0) + 1
+                fetched.add(cid)
+                continue
+            topic = t2
+            # 같은 판결이 일련번호만 달라 두 번 들어오는 일이 있다(실측: 2012르3746).
+            # 사건번호로 한 번 더 거른다.
+            no = (case.get("사건번호") or "").strip()
+            if no and no in seen_no:
+                hard_counts["같은 판결 중복"] = hard_counts.get("같은 판결 중복", 0) + 1
+                fetched.add(cid)
+                continue
+            if no:
+                seen_no.add(no)
             pts, why = score(case, today, topic)
             case["_query"] = q
             case["_topic"] = topic

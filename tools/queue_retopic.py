@@ -26,7 +26,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from collect import TOPIC_OF, topic_hits, score  # noqa: E402
+from collect import TOPIC_OF, topic_hits, real_topic, score  # noqa: E402
 
 CASES = ROOT / "data" / "cases"
 QUEUE = ROOT / "state" / "queue.json"
@@ -45,6 +45,7 @@ def main():
     today = date.today()
 
     keep, drop, rescored, missing = [], [], 0, 0
+    seen_no = set()   # 이미 남기기로 한 판결의 사건번호 (중복 판결 제거용)
     for c in queue:
         # 이미 살펴본 것은 그대로 둔다 (돈 들여 평가한 결과)
         if c.get("gate_score") is not None:
@@ -70,6 +71,24 @@ def main():
             c["drop_why"] = f"{topic} 사건이 아님(낱말만 스침)"
             drop.append(c)
             continue
+
+        # 사건명까지 보고 진짜 갈래를 정한다. 낱말이 있어도 다툼이 딴 것이면 뺀다.
+        t2 = real_topic(case, topic)
+        if not t2:
+            c["drop_why"] = f"{topic} 사건이 아님(다툼은 딴 것)"
+            drop.append(c)
+            continue
+        if t2 != topic:
+            c["topic"] = topic = t2      # 예: 불륜이 배경인 유류분 판결 → 상속으로 옮긴다
+
+        # 같은 판결이 일련번호만 달라 두 번 있는 것을 뺀다 (실측: 2012르3746)
+        no = (case.get("사건번호") or "").strip()
+        if no and no in seen_no:
+            c["drop_why"] = "같은 판결 중복"
+            drop.append(c)
+            continue
+        if no:
+            seen_no.add(no)
 
         old = c.get("machine_score")
         pts, _ = score(case, today, topic)
