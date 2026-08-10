@@ -32,7 +32,7 @@ import prompts                                              # noqa: E402
 import money                                                # noqa: E402
 from autofix import autofix                                 # noqa: E402
 from llm import Gemini, LLMError, BudgetExceeded            # noqa: E402
-from claude import writer, ClaudeError                       # noqa: E402
+from claude import writer, grader, ClaudeError               # noqa: E402
 from claude import BudgetExceeded as ClaudeBudget            # noqa: E402
 from validate_script import (validate_doc, errors_as_text, load_manifest,  # noqa: E402
                              ACT_WINDOW)
@@ -405,10 +405,33 @@ def machine_fix(llm, doc, rounds=2):
     return doc, validate_doc(doc, with_shorts=False)
 
 
+# 채점은 한 번 실행에 한 곳만 잡아 두고 계속 쓴다 (매번 새로 만들면 호출 상한이 초기화된다)
+_GRADER = None
+
+
+def grading_llm(fallback):
+    """대본 **채점**에 쓸 곳. 값싼 Gemini 를 먼저 쓰고, 없으면 원래 쓰던 곳으로 돌아간다.
+
+    (2026-08-10 손님: "채점은 Gemini api로 하고, 대본 생성만 Claude api로")
+    대본을 쓰는 llm 은 그대로 Claude 로 두고, 점수 매기는 일만 이쪽으로 보낸다.
+    """
+    global _GRADER
+    if _GRADER is None:
+        try:
+            g, who = grader(max_calls=6)
+            print(f"    (채점하는 곳: {who} — 채점이라 값싼 쪽을 쓴다)")
+            _GRADER = g
+        except Exception as e:      # 열쇠가 없든 무슨 일이 있든 채점 때문에 멈추면 안 된다
+            print(f"    (값싼 채점 모델을 못 잡았다: {e} — 쓰던 곳으로 채점한다)")
+            _GRADER = fallback
+    return _GRADER
+
+
 def evaluate(llm, doc):
     body = prompts.load("script_eval")
-    return llm.json(prompts.fill(body, SCRIPT_JSON=json.dumps(doc, ensure_ascii=False)),
-                    tier="flash", max_output_tokens=8192, temperature=0.3, label="채점")
+    g = grading_llm(llm)
+    return g.json(prompts.fill(body, SCRIPT_JSON=json.dumps(doc, ensure_ascii=False)),
+                  tier="flash", max_output_tokens=8192, temperature=0.3, label="채점")
 
 
 def revise(llm, doc, ev):

@@ -510,6 +510,59 @@ def writer(max_calls=24, prefer=None):
     return Claude(max_calls=max_calls), "claude"
 
 
+def grader(max_calls=24, prefer=None):
+    """**채점·심사**에 쓸 모델을 고른다. 글을 쓰는 writer() 와 일부러 나눠 놨다.
+
+    왜 나눴나 (2026-08-10 손님 지시: "채점은 Gemini api로 하고, 대본 생성만 Claude api로")
+        글을 쓰는 일과 점수를 매기는 일은 값이 크게 다르다.
+          · 대본 쓰기 — 이야기 품질이 채널의 전부다. 비싼 모델(Claude Opus)을 쓴다.
+          · 채점·심사 — '몇 점인지 + 짧은 이유'만 내면 된다. 비싼 모델을 쓸 이유가 없다.
+        한 편 만들 때 채점·심사가 모델 호출의 **절반 이상**(심사 10 + 채점 1)을 차지하는데,
+        그게 전부 가장 비싼 모델로 돌고 있었다. 그쪽만 값싼 Gemini 로 옮긴다.
+
+    고르는 순서
+      1. VT_GRADER 환경변수 (gemini / claude) — 명시하면 그대로 따른다
+      2. GEMINI_API_KEY 가 있으면 Gemini            ← 보통 여기
+      3. 없으면 Claude 로 되돌아간다 (멈추지 않는다)
+
+    ⚠️ 3번이 중요하다. Gemini 열쇠가 등록돼 있지 않아도 **일이 멈추면 안 된다.**
+       조용히 Claude 로 돌아가고, 부른 쪽에서 어느 쪽을 썼는지 화면에 찍는다.
+    """
+    import llm
+
+    want = (prefer or os.environ.get("VT_GRADER", "")).strip().lower()
+    has_claude = bool((os.environ.get("CLAUDE_API_KEY", "")
+                       or os.environ.get("ANTHROPIC_API_KEY", "")).strip())
+    has_gemini = bool(os.environ.get("GEMINI_API_KEY", "").strip())
+
+    if want == "claude":
+        if not has_claude:
+            raise ClaudeError("CLAUDE_API_KEY 가 없는데 claude 로 채점하라고 지정됐다.")
+        return Claude(max_calls=max_calls), "claude"
+
+    if has_gemini:
+        g = llm.Gemini(max_calls=max_calls)
+        # ⚠️ 열쇠가 '있다'와 '쓸 수 있다'는 다르다. 열쇠가 틀렸거나 Gemini 가 잠깐
+        #    맛이 갔을 때, 채점 때문에 제작 전체가 죽으면 안 된다. 여기서 한 번
+        #    실제로 물어보고, 대답이 없으면 조용히 Claude 로 돌아간다.
+        try:
+            g.pick("pro")
+            return g, "gemini"
+        except Exception as e:
+            if not has_claude:
+                raise
+            print(f"    (Gemini 로 채점하려 했으나 응답이 없다: {e}"
+                  f"\n     → Claude 로 채점한다. 값은 더 들지만 일은 멈추지 않는다)")
+
+    if has_claude:
+        return Claude(max_calls=max_calls), "claude"
+
+    raise llm.LLMError(
+        "채점할 열쇠가 하나도 없다.\n"
+        "  GEMINI_API_KEY 또는 CLAUDE_API_KEY 를 Secrets 에 등록하라."
+    )
+
+
 if __name__ == "__main__":
     c = Claude()
     print("쓸 수 있는 모델:", len(c.available()), "개")
