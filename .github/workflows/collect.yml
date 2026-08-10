@@ -129,41 +129,32 @@ jobs:
           git config user.email "actions@github.com"
           # ⚠️ state/collect_last.json 이 빠지면 관리자 페이지의 '지난 수집 결과' 가
           #    영영 안 바뀐다. 새 상태 파일을 만들면 반드시 여기에도 넣는다.
-          git add data/cases state/queue.json state/collect_state.json \
-                  state/rejected.json state/collect_last.json 2>/dev/null || true
-          if git diff --cached --quiet; then
-            echo "바뀐 것이 없다. 커밋하지 않는다."
+          FILES="data/cases state/queue.json state/collect_state.json state/rejected.json state/collect_last.json"
+          # 몇 건인지 세려고 미리 담아 둔다 (push.sh 가 다시 담아도 결과는 같다)
+          git add $FILES 2>/dev/null || true
+          N=$(git diff --cached --name-only | grep -c '^data/cases/' || true)
+
+          # ⚠️ 직접 push 하지 않는다 — 밀렸을 때 커밋을 조용히 버리는 사고가 있었다.
+          if bash tools/push.sh "수집: 판례 ${N}건 갱신 [skip ci]" $FILES; then
             exit 0
           fi
-          N=$(git diff --cached --name-only | grep -c '^data/cases/' || true)
-          git commit -m "수집: 판례 ${N}건 갱신 [skip ci]"
 
-          OK=0
-          for i in 1 2 3 4; do
-            if git push origin HEAD:main; then OK=1; break; fi
-            echo "푸시 실패. $((2**i))초 뒤 재시도"
-            sleep $((2**i))
-            git pull --rebase origin main || true
-          done
-
-          if [ "$OK" = "0" ]; then
-            # 받아온 판례를 잃지 않게 첨부파일로라도 남긴다
-            echo "PUSH_FAILED=1" >> "$GITHUB_ENV"
-            {
-              echo ""
-              echo "### ⚠️ 결과를 저장소에 올리지 못했습니다"
-              echo ""
-              echo "판례는 정상적으로 받아왔지만 저장 단계에서 막혔습니다."
-              echo "쓰기 권한이 꺼져 있을 때 생기는 일입니다. 한 번만 켜주시면 됩니다."
-              echo ""
-              echo "저장소 → **Settings** → **Actions** → **General**"
-              echo "→ 맨 아래 **Workflow permissions**"
-              echo "→ **Read and write permissions** 선택 → **Save**"
-              echo ""
-              echo "받아온 판례는 이번 실행의 **Artifacts** 에 첨부해 두었습니다."
-            } >> "$GITHUB_STEP_SUMMARY"
-            echo "::warning::저장소 쓰기 권한이 없어 결과를 커밋하지 못했습니다."
-          fi
+          # 받아온 판례를 잃지 않게 첨부파일로라도 남긴다
+          echo "PUSH_FAILED=1" >> "$GITHUB_ENV"
+          {
+            echo ""
+            echo "### ⚠️ 결과를 저장소에 올리지 못했습니다"
+            echo ""
+            echo "판례는 정상적으로 받아왔지만 저장 단계에서 막혔습니다."
+            echo "쓰기 권한이 꺼져 있을 때 생기는 일입니다. 한 번만 켜주시면 됩니다."
+            echo ""
+            echo "저장소 → **Settings** → **Actions** → **General**"
+            echo "→ 맨 아래 **Workflow permissions**"
+            echo "→ **Read and write permissions** 선택 → **Save**"
+            echo ""
+            echo "받아온 판례는 이번 실행의 **Artifacts** 에 첨부해 두었습니다."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::warning::저장소 쓰기 권한이 없어 결과를 커밋하지 못했습니다."
 
       - name: 못 올린 결과를 첨부파일로 보관
         if: always() && env.PUSH_FAILED == '1'

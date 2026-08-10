@@ -24,6 +24,7 @@
 import argparse
 import json
 import sys
+import traceback
 from datetime import date
 from pathlib import Path
 
@@ -125,10 +126,16 @@ def asset_rules_text():
        M70 JUDGE' 라고 이름만 줬다. 모델은 M70 이 70대 남성인 줄 모르고, 돌아가신
        아버지를 차남 코드(M50B)로 그리게 했다. 화면에서 두 사람이 **같은 얼굴**로
        나왔고 손님이 바로 알아챘다. 뜻을 적고, 겹쳐 쓰지 말라고 못 박는다."""
-    from assets_gen import CHAR_LOOK               # noqa: E402
+    # 뜻풀이는 '있으면 좋은 것'이다. 이것 하나 못 읽었다고 19분짜리 대본 생성이
+    # 통째로 죽어선 안 된다 — 2026-08-10 EP002 가 정확히 여기서 날아갔다.
+    try:
+        from assets_gen import CHAR_LOOK           # noqa: E402
+    except Exception as e:                          # noqa: BLE001
+        print(f"    (인물 뜻풀이를 못 읽었다: {e} — 코드만 넣고 계속한다)")
+        CHAR_LOOK = {}
     mf = load_manifest()
-    who = " / ".join(f"`{c}`={CHAR_LOOK[c]}" for c in mf["char"]["codes"]
-                     if c in CHAR_LOOK)
+    who = " / ".join(f"`{c}`={CHAR_LOOK[c]}" if c in CHAR_LOOK else f"`{c}`"
+                     for c in mf["char"]["codes"])
     return "\n".join([
         "| 종류 | 쓸 수 있는 값 |",
         "|---|---|",
@@ -583,6 +590,7 @@ def main():
 
     best, best_score, best_eval = None, -1, None
     draft, sh, rd = None, {"shorts": []}, 0
+    salvaged = False                                # 도중에 멈춰 '건져낸' 대본인가
     try:
         # 1단계 설계
         print("\n[1단계] 설계")
@@ -659,15 +667,25 @@ def main():
             print("     '2. 대본 만들기' 를 다시 누를 필요 없이 쇼츠만 따로 만들 수 있다:")
             print(f"     python3 src/script.py --shorts-only {ep}")
 
-    except (BudgetExceeded, ClaudeBudget, LLMError, ClaudeError) as e:
-        # 여기서 그냥 포기하면 앞서 만든 컷 100여 개가 통째로 사라진다.
-        # 대본은 이 사업의 유일한 핵심 자산이다 — 남길 수 있으면 남긴다.
+    # ⭐ 여기서 받는 그물은 **아무것이나 다 받는다**(Exception 전부).
+    #
+    #    예전에는 "돈 초과 · 모델 오류" 네 가지만 받았다. 그런데 2026-08-10 에
+    #    전혀 다른 종류의 오류(그림 라이브러리 없음)가 3단계에서 튀어나왔고,
+    #    그물에 안 걸려 그대로 프로그램이 죽었다. 컷 120개 · 19분 · Opus 값이
+    #    한꺼번에 사라졌다. 무엇 때문에 멈추든 **만든 것은 남겨야 한다.**
+    except Exception as e:                          # noqa: BLE001
+        expected = isinstance(e, (BudgetExceeded, ClaudeBudget, LLMError, ClaudeError))
         print(f"\n⚠️ 중단: {e}")
+        if not expected:
+            # 예상 못 한 종류다. 원인을 찾으려면 어디서 멈췄는지가 보여야 한다.
+            print(f"  (예상하지 못한 오류다: {type(e).__name__} — 아래 자취를 보라)")
+            traceback.print_exc()
         doc = best or draft
         if doc is None:
             print("  아직 만든 것이 없어 남길 것이 없다.")
             return 1
         sh = {"shorts": []}
+        salvaged = True
         print(f"  지금까지 만든 대본(컷 {doc['meta'].get('cut_count')}개)을 저장하고 끝낸다.")
         print("  다시 실행하면 이 판례로 처음부터 다시 만든다.")
 
@@ -707,6 +725,14 @@ def main():
         print("\n⚠️ 형식 오류가 남았다. 렌더링 전에 반드시 고쳐야 한다:")
         for w, m in final.errors[:8]:
             print(f"  [{w}] {m}")
+
+    if salvaged:
+        # 파일은 남겼다. 그렇다고 초록 체크를 주면 안 된다 —
+        # 운영자는 로그를 열어보지 않으므로, 덜 만들어진 것은 덜 만들어졌다고 보여야 한다.
+        print("\n대본은 저장했지만 도중에 멈춘 것이다.")   # ← 검수 화면이 이 줄을 찾는다
+        print(f"  {ep}.json 은 남아 있으니 처음부터 다시 만들 필요는 없다.")
+        print("  위의 '중단' 줄에 적힌 원인을 고치고 다시 실행하라.")
+        return 1
     return 0
 
 

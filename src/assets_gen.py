@@ -24,7 +24,32 @@ import subprocess
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageChops, ImageFilter
+
+# ⭐ Pillow(그림 라이브러리)가 없어도 **이 파일을 읽는 것 자체는 되어야 한다.**
+#
+#    이 파일에는 그림 그리는 코드 말고도 CHAR_LOOK 같은 '글자 자료'가 들어 있고,
+#    대본 만들기(script.py)는 그 자료 한 줄만 가져다 쓴다. 그런데 맨 윗줄에서
+#    Pillow 를 부르면, Pillow 를 깔지 않는 워크플로에서는 **자료를 읽으려다
+#    파일 전체가 죽는다.**
+#
+#    2026-08-10 에 실제로 그렇게 EP002 가 날아갔다. 컷 120개를 19분에 걸쳐
+#    다 만들어 놓고, 3단계 보강에서 이 줄 하나 때문에 통째로 중단됐다.
+#    (같은 사고가 youtube-upload 에서도 한 번 있었다 — 그때는 워크플로에
+#     Pillow 설치를 한 줄 넣어 막았지만, 워크플로가 늘 때마다 또 터진다.
+#     이번엔 원인 쪽을 고쳐 다시는 안 생기게 한다.)
+#
+#    → 없으면 없는 대로 두고, **정말 그림을 그릴 때만** 소리내어 멈춘다.
+try:
+    from PIL import Image, ImageChops, ImageFilter
+except ModuleNotFoundError:                        # pragma: no cover - 환경에 따라 다름
+    class _NoPillow:
+        def __getattr__(self, name):
+            raise ModuleNotFoundError(
+                "Pillow(그림 라이브러리)가 설치돼 있지 않다.\n"
+                "  그림을 만드는 워크플로에는 다음 한 줄이 있어야 한다:\n"
+                "    python3 -m pip install --quiet Pillow"
+            )
+    Image = ImageChops = ImageFilter = _NoPillow()
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from llm import BASE, _get, _post  # noqa: E402
