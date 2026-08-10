@@ -353,6 +353,8 @@ function home() {
   });
   h += '</div>';
 
+  h += collectCard();
+
   h += '<div class="card"><h2>소재 대기열 <small style="font-weight:400;color:#9599ab">'
      + '— 점수가 높을수록 이야기가 잘 나오는 재판 기록입니다</small></h2>';
   if (!(S.queue||[]).length) h += '<div class="empty">모아 둔 기록이 없습니다. <b>1. 재판 기록 모으기</b>를 먼저 누르십시오.</div>';
@@ -513,6 +515,65 @@ function voiceBlock() {
   // ③ 오디션을 새로 만드는 메뉴 (값이 드는 것이라 맨 아래)
   h += wfList(['voiceaudition.yml']);
   return h;
+}
+
+// ── 지난 수집 결과 ──────────────────────────────────────
+// 2026-08-10 손님: "수집 결과 보기는 관리자 페이지의 메뉴나 버튼으로 넣어야 될 거
+// 아니야? 내가 여기 채팅창 들어와서 봐야겠냐?"
+//  → '1. 재판 기록 모으기' 를 누른 결과를 이 화면에서 바로 읽으시게 한다.
+//    깃허브 실행 기록을 찾아 들어갈 필요가 없다.
+function collectCard() {
+  const c = S.collect;
+  if (!c) return '';
+  const d = c.at ? new Date(c.at) : null;
+  const p2 = (n) => String(n).padStart(2, '0');
+  const when = d ? (d.getMonth() + 1) + '월 ' + d.getDate() + '일 '
+                 + p2(d.getHours()) + ':' + p2(d.getMinutes()) : '';
+
+  let h = '<div class="card"><h2>지난 수집 결과 '
+        + '<small style="font-weight:400;color:#9599ab">— ' + esc(when) + '</small></h2>';
+
+  // 맨 위에 **한 줄로 결론부터.** 0건이면 왜 0건인지도 같이 적는다.
+  if (!c.new) {
+    h += '<div class="empty">새로 받은 판례가 <b>0건</b>입니다.<br>'
+       + (c.searched
+          ? '찾을 낱말 ' + c.searched + '개로 ' + (c.found || 0) + '건을 찾았지만, '
+            + '아래 <b>걸러낸 것</b>에 적힌 이유로 모두 빠졌거나 이미 갖고 있는 판례였습니다.'
+          : '이번에는 새로 훑은 낱말이 없었습니다. 이미 다 훑어 본 낱말들입니다.')
+       + '</div>';
+  }
+  h += row('새로 받은 판례', '<b>' + (c.new || 0) + '건</b>');
+  h += row('찾을 낱말', (c.searched || 0) + '개');
+  h += row('검색으로 걸린 것', (c.found || 0) + '건');
+  h += row('1차 통과', (c.passed || 0) + '건');
+  h += row('대기열 총계', (c.queue || 0) + '건');
+  h += row('오늘 검색 횟수', (c.calls || 0) + ' / ' + (c.limit || 0) + '회');
+
+  if ((c.top || []).length) {
+    let t = '';
+    c.top.forEach((x) => {
+      t += '<div class="q"><b>' + (x.score ?? '-') + '점</b>' + esc(x.name || '')
+         + '<div style="color:#9599ab;font-size:13px;margin-top:3px">'
+         // '불륜로/상간자로' 처럼 조사가 틀리지 않게, 조사를 아예 안 쓴다
+         + esc(x.court || '') + (x.q ? " · 찾은 낱말 '" + esc(x.q) + "'" : '') + '</div></div>';
+    });
+    h += fold('새로 받은 판례 보기 (' + c.top.length + '건)', t);
+  }
+  if ((c.queries || []).length) {
+    let t = '';
+    c.queries.forEach((x) => {
+      t += row(esc(x.q), (x.total || 0) + '건 중 ' + (x.kept || 0) + '건 통과');
+    });
+    h += fold('낱말별로 몇 건 걸렸나 (' + c.queries.length + '개)', t);
+  }
+  if ((c.dropped || []).length) {
+    let t = '<div style="color:#9599ab;font-size:13px;margin-bottom:6px">'
+          + '아래는 이야기로 만들 수 없어 뺀 것입니다. 형사·행정·세금 사건이고, '
+          + '가사(이혼 등)는 판결문이 공개되지 않아 못 씁니다.</div>';
+    c.dropped.forEach((x) => { t += row(esc(x.why), (x.n || 0) + '건'); });
+    h += fold('걸러낸 것 (' + c.dropped.length + '가지)', t);
+  }
+  return h + '</div>';
 }
 
 // 접었다 폈다 하는 묶음. 기본은 **접힌 채**로 둔다 (화면이 짧아야 찾기 쉽다).
@@ -1117,8 +1178,11 @@ export default {
         // ⭐ 지금 누가 어떤 목소리를 쓰는지 + 쓸 수 있는 목소리(높이 포함).
         //    (2026-08-09 손님: "목소리별 등장인물 이걸 바꿀 수가 없잖아")
         //    화면에서 바로 고르시게 하려면 이 둘이 필요하다.
-        const [castJson, voiceJson] = await Promise.all([
+        // ⭐ 지난 수집 결과. 깃허브 실행 기록을 뒤지지 않고 여기서 바로 보시게 한다.
+        //    (2026-08-10 손님: "수집 결과 보기를 관리자 페이지 버튼으로 넣어야 할 거 아니야")
+        const [castJson, voiceJson, collectJson] = await Promise.all([
           getJson(env, 'data/cast_voices.json'), getJson(env, 'data/voices.json'),
+          getJson(env, 'state/collect_last.json'),
         ]);
         const cast = (castJson && castJson.cast) || {};
         const voiceList = Object.entries((voiceJson && voiceJson.voices) || {})
@@ -1140,6 +1204,7 @@ export default {
           audition,
           cast,
           voiceList,
+          collect: collectJson || null,
           runs: (runsRes.workflow_runs || []).map((r) => ({
             name: r.name, conclusion: r.conclusion, status: r.status, at: r.created_at,
           })),

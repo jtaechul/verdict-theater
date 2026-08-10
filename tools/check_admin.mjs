@@ -68,6 +68,14 @@ const FAKE_STATE = {
   voiceList: [{ name: 'Achird', hz: 117.6 }, { name: 'Algenib', hz: 134.5 },
               { name: 'Sulafat', hz: 211.9 }],
   assets: { have: 30, need: 38 },
+  // 지난 수집 결과 카드도 그려 본다 (2026-08-10: 결과를 채팅이 아니라 화면에서 본다)
+  collect: {
+    at: new Date().toISOString(), searched: 2, found: 152, passed: 19,
+    new: 2, queue: 112, calls: 7, limit: 200,
+    queries: [{ q: '불륜', total: 134, kept: 16 }, { q: "상간'자", total: 18, kept: 3 }],
+    dropped: [{ why: '민사 아님(형사)', n: 47 }],
+    top: [{ id: '239083', score: 90, name: '소유권말소등기', court: '서울고등법원', q: '상간자' }],
+  },
   items: [],
 };
 // ⚠️ 주소에 따라 다른 답을 준다. 한 가지만 돌려주면 오디션 목록이 늘 비어서,
@@ -177,6 +185,17 @@ if (!painted.includes('saveThumb(')) {
 if (!painted.includes('showCase(')) {
   console.error('❌ 아직 안 살펴본 판례에 [무슨 사건인지 보기] 버튼이 없다');
   console.error('   요약을 볼 방법이 다시 사라졌다는 뜻이다');
+  process.exit(1);
+}
+// 수집 결과가 **화면에** 나오는지 본다.
+// (2026-08-10 손님: "내가 여기 채팅창 들어와서 봐야겠냐?")
+if (!painted.includes('지난 수집 결과')) {
+  console.error('❌ 지난 수집 결과 카드가 화면에 없다');
+  console.error('   수집 결과를 관리자 페이지에서 볼 방법이 사라졌다는 뜻이다');
+  process.exit(1);
+}
+if (!painted.includes('낱말별로 몇 건 걸렸나')) {
+  console.error('❌ 수집 결과에 낱말별 내역이 없다 — 왜 0건인지 알 수가 없다');
   process.exit(1);
 }
 // 화면을 통째로 옮기는 링크가 다시 생기지 않았는지 본다 (아이폰이 갇히는 원인)

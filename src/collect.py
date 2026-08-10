@@ -38,6 +38,7 @@ ROOT = Path(__file__).resolve().parent.parent
 CASES = ROOT / "data" / "cases"
 STATE = ROOT / "state" / "collect_state.json"
 QUEUE = ROOT / "state" / "queue.json"
+LAST = ROOT / "state" / "collect_last.json"   # 지난 수집 결과 (관리자 페이지가 읽는다)
 
 # ── 검색어 사전 (CLAUDE.md 5번) ───────────────────────────
 #
@@ -233,6 +234,7 @@ def main():
     todo = [q.strip() for q in args.queries.split(",") if q.strip()] or QUERIES
     fetched = set(st["fetched"])
     new_cases, hard_counts = [], {}
+    ran = []            # 이번에 실제로 훑은 검색어별 결과 (관리자 페이지에서 보여준다)
 
     print(f"검색어 {len(todo)}개 · 이번 실행 예산 {budget}회 "
           f"(오늘 누적 {st['calls_today']}/{DAILY_LIMIT})")
@@ -261,6 +263,7 @@ def main():
                     continue
                 candidates.append((q, r))
                 kept += 1
+            ran.append({"q": q, "total": total, "kept": kept})
             print(f"  {q:12s} 총 {total:4d}건 → 1차 통과 {kept:3d}건")
 
         # 중복 제거 (검색어가 겹쳐 같은 판례가 여러 번 잡힌다)
@@ -334,6 +337,27 @@ def main():
     queue += [c for c in new_cases if c["case_id"] not in known]
     queue.sort(key=lambda c: (c.get("gate_score") or 0, c["machine_score"]), reverse=True)
     QUEUE.write_text(json.dumps(queue, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    # ⭐ 이번 수집 결과를 **파일로 남긴다.** 관리자 페이지가 이것을 읽어 보여준다.
+    #    (2026-08-10 손님: "수집 결과 보기는 관리자 페이지 메뉴나 버튼으로 넣어야 할 거
+    #     아니야? 내가 채팅창 들어와서 봐야겠냐?")
+    #    깃허브 실행 기록을 뒤지지 않아도 아이폰에서 바로 보이게 하려는 것이다.
+    LAST.write_text(json.dumps({
+        "at": datetime.now().astimezone().isoformat(timespec="seconds"),
+        "searched": len(ran),                    # 이번에 훑은 검색어 수
+        "found": sum(r["total"] for r in ran),   # 검색으로 걸린 총 건수
+        "passed": sum(r["kept"] for r in ran),   # 1차를 통과한 건수
+        "new": len(new_cases),                   # 실제로 새로 받아 저장한 건수
+        "queue": len(queue),                     # 저장한 뒤 대기열 총 건수
+        "calls": api.used,
+        "limit": DAILY_LIMIT,
+        "queries": sorted(ran, key=lambda r: -r["kept"]),
+        "dropped": sorted(({"why": k, "n": v} for k, v in hard_counts.items()),
+                          key=lambda r: -r["n"]),
+        "top": [{"id": c["case_id"], "score": c["machine_score"],
+                 "name": c["사건명"][:40], "court": c["법원명"], "q": c["query"]}
+                for c in sorted(new_cases, key=lambda c: -c["machine_score"])[:8]],
+    }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     print()
     print("─" * 60)

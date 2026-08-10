@@ -107,7 +107,10 @@ jobs:
         run: |
           git config user.name  "verdict-theater-bot"
           git config user.email "actions@github.com"
-          git add data/cases state/queue.json state/collect_state.json state/rejected.json 2>/dev/null || true
+          # ⚠️ state/collect_last.json 이 빠지면 관리자 페이지의 '지난 수집 결과' 가
+          #    영영 안 바뀐다. 새 상태 파일을 만들면 반드시 여기에도 넣는다.
+          git add data/cases state/queue.json state/collect_state.json \
+                  state/rejected.json state/collect_last.json 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "바뀐 것이 없다. 커밋하지 않는다."
             exit 0

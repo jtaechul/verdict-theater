@@ -1,170 +1,174 @@
 {
   "date": "2026-08-10",
-  "calls_today": 1,
+  "calls_today": 7,
   "queries": {
     "유류분": {
       "total": 88,
-      "listed": true
+      "listed": false
     },
     "사인증여": {
       "total": 10,
-      "listed": true
+      "listed": false
     },
     "상속회복": {
       "total": 27,
-      "listed": true
+      "listed": false
     },
     "유언무효": {
       "total": 14,
-      "listed": true
+      "listed": false
     },
     "특별수익": {
       "total": 21,
-      "listed": true
+      "listed": false
     },
     "유언집행": {
       "total": 7,
-      "listed": true
+      "listed": false
     },
     "유류분반환": {
       "total": 78,
-      "listed": true
+      "listed": false
     },
     "유언효력": {
       "total": 13,
-      "listed": true
+      "listed": false
     },
     "상속재산분할": {
       "total": 316,
-      "listed": true
+      "listed": false
     },
     "상속포기": {
       "total": 119,
-      "listed": true
+      "listed": false
     },
     "한정승인": {
       "total": 31,
-      "listed": true
+      "listed": false
     },
     "상속채무": {
       "total": 212,
-      "listed": true
+      "listed": false
     },
     "명의신탁": {
       "total": 1808,
-      "listed": true
+      "listed": false
     },
     "증여계약해제": {
       "total": 20,
-      "listed": true
+      "listed": false
     },
     "부담부증여": {
       "total": 61,
-      "listed": true
+      "listed": false
     },
     "사해행위취소": {
       "total": 1700,
-      "listed": true
+      "listed": false
     },
     "부당이득반환": {
       "total": 1343,
-      "listed": true
+      "listed": false
     },
     "소유권이전등기말소": {
       "total": 2386,
-      "listed": true
+      "listed": false
     },
     "근저당권설정말소": {
       "total": 364,
-      "listed": true
+      "listed": false
     },
     "부양료": {
       "total": 36,
-      "listed": true
+      "listed": false
     },
     "부양의무": {
       "total": 1,
-      "listed": true
+      "listed": false
     },
     "구상금": {
       "total": 1328,
-      "listed": true
+      "listed": false
     },
     "요양병원": {
       "total": 3,
-      "listed": true
+      "listed": false
     },
     "성년후견": {
       "total": 10,
-      "listed": true
+      "listed": false
     },
     "의사무능력": {
       "total": 1,
-      "listed": true
+      "listed": false
     },
     "부정행위": {
       "total": 428,
-      "listed": true
+      "listed": false
     },
     "상간자": {
-      "total": 1,
+      "total": 18,
       "listed": true
     },
     "위자료": {
       "total": 304,
-      "listed": true
+      "listed": false
     },
     "재혼": {
       "total": 1,
-      "listed": true
+      "listed": false
     },
     "사실혼재산": {
       "total": 12,
-      "listed": true
+      "listed": false
     },
     "사실혼해소": {
       "total": 23,
-      "listed": true
+      "listed": false
     },
     "유족연금": {
       "total": 156,
-      "listed": true
+      "listed": false
     },
     "가업승계": {
       "total": 17,
-      "listed": true
+      "listed": false
     },
     "주식증여": {
       "total": 717,
-      "listed": true
+      "listed": false
     },
     "명의대여": {
       "total": 279,
-      "listed": true
+      "listed": false
     },
     "친생자관계": {
       "total": 92,
-      "listed": true
+      "listed": false
     },
     "인지청구": {
       "total": 70,
-      "listed": true
+      "listed": false
     },
     "기여분": {
       "total": 32,
-      "listed": true
+      "listed": false
     },
     "부양청구": {
       "total": 10,
-      "listed": true
+      "listed": false
     },
     "차용금": {
       "total": 43,
-      "listed": true
+      "listed": false
     },
     "상간": {
       "total": 0,
       "listed": false
+    },
+    "불륜": {
+      "total": 134,
+      "listed": true
     }
   },
   "fetched": [
@@ -204,6 +208,7 @@
     "217545",
     "217549",
     "217651",
+    "217653",
     "217661",
     "219297",
     "220361",
@@ -243,6 +248,7 @@
     "237589",
     "238029",
     "238741",
+    "239083",
     "239273",
     "239727",
     "239731",
@@ -324,24 +330,26 @@
     "620455",
     "622261",
     "64794",
+    "64912",
     "69713",
     "77437",
     "78823",
     "80871",
-    "81461"
+    "81461",
+    "83841"
   ],
   "hard_rejected": {
-    "민사 아님(일반행정)": 861,
+    "민사 아님(일반행정)": 20,
     "판결 아님(원고일부승소)": 1,
     "판결 아님(원고패소)": 1,
     "판결 아님(전원합의체 판결)": 1,
-    "세금 사건(국세법령정보시스템)": 540,
+    "세금 사건(국세법령정보시스템)": 4,
     "판결 아님(판결 : 항소)": 1,
     "판결 아님(판결 : 항소심 조정성립)": 1,
     "판결 아님(제2부판결 : 확정)": 1,
-    "민사 아님(가사)": 282,
-    "본문 3000자 미만": 39,
-    "민사 아님(형사)": 14,
+    "민사 아님(가사)": 28,
+    "본문 3000자 미만": 2,
+    "민사 아님(형사)": 47,
     "판결 아님(결정)": 6,
     "판결 아님(판결 : 상고(취하))": 1,
     "금지어 '환급'": 3,
@@ -351,5 +359,6 @@
     "금지어 '산업재해'": 1,
     "민사 아님(세무)": 3,
     "금지어 '과세'": 1
-  }
+  },
+  "scope": 2
 }
