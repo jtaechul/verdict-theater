@@ -91,6 +91,17 @@ def next_episode_id(eps):
     return f"EP{n:03d}"
 
 
+# 가사사건을 알아보는 말들. 사건명에 이 중 하나라도 있으면 쓸 수 없다.
+# (가정법원 판결문은 공개 대상이 아니다 — 지침 6번)
+FAMILY_COURT = ["이혼", "재산분할", "양육권", "양육비", "친권",
+                "상속재산분할", "기여분", "혼인무효", "혼인취소", "인지청구"]
+
+
+def _family_court_words(case_name):
+    """사건명이 가사사건인가. 맞으면 걸린 말을 돌려준다."""
+    return next((w for w in FAMILY_COURT if w in (case_name or "")), "")
+
+
 def pick_case(queue, eps, case_id=None):
     """제작할 판례를 고른다.
 
@@ -576,6 +587,20 @@ def main():
     print(f"회차 {ep} · 판례 {cid} · {case.get('사건명', '')}")
     print(f"게이트 {row.get('gate_score', '-')}점 · 유형 {row.get('case_type', '-')}")
     print()
+
+    # ⭐ 돈을 쓰기 전에 '이 판례를 써도 되는가' 를 먼저 본다.
+    #
+    #    판례 번호를 손으로 넣으면(--case) 소재 심사를 건너뛴다. 그래서 심사가
+    #    반드시 걸러낼 가사사건이 그대로 통과한다. 2026-08-10 에 실제로
+    #    「이혼및위자료」 판례로 Opus 를 19분 돌렸다 — 다 만들었어도 못 쓸
+    #    대본이었다. 가정법원 판결문은 공개 대상이 아니기 때문이다(지침 6번).
+    banned = _family_court_words(case.get("사건명", ""))
+    if banned:
+        print(f"❌ 쓸 수 없는 판례다. 사건명에 '{banned}' 가 있다 — 가사사건이다.")
+        print("   가정법원 판결문은 공개 대상이 아니라 우리 소재가 될 수 없다.")
+        print("   (이혼·재산분할·양육권·상속재산분할·기여분이 전부 여기 해당한다)")
+        print("   불륜을 다루려면 상간자 위자료 = 「손해배상(기)」 판례를 골라야 한다.")
+        return 5
 
     try:
         llm, who = writer(max_calls=args.max_calls, prefer=args.writer or None)
