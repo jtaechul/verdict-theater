@@ -108,7 +108,8 @@
     },
     "상간자": {
       "total": 18,
-      "listed": true
+      "listed": false,
+      "pages": 0
     },
     "위자료": {
       "total": 304,
@@ -164,19 +165,23 @@
     },
     "상간": {
       "total": 19,
-      "listed": true
+      "listed": false,
+      "pages": 0
     },
     "불륜": {
       "total": 134,
-      "listed": true
+      "listed": false,
+      "pages": 0
     },
     "상간녀": {
       "total": 2,
-      "listed": true
+      "listed": false,
+      "pages": 0
     },
     "상간남": {
       "total": 0,
-      "listed": true
+      "listed": false,
+      "pages": 0
     },
     "정조": {
       "total": 133,
@@ -184,19 +189,23 @@
     },
     "혼인파탄": {
       "total": 595,
-      "listed": true
+      "listed": false,
+      "pages": 0
     },
     "부정한 행위": {
       "total": 46563,
-      "listed": true
+      "listed": false,
+      "pages": 0
     },
     "배우자 부정행위": {
       "total": 649,
-      "listed": true
+      "listed": false,
+      "pages": 0
     },
     "부정행위 위자료": {
       "total": 409,
-      "listed": true
+      "listed": false,
+      "pages": 0
     },
     "제3자 위자료": {
       "total": 1678,
@@ -204,11 +213,13 @@
     },
     "간통": {
       "total": 239,
-      "listed": true
+      "listed": false,
+      "pages": 0
     },
     "외도": {
       "total": 91,
-      "listed": true
+      "listed": false,
+      "pages": 0
     }
   },
   "fetched": [
@@ -536,5 +547,6 @@
     "가족 얘기 아님(손해배상(산))": 3,
     "판결 아님(제6민사부결정 : 확정)": 1
   },
-  "scope": 2
+  "scope": 2,
+  "pending": []
 }
