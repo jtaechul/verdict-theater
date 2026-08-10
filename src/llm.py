@@ -25,6 +25,8 @@ import time
 import urllib.error
 import urllib.request
 
+import cost                       # 값을 원(₩)으로 적어 주는 표
+
 BASE = "https://generativelanguage.googleapis.com/v1beta"
 TIMEOUT = 300
 RETRIES = 4
@@ -78,6 +80,7 @@ class Gemini:
         self.calls = 0
         self.tokens_in = 0
         self.tokens_out = 0
+        self.last_model = ""   # 마지막으로 실제 쓴 모델 (값 계산에 쓴다)
         self._models = None
         self._limits = {}
 
@@ -169,6 +172,7 @@ class Gemini:
             try:
                 res = _post(url, payload)
                 self.calls += 1
+                self.last_model = res.get("modelVersion") or model
                 u = res.get("usageMetadata", {})
                 self.tokens_in += u.get("promptTokenCount", 0)
                 self.tokens_out += u.get("candidatesTokenCount", 0)
@@ -209,8 +213,13 @@ class Gemini:
         raise LLMError(f"{label or '호출'} 최종 실패: {last}")
 
     def report(self):
-        return (f"모델 호출 {self.calls}회 · 입력 {self.tokens_in:,} 토큰 "
-                f"· 출력 {self.tokens_out:,} 토큰")
+        s = (f"모델 호출 {self.calls}회 · 입력 {self.tokens_in:,} 토큰 "
+             f"· 출력 {self.tokens_out:,} 토큰")
+        # 토큰 숫자는 사람에게 뜻이 없다. 얼마 나갔는지를 원으로 적는다.
+        won = cost.line(self.last_model, self.tokens_in, self.tokens_out)
+        if won:
+            s += f"\n{won}"
+        return s
 
 
 if __name__ == "__main__":

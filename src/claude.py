@@ -23,6 +23,8 @@ import time
 import urllib.error
 import urllib.request
 
+import cost                       # 값을 원(₩)으로 적어 주는 표
+
 BASE = "https://api.anthropic.com/v1"
 VERSION = "2023-06-01"
 TIMEOUT = 900          # 생각까지 하고 긴 대본을 쓰면 오래 걸린다. 넉넉히 준다
@@ -244,6 +246,7 @@ class Claude:
         self.tokens_out = 0
         self.cache_write = 0   # 기억시키느라 낸 토큰 (한 번, 정가의 2배)
         self.cache_read = 0    # 기억해 둔 걸 다시 쓴 토큰 (정가의 10분의 1)
+        self.last_model = ""   # 마지막으로 실제 쓴 모델 (값 계산에 쓴다)
         self._models = None
         # 배운 것은 모델별로 따로 기억한다. opus 와 sonnet 은 받아주는 설정이 다를 수 있다.
         self._drop = {}         # 모델 → 거절당한 설정 이름들
@@ -375,6 +378,7 @@ class Claude:
                 else:
                     res = _req("messages", self.key, method="POST", body=payload)
                 self.calls += 1
+                self.last_model = res.get("model") or model   # 값을 원으로 적을 때 쓴다
                 u = res.get("usage", {})
                 self.tokens_in += u.get("input_tokens", 0)
                 self.tokens_out += u.get("output_tokens", 0)
@@ -477,6 +481,11 @@ class Claude:
                   f" → 입력값 {full:,} 어치를 {paid:,.0f} 값에 냈다")
             if full > paid:
                 s += f" ({(1 - paid / full) * 100:.0f}% 절감)"
+        # 토큰 숫자는 사람에게 뜻이 없다. 얼마 나갔는지를 원으로 적는다.
+        won = cost.line(self.last_model, self.tokens_in, self.tokens_out,
+                        self.cache_write, self.cache_read)
+        if won:
+            s += f"\n{won}"
         return s
 
 
