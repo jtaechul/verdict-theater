@@ -55,9 +55,12 @@ const FAKE_STATE = {
                        script_score: 90, longform_id: 'abc123' } },
   queue: [
     { case_id: '234921', 사건명: "상속회복청구'등'의 소", machine_score: 80,
-      gate_pass: true, one_line: '형이 다 가져갔다' },
-    { case_id: '77437', case_type: '유언무효', gate_score: 40, gate_pass: false },
-    { case_id: '184051', case_type: '상속재산회복', machine_score: 70 },
+      gate_pass: true, one_line: '형이 다 가져갔다', topic: '상속' },
+    { case_id: '77437', case_type: '유언무효', gate_score: 40, gate_pass: false,
+      topic: '상속' },
+    { case_id: '184051', case_type: '상속재산회복', machine_score: 70, topic: '상속' },
+    // 갈래가 둘 이상이어야 고르는 단추가 그려진다 (2026-08-10 갈래별 보기)
+    { case_id: '239083', 사건명: '손해배상(기)', machine_score: 90, topic: '불륜' },
   ],
   runs: [{ name: '3. 영상 만들기', at: new Date().toISOString(), conclusion: 'success' }],
   videos: { EP001: 4 },
@@ -196,6 +199,13 @@ if (!painted.includes('지난 수집 결과')) {
 }
 if (!painted.includes('낱말별로 몇 건 걸렸나')) {
   console.error('❌ 수집 결과에 낱말별 내역이 없다 — 왜 0건인지 알 수가 없다');
+  process.exit(1);
+}
+// 대기열을 **갈래로 골라 보는 단추**가 있는지 본다.
+// (2026-08-10 손님: "소재 대기열에는 내가 원하지 않는 것만 띄워놓고… 더 볼 수 있게 해줘")
+if (!painted.includes('pickTopic(')) {
+  console.error('❌ 대기열에 갈래(상속·불륜…)를 고르는 단추가 없다');
+  console.error('   원하는 갈래만 골라 볼 방법이 사라졌다는 뜻이다');
   process.exit(1);
 }
 // 화면을 통째로 옮기는 링크가 다시 생기지 않았는지 본다 (아이폰이 갇히는 원인)

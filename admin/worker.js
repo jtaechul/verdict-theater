@@ -290,6 +290,12 @@ const WF = ${JSON.stringify(WORKFLOWS)};
 const STAGE = ${JSON.stringify(STAGE_LABEL)};
 let S = null;
 let VIEW = 'home';   // 지금 보고 있는 화면. 대본을 보는 중에 첫 화면이 끼어들지 않게 한다
+let QTOPIC = '';     // 대기열에서 지금 고른 갈래 (''=전체)
+let QMAX = 20;       // 대기열에 한 번에 보여줄 건수. [더 보기] 로 늘어난다
+
+// 갈래를 고른다. 고를 때마다 보여줄 건수는 처음으로 되돌린다.
+function pickTopic(t) { QTOPIC = (QTOPIC === t ? '' : t); QMAX = 20; home(); }
+function moreQueue() { QMAX += 30; home(); }
 let WATCH = null;    // 실행 후 자동 새로고침 타이머
 
 const $ = (h) => { const d = document.createElement('div'); d.innerHTML = h; return d; };
@@ -358,7 +364,33 @@ function home() {
   h += '<div class="card"><h2>소재 대기열 <small style="font-weight:400;color:#9599ab">'
      + '— 점수가 높을수록 이야기가 잘 나오는 재판 기록입니다</small></h2>';
   if (!(S.queue||[]).length) h += '<div class="empty">모아 둔 기록이 없습니다. <b>1. 재판 기록 모으기</b>를 먼저 누르십시오.</div>';
-  (S.queue||[]).slice(0, 12).forEach(q => {
+
+  // ⭐ 갈래로 골라 본다. (2026-08-10 손님: "소재 대기열에는 내가 원하지 않는 것만
+  //    띄워놓고… 내가 더 볼 수 있게 해줘. 유류분 가지고 재미없어.")
+  //    상속만 잔뜩 뜨는 것을 막고, 불륜 같은 갈래만 따로 볼 수 있게 한다.
+  const all = S.queue || [];
+  const cnt = {};
+  all.forEach((q) => { const t = q.topic || '기타'; cnt[t] = (cnt[t] || 0) + 1; });
+  const topics = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]);
+  if (topics.length > 1) {
+    let tabs = '<button class="mini' + (QTOPIC ? '' : ' gold')
+             + '" onclick="pickTopic(\\'\\')">전체 ' + all.length + '</button>';
+    topics.forEach((t) => {
+      tabs += '<button class="mini' + (QTOPIC === t ? ' gold' : '')
+            + '" data-t="' + esc(t) + '" onclick="pickTopic(this.dataset.t)">'
+            + esc(t) + ' ' + cnt[t] + '</button>';
+    });
+    h += '<div class="btns" style="margin-bottom:8px">' + tabs + '</div>';
+  }
+  const shown = QTOPIC ? all.filter((q) => (q.topic || '기타') === QTOPIC) : all;
+  if (all.length && !shown.length) {
+    h += '<div class="empty">이 갈래에는 아직 모아 둔 기록이 없습니다.</div>';
+  }
+  if (shown.length > QMAX) {
+    h += '<div style="color:#9599ab;font-size:13px;margin-bottom:6px">'
+       + shown.length + '건 가운데 점수 높은 ' + QMAX + '건을 보고 있습니다.</div>';
+  }
+  shown.slice(0, QMAX).forEach(q => {
     const mark = q.gate_pass ? '' : (q.gate_score == null ? ' <span class="pill">아직 안 살펴봄</span>' : ' <span class="pill">쓰지 않기로 함</span>');
     const nm = q.case_type || q['사건명'] || ('판례 ' + q.case_id);
     // 심사에서 이미 떨어진 소재(폐기)는 버튼을 안 단다. 나머지는 눌러도 안전하다 —
@@ -383,12 +415,17 @@ function home() {
            : '')
         + '</div>'
       : '';
+    const tp = q.topic ? ' <span class="pill">' + esc(q.topic) + '</span>' : '';
     h += '<div class="q"><b>' + (q.gate_score ?? q.machine_score ?? '-') + '점</b>'
-      + esc(nm) + mark
+      + esc(nm) + tp + mark
       + '<div style="color:#9599ab;font-size:13px;margin-top:3px">' + esc(q.one_line || '') + '</div>'
       + '<div id="cs_' + esc(String(q.case_id || '')) + '"></div>'
       + btn + '</div>';
   });
+  if (shown.length > QMAX) {
+    h += '<div class="btns" style="margin-top:8px">'
+       + '<button class="mini" onclick="moreQueue()">더 보기 (+30)</button></div>';
+  }
   h += '</div>';
 
   // ⭐ 실행 차례대로 한 카드에 담는다 (2026-08-09 손님 두 차례 지적).

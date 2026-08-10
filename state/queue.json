@@ -116,30 +116,264 @@
     "사건명": "유류분반환",
     "법원명": "부산지방법원",
     "선고일자": "2023-10-26",
-    "machine_score": 100,
+    "machine_score": 125,
     "query": "유류분",
     "body_len": 29969,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "상속"
   },
   {
     "case_id": "237101",
     "사건명": "유언효력확인의소",
     "법원명": "서울남부지방법원",
     "선고일자": "2021-09-07",
-    "machine_score": 90,
+    "machine_score": 115,
     "query": "유언효력",
     "body_len": 9171,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "상속"
   },
   {
     "case_id": "239083",
     "사건명": "소유권말소등기",
     "법원명": "서울고등법원",
     "선고일자": "2023-06-29",
-    "machine_score": 90,
+    "machine_score": 115,
     "query": "상간자",
     "body_len": 24892,
+    "gate_score": null,
+    "topic": "불륜"
+  },
+  {
+    "case_id": "239125",
+    "사건명": "소유권말소등기",
+    "법원명": "서울남부지방법원",
+    "선고일자": "2022-03-25",
+    "machine_score": 105,
+    "query": "혼인파탄",
+    "topic": "불륜",
+    "body_len": 24013,
     "gate_score": null
+  },
+  {
+    "case_id": "608371",
+    "사건명": "유류분반환청구",
+    "법원명": "대구지방법원",
+    "선고일자": "2024-07-09",
+    "machine_score": 105,
+    "query": "유류분",
+    "body_len": 10028,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "601919",
+    "사건명": "유류분반환청구의소",
+    "법원명": "광주고등법원(전주)",
+    "선고일자": "2023-10-19",
+    "machine_score": 105,
+    "query": "유류분",
+    "body_len": 18624,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "230761",
+    "사건명": "유류분반환",
+    "법원명": "광주고등법원",
+    "선고일자": "2020-06-24",
+    "machine_score": 105,
+    "query": "유류분",
+    "body_len": 23333,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "202992",
+    "사건명": "유류분반환",
+    "법원명": "서울서부지방법원",
+    "선고일자": "2017-10-12",
+    "machine_score": 105,
+    "query": "유류분",
+    "body_len": 6499,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "224611",
+    "사건명": "유류분반환청구의소",
+    "법원명": "서울고등법원",
+    "선고일자": "2017-08-18",
+    "machine_score": 105,
+    "query": "유류분",
+    "body_len": 26471,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "224365",
+    "사건명": "유류분반환청구의소",
+    "법원명": "서울남부지방법원",
+    "선고일자": "2016-07-01",
+    "machine_score": 105,
+    "query": "유류분",
+    "body_len": 16718,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "182151",
+    "사건명": "유류분반환",
+    "법원명": "인천지방법원",
+    "선고일자": "2012-06-05",
+    "machine_score": 105,
+    "query": "유류분",
+    "body_len": 4489,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "169294",
+    "사건명": "유류분 반환·손해배상(기)",
+    "법원명": "서울고등법원",
+    "선고일자": "2010-04-30",
+    "machine_score": 105,
+    "query": "유류분",
+    "body_len": 32277,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "182103",
+    "사건명": "유류분반환",
+    "법원명": "서울중앙지방법원",
+    "선고일자": "2009-10-13",
+    "machine_score": 105,
+    "query": "유류분",
+    "body_len": 23127,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "233363",
+    "사건명": "유언효력확인의소",
+    "법원명": "제주지방법원",
+    "선고일자": "2021-11-19",
+    "machine_score": 105,
+    "query": "유언효력",
+    "body_len": 3232,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "608249",
+    "사건명": "유류분반환",
+    "법원명": "부산고등법원",
+    "선고일자": "2024-09-11",
+    "machine_score": 102,
+    "query": "유류분",
+    "body_len": 16781,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "220361",
+    "사건명": "유류분청구·유류분청구",
+    "법원명": "서울고등법원",
+    "선고일자": "2021-04-16",
+    "machine_score": 95,
+    "query": "유류분",
+    "body_len": 3943,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "235077",
+    "사건명": "유류분반환청구",
+    "법원명": "수원지방법원 안산지원",
+    "선고일자": "2018-01-11",
+    "machine_score": 95,
+    "query": "유류분",
+    "body_len": 14612,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "217661",
+    "사건명": "유류분반환청구ㆍ유류분반환",
+    "법원명": "서울고등법원",
+    "선고일자": "2017-05-12",
+    "machine_score": 95,
+    "query": "유류분",
+    "body_len": 17730,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "217545",
+    "사건명": "임료/유류분",
+    "법원명": "서울중앙지방법원",
+    "선고일자": "2016-02-03",
+    "machine_score": 95,
+    "query": "유류분",
+    "body_len": 9984,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "182092",
+    "사건명": "유류분반환",
+    "법원명": "서울고등법원",
+    "선고일자": "2010-11-09",
+    "machine_score": 95,
+    "query": "유류분",
+    "body_len": 27518,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "168026",
+    "사건명": "유류분 반환",
+    "법원명": "서울고등법원",
+    "선고일자": "2010-08-12",
+    "machine_score": 95,
+    "query": "유류분",
+    "body_len": 27082,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "233335",
+    "사건명": "유언효력확인의소",
+    "법원명": "광주고등법원(제주)",
+    "선고일자": "2022-07-20",
+    "machine_score": 92,
+    "query": "유언효력",
+    "body_len": 7381,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "622261",
+    "사건명": "유류분반환",
+    "법원명": "대법원",
+    "선고일자": "2026-05-29",
+    "machine_score": 90,
+    "query": "유류분",
+    "body_len": 4547,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "228553",
+    "사건명": "유류분반환",
+    "법원명": "대법원",
+    "선고일자": "2022-08-11",
+    "machine_score": 90,
+    "query": "유류분",
+    "body_len": 6918,
+    "gate_score": null,
+    "topic": "상속"
   },
   {
     "case_id": "606341",
@@ -149,7 +383,8 @@
     "machine_score": 88,
     "query": "부당이득반환",
     "body_len": 33377,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "606239",
@@ -159,116 +394,117 @@
     "machine_score": 88,
     "query": "부당이득반환",
     "body_len": 21998,
+    "gate_score": null,
+    "topic": "재산"
+  },
+  {
+    "case_id": "160477",
+    "사건명": "유류분 반환",
+    "법원명": "서울고등법원",
+    "선고일자": "2010-07-21",
+    "machine_score": 85,
+    "query": "유류분",
+    "body_len": 5204,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "217179",
+    "사건명": "이혼및위자료",
+    "법원명": "전주지방법원",
+    "선고일자": "2019-07-09",
+    "machine_score": 82,
+    "query": "혼인파탄",
+    "topic": "불륜",
+    "body_len": 4788,
     "gate_score": null
   },
   {
-    "case_id": "608371",
+    "case_id": "234785",
     "사건명": "유류분반환청구",
-    "법원명": "대구지방법원",
-    "선고일자": "2024-07-09",
+    "법원명": "대법원",
+    "선고일자": "2023-05-18",
     "machine_score": 80,
     "query": "유류분",
-    "body_len": 10028,
-    "gate_score": null
+    "body_len": 4404,
+    "gate_score": null,
+    "topic": "상속"
   },
   {
-    "case_id": "601919",
-    "사건명": "유류분반환청구의소",
-    "법원명": "광주고등법원(전주)",
-    "선고일자": "2023-10-19",
-    "machine_score": 80,
-    "query": "유류분",
-    "body_len": 18624,
-    "gate_score": null
-  },
-  {
-    "case_id": "230761",
-    "사건명": "유류분반환",
-    "법원명": "광주고등법원",
-    "선고일자": "2020-06-24",
-    "machine_score": 80,
-    "query": "유류분",
-    "body_len": 23333,
-    "gate_score": null
-  },
-  {
-    "case_id": "202992",
-    "사건명": "유류분반환",
-    "법원명": "서울서부지방법원",
-    "선고일자": "2017-10-12",
-    "machine_score": 80,
-    "query": "유류분",
-    "body_len": 6499,
-    "gate_score": null
-  },
-  {
-    "case_id": "224611",
-    "사건명": "유류분반환청구의소",
-    "법원명": "서울고등법원",
-    "선고일자": "2017-08-18",
-    "machine_score": 80,
-    "query": "유류분",
-    "body_len": 26471,
-    "gate_score": null
-  },
-  {
-    "case_id": "224365",
-    "사건명": "유류분반환청구의소",
-    "법원명": "서울남부지방법원",
-    "선고일자": "2016-07-01",
-    "machine_score": 80,
-    "query": "유류분",
-    "body_len": 16718,
-    "gate_score": null
-  },
-  {
-    "case_id": "182151",
-    "사건명": "유류분반환",
-    "법원명": "인천지방법원",
-    "선고일자": "2012-06-05",
-    "machine_score": 80,
-    "query": "유류분",
-    "body_len": 4489,
-    "gate_score": null
-  },
-  {
-    "case_id": "169294",
-    "사건명": "유류분 반환·손해배상(기)",
-    "법원명": "서울고등법원",
-    "선고일자": "2010-04-30",
-    "machine_score": 80,
-    "query": "유류분",
-    "body_len": 32277,
-    "gate_score": null
-  },
-  {
-    "case_id": "182103",
-    "사건명": "유류분반환",
+    "case_id": "217549",
+    "사건명": "임료/유류분",
     "법원명": "서울중앙지방법원",
-    "선고일자": "2009-10-13",
+    "선고일자": "2015-07-07",
     "machine_score": 80,
     "query": "유류분",
-    "body_len": 23127,
-    "gate_score": null
+    "body_len": 10240,
+    "gate_score": null,
+    "topic": "상속"
   },
   {
-    "case_id": "233363",
-    "사건명": "유언효력확인의소",
-    "법원명": "제주지방법원",
-    "선고일자": "2021-11-19",
+    "case_id": "167343",
+    "사건명": "유류분 반환·주식대금 반환",
+    "법원명": "서울고법",
+    "선고일자": "2012-10-24",
     "machine_score": 80,
-    "query": "유언효력",
-    "body_len": 3232,
-    "gate_score": null
+    "query": "유류분",
+    "body_len": 35659,
+    "gate_score": null,
+    "topic": "상속"
   },
   {
-    "case_id": "608249",
+    "case_id": "619297",
+    "사건명": "유류분반환·주식대금반환",
+    "법원명": "서울고법",
+    "선고일자": "2012-10-24",
+    "machine_score": 80,
+    "query": "유류분",
+    "body_len": 36235,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "69713",
+    "사건명": "유류분",
+    "법원명": "대전지법 천안지원",
+    "선고일자": "2004-03-26",
+    "machine_score": 80,
+    "query": "유류분",
+    "body_len": 3536,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "120956",
     "사건명": "유류분반환",
-    "법원명": "부산고등법원",
-    "선고일자": "2024-09-11",
-    "machine_score": 77,
+    "법원명": "서울지법",
+    "선고일자": "1999-07-21",
+    "machine_score": 80,
     "query": "유류분",
-    "body_len": 16781,
+    "body_len": 6246,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "241383",
+    "사건명": "부당이득금[상속재산분할심판에 따른 공동상속인들 사이의 법률관계에서 반환한 임대차보증금 및 납부한 재산세의 구상권 행사 여부가 문제된 사건]",
+    "법원명": "대법원",
+    "선고일자": "2024-08-01",
+    "machine_score": 80,
+    "query": "상속재산분할",
+    "body_len": 4229,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "69872",
+    "사건명": "소유권이전등기",
+    "법원명": "서울고법",
+    "선고일자": "2004-09-16",
+    "machine_score": 75,
+    "query": "정조",
+    "topic": "불륜",
+    "body_len": 15323,
     "gate_score": null
   },
   {
@@ -279,67 +515,19 @@
     "machine_score": 74,
     "query": "소유권이전등기말소",
     "body_len": 7016,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
-    "case_id": "220361",
-    "사건명": "유류분청구·유류분청구",
-    "법원명": "서울고등법원",
-    "선고일자": "2021-04-16",
-    "machine_score": 70,
-    "query": "유류분",
-    "body_len": 3943,
-    "gate_score": null
-  },
-  {
-    "case_id": "235077",
-    "사건명": "유류분반환청구",
-    "법원명": "수원지방법원 안산지원",
-    "선고일자": "2018-01-11",
-    "machine_score": 70,
-    "query": "유류분",
-    "body_len": 14612,
-    "gate_score": null
-  },
-  {
-    "case_id": "217661",
-    "사건명": "유류분반환청구ㆍ유류분반환",
-    "법원명": "서울고등법원",
-    "선고일자": "2017-05-12",
-    "machine_score": 70,
-    "query": "유류분",
-    "body_len": 17730,
-    "gate_score": null
-  },
-  {
-    "case_id": "217545",
-    "사건명": "임료/유류분",
+    "case_id": "220403",
+    "사건명": "유류분청구",
     "법원명": "서울중앙지방법원",
-    "선고일자": "2016-02-03",
+    "선고일자": "2020-08-27",
     "machine_score": 70,
     "query": "유류분",
-    "body_len": 9984,
-    "gate_score": null
-  },
-  {
-    "case_id": "182092",
-    "사건명": "유류분반환",
-    "법원명": "서울고등법원",
-    "선고일자": "2010-11-09",
-    "machine_score": 70,
-    "query": "유류분",
-    "body_len": 27518,
-    "gate_score": null
-  },
-  {
-    "case_id": "168026",
-    "사건명": "유류분 반환",
-    "법원명": "서울고등법원",
-    "선고일자": "2010-08-12",
-    "machine_score": 70,
-    "query": "유류분",
-    "body_len": 27082,
-    "gate_score": null
+    "body_len": 3629,
+    "gate_score": null,
+    "topic": "상속"
   },
   {
     "case_id": "616617",
@@ -349,7 +537,8 @@
     "machine_score": 68,
     "query": "부당이득반환",
     "body_len": 8642,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "613295",
@@ -359,7 +548,8 @@
     "machine_score": 68,
     "query": "부당이득반환",
     "body_len": 9737,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "601847",
@@ -369,7 +559,8 @@
     "machine_score": 68,
     "query": "부당이득반환",
     "body_len": 12861,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "241289",
@@ -379,37 +570,8 @@
     "machine_score": 68,
     "query": "소유권이전등기말소",
     "body_len": 8280,
-    "gate_score": null
-  },
-  {
-    "case_id": "233335",
-    "사건명": "유언효력확인의소",
-    "법원명": "광주고등법원(제주)",
-    "선고일자": "2022-07-20",
-    "machine_score": 67,
-    "query": "유언효력",
-    "body_len": 7381,
-    "gate_score": null
-  },
-  {
-    "case_id": "622261",
-    "사건명": "유류분반환",
-    "법원명": "대법원",
-    "선고일자": "2026-05-29",
-    "machine_score": 65,
-    "query": "유류분",
-    "body_len": 4547,
-    "gate_score": null
-  },
-  {
-    "case_id": "228553",
-    "사건명": "유류분반환",
-    "법원명": "대법원",
-    "선고일자": "2022-08-11",
-    "machine_score": 65,
-    "query": "유류분",
-    "body_len": 6918,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "609335",
@@ -419,7 +581,8 @@
     "machine_score": 65,
     "query": "부당이득반환",
     "body_len": 10957,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "241307",
@@ -429,16 +592,18 @@
     "machine_score": 65,
     "query": "소유권이전등기말소",
     "body_len": 7905,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
-    "case_id": "160477",
-    "사건명": "유류분 반환",
-    "법원명": "서울고등법원",
-    "선고일자": "2010-07-21",
-    "machine_score": 60,
-    "query": "유류분",
-    "body_len": 5204,
+    "case_id": "217159",
+    "사건명": "손해배상(사실혼파기)및재산분할",
+    "법원명": "수원가정법원 성남지원",
+    "선고일자": "2020-05-08",
+    "machine_score": 65,
+    "query": "혼인파탄",
+    "topic": "불륜",
+    "body_len": 8602,
     "gate_score": null
   },
   {
@@ -446,20 +611,33 @@
     "사건명": "이혼ㆍ위자료및재산분할청구",
     "법원명": "서울고등법원",
     "선고일자": "2021-03-25",
-    "machine_score": 60,
+    "machine_score": 65,
     "query": "불륜",
     "body_len": 4236,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "불륜"
   },
   {
     "case_id": "237111",
     "사건명": "유언효력확인의소",
     "법원명": "서울고등법원",
     "선고일자": "2023-02-01",
-    "machine_score": 58,
+    "machine_score": 63,
     "query": "유언효력",
     "body_len": 5482,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "240913",
+    "사건명": "유류분반환청구의소[계약명의신탁의 명의수탁자가 명의신탁된 부동산을 명의신탁자에게 양도하고 사망한 경우 소유권이전등기의 효력 및 그 부동산이 유류분 산정의 기초재산에 산입되는 증여에 해당하는지 문제된 사건]",
+    "법원명": "대법원",
+    "선고일자": "2024-06-13",
+    "machine_score": 62,
+    "query": "유류분",
+    "body_len": 3043,
+    "gate_score": null,
+    "topic": "상속"
   },
   {
     "case_id": "606237",
@@ -469,7 +647,8 @@
     "machine_score": 58,
     "query": "부당이득반환",
     "body_len": 5736,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "603647",
@@ -479,7 +658,8 @@
     "machine_score": 58,
     "query": "부당이득반환",
     "body_len": 13737,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "242055",
@@ -489,77 +669,41 @@
     "machine_score": 58,
     "query": "소유권이전등기말소",
     "body_len": 8593,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
-    "case_id": "234785",
+    "case_id": "237131",
     "사건명": "유류분반환청구",
+    "법원명": "서울고등법원",
+    "선고일자": "2019-02-20",
+    "machine_score": 57,
+    "query": "유류분",
+    "body_len": 8683,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "70505",
+    "사건명": "손해배상(기)",
+    "법원명": "서울서부지법",
+    "선고일자": "2006-07-26",
+    "machine_score": 55,
+    "query": "정조",
+    "topic": "불륜",
+    "body_len": 23717,
+    "gate_score": null
+  },
+  {
+    "case_id": "219297",
+    "사건명": "유류분반환청구의소",
     "법원명": "대법원",
-    "선고일자": "2023-05-18",
+    "선고일자": "2022-01-27",
     "machine_score": 55,
     "query": "유류분",
-    "body_len": 4404,
-    "gate_score": null
-  },
-  {
-    "case_id": "217549",
-    "사건명": "임료/유류분",
-    "법원명": "서울중앙지방법원",
-    "선고일자": "2015-07-07",
-    "machine_score": 55,
-    "query": "유류분",
-    "body_len": 10240,
-    "gate_score": null
-  },
-  {
-    "case_id": "167343",
-    "사건명": "유류분 반환·주식대금 반환",
-    "법원명": "서울고법",
-    "선고일자": "2012-10-24",
-    "machine_score": 55,
-    "query": "유류분",
-    "body_len": 35659,
-    "gate_score": null
-  },
-  {
-    "case_id": "619297",
-    "사건명": "유류분반환·주식대금반환",
-    "법원명": "서울고법",
-    "선고일자": "2012-10-24",
-    "machine_score": 55,
-    "query": "유류분",
-    "body_len": 36235,
-    "gate_score": null
-  },
-  {
-    "case_id": "69713",
-    "사건명": "유류분",
-    "법원명": "대전지법 천안지원",
-    "선고일자": "2004-03-26",
-    "machine_score": 55,
-    "query": "유류분",
-    "body_len": 3536,
-    "gate_score": null
-  },
-  {
-    "case_id": "120956",
-    "사건명": "유류분반환",
-    "법원명": "서울지법",
-    "선고일자": "1999-07-21",
-    "machine_score": 55,
-    "query": "유류분",
-    "body_len": 6246,
-    "gate_score": null
-  },
-  {
-    "case_id": "241383",
-    "사건명": "부당이득금[상속재산분할심판에 따른 공동상속인들 사이의 법률관계에서 반환한 임대차보증금 및 납부한 재산세의 구상권 행사 여부가 문제된 사건]",
-    "법원명": "대법원",
-    "선고일자": "2024-08-01",
-    "machine_score": 55,
-    "query": "상속재산분할",
-    "body_len": 4229,
-    "gate_score": null
+    "body_len": 4019,
+    "gate_score": null,
+    "topic": "상속"
   },
   {
     "case_id": "241569",
@@ -569,7 +713,8 @@
     "machine_score": 53,
     "query": "부당이득반환",
     "body_len": 4239,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "240903",
@@ -579,7 +724,8 @@
     "machine_score": 53,
     "query": "부당이득반환",
     "body_len": 5025,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "606345",
@@ -589,7 +735,30 @@
     "machine_score": 53,
     "query": "소유권이전등기말소",
     "body_len": 11745,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
+  },
+  {
+    "case_id": "239727",
+    "사건명": "유류분반환청구의소",
+    "법원명": "대법원",
+    "선고일자": "2023-06-01",
+    "machine_score": 52,
+    "query": "유류분",
+    "body_len": 5257,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "168432",
+    "사건명": "유류분반환·손해배상(기)",
+    "법원명": "대법원",
+    "선고일자": "2013-03-14",
+    "machine_score": 52,
+    "query": "유류분",
+    "body_len": 11556,
+    "gate_score": null,
+    "topic": "상속"
   },
   {
     "case_id": "236053",
@@ -599,7 +768,8 @@
     "machine_score": 50,
     "query": "부당이득반환",
     "body_len": 4517,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "619231",
@@ -609,6 +779,29 @@
     "machine_score": 49,
     "query": "소유권이전등기말소",
     "body_len": 7881,
+    "gate_score": null,
+    "topic": "재산"
+  },
+  {
+    "case_id": "179070",
+    "사건명": "유류분반환",
+    "법원명": "대법원",
+    "선고일자": "2015-05-14",
+    "machine_score": 49,
+    "query": "유류분",
+    "body_len": 5527,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "184315",
+    "사건명": "손해배상(기)·손해배상(기)",
+    "법원명": "서울중앙지법",
+    "선고일자": "2016-11-30",
+    "machine_score": 47,
+    "query": "혼인파탄",
+    "topic": "불륜",
+    "body_len": 4038,
     "gate_score": null
   },
   {
@@ -619,17 +812,30 @@
     "machine_score": 46,
     "query": "명의신탁",
     "body_len": 3362,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
-    "case_id": "220403",
-    "사건명": "유류분청구",
-    "법원명": "서울중앙지방법원",
-    "선고일자": "2020-08-27",
+    "case_id": "217651",
+    "사건명": "임료/유류분",
+    "법원명": "대법원",
+    "선고일자": "2021-07-15",
     "machine_score": 45,
     "query": "유류분",
-    "body_len": 3629,
-    "gate_score": null
+    "body_len": 3988,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "81461",
+    "사건명": "유류분청구",
+    "법원명": "대법원",
+    "선고일자": "2002-04-26",
+    "machine_score": 45,
+    "query": "유류분",
+    "body_len": 6021,
+    "gate_score": null,
+    "topic": "상속"
   },
   {
     "case_id": "615963",
@@ -639,7 +845,8 @@
     "machine_score": 43,
     "query": "부당이득반환",
     "body_len": 6559,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "609481",
@@ -649,7 +856,8 @@
     "machine_score": 43,
     "query": "부당이득반환",
     "body_len": 4785,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "607785",
@@ -659,7 +867,8 @@
     "machine_score": 43,
     "query": "부당이득반환",
     "body_len": 5243,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "605939",
@@ -669,7 +878,8 @@
     "machine_score": 43,
     "query": "부당이득반환",
     "body_len": 4993,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "609409",
@@ -679,7 +889,8 @@
     "machine_score": 43,
     "query": "부당이득반환",
     "body_len": 4400,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "599857",
@@ -689,7 +900,8 @@
     "machine_score": 43,
     "query": "부당이득반환",
     "body_len": 3463,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "616615",
@@ -699,7 +911,8 @@
     "machine_score": 43,
     "query": "부당이득반환",
     "body_len": 21294,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "603649",
@@ -709,7 +922,8 @@
     "machine_score": 43,
     "query": "부당이득반환",
     "body_len": 15452,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "614543",
@@ -719,7 +933,8 @@
     "machine_score": 43,
     "query": "부당이득반환",
     "body_len": 10854,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "241683",
@@ -729,7 +944,8 @@
     "machine_score": 43,
     "query": "부당이득반환",
     "body_len": 10796,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "615673",
@@ -739,7 +955,8 @@
     "machine_score": 43,
     "query": "소유권이전등기말소",
     "body_len": 3786,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "606347",
@@ -749,7 +966,8 @@
     "machine_score": 43,
     "query": "소유권이전등기말소",
     "body_len": 12940,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "217445",
@@ -759,6 +977,40 @@
     "machine_score": 43,
     "query": "소유권이전등기말소",
     "body_len": 7808,
+    "gate_score": null,
+    "topic": "재산"
+  },
+  {
+    "case_id": "187693",
+    "사건명": "유류분반환",
+    "법원명": "대법원",
+    "선고일자": "2015-11-12",
+    "machine_score": 42,
+    "query": "유류분",
+    "body_len": 6508,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "168251",
+    "사건명": "이혼 및 위자료·재산분할 등",
+    "법원명": "서울고법",
+    "선고일자": "2013-02-08",
+    "machine_score": 41,
+    "query": "혼인파탄",
+    "topic": "불륜",
+    "body_len": 6471,
+    "gate_score": null
+  },
+  {
+    "case_id": "619301",
+    "사건명": "이혼및위자료·재산분할등",
+    "법원명": "서울고법",
+    "선고일자": "2013-02-08",
+    "machine_score": 41,
+    "query": "혼인파탄",
+    "topic": "불륜",
+    "body_len": 6391,
     "gate_score": null
   },
   {
@@ -769,7 +1021,8 @@
     "machine_score": 40,
     "query": "사해행위취소",
     "body_len": 5148,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "240655",
@@ -779,7 +1032,8 @@
     "machine_score": 40,
     "query": "부당이득반환",
     "body_len": 3096,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "241857",
@@ -789,7 +1043,8 @@
     "machine_score": 40,
     "query": "소유권이전등기말소",
     "body_len": 4012,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "241063",
@@ -799,7 +1054,8 @@
     "machine_score": 40,
     "query": "소유권이전등기말소",
     "body_len": 8947,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "241083",
@@ -809,16 +1065,51 @@
     "machine_score": 40,
     "query": "소유권이전등기말소",
     "body_len": 3663,
+    "gate_score": null,
+    "topic": "재산"
+  },
+  {
+    "case_id": "161617",
+    "사건명": "유류분 반환",
+    "법원명": "대법원",
+    "선고일자": "2011-07-28",
+    "machine_score": 39,
+    "query": "유류분",
+    "body_len": 5351,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "198310",
+    "사건명": "유류분반환",
+    "법원명": "대법원",
+    "선고일자": "1996-02-09",
+    "machine_score": 39,
+    "query": "유류분",
+    "body_len": 3682,
+    "gate_score": null,
+    "topic": "상속"
+  },
+  {
+    "case_id": "159784",
+    "사건명": "손해배상(기)",
+    "법원명": "서울고법",
+    "선고일자": "2011-06-01",
+    "machine_score": 37,
+    "query": "혼인파탄",
+    "topic": "불륜",
+    "body_len": 16039,
     "gate_score": null
   },
   {
-    "case_id": "240913",
-    "사건명": "유류분반환청구의소[계약명의신탁의 명의수탁자가 명의신탁된 부동산을 명의신탁자에게 양도하고 사망한 경우 소유권이전등기의 효력 및 그 부동산이 유류분 산정의 기초재산에 산입되는 증여에 해당하는지 문제된 사건]",
+    "case_id": "238897",
+    "사건명": "소유권말소등기",
     "법원명": "대법원",
-    "선고일자": "2024-06-13",
-    "machine_score": 37,
-    "query": "유류분",
-    "body_len": 3043,
+    "선고일자": "2023-12-21",
+    "machine_score": 35,
+    "query": "혼인파탄",
+    "topic": "불륜",
+    "body_len": 4988,
     "gate_score": null
   },
   {
@@ -829,26 +1120,18 @@
     "machine_score": 33,
     "query": "부당이득반환",
     "body_len": 6082,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
-    "case_id": "237131",
-    "사건명": "유류분반환청구",
-    "법원명": "서울고등법원",
-    "선고일자": "2019-02-20",
-    "machine_score": 32,
-    "query": "유류분",
-    "body_len": 8683,
-    "gate_score": null
-  },
-  {
-    "case_id": "219297",
-    "사건명": "유류분반환청구의소",
+    "case_id": "114925",
+    "사건명": "청구이의등",
     "법원명": "대법원",
-    "선고일자": "2022-01-27",
-    "machine_score": 30,
-    "query": "유류분",
-    "body_len": 4019,
+    "선고일자": "1997-03-25",
+    "machine_score": 33,
+    "query": "상간",
+    "topic": "불륜",
+    "body_len": 3209,
     "gate_score": null
   },
   {
@@ -859,7 +1142,8 @@
     "machine_score": 30,
     "query": "부당이득반환",
     "body_len": 5190,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "236795",
@@ -869,7 +1153,8 @@
     "machine_score": 28,
     "query": "부당이득반환",
     "body_len": 5929,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "234929",
@@ -879,27 +1164,8 @@
     "machine_score": 28,
     "query": "부당이득반환",
     "body_len": 32438,
-    "gate_score": null
-  },
-  {
-    "case_id": "239727",
-    "사건명": "유류분반환청구의소",
-    "법원명": "대법원",
-    "선고일자": "2023-06-01",
-    "machine_score": 27,
-    "query": "유류분",
-    "body_len": 5257,
-    "gate_score": null
-  },
-  {
-    "case_id": "168432",
-    "사건명": "유류분반환·손해배상(기)",
-    "법원명": "대법원",
-    "선고일자": "2013-03-14",
-    "machine_score": 27,
-    "query": "유류분",
-    "body_len": 11556,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "608467",
@@ -909,7 +1175,8 @@
     "machine_score": 25,
     "query": "사해행위취소",
     "body_len": 3306,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "239731",
@@ -919,7 +1186,8 @@
     "machine_score": 25,
     "query": "부당이득반환",
     "body_len": 5720,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "235421",
@@ -929,17 +1197,8 @@
     "machine_score": 25,
     "query": "소유권이전등기말소",
     "body_len": 4414,
-    "gate_score": null
-  },
-  {
-    "case_id": "179070",
-    "사건명": "유류분반환",
-    "법원명": "대법원",
-    "선고일자": "2015-05-14",
-    "machine_score": 24,
-    "query": "유류분",
-    "body_len": 5527,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "237229",
@@ -949,27 +1208,8 @@
     "machine_score": 21,
     "query": "부당이득반환",
     "body_len": 3331,
-    "gate_score": null
-  },
-  {
-    "case_id": "217651",
-    "사건명": "임료/유류분",
-    "법원명": "대법원",
-    "선고일자": "2021-07-15",
-    "machine_score": 20,
-    "query": "유류분",
-    "body_len": 3988,
-    "gate_score": null
-  },
-  {
-    "case_id": "81461",
-    "사건명": "유류분청구",
-    "법원명": "대법원",
-    "선고일자": "2002-04-26",
-    "machine_score": 20,
-    "query": "유류분",
-    "body_len": 6021,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "618197",
@@ -979,7 +1219,8 @@
     "machine_score": 18,
     "query": "사해행위취소",
     "body_len": 4696,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "606827",
@@ -989,7 +1230,8 @@
     "machine_score": 18,
     "query": "부당이득반환",
     "body_len": 3429,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "606219",
@@ -999,7 +1241,8 @@
     "machine_score": 18,
     "query": "부당이득반환",
     "body_len": 3104,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "609411",
@@ -1009,7 +1252,8 @@
     "machine_score": 18,
     "query": "부당이득반환",
     "body_len": 3948,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "601515",
@@ -1019,7 +1263,8 @@
     "machine_score": 18,
     "query": "부당이득반환",
     "body_len": 4748,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "236339",
@@ -1029,17 +1274,8 @@
     "machine_score": 18,
     "query": "부당이득반환",
     "body_len": 5442,
-    "gate_score": null
-  },
-  {
-    "case_id": "187693",
-    "사건명": "유류분반환",
-    "법원명": "대법원",
-    "선고일자": "2015-11-12",
-    "machine_score": 17,
-    "query": "유류분",
-    "body_len": 6508,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "620455",
@@ -1049,7 +1285,8 @@
     "machine_score": 15,
     "query": "부당이득반환",
     "body_len": 4391,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "615971",
@@ -1059,7 +1296,8 @@
     "machine_score": 15,
     "query": "부당이득반환",
     "body_len": 4119,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "612849",
@@ -1069,7 +1307,8 @@
     "machine_score": 15,
     "query": "부당이득반환",
     "body_len": 4537,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "607297",
@@ -1079,7 +1318,8 @@
     "machine_score": 15,
     "query": "부당이득반환",
     "body_len": 3046,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "605065",
@@ -1089,7 +1329,8 @@
     "machine_score": 15,
     "query": "부당이득반환",
     "body_len": 3603,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "239905",
@@ -1099,7 +1340,8 @@
     "machine_score": 15,
     "query": "부당이득반환",
     "body_len": 4152,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "237223",
@@ -1109,7 +1351,8 @@
     "machine_score": 15,
     "query": "부당이득반환",
     "body_len": 5079,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "236819",
@@ -1119,7 +1362,8 @@
     "machine_score": 15,
     "query": "부당이득반환",
     "body_len": 3487,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "236943",
@@ -1129,7 +1373,8 @@
     "machine_score": 15,
     "query": "부당이득반환",
     "body_len": 4631,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "235519",
@@ -1139,7 +1384,8 @@
     "machine_score": 15,
     "query": "부당이득반환",
     "body_len": 4684,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "241369",
@@ -1149,7 +1395,8 @@
     "machine_score": 15,
     "query": "소유권이전등기말소",
     "body_len": 3094,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "232587",
@@ -1159,36 +1406,18 @@
     "machine_score": 15,
     "query": "소유권이전등기말소",
     "body_len": 3006,
-    "gate_score": null
-  },
-  {
-    "case_id": "161617",
-    "사건명": "유류분 반환",
-    "법원명": "대법원",
-    "선고일자": "2011-07-28",
-    "machine_score": 14,
-    "query": "유류분",
-    "body_len": 5351,
-    "gate_score": null
-  },
-  {
-    "case_id": "198310",
-    "사건명": "유류분반환",
-    "법원명": "대법원",
-    "선고일자": "1996-02-09",
-    "machine_score": 14,
-    "query": "유류분",
-    "body_len": 3682,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "재산"
   },
   {
     "case_id": "185706",
     "사건명": "유류분반환",
     "법원명": "대법원",
     "선고일자": "2017-05-11",
-    "machine_score": 8,
+    "machine_score": 13,
     "query": "유류분",
     "body_len": 3300,
-    "gate_score": null
+    "gate_score": null,
+    "topic": "상속"
   }
 ]

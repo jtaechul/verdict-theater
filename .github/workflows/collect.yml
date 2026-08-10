@@ -16,10 +16,20 @@ on:
         description: '이번에 쓸 최대 호출 수 (하루 상한 200회)'
         required: false
         default: '180'
+      topic:
+        description: '어떤 갈래를 모을지'
+        required: false
+        default: '전부'
+        type: choice
+        options: ['전부', '불륜', '상속', '재산', '부양', '노년', '가업', '혼외자', '제사', '빚']
       queries:
-        description: '검색어 (쉼표 구분). 비우면 40개 전부'
+        description: '찾을 낱말을 직접 적을 때만 (쉼표 구분). 비우면 위 갈래를 따른다'
         required: false
         default: ''
+      pages:
+        description: '낱말 하나당 몇 쪽까지 (한 쪽 100건)'
+        required: false
+        default: '3'
   schedule:
     # 매주 월요일 한국시간 오전 6시 (UTC 21:00 일요일)
     - cron: '0 21 * * 0'
@@ -68,8 +78,13 @@ jobs:
           LAW_OC: ${{ secrets.LAW_OC }}
         run: |
           set -o pipefail
+          # '전부' 를 고르면 갈래를 안 넘긴다(= 모든 낱말). 그 밖에는 그 갈래만 훑는다.
+          T="${{ inputs.topic }}"
+          if [ "$T" = "전부" ] || [ -z "$T" ]; then T=""; fi
           python3 src/collect.py \
             --max-calls "${{ inputs.max_calls || '180' }}" \
+            --pages "${{ inputs.pages || '3' }}" \
+            --topic "$T" \
             --queries "${{ inputs.queries }}" 2>&1 | tee collect.log
 
       # 쓰지 않기로 한 판례를 대기열에서 딴 곳으로 옮긴다 (화면이 깨끗해진다).
@@ -77,6 +92,11 @@ jobs:
       # 지우면 다음에 다시 받아 **다시 평가하느라 값이 나간다.**
       - name: 쓰지 않기로 한 것 치우기 (값 0원)
         run: python3 tools/queue_clean.py 2>&1 | tee -a collect.log
+
+      # 걸러내는 기준을 고쳐도, 예전에 받아 둔 것은 옛 기준 그대로 남는다.
+      # 판결문은 이미 저장소에 있으므로 다시 받을 필요 없이 다시 채점만 한다. 값 0원.
+      - name: 갈래 다시 매기기 (값 0원)
+        run: python3 tools/queue_retopic.py 2>&1 | tee -a collect.log
 
       - name: 결과 요약 (아이폰에서 읽는 화면)
         if: always()
