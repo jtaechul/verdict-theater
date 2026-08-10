@@ -21,6 +21,13 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 BASE_LIST = "https://www.law.go.kr/DRF/lawSearch.do"
+
+# 법제처 판례 검색이 **어디를 뒤지는지** 고르는 값.
+#   TITLE(1)    사건명(제목)만  ← 값을 안 보내면 이것이 기본이다
+#   FULLTEXT(2) 판결문 본문까지
+# 우리는 본문까지 뒤진다. 제목만 뒤지면 '상간' 같은 말이 통째로 안 걸린다.
+TITLE = 1
+FULLTEXT = 2
 BASE_BODY = "https://www.law.go.kr/DRF/lawService.do"
 
 # 법제처 인증키(OC). 비밀이 아니다.
@@ -95,12 +102,28 @@ class LawAPI:
         raise last_err
 
     # ── 공개 ──────────────────────────────────────────────
-    def search(self, query, page=1, display=100):
-        """검색어로 판례 목록을 받는다. (판례일련번호 등 목록 필드만)"""
-        raw = self._get(BASE_LIST, {
-            "OC": self.oc, "target": "prec", "type": "XML",
-            "query": query, "display": display, "page": page,
-        })
+    def search(self, query, page=1, display=100, scope=FULLTEXT):
+        """검색어로 판례 목록을 받는다. (판례일련번호 등 목록 필드만)
+
+        scope=FULLTEXT(2) 가 기본이다. **판결문 본문까지 뒤진다.**
+
+        ⚠️ 2026-08-10 에 고친 자리다. 원래 이 값을 안 보내고 있었는데,
+        법제처 API 는 값이 없으면 **사건명(제목)만** 뒤진다. 그래서 제목에
+        그대로 박히는 말('유류분', '상속회복')만 걸리고, 제목에 안 나오는 말은
+        전부 0건이었다. 상간자 소송의 사건명은 '손해배상(기)' 라서 아무리
+        '상간' 으로 찾아도 안 나왔던 것이다.
+
+        실측(2026-08-10, 같은 검색어로 두 방식 비교):
+            상간    제목만    7건  →  본문까지   19건
+            상간녀  제목만    0건  →  본문까지    2건
+            위자료  제목만  321건  →  본문까지 3,211건
+            유류분  제목만   89건  →  본문까지  268건
+        """
+        p = {"OC": self.oc, "target": "prec", "type": "XML",
+             "query": query, "display": display, "page": page}
+        if scope:
+            p["search"] = scope
+        raw = self._get(BASE_LIST, p)
         root = ET.fromstring(raw)
         total = _text(root.find("totalCnt"))
         rows = []

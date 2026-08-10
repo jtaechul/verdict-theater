@@ -27,7 +27,12 @@ from datetime import date, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from lawapi import LawAPI, DailyLimitReached, DAILY_LIMIT, DEFAULT_OC  # noqa: E402
+from lawapi import (LawAPI, DailyLimitReached, DAILY_LIMIT, DEFAULT_OC,  # noqa: E402
+                    FULLTEXT)
+
+# 판례를 어디까지 뒤질지. 본문까지 뒤진다 — 제목만 뒤지면 '상간' 같은 말이 통째로 빠진다.
+# 이 값이 바뀌면 아래 main() 이 '이미 찾아봤다' 표시를 지우고 전부 다시 훑는다.
+SEARCH_SCOPE = FULLTEXT
 
 ROOT = Path(__file__).resolve().parent.parent
 CASES = ROOT / "data" / "cases"
@@ -64,9 +69,14 @@ QUERIES = [
     "부당이득반환", "소유권이전등기말소", "근저당권설정말소",
     # C군 부양 — 확보 6건
     "부양료", "부양의무", "구상금", "요양병원", "성년후견", "의사무능력",
-    # D군 불륜 — **개편.** 옛 검색어('부정행위','상간자','위자료')는 0건이었다.
-    #            판결문이 실제로 쓰는 말로 바꾼다.
-    "상간", "상간녀", "상간남", "정조", "혼인파탄", "부정한 행위",
+    # D군 불륜(상간자 소송) — 2026-08-10 재정비.
+    #   옛 기록에 '0건'으로 남아 있던 것은 검색어 탓이 아니었다. **제목만 뒤지고
+    #   있어서** 그랬다. 상간자 소송의 사건명은 '손해배상(기)' 라, 제목만 봐서는
+    #   무슨 수를 써도 안 걸린다. 본문까지 뒤지도록 고친 뒤 실측한 통과 건수를 적는다.
+    #     상간 2 · 상간자 3 · 불륜 16 · 정조 37 · 혼인파탄 10 ·
+    #     부정한 행위 32 · 배우자 부정행위 16 · 부정행위 위자료 70
+    "상간", "상간녀", "상간남", "상간자", "불륜", "정조", "혼인파탄",
+    "부정한 행위", "배우자 부정행위", "부정행위 위자료",
     # E군 노년
     "재혼", "사실혼재산", "사실혼해소", "유족연금",
     # F군 가업
@@ -197,6 +207,20 @@ def main():
         st["date"] = today.isoformat()
         st["calls_today"] = 0
 
+    # ⭐ 뒤지는 범위가 바뀌면 **전에 찾아본 기록을 무효로 한다.**
+    #    안 그러면 '이미 찾아봤다(listed)' 표시 때문에 새 방식으로 다시 안 찾는다.
+    #    2026-08-10: 제목만 뒤지던 것을 본문까지 뒤지도록 고쳤으므로, 예전에
+    #    제목만으로 훑어 본 41개 검색어를 전부 다시 훑어야 한다.
+    if st.get("scope") != SEARCH_SCOPE:
+        n = sum(1 for v in st.get("queries", {}).values() if v.get("listed"))
+        for v in st.get("queries", {}).values():
+            v["listed"] = False
+        st["scope"] = SEARCH_SCOPE
+        if n:
+            print(f"뒤지는 범위가 바뀌었다 → 전에 찾아본 {n}개 검색어를 다시 훑는다.")
+            print("(예전 기록은 '제목만' 뒤진 결과라 그대로 두면 놓친 판례를 영영 못 받는다)")
+        print()
+
     budget = min(args.max_calls, DAILY_LIMIT - st["calls_today"])
     if budget <= 0:
         print(f"오늘은 이미 {st['calls_today']}회 호출했다. 상한 {DAILY_LIMIT}회.")
@@ -223,7 +247,7 @@ def main():
                 continue
             if api.used - st["calls_today"] >= budget:
                 break
-            total, rows = api.search(q, page=1, display=100)
+            total, rows = api.search(q, page=1, display=100, scope=SEARCH_SCOPE)
             qs["total"] = total
             qs["listed"] = True
             kept = 0
