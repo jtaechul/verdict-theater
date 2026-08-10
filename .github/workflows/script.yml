@@ -163,6 +163,15 @@ jobs:
           esac
           python3 src/script.py --case "${{ inputs.case }}" $W 2>&1 | tee script.log
 
+      # 방금 심사에서 '쓰지 않기로 한' 것을 바로 화면에서 치운다.
+      # 여기서 안 치우면 다음 '재판 기록 모으기' 때까지 대기열에 남아 눈에 거슬린다.
+      # 지우는 게 아니라 state/rejected.json 으로 옮기는 것이라 다시 받지 않는다. 값 0원.
+      # ⚠️ 자리를 여기로 잡은 이유 — 돈이 나가는 윗 단계의 `if: success()` 앞에
+      #    `if: always()` 단계를 끼우지 않으려는 것이다. 조건이 헷갈릴 여지를 아예 없앤다.
+      - name: 쓰지 않기로 한 것 치우기 (값 0원)
+        if: always()
+        run: python3 tools/queue_clean.py 2>&1 | tee -a gate.log
+
       - name: 검수 화면 만들기 (아이폰에서 바로 읽는 곳)
         if: always()
         run: |
