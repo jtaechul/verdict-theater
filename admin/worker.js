@@ -334,6 +334,7 @@ function home() {
   const ungated = (S.queue || []).filter(q => q.gate_score == null);
 
   let h = '';
+  h += nextCard(eps, ready, ungated);
   h += '<div class="card"><h2>지금 상태</h2>';
   h += row('모아 둔 재판 기록', (S.queue||[]).length + '건');
   h += row('대본 만들 수 있는 소재', ready.length + '건');
@@ -715,6 +716,87 @@ function seekAudition(el) {
   if (!a) return;
   a.currentTime = parseFloat(el.getAttribute('data-t') || '0');
   a.play().catch(() => {});
+}
+
+// ── 다음에 할 일 (맨 위 · 한 번만 누르면 되는 자리) ────────
+//
+// 아래 '실행' 칸에는 고를 것이 네 개씩 붙어 있다. 그때마다 "무엇을 골라야 하지"
+// 를 판단해야 하고, 실제로 판례 번호를 손으로 넣었다가 가사사건으로 Opus 를
+// 19분 헛돌린 적이 있다(2026-08-10).
+// 그래서 **지금 상태를 보고 다음에 할 일 하나만** 골라 큰 버튼으로 띄운다.
+// 손님은 이 버튼만 누르면 된다. 아래 '실행' 칸은 손대고 싶을 때만 쓴다.
+function nextStep(eps, ready, ungated) {
+  if ((S.runs || []).some(r => !r.conclusion))
+    return { title: '지금 돌아가는 중입니다',
+             body: '끝나면 아래 <b>최근 실행</b>에 결과가 뜹니다. 그냥 두셔도 됩니다.' };
+
+  if (!(S.queue || []).length)
+    return { title: '재판 기록부터 모아야 합니다',
+             body: '아직 소재가 하나도 없습니다. 기록을 받아 오는 것부터 시작합니다.',
+             btn: '재판 기록 모으기', act: 'goNext(\\'collect\\')' };
+
+  const stuck = eps.find(([, v]) => v.stage === 'scripting');
+  if (stuck)
+    return { title: esc(stuck[0]) + ' 대본이 덜 만들어졌습니다',
+             body: '도중에 멈춘 대본입니다. 다시 만들면 처음부터 새로 씁니다.',
+             btn: '대본 다시 만들기', act: 'goNext(\\'script\\')' };
+
+  if (ready.length)
+    return { title: '대본을 만들 차례입니다',
+             body: '쓸 만하다고 판정된 소재가 <b>' + ready.length + '건</b> 있습니다. '
+                 + '그중 가장 점수가 높은 것으로 한 편 만듭니다.<br>'
+                 + '<span style="color:#9599ab">약 20분 걸립니다. 누르고 나가셔도 됩니다.</span>',
+             btn: '대본 만들기', act: 'goNext(\\'script\\')' };
+
+  if (ungated.length)
+    return { title: '소재를 살펴볼 차례입니다',
+             body: '아직 안 살펴본 기록이 <b>' + ungated.length + '건</b> 있습니다. '
+                 + '10건을 점수 매겨 쓸 만한 것을 고릅니다.<br>'
+                 + '<span style="color:#9599ab">약 4분 · 852원쯤 듭니다.</span>',
+             btn: '소재 살펴보기', act: 'goNext(\\'gate\\')' };
+
+  return { title: '재판 기록을 더 모아야 합니다',
+           body: '가진 기록을 다 살펴봤는데 쓸 만한 소재가 없습니다.',
+           btn: '재판 기록 모으기', act: 'goNext(\\'collect\\')' };
+}
+
+function nextCard(eps, ready, ungated) {
+  const n = nextStep(eps, ready, ungated);
+  let h = '<div class="card" style="border:1px solid #3c4257">'
+        + '<h2 style="color:#e8b64c">다음에 할 일</h2>'
+        + '<div style="font-size:17px;font-weight:700;margin:2px 0 6px">' + n.title + '</div>'
+        + '<div style="color:#c8ccda;font-size:14px;line-height:1.7">' + n.body + '</div>';
+  if (n.btn)
+    h += '<div style="height:14px"></div>'
+       + '<button style="width:100%" onclick="' + n.act + '">' + n.btn + '</button>';
+  return h + '</div>';
+}
+
+// 버튼 하나가 알아서 맞는 설정으로 실행한다. 고를 것을 묻지 않는다.
+// ⚠️ case(판례 번호)는 **일부러 안 보낸다.** 비워 두면 살펴보기를 통과한 소재 중
+//    가장 좋은 것을 알아서 고른다. 손으로 넣으면 그 단계를 건너뛰어 위험하다.
+const NEXT_RUN = {
+  collect: { file: 'collect.yml', name: '재판 기록 모으기',
+             inputs: { max_calls: '180', topic: '전부', queries: '', pages: '3' } },
+  gate:    { file: 'script.yml', name: '소재 살펴보기',
+             inputs: { mode: '소재 심사만', writer: '자동 (Claude 우선)', gate_limit: '10' } },
+  script:  { file: 'script.yml', name: '대본 만들기',
+             inputs: { mode: '둘다', writer: '자동 (Claude 우선)', gate_limit: '10' } },
+};
+
+async function goNext(key) {
+  const w = NEXT_RUN[key];
+  toast(w.name + ' 시작하는 중…');
+  let j = {};
+  try {
+    const r = await fetch('/api/run', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file: w.file, inputs: w.inputs }) });
+    j = await r.json();
+  } catch (e) { j = { ok: false, error: '연결이 끊겼습니다' }; }
+  if (!j.ok) { toast('실패: ' + (j.error || '알 수 없는 이유'), 6000); return; }
+  toast(w.name + ' 시작했습니다. 이 화면이 저절로 갱신됩니다.', 6000);
+  watch();
 }
 
 const row = (k, v) => '<div class="row"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>';

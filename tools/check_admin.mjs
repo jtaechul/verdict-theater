@@ -208,6 +208,28 @@ if (!painted.includes('pickTopic(')) {
   console.error('   원하는 갈래만 골라 볼 방법이 사라졌다는 뜻이다');
   process.exit(1);
 }
+// **다음에 할 일** 카드가 맨 위에 있는지 본다.
+// (2026-08-10 손님: "나한테 깃허브 가서 뭘 하라고 시키지마. 귀찮고 어려워")
+// 이 카드가 없으면 손님이 다시 '실행' 칸에서 네 가지를 골라야 한다.
+if (!painted.includes('다음에 할 일')) {
+  console.error('❌ 맨 위 [다음에 할 일] 카드가 없다');
+  console.error('   한 번만 눌러 다음 단계로 가는 방법이 사라졌다는 뜻이다');
+  process.exit(1);
+}
+if (!painted.includes('goNext(')) {
+  console.error('❌ [다음에 할 일] 카드에 누를 버튼이 없다');
+  process.exit(1);
+}
+// 그 버튼이 판례 번호를 **직접 넣지 않는지** 본다. 손으로 넣으면 소재
+// 살펴보기를 건너뛴다 — 가사사건으로 Opus 를 19분 헛돌린 원인이 그것이다.
+{
+  const blk = (src.match(/const NEXT_RUN[\s\S]*?\n};/) || [''])[0];
+  if (/\bcase:\s*'[^']/.test(blk)) {
+    console.error('❌ [다음에 할 일] 버튼이 판례 번호를 직접 넣고 있다');
+    console.error('   비워 둬야 통과한 소재 중 가장 좋은 것을 알아서 고른다');
+    process.exit(1);
+  }
+}
 // 화면을 통째로 옮기는 링크가 다시 생기지 않았는지 본다 (아이폰이 갇히는 원인)
 if (/<a[^>]+download=[^>]+href="\/api\/thumb/.test(painted)) {
   console.error('❌ 썸네일을 링크로 내려받고 있다 — 아이폰에서 저장 화면에 갇힌다');
