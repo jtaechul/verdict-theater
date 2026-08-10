@@ -72,6 +72,12 @@ jobs:
             --max-calls "${{ inputs.max_calls || '180' }}" \
             --queries "${{ inputs.queries }}" 2>&1 | tee collect.log
 
+      # 쓰지 않기로 한 판례를 대기열에서 딴 곳으로 옮긴다 (화면이 깨끗해진다).
+      # 지우지 않고 옮기는 이유 — 대기열이 '이미 본 것' 기억을 겸하기 때문이다.
+      # 지우면 다음에 다시 받아 **다시 평가하느라 값이 나간다.**
+      - name: 쓰지 않기로 한 것 치우기 (값 0원)
+        run: python3 tools/queue_clean.py 2>&1 | tee -a collect.log
+
       - name: 결과 요약 (아이폰에서 읽는 화면)
         if: always()
         run: |
@@ -101,7 +107,7 @@ jobs:
         run: |
           git config user.name  "verdict-theater-bot"
           git config user.email "actions@github.com"
-          git add data/cases state/queue.json state/collect_state.json 2>/dev/null || true
+          git add data/cases state/queue.json state/collect_state.json state/rejected.json 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "바뀐 것이 없다. 커밋하지 않는다."
             exit 0

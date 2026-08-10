@@ -171,6 +171,14 @@ if (!painted.includes('saveThumb(')) {
   console.error('   (2026-08-09 손님이 갇힌 [썸네일 다운받기] 가 바로 그 버튼이다)');
   process.exit(1);
 }
+// '아직 안 살펴봄' 판례에 **무슨 사건인지 보는 버튼**이 붙어 있는지 본다.
+// (2026-08-09 손님: "아직 안 살펴봄으로 구분된 판례는 요약본을 볼 수가 없잖아")
+// FAKE_STATE 의 184051 이 바로 그런 건이다 — one_line 이 없는 판례.
+if (!painted.includes('showCase(')) {
+  console.error('❌ 아직 안 살펴본 판례에 [무슨 사건인지 보기] 버튼이 없다');
+  console.error('   요약을 볼 방법이 다시 사라졌다는 뜻이다');
+  process.exit(1);
+}
 // 화면을 통째로 옮기는 링크가 다시 생기지 않았는지 본다 (아이폰이 갇히는 원인)
 if (/<a[^>]+download=[^>]+href="\/api\/thumb/.test(painted)) {
   console.error('❌ 썸네일을 링크로 내려받고 있다 — 아이폰에서 저장 화면에 갇힌다');

@@ -295,7 +295,18 @@ def main():
     save_state(st)
 
     queue = json.loads(QUEUE.read_text(encoding="utf-8")) if QUEUE.exists() else []
-    known = {q["case_id"] for q in queue}
+    # ⚠️ '이미 본 것' 은 대기열 **더하기 쓰지 않기로 한 것** 이다.
+    #    쓰지 않기로 한 판례는 화면에서 치우려고 state/rejected.json 으로 옮긴다
+    #    (tools/queue_clean.py). 그것까지 봐야 **다시 받아 다시 평가하는 낭비**가 없다.
+    #    2026-08-09 손님: "쓰지 않기로 함으로 구분된 판례는 삭제해도 되지 않아?"
+    rej = ROOT / "state" / "rejected.json"
+    seen_out = set()
+    if rej.exists():
+        try:
+            seen_out = {q["case_id"] for q in json.loads(rej.read_text(encoding="utf-8"))}
+        except Exception:
+            seen_out = set()
+    known = {q["case_id"] for q in queue} | seen_out
     queue += [c for c in new_cases if c["case_id"] not in known]
     queue.sort(key=lambda c: (c.get("gate_score") or 0, c["machine_score"]), reverse=True)
     QUEUE.write_text(json.dumps(queue, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

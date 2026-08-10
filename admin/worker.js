@@ -364,14 +364,27 @@ function home() {
     // ⚠️ 소재 이름을 onclick 문자열에 직접 끼우지 않는다(따옴표가 들어 있으면
     //    페이지가 통째로 깨진다 — 8월 7일 무한로딩 사고와 같은 유형). data- 로 넘긴다.
     const canGo = q.gate_pass || q.gate_score == null;
-    const btn = canGo && q.case_id
-      ? '<div class="btns" style="margin-top:6px"><button class="mini" '
-        + 'data-cid="' + esc(String(q.case_id)) + '" data-nm="' + esc(nm) + '" '
-        + 'onclick="makeScript(this.dataset.cid, this.dataset.nm)">이 소재로 대본 만들기</button></div>'
+    // ⭐ 아직 안 살펴본 것은 한 줄 요약이 없다 (3차 평가를 안 돌려서).
+    //    그렇다고 무엇에 관한 사건인지 알 길이 없으면 고를 수가 없다.
+    //    (2026-08-09 손님: "요약본을 볼 수 있는 방법이 없잖아. 어떻게든 조치해봐.")
+    //    → 이미 받아 둔 판결문에서 법원이 쓴 요약을 꺼내 보여준다. **값 0원.**
+    const look = (!q.one_line && q.case_id)
+      ? '<button class="mini" data-cid="' + esc(String(q.case_id)) + '" '
+        + 'onclick="showCase(this)">무슨 사건인지 보기</button> '
+      : '';
+    const btn = (look || (canGo && q.case_id))
+      ? '<div class="btns" style="margin-top:6px">' + look
+        + (canGo && q.case_id
+           ? '<button class="mini" data-cid="' + esc(String(q.case_id)) + '" '
+             + 'data-nm="' + esc(nm) + '" '
+             + 'onclick="makeScript(this.dataset.cid, this.dataset.nm)">이 소재로 대본 만들기</button>'
+           : '')
+        + '</div>'
       : '';
     h += '<div class="q"><b>' + (q.gate_score ?? q.machine_score ?? '-') + '점</b>'
       + esc(nm) + mark
       + '<div style="color:#9599ab;font-size:13px;margin-top:3px">' + esc(q.one_line || '') + '</div>'
+      + '<div id="cs_' + esc(String(q.case_id || '')) + '"></div>'
       + btn + '</div>';
   });
   h += '</div>';
@@ -572,6 +585,31 @@ async function changeVoice() {
             + '[작업] 화면의 최근 실행에서 까닭을 보십시오.', 14000);
     }
   }, 8, 5);
+}
+
+// 아직 안 살펴본 판례가 **무슨 사건인지** 판결문에서 꺼내 보여준다. 값 0원.
+// (3차 평가를 돌리기 전에는 한 줄 요약이 없다. 그래도 판결문에는 법원이 쓴
+//  판시사항이나 주문이 들어 있어서, 무엇에 관한 다툼인지는 알 수 있다)
+async function showCase(el) {
+  const id = el.getAttribute('data-cid') || '';
+  const box = document.getElementById('cs_' + id);
+  if (!box) return;
+  if (box.innerHTML) { box.innerHTML = ''; el.textContent = '무슨 사건인지 보기'; return; }
+  box.innerHTML = '<div style="color:#9599ab;font-size:13px;margin-top:6px">읽는 중…</div>';
+  let j = {};
+  try { j = await (await fetch('/api/case?id=' + encodeURIComponent(id))).json(); }
+  catch (e) { j = {}; }
+  if (!j.found) {
+    box.innerHTML = '<div style="color:#9599ab;font-size:13px;margin-top:6px">'
+      + '판결문을 못 찾았습니다.</div>';
+    return;
+  }
+  el.textContent = '접기';
+  box.innerHTML = '<div style="margin-top:8px;padding:10px;border-radius:8px;'
+    + 'background:#14161f;color:#c9ccd8;font-size:13px;line-height:1.65">'
+    + '<div style="color:#9599ab;margin-bottom:5px">' + esc(j.kind)
+    + (j.court ? ' · ' + esc(j.court) : '') + (j.at ? ' · ' + esc(j.at) : '') + '</div>'
+    + esc(j.text) + '</div>';
 }
 
 function seekAudition(el) {
@@ -1129,6 +1167,34 @@ export default {
       // 오디션에서 **누가 몇 초에 나오는지** 목록.
       // 이게 없으면 30개를 이어 붙인 파일을 들어도 지금 나오는 소리가 누구인지
       // 알 수가 없다 — 들려주기만 하고 고를 수는 없다 (2026-08-09 손님 지적).
+      // 아직 안 살펴본 판례의 **요약**. 값 0원 — 이미 받아 둔 판결문에서 뽑는다.
+      // (2026-08-09 손님: "아직 안 살펴봄으로 구분된 판례는 요약본을 볼 수 있는
+      //                   방법이 없잖아. 어떻게든 조치해봐.")
+      // 3차 평가(LLM)를 돌리기 전에는 한 줄 요약이 없다. 그런데 판결문 자체에
+      // 법원이 쓴 **판시사항**(대법원) 또는 **주문**(하급심)이 들어 있다.
+      // 실측: 112건 전부에서 뽑혔다 (판시사항 66건 · 주문 46건).
+      if (url.pathname === '/api/case') {
+        const id = url.searchParams.get('id') || '';
+        if (!/^[0-9]+$/.test(id)) return Response.json({ error: 'bad id' }, { status: 400 });
+        const d = await getJson(env, 'data/cases/' + id + '.json');
+        if (!d) return Response.json({ found: false });
+        const flat = (t) => String(t || '').replace(/\s+/g, ' ').trim();
+        let kind = '', text = '';
+        for (const k of ['판시사항', '판결요지']) {
+          if (flat(d[k])) { kind = k; text = flat(d[k]); break; }
+        }
+        if (!text) {
+          // 하급심은 위 두 칸이 비어 있다 — 판결문 본문에서 '주문' 을 뽑는다
+          const m = /\u3010\s*주\s*문\s*\u3011([\s\S]*?)(?=\u3010|$)/.exec(d['판례내용'] || '');
+          if (m) { kind = '주문(판결 결과)'; text = flat(m[1]); }
+          else { kind = '앞부분'; text = flat(d['판례내용']).slice(0, 400); }
+        }
+        return Response.json({
+          found: true, kind, text: text.slice(0, 700),
+          court: flat(d['법원명']), at: flat(d['선고일자']),
+        });
+      }
+
       if (url.pathname === '/api/auditionindex') {
         const id = url.searchParams.get('id') || '';
         if (!/^\d+$/.test(id)) return Response.json({ items: [] });
