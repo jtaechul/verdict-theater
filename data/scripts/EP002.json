@@ -8,8 +8,8 @@
       "그 사람은 이미 오래전에 집을 나가 있었다"
     ],
     "logline": "남편이 지운 아내의 이름을 법이 되돌린 이야기",
-    "runtime_sec": 720,
-    "cut_count": 118,
+    "runtime_sec": 725.0,
+    "cut_count": 119,
     "episode": "EP002"
   },
   "anonymization": {
@@ -162,7 +162,7 @@
             "type": "nametag",
             "text": "한미주 · 51세 · 동거인"
           },
-          "sfx": null,
+          "sfx": "sfx_clock",
           "amb": "amb_funeral",
           "blackout": false
         },
@@ -306,7 +306,7 @@
           "speaker": "narrator",
           "text": "그래도 선희 씨는 그 집을 떠나지 않았습니다.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_clock",
           "amb": "amb_home",
           "blackout": false
         },
@@ -483,7 +483,7 @@
           "speaker": "narrator",
           "text": "손등에는 겨울마다 마늘 냄새가 배어 있었습니다.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_clock",
           "amb": "amb_home",
           "blackout": false
         },
@@ -583,7 +583,7 @@
           "speaker": "narrator",
           "text": "밥상은 두 번 차려졌다가, 한 번은 식은 채 치워졌습니다.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_footsteps",
           "amb": "amb_home",
           "blackout": false
         },
@@ -738,7 +738,7 @@
           "speaker": "narrator",
           "text": "어느 날 남편은 옷장을 열고 짐을 싸기 시작했습니다.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_paper",
           "amb": "amb_home",
           "blackout": false,
           "flashback_label": "윤선희 씨의 기억"
@@ -1193,7 +1193,7 @@
           "speaker": "narrator",
           "text": "처음엔 회사가 실수한 거라고 생각했습니다.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_clock",
           "amb": "amb_home",
           "blackout": false
         },
@@ -1313,7 +1313,7 @@
           "speaker": "narrator",
           "text": "선희 씨가 본 것은 이름만이 아니었습니다.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_stamp",
           "amb": "amb_street",
           "blackout": false
         },
@@ -1435,7 +1435,7 @@
           "speaker": "narrator",
           "text": "그날 선희 씨는 법원 앞에서 혼자 버스를 탔습니다.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_clock",
           "amb": "amb_home",
           "blackout": false
         },
@@ -1576,7 +1576,7 @@
           "speaker": "v_F50A",
           "text": "형 벌이가 어디로 갔는지, 자네는 알잖아.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_clock",
           "amb": "amb_street",
           "blackout": false
         },
@@ -1720,7 +1720,7 @@
           "speaker": "narrator",
           "text": "그리고 갚아야 할 것들. 남은 건 빚이 더 컸습니다.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_clock",
           "amb": "amb_home",
           "blackout": false
         },
@@ -2012,7 +2012,7 @@
           "speaker": "v_F50B",
           "text": "임종은 제가 지켰어요. 그건 아무도 못 지웁니다.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_clock",
           "amb": "amb_street",
           "blackout": false
         },
@@ -2084,7 +2084,7 @@
           "speaker": "v_F50B",
           "text": "도장 안 찍은 값, 받으신 거잖아요.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_stamp",
           "amb": "amb_street",
           "blackout": false,
           "tag": "anger_line"
@@ -2157,7 +2157,7 @@
           "speaker": "narrator",
           "text": "미주 씨는 잔을 내려놓고, 대답하지 않았습니다.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_clock",
           "amb": "amb_street",
           "blackout": false
         },
@@ -2301,7 +2301,7 @@
           "speaker": "narrator",
           "text": "서로 낫다는 말은, 결국 누가 낫다는 말이었을까요.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_clock",
           "amb": "amb_home",
           "blackout": false
         },
@@ -2638,7 +2638,7 @@
           "speaker": "narrator",
           "text": "선희 씨는 아무 말도 하지 않았습니다.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_footsteps",
           "amb": "amb_court",
           "blackout": false
         },
@@ -2701,7 +2701,7 @@
           "speaker": "v_JUDGE",
           "text": "법은 가족에게 최소한의 몫을 남겨둡니다.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_paper",
           "amb": "amb_court",
           "blackout": false
         },
@@ -2782,7 +2782,7 @@
       "id": "act5",
       "title": "이긴 자리",
       "start_sec": 689,
-      "end_sec": 720,
+      "end_sec": 725.0,
       "bgm": "outro",
       "cuts": [
         {
@@ -2801,7 +2801,7 @@
           "speaker": "narrator",
           "text": "국그릇 하나, 밥그릇 하나. 상은 그렇게 차려졌습니다.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_clock",
           "amb": "amb_home",
           "blackout": false
         },
@@ -2883,8 +2883,22 @@
           "gfx": null,
           "sfx": null,
           "amb": "amb_street",
-          "blackout": true,
+          "blackout": false,
           "tag": "question"
+        },
+        {
+          "id": "A5-05-sub",
+          "sec": 5.0,
+          "bg": "daily_park",
+          "flashback": false,
+          "chars": [],
+          "speaker": "narrator",
+          "text": "다음 이야기도 놓치지 않으시려면, 구독 버튼을 눌러 두십시오.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": true,
+          "tag": "cta"
         }
       ]
     }
