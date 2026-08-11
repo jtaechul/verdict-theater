@@ -86,6 +86,7 @@ jobs:
           #    2026-08-07 에 그 안쪽이 깨진 채 초록불로 배포됐고, 관리자 페이지가
           #    '불러오는 중…' 에서 영영 멈췄다. 이제 안쪽까지 뽑아 검사하고 돌려 본다.
           node tools/check_admin.mjs
+          node tools/check_fold.mjs
 
       - name: 배포 + 비밀값 등록
         working-directory: admin

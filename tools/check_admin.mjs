@@ -44,7 +44,14 @@ try {
 globalThis.document = {
   getElementById: () => ({ innerHTML: '', value: '', style: {} }),
   addEventListener: () => {}, body: {}, querySelector: () => null,
+  // 접기 기능(foldify)이 쓰는 자리. 여기서는 빈 목록이라 아무것도 안 접지만,
+  // **부르다가 죽는지**는 이 한 줄로 잡힌다. 접히는 동작 자체는
+  // tools/check_fold.mjs 가 진짜 같은 화면을 만들어 따로 검사한다.
+  querySelectorAll: () => [],
+  createElement: () => ({ className: '', style: {}, appendChild() {},
+                          classList: { add() {}, toggle() {} } }),
 };
+globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
 globalThis.window = globalThis;
 globalThis.location = { href: '', pathname: '/', reload() {} };
 // ⭐ 빈 값이 아니라 **진짜 같은 값**을 준다.

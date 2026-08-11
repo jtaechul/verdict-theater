@@ -522,6 +522,31 @@ def make_shorts(llm, doc):
     return money.tidy_doc(out)
 
 
+def _load_unfinished(ep):
+    """도중에 멈춘 대본을 찾아 온다. (문서, 설명) 또는 (None, 왜 없는지).
+
+    두 군데를 본다. 멈춘 지점에 따라 남는 파일이 다르기 때문이다.
+      EP00N.draft.json  2단계까지 끝내고 3단계에서 멈춤 (검증·채점 전)
+      EP00N.json        건져내기로 저장됨 (덜 만들어진 채로)
+    초벌이 있으면 그쪽이 원본이므로 먼저 쓴다."""
+    for name, what in ((f"{ep}.draft.json", "초벌(검증 전)"),
+                       (f"{ep}.json", "저장된 대본")):
+        p = SCRIPTS / name
+        if not p.exists():
+            continue
+        try:
+            doc = json.loads(p.read_text(encoding="utf-8"))
+        except Exception as e:                      # noqa: BLE001
+            return None, f"{name} 을 읽을 수 없다: {e}"
+        n = (doc.get("meta") or {}).get("cut_count") or len(doc.get("cuts") or [])
+        if not n:
+            continue
+        return doc, f"{what} · 컷 {n}개를 그대로 쓴다"
+    return None, (f"{ep} 의 만들다 만 대본이 없다.\n"
+                  f"  data/scripts/ 에 {ep}.draft.json 도 {ep}.json 도 없다.\n"
+                  f"  처음부터 만들려면 --resume 없이 실행하라.")
+
+
 # ── 본체 ────────────────────────────────────────────────
 def main():
     ap = argparse.ArgumentParser()
@@ -532,11 +557,22 @@ def main():
                     help="대본을 쓸 곳. 비우면 CLAUDE_API_KEY 가 있을 때 claude")
     ap.add_argument("--shorts-only", default="", metavar="EP001",
                     help="이미 만든 대본에 쇼츠만 붙인다 (대본을 다시 만들지 않는다)")
+    ap.add_argument("--resume", default="", metavar="EP001",
+                    help="도중에 멈춘 대본을 **이어서** 마저 만든다 (컷은 그대로 두고 뒷단계만)")
     args = ap.parse_args()
 
     # 쇼츠만 다시: 26분짜리 대본 생성을 처음부터 되풀이할 이유가 없다.
     if args.shorts_only:
         return _make_shorts_only(args.shorts_only, args.writer)
+
+    # 이어서 만들기: 도중에 멈춘 대본을 **컷은 그대로 두고** 뒷단계만 마저 한다.
+    resume_doc = None
+    if args.resume:
+        resume_doc, why = _load_unfinished(args.resume)
+        if resume_doc is None:
+            print(f"❌ {why}")
+            return 6
+        print(f"이어서 만든다: {args.resume} · {why}")
 
     SCRIPTS.mkdir(parents=True, exist_ok=True)
     queue = _load(QUEUE, [])
@@ -560,7 +596,17 @@ def main():
         print("[dry-run] 선택 로직·검증·저장 경로 정상. 실제 생성은 API 키가 필요하다.")
         return 0 if not r.errors else 1
 
-    row = pick_case(queue, eps, args.case or None)
+    # 이어서 만들 때는 소재를 새로 고르지 않는다. 그 회차가 쓰던 판례를 그대로 쓴다.
+    row = None
+    if args.resume:
+        prev = eps.get(args.resume) or {}
+        cid0 = prev.get("case_id") or (resume_doc.get("meta") or {}).get("case_id") or ""
+        row = next((c for c in queue if c["case_id"] == cid0), None) or {
+            "case_id": cid0, "gate_score": prev.get("gate_score"),
+            "case_type": prev.get("case_type", ""),
+        }
+    else:
+        row = pick_case(queue, eps, args.case or None)
     if not row:
         # 아무것도 안 만들었으면 초록 체크를 주면 안 된다.
         # 운영자는 요약 화면만 본다. "성공"이라고 뜨면 대본이 생긴 줄 안다.
@@ -579,11 +625,17 @@ def main():
     cid = row["case_id"]
     path = CASES / f"{cid}.json"
     if not path.exists():
-        print(f"판례 파일이 없다: {path}")
-        return 2
-    case = json.loads(path.read_text(encoding="utf-8"))
+        # 이어서 만들 때는 판례 원문이 없어도 된다. 컷은 이미 다 만들어져 있고,
+        # 뒷단계(검증·채점·보강·쇼츠)는 대본만 보기 때문이다.
+        if not args.resume:
+            print(f"판례 파일이 없다: {path}")
+            return 2
+        print(f"  (판례 원문이 없지만 이어서 만드는 데는 필요 없다: {path.name})")
+        case = {"사건명": "", "판례내용": ""}
+    else:
+        case = json.loads(path.read_text(encoding="utf-8"))
 
-    ep = next_episode_id(eps)
+    ep = args.resume or next_episode_id(eps)
     print(f"회차 {ep} · 판례 {cid} · {case.get('사건명', '')}")
     print(f"게이트 {row.get('gate_score', '-')}점 · 유형 {row.get('case_type', '-')}")
     print()
@@ -617,28 +669,37 @@ def main():
     draft, sh, rd = None, {"shorts": []}, 0
     salvaged = False                                # 도중에 멈춰 '건져낸' 대본인가
     try:
-        # 1단계 설계
-        print("\n[1단계] 설계")
-        design = gen_design(llm, base, case)
-        print(f"  제목 후보: {design['meta'].get('title_candidates', [''])[0]}")
-        print(f"  인물 {len(design.get('characters', []))}명 · "
-              f"금액 배율 {design.get('anonymization', {}).get('amount_scale')}")
+        if resume_doc is not None:
+            # ⭐ 이어서 만들기 — 1·2단계를 건너뛴다.
+            #    컷을 만드는 이 두 단계가 전체 값의 8할이고 20분을 먹는다.
+            #    이미 만들어 둔 컷이 있는데 처음부터 다시 쓰는 것은 그냥 돈을 두 번 내는 것이다.
+            doc = resume_doc
+            draft = json.loads(json.dumps(doc))
+            print(f"\n[1·2단계 건너뜀] 이미 만들어 둔 컷 {doc['meta'].get('cut_count')}개를 그대로 쓴다")
+            print("  (여기서부터 검증·채점·보강·쇼츠만 한다 — 값이 8할 줄어든다)")
+        else:
+            # 1단계 설계
+            print("\n[1단계] 설계")
+            design = gen_design(llm, base, case)
+            print(f"  제목 후보: {design['meta'].get('title_candidates', [''])[0]}")
+            print(f"  인물 {len(design.get('characters', []))}명 · "
+                  f"금액 배율 {design.get('anonymization', {}).get('amount_scale')}")
 
-        # 2단계 막별 생성
-        print("\n[2단계] 막별 컷 생성")
-        cuts = {}
-        for act in ACTS:
-            c = gen_act(llm, base, design, act)
-            cuts[act[0]] = c
-            print(f"  {act[0]:5s} {len(c):3d}컷 {sum(x.get('sec', 0) for x in c):6.1f}초 "
-                  f"(목표 {act[4]}컷 {act[3] - act[2]}초)")
-        doc = assemble(design, cuts)
+            # 2단계 막별 생성
+            print("\n[2단계] 막별 컷 생성")
+            cuts = {}
+            for act in ACTS:
+                c = gen_act(llm, base, design, act)
+                cuts[act[0]] = c
+                print(f"  {act[0]:5s} {len(c):3d}컷 {sum(x.get('sec', 0) for x in c):6.1f}초 "
+                      f"(목표 {act[4]}컷 {act[3] - act[2]}초)")
+            doc = assemble(design, cuts)
 
-        # 여기까지가 가장 비싸고 오래 걸리는 부분이다(설계 1회 + 막별 6회).
-        # 뒤 단계에서 무슨 일이 생겨도 이걸 잃으면 안 된다 — 실제로 19분치가 날아갔다.
-        draft = json.loads(json.dumps(doc))
-        _save(SCRIPTS / f"{ep}.draft.json", draft)
-        print(f"  (초벌 저장: {ep}.draft.json — 뒤에서 실패해도 이건 남는다)")
+            # 여기까지가 가장 비싸고 오래 걸리는 부분이다(설계 1회 + 막별 6회).
+            # 뒤 단계에서 무슨 일이 생겨도 이걸 잃으면 안 된다 — 실제로 19분치가 날아갔다.
+            draft = json.loads(json.dumps(doc))
+            _save(SCRIPTS / f"{ep}.draft.json", draft)
+            print(f"  (초벌 저장: {ep}.draft.json — 뒤에서 실패해도 이건 남는다)")
 
         # 기계 검증 → 형식 보강
         print("\n[3단계] 기계 검증")

@@ -220,6 +220,15 @@ h1 span{color:var(--gold)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;
 padding:16px;margin-bottom:12px}
 .card h2{margin:0 0 12px;font-size:15px;color:var(--dim);font-weight:600;letter-spacing:.3px}
+/* 접었다 폈다 — 제목 줄 전체가 누르는 자리다(손가락으로 쉽게 맞도록 48px 확보) */
+.card h2.ft{cursor:pointer;display:flex;align-items:center;justify-content:space-between;
+gap:10px;margin:-4px 0 0;padding:10px 0;min-height:44px;user-select:none}
+.card h2.ft.on{margin:-4px 0 8px}
+/* 삼각형은 글꼴이 아니라 테두리로 그린다 — 기기마다 모양이 다를 일이 없다 */
+.ca{width:0;height:0;flex:0 0 auto;border-left:5px solid transparent;
+border-right:5px solid transparent;border-top:6px solid var(--dim);
+transition:transform .15s;transform:rotate(-90deg)}
+.ca.on{transform:none}
 .row{display:flex;justify-content:space-between;align-items:center;gap:10px;
 padding:11px 0;border-bottom:1px solid var(--line)}
 .row:last-child{border-bottom:0}
@@ -456,6 +465,7 @@ function home() {
   }
 
   document.getElementById('app').innerHTML = h;
+  foldify();
   if (S.audition) fillAudition();
 }
 
@@ -718,6 +728,53 @@ function seekAudition(el) {
   a.play().catch(() => {});
 }
 
+// ── 접었다 폈다 ─────────────────────────────────────────
+//
+// 손님: "안 쓰는 메뉴는 감추기(축소) 기능 활성화 시켜. 스크롤하다가 손가락 뿌러지겠다"
+//
+// 카드마다 코드를 고치지 않는다. **다 그린 뒤에 한 번 훑어서** 제목 아래를
+// 통째로 접을 수 있게 만든다. 카드를 새로 만들어도 저절로 접히게 된다.
+// 접은 상태는 이 기기에 기억되므로, 한 번 접어두면 다음에 열어도 접혀 있다.
+const FOLD_OPEN = ['다음에 할 일', '지금 상태', '회차'];   // 처음엔 펴 두는 것
+const foldKey = (t) => 'fold:' + t.slice(0, 24);
+
+function setFold(h, body, caret, open) {
+  body.style.display = open ? '' : 'none';
+  caret.classList.toggle('on', open);
+  h.classList.toggle('on', open);
+}
+
+function foldify() {
+  document.querySelectorAll('#app > .card').forEach(card => {
+    const h = card.querySelector('h2');
+    if (!h || h.dataset.ft || h.parentElement !== card) return;
+    h.dataset.ft = '1';
+    const title = (h.textContent || '').trim();
+
+    // 제목 아래 내용을 통째로 한 봉지에 담는다
+    const body = document.createElement('div');
+    while (h.nextSibling) body.appendChild(h.nextSibling);
+    card.appendChild(body);
+
+    const caret = document.createElement('span');   // 삼각형 — 테두리로 그린다
+    caret.className = 'ca';
+    h.classList.add('ft');
+    h.appendChild(caret);
+
+    const saved = localStorage.getItem(foldKey(title));
+    const open = saved === null
+      ? FOLD_OPEN.some(x => title.indexOf(x) === 0)
+      : saved === '1';
+    setFold(h, body, caret, open);
+
+    h.onclick = () => {
+      const now = body.style.display === 'none';
+      setFold(h, body, caret, now);
+      try { localStorage.setItem(foldKey(title), now ? '1' : '0'); } catch (e) {}
+    };
+  });
+}
+
 // ── 다음에 할 일 (맨 위 · 한 번만 누르면 되는 자리) ────────
 //
 // 아래 '실행' 칸에는 고를 것이 네 개씩 붙어 있다. 그때마다 "무엇을 골라야 하지"
@@ -735,11 +792,17 @@ function nextStep(eps, ready, ungated) {
              body: '아직 소재가 하나도 없습니다. 기록을 받아 오는 것부터 시작합니다.',
              btn: '재판 기록 모으기', act: 'goNext(\\'collect\\')' };
 
+  // ⭐ 만들다 만 대본은 **처음부터 다시 만들지 않는다.**
+  //    컷을 쓰는 1·2단계가 값의 8할이고 20분을 먹는다. 이미 있는 컷을 그대로 두고
+  //    뒷단계만 마저 하면 값이 8할 줄고 5분이면 끝난다.
   const stuck = eps.find(([, v]) => v.stage === 'scripting');
   if (stuck)
     return { title: esc(stuck[0]) + ' 대본이 덜 만들어졌습니다',
-             body: '도중에 멈춘 대본입니다. 다시 만들면 처음부터 새로 씁니다.',
-             btn: '대본 다시 만들기', act: 'goNext(\\'script\\')' };
+             body: '도중에 멈춘 대본입니다. <b>이미 써 둔 컷은 그대로 두고</b> '
+                 + '남은 단계만 마저 합니다.<br>'
+                 + '<span style="color:#9599ab">약 5분 · 처음부터 다시 만드는 것보다 '
+                 + '값이 8할쯤 적게 듭니다.</span>',
+             btn: '이어서 마저 만들기', act: 'goNext(\\'resume\\')' };
 
   if (ready.length)
     return { title: '대본을 만들 차례입니다',
@@ -782,6 +845,9 @@ const NEXT_RUN = {
              inputs: { mode: '소재 심사만', writer: '자동 (Claude 우선)', gate_limit: '10' } },
   script:  { file: 'script.yml', name: '대본 만들기',
              inputs: { mode: '둘다', writer: '자동 (Claude 우선)', gate_limit: '10' } },
+  // 회차를 안 보낸다 — 워크플로가 만들다 만 것을 알아서 찾는다
+  resume:  { file: 'script.yml', name: '이어서 마저 만들기',
+             inputs: { mode: '이어서 마저 만들기', writer: '자동 (Claude 우선)' } },
 };
 
 async function goNext(key) {
@@ -1123,6 +1189,7 @@ function play(ep, i) {
     + '</div></div>';
 
   document.getElementById('app').innerHTML = h;
+  foldify();
   scrollTo(0, 0);
 }
 
@@ -1228,6 +1295,7 @@ function render(ep, d, sh) {
   });
   h += '</div>';
   document.getElementById('app').innerHTML = h;
+  foldify();
   scrollTo(0, 0);
 }
 

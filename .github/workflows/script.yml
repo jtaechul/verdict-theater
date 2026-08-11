@@ -20,13 +20,14 @@ on:
           - '둘다'
           - '소재 심사만'
           - '대본 생성만'
+          - '이어서 마저 만들기'
           - '쇼츠만 다시'
       case:
         description: '판례일련번호 (비우면 대기열에서 가장 좋은 소재를 고름)'
         required: false
         default: ''
       episode:
-        description: "회차 ('쇼츠만 다시' 를 고를 때만 씀. 예: EP001)"
+        description: "회차 ('쇼츠만 다시' · '이어서 마저 만들기' 일 때 씀. 예: EP001)"
         required: false
         default: ''
       gate_limit:
@@ -109,8 +110,41 @@ jobs:
       # 돈을 쓰기 전에 확인한다. 1초면 끝나고 비용은 0원이다.
       # 2026-08-10 에 컷 120개(Opus 19분치)를 다 만들어 놓고 마지막에 잃었다.
       # "도중에 멈춰도 만든 것은 남는가" 를 매번 먼저 검사해 그 사고를 막는다.
-      - name: 안전장치 점검 — 도중에 멈춰도 대본이 남는가 (값 0원)
-        run: python3 tools/script_salvage_test.py
+      - name: 안전장치 점검 — 멈춰도 남는가 · 이어서 만들 수 있는가 (값 0원)
+        run: |
+          python3 tools/script_salvage_test.py
+          python3 tools/script_resume_test.py
+
+      # 도중에 멈춘 대본을 **이어서** 마저 만든다.
+      # 컷을 만드는 1·2단계가 전체 값의 8할이고 20분을 먹는다. 이미 만들어 둔
+      # 컷이 있는데 처음부터 다시 쓰는 것은 그냥 돈을 두 번 내는 것이다.
+      - name: 이어서 마저 만들기 (컷은 그대로, 뒷단계만)
+        if: inputs.mode == '이어서 마저 만들기'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+        run: |
+          set -o pipefail
+          EP="${{ inputs.episode }}"
+          if [ -z "$EP" ]; then
+            # 회차를 안 적었으면 만들다 만 것을 알아서 찾는다 (초벌이 있는 것 우선)
+            EP=$(ls -1 data/scripts/EP*.draft.json 2>/dev/null | sort | tail -1 \
+                 | xargs -r basename | sed 's/\.draft\.json$//')
+          fi
+          if [ -z "$EP" ]; then
+            echo "## 이어서 만들 대본이 없습니다" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "만들다 만 대본이 하나도 없습니다. '둘다' 로 새로 만드십시오." >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::이어서 만들 대본이 없습니다."
+            exit 1
+          fi
+          echo "이어서 만들 회차: $EP"
+          case "${{ inputs.writer }}" in
+            "Claude") W="--writer claude" ;;
+            "Gemini") W="--writer gemini" ;;
+            *) W="" ;;
+          esac
+          python3 src/script.py --resume "$EP" $W 2>&1 | tee script.log
 
       # 대본은 이미 있고 쇼츠만 실패했을 때. 26분짜리 생성을 되풀이하지 않는다.
       - name: 쇼츠만 다시 만들기
@@ -140,6 +174,7 @@ jobs:
 
       - name: 소재 심사 (3차 드라마성 평가)
         if: inputs.mode != '대본 생성만' && inputs.mode != '쇼츠만 다시'
+            && inputs.mode != '이어서 마저 만들기'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
@@ -157,6 +192,7 @@ jobs:
         # success() 를 적어두는 이유: 심사가 죽었으면 대본도 만들면 안 된다.
         # 안 적어도 같게 동작하지만(기본값), 돈이 걸린 조건이라 눈에 보이게 둔다.
         if: success() && inputs.mode != '소재 심사만' && inputs.mode != '쇼츠만 다시'
+            && inputs.mode != '이어서 마저 만들기'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
