@@ -938,6 +938,74 @@ def check_criminal_words(doc, r):
         r.ok(f"민사 사건({case})에 형사 낱말 없음")
 
 
+def check_voice_cards(doc, r):
+    """인물마다 말투 카드가 있고, 서로 다른가. (2026-08-11 신설)
+
+    왜 기계가 보나
+        "인물마다 말투를 다르게 하라" 고 프롬프트에 적어 두는 것만으로는
+        안 지켜진다. 쇼츠 컷 속도가 그랬다 — 규칙을 적어 뒀는데도 실측하니
+        평균 3.9초였고, 기계가 보기 시작하자 그날로 2.1초가 됐다.
+        말투 카드도 똑같다. **기계가 세지 않으면 채워 넣지 않는다.**
+
+    무엇을 보나
+        ① 대사가 있는 인물에게 voice_card 가 있는가
+        ② 세 칸(speech·habit·avoid)이 다 차 있는가
+        ③ 인물끼리 카드가 겹치지 않는가 — 겹치면 둘이 같은 사람처럼 말한다
+    """
+    chars = doc.get("characters") or []
+    if not chars:
+        return
+
+    # 실제로 대사가 있는 인물만 따진다. 이름만 나오는 인물은 말투가 필요 없다.
+    speaking = set()
+    for _, cut in all_cuts(doc):
+        sp = str(cut.get("speaker") or "")
+        if sp.startswith("v_"):
+            speaking.add(sp[2:])
+
+    missing, thin = [], []
+    seen = {}
+    dup = []
+    for ch in chars:
+        code = ch.get("code")
+        if code not in speaking:
+            continue
+        vc = ch.get("voice_card") or {}
+        if not vc:
+            missing.append(code)
+            continue
+        blank = [k for k in ("speech", "habit", "avoid")
+                 if not str(vc.get(k) or "").strip()]
+        if blank:
+            thin.append(f"{code}({'·'.join(blank)} 비어 있음)")
+            continue
+        key = str(vc.get("speech", "")).strip() + "|" + str(vc.get("habit", "")).strip()
+        if key in seen:
+            dup.append(f"{seen[key]}·{code}")
+        else:
+            seen[key] = code
+
+    # ⚠️ 이 규칙이 생기기 **전에** 만든 대본을 되레 막으면 안 된다.
+    #    (EP002 는 이 규칙 없이 만들어졌고, 지금 영상으로 넘어갈 차례다)
+    #    아무도 카드가 없으면 = 옛 대본 → 알림만. 일부만 없으면 = 새 대본인데
+    #    빠뜨린 것 → 오류. 새로 만드는 대본은 프롬프트가 항상 넣으므로 저절로 조여진다.
+    old_style = len(missing) == len([c for c in chars if c.get("code") in speaking])
+    if missing and old_style:
+        r.warn("말투", f"말투 카드(voice_card)가 없는 옛 대본이다 ({len(missing)}명). "
+                       f"다음에 만드는 대본부터 인물마다 말투가 못 박힌다")
+    elif missing:
+        r.error("말투", f"대사가 있는 인물에 말투 카드(voice_card)가 없다: "
+                        f"{', '.join(missing)} — 인물마다 말투를 못 박아야 대사가 안 섞인다")
+    if thin:
+        r.error("말투", f"말투 카드가 덜 찼다: {', '.join(thin)} "
+                        f"(speech·habit·avoid 세 칸을 다 채운다)")
+    if dup:
+        r.error("말투", f"말투가 서로 똑같은 인물이 있다: {', '.join(dup)} — "
+                        f"대사를 바꿔 넣어도 티가 안 난다는 뜻이다")
+    if not (missing or thin or dup) and speaking:
+        r.ok(f"말투 카드 {len(seen)}명 · 서로 다름")
+
+
 def check_law(doc, r):
     law = doc.get("law", {})
     refs = law.get("refs_from_case", [])
@@ -1024,6 +1092,62 @@ def check_shorts(doc, r):
             r.error(f"쇼츠{no}", "전용 도입·마무리 문장이 있어야 한다")
     if not any(e[0].startswith("쇼츠") for e in r.errors):
         r.ok("쇼츠 3편 구간·길이·도입/마무리 정상")
+
+
+def check_short_cover(sdoc, r):
+    """쇼츠 맨 앞에 표지 컷이 있는가. (2026-08-11 신설)
+
+    쇼츠는 표지를 따로 못 올린다 — **유튜브가 첫 프레임을 표지로 쓴다.**
+    그런데 첫 컷이 그냥 이야기 첫 장면이면, 목록에서는 배경에 작은 이름표
+    하나만 보인다. 넘기다 멈출 이유가 없다. 그래서 맨 앞 0.8초를 표지로 쓴다.
+
+    규칙을 적어만 두면 안 지켜진다(쇼츠 컷 속도가 그랬다). 그래서 기계가 센다.
+    """
+    shorts = [x for x in (sdoc.get("shorts") or []) if (x.get("cuts") or [])]
+    if not shorts:
+        return
+
+    # ⚠️ 이 규칙이 생기기 **전에** 만든 쇼츠를 되레 막으면 안 된다.
+    #    (EP002 는 이 규칙 없이 만들어졌고, 지금 영상으로 넘어갈 차례다)
+    #    하나도 없으면 = 옛 대본 → 알림만. 일부만 있으면 = 새 대본인데 빠뜨린 것 → 오류.
+    have = [bool((x["cuts"][0]).get("cover")) for x in shorts]
+    if not any(have):
+        r.warn("쇼츠", f"표지 컷이 없는 옛 대본이다 ({len(shorts)}편). "
+                       f"다음에 만드는 쇼츠부터 맨 앞 0.8초가 표지가 된다")
+        return
+
+    for sh in shorts:
+        no = sh.get("no", "?")
+        cuts = sh.get("cuts") or []
+        c0 = cuts[0]
+        intro = str(sh.get("intro_line") or "").strip()
+
+        if not c0.get("cover"):
+            r.error(f"쇼츠{no}", "맨 앞에 표지 컷이 없다 — 유튜브는 첫 프레임을 "
+                                 "표지로 쓴다. cuts[0] 에 cover:true 인 0.8초 컷을 둔다")
+            continue
+
+        sec = float(c0.get("sec") or 0)
+        if not (0.6 <= sec <= 1.0):
+            r.error(f"쇼츠{no}", f"표지 컷이 {sec}초다 — 0.8초여야 한다 "
+                                 f"(이야기에서 빌려 쓰는 시간이라 길면 안 된다)")
+        g = c0.get("gfx") or {}
+        if g.get("type") != "amount":
+            r.error(f"쇼츠{no}", "표지 컷에 금액(amount) 그래픽이 없다 — "
+                                 "큰 숫자가 이 채널의 후킹 요소다")
+        if str(c0.get("text") or "").strip():
+            r.error(f"쇼츠{no}", "표지 컷에 자막이 들어 있다 — 큰 글씨 띠와 겹친다. "
+                                 "text 는 빈 문자열로 둔다")
+        if len(c0.get("chars") or []) < 2:
+            r.error(f"쇼츠{no}", "표지 컷에 인물이 둘 미만이다 — 억울한 쪽과 "
+                                 "뻔뻔한 쪽이 나란히 있어야 0.5초에 읽힌다")
+        if not intro:
+            r.error(f"쇼츠{no}", "intro_line 이 비어 있다 — 표지의 큰 글씨가 된다")
+        elif len(intro) > 18:
+            r.error(f"쇼츠{no}", f"intro_line 이 {len(intro)}자다 — 18자 이내여야 "
+                                 f"폰에서 읽힌다: '{intro}'")
+        else:
+            r.ok(f"쇼츠{no} 표지 {sec}초 · '{intro}'")
 
 
 def check_short_dup(sdoc, r):
@@ -1124,8 +1248,12 @@ def validate_doc(doc, mf=None, with_shorts=True, shorts_doc=None):
     check_criminal_words(doc, r)
     check_ages(doc, r)
     check_law(doc, r)
+    check_voice_cards(doc, r)
     if with_shorts:
         check_shorts(doc, r)
+        # ⭐ 표지 컷은 `doc` 안의 shorts 로도 볼 수 있다(컷 구조만 보면 되기 때문).
+        #    별도 파일을 받았으면 그쪽을 우선한다 — 그게 실제로 렌더되는 대본이다.
+        check_short_cover(shorts_doc or doc, r)
         # ⭐ 쇼츠 **실제 대본 파일**(.shorts.json)까지 본다. 여기에만 컷 글자가 있어서,
         #    지금까지 '마지막 자막 두 번' 같은 것을 검사할 방법이 아예 없었다.
         if shorts_doc:

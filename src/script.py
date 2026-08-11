@@ -192,7 +192,7 @@ DESIGN_TASK = """
             "logline": "...", "runtime_sec": 720, "cut_count": 113 },
   "anonymization": { ... 위 규칙대로 ... },
   "law": { "refs_from_case": [...], "refs_source": "참조조문|본문추출|없음", "explain_5act": "..." },
-  "characters": [ ... ],
+  "characters": [ ... 인물마다 voice_card(speech·habit·avoid) 를 반드시 넣는다 ... ],
   "acts": [
     { "id": "hook", "title": "막 제목", "start_sec": 0, "end_sec": 22,
       "bgm": "hook", "cuts": [],
@@ -214,6 +214,11 @@ ACT_TASK = """
 # ⚠️ 지금은 2단계다 — 막 하나의 컷만 쓴다
 
 ## 이미 정해진 설계 (반드시 그대로 따른다)
+
+⚠️ `characters[].voice_card` 는 **지시다.** 그 인물의 모든 대사가
+   `speech`(높임말/반말·온도) · `habit`(말버릇) · `avoid`(안 쓰는 말) 를 지켜야 한다.
+   두 인물의 대사를 서로 바꿔 넣어도 티가 안 나면 다시 쓴다.
+   그리고 **서로 아는 것을 굳이 입 밖에 내지 않는다** — 그런 정보는 나레이션으로 넘긴다.
 
 ```json
 {{DESIGN}}
