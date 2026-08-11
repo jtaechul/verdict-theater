@@ -1,0 +1,813 @@
+{
+  "case_id": "230761",
+  "shorts": [
+    {
+      "no": 1,
+      "kind": "궁금증형",
+      "publish_offset_days": 1,
+      "est_sec": 28.5,
+      "intro_line": "장례식의 낯선 여자",
+      "outro_line": "결말은 본편에서 확인하세요.",
+      "hook_reason": "동거인의 대사 '저한테 다 맡기고 가셨어요'가 첫 화면에서 상황을 즉시 뒤집으며 정체를 궁금하게 만든다",
+      "cuts": [
+        {
+          "id": "S1-01",
+          "from": "H01",
+          "sec": 2.0,
+          "bg": "funeral_altar",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50B",
+            "pose": "bust_cold",
+            "pos_y": 0.35,
+            "scale": 1.4
+          },
+          "speaker": "v_F50B",
+          "text": "저한테 다 맡기고 가셨어요.",
+          "gfx": {
+            "type": "nametag",
+            "text": "한미주 · 51세 · 동거인"
+          },
+          "sfx": null,
+          "amb": "amb_funeral"
+        },
+        {
+          "id": "S1-02",
+          "from": "H02",
+          "sec": 2.0,
+          "bg": "funeral_hall",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_shock",
+            "pos_y": 0.38,
+            "scale": 1.4
+          },
+          "speaker": "narrator",
+          "text": "저는 이십 년 아내입니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤선희 · 58세 · 아내"
+          },
+          "sfx": null,
+          "amb": "amb_funeral"
+        },
+        {
+          "id": "S1-03",
+          "from": "H04",
+          "sec": 2.0,
+          "bg": "funeral_parking",
+          "bg_crop": "left",
+          "flashback": false,
+          "char": {
+            "code": "M50B",
+            "pose": "bust_neutral",
+            "pos_y": 0.4,
+            "scale": 1.35
+          },
+          "speaker": "v_M50B",
+          "text": "오늘은 그냥 돌아가세요.",
+          "gfx": {
+            "type": "nametag",
+            "text": "강태원 · 56세 · 시동생"
+          },
+          "sfx": null,
+          "amb": "amb_funeral"
+        },
+        {
+          "id": "S1-04",
+          "from": "H05",
+          "sec": 2.0,
+          "bg": "funeral_parking",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_sad",
+            "pos_y": 0.4,
+            "scale": 1.35
+          },
+          "speaker": "narrator",
+          "text": "그는 오래전 집을 나갔었다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S1-05",
+          "from": "A2-04",
+          "sec": 2.0,
+          "bg": "home_kitchen",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_shock",
+            "pos_y": 0.35,
+            "scale": 1.4
+          },
+          "speaker": "v_F50A",
+          "text": "수익자 이름이… 내가 아니야.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S1-06",
+          "from": "A2-09",
+          "sec": 2.0,
+          "bg": "office_bank",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_shock",
+            "pos_y": 0.35,
+            "scale": 1.4
+          },
+          "speaker": "narrator",
+          "text": "보험 아홉 건, 전부 다른 사람.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S1-07",
+          "from": "A2-12",
+          "sec": 2.0,
+          "bg": "office_registry",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_shock",
+            "pos_y": 0.35,
+            "scale": 1.45
+          },
+          "speaker": "narrator",
+          "text": "서류 아래 날짜가 있었다.",
+          "gfx": null,
+          "sfx": "sfx_heartbeat",
+          "amb": "amb_street"
+        },
+        {
+          "id": "S1-08",
+          "from": "A2-13",
+          "sec": 2.2,
+          "bg": "office_registry",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_shock",
+            "pos_y": 0.35,
+            "scale": 1.5
+          },
+          "speaker": "narrator",
+          "text": "법원이 진 바로 그날이었다.",
+          "gfx": null,
+          "sfx": "sfx_heartbeat",
+          "amb": "amb_street",
+          "tag": "twist"
+        },
+        {
+          "id": "S1-09",
+          "from": null,
+          "sec": 2.0,
+          "bg": "office_registry",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_shock",
+            "pos_y": 0.35,
+            "scale": 1.45
+          },
+          "speaker": "narrator",
+          "text": "같은 날, 보험금 주인이 바뀌었다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S1-10",
+          "from": "A2-18",
+          "sec": 2.0,
+          "bg": "office_registry",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_shock",
+            "pos_y": 0.35,
+            "scale": 1.4
+          },
+          "speaker": "narrator",
+          "text": "서명란엔 다른 여자 이름이.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S1-11",
+          "from": "A2-19",
+          "sec": 2.0,
+          "bg": "office_registry",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "bust_shock",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "narrator",
+          "text": "관계란엔 '사실혼'이라고.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S1-12",
+          "from": "A2-16",
+          "sec": 2.0,
+          "bg": "home_living_day",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_sad",
+            "pos_y": 0.4,
+            "scale": 1.35
+          },
+          "speaker": "narrator",
+          "text": "혼자 버스를 탔습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S1-13",
+          "from": null,
+          "sec": 2.3,
+          "bg": "home_living_day",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_sad",
+            "pos_y": 0.4,
+            "scale": 1.35
+          },
+          "speaker": "narrator",
+          "text": "왜 그날, 그곳에 갔을까요.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home"
+        }
+      ],
+      "youtube": {
+        "title": "패소한 날, 남편이 간 곳은 은행이었다",
+        "description_body": "본편 링크와 고지문은 시스템이 붙인다. 여기에는 한 줄 상황만.",
+        "tags": [
+          "유류분",
+          "상속",
+          "가족드라마"
+        ]
+      }
+    },
+    {
+      "no": 2,
+      "kind": "분노형",
+      "publish_offset_days": 2,
+      "est_sec": 25.5,
+      "intro_line": "동거인의 뻔뻔한 말",
+      "outro_line": "여러분이라면 어떻게 하시겠습니까?",
+      "hook_reason": "첫 컷에 '도장 안 찍은 값, 받으신 거죠'라는 뻔뻔한 대사를 바로 배치해 1초 안에 분노를 유발한다",
+      "cuts": [
+        {
+          "id": "S2-01",
+          "from": "A3-09",
+          "sec": 2.4,
+          "bg": "daily_cafe",
+          "bg_crop": "left",
+          "flashback": false,
+          "char": {
+            "code": "F50B",
+            "pose": "face_cold",
+            "pos_y": 0.35,
+            "scale": 1.5
+          },
+          "speaker": "v_F50B",
+          "text": "도장 안 찍은 값, 받으신 거죠.",
+          "gfx": {
+            "type": "nametag",
+            "text": "한미주 · 51세 · 동거인"
+          },
+          "sfx": null,
+          "amb": "amb_street",
+          "tag": "anger_line"
+        },
+        {
+          "id": "S2-02",
+          "from": "A3-08",
+          "sec": 2.0,
+          "bg": "daily_cafe",
+          "bg_crop": "left",
+          "flashback": false,
+          "char": {
+            "code": "F50B",
+            "pose": "bust_cold",
+            "pos_y": 0.38,
+            "scale": 1.4
+          },
+          "speaker": "v_F50B",
+          "text": "몇 번을 빌었잖아요, 이혼을.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-03",
+          "from": "A3-06",
+          "sec": 2.0,
+          "bg": "daily_cafe",
+          "bg_crop": "left",
+          "flashback": false,
+          "char": {
+            "code": "F50B",
+            "pose": "face_neutral",
+            "pos_y": 0.38,
+            "scale": 1.4
+          },
+          "speaker": "v_F50B",
+          "text": "임종은 제가 지켰어요.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-04",
+          "from": "A3-05",
+          "sec": 2.0,
+          "bg": "daily_cafe",
+          "bg_crop": "left",
+          "flashback": false,
+          "char": {
+            "code": "F50B",
+            "pose": "bust_neutral",
+            "pos_y": 0.38,
+            "scale": 1.4
+          },
+          "speaker": "v_F50B",
+          "text": "육 년, 병원 데려간 사람 저예요.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-05",
+          "from": "A3-03",
+          "sec": 2.2,
+          "bg": "daily_cafe",
+          "bg_crop": "right",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "bust_sad",
+            "pos_y": 0.4,
+            "scale": 1.4
+          },
+          "speaker": "v_F50A",
+          "text": "보험 서류에, 왜 당신 이름이.",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤선희 · 58세 · 아내"
+          },
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-06",
+          "from": "A3-04",
+          "sec": 2.0,
+          "bg": "daily_cafe",
+          "bg_crop": "left",
+          "flashback": false,
+          "char": {
+            "code": "F50B",
+            "pose": "face_cold",
+            "pos_y": 0.35,
+            "scale": 1.45
+          },
+          "speaker": "v_F50B",
+          "text": "제가 조른 적 없어요.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-07",
+          "from": "A3-11",
+          "sec": 2.0,
+          "bg": "daily_cafe",
+          "bg_crop": "right",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "bust_neutral",
+            "pos_y": 0.4,
+            "scale": 1.4
+          },
+          "speaker": "v_F50A",
+          "text": "제 이름은, 누가 지웠나요.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-08",
+          "from": "A3-12",
+          "sec": 2.0,
+          "bg": "daily_cafe",
+          "bg_crop": "left",
+          "flashback": false,
+          "char": {
+            "code": "F50B",
+            "pose": "face_neutral",
+            "pos_y": 0.38,
+            "scale": 1.4
+          },
+          "speaker": "narrator",
+          "text": "미주 씨는 대답하지 않았다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-09",
+          "from": "A3-16",
+          "sec": 2.2,
+          "bg": "home_living_day",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "bust_cold",
+            "pos_y": 0.4,
+            "scale": 1.4
+          },
+          "speaker": "v_F50A",
+          "text": "다들 알았는데, 나만 몰랐다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S2-10",
+          "from": "A3-17",
+          "sec": 2.0,
+          "bg": "home_living_day",
+          "bg_crop": "left",
+          "flashback": false,
+          "char": {
+            "code": "M50B",
+            "pose": "face_neutral",
+            "pos_y": 0.38,
+            "scale": 1.4
+          },
+          "speaker": "v_M50B",
+          "text": "조용히 끝내는 게 낫습니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "강태원 · 56세 · 시동생"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S2-11",
+          "from": "A3-18",
+          "sec": 2.3,
+          "bg": "home_living_day",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_sad",
+            "pos_y": 0.4,
+            "scale": 1.4
+          },
+          "speaker": "narrator",
+          "text": "누가 낫다는 말이었을까요.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S2-12",
+          "from": null,
+          "sec": 2.4,
+          "bg": "home_living_day",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_sad",
+            "pos_y": 0.4,
+            "scale": 1.4
+          },
+          "speaker": "narrator",
+          "text": "여러분이라면 어떻게 하시겠습니까?",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home"
+        }
+      ],
+      "youtube": {
+        "title": "동거인 앞에서 아내가 들은 그 말",
+        "description_body": "본편 링크와 고지문은 시스템이 붙인다. 여기에는 한 줄 상황만.",
+        "tags": [
+          "유류분",
+          "가족갈등",
+          "동거인"
+        ]
+      }
+    },
+    {
+      "no": 3,
+      "kind": "공감형",
+      "publish_offset_days": 4,
+      "est_sec": 26.3,
+      "intro_line": "이십 년 며느리였다",
+      "outro_line": "그 말 한마디를 못 해서 멀어진 가족이, 당신에게도 있습니까?",
+      "hook_reason": "시어머니의 '네가 내 딸이지, 남이냐'라는 대사가 첫 화면에서 따뜻함과 아픔을 동시에 던져 몰입시킨다",
+      "cuts": [
+        {
+          "id": "S3-01",
+          "from": "A1-11",
+          "sec": 2.0,
+          "bg": "home_kitchen",
+          "bg_crop": "center",
+          "flashback": true,
+          "char": {
+            "code": "F70",
+            "pose": "bust_sad",
+            "pos_y": 0.38,
+            "scale": 1.4
+          },
+          "speaker": "v_F70",
+          "text": "네가 내 딸이지, 남이냐.",
+          "gfx": {
+            "type": "nametag",
+            "text": "시어머니 · 82세"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-02",
+          "from": "A1-12",
+          "sec": 2.0,
+          "bg": "home_kitchen",
+          "bg_crop": "center",
+          "flashback": true,
+          "char": {
+            "code": "F50A",
+            "pose": "face_neutral",
+            "pos_y": 0.38,
+            "scale": 1.4
+          },
+          "speaker": "v_F50A",
+          "text": "어머니, 저 아직 안 힘들어요.",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤선희 · 58세 · 아내"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-03",
+          "from": "A1-09",
+          "sec": 2.0,
+          "bg": "home_kitchen",
+          "bg_crop": "center",
+          "flashback": true,
+          "char": {
+            "code": "F50A",
+            "pose": "face_neutral",
+            "pos_y": 0.4,
+            "scale": 1.4
+          },
+          "speaker": "narrator",
+          "text": "손엔 마늘 냄새가 배어 있었다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-04",
+          "from": "A1-10",
+          "sec": 2.0,
+          "bg": "daily_sidedish",
+          "bg_crop": "center",
+          "flashback": true,
+          "char": {
+            "code": "F50A",
+            "pose": "bust_neutral",
+            "pos_y": 0.4,
+            "scale": 1.4
+          },
+          "speaker": "narrator",
+          "text": "김장 스무 포기, 목이 굳었다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-05",
+          "from": "A1-14",
+          "sec": 2.0,
+          "bg": "home_kitchen",
+          "bg_crop": "center",
+          "flashback": true,
+          "char": {
+            "code": "F50A",
+            "pose": "bust_sad",
+            "pos_y": 0.4,
+            "scale": 1.4
+          },
+          "speaker": "narrator",
+          "text": "밥상은 식은 채 치워졌다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-06",
+          "from": "A1-16",
+          "sec": 2.0,
+          "bg": "home_living_night",
+          "bg_crop": "center",
+          "flashback": true,
+          "char": {
+            "code": "F50A",
+            "pose": "face_neutral",
+            "pos_y": 0.4,
+            "scale": 1.4
+          },
+          "speaker": "narrator",
+          "text": "묻고 싶었지만, 묻지 않았다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-07",
+          "from": "A1-19",
+          "sec": 2.0,
+          "bg": "home_entrance",
+          "bg_crop": "center",
+          "flashback": true,
+          "char": {
+            "code": "F50A",
+            "pose": "face_sad",
+            "pos_y": 0.4,
+            "scale": 1.4
+          },
+          "speaker": "v_F50A",
+          "text": "길이 막혔나 보다, 그렇게.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-08",
+          "from": "A3-19",
+          "sec": 2.0,
+          "bg": "home_kitchen",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "bust_neutral",
+            "pos_y": 0.4,
+            "scale": 1.4
+          },
+          "speaker": "narrator",
+          "text": "장례 후에도 밥을 지었다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-09",
+          "from": "A3-20",
+          "sec": 2.0,
+          "bg": "home_kitchen",
+          "bg_crop": "left",
+          "flashback": false,
+          "char": {
+            "code": "F70",
+            "pose": "bust_sad",
+            "pos_y": 0.38,
+            "scale": 1.4
+          },
+          "speaker": "v_F70",
+          "text": "그 서류 얘기, 듣고 싶지 않다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-10",
+          "from": "A3-21",
+          "sec": 2.0,
+          "bg": "home_kitchen",
+          "bg_crop": "right",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "bust_sad",
+            "pos_y": 0.4,
+            "scale": 1.4
+          },
+          "speaker": "v_F50A",
+          "text": "저는 이십 년 이 집 사람이었어요.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-11",
+          "from": "A3-22",
+          "sec": 2.0,
+          "bg": "home_kitchen",
+          "bg_crop": "left",
+          "flashback": false,
+          "char": {
+            "code": "F70",
+            "pose": "face_cry",
+            "pos_y": 0.38,
+            "scale": 1.4
+          },
+          "speaker": "v_F70",
+          "text": "나는 이제 누구 편도 못 든다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-12",
+          "from": "A3-24",
+          "sec": 2.0,
+          "bg": "home_entrance",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "bust_sad",
+            "pos_y": 0.4,
+            "scale": 1.4
+          },
+          "speaker": "narrator",
+          "text": "신발장을 마지막으로 닫았다.",
+          "gfx": null,
+          "sfx": "sfx_door",
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-13",
+          "from": null,
+          "sec": 2.3,
+          "bg": "home_entrance",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_sad",
+            "pos_y": 0.4,
+            "scale": 1.4
+          },
+          "speaker": "narrator",
+          "text": "가족이라 부른 이름이 낯설어질 때.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home"
+        }
+      ],
+      "youtube": {
+        "title": "이십 년 며느리가 신발장을 닫던 날",
+        "description_body": "본편 링크와 고지문은 시스템이 붙인다. 여기에는 한 줄 상황만.",
+        "tags": [
+          "가족드라마",
+          "며느리",
+          "이별"
+        ]
+      }
+    }
+  ]
+}
