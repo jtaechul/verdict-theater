@@ -17,6 +17,7 @@
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -47,14 +48,46 @@ def save_queue(q):
     QUEUE.write_text(json.dumps(q, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+# ⭐ 심사에 넣을 판례 본문 길이 (앞 / 뒤, 글자 수)
+#
+#   여기는 **채점**이지 대본을 쓰는 자리가 아니다. 0~100점을 매기는 데
+#   봐야 할 곳은 두 군데뿐이다.
+#     앞  — 【주 문】(누가 얼마를 받았나) + 【이 유】1. 기초사실 (누가 무엇을 했나)
+#     뒤  — 결론
+#   그 사이에 낀 것은 유류분 산정표·감정가 목록·법리 인용이다.
+#   드라마인지 아닌지를 가리는 데는 아무 보탬이 안 되면서 값은 그대로 나간다.
+#
+#   실측 (2026-08-11 심사 10건): 본문 189,718자 = 165,769토큰 = 565원.
+#   앞 9,000 + 뒤 3,000 으로 줄이면 109,698자 — **값이 58%로 내려간다.**
+#   그 10건 중 3건은 애초에 12,000자가 안 돼 손도 대지 않는다.
+#   (모아 둔 판례 197건의 중앙값이 5,862자다 — 대부분은 통째로 다 들어간다.)
+#
+#   숫자는 워크플로에서 환경변수로 바꿀 수 있다.
+GATE_HEAD = int(os.environ.get("VT_GATE_HEAD", "9000"))
+GATE_TAIL = int(os.environ.get("VT_GATE_TAIL", "3000"))
+
+
+def trim_body(body, head=None, tail=None):
+    """판례 본문에서 가운데를 들어내고 앞과 뒤만 남긴다.
+
+    짧으면 손대지 않고 그대로 돌려준다. 잘랐을 때는 잘랐다고 본문에 적는다 —
+    모델이 '뒤가 끊긴 글'이 아니라 '가운데가 빠진 글'로 읽어야 하기 때문이다."""
+    head = GATE_HEAD if head is None else head
+    tail = GATE_TAIL if tail is None else tail
+    if not body or len(body) <= head + tail:
+        return body
+    gone = len(body) - head - tail
+    return (body[:head]
+            + f"\n\n…(가운데 {gone:,}자 생략 — 산정표·감정가 목록·법리 인용)…\n\n"
+            + body[-tail:])
+
+
 def case_for_prompt(case):
     """모델에 넣을 판례 JSON. 본문이 매우 길 수 있어 안전하게 자른다."""
     keep = ["판례정보일련번호", "사건명", "사건번호", "선고일자", "법원명",
             "사건종류명", "판결유형", "판시사항", "판결요지", "참조조문", "판례내용"]
     d = {k: case.get(k, "") for k in keep}
-    body = d["판례내용"]
-    if len(body) > 40000:
-        d["판례내용"] = body[:40000] + "\n\n…(이하 생략)"
+    d["판례내용"] = trim_body(d["판례내용"])
     d["_사건번호_주의"] = "대본에 절대 쓰지 않는다"
     return json.dumps(d, ensure_ascii=False, indent=2)
 

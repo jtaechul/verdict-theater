@@ -327,7 +327,8 @@ class Claude:
           여기에 표시해 두면 서버가 한 번만 읽고 기억한다 — 다음부터는 10분의 1 값이다."""
         model = self.pick(tier)
         self._warmup(model)
-        return self._call(model, prompt, max_output_tokens, temperature, label, cache_prefix)
+        return self._call(model, prompt, max_output_tokens, temperature, label,
+                          cache_prefix, effort)
 
     def _warmup(self, model):
         """본 작업 전에 아주 작은 호출 한 번으로 '이 모델이 받아주는 설정'을 알아낸다.
@@ -344,6 +345,13 @@ class Claude:
         if model in self._probed:
             return
         self._probed.add(model)
+        # ⭐ 이미 아는 모델이면 물어볼 것이 없다 — 그냥 건너뛴다.
+        #    NO_SAMPLING / NO_PREFILL 표에 적혀 있는 모델은 무엇을 거절하는지
+        #    이미 알고 있다. 그런데도 매 실행 '사전 점검' 호출을 한 번 더 걸고 있었다.
+        #    (모델 두 개를 쓰면 두 번.) 알면서 물어보는 것은 돈과 시간의 낭비다.
+        m = (model or "").lower()
+        if any(k in m for k in NO_PREFILL):
+            return
         try:
             self._call(model, '{"ok": true} 를 그대로 출력하라.', 64, 0.0, "사전 점검", "")
         except BudgetExceeded:
@@ -373,7 +381,8 @@ class Claude:
                 "  여기서 멈춘다. 지금까지 만든 것은 저장한다.\n"
                 "  한도를 올리려면 저장소 Secrets 에 VT_RUN_KRW 를 넣어라 (단위: 원).")
 
-    def _call(self, model, prompt, max_output_tokens, temperature, label, cache_prefix=""):
+    def _call(self, model, prompt, max_output_tokens, temperature, label,
+              cache_prefix="", effort=""):
         # ⭐ 돈으로 막는다. 횟수로는 못 막는다 —
         #    호출 하나의 값이 프롬프트 크기와 모델에 따라 10원~2,000원까지 벌어져
         #    같은 '24회 상한' 이 208원일 수도 13,230원일 수도 있다(실측).
