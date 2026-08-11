@@ -180,9 +180,39 @@ jobs:
           esac
           python3 src/script.py --shorts-only "$EP" $W 2>&1 | tee script.log
 
+      # ⭐ 쓸 소재가 이미 쌓여 있으면 심사하지 않는다.
+      #
+      #    손님 지적 (2026-08-11): "대본 만들기를 눌렀는데 왜 소재를 또 심사하고
+      #    돈을 낭비하느냐. 대본이나 만들라고."  맞는 말이다.
+      #    그날 통과한 소재가 13건이나 남아 있는데 판례 10건을 또 심사해
+      #    그 자리에서만 361원이 나갔다. 한 편 값의 8분의 1이 순수한 낭비였다.
+      #
+      #    이제 '둘다' 는 "심사부터 하고 대본" 이 아니라
+      #    **"소재가 떨어졌을 때만 심사하고, 아니면 바로 대본"** 이다.
+      - name: 쓸 소재가 남아 있는지 세기 (값 0원)
+        id: stock
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          p = pathlib.Path("state/queue.json")
+          q = json.loads(p.read_text(encoding="utf-8")) if p.exists() else []
+          n = len([c for c in q if c.get("gate_pass")])
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"ready={n}\n")
+          if n >= 3:
+              print(f"쓸 수 있는 소재가 {n}건 남아 있다 → 소재 심사는 건너뛴다 (약 361원 아낀다).")
+          else:
+              print(f"쓸 수 있는 소재가 {n}건뿐이다 → 소재 심사부터 한다.")
+          PY
+
       - name: 소재 심사 (3차 드라마성 평가)
+        # '소재 심사만' 을 직접 고른 경우에는 재고와 상관없이 무조건 심사한다.
+        # 그 밖의 경우에는 쓸 소재가 3건 미만일 때만 심사한다 (3건은 여유분이다 —
+        # 0 이 될 때까지 기다리면 대본을 만들려는 순간 소재가 없어 멈춘다).
         if: inputs.mode != '대본 생성만' && inputs.mode != '쇼츠만 다시'
             && inputs.mode != '이어서 마저 만들기'
+            && (inputs.mode == '소재 심사만'
+                || fromJSON(steps.stock.outputs.ready) < 3)
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
@@ -269,6 +299,16 @@ jobs:
               echo "처음부터 다시 만들 필요는 없습니다 — 그러면 모델 값만 두 번 나갑니다."
               echo ""
               echo "아래 **생성 기록** 칸의 \`⚠️ 중단:\` 줄에 멈춘 이유가 적혀 있습니다."
+              echo ""
+            fi
+
+            # 심사를 안 했으면 안 했다고 적는다 — 안 나간 돈도 눈에 보여야 한다.
+            if [ ! -f gate.log ] && [ "${{ inputs.mode }}" != '대본 생성만' ] \
+               && [ "${{ inputs.mode }}" != '쇼츠만 다시' ] \
+               && [ "${{ inputs.mode }}" != '이어서 마저 만들기' ]; then
+              echo "> **소재 심사는 건너뛰었습니다.** 이미 통과한 소재가"
+              echo "> ${{ steps.stock.outputs.ready }}건 남아 있어서 또 심사할 까닭이 없습니다."
+              echo "> 이것만으로 약 361원을 아꼈습니다."
               echo ""
             fi
 

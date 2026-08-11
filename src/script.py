@@ -23,6 +23,7 @@
 
 import argparse
 import json
+import os
 import sys
 import traceback
 from datetime import date
@@ -309,8 +310,18 @@ def gen_act(llm, base, design, act):
             .replace("{{BEATS}}", " / ".join(beats) or "(설계에 없음)")
             .replace("{{EXTRA}}", ACT_EXTRA.get(aid, ""))
             .replace("{{PREFIX}}", prefix))
+    # ⭐ 생각 깊이 (손님 선택 · 2026-08-11 "생각 깊이만 낮추기")
+    #
+    #    모델은 답을 내기 전에 속으로 '생각' 을 하고, 그 생각도 글값과 똑같이
+    #    비싸게 매겨진다(출력 100만 토큰당 25달러). 여기는 한 편에서 여섯 번
+    #    도는 자리라, 이 한 줄이 전체 값에서 가장 크게 움직인다.
+    #
+    #    high → medium 으로 내린다. **모델은 Opus 그대로다** — 글솜씨는 안 바꾸고
+    #    속으로 굴리는 양만 줄인다. 설계(1단계)에서 이미 막마다 무슨 일이
+    #    일어날지 다 정해 놓았으므로, 여기서 또 깊게 궁리할 것이 많지 않다.
+    #    ⚠️ 대본 결이 옅어진 것 같으면 이 값을 high 로 되돌리면 된다.
     res = llm.json(task, cache_prefix=base, tier="pro", max_output_tokens=16384,
-                   effort="high",
+                   effort=os.environ.get("VT_ACT_EFFORT", "medium"),
                    temperature=0.9, label=f"막 {aid}")
     return res.get("cuts", [])
 
@@ -658,6 +669,25 @@ def main():
     #    반드시 걸러낼 가사사건이 그대로 통과한다. 2026-08-10 에 실제로
     #    「이혼및위자료」 판례로 Opus 를 19분 돌렸다 — 다 만들었어도 못 쓸
     #    대본이었다. 가정법원 판결문은 공개 대상이 아니기 때문이다(지침 6번).
+    #    ⭐ 심사를 안 거친 판례로는 대본을 만들지 않는다 (2026-08-11).
+    #
+    #    예전에는 워크플로가 '둘다' 모드에서 늘 심사부터 돌아서, 나쁜 소재는
+    #    거기서 걸러졌다. 그런데 그 심사는 **대기열의 미심사분 앞 10건**을 볼 뿐,
+    #    손으로 넣은 그 판례를 보라는 보장이 없었다. 즉 예전에도 새고 있었다.
+    #    이제 소재가 쌓여 있으면 심사를 아예 건너뛰므로, 막는 자리를 여기로 옮긴다.
+    #    여기서 막으면 값은 0원이다. 만들고 나서 버리면 3,000원이다.
+    if not args.resume and row.get("gate_score") is None:
+        print(f"❌ 판례 {cid} 는 아직 소재 심사를 거치지 않았다.")
+        print("   심사를 안 한 소재로 대본을 만들면, 못 쓸 이야기에 3,000원을 쓰게 된다.")
+        print("   '무엇을 할까요' 를 '소재 심사만' 으로 놓고 한 번 돌린 뒤 다시 하라.")
+        print("   (판례 번호를 비워 두면 이미 통과한 소재 중 가장 좋은 것을 알아서 고른다)")
+        return 6
+    if not args.resume and not row.get("gate_pass"):
+        print(f"❌ 판례 {cid} 는 소재 심사에서 떨어진 것이다 "
+              f"({row.get('gate_score')}점 · 통과선 60점).")
+        print("   떨어진 소재로 대본을 만들 까닭이 없다.")
+        return 6
+
     banned = _family_court_words(case.get("사건명", ""))
     if banned:
         print(f"❌ 쓸 수 없는 판례다. 사건명에 '{banned}' 가 있다 — 가사사건이다.")

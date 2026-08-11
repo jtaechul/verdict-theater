@@ -99,6 +99,35 @@ try:
 except Exception as e:                              # noqa: BLE001
     bad(f"장부가 깨지면 제작까지 죽는다: {e}")
 
+# ── 4. 심사 안 한 소재로 대본을 만들려 하면 돈 쓰기 전에 막는가 ──
+#
+#    2026-08-11 부터 '대본 만들기' 는 쓸 소재가 쌓여 있으면 소재 심사를
+#    건너뛴다. 그러면 심사를 안 거친 판례가 그대로 대본으로 넘어갈 길이
+#    열린다 — 못 쓸 이야기에 3,000원을 쓰게 된다. 그 문이 닫혀 있는지 본다.
+print()
+print("④ 심사 안 한 소재는 돈 쓰기 전에 막는가")
+import re                                            # noqa: E402
+src = (ROOT / "src" / "script.py").read_text(encoding="utf-8")
+
+guard = re.search(r'if not args\.resume and row\.get\("gate_score"\) is None:', src)
+if not guard:
+    bad("심사 안 한 소재를 막는 자리가 사라졌다")
+else:
+    print("   ✅ 심사 안 한 소재(점수 없음)를 막는다")
+
+if not re.search(r'if not args\.resume and not row\.get\("gate_pass"\):', src):
+    bad("심사에서 떨어진 소재를 막는 자리가 사라졌다")
+else:
+    print("   ✅ 심사에서 떨어진 소재도 막는다")
+
+# 막는 자리가 돈 쓰는 자리보다 **앞에** 있어야 한다. 뒤에 있으면 소용없다.
+if guard:
+    spend = src.find("llm, who = writer(max_calls=args.max_calls")
+    if spend < 0 or guard.start() > spend:
+        bad("막는 자리가 모델을 부르는 자리보다 뒤에 있다 — 돈이 이미 나간 뒤다")
+    else:
+        print("   ✅ 모델을 부르기 전에 막는다 (값 0원)")
+
 import shutil
 shutil.rmtree(tmp, ignore_errors=True)
 print()
