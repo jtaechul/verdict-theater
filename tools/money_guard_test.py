@@ -57,8 +57,18 @@ try:
     bad(f"{c.spent_krw():,.0f}원을 썼는데 안 멈춘다 — 한도가 작동하지 않는다")
 except BudgetExceeded as e:
     print(f"   ✅ {c.spent_krw():,.0f}원 — 한도를 넘어 멈췄다")
-    if "VT_RUN_KRW" not in str(e):
-        bad("멈추면서 한도 올리는 법을 안 알려준다")
+    # 멈출 때 **다음에 뭘 누르면 되는지**를 알려줘야 한다.
+    # ⚠️ "저장소 Settings 로 가라" 같은 말을 넣으면 안 된다 —
+    #    손님은 GitHub 설정에 들어가지 않는다("귀찮고 어려워"). 관리자 페이지
+    #    버튼으로 끝나야 한다. 예전 문구가 Secrets 를 가리켜서 여기서 막는다.
+    msg = str(e)
+    if "이어서 마저 만들기" not in msg:
+        bad("멈추면서 '이어서 마저 만들기' 를 누르면 된다고 안 알려준다")
+    if "저장한다" not in msg:
+        bad("멈추면서 만든 대본이 남는지를 안 알려준다")
+    for banned in ("Secrets", "Settings", "저장소 →"):
+        if banned in msg:
+            bad(f"멈추면서 '{banned}' 로 가라고 시킨다 — 손님은 GitHub 설정에 안 들어간다")
 
 # ── 2. 한 달 한도 — 시작조차 안 하는가 ─────────────────────
 print()

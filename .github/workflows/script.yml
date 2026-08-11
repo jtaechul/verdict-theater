@@ -34,6 +34,10 @@ on:
         description: '소재 심사할 판례 수'
         required: false
         default: '10'
+      budget:
+        description: '한 번에 쓸 수 있는 돈 (원). 넘으면 멈추고 만든 대본은 저장'
+        required: false
+        default: '3000'
       writer:
         description: '대본을 쓸 곳'
         required: false
@@ -132,6 +136,8 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          # 한 번에 쓸 수 있는 돈. 버튼 화면에서 고칠 수 있다 (GitHub 설정에 들어갈 일 없다).
+          VT_RUN_KRW: ${{ inputs.budget || '3000' }}
         run: |
           set -o pipefail
           EP="${{ inputs.episode }}"
@@ -161,6 +167,8 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          # 한 번에 쓸 수 있는 돈. 버튼 화면에서 고칠 수 있다 (GitHub 설정에 들어갈 일 없다).
+          VT_RUN_KRW: ${{ inputs.budget || '3000' }}
         run: |
           set -o pipefail
           EP="${{ inputs.episode }}"
@@ -217,6 +225,8 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          # 한 번에 쓸 수 있는 돈. 버튼 화면에서 고칠 수 있다 (GitHub 설정에 들어갈 일 없다).
+          VT_RUN_KRW: ${{ inputs.budget || '3000' }}
         run: |
           set -o pipefail
           # 심사도 모델을 쓴다. 버튼에서 고른 곳이 심사에도 그대로 적용돼야 한다.
@@ -235,6 +245,8 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          # 한 번에 쓸 수 있는 돈. 버튼 화면에서 고칠 수 있다 (GitHub 설정에 들어갈 일 없다).
+          VT_RUN_KRW: ${{ inputs.budget || '3000' }}
         run: |
           set -o pipefail
           case "${{ inputs.writer }}" in

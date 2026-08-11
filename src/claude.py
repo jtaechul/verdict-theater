@@ -383,8 +383,10 @@ class Claude:
         if used >= cap:
             raise BudgetExceeded(
                 f"이번 실행에서 약 {used:,.0f}원을 썼다. 한 번 실행 한도 {cap:,.0f}원에 닿았다.\n"
-                "  여기서 멈춘다. 지금까지 만든 것은 저장한다.\n"
-                "  한도를 올리려면 저장소 Secrets 에 VT_RUN_KRW 를 넣어라 (단위: 원).")
+                "  여기서 멈춘다. **지금까지 만든 대본은 저장한다.**\n"
+                "  → 관리자 페이지에서 [이어서 마저 만들기] 를 한 번 더 누르면\n"
+                "    만들어 둔 컷은 그대로 두고 남은 단계만 이어서 한다.\n"
+                "  한도를 늘리려면 대본 만들기 화면의 '한 번에 쓸 수 있는 돈' 칸을 고쳐라.")
 
     def _call(self, model, prompt, max_output_tokens, temperature, label,
               cache_prefix="", effort=""):

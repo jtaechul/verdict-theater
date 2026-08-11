@@ -60,6 +60,9 @@ const WORKFLOWS = [
                       { v: 'Gemini', t: 'Gemini 로만' }] },
              { k: 'gate_limit', label: '살펴볼 기록 수', type: 'text', def: '10',
                help: '대기열 위에서부터 몇 건을 AI가 읽어보고 고를지입니다. 10이면 넉넉합니다.' },
+             // ⭐ 한도를 여기서 고칠 수 있게 둔다. GitHub 설정에 들어갈 일이 없어야 한다.
+             { k: 'budget', label: '한 번에 쓸 수 있는 돈 (원)', type: 'text', def: '3000',
+               help: '지금 한 편에 약 2,100원 듭니다. 이 금액을 넘으면 그 자리에서 멈추고, 만들던 대본은 저장합니다. 그때는 [이어서 마저 만들기] 를 누르면 됩니다.' },
              { k: 'episode', label: '회차 번호', type: 'text', def: '',
                help: "위에서 '쇼츠 대본만 다시 쓰기' 를 골랐을 때만 적습니다 (예: EP001). 보통은 비워 두십시오." }] },
 
@@ -844,12 +847,15 @@ const NEXT_RUN = {
   collect: { file: 'collect.yml', name: '재판 기록 모으기',
              inputs: { max_calls: '180', topic: '전부', queries: '', pages: '3' } },
   gate:    { file: 'script.yml', name: '소재 살펴보기',
-             inputs: { mode: '소재 심사만', writer: '자동 (Claude 우선)', gate_limit: '10' } },
+             inputs: { mode: '소재 심사만', writer: '자동 (Claude 우선)', gate_limit: '10',
+                       budget: '1000' } },
   script:  { file: 'script.yml', name: '대본 만들기',
-             inputs: { mode: '둘다', writer: '자동 (Claude 우선)', gate_limit: '10' } },
+             inputs: { mode: '둘다', writer: '자동 (Claude 우선)', gate_limit: '10',
+                       budget: '3000' } },
   // 회차를 안 보낸다 — 워크플로가 만들다 만 것을 알아서 찾는다
   resume:  { file: 'script.yml', name: '이어서 마저 만들기',
-             inputs: { mode: '이어서 마저 만들기', writer: '자동 (Claude 우선)' } },
+             inputs: { mode: '이어서 마저 만들기', writer: '자동 (Claude 우선)',
+                       budget: '3000' } },
 };
 
 async function goNext(key) {
