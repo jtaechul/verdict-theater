@@ -34,8 +34,17 @@ LEDGER = ROOT / "state" / "spend.json"      # 쓴 돈 장부
 #     한 번 실행    RUN_KRW  — 한 번 누를 때 이만큼 넘으면 거기서 멈춘다
 #     한 달 전체    MONTH_KRW— 이번 달 누적이 넘으면 아예 시작하지 않는다
 #   둘 다 GitHub Secrets 나 워크플로 입력으로 바꿀 수 있다.
-RUN_KRW = float(os.environ.get("VT_RUN_KRW", "6000"))
-MONTH_KRW = float(os.environ.get("VT_MONTH_KRW", "50000"))
+#   ⚠️ 한도는 **실제 드는 값보다 조금만 위**에 있어야 뜻이 있다.
+#      6,000원 / 50,000원 은 내가 아무 근거 없이 잡은 값이었다. 한 번 실행이
+#      2,100원인데 한도가 6,000원이면 세 배가 새도 안 막힌다 — 막는 시늉만 한 것이다.
+#      (손님: "한번에 6000원은 미친 듯이 비싼 거 같은데?" — 맞는 지적이다)
+#
+#      지금 한 번 실행에 실제로 드는 값
+#        대본 1편 (Opus, 생각 깊이 보통)   약 2,100원
+#        소재 심사                        0원 (소재가 쌓여 있으면 건너뛴다)
+#      → 한 번 3,000원이면 정상 실행은 통과하고, 새기 시작하면 바로 막힌다.
+RUN_KRW = float(os.environ.get("VT_RUN_KRW", "3000"))
+MONTH_KRW = float(os.environ.get("VT_MONTH_KRW", "25000"))
 
 # 1달러를 몇 원으로 칠 것인가. (src/tts.py 와 같은 기본값을 쓴다)
 USD_KRW = float(os.environ.get("USD_KRW", "1470"))

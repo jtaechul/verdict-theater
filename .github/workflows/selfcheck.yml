@@ -68,6 +68,8 @@ jobs:
 
       - name: 워크플로 파일이 문법에 맞는가
         run: |
+          # YAML 을 읽으려면 이 라이브러리가 있어야 한다. 러너에 기본으로는 없다.
+          python3 -m pip install --quiet PyYAML
           python3 - <<'PY'
           import pathlib, sys, yaml
           bad = 0
