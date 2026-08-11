@@ -27,11 +27,11 @@
   "EP002": {
     "case_id": "230761",
     "gate_score": 98,
-    "stage": "scripting",
+    "stage": "evaluated",
     "script_score": 99,
     "revise_count": 0,
     "case_type": "유류분",
     "created_at": "2026-08-11",
-    "validation_errors": 1
+    "validation_errors": 0
   }
 }

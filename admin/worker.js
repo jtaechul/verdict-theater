@@ -800,14 +800,35 @@ function nextStep(eps, ready, ungated) {
   // ⭐ 만들다 만 대본은 **처음부터 다시 만들지 않는다.**
   //    컷을 쓰는 1·2단계가 값의 8할이고 20분을 먹는다. 이미 있는 컷을 그대로 두고
   //    뒷단계만 마저 하면 값이 8할 줄고 5분이면 끝난다.
-  const stuck = eps.find(([, v]) => v.stage === 'scripting');
+  //    ⚠️ stage 값으로 짐작하면 안 된다. 'scripting' 은 src/script.py 에서
+  //       "대본은 다 됐는데 기계 검사 오류가 남았다" 는 뜻이지 "만들다 말았다" 가
+  //       아니다. 2026-08-11 에 그걸 잘못 읽어, 99점으로 완성된 EP002 를
+  //       '덜 만들어졌다' 로 띄우고 [이어서 마저 만들기] 를 권했다. 그 버튼은
+  //       완성되면 지워지는 초벌 파일을 찾으므로 **반드시 실패**했고, 실패해도
+  //       카드가 그대로라 또 누르게 되는 무한 반복이 됐다.
+  //       그래서 워크플로가 보는 것과 **똑같은 것**을 본다 — 초벌 파일의 존재.
+  const stuck = (S.drafts || [])[0];
   if (stuck)
-    return { title: esc(stuck[0]) + ' 대본이 덜 만들어졌습니다',
+    return { title: esc(stuck) + ' 대본이 덜 만들어졌습니다',
              body: '도중에 멈춘 대본입니다. <b>이미 써 둔 컷은 그대로 두고</b> '
                  + '남은 단계만 마저 합니다.<br>'
                  + '<span style="color:#9599ab">약 5분 · 처음부터 다시 만드는 것보다 '
                  + '값이 8할쯤 적게 듭니다.</span>',
              btn: '이어서 마저 만들기', act: 'goNext(\\'resume\\')' };
+
+  // ⭐ 대본은 다 됐는데 영상이 아직 없는 회차가 있으면 **그것부터**다.
+  //    예전에는 이 갈래가 아예 없어서, 방금 대본을 만들어 놓고도 화면이
+  //    "대본을 만들 차례입니다" 라고 다음 편을 권했다. 만든 것을 두고
+  //    또 만들라고 하면 값만 두 배로 나간다.
+  const noVideo = eps.find(([k, v]) => v.stage !== 'published' && !(S.videos || {})[k]);
+  if (noVideo) {
+    const warn = (noVideo[1].validation_errors || 0);
+    return { title: esc(noVideo[0]) + ' 대본이 다 됐습니다 — 영상을 만들 차례입니다',
+             body: '채점 <b>' + (noVideo[1].script_score || '-') + '점</b>'
+                 + (warn ? ' · 작은 경고 ' + warn + '건 (영상 만드는 데는 지장 없습니다)' : '')
+                 + '<br><span style="color:#9599ab">약 40분 걸립니다. 누르고 나가셔도 됩니다.</span>',
+             btn: '영상 만들기', act: 'goNext(\\'produce\\')' };
+  }
 
   if (ready.length)
     return { title: '대본을 만들 차례입니다',
@@ -856,6 +877,9 @@ const NEXT_RUN = {
   resume:  { file: 'script.yml', name: '이어서 마저 만들기',
              inputs: { mode: '이어서 마저 만들기', writer: '자동 (Claude 우선)',
                        budget: '3000' } },
+  // 회차를 안 보낸다 — 워크플로가 대본이 있는 가장 최근 회차를 알아서 고른다
+  produce: { file: 'produce.yml', name: '영상 만들기',
+             inputs: { episode: '', limit: '0', voice: '음성 생성' } },
 };
 
 async function goNext(key) {
@@ -1342,7 +1366,7 @@ export default {
 
     try {
       if (url.pathname === '/api/state') {
-        const [episodes, queue, manifest, runsRes, files, rels] = await Promise.all([
+        const [episodes, queue, manifest, runsRes, files, rels, scriptFiles] = await Promise.all([
           getJson(env, 'state/episodes.json'),
           getJson(env, 'state/queue.json'),
           getJson(env, 'assets/manifest.json'),
@@ -1351,7 +1375,16 @@ export default {
           // 영상은 릴리스 자산으로 보관한다 (저장소 커밋이 아니다). 어느 회차에
           // 영상이 있는지 여기서 알아야 목록에 '영상 보기' 버튼을 띄울 수 있다.
           gh(env, `/repos/${REPO}/releases?per_page=30`).catch(() => []),
+          // ⭐ 만들다 만 대본의 **유일한 증거**는 초벌 파일이 실제로 있는가다.
+          //    stage 값으로 짐작하면 안 된다 — 2026-08-11 에 그것 때문에
+          //    다 만들어진 EP002 를 '덜 만들어졌다' 로 읽고 [이어서 마저 만들기] 를
+          //    띄웠고, 그 버튼은 지워진 초벌을 찾다가 반드시 실패했다(무한 반복).
+          //    워크플로가 보는 것과 똑같은 것을 화면도 봐야 어긋나지 않는다.
+          listDir(env, 'data/scripts').catch(() => []),
         ]);
+        const drafts = (Array.isArray(scriptFiles) ? scriptFiles : [])
+          .map((f) => /^(EP\d+)\.draft\.json$/.exec(f.name || ''))
+          .filter(Boolean).map((m) => m[1]);
         const videos = {};
         let audition = null;
         (Array.isArray(rels) ? rels : []).forEach((r) => {
@@ -1396,6 +1429,7 @@ export default {
           queue: Array.isArray(queue) ? queue : [],
           assets,
           videos,
+          drafts,          // 만들다 만 대본의 회차들 (초벌 파일이 실제로 있는 것만)
           audition,
           cast,
           voiceList,
