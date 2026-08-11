@@ -269,6 +269,11 @@ class Claude:
         self.cache_write = 0   # 기억시키느라 낸 토큰 (한 번, 정가의 2배)
         self.cache_read = 0    # 기억해 둔 걸 다시 쓴 토큰 (정가의 10분의 1)
         self.last_model = ""   # 마지막으로 실제 쓴 모델 (값 계산에 쓴다)
+        # ⭐ 단계별로 얼마 나갔는지 따로 센다.
+        #    "한 편에 3,000원" 만 알면 줄일 곳을 못 고른다. 설계가 비싼지,
+        #    막 쓰는 데가 비싼지, 형식 고치는 데가 비싼지가 보여야 손을 댄다.
+        #    이름 → [횟수, 원]
+        self.by_stage = {}
         self.max_krw = max_krw if max_krw is not None else cost.RUN_KRW
         self._models = None
         # 배운 것은 모델별로 따로 기억한다. opus 와 sonnet 은 받아주는 설정이 다를 수 있다.
@@ -451,6 +456,18 @@ class Claude:
                 self.tokens_out += u.get("output_tokens", 0)
                 self.cache_write += u.get("cache_creation_input_tokens", 0)
                 self.cache_read += u.get("cache_read_input_tokens", 0)
+                # 이 호출 하나가 얼마였는지를 단계 이름 밑에 쌓는다.
+                # (실패해도 실행이 멈추면 안 되므로 통째로 감싼다)
+                try:
+                    one = cost.krw(self.last_model,
+                                   u.get("input_tokens", 0), u.get("output_tokens", 0),
+                                   u.get("cache_creation_input_tokens", 0),
+                                   u.get("cache_read_input_tokens", 0)) or 0.0
+                    row = self.by_stage.setdefault(label or "이름 없음", [0, 0.0])
+                    row[0] += 1
+                    row[1] += one
+                except Exception:
+                    pass
 
                 # 모델이 안전상의 이유로 거절할 수 있다. 오류가 아니라 정상 응답으로 온다.
                 # 같은 걸 다시 물어도 또 거절한다 — 재시도하면 시간만 버린다.
@@ -553,7 +570,28 @@ class Claude:
                         self.cache_write, self.cache_read)
         if won:
             s += f"\n{won}"
+        s += self.stage_table()
         return s
+
+    def stage_table(self):
+        """단계별로 얼마 나갔는지 비싼 순으로 적는다.
+
+        "한 편에 3,000원" 만 알면 어디를 줄일지 못 고른다.
+        비싼 줄이 눈에 보여야 거기부터 손을 댄다."""
+        rows = [(w, n, name) for name, (n, w) in self.by_stage.items() if w > 0]
+        if len(rows) < 2:
+            return ""
+        rows.sort(reverse=True)
+        total = sum(w for w, _, _ in rows) or 1
+        out = ["", "  어디에 나갔나 (비싼 순)"]
+        for w, n, name in rows[:12]:
+            bar = "\u2588" * max(1, round(w / total * 20))
+            out.append(f"    {cost.pad(name, 16)} {w:>7,.0f}\uc6d0 "
+                       f"{w / total * 100:>4.0f}% {bar}  ({n}\ud68c)")
+        if len(rows) > 12:
+            rest = sum(w for w, _, _ in rows[12:])
+            out.append(f"    {cost.pad('그 밖에', 16)} {rest:>7,.0f}원")
+        return "\n".join(out)
 
 
 # ── 어느 쪽을 쓸지 고르기 ────────────────────────────────

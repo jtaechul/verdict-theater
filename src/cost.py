@@ -69,6 +69,23 @@ CACHE_WRITE_X = 2.00      # 1시간 기억: 입력 정가의 2배
 CACHE_READ_X = 0.10       # 다시 쓸 때는 10분의 1만 낸다
 
 
+def pad(text, width):
+    """한글이 섞인 글을 화면 폭 기준으로 맞춘다.
+
+    한글은 영문 두 칸을 차지한다. 파이썬의 f"{s:<14}" 는 **글자 수**로 세기 때문에
+    한글이 섞이면 표가 어긋난다. 여기서는 화면에 보이는 폭으로 센다."""
+    text = str(text)
+    seen = 0
+    out = []
+    for ch in text:
+        w = 2 if ord(ch) > 0x1100 and not (0x2000 <= ord(ch) <= 0x2BFF) else 1
+        if seen + w > width:
+            break
+        out.append(ch)
+        seen += w
+    return "".join(out) + " " * (width - seen)
+
+
 def rate(model):
     """모델 이름 → (입력 단가, 출력 단가). 모르면 None."""
     name = (model or "").lower()

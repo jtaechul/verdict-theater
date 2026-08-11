@@ -414,7 +414,12 @@ def machine_fix(llm, doc, rounds=2):
                 SCRIPT_JSON=json.dumps(doc, ensure_ascii=False),
                 EVAL_JSON=json.dumps(fake_eval, ensure_ascii=False, indent=2),
                 ASSET_RULES=asset_rules_text(),
-            ), tier="pro", max_output_tokens=16384, temperature=0.5, label="형식 보강",
+            # ⭐ 여기는 **글을 쓰는 자리가 아니다.** 프롬프트가 스스로 이렇게 말한다 —
+            #    "내용은 최대한 그대로 두고 형식만 고친다."
+            #    괄호를 맞추고 초 합계를 맞추는 일에 가장 비싼 모델을 쓸 까닭이 없다.
+            #    게다가 대본 전문(약 45,000토큰)을 통째로 보내는 자리라 한 번 값이 크다.
+            #    pro(Opus) → flash(Sonnet) 로 내리면 이 자리 값이 약 40% 줄어든다.
+            ), tier="flash", max_output_tokens=16384, temperature=0.5, label="형식 보강",
             effort="low")
             doc, note = apply_patch(doc, patch)
             if note:

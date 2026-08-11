@@ -81,6 +81,9 @@ class Gemini:
         self.tokens_in = 0
         self.tokens_out = 0
         self.last_model = ""   # 마지막으로 실제 쓴 모델 (값 계산에 쓴다)
+        # 단계별로 얼마 나갔는지 따로 센다 (claude.py 와 같은 방식).
+        # 이름 → [횟수, 원]
+        self.by_stage = {}
         self.max_krw = max_krw if max_krw is not None else cost.RUN_KRW
         self._models = None
         self._limits = {}
@@ -187,6 +190,15 @@ class Gemini:
                 u = res.get("usageMetadata", {})
                 self.tokens_in += u.get("promptTokenCount", 0)
                 self.tokens_out += u.get("candidatesTokenCount", 0)
+                try:
+                    one = cost.krw(self.last_model,
+                                   u.get("promptTokenCount", 0),
+                                   u.get("candidatesTokenCount", 0)) or 0.0
+                    row = self.by_stage.setdefault(label or "이름 없음", [0, 0.0])
+                    row[0] += 1
+                    row[1] += one
+                except Exception:
+                    pass
 
                 cands = res.get("candidates") or []
                 if not cands:
@@ -249,7 +261,28 @@ class Gemini:
         won = cost.line(self.last_model, self.tokens_in, self.tokens_out)
         if won:
             s += f"\n{won}"
+        s += self.stage_table()
         return s
+
+    def stage_table(self):
+        """단계별로 얼마 나갔는지 비싼 순으로 적는다.
+
+        "한 편에 3,000원" 만 알면 어디를 줄일지 못 고른다.
+        비싼 줄이 눈에 보여야 거기부터 손을 댄다."""
+        rows = [(w, n, name) for name, (n, w) in self.by_stage.items() if w > 0]
+        if len(rows) < 2:
+            return ""
+        rows.sort(reverse=True)
+        total = sum(w for w, _, _ in rows) or 1
+        out = ["", "  어디에 나갔나 (비싼 순)"]
+        for w, n, name in rows[:12]:
+            bar = "\u2588" * max(1, round(w / total * 20))
+            out.append(f"    {cost.pad(name, 16)} {w:>7,.0f}\uc6d0 "
+                       f"{w / total * 100:>4.0f}% {bar}  ({n}\ud68c)")
+        if len(rows) > 12:
+            rest = sum(w for w, _, _ in rows[12:])
+            out.append(f"    {cost.pad('그 밖에', 16)} {rest:>7,.0f}원")
+        return "\n".join(out)
 
 
 if __name__ == "__main__":
