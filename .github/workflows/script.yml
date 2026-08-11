@@ -118,6 +118,7 @@ jobs:
       #    이 검사는 진짜 객체를 만들고 '인터넷으로 나가는 한 줄'만 막는다.
       - name: 안전장치 점검 — 멈춰도 남는가 · 이어서 만들 수 있는가 · 호출이 뚫려 있는가 (값 0원)
         run: |
+          python3 tools/callsite_check.py
           python3 tools/script_salvage_test.py
           python3 tools/script_resume_test.py
           python3 tools/money_guard_test.py
