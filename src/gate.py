@@ -22,6 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import prompts                                    # noqa: E402
+import cost                                       # noqa: E402
 import money                                      # noqa: E402
 from llm import Gemini, LLMError, BudgetExceeded  # noqa: E402
 from claude import writer, grader, ClaudeError    # noqa: E402
@@ -65,6 +66,15 @@ def main():
     ap.add_argument("--writer", choices=["claude", "gemini"], default=None,
                     help="심사할 곳. 비우면 값싼 쪽(Gemini)으로 채점한다")
     args = ap.parse_args()
+
+    # ⭐ 돈을 쓰기 **전에** 한 달 한도부터 본다. 넘었으면 시작조차 하지 않는다.
+    try:
+        used, left = cost.guard_month("소재 심사")
+    except cost.MonthlyCapReached as e:
+        print(f"❌ {e}")
+        return 7
+    print(f"이번 달 쓴 돈 {used:,.0f}원 · 남은 한도 {left:,.0f}원 "
+          f"(한 달 {cost.MONTH_KRW:,.0f}원)")
 
     queue = load_queue()
     todo = [c for c in queue if c.get("gate_score") is None][:args.limit]
@@ -149,6 +159,7 @@ def main():
     print(f"평가 {done}건 · 통과 {passed}건 · 폐기 {done - passed}건"
           + (f" · 오류 {failed}건" if failed else ""))
     print(llm.report())
+    cost.record("소재 심사", getattr(llm, "spent_krw", lambda: 0)(), f"{done}건 평가")
 
     ready = [c for c in queue if c.get("gate_pass")]
     print(f"\n제작 가능 대기열: {len(ready)}건")

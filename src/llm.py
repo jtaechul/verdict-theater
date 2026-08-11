@@ -67,7 +67,7 @@ def _strip_fence(s):
 
 
 class Gemini:
-    def __init__(self, api_key=None, max_calls=12):
+    def __init__(self, api_key=None, max_calls=12, max_krw=None):
         self.key = (api_key or os.environ.get("GEMINI_API_KEY", "")).strip()
         if not self.key:
             raise LLMError(
@@ -81,6 +81,7 @@ class Gemini:
         self.tokens_in = 0
         self.tokens_out = 0
         self.last_model = ""   # 마지막으로 실제 쓴 모델 (값 계산에 쓴다)
+        self.max_krw = max_krw if max_krw is not None else cost.RUN_KRW
         self._models = None
         self._limits = {}
 
@@ -141,12 +142,22 @@ class Gemini:
 
     # ── 호출 ────────────────────────────────────────────
     def json(self, prompt, tier="pro", max_output_tokens=32768, temperature=0.9,
-             label="", cache_prefix=""):
+             label="", cache_prefix="", effort=""):
         """프롬프트를 보내고 JSON 하나를 받는다.
+
+        effort — 얼마나 깊이 생각할지. Claude 쪽과 **부르는 모양을 맞추기 위해** 받는다.
+          Gemini 는 이 이름의 설정이 없어 지금은 쓰지 않는다. 받아만 두면
+          부르는 쪽(script.py)이 어느 쪽을 쓰든 코드를 바꿀 필요가 없다 —
+          이 자리가 없으면 Gemini 로 돌 때 통째로 죽는다.
 
         cache_prefix — Claude 쪽과 서명을 맞추기 위한 것. Gemini 는 반복되는 앞부분을
         알아서 재사용하므로 따로 표시할 게 없고, 그냥 앞에 붙여 보내면 된다."""
         prompt = cache_prefix + prompt
+        # ⭐ 돈으로 막는다. 횟수로는 못 막는다 —
+        #    호출 하나의 값이 프롬프트 크기와 모델에 따라 10원~2,000원까지 벌어져
+        #    같은 '24회 상한' 이 208원일 수도 13,230원일 수도 있다(실측).
+        #    여기서 멈추면 지금까지 만든 것은 건져내는 길로 빠진다.
+        self._check_money()
         if self.calls >= self.max_calls:
             raise BudgetExceeded(
                 f"이번 실행에서 이미 {self.calls}회 호출했다. 상한 {self.max_calls}회. "
@@ -211,6 +222,25 @@ class Gemini:
                     time.sleep(w)
         self.calls += 1
         raise LLMError(f"{label or '호출'} 최종 실패: {last}")
+
+
+    # ── 돈 계산 · 한도 ──────────────────────────────────
+    def spent_krw(self):
+        """이번 실행에서 지금까지 쓴 돈(원). 단가를 모르는 모델이면 0."""
+        return cost.krw(self.last_model, self.tokens_in, self.tokens_out,
+                        getattr(self, "cache_write", 0),
+                        getattr(self, "cache_read", 0)) or 0.0
+
+    def _check_money(self):
+        cap = getattr(self, "max_krw", 0) or 0
+        if cap <= 0:
+            return
+        used = self.spent_krw()
+        if used >= cap:
+            raise BudgetExceeded(
+                f"이번 실행에서 약 {used:,.0f}원을 썼다. 한 번 실행 한도 {cap:,.0f}원에 닿았다.\n"
+                "  여기서 멈춘다. 지금까지 만든 것은 저장한다.\n"
+                "  한도를 올리려면 저장소 Secrets 에 VT_RUN_KRW 를 넣어라 (단위: 원).")
 
     def report(self):
         s = (f"모델 호출 {self.calls}회 · 입력 {self.tokens_in:,} 토큰 "

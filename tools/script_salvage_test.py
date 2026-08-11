@@ -33,6 +33,9 @@ class FakeLLM:
     def pick(self, tier="pro"):
         return f"가짜-{tier}"
 
+    def spent_krw(self):
+        return 0.0
+
     def report(self):
         return "모델 호출 0회 (검사용 가짜)"
 

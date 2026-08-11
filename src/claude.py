@@ -72,6 +72,28 @@ def _unsupported_param(body, payload):
 
 CEILING = 64000          # 출력 한도를 스스로 올릴 때의 천장
 
+# ⭐ 요즘 모델이 아예 안 받아주는 설정 — **처음부터 안 보낸다.**
+#
+#    예전에는 일단 보내고 400 을 맞은 뒤 빼고 다시 걸었다. 그래서 실행마다
+#    헛걸음이 두 번씩 났다(로그의 "이 모델은 … 받지 않는다 — 빼고 다시 건다").
+#    이름에 아래 조각이 들어 있으면 그 설정은 처음부터 뺀다.
+#    (모르는 이름이면 예전처럼 부딪혀 보고 배운다 — 새 모델이 나와도 안 멈춘다)
+NO_SAMPLING = ("claude-opus-5", "claude-opus-4-8", "claude-opus-4-7",
+               "claude-sonnet-5", "claude-fable-5", "claude-mythos-5")
+NO_PREFILL = NO_SAMPLING + ("claude-opus-4-6", "claude-sonnet-4-6")
+
+
+def _known_unsupported(model):
+    """이 모델이 확실히 안 받아주는 설정 이름들."""
+    m = (model or "").lower()
+    return set(DROPPABLE) if any(k in m for k in NO_SAMPLING) else set()
+
+
+def _prefill_ok(model):
+    """응답 미리 채워 넣기를 쓸 수 있는 모델인가."""
+    m = (model or "").lower()
+    return not any(k in m for k in NO_PREFILL)
+
 # 프리필(응답을 `{` 로 미리 채워 JSON 으로 시작하게 만드는 수법)을 못 쓰는 모델을 위해,
 # 같은 요구를 시스템 지시로 대신한다.
 _JSON_SYSTEM = (
@@ -230,7 +252,7 @@ def _stream(path, key, body, timeout=TIMEOUT):
 
 
 class Claude:
-    def __init__(self, api_key=None, max_calls=24):
+    def __init__(self, api_key=None, max_calls=24, max_krw=None):
         self.key = (api_key or os.environ.get("CLAUDE_API_KEY", "")
                     or os.environ.get("ANTHROPIC_API_KEY", "")).strip()
         if not self.key:
@@ -247,9 +269,13 @@ class Claude:
         self.cache_write = 0   # 기억시키느라 낸 토큰 (한 번, 정가의 2배)
         self.cache_read = 0    # 기억해 둔 걸 다시 쓴 토큰 (정가의 10분의 1)
         self.last_model = ""   # 마지막으로 실제 쓴 모델 (값 계산에 쓴다)
+        self.max_krw = max_krw if max_krw is not None else cost.RUN_KRW
         self._models = None
         # 배운 것은 모델별로 따로 기억한다. opus 와 sonnet 은 받아주는 설정이 다를 수 있다.
-        self._drop = {}         # 모델 → 거절당한 설정 이름들
+        # 모델 → 거절당한 설정 이름들.
+        # ⚠️ 미리 아는 것은 처음부터 넣어 둔다. 안 그러면 실행마다 400 을 한 번 맞고
+        #    배우느라 헛걸음을 한다(로그의 "빼고 다시 건다" 두 줄이 그것이다).
+        self._drop = {}
         self._cap = {}          # 모델 → 출력 한도 (거절당하며 알아낸 값)
         self._prefill = {}      # 모델 → 응답 미리 채워 넣기를 쓸 수 있는가
         self._probed = set()    # 사전 점검을 마친 모델
@@ -292,7 +318,7 @@ class Claude:
 
     # ── 호출 ────────────────────────────────────────────
     def json(self, prompt, tier="pro", max_output_tokens=32768, temperature=0.9,
-             label="", cache_prefix=""):
+             label="", cache_prefix="", effort=""):
         """프롬프트를 보내고 JSON 하나를 받는다.
 
         cache_prefix — 여러 호출에서 **글자 하나 안 틀리고 똑같이** 반복되는 앞부분.
@@ -328,7 +354,31 @@ class Claude:
             # 내용 문제(작은 프롬프트라 생긴 것일 수 있다)는 넘어가고 본 호출에서 확인한다
             print(f"    (사전 점검 실패 — 본 호출에서 다시 확인한다: {str(e)[:120]})")
 
+
+    # ── 돈 계산 · 한도 ──────────────────────────────────
+    def spent_krw(self):
+        """이번 실행에서 지금까지 쓴 돈(원). 단가를 모르는 모델이면 0."""
+        return cost.krw(self.last_model, self.tokens_in, self.tokens_out,
+                        getattr(self, "cache_write", 0),
+                        getattr(self, "cache_read", 0)) or 0.0
+
+    def _check_money(self):
+        cap = getattr(self, "max_krw", 0) or 0
+        if cap <= 0:
+            return
+        used = self.spent_krw()
+        if used >= cap:
+            raise BudgetExceeded(
+                f"이번 실행에서 약 {used:,.0f}원을 썼다. 한 번 실행 한도 {cap:,.0f}원에 닿았다.\n"
+                "  여기서 멈춘다. 지금까지 만든 것은 저장한다.\n"
+                "  한도를 올리려면 저장소 Secrets 에 VT_RUN_KRW 를 넣어라 (단위: 원).")
+
     def _call(self, model, prompt, max_output_tokens, temperature, label, cache_prefix=""):
+        # ⭐ 돈으로 막는다. 횟수로는 못 막는다 —
+        #    호출 하나의 값이 프롬프트 크기와 모델에 따라 10원~2,000원까지 벌어져
+        #    같은 '24회 상한' 이 208원일 수도 13,230원일 수도 있다(실측).
+        #    여기서 멈추면 지금까지 만든 것은 건져내는 길로 빠진다.
+        self._check_money()
         if self.calls >= self.max_calls:
             raise BudgetExceeded(
                 f"이번 실행에서 이미 {self.calls}회 호출했다. 상한 {self.max_calls}회. "
@@ -342,7 +392,7 @@ class Claude:
 
         # 프리필을 쓸 수 있는 모델이면 응답을 `{` 로 시작하게 못 박는다.
         # 못 쓰는 모델이면 시스템 지시 + 꺼내 읽기로 대신한다.
-        prefill = self._prefill.get(model, True)
+        prefill = self._prefill.get(model, _prefill_ok(model))
 
         # 반복되는 앞부분은 따로 떼어 "이건 기억해 둬라"고 표시한다.
         # ttl 1시간을 쓰는 이유: 막 하나 쓰는 데 2~3분씩 걸려 7번이면 20분이다.
@@ -363,10 +413,18 @@ class Claude:
             "system": _JSON_SYSTEM,
             "messages": [{"role": "user", "content": content}],
         }
+        # ⭐ 얼마나 깊이 생각할지. 이 값을 안 보내면 가장 비싼 'high' 로 돈다.
+        #
+        #    요즘 모델은 답을 내기 전에 '생각' 을 하고, 그 생각도 출력으로 값을 매긴다
+        #    (출력은 입력보다 5배 비싸다). 그런데 우리는 이 값을 아예 안 보내고 있어서
+        #    기계적인 일(형식 고치기·쇼츠)까지 전부 가장 깊게 생각하며 돌고 있었다.
+        #    글을 쓰는 자리는 깊게, 기계적인 자리는 얕게 — 자리마다 다르게 준다.
+        if effort:
+            payload["output_config"] = {"effort": effort}
         if prefill:
             payload["messages"].append({"role": "assistant", "content": "{"})
-        for name in self._drop.get(model, ()):   # 이미 거절당한 설정은 처음부터 빼고 보낸다
-            payload.pop(name, None)
+        for name in set(self._drop.get(model, ())) | _known_unsupported(model):
+            payload.pop(name, None)          # 거절당할 것이 뻔한 설정은 처음부터 뺀다
 
         last = None
         attempt = 0

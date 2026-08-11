@@ -30,6 +30,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import prompts                                              # noqa: E402
+import cost                                                 # noqa: E402
 import money                                                # noqa: E402
 from autofix import autofix                                 # noqa: E402
 from llm import Gemini, LLMError, BudgetExceeded            # noqa: E402
@@ -290,7 +291,8 @@ def gen_design(llm, base, case_txt):
     # base(지시문 + 판례 본문)는 아래 막별 6회에서도 글자 그대로 반복된다.
     # cache_prefix 로 넘겨 한 번만 읽히고 이후엔 재사용하게 한다.
     return llm.json(DESIGN_TASK.replace("{{CASE_JSON}}", ""), cache_prefix=base,
-                    tier="pro", max_output_tokens=8192, temperature=0.85, label="설계")
+                    tier="pro", max_output_tokens=8192, temperature=0.85, label="설계",
+                    effort="high")
 
 
 def gen_act(llm, base, design, act):
@@ -308,6 +310,7 @@ def gen_act(llm, base, design, act):
             .replace("{{EXTRA}}", ACT_EXTRA.get(aid, ""))
             .replace("{{PREFIX}}", prefix))
     res = llm.json(task, cache_prefix=base, tier="pro", max_output_tokens=16384,
+                   effort="high",
                    temperature=0.9, label=f"막 {aid}")
     return res.get("cuts", [])
 
@@ -411,7 +414,8 @@ def machine_fix(llm, doc, rounds=2):
                 SCRIPT_JSON=json.dumps(doc, ensure_ascii=False),
                 EVAL_JSON=json.dumps(fake_eval, ensure_ascii=False, indent=2),
                 ASSET_RULES=asset_rules_text(),
-            ), tier="pro", max_output_tokens=16384, temperature=0.5, label="형식 보강")
+            ), tier="pro", max_output_tokens=16384, temperature=0.5, label="형식 보강",
+            effort="low")
             doc, note = apply_patch(doc, patch)
             if note:
                 print(f"    {note}")
@@ -449,7 +453,8 @@ def evaluate(llm, doc):
     body = prompts.load("script_eval")
     g = grading_llm(llm)
     return g.json(prompts.fill(body, SCRIPT_JSON=json.dumps(doc, ensure_ascii=False)),
-                  tier="flash", max_output_tokens=8192, temperature=0.3, label="채점")
+                  tier="flash", max_output_tokens=8192, temperature=0.3, label="채점",
+                  effort="medium")
 
 
 def revise(llm, doc, ev):
@@ -460,7 +465,8 @@ def revise(llm, doc, ev):
         SCRIPT_JSON=json.dumps(doc, ensure_ascii=False),
         EVAL_JSON=json.dumps(ev, ensure_ascii=False, indent=2),
         ASSET_RULES=asset_rules_text(),
-    ), tier="pro", max_output_tokens=16384, temperature=0.7, label="보강")
+    ), tier="pro", max_output_tokens=16384, temperature=0.7, label="보강",
+       effort="high")
     out, note = apply_patch(json.loads(json.dumps(doc)), patch)
     if note:
         print(f"    {note}")
@@ -518,7 +524,8 @@ def _shorts_retry(doc, prefer):
 def make_shorts(llm, doc):
     body = prompts.load("shorts_gen")
     out = llm.json(prompts.fill(body, SCRIPT_JSON=json.dumps(doc, ensure_ascii=False)),
-                   tier="flash", max_output_tokens=16384, temperature=0.8, label="쇼츠")
+                   tier="flash", max_output_tokens=16384, temperature=0.8, label="쇼츠",
+                   effort="medium")
     return money.tidy_doc(out)
 
 
@@ -653,6 +660,16 @@ def main():
         print("   (이혼·재산분할·양육권·상속재산분할·기여분이 전부 여기 해당한다)")
         print("   불륜을 다루려면 상간자 위자료 = 「손해배상(기)」 판례를 골라야 한다.")
         return 5
+
+    # ⭐ 돈을 쓰기 **전에** 한 달 한도부터 본다. 넘었으면 시작조차 하지 않는다.
+    try:
+        used, left = cost.guard_month("대본 만들기")
+    except cost.MonthlyCapReached as e:
+        print(f"❌ {e}")
+        return 7
+    print(f"이번 달 쓴 돈 {used:,.0f}원 · 남은 한도 {left:,.0f}원 "
+          f"(한 달 {cost.MONTH_KRW:,.0f}원 · 한 번 실행 {cost.RUN_KRW:,.0f}원)")
+    print()
 
     try:
         llm, who = writer(max_calls=args.max_calls, prefer=args.writer or None)
@@ -807,6 +824,10 @@ def main():
     print(f"{ep} 저장 완료 · 채점 {best_score}점 · 컷 {doc['meta'].get('cut_count')}개")
     print(f"기계 검증: 통과 {len(final.oks)} · 오류 {len(final.errors)}")
     print(llm.report())
+    # 장부는 '있으면 좋은 것' 이다. 값을 못 구해도 대본 저장을 막으면 안 된다.
+    cost.record("대본 만들기", getattr(llm, "spent_krw", lambda: 0)(),
+                f"{ep} · 컷 {doc['meta'].get('cut_count')}개"
+                + (" · 도중에 멈춤" if salvaged else ""))
     if final.errors:
         print("\n⚠️ 형식 오류가 남았다. 렌더링 전에 반드시 고쳐야 한다:")
         for w, m in final.errors[:8]:

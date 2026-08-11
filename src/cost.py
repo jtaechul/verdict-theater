@@ -13,7 +13,29 @@
    환율은 워크플로에서 USD_KRW 환경변수로 덮어쓸 수 있다.
 """
 
+import json
 import os
+from datetime import date
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+LEDGER = ROOT / "state" / "spend.json"      # 쓴 돈 장부
+
+# ── 한도 (원) ────────────────────────────────────────────
+#
+#   ⭐ 왜 '몇 번 불렀나' 가 아니라 '얼마 썼나' 로 막는가
+#
+#   원래는 호출 횟수(max_calls)로만 막고 있었다. 그런데 호출 하나의 값은
+#   프롬프트 크기와 모델에 따라 10원에서 2,000원까지 벌어진다. 실측하면
+#   같은 '24회 상한' 이 208원일 수도 13,230원일 수도 있다.
+#   **횟수로는 돈을 막을 수 없다.** 그래서 원으로 막는다.
+#
+#   두 겹으로 막는다.
+#     한 번 실행    RUN_KRW  — 한 번 누를 때 이만큼 넘으면 거기서 멈춘다
+#     한 달 전체    MONTH_KRW— 이번 달 누적이 넘으면 아예 시작하지 않는다
+#   둘 다 GitHub Secrets 나 워크플로 입력으로 바꿀 수 있다.
+RUN_KRW = float(os.environ.get("VT_RUN_KRW", "6000"))
+MONTH_KRW = float(os.environ.get("VT_MONTH_KRW", "50000"))
 
 # 1달러를 몇 원으로 칠 것인가. (src/tts.py 와 같은 기본값을 쓴다)
 USD_KRW = float(os.environ.get("USD_KRW", "1470"))
@@ -97,3 +119,62 @@ if __name__ == "__main__":
     for m, w in compare(a.tin, a.tout):
         per = f"  (한 건 {w / a.each:,.0f}원)" if a.each else ""
         print(f"  {m:18s} {w:8,.0f}원{per}")
+
+
+# ── 장부 (state/spend.json) ──────────────────────────────
+#
+# 한 번 실행할 때마다 얼마 썼는지 한 줄씩 쌓는다. 이것이 있어야
+#   · 이번 달에 얼마 나갔는지 화면에서 볼 수 있고
+#   · 한 달 한도를 넘었을 때 **시작 전에** 막을 수 있다
+# 값이 0원이면 적지 않는다(모델을 안 부른 실행까지 남길 이유가 없다).
+
+
+def _load():
+    if not LEDGER.exists():
+        return []
+    try:
+        return json.loads(LEDGER.read_text(encoding="utf-8"))
+    except Exception:                                   # noqa: BLE001
+        return []                                       # 장부가 깨져도 제작은 멈추지 않는다
+
+
+def record(kind, won, note="", when=None):
+    """쓴 돈 한 줄을 장부에 남긴다. 실패해도 절대 예외를 올리지 않는다."""
+    try:
+        if not won or won <= 0:
+            return
+        rows = _load()
+        rows.append({"date": (when or date.today()).isoformat(),
+                     "kind": kind, "krw": round(float(won)), "note": note[:120]})
+        rows = rows[-2000:]                             # 오래된 것은 잘라낸다
+        LEDGER.parent.mkdir(parents=True, exist_ok=True)
+        LEDGER.write_text(json.dumps(rows, ensure_ascii=False, indent=2) + "\n",
+                          encoding="utf-8")
+    except Exception as e:                              # noqa: BLE001
+        print(f"    (장부에 못 적었다: {e} — 제작은 계속한다)")
+
+
+def month_total(when=None):
+    """이번 달에 쓴 돈 합계."""
+    ym = (when or date.today()).isoformat()[:7]
+    return sum(r.get("krw", 0) for r in _load() if str(r.get("date", "")).startswith(ym))
+
+
+def month_left(when=None):
+    return max(0.0, MONTH_KRW - month_total(when))
+
+
+class MonthlyCapReached(RuntimeError):
+    """이번 달 한도를 다 썼다. 시작하기 전에 막는다."""
+
+
+def guard_month(what="이번 작업"):
+    """돈을 쓰기 **전에** 부른다. 한 달 한도를 넘었으면 시작조차 하지 않는다."""
+    used, left = month_total(), month_left()
+    if left <= 0:
+        raise MonthlyCapReached(
+            f"이번 달에 이미 {used:,.0f}원을 썼다. 한 달 한도 {MONTH_KRW:,.0f}원을 넘었으므로 "
+            f"{what}을 시작하지 않는다.\n"
+            f"  한도를 올리려면 저장소 Secrets 에 VT_MONTH_KRW 를 넣어라 (단위: 원).\n"
+            f"  다음 달 1일이 되면 저절로 풀린다.")
+    return used, left

@@ -114,6 +114,7 @@ jobs:
         run: |
           python3 tools/script_salvage_test.py
           python3 tools/script_resume_test.py
+          python3 tools/money_guard_test.py
 
       # 도중에 멈춘 대본을 **이어서** 마저 만든다.
       # 컷을 만드는 1·2단계가 전체 값의 8할이고 20분을 먹는다. 이미 만들어 둔
