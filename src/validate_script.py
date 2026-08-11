@@ -48,7 +48,20 @@ MAX_TEXT_LEN = 45
 CUT_MIN, CUT_MAX = 100, 115
 RUNTIME, RUNTIME_TOL = 720, 10
 ACT_TOL = 5
-SHORT_MIN, SHORT_MAX = 35.0, 50.0
+# ⭐ 쇼츠 길이·속도 (2026-08-11 실측으로 고침)
+#
+#    EP001 쇼츠 3편을 재보니 셋 다 똑같았다.
+#      길이 38~39초 · 컷 10개 · **컷 하나 평균 3.9초**
+#    쇼츠에서 잘 되는 영상은 1.5~2.5초에 한 번 화면이 바뀐다. 우리 화면은 그린
+#    인물에 아주 느린 확대만 걸려 있어서, 4초 동안 새로운 것이 없었다. 넘기며
+#    보던 사람은 거기서 손가락이 나간다. 지속률 50% 미만의 가장 큰 원인이다.
+#
+#    → 길이를 줄이고(25~35초) 컷을 두 배 빠르게(1.5~2.5초) 한다.
+#      두 값은 서로 맞물린다. 30초 ÷ 2.0초 ≒ 15컷.
+SHORT_MIN, SHORT_MAX = 25.0, 35.0
+SHORT_CUT_MAX = 2.5         # 컷 하나가 이보다 길면 화면이 멈춘 것처럼 보인다
+SHORT_CUT_MIN = 1.2         # 이보다 짧으면 자막을 읽을 수 없다
+SHORT_AVG_MAX = 2.5         # 평균도 본다 — 짧은 컷 몇 개로 눈속임할 수 없게
 
 # 판결·금액이 차지해도 되는 최대 비율. 이야기의 90%는 사람 사이의 일이어야 한다.
 LEGAL_MAX_RATIO = 0.10
@@ -976,6 +989,30 @@ def check_shorts(doc, r):
         # 본문 합 + 도입/마무리 약 6초
         if abs((body + 6.0) - est) > 4.0:
             r.warn(f"쇼츠{no}", f"est_sec {est} 와 컷 합({body:.1f}+6.0) 이 어긋난다")
+
+        # ⭐ 컷이 얼마나 자주 바뀌는가 — 지속률을 가장 크게 좌우한다.
+        #    규칙을 글로만 적어 두면 안 지켜진다. EP001 이 그랬다(프롬프트에
+        #    적혀 있었는데 3편 모두 평균 3.9초로 나왔다). 그래서 기계가 막는다.
+        if own:
+            secs = [float(c.get("sec", 0)) for c in own]
+            slow = [f"{c.get('id', '?')}({x:.1f}초)"
+                    for c, x in zip(own, secs) if x > SHORT_CUT_MAX]
+            if slow:
+                r.error(f"쇼츠{no}", f"컷이 너무 길다 (한도 {SHORT_CUT_MAX}초): "
+                                     + ", ".join(slow[:5])
+                                     + (f" 외 {len(slow) - 5}개" if len(slow) > 5 else "")
+                                     + " — 화면이 멈춘 것처럼 보여 넘겨 버린다")
+            tiny = [f"{c.get('id', '?')}({x:.1f}초)"
+                    for c, x in zip(own, secs) if 0 < x < SHORT_CUT_MIN]
+            if tiny:
+                r.warn(f"쇼츠{no}", f"컷이 너무 짧아 자막을 못 읽는다: {', '.join(tiny[:4])}")
+            if secs:
+                avg = sum(secs) / len(secs)
+                if avg > SHORT_AVG_MAX:
+                    r.error(f"쇼츠{no}", f"컷 하나 평균 {avg:.1f}초 — {SHORT_AVG_MAX}초 이하여야 "
+                                         f"한다 (컷 {len(secs)}개). 컷을 더 잘게 나눠라")
+                else:
+                    r.ok(f"쇼츠{no} 컷 속도 {avg:.1f}초/컷 · {len(secs)}컷 · {est:.0f}초")
         if not s.get("intro_line") or not s.get("outro_line"):
             r.error(f"쇼츠{no}", "전용 도입·마무리 문장이 있어야 한다")
     if not any(e[0].startswith("쇼츠") for e in r.errors):
