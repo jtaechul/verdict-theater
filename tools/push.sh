@@ -58,6 +58,38 @@ stage() {
   done
 }
 
+# ⭐ 뒤처진 작업 공간에서 올리는 것을 막는다 (2026-08-12)
+#
+#   무슨 일이 있었나
+#     작업 공간이 몇 번씩 **8월 5일 상태로 통째로 되돌아왔다.** git 이 HEAD 를
+#     되돌린 게 아니다 — .git 폴더째로 옛 스냅샷에서 다시 시작된 것이다.
+#     증거: reflog 에 08-05 ~ 08-11 사이가 통째로 비어 있는데, 그 사이에 만든
+#     커밋이 12개다. 저장소 안에서 고칠 수 있는 문제가 아니다(컨테이너 쪽 일).
+#
+#   왜 위험한가
+#     뒤처진 트리에서 올리면 **내가 건드리지도 않은 파일이 옛것으로 되돌아간다.**
+#     실제로 175줄이 짧은 produce.yml 을 올릴 뻔했다.
+#     (2026-08-10 에 spotlight 프로젝트가 이런 식으로 두 번 되돌아간 적이 있다)
+#
+#   그래서 올리기 **전에** 확인한다. 뒤처져 있으면 아무것도 안 하고 멈춘다.
+#   고치는 법도 함께 알려 준다 — 사람이 헤매지 않게.
+git fetch -q origin main 2>/dev/null || true
+if git rev-parse --verify -q origin/main >/dev/null; then
+  BASE="$(git rev-parse origin/main)"
+  if ! git merge-base --is-ancestor "$BASE" HEAD 2>/dev/null; then
+    BEHIND="$(git rev-list --count HEAD..origin/main 2>/dev/null || echo '?')"
+    echo "❌ 작업 공간이 저장소보다 ${BEHIND}커밋 뒤처져 있다. 올리지 않는다." >&2
+    echo "   지금 올리면 남이 올린 것이 옛것으로 되돌아간다." >&2
+    echo "   HEAD        : $(git rev-parse --short HEAD)" >&2
+    echo "   origin/main : $(git rev-parse --short origin/main)" >&2
+    echo "" >&2
+    echo "   고치는 법 — 바꾼 파일을 딴 데 옮겨 두고:" >&2
+    echo "     git fetch origin main && git reset --hard origin/main" >&2
+    echo "   그 뒤 바꾼 파일을 도로 넣고 다시 올린다." >&2
+    exit 3
+  fi
+fi
+
 stage
 if git diff --cached --quiet; then
   # 담을 것이 없다. 두 가지 경우다.
