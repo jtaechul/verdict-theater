@@ -57,15 +57,20 @@ BY_WORD = [
     #    그 소리 자체가 "삑 삑" 이다 — 손님이 빼 달라고 한 바로 그 소리다.
     #    병실 장면은 방 소리(amb_hospital)로 충분하다.
     (("시계", "새벽", "몇 시간", "기다렸", "밤새"), "clock"),
-    (("걸어", "복도", "발걸음", "들어왔", "다가"), "footsteps"),
+    # ⚠️ footsteps 는 자동으로 깔지 않는다 (2026-08-12 손님 지적).
+    #    assets/sfx/footsteps.mp3 는 녹음이 아니라 ffmpeg 합성음이다 —
+    #      anoisesrc=c=brown … lowpass=f=300  (assets_gen.py:445)
+    #    갈색 잡음에 저역만 남긴 것이라 발소리가 아니라 둔탁한 '툭' 으로 들린다.
+    #    게다가 '다가' · '들어왔' 같은 흔한 낱말에 걸려 아무 데나 깔렸다.
+    #    진짜 발소리 녹음을 넣기 전까지는 안 쓴다.
 ]
 
 # ── 배경 → 효과음 (둘째 규칙) ──────────────────────────────
 #    그 자리에 있으면 자연스러운 소리만. 억지로 넣지 않는다.
 BY_BG = {
-    "court_hall": ["footsteps", "door"],
-    "court_exterior": ["footsteps"],
-    "court_room": ["paper", "footsteps"],
+    "court_hall": ["door"],
+    "court_exterior": [],
+    "court_room": ["paper"],
     "office_lawyer": ["paper", "stamp"],
     "office_registry": ["stamp", "paper"],
     "office_bank": ["stamp", "paper"],
@@ -112,6 +117,12 @@ def pick_by_bg(bg, used_recent):
     return None
 
 
+# 귀로 듣고 빼기로 한 소리. 자동으로 깔지도 않고, 이미 깔린 것도 떼어 낸다.
+#   footsteps — assets_gen.py 가 만드는 합성음(anoisesrc=c=brown … lowpass=f=300)이라
+#               발소리가 아니라 둔탁한 '툭' 으로 들린다. 진짜 녹음이 생기면 뺀다.
+BANNED_SFX = {"footsteps"}
+
+
 def strip_beeps(doc, check=False):
     """이미 깔려 있는 '삑' 소리를 떼어 낸다. 뗀 컷 번호를 돌려준다.
 
@@ -120,6 +131,14 @@ def strip_beeps(doc, check=False):
     for c in (c for a in doc.get("acts", []) for c in a.get("cuts", [])):
         name = str(c.get("sfx") or "").replace("sfx_", "")
         if not name:
+            continue
+        # ⚠️ 손님이 귀로 듣고 빼 달라고 한 소리는 이름만 보고 뗀다.
+        #    footsteps 는 녹음이 아니라 갈색 잡음 합성음이라 발소리로 안 들린다
+        #    (2026-08-12: "41초 부근 효과음 이상한 거잖아. 들어가지 않게 해")
+        if name in BANNED_SFX:
+            hit.append((c.get("id"), name))
+            if not check:
+                c["sfx"] = None
             continue
         p = SFX_DIR / f"{name}.mp3"
         if p.exists() and is_beep(p):
