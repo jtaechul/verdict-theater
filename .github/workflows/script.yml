@@ -388,7 +388,7 @@ jobs:
           #    커밋을 조용히 버리고 "Everything up-to-date" 로 성공 처리했다.
           #    그렇게 EP002 대본(컷 120개, Opus 19분치)이 통째로 사라졌다.
           if bash tools/push.sh "대본: ${{ inputs.mode }} 결과 갱신 [skip ci]" \
-               data/scripts state/queue.json state/episodes.json state/rejected.json; then
+               data/scripts state/queue.json state/episodes.json state/rejected.json state/spend.json; then
             exit 0
           fi
           echo "PUSH_FAILED=1" >> "$GITHUB_ENV"
