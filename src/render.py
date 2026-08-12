@@ -488,6 +488,31 @@ ZOOM_START = 1.0            # 첫 프레임은 **자르지 않는다** (예전 1
 ZOOM_MAX = 1.05
 ZOOM_EDGE = (1 - 1 / ZOOM_MAX) / 2
 
+# ⭐ 움직임 상수 (2026-08-12 · 인물을 배경에서 떼어내면서 생긴 것들)
+#    전부 ffmpeg 가 하는 일이라 **값은 0원**이다.
+#
+#    BREATH   숨쉬기 진폭. 인물이 이 비율만큼 커졌다 작아진다.
+#             ⚠️ 크게 주면 안 된다. 0.004 는 1080px 화면에서 약 4px —
+#             "살아 있네" 정도로만 느껴지고 눈에 띄면 안 된다.
+#    BREATH_T 숨쉬기 주기(프레임 나눗수). 26이면 30fps 에서 한 번 부풀었다
+#             꺼지는 데 약 5.4초 — 사람이 조용히 앉아 숨쉬는 속도다.
+#    PARALLAX 인물이 배경보다 더 확대되는 몫. 가까운 것이 더 크게 밀려오면
+#             화면에 깊이가 생긴다. 배경 5% 확대에 인물이 0.8% 더 붙는다.
+BREATH = 0.004
+BREATH_T = 26
+PARALLAX = 0.008
+
+# ⭐ 충격 컷의 '한 방' (손님 선택 2026-08-12: "중간 — 충격 순간만 강하게")
+#    애니 드라마가 쓰는 관습이다. 정지 → 아주 짧은 흰 번쩍임 + 인물이 확 다가왔다
+#    바로 제자리 → 다시 정지. 결정적인 순간에만 쓰므로 값어치가 있다.
+#
+#    ⚠️ 언제 쓰나 — 인물 포즈가 `*_shock` 인 컷에서만. 새 표식을 만들지 않는다.
+#       (EP002 실측: 119컷 중 9컷 = 7.5%. 알아서 절제된 빈도가 나온다)
+#    남발하면 촌스러워진다. 이 조건을 넓히지 말 것.
+IMPACT = 0.05               # 그 순간 인물이 5% 커졌다가
+IMPACT_F = 4                # 4프레임(약 0.13초) 만에 제자리로
+IMPACT_FLASH = 0.10         # 흰 번쩍임이 사라지는 데 걸리는 시간(초)
+
 PLACE_LOG = None            # 검수 스크립트가 [] 를 넣으면 인물 배치 결과를 여기 쌓는다
 
 
@@ -755,8 +780,19 @@ def pick_one(cut, chars):
     return chars[:1]
 
 
-def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False):
-    """**무대 한 판**을 그린다. banded 면 자막은 그리지 않는다(띠가 맡는다)."""
+def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False,
+                  split=False):
+    """**무대 한 판**을 그린다. banded 면 자막은 그리지 않는다(띠가 맡는다).
+
+    ⭐ split=True 면 **인물을 배경에 합치지 않고 따로** 돌려준다 (2026-08-12).
+       까닭: 예전에는 배경과 인물을 한 장으로 합친 뒤 그 한 장을 확대했다.
+       그래서 "숨쉬기"(+0.004*sin) 가 사람이 숨쉬는 게 아니라 **화면 전체가
+       흔들리는 것** = 카메라 떨림으로 보였다. 인물을 떼어 놓으면
+         · 인물만 위아래로 아주 조금 움직여 진짜 숨쉬기가 되고
+         · 배경과 다른 속도로 움직여 깊이(패럴랙스)가 생기고
+         · 나중에 눈 깜빡임 부품을 얼굴 위에 얹을 자리가 생긴다
+       합치지 않을 뿐 그리는 방법은 하나도 안 바뀐다 (split=False 면 예전 그대로).
+    """
     code = cut.get("bg", "")
     p = bg_path(code)
     if p:
@@ -775,6 +811,8 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False):
         bb = gfx.getbbox()
         gfx_bottom = bb[3] if bb else 0
 
+    # ⭐ 인물은 여기(투명한 겹)에 그린다. split=False 면 맨 끝에서 배경에 합친다.
+    chars_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     chars = cut.get("chars") or []
     if vertical and len(chars) > 1:
         chars = pick_one(cut, chars)            # 세로는 한 명만. 두 명이면 화면이 죽는다
@@ -936,7 +974,7 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False):
         cx1 = min(sprite.width, cx0 + (W - sx))
         cy1 = min(sprite.height, cy0 + (H - sy))
         if cx1 > cx0 and cy1 > cy0:
-            move.alpha_composite(sprite.crop((cx0, cy0, cx1, cy1)), (sx, sy))
+            chars_layer.alpha_composite(sprite.crop((cx0, cy0, cx1, cy1)), (sx, sy))
 
         head_top = min(head_top, y)
         face_bottom = max(face_bottom, y + chin_y(sprite))
@@ -1049,10 +1087,13 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False):
             gfx_layer, when, cy=cy,
             avoid=None if ink_top is None else ink_top - int(H * 0.012))
 
+    if split:
+        return move, chars_layer, gfx_layer, sub_layer
+    move.alpha_composite(chars_layer)          # 예전과 똑같이 한 장으로
     return move, gfx_layer, sub_layer
 
 
-def build_plates(cut, W, H, vertical=False, top_line=""):
+def build_plates(cut, W, H, vertical=False, top_line="", split=False):
     """한 컷의 세 겹을 만든다 — 움직이는 겹(배경+인물) · 고정된 겹(그래픽) · 자막.
 
     ⭐ 무대와 자막 띠를 나눈다(stage_box 참고).
@@ -1064,13 +1105,19 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
        같이 확대돼 띠가 흔들리고, 무대 내용이 띠 위로 삐져나온다."""
     y0, y1 = stage_box(W, H, vertical)
     if (y0, y1) == (0, H):
-        return _stage_plates(cut, W, H, vertical, top_line)        # 띠 없음(예전 방식)
+        return _stage_plates(cut, W, H, vertical, top_line, split=split)  # 띠 없음
 
     sh = y1 - y0
-    s_move, s_gfx, _ = _stage_plates(cut, W, sh, vertical, top_line="", banded=True)
+    s_move, s_char, s_gfx, _ = _stage_plates(cut, W, sh, vertical, top_line="",
+                                             banded=True, split=True)
 
     move = Image.new("RGBA", (W, H), (0, 0, 0, 255))
     move.paste(s_move.convert("RGBA"), (0, y0))
+    # 인물 겹도 같은 자리에 올린다 (무대는 띠 아래로 y0 만큼 내려가 있다)
+    chars_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    chars_layer.paste(s_char, (0, y0))
+    if not split:
+        move.alpha_composite(chars_layer)      # 예전과 똑같이 한 장으로
 
     gfx = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     gfx.paste(s_gfx, (0, y0))
@@ -1097,6 +1144,8 @@ def build_plates(cut, W, H, vertical=False, top_line=""):
     sub = G.draw_subtitle(Image.new("RGBA", (W, H), (0, 0, 0, 0)),
                           cut.get("text", ""), vertical=vertical,
                           speaker=cut.get("speaker"), band=(y1, H))
+    if split:
+        return move, chars_layer, gfx, sub
     return move, gfx, sub
 
 
@@ -1210,26 +1259,54 @@ def logo_png(workdir, W, H, vertical, blank=False):
 
 
 def render_cut(cut, dur, workdir, idx, W, H, vertical=False, top_line="", trans=(None, None)):
-    move, gfx_layer, sub_layer = build_plates(cut, W, H, vertical, top_line=top_line)
+    bg, chars, gfx_layer, sub_layer = build_plates(cut, W, H, vertical,
+                                                   top_line=top_line, split=True)
     mp = workdir / f"m{idx:03d}.png"
+    cp = workdir / f"c{idx:03d}.png"
     gp = workdir / f"g{idx:03d}.png"
     sp = workdir / f"s{idx:03d}.png"
-    move.convert("RGB").save(mp)
+    bg.convert("RGB").save(mp)
+    chars.save(cp)
     gfx_layer.save(gp)
     sub_layer.save(sp)
     # 상황 한 줄이 띠에 들어가는 컷에서는 채널 이름을 빼 겹침을 막는다
     lp = logo_png(workdir, W, H, vertical, blank=bool(top_line))
 
     frames = max(2, int(dur * FPS))
-    # 느린 확대 + 아주 약한 숨쉬기. 정지 이미지가 죽어 보이는 것을 막는다.
-    # ⚠️ 예전에는 1.02 에서 시작해 **첫 프레임부터 화면의 2% 를 잘라먹었다.**
-    #    1.0 에서 시작하면 첫 프레임은 원본 그대로다. 숨쉬기 진폭만큼은
-    #    1.0 아래로 내려가지 않게 바닥을 깔아 둔다(zoompan 은 z<1 을 1 로 자른다).
-    span = ZOOM_MAX - ZOOM_START - 0.004
-    zexpr = f"{ZOOM_START + 0.004:.4f}+{span:.4f}*(on/{frames})+0.004*sin(on/26)"
+
+    # ⭐ 배경과 인물을 **따로** 움직인다 (2026-08-12 손님: "조금 움직임이 있는 거를
+    #    어떤 식으로 구현할지 창의적으로 고민해 봐")
+    #
+    #    예전에는 배경+인물을 한 장으로 합친 뒤 그 한 장에 느린 확대와
+    #    `+0.004*sin(on/26)` 을 걸었다. 그래서 사람이 숨쉬는 게 아니라
+    #    **화면 전체가 흔들렸다** — 카메라 떨림으로 보였다.
+    #
+    #    이제 이렇게 나눈다.
+    #      배경 — 느린 확대만. 흔들지 않는다(멀리 있는 것은 덜 움직여야 한다)
+    #      인물 — 같은 확대 + 숨쉬기 사인. 배경보다 조금 더 빨리 확대된다
+    #             → 둘의 속도 차가 곧 **깊이(패럴랙스)** 다
+    #    값은 0원이다. ffmpeg 가 하는 일이라 모델을 부르지 않는다.
+    span = ZOOM_MAX - ZOOM_START - BREATH
+    base = f"{ZOOM_START + BREATH:.4f}+{span:.4f}*(on/{frames})"
+    # 인물은 배경보다 PARALLAX 만큼 더 확대된다 — 가까이 있으니 더 크게 밀려온다
+    zbg = base
+    zch = f"{base}+{PARALLAX:.4f}*(on/{frames})+{BREATH:.4f}*sin(on/{BREATH_T})"
+
+    # 충격 컷이면 첫 4프레임 동안만 인물이 확 다가왔다 제자리로 돌아온다
+    shock = any(str(x.get("pose") or "").endswith("_shock")
+                for x in (cut.get("chars") or []))
+    if shock:
+        zch += f"+{IMPACT:.4f}*max(0\\,1-on/{IMPACT_F})"
+
     vf = (f"[0:v]scale={W * 2}:{H * 2},"
-          f"zoompan=z='{zexpr}':d={frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
-          f"s={W}x{H}:fps={FPS}[v]")
+          f"zoompan=z='{zbg}':d={frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
+          f"s={W}x{H}:fps={FPS}[bgv]"
+          # ⚠️ 인물 겹은 **투명**하다. format=rgba 를 앞뒤로 붙여야 zoompan 이
+          #    투명한 곳을 검게 칠하지 않는다 (실측으로 확인했다).
+          f";[1:v]format=rgba,scale={W * 2}:{H * 2},"
+          f"zoompan=z='{zch}':d={frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
+          f"s={W}x{H}:fps={FPS},format=rgba[chv]"
+          f";[bgv][chv]overlay=0:0[v]")
 
     # ⭐ 등장 연출.
     #    이름표는 **왼쪽에서 미끄러져 들어오고**(방송 로워서드가 쓰는 방식),
@@ -1255,6 +1332,10 @@ def render_cut(cut, dur, workdir, idx, W, H, vertical=False, top_line="", trans=
     # 화면 전체가 함께 잠기고 함께 열린다.
     t_in, t_out = trans
     fades = []
+    # ⚠️ 흰 번쩍임을 **맨 앞에** 넣는다. 들어오는 전환이 따로 있으면 그 쪽이
+    #    우선이다 — 두 번 겹쳐 번쩍이면 눈이 아프다.
+    if shock and not t_in:
+        fades.append(f"fade=t=in:st=0:d={IMPACT_FLASH}:color=white")
     if t_in:
         color, d_ = t_in
         fades.append(f"fade=t=in:st=0:d={min(d_, dur / 2):.3f}:color={color}")
@@ -1267,9 +1348,11 @@ def render_cut(cut, dur, workdir, idx, W, H, vertical=False, top_line="", trans=
 
     out = workdir / f"v{idx:03d}.mp4"
     run(["ffmpeg", "-y", "-loglevel", "error",
-         "-loop", "1", "-i", str(mp), "-loop", "1", "-i", str(gp),
-         "-loop", "1", "-i", str(gp), "-loop", "1", "-i", str(sp),
-         "-loop", "1", "-i", str(lp),
+         "-loop", "1", "-i", str(mp),      # 0 배경
+         "-loop", "1", "-i", str(cp),      # 1 인물 (따로 움직인다)
+         "-loop", "1", "-i", str(gp),      # 2 그래픽
+         "-loop", "1", "-i", str(sp),      # 3 자막
+         "-loop", "1", "-i", str(lp),      # 4 로고
          "-filter_complex", vf, "-map", "[vo]", "-t", f"{dur:.3f}",
          "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-r", str(FPS),
          str(out)])
