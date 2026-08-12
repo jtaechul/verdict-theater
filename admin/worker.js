@@ -243,6 +243,8 @@ button{font:inherit;font-weight:600;border:0;border-radius:12px;padding:14px 16p
 background:var(--blue);color:#fff;width:100%;min-height:50px}
 button:active{opacity:.75}
 button.ghost{background:#262a38;color:var(--ink)}
+/* 멈추기 — 실행과 확실히 달라 보여야 잘못 누르지 않는다. 폭도 좁게 둬 오조작을 막는다. */
+button.stopbtn{background:#3a2730;color:#e79aa6;width:auto;flex:0 0 auto;padding:14px 18px}
 button.gold{background:var(--gold);color:#1a1608}
 input,select{font:inherit;width:100%;padding:12px;border-radius:10px;
 border:1px solid var(--line);background:#161822;color:var(--ink);min-height:48px;margin-top:6px}
@@ -664,7 +666,13 @@ function wfList(files) {
         h += '<div style="color:#9599ab;font-size:12.5px;margin:-6px 0 10px;line-height:1.5">'
            + esc(inp.help) + '</div>';
     });
-    h += '<div style="height:12px"></div><button onclick="run(' + i + ')">실행</button></div>';
+    // ⭐ 멈추기 버튼 (2026-08-12 손님 요청). 예전에는 멈추려면 GitHub 에 들어가
+    //    Cancel workflow 를 눌러야 했다 — 손님은 GitHub 에 안 들어간다.
+    h += '<div style="height:12px"></div>'
+       + '<div style="display:flex;gap:8px">'
+       + '<button onclick="run(' + i + ')" style="flex:1">실행</button>'
+       + '<button onclick="stopWf(' + i + ')" class="stopbtn">멈추기</button>'
+       + '</div></div>';
   });
   return h;
 }
@@ -1225,6 +1233,27 @@ function play(ep, i) {
   scrollTo(0, 0);
 }
 
+// 돌고 있는 것을 멈춘다. 만들던 대본은 초벌로 남으므로 [이어서 마저 만들기] 로 이을 수 있다.
+async function stopWf(i) {
+  const w = WF[i];
+  // 브라우저 쪽 코드는 템플릿 문자열 안에 들어 있다. 줄바꿈 이스케이프나
+  // 역따옴표를 여기 쓰면 바깥 템플릿이 먼저 먹어 안쪽 문자열이 깨진다(SyntaxError).
+  // 여러 줄이 필요하면 문자열을 따로 잇는다.
+  if (!confirm(w.name + ' 을(를) 지금 멈출까요? '
+             + '만들던 대본은 저장됩니다 — 나중에 [이어서 마저 만들기] 로 이을 수 있습니다.')) return;
+  toast(w.name + ' 멈추는 중…');
+  let j;
+  try {
+    const r = await fetch('/api/stop', { method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ file: w.file }) });
+    j = await r.json();
+  } catch (e) { j = { ok: false, error: '연결이 끊겼습니다' }; }
+  if (!j.ok) { toast(j.error || '멈추지 못했습니다', 7000); return; }
+  toast('멈췄습니다. 만들던 것은 저장됐습니다 — [이어서 마저 만들기] 로 이을 수 있습니다.', 9000);
+  watch();
+}
+
 async function run(i) {
   const w = WF[i];
   const inputs = {};
@@ -1661,6 +1690,36 @@ export default {
           method: 'POST', body: JSON.stringify({ ref: BRANCH, inputs: clean }),
         });
         return Response.json({ ok: true });
+      }
+
+      // ⭐ 돌고 있는 것을 멈춘다 (2026-08-12 손님 요청)
+      //    "대본 만들기 버튼 옆에 중단하기 버튼도 만들어줘"
+      //    예전에는 멈추려면 GitHub 에 들어가 Cancel workflow 를 눌러야 했다.
+      //    손님은 GitHub 에 안 들어간다("귀찮고 어려워") — 여기서 끝나야 한다.
+      if (url.pathname === '/api/stop' && req.method === 'POST') {
+        const { file } = await req.json();
+        if (!WORKFLOWS.some((w) => w.file === file))
+          return Response.json({ ok: false, error: '알 수 없는 워크플로' }, { status: 400 });
+        // 그 워크플로에서 아직 안 끝난 실행을 찾는다 (대기 중인 것도 포함).
+        let runs = [];
+        for (const st of ['in_progress', 'queued', 'waiting', 'requested', 'pending']) {
+          const r = await gh(env,
+            `/repos/${REPO}/actions/workflows/${file}/runs?status=${st}&per_page=10`)
+            .catch(() => ({ workflow_runs: [] }));
+          runs = runs.concat(r.workflow_runs || []);
+        }
+        if (!runs.length)
+          return Response.json({ ok: false, error: '지금 돌고 있는 것이 없습니다' });
+        let done = 0;
+        for (const r of runs) {
+          try {
+            await gh(env, `/repos/${REPO}/actions/runs/${r.id}/cancel`, { method: 'POST' });
+            done += 1;
+          } catch (e) { /* 이미 끝났을 수 있다 — 나머지를 계속 멈춘다 */ }
+        }
+        if (!done)
+          return Response.json({ ok: false, error: '멈추지 못했습니다 (권한 확인 필요)' });
+        return Response.json({ ok: true, n: done });
       }
 
       return new Response(appHtml(), { headers: HTML });
