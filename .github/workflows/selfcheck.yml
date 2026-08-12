@@ -77,7 +77,10 @@ jobs:
           #    (ubuntu-latest 이미지에서 ffmpeg 가 빠졌다 — 있다고 믿으면 안 된다)
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg fonts-nanum
-          python3 -m pip install --quiet Pillow numpy
+          # ⚠️ PyYAML 도 여기 있어야 한다. limit_test·pipeline_test 가 워크플로
+          #    파일을 읽는데, 이 단계에 설치가 빠져 자체 점검이 두 번 빨간불이
+          #    났다 (2026-08-12 실측: No module named 'yaml').
+          python3 -m pip install --quiet Pillow numpy PyYAML
           for cmd in ffmpeg ffprobe; do
             command -v "$cmd" >/dev/null || { echo "::error::$cmd 가 없습니다"; exit 1; }
           done
