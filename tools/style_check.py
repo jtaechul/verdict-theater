@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""그림 프롬프트가 **실사**를 시키는지 본다. 인터넷 0회 · 0원 · 1초.
+"""그림 프롬프트의 화풍이 정해진 대로인지 본다 (인물=애니 · 배경=사진). 인터넷 0회 · 0원 · 1초.
 
     python3 tools/style_check.py
 
@@ -14,8 +14,15 @@
         "캐릭터 시트 한 장" 이었다. '캐릭터 시트' 라고만 하면 AI 는 애니를 그린다.
       · 한쪽에만 적어 두면 이렇게 조용히 갈라진다. 눈으로는 못 잡는다.
 
-    채널 화풍은 **실사**다. 배경이 진짜 사진(픽사베이·픽셀스)이라 인물이
-    애니면 한 화면에서 겉돈다. 이 검사가 그 결정을 지킨다.
+    ⭐ 채널 화풍 (손님 결정 2026-08-12) — **인물은 애니, 배경은 사진**
+         인물: 반실사 애니. 싼 flash 로도 쓸 만해 장당 197원 → 57원이 된다.
+               회차마다 얼굴을 바꾸므로 벌 수만큼 그 차이가 곱해진다.
+         배경: 사진 그대로. 픽사베이·픽셀스에서 0원으로 받는다.
+       배경은 깔릴 때 14px 흐려지고 22% 어두워지므로 두 화풍이 안 겉돈다.
+       다만 **눈 큰 소녀풍(모에)이면 반드시 겉돈다** — 그래서 그것도 막는다.
+
+    이 검사는 어느 한쪽이 몰래 뒤집히는 것을 막는다. 화풍을 아예 안 적는 것도
+    막는다 — 안 적으면 AI 가 알아서 정하고, 그게 이번 사고의 원인이었다.
 """
 
 import pathlib
@@ -35,24 +42,22 @@ def bad(msg):
     print(f"   ❌ {msg}")
 
 
-# 실사를 시키는 말 / 애니를 부르는 말
-REAL_KO = ("실사", "사진")
-BAN_KO = ("애니", "일러스트", "만화", "수채화", "유화")
-REAL_EN = ("photoreal", "photograph", "film still")
-BAN_EN = ("anime", "cartoon", "manga", "illustration style", "watercolor")
+# 인물 = 애니를 시켜야 한다 / 배경 = 실사를 시켜야 한다
+CHAR_MUST = ("애니", "극화체", "그림")            # 인물 프롬프트에 있어야 하는 말
+CHAR_BAN = ("실사 사진이다", "사진처럼")           # 인물 프롬프트에 있으면 안 되는 말
+BG_MUST = ("실사", "사진")
+MOE_BAN = ("눈을 크게", "어려 보이게")             # 이건 **금지 문장**으로 있어야 한다
 
-print("① 인물 프롬프트가 실사를 시키는가 (7명 전부)")
+print("① 인물 프롬프트가 애니를 시키는가 (7명 전부)")
 for code in sorted(G.CHAR_LOOK):
     p = G.char_sheet_prompt(code)
-    low = p.lower()
-    if not any(w in p for w in REAL_KO) and not any(w in low for w in REAL_EN):
-        bad(f"{code}: 화풍을 안 적었다 — 안 적으면 AI 는 애니를 그린다")
-        continue
-    hit = [w for w in BAN_KO if w in p and f"{w}가 아니" not in p and f"{w}·" not in p]
-    hit += [w for w in BAN_EN if w in low]
-    # '일러스트·애니가 아니다' 처럼 **금지하는 문장**은 걸리면 안 된다
-    if hit and "아니다" not in p:
-        bad(f"{code}: 애니를 부르는 말이 있다 — {hit}")
+    if not any(w in p for w in CHAR_MUST):
+        bad(f"{code}: 화풍을 안 적었다 — 안 적으면 AI 가 알아서 정한다(이번 사고의 원인)")
+    elif any(w in p for w in CHAR_BAN):
+        bad(f"{code}: 인물에 실사를 시키고 있다 — 손님 결정은 '인물은 애니' 다")
+    elif not all(w in p for w in MOE_BAN):
+        # 눈 큰 소녀풍이 나오면 흐린 법정 사진 위에서 반드시 겉돈다
+        bad(f"{code}: 모에풍을 막는 문장이 없다 — 배경 사진 위에서 겉돈다")
     else:
         print(f"   ✅ {code}")
 
@@ -87,7 +92,7 @@ else:
 print()
 print("④ 배경 프롬프트도 실사인가 (인물과 갈라지면 한 화면에서 겉돈다)")
 bp = G.bg_prompt("court_room")
-if not any(w in bp for w in REAL_KO):
+if not any(w in bp for w in BG_MUST):
     bad("배경 프롬프트에 실사 지시가 없다")
 else:
     print("   ✅ 배경도 실사")
@@ -110,23 +115,24 @@ if not cd.exists():
 else:
     t = cd.read_text(encoding="utf-8")
     low = t.lower()
-    n = low.count("photorealistic")
-    if n < 7:
-        bad(f"실사 지시가 {n}곳뿐이다 — 7명 전부에 있어야 한다")
-    import re
-    for w in ("anime", "cartoon", "manga", "illustration"):
-        # '금지' 문장 안에 있는 것은 정상이다 — 바로 앞에 not/no 가 붙은 것만 봐준다.
-        # ('not a cartoon' 처럼 관사가 끼는 경우가 있어 낱말 수로 세면 틀린다)
-        loose = [m.start() for m in re.finditer(w, low)
-                 if not re.search(r"\b(not|no)\b[ a-z]{0,4}$", low[:m.start()])]
-        if loose:
-            bad(f"'{w}' 가 금지 문장 밖에서 {len(loose)}번 쓰였다")
-    if low.count("at least") < 7:
-        bad("해상도 지시(at least …)가 7명 전부에 있지 않다")
+    for want, why in (("semi-realistic anime", "애니 지시"),
+                      ("not a photograph", "실사 금지"),
+                      ("no chibi, no moe", "모에 금지"),
+                      ("at least", "해상도 지시"),
+                      ("no heavy black outline", "굵은 검은 윤곽선 금지")):
+        n = low.count(want)
+        if n < 7:
+            bad(f"{why}('{want}')가 {n}곳뿐이다 — 7명 전부에 있어야 한다")
+    # 사진 용어가 인물 블록에 남아 있으면 화풍이 다시 섞인다
+    for stale in ("photorealistic studio", "film grain", "85mm portrait lens",
+                  "real photographs of a real person"):
+        if stale in low:
+            bad(f"사진 용어가 남아 있다: '{stale}'")
     if ok:
-        print("   ✅ 7개 블록 전부 실사 + 해상도 지시가 있고, 애니를 부르지 않는다")
+        print("   ✅ 7개 블록 전부 애니 + 모에 금지 + 해상도 지시가 있다")
 
 print()
 print("─" * 52)
-print("✅ 그림 화풍(실사): 정상" if ok else "❌ 그림 화풍(실사): 문제 있음")
+print("✅ 그림 화풍(인물 애니 · 배경 사진): 정상" if ok
+      else "❌ 그림 화풍(인물 애니 · 배경 사진): 문제 있음")
 sys.exit(0 if ok else 1)
