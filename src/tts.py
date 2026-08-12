@@ -1913,19 +1913,26 @@ def check_lengths(group, out):
     """자로 재서 '머리/꼬리가 잘린 컷' 을 찾는다. 인터넷 0회 · 0원 · 1초.
 
     돌려주는 것 — 잘린 것으로 보이는 컷 목록 (없으면 빈 목록)."""
-    rows = []
+    rows, gone = [], []
     for c in group:
         p = out / f"{c['id']}.mp3"
-        if not p.exists():
-            continue                        # 파일 없음은 여기 일이 아니다(따로 잡는다)
+        # ⭐ 소리가 아예 없는 것이야말로 가장 확실한 '길이 이상' 이다.
+        #    2026-08-11 에 이걸 "여기 일이 아니다" 고 건너뛰었다가, 그 '따로 잡는
+        #    자리' 가 받아쓰기 경로 안에 있어서 같이 죽었다 — 무음 컷이 그대로
+        #    통과하는 구멍이 났다. 그래서 자가 직접 잡는다.
+        if not p.exists() or _duration(p) < 0.15:
+            gone.append(c)
+            continue
         n = _speak_len(c.get("text", ""))
         if n < 4:
             continue                        # 너무 짧은 대사는 견줄 바탕이 안 된다
         d = _duration(p)
         rows.append((c, n, d, d / n))
+    for c in gone:
+        print(f"    ⚠️ {c['id']} 소리가 없거나 비어 있다")
     if len(rows) < LEN_MIN_N:
         # 견줄 것이 모자라면 '소리가 아예 없다' 만 잡는다
-        return [c for c, n, d, _ in rows if d < 0.2]
+        return gone + [c for c, n, d, _ in rows if d < 0.2]
 
     rates = sorted(r for _, _, _, r in rows)
     mid = rates[len(rates) // 2]
@@ -1937,7 +1944,7 @@ def check_lengths(group, out):
     for c, d, want in cut:
         print(f"    ⚠️ {c['id']} 소리가 {d:.1f}초인데 글자로는 {want:.1f}초짜리다"
               f" — 머리나 꼬리가 잘린 것으로 본다")
-    return [c for c, _, _ in cut]
+    return gone + [c for c, _, _ in cut]
 
 
 def _stt_rank(name):
@@ -2133,22 +2140,26 @@ def stt_verify(pool, key, cuts, out, pin, book, gmap):
            받아쓰기가 뭔가를 더 찾아내면 눈에는 보여 주되, 그것만으로는 안 막는다.
         """
         hard = check_lengths(group, out)          # 자로 잰 결과 — 이것만이 막을 수 있다
+        for c in hard:
+            hard_ids.add(c["id"])
 
         files = [out / f"{c['id']}.mp3" for c in group]
         texts = transcribe_pieces(key, files)
+        heard = []
         if texts is not None:
             heard = [c for c, t in zip(group, texts)
-                     if not _piece_ok(c.get("text", ""), t)]
-            extra = [c for c in heard if c not in hard]
-            if extra:
-                print(f"    (참고) 받아쓰기는 {', '.join(c['id'] for c in extra)} 도"
-                      f" 어긋난다고 본다 — 길이는 멀쩡하므로 그대로 쓴다")
-        return hard
+                     if not _piece_ok(c.get("text", ""), t) and c not in hard]
+            if heard:
+                print(f"    (참고) 받아쓰기는 {', '.join(c['id'] for c in heard)} 도"
+                      f" 어긋난다고 본다 — 고쳐는 보되, 이것만으로 영상을 막지는 않는다")
+        # 고칠 대상은 둘 다. 막을 수 있는 것은 hard 뿐(hard_ids 로 가른다).
+        return hard + heard
 
     # 자로 재는 검사는 인터넷이 필요 없으므로 **늘 된다.**
     # (예전에는 받아쓰기가 안 되면 '확인 못 했다' 로 넘어가는 길이 있었는데,
     #  이제 판정하는 쪽이 자라서 그런 구멍이 없다.)
     bad = {}
+    hard_ids = set()          # 자로 재서 걸린 컷 — 이것만이 영상을 막을 수 있다
     n_checked = 0
     for sig, group in batches(todo):
         miss = check_batch(sig, group)
@@ -2171,7 +2182,15 @@ def stt_verify(pool, key, cuts, out, pin, book, gmap):
     fixed = 0
     for sig, (group, miss) in bad.items():
         if fixed >= STT_FIX_MAX:
-            still += [c["id"] for c in miss]
+            # ⚠️ 받아쓰기만 의심한 컷은 여기서 영상을 막지 못한다.
+            #    (2026-08-11: 구글 503 으로 받아쓰기가 헛돌자 멀쩡한 119컷이 막혔다)
+            over = [c["id"] for c in miss if c["id"] in hard_ids]
+            if over:
+                still += over
+            skipped = [c["id"] for c in miss if c["id"] not in hard_ids]
+            if skipped:
+                print(f"    (수선 상한 {STT_FIX_MAX}통을 넘겼다 — "
+                      f"{', '.join(skipped)} 는 길이가 멀쩡하므로 그대로 쓴다)")
             continue
         fixed += 1
         sp = group[0].get("speaker", "narrator")

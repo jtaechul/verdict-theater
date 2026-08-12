@@ -63,8 +63,25 @@ jobs:
 
       # 2026-08-11: 음성 119컷이 멀쩡한데 '받아쓰기 검사' 가 구글 503 에 막혀
       # 영상이 통째로 안 나왔다. 이제 자로 재는 쪽이 판정한다 — 그게 살아 있는지 본다.
-      - name: 음성 길이를 자로 재는 검사가 제대로 재는가
-        run: python3 tools/voice_len_test.py
+      # ⚠️ 2026-08-12 — 여기가 비어 있어서 사고가 났다.
+      #    자체 점검이 아래 검사들을 **안 돌리고 있었다.** 그래서 tts.py 를 고친
+      #    커밋이 초록불로 올라갔고, 손님이 [영상 만들기] 를 눌렀을 때야 터졌다.
+      #    (voice_test_stt 가 8건 실패 — '소리 없는 컷이 그대로 통과' 하는 구멍)
+      #    영상 만들기가 돌리는 검사는 **여기서도 똑같이** 돌아야 한다.
+      #    모델을 안 부르므로 값은 0원, 5~8분 걸린다.
+      - name: 영상 만들기가 쓰는 검사 전부 (값 0원)
+        run: |
+          python3 -m pip install --quiet Pillow numpy
+          python3 tools/voice_test_split.py
+          python3 tools/voice_test_group.py
+          python3 tools/voice_len_test.py
+          python3 tools/voice_test_pitch.py
+          python3 tools/voice_test_guard.py
+          python3 tools/voice_test_stt.py
+          python3 tools/shorts_test.py
+          python3 tools/voice_test_cast.py
+          python3 tools/sfx_test.py
+          python3 tools/timelabel_test.py
 
       - name: 관리자 페이지가 안 깨지는가
         run: |
