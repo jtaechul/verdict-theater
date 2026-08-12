@@ -89,9 +89,42 @@ for i, (pos, wfname) in enumerate(starts):
         else:
             print(f"✅ {wfname} · '{key}' 선택지 {len(chosen)}개 전부 일치")
 
+# ── 꼭 보여야 하는 버튼이 접힌 칸에 묻히지 않았는가 ──────────
+# ⚠️ 2026-08-12 — 손님: "관리자 페이지 안에 그림 소리 만들기가 없잖아."
+#    버튼은 **있었다.** 다만 fold('가끔 쓰는 것 …') 안에 들어 있어서
+#    한 번 더 눌러야 보였다. 등장인물 그림이 없으면 영상이 아예 안 나오는데
+#    그 버튼이 '가끔 쓰는 것' 에 있었던 것이다.
+#    "있다" 와 "보인다" 는 다르다 — 여기서 그것을 지킨다.
+MUST_SHOW = {
+    "build-assets.yml": "등장인물 그림 만들기",
+    "produce.yml": "영상 만들기",
+    "script.yml": "대본 만들기",
+    "collect.yml": "재판 기록 모으기",
+}
+print()
+print("── 꼭 보여야 하는 버튼이 접혀 있지 않은가 ──")
+# fold(제목, wfList([...])) 안에 든 것과, 그냥 wfList([...]) 로 놓인 것을 가른다
+folded, shown = set(), set()
+for m in re.finditer(r"wfList\(\[([^\]]*)\]\)", src):
+    files = re.findall(r"'([^']+\.yml)'", m.group(1))
+    # 이 wfList 앞 120자 안에 fold( 가 있고 닫히지 않았으면 접힌 것으로 본다
+    before = src[max(0, m.start() - 160):m.start()]
+    inside_fold = "fold(" in before and before.rfind("fold(") > before.rfind(");")
+    (folded if inside_fold else shown).update(files)
+for f, label in MUST_SHOW.items():
+    if f in shown:
+        print(f"✅ {label} — 바로 보인다")
+    elif f in folded:
+        bad += 1
+        print(f"❌ {label}({f}) 가 접힌 칸 안에 있다 — 손님이 못 찾는다")
+    else:
+        bad += 1
+        print(f"❌ {label}({f}) 가 화면에 아예 없다")
+
 print()
 if bad:
-    print(f"❌ 관리자 선택지: {bad}군데 어긋남 — 그 버튼은 눌러도 실패한다")
+    print(f"❌ 관리자 페이지: {bad}군데 문제 — 눌러도 거절당하거나, 있어도 안 보인다")
 else:
-    print(f"✅ 관리자 선택지: {seen}개 칸 전부 워크플로와 일치")
+    print(f"✅ 관리자 페이지: 고르는 칸 {seen}개가 워크플로와 일치하고, "
+          "꼭 필요한 버튼은 다 보인다")
 sys.exit(1 if bad else 0)
