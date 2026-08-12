@@ -1,15 +1,40 @@
 #!/usr/bin/env python3
-"""배경 사진을 Pexels 에서 받아 온다.
+"""배경 사진을 **Pixabay 와 Pexels 두 곳에서** 받아 온다.
 
-    PEXELS_API_KEY=... python3 src/bg_fetch.py              없는 것만 받는다
-    PEXELS_API_KEY=... python3 src/bg_fetch.py --force      전부 다시 받는다
-    PEXELS_API_KEY=... python3 src/bg_fetch.py --only home_living_day
-    PEXELS_API_KEY=... python3 src/bg_fetch.py --dry        받지 않고 후보만 본다
+    python3 src/bg_fetch.py              없는 것만 받는다
+    python3 src/bg_fetch.py --force      전부 다시 받는다
+    python3 src/bg_fetch.py --only home_living_day
+    python3 src/bg_fetch.py --dry        받지 않고 후보만 본다
+    python3 src/bg_fetch.py --source pixabay      한 곳만 쓰고 싶을 때
+
+    열쇠는 둘 다 넣어도 되고 하나만 넣어도 된다.
+      PIXABAY_API_KEY  … Pixabay 사진 검색
+      PEXELS_API_KEY   … Pexels 사진 검색
+    **하나가 없거나 막혀도 다른 쪽으로 계속 간다.** 둘 다 없을 때만 멈춘다.
 
 왜 만들었나
     배경 18종을 사람이 하나씩 만들어 올리는 일이 너무 번거롭다.
-    Pexels 는 상업적 사용이 자유롭고(출처 표기도 의무가 아니다) 사진 품질이 고르다.
+    두 곳 다 상업적 사용이 자유롭고(출처 표기도 의무가 아니다) 사진 품질이 고르다.
     검색 → 고르기 → 잘라 맞추기 → 흐리게 하기까지 전부 여기서 한다.
+
+⚠️ 왜 Pixabay 가 빠져 있었나 (2026-08-12 에 바로잡음)
+    손님 지적: "왜 자꾸 픽사베이 API 썼다가 픽셀스 썼다가 왔다 갔다 하냐."
+    기록을 뒤져 보니 **손님 말이 맞고, 제 설명이 부실했다.** 사실은 이렇다.
+
+      · Pixabay 는 원래 **효과음(소리)** 받는 데 썼다 (tools/get_sfx.py).
+      · 2026-08-09 에 손님 열쇠로 실측한 결과가 남아 있다:
+            사진 검색 (공식 주소)   → 정상
+            영상 검색 (공식 주소)   → 정상
+            소리 검색 (/api/audio/) → 403 (막힘)
+        즉 **열쇠는 멀쩡했고 '소리' 만 막혔다.** 소리 주소는 Pixabay 웹사이트
+        내부용이라 일반 열쇠에 권한을 안 준다.
+      · 그래서 **소리만** Freesound 로 옮겼는데, 그때 "Pixabay 는 안 된다" 는
+        인상만 남고 **사진은 멀쩡하다는 사실이 같이 묻혔다.**
+      · 배경(사진)은 그와 별개로 처음부터 Pexels 로 만들었다 (2026-08-10).
+
+    정리하면 Pixabay 사진 API 는 한 번도 막힌 적이 없다. 안 쓴 것이 손해였다.
+    이제 두 곳에서 같이 찾는다. 후보가 두 배가 되니 '사람 없는 사진' 을 고를
+    확률도 올라간다. 둘 다 공짜라 몇 장을 받든 값은 0원이다.
 
 어떻게 고르나
     ① 배경 코드마다 검색어를 여러 개 준비해 두고 위에서부터 찾는다
@@ -39,7 +64,10 @@ VARIANT = 1
 OUT = ROOT / "assets" / "bg"
 W, H = 1920, 1080
 PREBLUR = 5.0
-API = "https://api.pexels.com/v1/search"
+PEXELS_API = "https://api.pexels.com/v1/search"
+PIXABAY_API = "https://pixabay.com/api/"
+SOURCES = ("pixabay", "pexels")     # 찾는 순서 (둘 다 훑는다)
+TEST_QUERY = "empty office interior"    # --probe 로 두드려 볼 때 쓰는 말
 
 # 사람이 찍힌 사진을 걸러내는 낱말. 설명글에 하나라도 있으면 버린다.
 PEOPLE = (
@@ -123,10 +151,65 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
 
 
-def get(url, key):
-    req = urllib.request.Request(url, headers={"Authorization": key, "User-Agent": UA})
+def get(url, headers=None):
+    req = urllib.request.Request(url, headers={"User-Agent": UA, **(headers or {})})
     with urllib.request.urlopen(req, timeout=40) as r:
         return json.loads(r.read().decode("utf-8"))
+
+
+# ── 두 곳에서 똑같은 모양으로 받아 온다 ──────────────────────
+# 뒤쪽(사람 거르기·점수·제미나이 심사·내려받기)은 어디서 왔는지 몰라도 되게
+# **한 가지 모양**으로 맞춰 둔다. 새 사진 창고를 붙일 때도 여기만 늘리면 된다.
+#   key    : "pixabay:12345"  — 같은 사진을 두 배경에 쓰지 않으려는 표식
+#   alt    : 설명글 (사람 낱말 거르기에 쓴다)
+#   thumb  : 제미나이에게 보여줄 작은 그림 주소
+#   full   : 실제로 내려받을 큰 그림 주소
+
+def search_pexels(q, key):
+    url = (f"{PEXELS_API}?query={urllib.parse.quote(q)}"
+           f"&per_page=40&orientation=landscape&size=large")
+    out = []
+    for p in get(url, {"Authorization": key}).get("photos", []):
+        src = p.get("src") or {}
+        full = src.get("original") or src.get("large2x") or src.get("large")
+        thumb = src.get("medium") or src.get("small") or full
+        if not full:
+            continue
+        out.append({"key": f"pexels:{p['id']}", "provider": "pexels", "id": p["id"],
+                    "alt": p.get("alt", ""), "width": p.get("width", 0),
+                    "height": p.get("height", 0), "thumb": thumb, "full": full,
+                    "page": p.get("url", ""), "author": p.get("photographer", "")})
+    return out
+
+
+def search_pixabay(q, key):
+    # ⚠️ Pexels 와 달리 열쇠를 주소에 붙인다(헤더가 아니다). 그래서 열쇠 값이
+    #    로그에 찍히지 않도록 실패해도 주소를 그대로 출력하지 않는다.
+    url = (f"{PIXABAY_API}?key={urllib.parse.quote(key)}&q={urllib.parse.quote(q)}"
+           f"&image_type=photo&orientation=horizontal&per_page=40&safesearch=true")
+    out = []
+    for p in get(url).get("hits", []):
+        full = p.get("fullHDURL") or p.get("largeImageURL") or p.get("webformatURL")
+        if not full:
+            continue
+        out.append({"key": f"pixabay:{p['id']}", "provider": "pixabay", "id": p["id"],
+                    # tags 는 "office, desk, work" 같은 쉼표 글이다 — alt 와 같게 쓴다
+                    "alt": p.get("tags", ""), "width": p.get("imageWidth", 0),
+                    "height": p.get("imageHeight", 0),
+                    "thumb": p.get("webformatURL") or p.get("previewURL") or full,
+                    "full": full, "page": p.get("pageURL", ""),
+                    "author": p.get("user", "")})
+    return out
+
+
+FINDERS = {"pexels": search_pexels, "pixabay": search_pixabay}
+KEY_ENV = {"pexels": "PEXELS_API_KEY", "pixabay": "PIXABAY_API_KEY"}
+
+
+def live_sources(want=SOURCES):
+    """열쇠가 있는 창고만 골라 [(이름, 열쇠), …] 로 돌려준다."""
+    return [(s, os.environ.get(KEY_ENV[s], "").strip())
+            for s in want if os.environ.get(KEY_ENV[s], "").strip()]
 
 
 # ── 제미나이가 후보를 눈으로 보고 고른다 ──────────────────────
@@ -164,7 +247,7 @@ def judge(code, photos, key):
     keep = []
     for p in photos[:GRID[0] * GRID[1]]:
         try:
-            req = urllib.request.Request(p["src"]["medium"], headers={"User-Agent": UA})
+            req = urllib.request.Request(p["thumb"], headers={"User-Agent": UA})
             with urllib.request.urlopen(req, timeout=40) as r:
                 thumbs.append(Image.open(io.BytesIO(r.read())).convert("RGB"))
             keep.append(p)
@@ -225,32 +308,45 @@ def score(p):
     return (min(w, 6000) / 6000) * 0.4 + fit * 0.6
 
 
-def pick(code, key, used, gkey="", dry=False):
+def pick(code, sources, used, gkey="", dry=False):
     """이 배경에 쓸 사진 하나를 고른다. → (사진 정보, 쓴 검색어) 또는 (None, None)
 
-    검색어 목록을 위에서부터 훑으며 후보를 모으고, 설명글로 1차로 거른 뒤
-    제미나이가 그림을 직접 보고 고른다. 제미나이 키가 없으면 1차 결과만 쓴다."""
+    검색어 목록을 위에서부터 훑되 **창고마다 다 물어본다.** 설명글로 1차로 거른 뒤
+    제미나이가 그림을 직접 보고 고른다. 제미나이 키가 없으면 1차 결과만 쓴다.
+
+    ⭐ 한 창고가 막혀도(403·정지·열쇠 만료) 그 창고만 건너뛰고 계속 간다.
+       두 곳이 다 조용할 때만 빈손으로 돌아간다."""
     pool, qs = [], []
+    seen = set()
+    dead = set()
     for q in QUERIES[code]:
-        url = (f"{API}?query={urllib.parse.quote(q)}"
-               f"&per_page=40&orientation=landscape&size=large")
-        try:
-            data = get(url, key)
-        except Exception as e:
-            print(f"    검색 실패({q}): {e}")
-            continue
-        for p in data.get("photos", []):
-            if p["id"] in used or any(x["id"] == p["id"] for x in pool):
+        for name, key in sources:
+            if name in dead:
                 continue
-            if has_people(p.get("alt", "")):
+            try:
+                found = FINDERS[name](q, key)
+            except Exception as e:
+                # 열쇠가 막힌 창고를 검색어마다 다시 두드리지 않는다(느려지기만 한다)
+                print(f"    {name} 검색 실패({q}): {e} — 이 창고는 건너뛴다")
+                dead.add(name)
                 continue
-            pool.append(p)
-            qs.append(q)
+            for p in found:
+                if p["key"] in used or p["key"] in seen:
+                    continue
+                if has_people(p["alt"]):
+                    continue
+                seen.add(p["key"])
+                pool.append(p)
+                qs.append(q)
         if len(pool) >= GRID[0] * GRID[1]:
             break
 
     if dry:
-        print(f"    후보 {len(pool)}장")
+        by = {}
+        for p in pool:
+            by[p["provider"]] = by.get(p["provider"], 0) + 1
+        print(f"    후보 {len(pool)}장"
+              + (f" ({', '.join(f'{k} {v}' for k, v in sorted(by.items()))})" if by else ""))
         return None, None
     if not pool:
         return None, None
@@ -265,15 +361,14 @@ def pick(code, key, used, gkey="", dry=False):
             print(f"    제미나이 심사 실패({e}) — 설명글 기준으로만 고른다")
             got = None
         if got:
-            return got, qs[[p["id"] for p in pool].index(got["id"])]
+            return got, qs[[p["key"] for p in pool].index(got["key"])]
         return None, None
     return pool[0], qs[0]
 
 
 def fetch(photo, path):
     """내려받아 16:9 로 잘라 맞추고 가볍게 흐리게 해서 저장한다."""
-    src = photo["src"].get("original") or photo["src"]["large2x"]
-    req = urllib.request.Request(src, headers={"User-Agent": UA})
+    req = urllib.request.Request(photo["full"], headers={"User-Agent": UA})
     with urllib.request.urlopen(req, timeout=90) as r:
         raw = r.read()
     tmp = path.with_suffix(".tmp")
@@ -298,14 +393,44 @@ def main():
     ap.add_argument("--variant", type=int, default=1,
                     help="몇 번째 벌로 저장할지. 2 면 funeral_hall-2.jpg "
                          "(회차마다 다른 배경을 쓰려고 여러 벌을 받아 둔다. 값 0원)")
+    ap.add_argument("--source", default=",".join(SOURCES),
+                    help="쓸 사진 창고 (pixabay,pexels). 기본은 둘 다.")
+    ap.add_argument("--probe", action="store_true",
+                    help="창고가 열리는지만 한 번씩 두드려 본다 (안 받는다 · 0원)")
     args = ap.parse_args()
     global VARIANT
     VARIANT = max(1, args.variant)
 
-    key = os.environ.get("PEXELS_API_KEY", "").strip()
-    if not key:
-        print("PEXELS_API_KEY 가 없다.", file=sys.stderr)
+    want = [s.strip().lower() for s in args.source.split(",") if s.strip()]
+    bad = [s for s in want if s not in FINDERS]
+    if bad:
+        print(f"모르는 사진 창고: {', '.join(bad)}", file=sys.stderr)
         return 2
+    sources = live_sources(want)
+    if not sources:
+        # 둘 다 없을 때만 멈춘다. 하나만 있으면 그것으로 간다.
+        print("사진 창고 열쇠가 하나도 없다. "
+              f"{' 또는 '.join(KEY_ENV[s] for s in want)} 중 하나는 있어야 한다.",
+              file=sys.stderr)
+        return 2
+    print(f"  사진 창고: {', '.join(n for n, _ in sources)}"
+          + ("" if len(sources) == len(want)
+             else f"  (열쇠 없어 뺌: {', '.join(s for s in want if s not in dict(sources))})"))
+
+    if args.probe:
+        # 열쇠가 진짜로 열리는지 한 번씩만 두드려 본다. 내려받지 않으니 0원이고
+        # 몇 초면 끝난다. (2026-08-12: Pixabay 열쇠가 사진에도 되는지 확인용)
+        alive = 0
+        for name, key in sources:
+            try:
+                n = len(FINDERS[name](TEST_QUERY, key))
+                print(f"  {name}: 열린다 — '{TEST_QUERY}' 로 {n}장 찾음")
+                alive += 1
+            except Exception as e:
+                # 열쇠 값이 주소에 들어가는 창고가 있으므로 예외 글에서 지운다
+                print(f"  {name}: 막혔다 — {str(e).replace(key, '***')}")
+        print(f"\n열린 창고 {alive}곳 / 열쇠 있는 곳 {len(sources)}곳")
+        return 0 if alive else 1
 
     gkey = os.environ.get("GEMINI_API_KEY", "").strip()
     if not gkey:
@@ -319,7 +444,16 @@ def main():
             credits = json.loads(credits_path.read_text(encoding="utf-8"))
         except Exception:
             credits = {}
-    used = {v["pexels_id"] for v in credits.values() if isinstance(v, dict)}
+    # 이미 다른 배경이 쓴 사진은 다시 안 쓴다. 예전 기록에는 'pexels_id' 만
+    # 적혀 있으므로 그것도 읽어서 "pexels:12345" 모양으로 맞춰 준다.
+    used = set()
+    for v in credits.values():
+        if not isinstance(v, dict):
+            continue
+        if v.get("key"):
+            used.add(v["key"])
+        elif v.get("pexels_id") is not None:
+            used.add(f"pexels:{v['pexels_id']}")
 
     got, skip, fail = 0, 0, []
     for code in codes:
@@ -333,7 +467,7 @@ def main():
             skip += 1
             continue
         print(f"  {code}")
-        photo, q = pick(code, key, used, gkey=gkey, dry=args.dry)
+        photo, q = pick(code, sources, used, gkey=gkey, dry=args.dry)
         if args.dry:
             continue
         if not photo:
@@ -342,12 +476,14 @@ def main():
             sw, sh = fetch(photo, path)
         except Exception as e:
             print(f"    내려받기 실패: {e}"); fail.append(code); continue
-        used.add(photo["id"])
-        credits[code] = {"pexels_id": photo["id"], "url": photo.get("url", ""),
-                         "photographer": photo.get("photographer", ""),
+        used.add(photo["key"])
+        credits[code] = {"key": photo["key"], "provider": photo["provider"],
+                         "photo_id": photo["id"], "url": photo.get("page", ""),
+                         "photographer": photo.get("author", ""),
                          "alt": photo.get("alt", ""), "query": q,
                          "source": f"{sw}x{sh}"}
-        print(f"    {sw}x{sh} · {photo.get('photographer','')} · \"{q}\"")
+        print(f"    {photo['provider']} · {sw}x{sh} · "
+              f"{photo.get('author','')} · \"{q}\"")
         got += 1
 
     if not args.dry:

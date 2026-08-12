@@ -92,16 +92,26 @@ jobs:
           python3 tools/sfx_test.py
           python3 tools/timelabel_test.py
           python3 tools/variant_test.py
+          # 2026-08-12: 배경 사진 창고가 한 곳만 걸려 있었다. 한쪽이 막히면
+          # 배경을 통째로 못 받는 상태였다 — 두 곳이 다 살아 있는지 본다.
+          python3 tools/bg_source_test.py
 
       - name: 관리자 페이지가 안 깨지는가
         run: |
           node tools/check_admin.mjs
           node tools/check_fold.mjs
 
-      - name: 워크플로 파일이 문법에 맞는가
+      - name: 워크플로 파일이 문법에 맞는가 + 관리자 버튼이 실제로 눌리는가
         run: |
           # YAML 을 읽으려면 이 라이브러리가 있어야 한다. 러너에 기본으로는 없다.
           python3 -m pip install --quiet PyYAML
+
+          # ⚠️ 2026-08-12 — 관리자 페이지의 '배경 그림 전부' 버튼이 **눌러도
+          #    거절당하고 있었다.** 보내는 글자가 '배경 전부' 인데 워크플로에 있는
+          #    이름은 '배경 전부 (AI 로 그림 · 값 나감)' 였다. 깃허브는 고르는 칸의
+          #    값이 목록과 정확히 같아야 받는다. 눈으로는 못 잡는다 — 기계가 맞춘다.
+          python3 tools/admin_choice_check.py
+
           python3 - <<'PY'
           import pathlib, sys, yaml
           bad = 0

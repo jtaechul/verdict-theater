@@ -23,7 +23,8 @@ on:
           - '소리 (비용 0원)'
           - '캐릭터 한 명 시험'
           - '캐릭터 전부'
-          - '배경 받아오기 (Pexels · 0원)'
+          - '배경 받아오기 (Pixabay + Pexels · 0원)'
+          - '배경 창고 열쇠 확인만 (0원)'
           - '배경 전부 (AI 로 그림 · 값 나감)'
           - '빠진 것 확인만'
       code:
@@ -65,7 +66,9 @@ jobs:
       - name: 만들기
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          # 배경은 Pexels 에서 공짜로 받아온다 (AI 로 그리면 값이 나간다)
+          # 배경은 공짜로 받아온다 (AI 로 그리면 값이 나간다).
+          # ⭐ 창고를 **둘** 걸어 둔다 — 하나가 막혀도 배경 받기가 안 멈춘다.
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
         run: |
           set -o pipefail
@@ -76,15 +79,23 @@ jobs:
               python3 src/assets_gen.py images --what char --code "${{ inputs.code }}" 2>&1 | tee build.log ;;
             "캐릭터 전부")
               python3 src/assets_gen.py images --what char --limit "${{ inputs.limit }}" 2>&1 | tee build.log ;;
-            "배경 받아오기 (Pexels · 0원)")
-              # ⭐ 배경은 **공짜로 받아올 수 있다.** Pexels 는 상업적 사용이 자유롭고
+            "배경 받아오기"*)
+              # ⭐ 배경은 **공짜로 받아올 수 있다.** 두 곳 다 상업적 사용이 자유롭고
               #    출처 표기도 의무가 아니다. AI 로 그리면 값이 나가는데 그럴 까닭이 없다.
               #    (2026-08-12 손님: "팩셀스 키가 있잖아. API 가 있는데 왜 활용을 안 해")
-              if [ -z "$PEXELS_API_KEY" ]; then
-                echo "::error::PEXELS_API_KEY 가 등록되어 있지 않습니다."
+              #
+              # ⭐ 열쇠는 **둘 중 하나만 있어도** 돌아간다. 둘 다 있으면 두 곳에서
+              #    같이 찾아 후보가 두 배가 된다 (사람 없는 사진 고를 확률이 올라간다).
+              #    (2026-08-12 손님: "PIXABAY_API_KEY 랑 PEXELS_API_KEY 까지 넣어놨다")
+              if [ -z "$PIXABAY_API_KEY" ] && [ -z "$PEXELS_API_KEY" ]; then
+                echo "::error::PIXABAY_API_KEY 와 PEXELS_API_KEY 가 둘 다 없습니다. 하나는 있어야 합니다."
                 exit 1
               fi
               python3 src/bg_fetch.py 2>&1 | tee build.log ;;
+            "배경 창고 열쇠 확인만 (0원)")
+              # 사진을 받지 않고 **열쇠가 열리는지만** 두드려 본다. 몇 초, 0원.
+              # 열쇠를 새로 넣었거나 바꿨을 때 이것부터 눌러 보면 된다.
+              python3 src/bg_fetch.py --probe 2>&1 | tee build.log ;;
             "배경 전부 (AI 로 그림 · 값 나감)")
               python3 src/assets_gen.py images --what bg --limit "${{ inputs.limit }}" 2>&1 | tee build.log ;;
             *)

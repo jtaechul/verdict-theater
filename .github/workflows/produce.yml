@@ -229,11 +229,14 @@ jobs:
       #    그 자리는 전부 회색 실루엣으로 나갔다.
       #
       #    이제 렌더 전에 **없는 것만** 만든다(있는 것은 건드리지 않는다).
-      #    배경은 Pexels 라 0원, 인물은 한 장에 약 197원이다.
+      #    배경은 Pixabay·Pexels 라 0원, 인물은 한 장에 약 197원이다.
       - name: 없는 그림 만들기 (있는 것은 그대로 쓴다)
         if: inputs.art != '만들지 않는다 (있는 것으로)'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # ⭐ 사진 창고를 **둘** 걸어 둔다. 하나가 막혀도 배경 받기가 안 멈춘다.
+          #    (2026-08-12 손님: 열쇠를 둘 다 넣어 뒀는데 한쪽만 쓰고 있었다)
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
         run: |
           set -o pipefail
@@ -241,10 +244,10 @@ jobs:
           python3 src/assets_gen.py check || true
           echo ""
           # 배경 먼저 — 공짜다. 없는 것만 받는다(--force 를 주지 않는다).
-          if [ -n "$PEXELS_API_KEY" ]; then
+          if [ -n "$PIXABAY_API_KEY" ] || [ -n "$PEXELS_API_KEY" ]; then
             python3 src/bg_fetch.py 2>&1 | tail -20 || echo "(배경 받기 실패 — 있는 것으로 간다)"
           else
-            echo "(PEXELS_API_KEY 가 없어 배경은 건너뛴다)"
+            echo "(PIXABAY_API_KEY·PEXELS_API_KEY 가 둘 다 없어 배경은 건너뛴다)"
           fi
           if [ "${{ inputs.art }}" = "배경만 만든다 (0원)" ]; then
             echo "배경만 만들기로 했다 — 인물은 건너뛴다."
