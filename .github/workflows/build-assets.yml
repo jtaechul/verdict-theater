@@ -23,7 +23,8 @@ on:
           - '소리 (비용 0원)'
           - '캐릭터 한 명 시험'
           - '캐릭터 전부'
-          - '배경 전부'
+          - '배경 받아오기 (Pexels · 0원)'
+          - '배경 전부 (AI 로 그림 · 값 나감)'
           - '빠진 것 확인만'
       code:
         description: "캐릭터 코드 (F50A F50B M50A M50B F70 M70 JUDGE)"
@@ -64,6 +65,8 @@ jobs:
       - name: 만들기
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # 배경은 Pexels 에서 공짜로 받아온다 (AI 로 그리면 값이 나간다)
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
         run: |
           set -o pipefail
           case "${{ inputs.what }}" in
@@ -73,7 +76,16 @@ jobs:
               python3 src/assets_gen.py images --what char --code "${{ inputs.code }}" 2>&1 | tee build.log ;;
             "캐릭터 전부")
               python3 src/assets_gen.py images --what char --limit "${{ inputs.limit }}" 2>&1 | tee build.log ;;
-            "배경 전부")
+            "배경 받아오기 (Pexels · 0원)")
+              # ⭐ 배경은 **공짜로 받아올 수 있다.** Pexels 는 상업적 사용이 자유롭고
+              #    출처 표기도 의무가 아니다. AI 로 그리면 값이 나가는데 그럴 까닭이 없다.
+              #    (2026-08-12 손님: "팩셀스 키가 있잖아. API 가 있는데 왜 활용을 안 해")
+              if [ -z "$PEXELS_API_KEY" ]; then
+                echo "::error::PEXELS_API_KEY 가 등록되어 있지 않습니다."
+                exit 1
+              fi
+              python3 src/bg_fetch.py 2>&1 | tee build.log ;;
+            "배경 전부 (AI 로 그림 · 값 나감)")
               python3 src/assets_gen.py images --what bg --limit "${{ inputs.limit }}" 2>&1 | tee build.log ;;
             *)
               python3 src/assets_gen.py check 2>&1 | tee build.log || true ;;
