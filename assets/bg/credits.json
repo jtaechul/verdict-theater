@@ -142,5 +142,115 @@
     "alt": "A minimalist restaurant interior in Tokyo featuring wooden tables and classic chairs.",
     "query": "restaurant table chairs interior",
     "source": "6000x4000"
+  },
+  "medical_room_shared": {
+    "key": "pexels:30823617",
+    "provider": "pexels",
+    "photo_id": 30823617,
+    "url": "https://www.pexels.com/photo/vintage-hospital-ward-interior-in-barcelona-30823617/",
+    "photographer": "TBD Traveller",
+    "alt": "A serene and vintage hospital ward with empty beds in Barcelona.",
+    "query": "hospital ward beds row",
+    "source": "8192x4608"
+  },
+  "medical_nursing_hall": {
+    "key": "pexels:34574591",
+    "provider": "pexels",
+    "photo_id": 34574591,
+    "url": "https://www.pexels.com/photo/elegant-staircase-with-wooden-handrail-in-modern-home-34574591/",
+    "photographer": "HONG SON",
+    "alt": "A modern, elegant staircase featuring a wooden handrail and light wall sconce in an indoor setting.",
+    "query": "nursing home corridor handrail",
+    "source": "6623x4415"
+  },
+  "medical_waiting": {
+    "key": "pexels:10576704",
+    "provider": "pexels",
+    "photo_id": 10576704,
+    "url": "https://www.pexels.com/photo/lounge-area-with-vintage-design-10576704/",
+    "photographer": "Helena Jankovičová Kováčová",
+    "alt": "A cozy and retro-style lounge area with warm sunlight, armchairs, tables, and windows.",
+    "query": "hospital waiting area chairs",
+    "source": "8076x5384"
+  },
+  "home_bedroom": {
+    "key": "pexels:3288100",
+    "provider": "pexels",
+    "photo_id": 3288100,
+    "url": "https://www.pexels.com/photo/white-and-gray-bed-linen-3288100/",
+    "photographer": "Curtis Adams",
+    "alt": "A warm, inviting bedroom with a double bed and natural light streaming in.",
+    "query": "bedroom bed window daylight",
+    "source": "6000x4000"
+  },
+  "office_community": {
+    "key": "pexels:8753815",
+    "provider": "pexels",
+    "photo_id": 8753815,
+    "url": "https://www.pexels.com/photo/empty-counter-in-a-restaurant-8753815/",
+    "photographer": "Team Picsfast",
+    "alt": "Contemporary restaurant counter with modern design and empty dinnerware.",
+    "query": "public office counter interior",
+    "source": "7745x5163"
+  },
+  "daily_sidedish": {
+    "key": "pixabay:7165148",
+    "provider": "pixabay",
+    "photo_id": 7165148,
+    "url": "https://pixabay.com/photos/buffet-catering-cafeteria-kitchen-7165148/",
+    "photographer": "Mirko_Fabian",
+    "alt": "buffet, catering, cafeteria, kitchen, counter, dinner, fast food, ingredients, kitchen counter, lunch, food preparation, cafeteria, cafeteria, cafeteria, cafeteria, cafeteria",
+    "query": "deli counter food containers",
+    "source": "1280x853"
+  },
+  "daily_park": {
+    "key": "pexels:38069954",
+    "provider": "pexels",
+    "photo_id": 38069954,
+    "url": "https://www.pexels.com/photo/rustic-wooden-bench-in-serene-forest-setting-38069954/",
+    "photographer": "ASR LIGHTPAINTING",
+    "alt": "An empty wooden bench amidst lush green forest, perfect for solitude and relaxation.",
+    "query": "park bench trees empty",
+    "source": "6048x4024"
+  },
+  "etc_columbarium": {
+    "key": "pexels:28214302",
+    "provider": "pexels",
+    "photo_id": 28214302,
+    "url": "https://www.pexels.com/photo/wood-light-landscape-beach-28214302/",
+    "photographer": "Adrien Olichon",
+    "alt": "A curved memorial wall under a clear blue sky in a sunlit park with grassy surroundings.",
+    "query": "memorial wall niches",
+    "source": "9256x6160"
+  },
+  "etc_country_yard": {
+    "key": "pixabay:4909372",
+    "provider": "pixabay",
+    "photo_id": 4909372,
+    "url": "https://pixabay.com/photos/country-house-fence-garden-fence-4909372/",
+    "photographer": "webandi",
+    "alt": "country house, fence, garden fence, house, farm yard, rural, building, barn, hut, wood, architecture, rustic, farmhouse, calden",
+    "query": "rural farmhouse yard",
+    "source": "1280x853"
+  },
+  "etc_busstop": {
+    "key": "pexels:34585535",
+    "provider": "pexels",
+    "photo_id": 34585535,
+    "url": "https://www.pexels.com/photo/abandoned-bus-stop-in-bratislava-urban-landscape-34585535/",
+    "photographer": "William Gevorg Urban",
+    "alt": "An empty bus stop in Bratislava with blue structures amidst urban buildings.",
+    "query": "bus stop shelter street",
+    "source": "6240x4160"
+  },
+  "etc_alley_night": {
+    "key": "pexels:3123828",
+    "provider": "pexels",
+    "photo_id": 3123828,
+    "url": "https://www.pexels.com/photo/lighted-signages-in-buildings-3123828/",
+    "photographer": "Aleksandar Pasaric",
+    "alt": "Moody night scene in a Bur Dubai alley, showcasing illuminated shops and silhouettes.",
+    "query": "narrow alley night lights",
+    "source": "6164x4109"
   }
 }
