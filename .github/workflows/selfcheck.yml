@@ -71,7 +71,16 @@ jobs:
       #    모델을 안 부르므로 값은 0원, 5~8분 걸린다.
       - name: 영상 만들기가 쓰는 검사 전부 (값 0원)
         run: |
+          # ⚠️ 2026-08-12 — 이 줄이 없어서 자체 점검이 10초 만에 죽었다.
+          #    영상 만들기에는 '도구 준비' 단계가 따로 있는데 여기엔 없었다.
+          #    음성 검사는 가짜 소리를 ffmpeg 로 만들어 시험하므로 반드시 있어야 한다.
+          #    (ubuntu-latest 이미지에서 ffmpeg 가 빠졌다 — 있다고 믿으면 안 된다)
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-nanum
           python3 -m pip install --quiet Pillow numpy
+          for cmd in ffmpeg ffprobe; do
+            command -v "$cmd" >/dev/null || { echo "::error::$cmd 가 없습니다"; exit 1; }
+          done
           python3 tools/voice_test_split.py
           python3 tools/voice_test_group.py
           python3 tools/voice_len_test.py
