@@ -157,6 +157,38 @@ else:
         print("   ✅ 만들기 앞뒤로 반영한다")
 
 print()
+print("⑨ sync 가 시각이 아니라 **내용 지문**으로 판단하는가")
+# ⚠️ 2026-08-12 실패의 뿌리. 깃허브는 매 실행 저장소를 새로 받아 파일 시각이
+#    무의미하고, 같은 이름으로 덮어쓰면 폴더 시각이 안 바뀐다. 시각으로 판단하면
+#    매 실행 "다시 자름" — 다듬어 둔 그림을 되돌려 배치 검사가 막았다.
+if "st_mtime" in src[src.index("def cmd_sync"):src.index("def cmd_check")]:
+    bad("sync 가 아직 파일 시각을 본다 — CI 에서 시각은 거짓말을 한다")
+elif ".from_sheet" not in src:
+    bad("시트 지문(.from_sheet)이 없다 — 매 실행 다시 자르게 된다")
+else:
+    print("   ✅ 시트 내용의 지문(.from_sheet)으로 판단한다")
+
+print()
+print("⑩ 다듬기(despike)가 남는 것이 없어질 때까지 도는가")
+# 실측: 새 컷아웃 119장이 31 → 11 → 1 → 0, 다섯 번에야 수렴했다.
+# 한 번만 돌면 --check 가 남은 것을 잡아 영상 만들기가 멈춘다.
+dp = (ROOT / "src" / "despike.py").read_text(encoding="utf-8")
+if "MAX_PASS" not in dp or "for pass_n in range" not in dp:
+    bad("despike 가 한 번만 돈다 — 잘라낸 단면에서 새 삐죽이가 드러나 검사에 걸린다")
+else:
+    print("   ✅ 수렴할 때까지 돈다 (상한 8회)")
+
+print()
+print("⑪ sync 가 다시 자른 것을 **그 자리에서** 다듬는가")
+# 자르기와 다듬기가 떨어져 있으면 순서 사고가 난다 — 다듬기 뒤에 다시 잘라 버린
+# 것이 2026-08-12 의 실패다. sync 안에 붙어 있어야 순서를 틀릴 수가 없다.
+sy = src[src.index("def cmd_sync"):src.index("def cmd_check")]
+if "despike.py" not in sy:
+    bad("sync 가 자르기만 하고 다듬지 않는다 — 어디서 불리느냐에 따라 또 터진다")
+else:
+    print("   ✅ 자른 직후 다듬는다 (순서를 틀릴 수 없다)")
+
+print()
 print("─" * 52)
 print("✅ 그림 절차: 정상" if ok else "❌ 그림 절차: 문제 있음")
 sys.exit(0 if ok else 1)

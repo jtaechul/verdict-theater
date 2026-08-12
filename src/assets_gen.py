@@ -553,25 +553,47 @@ def cmd_sync(args):
     if not sheets:
         print("시트가 없다. 반영할 것이 없다.")
         return 0
-    done, skip, fail = 0, 0, []
+    import hashlib
+    import subprocess as sub
+    done, skip, fail, resliced = 0, 0, [], []
     for sp in sheets:
         name = sp.stem                       # F50A 또는 F50A-2
         outdir = ASSETS / "char" / name
         have = sorted(outdir.glob("*.png"))
         want = len([c for c in CELL_ORDER if c])
-        # 시트가 컷아웃보다 새것이면 다시 자른다 (시트를 갈아 끼운 경우)
-        fresh = (have and outdir.stat().st_mtime >= sp.stat().st_mtime)
-        if len(have) >= want and fresh and not args.force:
+        # ⚠️ 2026-08-12 — 여기가 **파일 시각**으로 판단하고 있었다. 그래서 사고가 났다.
+        #    깃허브는 실행 때마다 저장소를 새로 내려받아 모든 파일 시각이 그때가 되고,
+        #    같은 이름으로 덮어써도 폴더 시각은 안 바뀐다. 결과: 매 실행 "다시 자름" —
+        #    에셋 만들기가 다듬어 둔(despike) 컷아웃을 [영상 만들기]가 매번
+        #    다듬기 전 상태로 되돌렸고, 배치 검사가 "삐죽이가 남았다" 며 막았다.
+        #    시각은 CI 에서 거짓말을 한다. **시트 내용의 지문**으로 판단한다.
+        #    지문은 컷아웃 폴더에 .from_sheet 로 남기고 저장소에 같이 커밋된다.
+        sheet_id = hashlib.sha256(sp.read_bytes()).hexdigest()[:16]
+        marker = outdir / ".from_sheet"
+        same = marker.exists() and marker.read_text(encoding="utf-8").strip() == sheet_id
+        if len(have) >= want and same and not args.force:
             skip += 1
             continue
         try:
             made = process_sheet(sp, name)
             print(f"  {name}: 컷아웃 {len(made)}개 만듦 "
                   f"({'새 시트' if not have else '다시 자름'})")
+            marker.write_text(sheet_id + "\n", encoding="utf-8")
             done += 1
+            resliced.append(name)
         except Exception as e:
             print(f"  {name}: 자르기 실패 — {type(e).__name__}: {e}")
             fail.append(name)
+    # ⭐ 방금 자른 것은 **바로 다듬는다** (어깨 삐죽이·떨어져 나온 조각 제거).
+    #    자르기와 다듬기가 떨어져 있으면 순서 사고가 난다 — 실제로 [영상 만들기]가
+    #    다듬기(11번 단계) 뒤에 다시 잘라서(12번) 검사(14번)에 걸렸다.
+    #    여기서 붙여 두면 sync 가 언제 어디서 불려도 결과가 늘 다듬어진 상태다.
+    if resliced:
+        r = sub.run([sys.executable, str(ROOT / "src" / "despike.py"),
+                     "--only", ",".join(resliced)], capture_output=True, text=True)
+        tail = [l for l in (r.stdout or "").splitlines() if l.strip()][-3:]
+        print("  다듬기: " + ("; ".join(tail) if tail else "남은 것 없음")
+              + ("" if r.returncode == 0 else "  ⚠️ 다듬기 실패 — 배치 검사가 잡는다"))
     print(f"시트 {len(sheets)}장 · 반영 {done} · 그대로 {skip}"
           + (f" · 실패 {', '.join(fail)}" if fail else ""))
     return 1 if fail else 0

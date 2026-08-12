@@ -372,56 +372,70 @@ def main():
         want = {s.strip() for s in args.only.split(",") if s.strip()}
         files = [f for f in files if f.parent.name in want]
 
-    total = flat = frag = smooth = 0
-    for f in files:
-        sp = Image.open(f).convert("RGBA")
-        out, n = despike(sp)
-        if n:
-            total += 1
-            print(f"  {f.parent.name}/{f.stem:14} 조각 {n}개 제거  {sp.size} → {out.size}")
+    # ⚠️ 2026-08-12 — **한 번 돌리는 것으로는 안 끝난다** (실측).
+    #    삐죽이를 잘라내면 그 단면에서 새 삐죽이가 드러난다. 새로 만든 애니
+    #    컷아웃 119장을 실측하니 31 → 11 → 1 → 0, **다섯 번**에야 수렴했다.
+    #    한 번만 돌리고 커밋하면 --check 가 남은 것을 잡아 영상 만들기가 멈춘다 —
+    #    2026-08-12 의 실패가 정확히 이것이다. 고치기 모드에서는 남는 것이
+    #    없어질 때까지 돈다(상한 8회 — 실측 수렴의 넉넉한 갑절).
+    MAX_PASS = 8
+    for pass_n in range(1, (1 if args.dry else MAX_PASS) + 1):
+        total = flat = frag = smooth = 0
+        for f in files:
+            sp = Image.open(f).convert("RGBA")
+            out, n = despike(sp)
+            if n:
+                total += 1
+                print(f"  {f.parent.name}/{f.stem:14} 조각 {n}개 제거  {sp.size} → {out.size}")
 
-        # ⭐ 전신(full_*)은 건드리지 않는다 — 팔이 넓고 발이 좁은 것이 정상이라
-        #    같은 규칙을 대면 다리가 잘린다.
-        if not f.name.startswith("full"):
-            out2, cut = flatten_bottom(out)
-            if cut:
-                flat += 1
-                print(f"  {f.parent.name}/{f.stem:14} 어깨 삐죽이 — 아래 {cut}줄 잘라냄"
-                      f"  {out.size} → {out2.size}")
-                out = out2
+            # ⭐ 전신(full_*)은 건드리지 않는다 — 팔이 넓고 발이 좁은 것이 정상이라
+            #    같은 규칙을 대면 다리가 잘린다.
+            if not f.name.startswith("full"):
+                out2, cut = flatten_bottom(out)
+                if cut:
+                    flat += 1
+                    print(f"  {f.parent.name}/{f.stem:14} 어깨 삐죽이 — 아래 {cut}줄 잘라냄"
+                          f"  {out.size} → {out2.size}")
+                    out = out2
 
-        # ⭐ 몸에서 떨어져 나온 짙은 조각 — 손님이 동그라미 쳐 보낸 바로 그것.
-        #    전신에도 생기므로 포즈를 가리지 않고 본다.
-        #
-        #    ⚠️ **한 번으로 끝나지 않는다.** 큰 조각을 덮고 나면 그 뒤에 가려 있던
-        #       작은 조각이 새로 드러난다(실측: 1회차 23장 → 2회차 1장 → 3회차 0장).
-        #       한 번만 돌리면 남은 것이 그대로 영상까지 간다. 여기서 다 털어낸다.
-        npx = 0
-        for _ in range(4):
-            out3, k = drop_fragments(out)
-            if not k:
-                break
-            npx += k
-            out = out3
-        if npx:
-            frag += 1
-            print(f"  {f.parent.name}/{f.stem:14} 떨어져 나온 조각 {npx}px 덮음"
-                  f"  {sp.size} → {out.size}")
+            # ⭐ 몸에서 떨어져 나온 짙은 조각 — 손님이 동그라미 쳐 보낸 바로 그것.
+            #    전신에도 생기므로 포즈를 가리지 않고 본다.
+            #
+            #    ⚠️ **한 번으로 끝나지 않는다.** 큰 조각을 덮고 나면 그 뒤에 가려 있던
+            #       작은 조각이 새로 드러난다(실측: 1회차 23장 → 2회차 1장 → 3회차 0장).
+            #       한 번만 돌리면 남은 것이 그대로 영상까지 간다. 여기서 다 털어낸다.
+            npx = 0
+            for _ in range(4):
+                out3, k = drop_fragments(out)
+                if not k:
+                    break
+                npx += k
+                out = out3
+            if npx:
+                frag += 1
+                print(f"  {f.parent.name}/{f.stem:14} 떨어져 나온 조각 {npx}px 덮음"
+                      f"  {sp.size} → {out.size}")
 
-        # ⭐ 마지막으로 남은 가는 뾰족이를 곡선으로 다듬는다 (값 0원).
-        #    앞의 세 가지가 못 잡은 모양이 있어도 여기서 둥글게 눕힌다.
-        out4, sn = smooth_edge(out)
-        if sn:
-            smooth += 1
-            print(f"  {f.parent.name}/{f.stem:14} 뾰족이 {sn}px 를 곡선으로 다듬음")
-            out = out4
+            # ⭐ 마지막으로 남은 가는 뾰족이를 곡선으로 다듬는다 (값 0원).
+            #    앞의 세 가지가 못 잡은 모양이 있어도 여기서 둥글게 눕힌다.
+            out4, sn = smooth_edge(out)
+            if sn:
+                smooth += 1
+                print(f"  {f.parent.name}/{f.stem:14} 뾰족이 {sn}px 를 곡선으로 다듬음")
+                out = out4
 
-        if (out.size != sp.size or out.tobytes() != sp.tobytes()) and not args.dry:
-            out.save(f)
+            if (out.size != sp.size or out.tobytes() != sp.tobytes()) and not args.dry:
+                out.save(f)
 
-    print(f"\n어깨 조각 {total}장 · 어깨 삐죽이 {flat}장 · 떨어져 나온 조각 {frag}장"
-          f" · 곡선 다듬기 {smooth}장 (전체 {len(files)}장)"
-          + ("   [--dry — 저장하지 않았다]" if args.dry else ""))
+        print(f"\n{pass_n}회차: 어깨 조각 {total}장 · 어깨 삐죽이 {flat}장 · "
+              f"떨어져 나온 조각 {frag}장 · 곡선 다듬기 {smooth}장 (전체 {len(files)}장)"
+              + ("   [--dry — 저장하지 않았다]" if args.dry else ""))
+        if args.dry or not (total or flat or frag or smooth):
+            break
+    else:
+        # 8회를 돌고도 남았다 — 그림 자체가 이상한 것이다. 조용히 넘기지 않는다.
+        print(f"::warning::{MAX_PASS}회를 다듬어도 삐죽이가 남습니다. "
+              "시트를 다시 만드는 쪽이 낫습니다.")
     if args.check and (total or flat or frag or smooth):
         print("\n::error::인물 그림에 삐죽이·조각이 남아 있습니다."
               " `python3 src/despike.py` 를 돌려 고친 뒤 다시 시도하십시오.")
