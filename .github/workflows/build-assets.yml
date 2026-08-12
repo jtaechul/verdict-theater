@@ -103,7 +103,10 @@ jobs:
             "배경 전부 (AI 로 그림 · 값 나감)")
               python3 src/assets_gen.py images --what bg --limit "${{ inputs.limit }}" 2>&1 | tee build.log ;;
             *)
-              python3 src/assets_gen.py check 2>&1 | tee build.log || true ;;
+              # 빠진 것 확인 전에 **있는 시트부터 반영한다** (값 0원).
+              # 손님이 시트를 직접 올렸는데 컷아웃이 없으면 계속 '빠졌다' 고 나온다.
+              python3 src/assets_gen.py sync 2>&1 | tee build.log || true
+              python3 src/assets_gen.py check 2>&1 | tee -a build.log || true ;;
           esac
 
       # ⭐ 인물 그림을 만든 **직후, 커밋하기 전에** 실루엣을 다듬는다.

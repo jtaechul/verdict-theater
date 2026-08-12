@@ -533,6 +533,50 @@ def cmd_audio(args):
 
 
 # ── 4. 무결성 검사 ───────────────────────────────────────
+def cmd_sync(args):
+    """있는 시트를 컷아웃으로 **반영한다.** 만들지 않는다 — 값 0원.
+
+    ⚠️ 2026-08-12 — 여기가 비어 있어서 파이프라인이 막혀 있었다.
+       손님 지적: "이미지 생성이 완료된 거는 그 영상에 반영을 하는 알고리즘이
+                   미리 구축이 되어 있었어야 되잖아."
+
+       맞는 말이었다. cmd_images 는 **새로 만든 시트만** 잘랐다(process_sheet).
+       시트가 이미 있으면 `if not p.exists()` 로 생성을 건너뛰는데,
+       **건너뛰면 자르지도 않았다.** 그래서 이런 상황이 영영 안 풀린다.
+         · 손님이 제미나이에서 뽑은 시트를 저장소에 직접 올린 경우
+         · 지난 실행이 시트는 만들어 커밋했는데 자르다 죽은 경우
+       둘 다 시트는 있는데 컷아웃이 없으니 무결성 검사가 계속 막는다.
+
+    이제 [영상 만들기]가 그림을 만들기 **전에** 이것부터 돌린다.
+    있는 것을 먼저 반영하고, 그러고도 없는 것만 새로 만든다."""
+    sheets = sorted((ASSETS / "sheets").glob("*.png"))
+    if not sheets:
+        print("시트가 없다. 반영할 것이 없다.")
+        return 0
+    done, skip, fail = 0, 0, []
+    for sp in sheets:
+        name = sp.stem                       # F50A 또는 F50A-2
+        outdir = ASSETS / "char" / name
+        have = sorted(outdir.glob("*.png"))
+        want = len([c for c in CELL_ORDER if c])
+        # 시트가 컷아웃보다 새것이면 다시 자른다 (시트를 갈아 끼운 경우)
+        fresh = (have and outdir.stat().st_mtime >= sp.stat().st_mtime)
+        if len(have) >= want and fresh and not args.force:
+            skip += 1
+            continue
+        try:
+            made = process_sheet(sp, name)
+            print(f"  {name}: 컷아웃 {len(made)}개 만듦 "
+                  f"({'새 시트' if not have else '다시 자름'})")
+            done += 1
+        except Exception as e:
+            print(f"  {name}: 자르기 실패 — {type(e).__name__}: {e}")
+            fail.append(name)
+    print(f"시트 {len(sheets)}장 · 반영 {done} · 그대로 {skip}"
+          + (f" · 실패 {', '.join(fail)}" if fail else ""))
+    return 1 if fail else 0
+
+
 def cmd_check(args):
     mf = json.loads((ASSETS / "manifest.json").read_text(encoding="utf-8"))
     need = mf["required_files"]
@@ -556,6 +600,9 @@ def cmd_check(args):
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
+
+    y = sub.add_parser("sync", help="있는 시트를 컷아웃으로 반영한다 (값 0원)")
+    y.add_argument("--force", action="store_true", help="이미 잘린 것도 다시 자른다")
 
     s = sub.add_parser("sheet", help="시트 한 장 → 컷아웃 17개")
     s.add_argument("path")
@@ -586,6 +633,8 @@ def main():
                       outline=args.outline, torn=not args.smooth,
                       shadow=not args.no_shadow)
         return 0
+    if args.cmd == "sync":
+        return cmd_sync(args)
     if args.cmd == "images":
         return cmd_images(args)
     if args.cmd == "audio":
