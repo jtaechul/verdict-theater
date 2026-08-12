@@ -437,7 +437,14 @@ def cmd_images(args):
             p = ASSETS / "sheets" / f"{name}.png"
             if not p.exists() or args.force:
                 jobs.append(("char", name, p, char_sheet_prompt(code)))
-    if args.limit:
+    if args.limit and len(jobs) > args.limit:
+        # ⚠️ 조용히 자르지 않는다. 2026-08-12 실측: 버튼의 기본 상한이 6인데
+        #    인물은 7명이라, [등장인물 전부] 를 눌러도 **한 명이 말없이 빠졌다.**
+        #    화면에는 "6개 생성" 만 찍혀서 다 된 줄 알게 된다.
+        dropped = [c for _k, c, _p, _pr in jobs[args.limit:]]
+        print(f"⚠️ 상한({args.limit})에 걸려 {len(dropped)}개를 **안 만든다**: "
+              f"{', '.join(dropped)}")
+        print(f"   전부 만들려면 상한을 {len(jobs)} 이상으로 올리십시오 (0 이면 무제한).")
         jobs = jobs[:args.limit]
     if not jobs:
         print("만들 것이 없다. 이미 다 있거나 --force 가 필요하다.")

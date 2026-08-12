@@ -102,9 +102,17 @@ const WORKFLOWS = [
                help: '비워 두면 30개 전부입니다. 몇 개만 다시 들으려면 이름을 쉼표로 '
                    + '적으십시오 (예: Orus,Umbriel,Iapetus).' }] },
 
-  { file: 'sfx.yml', name: '효과음 받아오기', rare: true,
-    desc: '발소리·시계 같은 효과음을 Freesound 에서 진짜 녹음으로 받아 넣습니다 (0원)',
-    inputs: [{ k: 'name', label: '어떤 효과음', type: 'select',
+  { file: 'sfx.yml', name: '소리·음악 받아오기', rare: true,
+    desc: '효과음과 배경음악을 Freesound 에서 진짜 녹음으로 받아 넣습니다 (0원)',
+    // ⚠️ v(보내는 글자)는 워크플로의 선택지와 **한 글자도 달라선 안 된다.**
+    //    다르면 깃허브가 거절해서 눌러도 아무 일이 안 일어난다.
+    //    (tools/admin_choice_check.py 가 올릴 때마다 맞춰 본다)
+    inputs: [{ k: 'kind', label: '무엇을 받을까요', type: 'select',
+               help: '배경음악은 8곡 중 빠진 것만 받아옵니다. 둘 다 0원입니다.',
+               opts: [{ v: '효과음', t: '효과음' },
+                      { v: '배경음악 (빠진 것만 · 0원)', t: '배경음악 — 빠진 것만 받기' },
+                      { v: '배경음악 (후보만 들어보기)', t: '배경음악 — 후보만 들어보기' }] },
+             { k: 'name', label: '어떤 효과음 (위에서 효과음을 골랐을 때만)', type: 'select',
                help: '고른 소리를 새로 받아 넣습니다. 지금 쓰는 것은 덮어씁니다.',
                opts: [{ v: 'clock phone heartbeat', t: '가짜 소리 3가지 한꺼번에 (권장)' },
                       { v: 'clock', t: '시계 초침' }, { v: 'phone', t: '전화벨' },

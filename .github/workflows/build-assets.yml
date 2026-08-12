@@ -32,9 +32,13 @@ on:
         required: false
         default: 'F50B'
       limit:
-        description: '최대 생성 개수 (비용 상한)'
+        description: '최대 생성 개수 (비용 상한). 0 이면 무제한'
         required: false
-        default: '6'
+        # ⚠️ 2026-08-12 — 여기가 6이었다. 그런데 인물은 **7명**이라
+        #    [등장인물 전부] 를 눌러도 한 명이 말없이 빠졌다.
+        #    (tools/limit_test.py 가 이 숫자를 CHAR_LOOK 과 맞춰 본다)
+        #    애니 화풍 + flash 모델이라 7장에 약 399원이다.
+        default: '7'
 
 permissions:
   contents: write

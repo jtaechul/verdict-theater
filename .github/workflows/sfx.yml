@@ -24,6 +24,17 @@ on:
       - '.trigger/sfx'
   workflow_dispatch:
     inputs:
+      kind:
+        description: '무엇을 받을까요'
+        required: true
+        default: '효과음'
+        type: choice
+        options:
+          - '효과음'
+          # ⭐ 2026-08-12 손님 선택 — 배경음악 8곡 중 care·verdict 가 비어 있었다.
+          #    같은 Freesound 열쇠로 받는다. CC0 만 고르므로 값도 0원, 뒤탈도 없다.
+          - '배경음악 (빠진 것만 · 0원)'
+          - '배경음악 (후보만 들어보기)'
       name:
         description: "효과음 이름. 여러 개면 띄어쓰기 ('clock phone heartbeat'), 전부면 'all'"
         required: true
@@ -153,7 +164,20 @@ jobs:
             *) echo "표식에 적힌 이름: $L"; echo "NAME=$L" >> "$GITHUB_ENV" ;;
           esac
 
+      - name: 배경음악 받기
+        if: startsWith(inputs.kind, '배경음악')
+        run: |
+          set -o pipefail
+          # 효과음(1~10초)과 달리 음악은 45초 이상이라야 장면에 깔린다.
+          # 짧은 것을 받으면 한 장면 안에서 여러 번 되풀이돼 티가 난다.
+          if [ "${{ inputs.kind }}" = "배경음악 (후보만 들어보기)" ]; then
+            python3 tools/get_bgm.py --listen 2>&1 | tee sfx.log
+          else
+            python3 tools/get_bgm.py 2>&1 | tee sfx.log
+          fi
+
       - name: 소리 받아서 고르기
+        if: inputs.kind == '효과음' || inputs.kind == ''
         run: |
           set -o pipefail
           ARGS=()
@@ -168,8 +192,10 @@ jobs:
           fi
 
       # 받아 온 것이 진짜 소리인지 마지막으로 확인한다 (삑이면 위에서 이미 안 넣는다)
+      # ⚠️ 음악에는 이 검사를 쓰지 않는다. '한 음이 길게 나는 것' 을 가짜로 보는데,
+      #    잔잔한 배경음악은 실제로 그렇다 — 멀쩡한 곡이 걸린다.
       - name: 삑 소리 확인
-        if: always()
+        if: always() && (inputs.kind == '효과음' || inputs.kind == '')
         run: python3 tools/sfx_quality.py 2>&1 | tee -a sfx.log
 
       - name: 결과 화면
