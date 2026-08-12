@@ -287,15 +287,16 @@
     "assets/amb/funeral.mp3",
     "assets/amb/street.mp3",
     "assets/sfx/door.mp3",
-    "assets/sfx/footsteps.mp3",
     "assets/sfx/gavel.mp3",
     "assets/sfx/paper.mp3",
     "assets/sfx/phone.mp3",
     "assets/sfx/heartbeat.mp3",
     "assets/sfx/clock.mp3",
-    "assets/sfx/monitor.mp3",
     "assets/sfx/stamp.mp3",
     "assets/sfx/tear.mp3"
   ],
-  "required_count": 172
+  "required_count": 172,
+  "_removed": {
+    "2026-08-12": "monitor.mp3 · footsteps.mp3 를 필요 목록에서 뺐다. 손님이 귀로 듣고 빼 달라고 한 소리다(monitor=880Hz 순수음 '삑 삑', footsteps=갈색 잡음 '툭'). tools/sfx_test.py 는 이 파일들이 **없어야** 통과한다 — 필요 목록에 남겨 두면 '빠진 것' 으로 계속 보고돼 진짜 빠진 것을 가린다."
+  }
 }
