@@ -154,6 +154,7 @@ jobs:
           python3 tools/sfx_test.py
           # 회상 시점 자막이 그림과 어긋나지 않는가 — '아버지 생전' 문제
           python3 tools/timelabel_test.py
+          python3 tools/variant_test.py
 
       # ⭐ 영상 맨 끝에 구독 유도 한 컷을 붙인다 (손님 선택 2026-08-07).
       #    대본에 컷으로 넣어야 **음성도 만들어지고** 자막·길이가 자동으로 따라온다.

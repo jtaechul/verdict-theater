@@ -295,6 +295,11 @@ CHAR_LOOK = {
 #   배경 — 화면에서 **14px 블러 + 22% 어둡게** 처리해 깔개로만 쓴다.
 #          비싼 모델로 만들어도 차이가 보이지 않는다 → 싼 flash 로 내린다.
 #   인물 — 얼굴이 화면을 크게 차지한다. 품질이 곧 채널의 얼굴이므로 pro 를 유지한다.
+# ⚠️ 회차가 바뀌어도 얼굴을 바꾸지 않는 인물 (2026-08-12 손님 지시).
+#    같은 법정, 같은 재판장이 채널의 얼굴이다. 재판장이 매번 다른 사람이면
+#    "같은 법정에서 이어지는 이야기" 라는 느낌이 깨진다.
+FIXED_FACE = {"JUDGE"}
+
 IMAGE_MODEL_ORDER = {
     "bg":   ["gemini-3.1-flash-image", "gemini-2.5-flash-image",
              "gemini-3.1-flash-lite-image"],
@@ -384,10 +389,20 @@ def cmd_images(args):
                 jobs.append(("bg", code, p, bg_prompt(code)))
     if args.what in ("char", "all"):
         codes = [args.code] if args.code else list(CHAR_LOOK)
+        # ⭐ 두 번째 얼굴(벌) 만들기 — 회차마다 얼굴이 바뀌게 하려는 것이다.
+        #    (2026-08-12 손님: "왜 저기에 그냥 모형이 들어가 있어?")
+        #    ⚠️ 판사는 만들지 않는다. 같은 법정, 같은 재판장이 채널의 얼굴이다(손님 지시).
+        if args.variant > 1:
+            skipped = [c for c in codes if c in FIXED_FACE]
+            codes = [c for c in codes if c not in FIXED_FACE]
+            if skipped:
+                print(f"  {', '.join(skipped)} 는 두 번째 얼굴을 만들지 않는다 "
+                      f"(회차가 바뀌어도 그대로 두기로 했다)")
         for code in codes:
-            p = ASSETS / "sheets" / f"{code}.png"
+            name = code if args.variant <= 1 else f"{code}-{args.variant}"
+            p = ASSETS / "sheets" / f"{name}.png"
             if not p.exists() or args.force:
-                jobs.append(("char", code, p, char_sheet_prompt(code)))
+                jobs.append(("char", name, p, char_sheet_prompt(code)))
     if args.limit:
         jobs = jobs[:args.limit]
     if not jobs:
@@ -508,6 +523,9 @@ def main():
     i = sub.add_parser("images", help="캐릭터 시트·배경 생성")
     i.add_argument("--what", choices=["bg", "char", "all"], default="all")
     i.add_argument("--code", default="")
+    i.add_argument("--variant", type=int, default=1,
+                   help="몇 번째 얼굴(벌)을 만들지. 2 면 assets/char/F50A-2/ 로 들어가고 "
+                        "회차마다 번갈아 쓴다. 판사는 만들지 않는다")
     i.add_argument("--limit", type=int, default=0)
     i.add_argument("--force", action="store_true")
 

@@ -35,6 +35,7 @@ from pathlib import Path
 from PIL import Image, ImageFilter
 
 ROOT = Path(__file__).resolve().parent.parent
+VARIANT = 1
 OUT = ROOT / "assets" / "bg"
 W, H = 1920, 1080
 PREBLUR = 5.0
@@ -294,7 +295,12 @@ def main():
     ap.add_argument("--force", action="store_true", help="이미 있는 것도 다시 받는다")
     ap.add_argument("--only", default="", help="이 배경만 (쉼표로 여러 개)")
     ap.add_argument("--dry", action="store_true", help="받지 않고 후보 수만 본다")
+    ap.add_argument("--variant", type=int, default=1,
+                    help="몇 번째 벌로 저장할지. 2 면 funeral_hall-2.jpg "
+                         "(회차마다 다른 배경을 쓰려고 여러 벌을 받아 둔다. 값 0원)")
     args = ap.parse_args()
+    global VARIANT
+    VARIANT = max(1, args.variant)
 
     key = os.environ.get("PEXELS_API_KEY", "").strip()
     if not key:
@@ -319,7 +325,10 @@ def main():
     for code in codes:
         if code not in QUERIES:
             print(f"  {code}: 검색어가 정의돼 있지 않다"); fail.append(code); continue
-        path = OUT / f"{code}.jpg"
+        # ⭐ 회차마다 배경을 바꾸려면 같은 자리의 사진이 여러 장 있어야 한다.
+        #    --variant 2 로 받으면 funeral_hall-2.jpg 로 저장되고,
+        #    render.py 가 회차 번호로 돌려 쓴다. Pexels 라 몇 장을 받든 0원이다.
+        path = OUT / (f"{code}.jpg" if VARIANT <= 1 else f"{code}-{VARIANT}.jpg")
         if path.exists() and not args.force:
             skip += 1
             continue

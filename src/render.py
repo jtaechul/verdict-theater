@@ -70,8 +70,65 @@ def ffprobe_dur(path):
         return 0.0
 
 
+# ── 회차마다 얼굴·배경 바꾸기 (2026-08-12 손님 선택) ─────
+#
+#   손님 지적: "왜 캐릭터 등장인물 새로 생성 안 해? 왜 저기에 그냥 모형이 들어가 있어?"
+#   맞는 지적이었다. 인물 코드는 사람이 아니라 '50대 여자 A' 같은 **칸**이고,
+#   그림은 2026-08-04 에 7칸 x 17포즈를 한 번 만들어 두고 그 뒤로는
+#   `if not p.exists()` 라 다시 만들지 않았다. 그래서 EP001 의 이정임(72세 어머니)과
+#   EP002 의 윤선희(58세 아내)가 **똑같은 얼굴**로 나왔다.
+#
+#   이제 칸마다 '벌' 을 여러 개 둘 수 있다. 회차 번호로 돌려 쓴다.
+#       assets/char/F50A/bust_neutral.png      1벌 (지금 있는 것)
+#       assets/char/F50A-2/bust_neutral.png    2벌
+#       assets/bg/funeral_hall.jpg             1벌
+#       assets/bg/funeral_hall-2.jpg           2벌
+#
+#   ⭐ 순수한 덧붙이기다. 2벌이 아직 없으면 지금과 **똑같이** 1벌을 쓴다.
+#      그래서 이 변경만으로는 아무것도 안 바뀌고, 그림을 더 만들어 넣는 순간부터 돈다.
+#
+#   ⚠️ 판사는 바꾸지 않는다 (손님 지시). 같은 법정, 같은 재판장이 채널의 얼굴이다.
+VARIANT = 1
+FIXED_CODES = {"JUDGE"}
+
+
+def set_variant(ep):
+    """회차 이름(EP002)에서 번호를 뽑아 이번에 쓸 벌을 정한다."""
+    global VARIANT
+    digits = re.sub(r"\D", "", str(ep or ""))
+    VARIANT = int(digits) if digits else 1
+
+
+def _pick(items):
+    """여러 벌 중 이번 회차의 것. 한 벌뿐이면 그것."""
+    return items[(VARIANT - 1) % len(items)] if len(items) > 1 else items[0]
+
+
+def _char_dir(code):
+    base = ASSETS / "char" / code
+    if code in FIXED_CODES:
+        return base
+    dirs, i = [base], 2
+    while (ASSETS / "char" / f"{code}-{i}").is_dir():
+        dirs.append(ASSETS / "char" / f"{code}-{i}")
+        i += 1
+    return _pick(dirs)
+
+
+def _bg_files(code):
+    files, i = [ASSETS / "bg" / f"{code}.jpg"], 2
+    while (ASSETS / "bg" / f"{code}-{i}.jpg").exists():
+        files.append(ASSETS / "bg" / f"{code}-{i}.jpg")
+        i += 1
+    return files
+
+
 # ── 에셋 찾기 (없으면 대체물) ─────────────────────────────
 def bg_path(code):
+    p = _pick(_bg_files(code))
+    if p.exists():
+        return p
+    # 이번 회차 벌이 없으면 1벌로 돌아간다 (덧붙이다 만 상태에서도 안 깨진다)
     p = ASSETS / "bg" / f"{code}.jpg"
     if p.exists():
         return p
@@ -119,7 +176,10 @@ def is_headless(path, pose):
 
 
 def char_path(code, pose):
-    p = ASSETS / "char" / code / f"{pose}.png"
+    d = _char_dir(code)
+    if not d.is_dir():
+        d = ASSETS / "char" / code      # 이번 회차 벌이 없으면 1벌로
+    p = d / f"{pose}.png"
     if p.exists() and not is_headless(p, pose):
         return p
     if p.exists():
@@ -131,7 +191,7 @@ def char_path(code, pose):
     #    같은 화각의 가까운 표정으로 대신하면 시청자는 눈치채지 못한다.
     kind, _, mood = pose.partition("_")
     for alt in POSE_ALT.get(mood, ()):
-        q = ASSETS / "char" / code / f"{kind}_{alt}.png"
+        q = d / f"{kind}_{alt}.png"
         if q.exists() and not is_headless(q, f"{kind}_{alt}"):
             MISSING["char"].add(f"{code}/{pose} → {kind}_{alt} 로 대신")
             return q
@@ -2036,6 +2096,10 @@ def main():
     # 이름표를 그 사람 옆에 붙이려면 '이름 → 인물 코드' 다리가 필요하다.
     # 쇼츠 대본에는 배역 명단이 없으므로 여기서 한 번 채워 둔다.
     set_cast(doc)
+    # ⭐ 이번 회차가 쓸 얼굴·배경 '벌' 을 정한다 (판사는 늘 그대로).
+    #    대본 파일 이름(EP002.json)이나 meta.episode 에서 번호를 뽑는다.
+    set_variant((doc.get("meta") or {}).get("episode") or sp.stem)
+    print(f"이번 회차가 쓸 얼굴·배경 벌: {VARIANT}번 (판사는 고정)")
     # ⭐ 회상 시점 자막이 그림과 어긋나지 않게 **그리기 직전에** 한 번 더 손본다.
     #    ('아버지 생전' 인데 화면에는 지금 나이 그대로 — 2026-08-09 손님 지적)
     fix_time_labels(doc)

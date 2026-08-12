@@ -91,6 +91,7 @@ jobs:
           python3 tools/voice_test_cast.py
           python3 tools/sfx_test.py
           python3 tools/timelabel_test.py
+          python3 tools/variant_test.py
 
       - name: 관리자 페이지가 안 깨지는가
         run: |
