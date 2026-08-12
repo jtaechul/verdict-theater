@@ -88,15 +88,27 @@ REPEAT_GAP = 6     # 같은 소리를 다시 쓰려면 이만큼 떨어져야 �
 TARGET = 0.45      # 이 비율을 넘지 않는다 (컷의 45%)
 
 
+# 귀로 듣고 빼기로 한 소리. 자동으로 깔지도 않고, 이미 깔린 것도 떼어 낸다.
+#   footsteps — assets_gen.py 가 만들던 합성음(anoisesrc=c=brown … lowpass=f=300)이라
+#               발소리가 아니라 둔탁한 '툭' 으로 들린다. 진짜 녹음이 생기면 뺀다.
+# ⚠️ have() 가 이것을 보므로 have() **위**에 있어야 한다. 아래로 내리지 말 것.
+BANNED_SFX = {"footsteps"}
+
 _ok_cache = {}
 
 
 def have(name):
-    """그 소리를 **쓸 수 있는가** — 파일이 있고, 기계가 만든 삑이 아니어야 한다."""
+    """그 소리를 **쓸 수 있는가** — 파일이 있고, 기계가 만든 삑이 아니어야 한다.
+
+    ⚠️ 손님이 귀로 듣고 빼 달라고 한 소리(BANNED_SFX)는 **파일이 멀쩡해도 안 쓴다.**
+       footsteps 는 삑이 아니라 둔탁한 잡음이라 is_beep 만으로는 안 걸린다.
+       지금은 자동 목록(BY_WORD·BY_BG)에 없어서 우연히 안 깔릴 뿐인데,
+       나중에 누가 목록에 한 줄 넣으면 조용히 되살아난다. 여기서 막아 둔다.
+    """
     if name in _ok_cache:
         return _ok_cache[name]
     p = SFX_DIR / f"{name}.mp3"
-    ok = p.exists() and not is_beep(p)
+    ok = name not in BANNED_SFX and p.exists() and not is_beep(p)
     _ok_cache[name] = ok
     return ok
 
@@ -115,12 +127,6 @@ def pick_by_bg(bg, used_recent):
             if have(name) and name not in used_recent:
                 return name
     return None
-
-
-# 귀로 듣고 빼기로 한 소리. 자동으로 깔지도 않고, 이미 깔린 것도 떼어 낸다.
-#   footsteps — assets_gen.py 가 만드는 합성음(anoisesrc=c=brown … lowpass=f=300)이라
-#               발소리가 아니라 둔탁한 '툭' 으로 들린다. 진짜 녹음이 생기면 뺀다.
-BANNED_SFX = {"footsteps"}
 
 
 def strip_beeps(doc, check=False):

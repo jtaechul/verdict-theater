@@ -119,6 +119,37 @@ QUERIES = {
                    "cafe empty seats interior"],
     "daily_restaurant": ["restaurant table chairs interior", "diner interior table",
                          "dining table restaurant empty"],
+
+    # ⚠️ 2026-08-12 — 아래 12종은 **검색어가 아예 없었다.** 그래서 [배경 받아오기]
+    #    를 눌러도 이 자리들은 영원히 안 채워졌고, 영상에서는 회색으로 나가거나
+    #    AI 로 그려서 **값이 나갔다.** (필요 30종 중 18종만 표에 있었다)
+    #    어차피 흐려서 깔리므로 나라보다 빛과 결이 중요하다 — 위와 같은 기준.
+    "medical_room_shared": ["hospital ward beds row", "hospital room multiple beds",
+                            "clinic ward interior beds"],
+    "medical_nursing_hall": ["nursing home corridor handrail", "care home hallway interior",
+                             "hospital corridor handrail wall"],
+    "medical_waiting": ["hospital waiting area chairs", "clinic waiting room seats",
+                        "waiting room empty chairs interior"],
+    "home_bedroom": ["bedroom bed window daylight", "simple bedroom interior bed",
+                     "small bedroom interior quiet"],
+    "office_community": ["public office counter interior", "government office desks interior",
+                         "administrative office counter"],
+    "daily_market": ["traditional market alley stalls", "street market narrow alley",
+                     "market street awnings stalls"],
+    # 반찬가게에 딱 맞는 사진은 없다 — '반찬통이 늘어선 진열대' 로 노린다
+    "daily_sidedish": ["deli counter food containers", "food stall display containers",
+                       "market food shop display"],
+    "daily_park": ["park bench trees empty", "empty park bench path",
+                   "park path benches quiet"],
+    # 납골당도 흔치 않다 — '벽면 가득한 추모 명패' 가 핵심 인상이다
+    "etc_columbarium": ["memorial wall niches", "cemetery memorial wall plaques",
+                        "stone memorial wall rows"],
+    "etc_country_yard": ["rural farmhouse yard", "old country house courtyard",
+                         "village house yard"],
+    "etc_busstop": ["bus stop shelter street", "empty bus stop bench",
+                    "roadside bus stop"],
+    "etc_alley_night": ["narrow alley night lights", "dark alley street night",
+                        "night alley wet street"],
 }
 
 
@@ -143,6 +174,18 @@ WANT = {
     "medical_room_single": "a hospital room with a bed",
     "daily_cafe": "a cafe interior with a table by a window",
     "daily_restaurant": "a small restaurant or diner interior with a table",
+    "medical_room_shared": "a hospital ward with several beds in a row",
+    "medical_nursing_hall": "a nursing-home or hospital corridor with a handrail on the wall",
+    "medical_waiting": "a hospital or clinic waiting area with rows of empty chairs",
+    "home_bedroom": "an ordinary bedroom with a bed, quiet daylight",
+    "office_community": "a public administrative office with a service counter and desks",
+    "daily_market": "a narrow traditional market alley lined with stalls and awnings",
+    "daily_sidedish": "a shop counter with rows of food containers on display, like a deli",
+    "daily_park": "an empty park bench on a path among trees",
+    "etc_columbarium": "a wall of memorial niches or plaques, solemn and orderly",
+    "etc_country_yard": "the dirt yard of an old rural farmhouse",
+    "etc_busstop": "a roadside bus stop shelter with an empty bench",
+    "etc_alley_night": "a narrow alley at night lit by scattered lights",
 }
 
 # ⚠️ Pexels 는 `Python-urllib/3.x` 라는 기본 이름표를 보면 403 으로 막는다.

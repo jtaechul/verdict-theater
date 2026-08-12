@@ -85,8 +85,10 @@ else:
     for p in sorted(A.SFX_DIR.glob("*.mp3")):
         if Q.is_beep(p):
             eq(A.have(p.stem), False, f"'{p.stem}' 은 못 쓴다")
+    # 빼 달라고 한 소리(BANNED_SFX)는 삑이 아니어도 못 쓰는 게 **맞다** — 뺀다.
     real = [p.stem for p in sorted(A.SFX_DIR.glob("*.mp3"))
-            if not Q.is_beep(p) and not p.stem.startswith("tr_")]
+            if not Q.is_beep(p) and not p.stem.startswith("tr_")
+            and p.stem not in A.BANNED_SFX]
     eq(all(A.have(n) for n in real), True, f"진짜 소리 {len(real)}개는 쓸 수 있다")
 
 print("\n[4] 이미 깔려 있는 삑 소리는 떼어 낸다")
@@ -111,6 +113,19 @@ words = [n for _w, n in A.BY_WORD]
 eq("monitor" in words, False, "낱말 표에 monitor 없음")
 eq(any("monitor" in v for v in A.BY_BG.values()), False, "배경 표에 monitor 없음")
 eq((A.SFX_DIR / "monitor.mp3").exists(), False, "monitor.mp3 파일도 없음")
+
+print("\n[5-2] 빼 달라고 한 소리를 **다시 만들 방법이 남아 있지 않은가**")
+# ⚠️ 2026-08-12 — 파일만 지우고 '만드는 법' 을 남겨 뒀더니, [소리 (비용 0원)]
+#    버튼 한 번이면 되살아나는 상태였다. 지우는 것으로는 부족하다.
+sys.path.insert(0, str(HERE.parent / "src"))
+import assets_gen as G  # noqa: E402
+for nm in sorted(A.BANNED_SFX | {"monitor"}):
+    eq(nm in G.SFX_RECIPE or nm in G.AMB_RECIPE, False, f"'{nm}' 만드는 법이 없다")
+
+print("\n[5-3] 빼 달라고 한 소리는 파일이 멀쩡해도 안 쓴다")
+# footsteps 는 삑이 아니라 둔탁한 잡음이라 is_beep 로는 안 걸린다.
+for nm in sorted(A.BANNED_SFX):
+    eq(A.have(nm), False, f"'{nm}' 은 파일이 있어도 못 쓴다")
 
 print("\n[6] 대본이 쓰는 효과음 이름이 실제 파일과 맞는가")
 names = set(words) | {n for v in A.BY_BG.values() for n in v}

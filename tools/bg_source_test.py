@@ -205,6 +205,23 @@ else:
     print("   ✅ 실패해도 열쇠는 안 찍힌다")
 
 print()
+print("⑪ ⭐ 필요한 배경을 **전부** 공짜로 받아올 수 있는가")
+# ⚠️ 2026-08-12 — 영상이 요구하는 배경은 30종인데 검색어 표에는 18종뿐이었다.
+#    나머지 12종은 [배경 받아오기] 를 눌러도 영원히 안 채워졌고, 영상에서는
+#    회색으로 나가거나 AI 로 그려서 **값이 나갔다.** 표에 없으면 공짜 길이 없다.
+sys.path.insert(0, str(ROOT / "src"))
+import assets_gen as G                                # noqa: E402
+need = list(G.BG_PLACE)
+noq = [c for c in need if c not in bf.QUERIES]
+now = [c for c in need if c not in bf.WANT]
+if noq:
+    bad(f"검색어가 없어 공짜로 못 받는 배경 {len(noq)}개: {', '.join(noq)}")
+elif now:
+    bad(f"제미나이가 볼 기준(WANT)이 없는 배경 {len(now)}개: {', '.join(now)}")
+else:
+    print(f"   ✅ 필요한 {len(need)}종 전부 검색어와 판단 기준이 있다 (전부 0원으로 받을 수 있다)")
+
+print()
 print("─" * 52)
 print("✅ 배경 두 창고: 정상" if ok else "❌ 배경 두 창고: 문제 있음")
 sys.exit(0 if ok else 1)
