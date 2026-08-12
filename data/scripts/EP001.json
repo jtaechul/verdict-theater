@@ -1156,7 +1156,7 @@
           "speaker": "narrator",
           "text": "아버지가 남긴 모든 것을 자기 것으로 여겼던 큰아들.",
           "gfx": null,
-          "sfx": "sfx_footsteps",
+          "sfx": null,
           "amb": "amb_street",
           "blackout": false
         },
@@ -1283,7 +1283,7 @@
           "speaker": "v_M50B",
           "text": "형, 이미 받을 거 다 받았잖아. 양심이 있어?",
           "gfx": null,
-          "sfx": "sfx_footsteps",
+          "sfx": null,
           "amb": "amb_court",
           "blackout": false
         },
@@ -1486,7 +1486,7 @@
           "speaker": "narrator",
           "text": "하지만 법원은 그 가벼운 핑계를 믿어주지 않았습니다.",
           "gfx": null,
-          "sfx": "sfx_footsteps",
+          "sfx": null,
           "amb": "amb_street",
           "blackout": false
         },
@@ -1592,7 +1592,7 @@
           "speaker": "narrator",
           "text": "자기가 친 덫에 자기가 걸려 넘어진 순간이었습니다.",
           "gfx": null,
-          "sfx": "sfx_footsteps",
+          "sfx": null,
           "amb": "amb_court",
           "blackout": false
         },
@@ -2004,7 +2004,7 @@
           "speaker": "narrator",
           "text": "결국 어머니 정임이 은행으로 향했습니다.",
           "gfx": null,
-          "sfx": "sfx_footsteps",
+          "sfx": null,
           "amb": "amb_street",
           "blackout": false
         },
@@ -2290,7 +2290,7 @@
           "speaker": "narrator",
           "text": "그리고 다시 법원 앞.",
           "gfx": null,
-          "sfx": "sfx_footsteps",
+          "sfx": null,
           "amb": "amb_court",
           "blackout": false
         },
@@ -2623,7 +2623,7 @@
           "speaker": "narrator",
           "text": "모든 것을 잃은 장남만이 텅 빈 복도를 홀로 걸어 나갔습니다.",
           "gfx": null,
-          "sfx": "sfx_footsteps",
+          "sfx": null,
           "amb": "amb_court",
           "blackout": true
         }

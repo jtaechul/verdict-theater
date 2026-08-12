@@ -189,6 +189,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("script")
     ap.add_argument("--check", action="store_true", help="붙이지 않고 개수만 본다")
+    # ⭐ 이미 만들어 둔 대본에서 **빼 달라고 한 소리만** 떼어 낼 때 쓴다.
+    #    (2026-08-12) 그냥 돌렸더니 EP001 이 효과음 23컷 → 40컷이 됐다.
+    #    손님이 부탁한 것은 '이상한 소리 하나 빼기' 였지 '소리 17개 더 깔기' 가
+    #    아니다. 이미 만든 회차를 손볼 때는 이 쪽을 쓴다.
+    ap.add_argument("--strip-only", action="store_true",
+                    help="빼 달라고 한 소리만 떼고, 새로 깔지는 않는다")
     a = ap.parse_args()
 
     p = Path(a.script)
@@ -205,6 +211,18 @@ def main():
         print(f"삑 소리 뗌: {len(pulled)}컷 ({' · '.join(names)})")
         print(f"  뗀 자리: {', '.join(i for i, _ in pulled[:12])}"
               + (" …" if len(pulled) > 12 else ""))
+
+    if a.strip_only:
+        now = sum(1 for x in doc.get("acts", []) for c in (x.get("cuts") or [])
+                  if c.get("sfx"))
+        print(f"효과음: {now}컷 / 전체 {cuts}컷 ({now * 100 // max(1, cuts)}%)"
+              "  · 떼기만 했다(새로 깔지 않음)")
+        if pulled and not a.check:
+            p.write_text(json.dumps(doc, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(f"  {p.name} 에 적었습니다.")
+        elif not pulled:
+            print("  뗄 것이 없습니다 — 이미 깨끗합니다.")
+        return 0
 
     # ② 그 다음에 새로 깐다 (뗀 자리도 다른 소리로 다시 채워진다)
     before, added = add_sfx(doc)

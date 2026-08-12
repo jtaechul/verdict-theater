@@ -205,7 +205,7 @@
           "speaker": "narrator",
           "text": "조문객들은 선희 씨를 비켜 지나갔습니다.",
           "gfx": null,
-          "sfx": "sfx_footsteps",
+          "sfx": null,
           "amb": "amb_funeral",
           "blackout": false
         },
@@ -583,7 +583,7 @@
           "speaker": "narrator",
           "text": "밥상은 두 번 차려졌다가, 한 번은 식은 채 치워졌습니다.",
           "gfx": null,
-          "sfx": "sfx_footsteps",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },
@@ -2177,7 +2177,7 @@
           "speaker": "narrator",
           "text": "두 사람은 그날 이후 다시 만나지 않았습니다.",
           "gfx": null,
-          "sfx": "sfx_footsteps",
+          "sfx": null,
           "amb": "amb_street",
           "blackout": false
         },
@@ -2638,7 +2638,7 @@
           "speaker": "narrator",
           "text": "선희 씨는 아무 말도 하지 않았습니다.",
           "gfx": null,
-          "sfx": "sfx_footsteps",
+          "sfx": null,
           "amb": "amb_court",
           "blackout": false
         },

@@ -20,6 +20,19 @@ import add_sfx as A  # noqa: E402
 import sfx_quality as Q  # noqa: E402
 
 FAIL = []
+SKIP = []
+
+
+def skip(why):
+    """건너뛴 검사는 **끝에 크게 적는다.**
+
+    ⚠️ 2026-08-12 — 이것 때문에 사고가 났다. 이 파일의 검사 넷은 ffmpeg·numpy 가
+       없으면 조용히 건너뛰는데, 개발하는 자리에는 numpy 가 없었다. 그래서
+       "✅ 효과음 규칙 모두 통과" 를 보고 올렸는데 깃허브에서는 그 검사가 실제로
+       돌아 **두 번 연달아 빨간 X** 가 났다. 통과와 '안 해 봄' 은 다른 것이다.
+    """
+    SKIP.append(why)
+    print(f"  (건너뜀 — {why})")
 
 
 def eq(got, want, what):
@@ -45,7 +58,7 @@ def make(path, filt, sec=2.0):
 
 print("\n[1] 기계가 만든 삑 소리를 잡아내는가")
 if not (HAVE_FFMPEG and HAVE_NUMPY):
-    print("  (건너뜀 — ffmpeg 나 numpy 가 없어 소리를 잴 수 없습니다)")
+    skip("ffmpeg 나 numpy 가 없어 소리를 잴 수 없습니다")
 else:
     d = Path(tempfile.mkdtemp())
     make(d / "beep1400.mp3", "sine=frequency=1400")      # 6분30초의 그 소리
@@ -59,7 +72,7 @@ else:
 
 print("\n[2] 저장소에 있는 효과음 가운데 삑이 남아 있는지 (보고만 한다)")
 if not (HAVE_FFMPEG and HAVE_NUMPY):
-    print("  (건너뜀)")
+    skip("소리를 잴 수 없거나 볼 파일이 없습니다")
 else:
     beeps = [p.stem for p in sorted(A.SFX_DIR.glob("*.mp3")) if Q.is_beep(p)]
     print(f"  아직 가짜인 것: {', '.join(beeps) if beeps else '없음'}")
@@ -67,7 +80,7 @@ else:
 
 print("\n[3] 삑 소리는 절대 깔리지 않는다 (가장 중요한 규칙)")
 if not (HAVE_FFMPEG and HAVE_NUMPY):
-    print("  (건너뜀)")
+    skip("소리를 잴 수 없거나 볼 파일이 없습니다")
 else:
     for p in sorted(A.SFX_DIR.glob("*.mp3")):
         if Q.is_beep(p):
@@ -78,7 +91,7 @@ else:
 
 print("\n[4] 이미 깔려 있는 삑 소리는 떼어 낸다")
 if not (HAVE_FFMPEG and HAVE_NUMPY):
-    print("  (건너뜀)")
+    skip("소리를 잴 수 없거나 볼 파일이 없습니다")
 else:
     beeps = [p.stem for p in sorted(A.SFX_DIR.glob("*.mp3")) if Q.is_beep(p)]
     if beeps:
@@ -107,15 +120,20 @@ eq(missing, [], f"이름 {len(names)}개 모두 파일이 있다")
 print("\n[7] 못 재는 상황에서는 막지 않는다 (멀쩡한 소리까지 없애지 않게)")
 eq(Q.is_beep("/그런/파일/없음.mp3"), False, "잴 수 없으면 통과시킨다")
 
-print("\n[8] EP001 대본에 삑 소리가 남아 있지 않은가")
+print("\n[8] 저장해 둔 대본에 삑 소리가 남아 있지 않은가")
+# ⚠️ 2026-08-12 — 여기가 **EP001 만** 보고 있었다. 그래서 EP002 에 남아 있던
+#    footsteps 4컷을 아무도 못 잡았다. 회차가 늘 때마다 이 줄을 고쳐야 하는
+#    검사는 반드시 언젠가 뒤처진다. 이제 있는 대본을 **전부** 훑는다.
 import json  # noqa: E402
-p = HERE.parent / "data" / "scripts" / "EP001.json"
-if p.exists() and HAVE_FFMPEG and HAVE_NUMPY:
-    doc = json.loads(p.read_text(encoding="utf-8"))
-    left = A.strip_beeps(doc, check=True)
-    eq(left, [], "EP001 에 삑 소리 없음")
+SC = HERE.parent / "data" / "scripts"
+docs = sorted(SC.glob("EP*.json")) if SC.is_dir() else []
+docs = [p for p in docs if not p.name.endswith((".eval.json", ".shorts.json"))]
+if docs and HAVE_FFMPEG and HAVE_NUMPY:
+    for p in docs:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+        eq(A.strip_beeps(doc, check=True), [], f"{p.stem} 에 삑 소리 없음")
 else:
-    print("  (건너뜀)")
+    skip("소리를 잴 수 없거나 볼 파일이 없습니다")
 
 print()
 if FAIL:
@@ -123,4 +141,11 @@ if FAIL:
     for f in FAIL:
         print("   -", f)
     sys.exit(1)
-print("✅ 효과음 규칙 모두 통과")
+if SKIP:
+    # '통과' 라고 적지 않는다. 안 해 본 것을 통과라고 부르면 그 말을 믿고 올리게 된다.
+    print(f"⚠️  건너뛴 검사 {len(SKIP)}개 — 이 결과는 **완전하지 않습니다**")
+    for s in dict.fromkeys(SKIP):
+        print(f"   - {s}")
+    print("   깃허브(자체 점검)에서는 전부 돌아갑니다. 거기 초록불을 보고 판단하십시오.")
+else:
+    print("✅ 효과음 규칙 모두 통과")
