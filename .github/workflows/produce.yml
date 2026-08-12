@@ -27,6 +27,15 @@ on:
         description: '회차 (비우면 대본이 있는 가장 최근 회차)'
         required: false
         default: ''
+      art:
+        description: '없는 그림을 만들까요 (인물 그림이 빠지면 회색 실루엣이 나갑니다)'
+        required: true
+        default: '없는 것만 만든다'
+        type: choice
+        options:
+          - '없는 것만 만든다'
+          - '배경만 만든다 (0원)'
+          - '만들지 않는다 (있는 것으로)'
       limit:
         description: '앞 N컷만 (시험용. 0이면 전체)'
         required: false
@@ -209,12 +218,65 @@ jobs:
         run: |
           python3 src/despike.py || true
 
+      # ⭐ 없는 그림을 **먼저 만든다** (2026-08-12 손님 지적)
+      #
+      #    손님: "등장인물 이미지 생성을 안 하고 그냥 만들면 어떡하냐.
+      #           기존에 있던 거 활용하거나 없는 인물은 새로 생성을 해야지."
+      #
+      #    맞는 말이었다. 여기에는 그림을 **만드는 단계가 아예 없었다.**
+      #    검사 한 줄이 전부였고 그마저 `|| true` 라 없어도 그냥 넘어갔다.
+      #    실측: 인물 그림 81장이 빠진 채로 EP001·EP002 가 만들어졌다 —
+      #    그 자리는 전부 회색 실루엣으로 나갔다.
+      #
+      #    이제 렌더 전에 **없는 것만** 만든다(있는 것은 건드리지 않는다).
+      #    배경은 Pexels 라 0원, 인물은 한 장에 약 197원이다.
+      - name: 없는 그림 만들기 (있는 것은 그대로 쓴다)
+        if: inputs.art != '만들지 않는다 (있는 것으로)'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+        run: |
+          set -o pipefail
+          echo "── 만들기 전 상태 ──"
+          python3 src/assets_gen.py check || true
+          echo ""
+          # 배경 먼저 — 공짜다. 없는 것만 받는다(--force 를 주지 않는다).
+          if [ -n "$PEXELS_API_KEY" ]; then
+            python3 src/bg_fetch.py 2>&1 | tail -20 || echo "(배경 받기 실패 — 있는 것으로 간다)"
+          else
+            echo "(PEXELS_API_KEY 가 없어 배경은 건너뛴다)"
+          fi
+          if [ "${{ inputs.art }}" = "배경만 만든다 (0원)" ]; then
+            echo "배경만 만들기로 했다 — 인물은 건너뛴다."
+          else
+            # 인물 — 없는 것만. 값이 드는 자리라 몇 장인지 먼저 찍는다.
+            python3 src/assets_gen.py images --what char 2>&1 | tail -30 \
+              || echo "(인물 그림 만들기 실패 — 아래 검사에서 걸린다)"
+          fi
+          echo ""
+          echo "── 만든 뒤 상태 ──"
+          python3 src/assets_gen.py check || true
+
       - name: 에셋 무결성 검사
         run: |
-          # 렌더 전에 필요한 파일이 다 있는지 본다. 하나 없으면 대체물로 채워지므로
-          # 발행 품질이 아니라는 것을 여기서 분명히 알려준다.
+          # ⚠️ 예전에는 `|| true` 라 **없어도 그냥 넘어갔다.** 그래서 회색 실루엣이
+          #    섞인 영상이 조용히 만들어졌다. 이제 인물 그림이 빠져 있으면 멈춘다.
+          #    (소리·음악이 빠진 것은 무음으로 대체돼도 견딜 만하므로 알림만 한다)
           python3 src/assets_gen.py check > asset.log 2>&1 || true
           cat asset.log
+          if grep -qE '^  char +[0-9]+개' asset.log; then
+            N=$(grep -oE '^  char +[0-9]+' asset.log | grep -oE '[0-9]+')
+            {
+              echo "## 인물 그림이 ${N}장 빠져 있습니다 — 영상을 만들지 않았습니다"
+              echo ""
+              echo "이대로 만들면 그 자리에 **회색 실루엣**이 나갑니다."
+              echo ""
+              echo "**'없는 그림을 만들까요'** 를 **없는 것만 만든다** 로 놓고 다시 실행하십시오."
+              echo "(인물 한 장에 약 197원입니다. 한 번 만들면 다음 회차부터는 그대로 씁니다)"
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::인물 그림 ${N}장이 빠져 있습니다. 회색 실루엣이 나가므로 멈춥니다."
+            exit 1
+          fi
 
           # 인물 그림에 칸 선(인쇄된 검은 줄)이 남아 있는지 본다.
           # 발행하고 나서 발견하면 늦다 — 여기서 이름을 찍어 둔다.
