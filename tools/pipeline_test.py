@@ -107,6 +107,41 @@ else:
     print("   ✅ 확인 전에 반영한다")
 
 print()
+print("⑧ '전부 다 만들기' 가 진짜로 전부를 만드는가")
+# ⚠️ 2026-08-12 손님: "각각 하나씩 만들어야 돼? 전부 다 만들기를 넣어줄 수도 있잖아."
+#    넣었다. 그런데 이런 '한꺼번에' 버튼은 **나중에 반드시 뒤처진다** —
+#    새 에셋 종류가 늘었는데 여기 한 줄을 안 넣으면, 버튼 이름만 '전부' 이고
+#    실제로는 일부만 만든다. 그게 제일 나쁘다(다 된 줄 알게 된다).
+i = ba.find('"전부 다 만들기"*)')
+j = ba.find(';;', i)
+blk = ba[i:j] if i >= 0 else ""
+NEED = {
+    "인물":     "images --what char",
+    "배경":     "bg_fetch.py",
+    "배경음악": "get_bgm.py",
+    "효과음":   "assets_gen.py audio",
+    "시트 반영": "assets_gen.py sync",
+}
+if not blk:
+    bad("'전부 다 만들기' 갈래가 없다")
+else:
+    miss = [k for k, v in NEED.items() if v not in blk]
+    if miss:
+        bad(f"'전부' 인데 빠진 것: {', '.join(miss)}")
+    else:
+        print(f"   ✅ {' · '.join(NEED)} 전부 들어 있다")
+    # 값이 드는 것이 맨 뒤여야 한다 — 앞에서 실패하면 돈이 안 나가게
+    if blk.find("images --what char") < blk.find("bg_fetch.py"):
+        bad("값이 드는 인물 만들기가 공짜 단계보다 앞에 있다 — 앞이 실패해도 돈이 나간다")
+    else:
+        print("   ✅ 값이 드는 인물 만들기가 맨 뒤다 (앞이 실패하면 돈이 안 나간다)")
+    # 만든 뒤 반영이 있어야 컷아웃이 생긴다
+    if blk.count("assets_gen.py sync") < 2:
+        bad("만든 뒤 반영이 없다 — 시트만 생기고 컷아웃이 안 생긴다")
+    else:
+        print("   ✅ 만들기 앞뒤로 반영한다")
+
+print()
 print("─" * 52)
 print("✅ 그림 절차: 정상" if ok else "❌ 그림 절차: 문제 있음")
 sys.exit(0 if ok else 1)

@@ -20,6 +20,12 @@ on:
         default: '소리 (비용 0원)'
         type: choice
         options:
+          # ⭐ 2026-08-12 손님: "등장인물하고 배경하고 효과음을 각각 하나씩
+          #    만들어야 돼? 전부 다 만들기를 하나 넣어줄 수도 있잖아."
+          #    맞는 말이다. 하나씩 일곱 번 누를 이유가 없다.
+          #    ⚠️ 값이 드는 것(인물)을 **맨 뒤**에 둔다. 공짜인 것부터 다 끝내고
+          #       마지막에 돈을 쓴다 — 앞에서 실패하면 돈이 안 나간다.
+          - '전부 다 만들기 (빠진 것만 · 인물 약 399원 · 나머지 0원)'
           - '소리 (비용 0원)'
           - '캐릭터 한 명 시험'
           - '캐릭터 전부'
@@ -74,9 +80,49 @@ jobs:
           # ⭐ 창고를 **둘** 걸어 둔다 — 하나가 막혀도 배경 받기가 안 멈춘다.
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          # 배경음악은 Freesound 에서 받는다 (효과음과 같은 열쇠)
+          FREESOUND_TOKEN: ${{ secrets.FREESOUND_TOKEN }}
         run: |
           set -o pipefail
           case "${{ inputs.what }}" in
+            "전부 다 만들기"*)
+              # ⭐ 빠진 것을 **한 번에** 채운다. 순서에 뜻이 있다 —
+              #    공짜인 것부터 다 하고, 값이 드는 인물을 맨 뒤에 둔다.
+              #    앞 단계가 실패해도 돈은 안 나간 상태로 멈춘다.
+              #    각 단계는 `|| true` 로 감싼다. 하나가 안 돼도 나머지는 채운다
+              #    (무엇이 빠졌는지는 맨 끝 '남은 것 확인' 이 알려 준다).
+              {
+                echo "──① 있는 시트를 컷아웃으로 반영 (0원)"
+                python3 src/assets_gen.py sync || true
+
+                echo ""
+                echo "──② 효과음·방 소리 만들기 (0원)"
+                python3 src/assets_gen.py audio || true
+
+                echo ""
+                echo "──③ 배경 사진 받아오기 (0원)"
+                if [ -n "$PIXABAY_API_KEY" ] || [ -n "$PEXELS_API_KEY" ]; then
+                  python3 src/bg_fetch.py || true
+                else
+                  echo "(사진 창고 열쇠가 둘 다 없어 건너뜁니다)"
+                fi
+
+                echo ""
+                echo "──④ 배경음악 빠진 것 받아오기 (0원)"
+                if [ -n "$FREESOUND_TOKEN" ]; then
+                  python3 tools/get_bgm.py || true
+                else
+                  echo "(FREESOUND_TOKEN 이 없어 건너뜁니다 — 음악이 다 있으면 필요 없습니다)"
+                fi
+
+                echo ""
+                echo "──⑤ 등장인물 그림 (여기서만 값이 납니다 · 한 명 약 57원)"
+                python3 src/assets_gen.py images --what char || true
+
+                echo ""
+                echo "──⑥ 새로 만든 시트도 컷아웃으로 반영 (0원)"
+                python3 src/assets_gen.py sync || true
+              } 2>&1 | tee build.log ;;
             "소리"*)
               python3 src/assets_gen.py audio 2>&1 | tee build.log ;;
             "캐릭터 한 명 시험")
