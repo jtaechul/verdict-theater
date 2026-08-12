@@ -61,6 +61,11 @@ jobs:
       - name: 돈 막는 장치가 진짜로 막는가
         run: python3 tools/money_guard_test.py
 
+      # 2026-08-11: 음성 119컷이 멀쩡한데 '받아쓰기 검사' 가 구글 503 에 막혀
+      # 영상이 통째로 안 나왔다. 이제 자로 재는 쪽이 판정한다 — 그게 살아 있는지 본다.
+      - name: 음성 길이를 자로 재는 검사가 제대로 재는가
+        run: python3 tools/voice_len_test.py
+
       - name: 관리자 페이지가 안 깨지는가
         run: |
           node tools/check_admin.mjs

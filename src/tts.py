@@ -1878,6 +1878,68 @@ STT_FIX_MAX = 2            # 한 실행에서 통째로 다시 만드는 통의 
 _STT = {"model": None, "mime": None, "dead": False}   # 한 번 통한 조합을 기억한다
 
 
+# ── 자로 재는 검사 (인터넷 0회 · 0원) ─────────────────────
+#
+# ⭐ 왜 이걸 따로 두는가 (2026-08-11 · 손님 지적으로 다시 설계)
+#
+#   받아쓰기 검사가 잡으려는 것은 딱 하나다 — **"대사의 머리/꼬리가 소리에 없다".**
+#   한 통을 무음 구간으로 잘라 컷을 나누는데, 그 자르는 자리가 어긋나면
+#   문장 앞이나 뒤가 날아간다.
+#
+#   그건 **길이 문제**다. 그런데 그걸 확인하겠다고 소리 10개를 이어 붙여
+#   800KB 를 통째로 구글에 보내고 있었다. 큰 멀티모달 요청은 구글이 용량이
+#   빠듯할 때 **가장 먼저 거절하는 모양**이라, HTTP 503 이 줄줄이 났고
+#   (같은 800KB 를 네 번씩 다시 보내며) 30분을 버린 뒤 영상이 통째로 막혔다.
+#   음성 119컷은 멀쩡히 다 만들어져 있었는데도.
+#
+#   자로 재면 된다. 인터넷도, 열쇠도, 돈도 필요 없다.
+#
+# ⚠️ '글자당 몇 초' 를 숫자로 박아 두지 않는다. 그것도 짐작이기 때문이다.
+#    사람마다·모델마다·배속마다 다르다. 대신 **한 통 안에서 서로 비교한다** —
+#    같은 사람이 같은 속도로 이어 읽은 것이므로 글자당 초가 거의 같아야 한다.
+#    그 중앙값에서 크게 모자란 컷만 "잘렸다" 고 본다. 스스로 기준을 잡는 방식이라
+#    목소리를 바꾸든 배속을 바꾸든 따라온다.
+LEN_LOW = float(os.environ.get("TTS_LEN_LOW", "0.60"))   # 중앙값의 이 비율 미만이면 잘린 것
+LEN_GAP = float(os.environ.get("TTS_LEN_GAP", "0.30"))   # 그래도 이만큼(초)은 모자라야 따진다
+LEN_MIN_N = 4            # 중앙값을 믿으려면 통에 컷이 이만큼은 있어야 한다
+
+
+def _speak_len(text):
+    """소리로 낼 글자 수. 공백·문장부호는 소리가 없으니 뺀다."""
+    return sum(1 for ch in (text or "") if not ch.isspace() and ch not in ",.!?…·'\"()[]-—~")
+
+
+def check_lengths(group, out):
+    """자로 재서 '머리/꼬리가 잘린 컷' 을 찾는다. 인터넷 0회 · 0원 · 1초.
+
+    돌려주는 것 — 잘린 것으로 보이는 컷 목록 (없으면 빈 목록)."""
+    rows = []
+    for c in group:
+        p = out / f"{c['id']}.mp3"
+        if not p.exists():
+            continue                        # 파일 없음은 여기 일이 아니다(따로 잡는다)
+        n = _speak_len(c.get("text", ""))
+        if n < 4:
+            continue                        # 너무 짧은 대사는 견줄 바탕이 안 된다
+        d = _duration(p)
+        rows.append((c, n, d, d / n))
+    if len(rows) < LEN_MIN_N:
+        # 견줄 것이 모자라면 '소리가 아예 없다' 만 잡는다
+        return [c for c, n, d, _ in rows if d < 0.2]
+
+    rates = sorted(r for _, _, _, r in rows)
+    mid = rates[len(rates) // 2]
+    cut = []
+    for c, n, d, r in rows:
+        want = mid * n                       # 이 통의 속도로 읽었다면 나왔을 길이
+        if r < mid * LEN_LOW and (want - d) >= LEN_GAP:
+            cut.append((c, d, want))
+    for c, d, want in cut:
+        print(f"    ⚠️ {c['id']} 소리가 {d:.1f}초인데 글자로는 {want:.1f}초짜리다"
+              f" — 머리나 꼬리가 잘린 것으로 본다")
+    return [c for c, _, _ in cut]
+
+
 def _stt_rank(name):
     low = name.lower()
     ver = 0.0
@@ -2063,28 +2125,39 @@ def stt_verify(pool, key, cuts, out, pin, book, gmap):
         return got
 
     def check_batch(sig, group):
+        """이 통에서 '머리/꼬리가 잘린 컷' 을 찾는다.
+
+        ⭐ 자로 재는 것이 **판정하는 쪽**이다 (인터넷 0회 · 0원).
+           받아쓰기는 **참고**다 — 구글이 흔들려도 공장이 멈추면 안 되기 때문이다.
+           (2026-08-11 손님: "구글 서버 죽었다고 영상 제작 안 할 거야?")
+           받아쓰기가 뭔가를 더 찾아내면 눈에는 보여 주되, 그것만으로는 안 막는다.
+        """
+        hard = check_lengths(group, out)          # 자로 잰 결과 — 이것만이 막을 수 있다
+
         files = [out / f"{c['id']}.mp3" for c in group]
         texts = transcribe_pieces(key, files)
-        if texts is None:
-            return None
-        return [c for c, t in zip(group, texts)
-                if not _piece_ok(c.get("text", ""), t)]
+        if texts is not None:
+            heard = [c for c, t in zip(group, texts)
+                     if not _piece_ok(c.get("text", ""), t)]
+            extra = [c for c in heard if c not in hard]
+            if extra:
+                print(f"    (참고) 받아쓰기는 {', '.join(c['id'] for c in extra)} 도"
+                      f" 어긋난다고 본다 — 길이는 멀쩡하므로 그대로 쓴다")
+        return hard
 
-    bad, unread = {}, 0
+    # 자로 재는 검사는 인터넷이 필요 없으므로 **늘 된다.**
+    # (예전에는 받아쓰기가 안 되면 '확인 못 했다' 로 넘어가는 길이 있었는데,
+    #  이제 판정하는 쪽이 자라서 그런 구멍이 없다.)
+    bad = {}
     n_checked = 0
     for sig, group in batches(todo):
         miss = check_batch(sig, group)
-        if miss is None:
-            unread += len(group)
-            continue
         n_checked += len(group)
         if miss:
             bad[sig] = (group, miss)
-    if unread:
-        print(f"  ⚠️ 받아쓰기 대조: {unread}컷은 전사가 안 돼 확인 못 했다")
     if not bad:
         if n_checked:
-            print(f"  받아쓰기 대조: {n_checked}컷 전부 대본과 맞다")
+            print(f"  길이 대조: {n_checked}컷 전부 자막 길이와 맞다 (값 0원)")
         return True
 
     for sig, (group, miss) in bad.items():
@@ -2166,12 +2239,16 @@ def stt_verify(pool, key, cuts, out, pin, book, gmap):
         # 여기까지 왔다는 것은 **소리를 아예 못 만든** 컷이 있다는 뜻이다
         # (한도 초과·통신 실패 등). 그 자리는 무음이 되므로 멈추는 편이 낫다.
         print("", file=sys.stderr)
-        print(f"오류: {len(still)}컷의 소리를 만들지 못했습니다"
+        print(f"오류: {len(still)}컷의 소리가 온전하지 않습니다"
               f" ({', '.join(still[:6])}).", file=sys.stderr)
-        print("      그대로 만들면 그 자리에서 소리가 끊깁니다. 렌더링을 멈춥니다.",
+        print("      소리가 아예 없거나, 자막 길이에 견줘 너무 짧습니다"
+              " (머리나 꼬리가 잘린 것입니다).", file=sys.stderr)
+        print("      그대로 만들면 그 자리에서 말이 끊깁니다. 렌더링을 멈춥니다.",
               file=sys.stderr)
+        print("      ※ 이 판정은 자로 잰 것이라 인터넷·모델과 무관합니다 —"
+              " 다시 눌러도 같은 결과가 나옵니다.", file=sys.stderr)
         return False
-    print("  받아쓰기 대조: 수선 후 전부 대본과 맞다")
+    print("  길이 대조: 수선 후 전부 자막 길이와 맞다")
     return True
 
 

@@ -143,6 +143,7 @@ jobs:
           set -o pipefail
           python3 tools/voice_test_split.py
           python3 tools/voice_test_group.py
+          python3 tools/voice_len_test.py
           python3 tools/voice_test_pitch.py
           python3 tools/voice_test_guard.py
           python3 tools/voice_test_stt.py
