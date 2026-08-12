@@ -107,27 +107,42 @@ else:
     print("   ✅ 확인 전에 반영한다")
 
 print()
-print("⑧ '전부 다 만들기' 가 진짜로 전부를 만드는가")
+print("⑧ 기본 선택지가 필요한 셋을 다 만드는가 (그리고 그것이 기본값인가)")
 # ⚠️ 2026-08-12 손님: "각각 하나씩 만들어야 돼? 전부 다 만들기를 넣어줄 수도 있잖아."
 #    넣었다. 그런데 이런 '한꺼번에' 버튼은 **나중에 반드시 뒤처진다** —
 #    새 에셋 종류가 늘었는데 여기 한 줄을 안 넣으면, 버튼 이름만 '전부' 이고
 #    실제로는 일부만 만든다. 그게 제일 나쁘다(다 된 줄 알게 된다).
-i = ba.find('"전부 다 만들기"*)')
+i = ba.find('"기본 3가지"*)')
 j = ba.find(';;', i)
 blk = ba[i:j] if i >= 0 else ""
+# 손님이 정한 셋 (2026-08-12): 효과음 · 등장인물 · 배경사진.
+# 시트 반영은 '넷째 항목' 이 아니라 등장인물을 쓸 수 있게 만드는 배관이다 —
+# 이것이 빠지면 시트만 생기고 컷아웃이 안 생겨 영상이 안 나온다.
+# ⚠️ 배경음악은 일부러 뺐다. 8곡이 다 차 있고 전용 버튼이 따로 있다.
 NEED = {
-    "인물":     "images --what char",
-    "배경":     "bg_fetch.py",
-    "배경음악": "get_bgm.py",
-    "효과음":   "assets_gen.py audio",
+    "효과음":    "assets_gen.py audio",
+    "등장인물":  "images --what char",
+    "배경사진":  "bg_fetch.py",
     "시트 반영": "assets_gen.py sync",
 }
+# 이 선택지가 **기본값**이어야 한다. 손님이 열자마자 이것이 골라져 있어야
+# 하나씩 일곱 번 누르는 일이 안 생긴다.
+import yaml                                          # noqa: E402
+_d = yaml.safe_load(ba)
+_on = _d.get("on") if isinstance(_d.get("on"), dict) else _d.get(True)
+_def = str((((_on or {}).get("workflow_dispatch") or {})
+            .get("inputs", {}).get("what", {})).get("default", ""))
+if not _def.startswith("기본 3가지"):
+    bad(f"기본값이 '{_def}' 다 — 열자마자 골라져 있어야 하는 것은 '기본 3가지' 다")
+else:
+    print(f"   ✅ 기본값 = {_def}")
+
 if not blk:
-    bad("'전부 다 만들기' 갈래가 없다")
+    bad("'기본 3가지' 갈래가 없다")
 else:
     miss = [k for k, v in NEED.items() if v not in blk]
     if miss:
-        bad(f"'전부' 인데 빠진 것: {', '.join(miss)}")
+        bad(f"기본 선택지에 빠진 것: {', '.join(miss)}")
     else:
         print(f"   ✅ {' · '.join(NEED)} 전부 들어 있다")
     # 값이 드는 것이 맨 뒤여야 한다 — 앞에서 실패하면 돈이 안 나가게
