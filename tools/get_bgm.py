@@ -105,9 +105,11 @@ def fetch(url, path):
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
     tmp.write_bytes(get(url, timeout=180))
-    # 128kbps 로 통일한다 (있는 6곡과 같은 규격)
+    # ⚠️ 192kbps 로 맞춘다. 128k 로 적어 뒀었는데 **실측해 보니 기존 6곡은
+    #    192kbps** 였다(ffprobe). 새로 받은 곡만 낮은 규격이면 장면이 바뀔 때
+    #    소리 결이 달라진다.
     r = subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(tmp),
-                        "-b:a", "128k", "-ac", "2", str(path)],
+                        "-b:a", "192k", "-ar", "44100", "-ac", "2", str(path)],
                        capture_output=True, text=True)
     tmp.unlink(missing_ok=True)
     return r.returncode == 0
