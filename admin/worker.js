@@ -243,6 +243,9 @@ button{font:inherit;font-weight:600;border:0;border-radius:12px;padding:14px 16p
 background:var(--blue);color:#fff;width:100%;min-height:50px}
 button:active{opacity:.75}
 button.ghost{background:#262a38;color:var(--ink)}
+/* 제목 옆에 붙는 작은 버튼 (새로고침). 손가락으로 눌리게 높이는 남겨 둔다. */
+button.mini{width:auto;min-height:34px;padding:7px 12px;font-size:13px;font-weight:600;
+background:#262a38;color:#9599ab;border-radius:9px;margin-left:10px;vertical-align:middle}
 /* 멈추기 — 실행과 확실히 달라 보여야 잘못 누르지 않는다. 폭도 좁게 둬 오조작을 막는다. */
 button.stopbtn{background:#3a2730;color:#e79aa6;width:auto;flex:0 0 auto;padding:14px 18px}
 button.gold{background:var(--gold);color:#1a1608}
@@ -460,7 +463,13 @@ function home() {
   h += '</div>';
 
   if ((S.runs||[]).length) {
-    h += '<div class="card"><h2>최근 실행</h2><table>';
+    // ⭐ 제목 옆 새로고침 (2026-08-12 손님 요청).
+    //    data-t 로 접기 열쇠를 못 박는다 — 안 그러면 버튼 글자까지 제목으로 읽혀
+    //    접었던 상태를 못 찾는다. 그리고 버튼을 눌러도 카드가 접히면 안 되므로
+    //    event.stopPropagation() 으로 제목 클릭과 갈라 놓는다.
+    h += '<div class="card"><h2 data-t="최근 실행">최근 실행'
+       + '<button class="mini" onclick="event.stopPropagation();load()">새로고침</button>'
+       + '</h2><table>';
     S.runs.slice(0, 8).forEach(r => {
       const ok = CONCL[r.conclusion] || (r.conclusion ? esc(r.conclusion) : '진행 중');
       const c = r.conclusion === 'success' ? 'ok' : (r.conclusion ? 'wait' : 'go');
@@ -762,7 +771,9 @@ function foldify() {
     const h = card.querySelector('h2');
     if (!h || h.dataset.ft || h.parentElement !== card) return;
     h.dataset.ft = '1';
-    const title = (h.textContent || '').trim();
+    // 제목 안에 버튼이 있을 수 있다(새로고침). 그 글자가 제목에 섞이면
+    // 접기 열쇠가 달라져 접었던 상태를 못 찾는다. data-t 가 있으면 그것을 쓴다.
+    const title = (h.dataset.t || h.textContent || '').trim();
 
     // 제목 아래 내용을 통째로 한 봉지에 담는다
     const body = document.createElement('div');
