@@ -2661,7 +2661,7 @@
             "type": "nametag",
             "text": "재판장"
           },
-          "sfx": null,
+          "sfx": "sfx_paper",
           "amb": "amb_court",
           "blackout": false
         },
