@@ -127,6 +127,37 @@ print("\n[5-3] 빼 달라고 한 소리는 파일이 멀쩡해도 안 쓴다")
 for nm in sorted(A.BANNED_SFX):
     eq(A.have(nm), False, f"'{nm}' 은 파일이 있어도 못 쓴다")
 
+print("\n[5-4] ⭐ 시계 초침처럼 **되풀이되는 딸깍** 소리를 잡아내는가")
+# ⚠️ 2026-08-13 손님: "시계초침 소리같이 '척척척척척' 이런 소리가 매우 어울리지
+#    않고 어색하고 겉도는 느낌이야. 앞으로 다시는 삽입되지 않도록 조치해줘."
+#    is_beep 은 이걸 **못 잡았다.** clock.mp3 를 재 보니 '한 높이에 몰린 정도' 가
+#    0.1% 였다(25% 넘어야 걸린다). 20밀리초짜리 짧은 딸깍은 소리가 넓게 번지기
+#    때문이다. 음색이 아니라 **되풀이되는가** 를 봐야 잡힌다.
+if not (HAVE_FFMPEG and HAVE_NUMPY):
+    skip("소리를 잴 수 없습니다")
+else:
+    d = Path(tempfile.mkdtemp())
+    # 1초마다 딸깍 — 손님이 들으신 그 소리를 그대로 다시 만들어 본다
+    make(d / "tick.mp3",
+         "sine=f=1400:d=0.02,apad=pad_dur=0.98,aloop=loop=5:size=44100", sec=5.0)
+    make(d / "noise.mp3", "anoisesrc=color=brown", sec=3.0)
+    eq(Q.is_ticky(d / "tick.mp3"), True, "1초마다 딸깍 = 되풀이 딸깍")
+    eq(Q.is_ticky(d / "noise.mp3"), False, "넓게 퍼진 소리 = 진짜")
+    eq(Q.is_fake(d / "tick.mp3"), True, "is_fake 도 잡는다")
+    # 저장소에 되풀이 딸깍이 남아 있으면 **쓸 수 없어야** 한다
+    for p in sorted(A.SFX_DIR.glob("*.mp3")):
+        if Q.is_ticky(p):
+            eq(A.have(p.stem), False, f"'{p.stem}' 은 되풀이 딸깍이라 못 쓴다")
+
+print("\n[5-5] ⭐ 효과음 만드는 법에 **순수음(sine)** 이 없는가")
+# 순수음은 어떻게 손질해도 '삑' 이나 '웅' 으로 들린다. 자연에 순수음은 없다.
+# 이 표에 sine 으로 만든 것이 넷 있었고 손님이 그 넷을 전부 빼 달라고 하셨다
+# (monitor 880Hz · clock 1400Hz · phone 1000Hz · heartbeat 52Hz).
+# 이름 하나씩 막는 것으로는 부족했다 — **부류 자체**를 막는다.
+for tbl, nm in ((G.SFX_RECIPE, "효과음"), (G.AMB_RECIPE, "방 소리")):
+    for name, recipe in sorted(tbl.items()):
+        eq("sine" in recipe, False, f"{nm} '{name}' 에 sine 이 없다")
+
 print("\n[6] 대본이 쓰는 효과음 이름이 실제 파일과 맞는가")
 names = set(words) | {n for v in A.BY_BG.values() for n in v}
 missing = [n for n in sorted(names) if not (A.SFX_DIR / f"{n}.mp3").exists()]

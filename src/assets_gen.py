@@ -780,23 +780,34 @@ AMB_RECIPE = {
 }
 SFX_RECIPE = {
     # 합성으로 그럴듯하게 나오는 것만. 나머지는 무료 음원을 넣어야 한다.
-    "heartbeat": "sine=f=52:d=2,atempo=1,volume=1.2,"
-                 "atrim=0:2,asetrate=44100,aformat=channel_layouts=mono",
-    "clock":     "sine=f=1400:d=0.02,apad=pad_dur=0.98,aloop=loop=5:size=44100,volume=0.7",
-    "gavel":     "anoisesrc=c=white:d=0.09:a=0.9,lowpass=f=900,volume=1.4,apad=pad_dur=0.5",
-    "paper":     "anoisesrc=c=white:d=0.5:a=0.25,highpass=f=1800,volume=0.9",
-    "tear":      "anoisesrc=c=white:d=0.8:a=0.35,highpass=f=1200,volume=1.0",
-    # ⚠️ 여기에 footsteps·monitor 를 **다시 넣지 마십시오.** 손님이 귀로 듣고
-    #    두 번 빼 달라고 한 소리다. 만드는 법이 여기 남아 있으면 [소리 (비용 0원)]
-    #    버튼 한 번에 되살아난다 — 실제로 그래서 영상에 들어갔다.
+    #
+    # ⭐ 규칙 (2026-08-13) — **`sine=` 을 쓰지 마십시오.**
+    #    순수음(sine)은 어떻게 손질해도 '삑' 이나 '웅' 으로 들린다. 자연에 순수음은
+    #    없다 — 진짜 소리는 전부 잡음이 섞여 있다. 이 표에 sine 으로 만든 것이
+    #    넷 있었고, 손님이 그 넷을 전부 귀로 듣고 빼 달라고 하셨다.
+    #        monitor 880Hz · clock 1400Hz · phone 1000Hz · heartbeat 52Hz
+    #    (tools/sfx_test.py 가 이 표에 sine 이 들어오면 실패시킨다)
+    #
+    # ⚠️ clock·phone·heartbeat 를 **다시 넣지 마십시오.**
+    #    2026-08-13 손님: "시계초침 소리같이 '척척척척척' 이런 소리가 나는데
+    #                      매우 어울리지 않고 어색하고 겉도는 느낌이야."
+    #    clock 은 2026-08-09 에도 같은 지적을 받아 파일을 지웠는데, **만드는 법이
+    #    여기 남아 있어서** [소리 (비용 0원)] 버튼 한 번에 되살아났다. 게다가
+    #    되살아난 파일은 검사(is_beep)까지 빠져나갔다 — 옛 파일은 2초여서 걸렸는데
+    #    새로 만들어진 것은 4초라 '한 높이에 몰린 정도' 가 0.1% 로 떨어졌다.
+    #    그래서 **만드는 법 자체를 없앤다.** 지우는 것만으로는 부족했다.
+    #
+    # ⚠️ footsteps·monitor 도 마찬가지로 넣지 마십시오.
     #      footsteps  갈색 잡음 저역통과 → 발소리가 아니라 둔탁한 '툭'
     #                 (2026-08-12: "41초 부근 효과음 이상한 거잖아. 들어가지 않게 해")
     #      monitor    880Hz 순수음 → 그 소리가 곧 "삑 삑"
     #                 (2026-08-09: 6분30초의 그 소리)
     #    진짜 녹음이 필요하면 [효과음 받아오기 (Freesound)] 로 받으십시오(0원).
+    "gavel":     "anoisesrc=c=white:d=0.09:a=0.9,lowpass=f=900,volume=1.4,apad=pad_dur=0.5",
+    "paper":     "anoisesrc=c=white:d=0.5:a=0.25,highpass=f=1800,volume=0.9",
+    "tear":      "anoisesrc=c=white:d=0.8:a=0.35,highpass=f=1200,volume=1.0",
     "door":      "anoisesrc=c=brown:d=0.3:a=0.5,lowpass=f=400,volume=1.2,apad=pad_dur=0.4",
     "stamp":     "anoisesrc=c=white:d=0.07:a=0.8,lowpass=f=600,volume=1.3,apad=pad_dur=0.4",
-    "phone":     "sine=f=1000:d=0.4,apad=pad_dur=0.3,aloop=loop=3:size=44100,volume=0.8",
 }
 
 

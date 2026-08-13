@@ -162,7 +162,7 @@
             "type": "nametag",
             "text": "한미주 · 51세 · 동거인"
           },
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_funeral",
           "blackout": false
         },
@@ -306,7 +306,7 @@
           "speaker": "narrator",
           "text": "그래도 선희 씨는 그 집을 떠나지 않았습니다.",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },
@@ -483,7 +483,7 @@
           "speaker": "narrator",
           "text": "손등에는 겨울마다 마늘 냄새가 배어 있었습니다.",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },
@@ -649,7 +649,7 @@
           "speaker": "narrator",
           "text": "그러다 어느 밤, 남편이 아예 들어오지 않았습니다.",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },
@@ -805,7 +805,7 @@
           "speaker": "narrator",
           "text": "그 뒤로 남편은 도장을 찍어달라고 했습니다. 여러 번.",
           "gfx": null,
-          "sfx": "sfx_phone",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },
@@ -1193,7 +1193,7 @@
           "speaker": "narrator",
           "text": "처음엔 회사가 실수한 거라고 생각했습니다.",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },
@@ -1333,7 +1333,7 @@
           "speaker": "narrator",
           "text": "변경 신청서 아래, 날짜 한 줄이 찍혀 있었습니다.",
           "gfx": null,
-          "sfx": "sfx_heartbeat",
+          "sfx": null,
           "amb": "amb_street",
           "blackout": false
         },
@@ -1353,7 +1353,7 @@
           "speaker": "narrator",
           "text": "법원이 남편의 이혼 청구를 물리친 바로 그날이었습니다.",
           "gfx": null,
-          "sfx": "sfx_heartbeat",
+          "sfx": null,
           "amb": "amb_street",
           "blackout": false,
           "tag": "twist"
@@ -1435,7 +1435,7 @@
           "speaker": "narrator",
           "text": "그날 선희 씨는 법원 앞에서 혼자 버스를 탔습니다.",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },
@@ -1576,7 +1576,7 @@
           "speaker": "v_F50A",
           "text": "형 벌이가 어디로 갔는지, 자네는 알잖아.",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_street",
           "blackout": false
         },
@@ -1720,7 +1720,7 @@
           "speaker": "narrator",
           "text": "그리고 갚아야 할 것들. 남은 건 빚이 더 컸습니다.",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },
@@ -1853,7 +1853,7 @@
           "speaker": "narrator",
           "text": "그리고 아주 오래, 그 자리에 앉아 있었습니다.",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": true
         }
@@ -2012,7 +2012,7 @@
           "speaker": "v_F50B",
           "text": "임종은 제가 지켰어요. 그건 아무도 못 지웁니다.",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_street",
           "blackout": false
         },
@@ -2157,7 +2157,7 @@
           "speaker": "narrator",
           "text": "미주 씨는 잔을 내려놓고, 대답하지 않았습니다.",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_street",
           "blackout": false
         },
@@ -2203,7 +2203,7 @@
           "speaker": "v_M50B",
           "text": "형 병원 사람들은 저쪽 편이에요.",
           "gfx": null,
-          "sfx": "sfx_phone",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },
@@ -2301,7 +2301,7 @@
           "speaker": "narrator",
           "text": "서로 낫다는 말은, 결국 누가 낫다는 말이었을까요.",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },
@@ -2563,7 +2563,7 @@
           "speaker": "narrator",
           "text": "빈 거실에, 불은 하나만 켜져 있었습니다.",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": true
         }
@@ -2801,7 +2801,7 @@
           "speaker": "narrator",
           "text": "국그릇 하나, 밥그릇 하나. 상은 그렇게 차려졌습니다.",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },
@@ -2821,7 +2821,7 @@
           "speaker": "narrator",
           "text": "시동생 번호를 눌렀다가, 선희 씨는 지웠습니다.",
           "gfx": null,
-          "sfx": "sfx_phone",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },

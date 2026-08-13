@@ -38,7 +38,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from sfx_quality import is_beep                      # noqa: E402
+from sfx_quality import is_beep, is_fake             # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 SFX_DIR = ROOT / "assets" / "sfx"
@@ -46,17 +46,21 @@ SFX_DIR = ROOT / "assets" / "sfx"
 # ── 낱말 → 효과음 (첫째 규칙) ──────────────────────────────
 #    말과 소리가 맞아떨어질 때만 쓴다.
 BY_WORD = [
-    (("전화", "통화", "휴대폰", "연락이 왔"), "phone"),
     (("도장", "인감", "날인", "찍었"), "stamp"),
     (("의사봉", "선고", "주문", "판결한다", "판결합니다"), "gavel"),
     (("서류", "각서", "소장", "등기", "계약서", "봉투", "종이", "서명"), "paper"),
     (("문을", "문이", "현관", "들어섰", "나갔", "나섰"), "door"),
     (("눈물", "울었", "울음", "흐느", "젖은"), "tear"),
-    (("심장", "가슴이 쿵", "숨이 막", "떨렸"), "heartbeat"),
     # ⚠️ 심전도 기계음(monitor)은 **일부러 뺐다** (2026-08-09).
     #    그 소리 자체가 "삑 삑" 이다 — 손님이 빼 달라고 한 바로 그 소리다.
     #    병실 장면은 방 소리(amb_hospital)로 충분하다.
-    (("시계", "새벽", "몇 시간", "기다렸", "밤새"), "clock"),
+    #
+    # ⚠️ 2026-08-13 — 시계(clock)·전화(phone)·심장(heartbeat)도 여기서 뺐다.
+    #    손님: "시계초침 소리같이 '척척척척척' 이런 소리가 나는데 매우 어울리지
+    #           않고 어색하고 겉도는 느낌이야. 앞으로 다시는 삽입되지 않도록."
+    #    셋 다 `sine=` 으로 만든 합성 순수음이라 monitor 와 똑같은 부류다
+    #    (clock 1400Hz·phone 1000Hz·heartbeat 52Hz).
+    #    진짜 녹음을 [효과음 받아오기 (Freesound · 0원)] 로 받기 전에는 안 쓴다.
     # ⚠️ footsteps 는 자동으로 깔지 않는다 (2026-08-12 손님 지적).
     #    assets/sfx/footsteps.mp3 는 녹음이 아니라 ffmpeg 합성음이다 —
     #      anoisesrc=c=brown … lowpass=f=300  (assets_gen.py:445)
@@ -74,13 +78,17 @@ BY_BG = {
     "office_lawyer": ["paper", "stamp"],
     "office_registry": ["stamp", "paper"],
     "office_bank": ["stamp", "paper"],
-    "home_living": ["clock"],
-    "home_kitchen": ["clock"],
+    # ⚠️ 2026-08-13 — 여기 넷에 "clock" 이 박혀 있었다. 그래서 집·부엌·카페·장례식
+    #    장면마다 시계 초침이 깔렸고, EP002 한 편에만 **14컷**이 됐다.
+    #    손님이 "척척척척척" 이라고 한 것이 바로 이것이다. 전부 뺀다.
+    #    집·카페의 공기는 방 소리(amb_home·amb_street)로 충분하다.
+    "home_living": [],
+    "home_kitchen": [],
     "home_closet": ["paper"],
-    "daily_cafe": ["clock"],
+    "daily_cafe": [],
     # "medical" 은 비워 둔다 — 병실에 어울리는 소리는 심전도 기계음뿐인데
     #    그것이 곧 "삑 삑" 이다. 방 소리(amb_hospital)만 깔린다.
-    "funeral": ["clock"],
+    "funeral": [],
 }
 
 MIN_GAP = 3        # 효과음 사이에 최소 이만큼 컷을 띄운다 (시끄러워지지 않게)
@@ -91,8 +99,13 @@ TARGET = 0.45      # 이 비율을 넘지 않는다 (컷의 45%)
 # 귀로 듣고 빼기로 한 소리. 자동으로 깔지도 않고, 이미 깔린 것도 떼어 낸다.
 #   footsteps — assets_gen.py 가 만들던 합성음(anoisesrc=c=brown … lowpass=f=300)이라
 #               발소리가 아니라 둔탁한 '툭' 으로 들린다. 진짜 녹음이 생기면 뺀다.
+#   clock     — 1400Hz 삑을 1초마다 되풀이. 손님이 "척척척척척" 이라 한 그 소리다.
+#               (2026-08-13) 진짜 시계 녹음이 생겨도 **다시 넣지 않는다** —
+#               손님은 소리 품질이 아니라 시계 초침 자체가 겉돈다고 하셨다.
+#   phone     — 1000Hz 삑을 0.3초마다 되풀이. clock 과 똑같은 부류.
+#   heartbeat — 52Hz 순수 저음. 심장 소리가 아니라 웅- 하는 기계음.
 # ⚠️ have() 가 이것을 보므로 have() **위**에 있어야 한다. 아래로 내리지 말 것.
-BANNED_SFX = {"footsteps"}
+BANNED_SFX = {"footsteps", "clock", "phone", "heartbeat"}
 
 _ok_cache = {}
 
@@ -108,7 +121,10 @@ def have(name):
     if name in _ok_cache:
         return _ok_cache[name]
     p = SFX_DIR / f"{name}.mp3"
-    ok = name not in BANNED_SFX and p.exists() and not is_beep(p)
+    # ⚠️ 2026-08-13 — 여기가 is_beep 만 보고 있었다. 그런데 clock.mp3 는
+    #    is_beep 을 **빠져나갔다**(몰린정도 0.1%). 짧은 딸깍은 소리가 넓게
+    #    번지기 때문이다. 그래서 '되풀이되는가' 도 같이 본다(is_fake).
+    ok = name not in BANNED_SFX and p.exists() and not is_fake(p)
     _ok_cache[name] = ok
     return ok
 
@@ -147,7 +163,8 @@ def strip_beeps(doc, check=False):
                 c["sfx"] = None
             continue
         p = SFX_DIR / f"{name}.mp3"
-        if p.exists() and is_beep(p):
+        # is_beep 만 보면 clock 같은 **되풀이 딸깍**을 놓친다 (2026-08-13 실측).
+        if p.exists() and is_fake(p):
             hit.append((c.get("id"), name))
             if not check:
                 c["sfx"] = None
