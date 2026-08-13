@@ -507,6 +507,123 @@ def _reattach(base, boxes):
     return [b for i, b in enumerate(out) if i not in dropped]
 
 
+def find_cells(sheet, scale=8, want=0):
+    """⭐ **칸 선으로 둘러싸인 방을 찾아 칸으로 삼는다.** → (지운 그림, [(상자, 본), ...])
+
+    2026-08-13. 지금까지의 두 방법이 둘 다 실패한 뒤에 찾은 답이다.
+
+      ① 3열 6행 균등 분할  → 시트가 균등하지 않아 아래쪽이 통째로 어긋났다
+                             (위 4줄은 3칸인데 아래 2줄은 4칸이고, 전신 서기는
+                              두 줄을 통째로 쓴다 — M70 실측)
+      ② 덩어리 찾기        → 붙은 인물을 떼려고 깎다가 **목이 먼저 끊어졌다.**
+                             목은 200픽셀보다 얇다. 손님: "이건 목이 잘렸잖아"
+
+    이 방법은 둘 다 피한다. **모델이 그려 준 마젠타 선을 그대로 믿는다.**
+    선을 조금 굵혀 끊긴 데를 잇고, 선이 아닌 곳을 이어진 방으로 묶으면
+    그 방 하나하나가 곧 칸이다. **줄마다 칸 수가 달라도, 한 인물이 두 칸을
+    차지해도 상관없다** — 선이 어디 있든 방은 방이다.
+    실측(M70 3072x5504): 방 19개 — 위 12칸(968x848), 전신 서기 한 칸(792x1768),
+    아래 6칸(616~720x848). 시트의 실제 배치와 정확히 같다.
+
+    ⭐ 그리고 **한 방 안에서는 연결을 따지지 않는다.** 방 안의 초록 아닌 것은
+       전부 그 사람이다. 그래서 선이 머리 위를 지나 머리와 몸이 끊겨 있어도
+       **둘 다 남는다 — 목이 잘릴 수가 없다.**"""
+    import numpy as np
+    from collections import deque
+    keyed = fast_key(sheet)
+    a = np.asarray(sheet.convert("RGB")).astype(int)
+    H, W = a.shape[:2]
+    r, g, b = a[:, :, 0], a[:, :, 1], a[:, :, 2]
+    mag = (r > 100) & (b > 100) & (g < np.minimum(r, b) - 40)
+    if mag.sum() < H * W * 0.002:
+        return None                                   # 선을 안 그렸다 → 못 쓴다
+    sw, sh = max(1, W // scale), max(1, H // scale)
+    m = Image.fromarray((mag * 255).astype(np.uint8)).resize((sw, sh), Image.BILINEAR)
+    m = np.asarray(m.filter(ImageFilter.MaxFilter(5))) > 60
+    m[0, :] = m[-1, :] = m[:, 0] = m[:, -1] = True    # 시트 테두리도 선으로 본다
+    free = ~m
+    lab = np.zeros(free.shape, np.int32)
+    cur = 0
+    rooms = []
+    for y in range(sh):
+        for x in range(sw):
+            if free[y, x] and not lab[y, x]:
+                cur += 1
+                q = deque([(y, x)])
+                lab[y, x] = cur
+                n = 0
+                while q:
+                    cy, cx = q.popleft()
+                    n += 1
+                    for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        ny, nx = cy + dy, cx + dx
+                        if (0 <= ny < sh and 0 <= nx < sw
+                                and free[ny, nx] and not lab[ny, nx]):
+                            lab[ny, nx] = cur
+                            q.append((ny, nx))
+                rooms.append((cur, n))
+    small = sw * sh * 0.004                           # 부스러기 방은 버린다
+    rooms = [(i, n) for i, n in rooms if n > small]
+    if len(rooms) < 4:
+        return None
+
+    # ⭐⭐ 방을 **선 두께만큼 넓힌다.** (2026-08-13 · 손님: "이건 목이 잘렸잖아")
+    #    모델이 **머리 꼭대기 위로 선을 긋는 일이 있다.** 그러면 머리 윗부분이
+    #    선 너머, 즉 **옆 방** 으로 넘어가 버린다. 방을 그대로 쓰면 어떤 방법을
+    #    써도 그 머리는 못 찾는다 — 방 밖에 있으니까.
+    #    (실측: M70 full_back·full_sit·full_walk 셋이 정확히 이 경우였다)
+    #
+    #    선 두께의 두 배쯤 넓히면 선을 삼키고 그 너머 머리까지 닿는다.
+    #    옆 칸 사람은 그보다 훨씬 멀리(초록 여백 너머) 있으므로 안 딸려 온다.
+    #    넓힌 자리에서 **마젠타(선 자체)는 빼고** 가져온다 — 선은 그림이 아니다.
+    #    ⚠️ 얼마나 넓힐지는 **선 두께**로 정한다. 처음에 어림으로 잡았다가
+    #       160픽셀이나 넓혀 컷아웃이 전부 망가졌다(폭 0.99~1.00). 자로 잰다:
+    #       마젠타 넓이 ÷ 선의 총 길이 = 두께. M70 실측 약 15픽셀.
+    _len = max(1, int(mag.any(axis=0).sum() * 0 + (H * 4 + W * 8)))
+    thick = max(4, min(40, int(mag.sum() / _len)))
+    grow = max(2, int(round(thick * 1.6 / scale)))
+    #    ⚠️ 선을 뺄 때는 **흐릿한 가장자리까지** 빼야 한다. 순수 마젠타만 빼면
+    #       그 둘레의 반쯤 섞인 픽셀이 남아, 거기에 흰 테두리가 둘러져
+    #       **'ㄱ' 자 흰 막대**가 되어 나온다 (실측: 컷아웃 17개 중 14개).
+    #    ⚠️ 선을 **넓게** 빼면 안 된다. 선이 머리 꼭대기 위에 그려져 있어서,
+    #       넓게 빼면 머리가 같이 빠진다(실측: 그렇게 했더니 셋이 또 목 잘림).
+    #       선은 좁게만 빼고, 남은 선 조각은 아래에서 **덩어리 고르기**로 없앤다.
+    magsmall = np.asarray(
+        Image.fromarray((mag * 255).astype(np.uint8)).resize((sw, sh), Image.BILINEAR)) > 60
+
+    out = []
+    for i, _n in rooms:
+        room = lab == i
+        wide = Image.fromarray((room * 255).astype(np.uint8)).filter(
+            ImageFilter.MaxFilter(grow * 2 + 1))
+        wide = np.asarray(wide) > 60
+        # 넓힌 곳에서 **다른 방** 은 제외한다. 선 자리(마젠타)만 넘어간다.
+        other = (lab > 0) & ~room
+        room = wide & ~other & ~magsmall | room
+        ys, xs = np.where(room)
+        box = (int(xs.min()) * scale, int(ys.min()) * scale,
+               min(W, (int(xs.max()) + 1) * scale), min(H, (int(ys.max()) + 1) * scale))
+        mask = Image.fromarray((room * 255).astype(np.uint8))
+        # 방 안에 인물이 없으면(전부 초록) 건너뛴다 — 빈 칸이다
+        cut = keyed.crop(box)
+        mm = mask.crop((box[0] // scale, box[1] // scale,
+                        -(-box[2] // scale), -(-box[3] // scale))).resize(cut.size)
+        al = ImageChops.multiply(cut.getchannel("A"), mm)
+        if al.getbbox() is None:
+            continue
+        import numpy as _np
+        if float((_np.asarray(al) > 60).mean()) < 0.02:
+            continue
+        out.append((box, mask))
+    # 읽는 순서로 (위→아래, 왼→오른쪽)
+    out.sort(key=lambda t: (round(t[0][1] / (H / 12)), t[0][0]))
+    if want and len(out) < want:
+        print(f"    (칸 선으로 {len(out)}칸밖에 못 찾았다 — 덩어리 방식으로 간다)")
+        return None
+    print(f"    칸 선으로 방 {len(out)}칸을 찾았다 (격자가 고르지 않아도 된다)")
+    return keyed, out
+
+
 def find_figures(sheet, cols, rows, scale=8, want=0):
     """시트에서 인물 덩어리들을 찾아 왼→오른쪽, 위→아래 순서로 돌려준다.
 
@@ -738,11 +855,18 @@ def slice_sheet(sheet_path, code, poses, cols, rows, outdir=None, save_debug=Non
     sheet = Image.open(sheet_path).convert("RGBA")
     # ⭐ 자르기 **전에** 칸 선을 배경 초록으로 덮는다. 여기서 안 지우면
     #    잘린 뒤에는 옷과 붙어 버려 두 번 다시 안전하게 지울 수 없다.
-    sheet, n_grid = degrid(sheet)
-    if n_grid:
-        print(f"    칸 선 {n_grid}줄을 배경색으로 덮었다 (자르기 전)")
-    keyed, figs = find_figures(sheet, cols, rows, want=len(poses))
-    print(f"    시트 {sheet.width}x{sheet.height} · 덩어리 {len(figs)}개 발견 (필요 {len(poses)}개)")
+    # ⭐ 먼저 **칸 선으로 방을 찾아 본다.** 이게 되면 격자가 고르지 않아도 되고,
+    #    한 방 안에서는 연결을 안 따지므로 **목이 잘릴 수가 없다.**
+    #    (선을 안 그렸거나 방을 충분히 못 찾으면 None 을 주고, 그때만 아래로 간다)
+    rooms = find_cells(sheet, want=len(poses))
+    if rooms:
+        keyed, figs = rooms
+    else:
+        sheet, n_grid = degrid(sheet)
+        if n_grid:
+            print(f"    칸 선 {n_grid}줄을 배경색으로 덮었다 (자르기 전)")
+        keyed, figs = find_figures(sheet, cols, rows, want=len(poses))
+    print(f"    시트 {sheet.width}x{sheet.height} · {len(figs)}칸 (필요 {len(poses)}개)")
 
     names = None
     if key and figs:
@@ -771,6 +895,13 @@ def slice_sheet(sheet_path, code, poses, cols, rows, outdir=None, save_debug=Non
         m = blob.crop((box[0] // 8, box[1] // 8, -(-box[2] // 8), -(-box[3] // 8)))
         m = m.resize(cut.size, Image.BILINEAR)
         cut.putalpha(ImageChops.multiply(cut.getchannel("A"), m))
+        # ⭐ 남은 칸 선 조각을 떼어 낸다 (2026-08-13).
+        #    선이 머리 꼭대기 위에 그려져 있어서, 선을 넓게 지우면 머리가 같이
+        #    지워진다. 그래서 **머리를 살려 둔 채로 가져온 뒤**, 여기서 본인
+        #    덩어리만 남긴다. 선 조각은 인물과 떨어져 있으므로 이때 사라지고,
+        #    머리는 목으로 몸에 이어져 있으므로 그대로 남는다.
+        #    (깎지 않고 있는 그대로의 연결만 본다 — 깎으면 목이 먼저 끊어진다)
+        cut = A.keep_main_blob(cut, erode=0)
         cut = A.trim_alpha(cut)
         if cut is None:
             continue
