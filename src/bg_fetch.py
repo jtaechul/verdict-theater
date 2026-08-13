@@ -69,13 +69,38 @@ PIXABAY_API = "https://pixabay.com/api/"
 SOURCES = ("pixabay", "pexels")     # 찾는 순서 (둘 다 훑는다)
 TEST_QUERY = "empty office interior"    # --probe 로 두드려 볼 때 쓰는 말
 
-# 사람이 찍힌 사진을 걸러내는 낱말. 설명글에 하나라도 있으면 버린다.
-PEOPLE = (
-    "man", "woman", "person", "people", "boy", "girl", "child", "children",
-    "lady", "guy", "male", "female", "human", "portrait", "couple", "family",
-    "crowd", "worker", "student", "customer", "hand", "hands", "face", "someone",
-    "sitting", "standing", "walking", "holding", "wearing", "posing", "smiling",
+# ⭐ 2026-08-13 — 손님 지적: "어차피 블러 처리할 건데 사람이나 글자가 있어도
+#    상관없잖아." **재 보니 대체로 맞다.** 실제 제작 경로(여기 블러 5 → 렌더에서
+#    블러 14 + 밝기 0.78 + 비네트)를 그대로 태워 눈으로 확인한 결과:
+#
+#      간판 글씨(52px)     완전히 뭉개짐 — 색 띠만 남는다
+#      간판 글씨(96px)     글자 자국만 남고 못 읽는다
+#      멀리 있는 사람 190·300px   사람인지도 모른다
+#      가까이 선 사람 430·560px   **아직 사람 형체로 보인다**
+#
+#    (게다가 이 시험은 새까만 실루엣으로 했다. 진짜 사진 속 사람은 색이 섞여
+#     있어 이보다 더 잘 뭉개진다 — 즉 실제로는 더 관대해도 된다.)
+#
+#    그래서 규칙을 이렇게 바꾼다.
+#      · 글자·로고 금지 → **없앤다.** 블러가 지운다. 이것 때문에 멀쩡한 사진을
+#        내다 버리고 있었다(daily_market 이 계속 실패한 까닭의 절반).
+#      · 사람 금지 → **화면을 크게 차지하는 사람만** 막는다. 멀리 지나가는
+#        행인은 뭉개져서 배경의 얼룩이 될 뿐이다.
+
+# 사진 설명글에 이 낱말이 있으면 **사람이 주인공인 사진**이라 아예 안 본다.
+# (인물 사진·초상·모델컷 — 사람이 화면을 가득 채운다)
+PEOPLE_HARD = (
+    "portrait", "headshot", "selfie", "posing", "model", "closeup", "close-up",
 )
+# 이 낱말은 **사람이 찍혔을 수도 있다**는 신호일 뿐이다. 버리지 않고 뒤로 미룬다.
+# 그림을 직접 보는 심사(judge)가 크기를 보고 판단한다 — 설명글로는 크기를 모른다.
+PEOPLE_SOFT = (
+    "man", "woman", "person", "people", "boy", "girl", "child", "children",
+    "lady", "guy", "male", "female", "human", "couple", "family",
+    "crowd", "worker", "student", "customer", "hand", "hands", "face", "someone",
+    "sitting", "standing", "walking", "holding", "wearing", "smiling",
+)
+PEOPLE = PEOPLE_HARD + PEOPLE_SOFT      # 예전 이름 (검사·바깥에서 쓴다)
 
 # 배경 코드마다 검색어를 위에서부터 시도한다.
 # 한국식 공간을 그대로 찾기는 어려우므로 **분위기와 구조가 맞는 것**을 노린다.
@@ -316,11 +341,19 @@ def judge(code, photos, key):
         f"This contact sheet has {len(thumbs)} numbered candidate photos.\n"
         f"Pick the ONE best photo to use as a blurred background plate for a drama scene:\n"
         f"  {want}\n\n"
-        "HARD REQUIREMENTS — reject a photo if any is true:\n"
-        "  - any person, face, body, or human silhouette is visible, even small or in the distance\n"
+        # ⭐ 2026-08-13 — 이 사진은 **반경 약 15로 흐려지고 어두워진 뒤** 뒤에 깔린다.
+        #    그래서 글자와 멀리 있는 사람은 지워진다(실측). 그것까지 막으면
+        #    쓸 만한 사진을 다 내다 버리게 된다. 막을 것은 하나뿐이다 —
+        #    흐린 뒤에도 사람으로 보이는 **크고 가까운 사람**.
+        "This photo will be HEAVILY BLURRED (radius ~15 on 1920px), darkened and\n"
+        "vignetted before use, so fine detail disappears. Judge it accordingly.\n\n"
+        "HARD REQUIREMENTS — reject a photo only if:\n"
+        "  - a person is large or close enough that they would STILL read as a person\n"
+        "    after heavy blur — roughly, taller than a third of the frame, or a face\n"
+        "    filling a noticeable part of it. Small or distant passers-by are FINE.\n"
         "  - it is obviously a different kind of place than described\n"
-        "  - it is dominated by large readable text or a logo\n"
-        "Prefer: calm, muted colour, ordinary and lived-in, clear sense of the place,\n"
+        "IGNORE text, signage and logos entirely — the blur erases them.\n"
+        "Prefer: no people at all, calm, muted colour, ordinary and lived-in,\n"
         "a composition that still reads when the centre third is cropped for a vertical video.\n\n"
         'Answer with JSON only: {"best": <number, or -1 if every candidate fails>, '
         '"why": "<8 words max>"}'
@@ -346,19 +379,36 @@ def judge(code, photos, key):
     return keep[n - 1]
 
 
+def _words(alt):
+    return set("".join(c if c.isalnum() else " " for c in (alt or "").lower()).split())
+
+
 def has_people(alt):
-    words = set("".join(c if c.isalnum() else " " for c in (alt or "").lower()).split())
-    return bool(words & set(PEOPLE))
+    """**사람이 주인공인 사진인가** — 이것만 아예 버린다(초상·모델컷).
+
+    ⚠️ 2026-08-13 이전에는 'people' 이나 'walking' 만 들어 있어도 버렸다.
+       시장·거리 사진의 설명글에는 그런 말이 거의 항상 들어 있어서, 심사가
+       그림을 보기도 전에 후보가 바닥났다. 흐림이 어차피 지우는데도 그랬다."""
+    return bool(_words(alt) & set(PEOPLE_HARD))
+
+
+def maybe_people(alt):
+    """사람이 찍혔을 **가능성**. 버리지는 않고 순서만 뒤로 민다."""
+    return bool(_words(alt) & set(PEOPLE_SOFT))
 
 
 def score(p):
-    """클수록 좋다. 해상도가 크고 가로로 넓은 것을 고른다."""
+    """클수록 좋다. 해상도가 크고 가로로 넓은 것을 고른다.
+
+    사람이 있을 법한 사진은 **버리지 않고 뒤로 민다.** 앞쪽부터 심사에
+    올라가므로, 사람 없는 사진이 있으면 그것이 먼저 뽑히고 없으면 뒤엣것을 본다."""
     w, h = p.get("width", 0), p.get("height", 0)
     if not w or not h:
         return 0
     ratio = w / h
     fit = 1.0 - min(1.0, abs(ratio - 16 / 9) / 1.2)     # 16:9 에 가까울수록 좋다
-    return (min(w, 6000) / 6000) * 0.4 + fit * 0.6
+    s = (min(w, 6000) / 6000) * 0.4 + fit * 0.6
+    return s - 0.5 if maybe_people(p.get("alt", "")) else s
 
 
 def pick(code, sources, used, gkey="", dry=False):
@@ -386,7 +436,13 @@ def pick(code, sources, used, gkey="", dry=False):
             for p in found:
                 if p["key"] in used or p["key"] in seen:
                     continue
+                # 사람이 주인공인 사진(초상·모델컷)은 언제나 버린다.
                 if has_people(p["alt"]):
+                    continue
+                # ⚠️ 심사(제미나이)가 없으면 **그림을 볼 눈이 없다.** 그때는 설명글이
+                #    유일한 단서이므로 예전처럼 빡빡하게 거른다. 느슨하게 푼 것은
+                #    "그림을 보고 사람 크기를 판단한다"는 전제 위에서만 옳다.
+                if not gkey and maybe_people(p["alt"]):
                     continue
                 seen.add(p["key"])
                 pool.append(p)

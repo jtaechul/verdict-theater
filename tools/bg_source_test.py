@@ -68,6 +68,7 @@ def fake_get(url, headers=None):
 
 bf.get = fake_get
 BOTH = [("pixabay", "K1"), ("pexels", "K2")]
+_real_judge = bf.judge          # 잠깐 가짜로 바꿔 쓰는 자리가 있어 원본을 챙겨 둔다
 
 print("① 두 창고가 똑같은 모양으로 돌아오는가")
 a = bf.search_pexels("court", "K")[0]
@@ -87,14 +88,30 @@ else:
 print()
 print("② 사람이 찍힌 사진은 두 창고 다 걸러진다")
 # Pexels 는 alt("a man sitting"), Pixabay 는 tags("woman, portrait") 로 들어온다
+#
+# ⭐ 2026-08-13 손님 지적: "어차피 블러 처리할 건데 사람이나 글자가 있어도 상관없잖아."
+#    실측해 보니 맞았다 — 멀리 있는 사람과 글자는 흐림에 지워진다. 그래서 규칙을
+#    **그림을 보고 사람 크기로 판단**하도록 풀었다. 다만 그 완화는 심사(제미나이)가
+#    그림을 볼 때만 옳다. 심사가 없으면 볼 눈이 없으니 예전처럼 빡빡해야 한다.
+#    두 갈래를 여기서 같이 지킨다.
 CALLS.clear()
 got, _ = bf.pick("court_hall", BOTH, set(), gkey="", dry=False)
-picked = {p["key"] for p in bf.search_pexels("q", "K") + bf.search_pixabay("q", "K")
-          if not bf.has_people(p["alt"])}
-if picked != {"pexels:111", "pixabay:333"}:
-    bad(f"사람 거르기가 두 창고에 똑같이 안 먹는다: {picked}")
+if got is not None and (bf.has_people(got["alt"]) or bf.maybe_people(got["alt"])):
+    bad(f"심사가 없는데 사람 있는 사진을 골랐다: {got['key']} ({got['alt']})")
 else:
-    print("   ✅ 222(man)·444(woman) 는 빠지고 111·333 만 남는다")
+    print(f"   ✅ 심사가 없으면 설명글로 빡빡하게 거른다 (고른 것: "
+          f"{got['key'] if got else '없음'})")
+
+seen_by_judge = []
+bf.judge = lambda code, photos, key: (seen_by_judge.extend(p["key"] for p in photos),
+                                      None)[1]
+bf.pick("court_hall", BOTH, set(), gkey="G", dry=False)
+if "pexels:222" not in seen_by_judge:
+    bad("심사가 있는데도 'a man sitting' 을 그림도 안 보고 버렸다 "
+        "— 흐려지면 안 보이는데 미리 버리면 후보가 바닥난다")
+else:
+    print("   ✅ 심사가 있으면 그림을 보여 주고 크기로 판단하게 맡긴다")
+bf.judge = _real_judge
 
 print()
 print("③ 두 창고를 다 물어본다 (한 곳만 보고 끝내지 않는다)")
