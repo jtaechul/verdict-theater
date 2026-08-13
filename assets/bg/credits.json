@@ -252,5 +252,15 @@
     "alt": "Moody night scene in a Bur Dubai alley, showcasing illuminated shops and silhouettes.",
     "query": "narrow alley night lights",
     "source": "6164x4109"
+  },
+  "daily_market": {
+    "key": "pexels:37624642",
+    "provider": "pexels",
+    "photo_id": 37624642,
+    "url": "https://www.pexels.com/photo/empty-market-corridor-in-pacasmayo-peru-37624642/",
+    "photographer": "Joshuan Barboza",
+    "alt": "A quiet and colorful market corridor in Pacasmayo, Peru, showcasing vibrant walls and signs.",
+    "query": "empty market stalls early morning",
+    "source": "9520x6336"
   }
 }
