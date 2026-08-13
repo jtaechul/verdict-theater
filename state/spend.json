@@ -1,0 +1,26 @@
+[
+  {
+    "date": "2026-08-13",
+    "kind": "image",
+    "krw": 265,
+    "note": "gemini-3.1-flash-image 4K 9:16 F50A.png"
+  },
+  {
+    "date": "2026-08-13",
+    "kind": "image",
+    "krw": 265,
+    "note": "gemini-3.1-flash-image 4K 9:16 M50A.png"
+  },
+  {
+    "date": "2026-08-13",
+    "kind": "voice",
+    "krw": 1060,
+    "note": "39컷 · voice"
+  },
+  {
+    "date": "2026-08-13",
+    "kind": "voice",
+    "krw": 3,
+    "note": "7컷 · voice"
+  }
+]
