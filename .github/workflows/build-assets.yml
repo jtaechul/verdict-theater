@@ -180,6 +180,9 @@ jobs:
               mkdir -p assets/sheets/old
               cp -f assets/sheets/*.png assets/sheets/old/ 2>/dev/null || true
               cp -f assets/sheets/bad/*.png assets/sheets/old/ 2>/dev/null || true
+              # 못 쓰던 시트는 old/ 로 챙겨 뒀으니 bad/ 는 비운다.
+              # 안 비우면 새로 잘 만들어져도 '흐린 시트' 목록에 계속 남아 헷갈린다.
+              rm -f assets/sheets/bad/*.png 2>/dev/null || true
               python3 src/assets_gen.py images --what char --force \
                 --limit "${{ inputs.limit }}" 2>&1 | tee build.log ;;
             "캐릭터 전부")
