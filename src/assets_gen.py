@@ -22,6 +22,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -461,9 +462,60 @@ def pick_image_model(key, kind="char"):
 #       **같은 한 장을 크게 받으면 되는 일**이었다.
 #
 #    비율도 같이 정한다. 이걸 안 보내서 시트가 가로로도 세로로도 제멋대로 나왔고,
-#    그래서 자르기가 어긋나 머리 없는 인물이 나왔다. 3열 6행이면 1:2 다.
-IMAGE_SIZE = os.environ.get("GEMINI_IMAGE_SIZE", "2K")
-IMAGE_RATIO = os.environ.get("GEMINI_IMAGE_RATIO", "1:2")   # 3열 6행 = 세로로 길다
+#    그래서 자르기가 어긋나 머리 없는 인물이 나왔다.
+#
+#    ⚠️ 2026-08-13 — 여기에 `1:2` 를 적었다가 **HTTP 400 으로 전부 거절당했다.**
+#       3열 6행이니 1:2 가 맞다고 계산했는데, 구글이 받아 주는 값이 정해져 있고
+#       거기에 1:2 가 없다. 실측한 목록(400 응답 본문에 적혀 온다)이 RATIO_ALL 이다.
+#       계산한 비율을 **받아 주는 값 가운데 가장 가까운 것**으로 맞춰야 한다.
+RATIO_ALL = {                       # 구글이 받아 주는 값 (2026-08-13 400 본문에서 실측)
+    "1:1": 1.0, "1:4": 0.25, "1:8": 0.125, "2:3": 2 / 3, "3:2": 1.5,
+    "3:4": 0.75, "4:1": 4.0, "4:3": 4 / 3, "4:5": 0.8, "5:4": 1.25,
+    "8:1": 8.0, "9:16": 9 / 16, "16:9": 16 / 9, "21:9": 21 / 9,
+}
+# 그중에서도 **모델이 실제로 잘 그리는** 흔한 모양만 쓴다. 1:4·1:8 같은 극단은
+# 받아는 주지만 격자를 엉망으로 그린다 — 칸이 어긋나면 또 머리가 잘려 나온다.
+RATIO_SAFE = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9"]
+
+
+def sheet_ratio(cols=None, rows=None):
+    """COLS x ROWS 시트에 맞는 화면비를 **받아 주는 값 중에서** 고른다.
+
+    칸을 정사각형에 가깝게 두는 것이 기준이다(전신은 세로로 길고 얼굴은 정사각에
+    가까우니 그 중간이 안전하다). 3열 6행이면 0.5 → `9:16`(0.5625) 이 뽑힌다.
+
+    실측 근거: 시킨 대로 3열 6행으로 그려진 유일한 시트 F50A 가 720x1456 = 0.495
+    였다. 받아 주는 값 가운데 그 0.495 에 가장 가까운 것이 바로 9:16 이다."""
+    cols = cols or COLS
+    rows = rows or ROWS
+    want = cols / rows
+    return min(RATIO_SAFE, key=lambda k: abs(RATIO_ALL[k] - want))
+
+
+# 인물 시트는 한 장을 18칸으로 쪼개 쓴다. 그래서 **크게 받아야** 한 칸이 쓸 만해진다.
+#   1MP(지금) → 칸 228x224 → 전신 인물 105x302 를 화면 800px 로 늘림 (흐릴 수밖에)
+#   2K        → 칸 약 512x448  → 전신 약 400px  (2배 늘림)
+#   4K        → 칸 약 1024x896 → 전신 약 800px  (늘리지 않음) ← 화면에 쓰는 크기와 같다
+IMAGE_SIZE = os.environ.get("GEMINI_IMAGE_SIZE", "4K")
+# 배경은 한 장을 통째로 쓰고 게다가 흐리게 깔리므로 크게 받을 까닭이 없다.
+IMAGE_SIZE_BG = os.environ.get("GEMINI_IMAGE_SIZE_BG", "2K")
+IMAGE_RATIO = os.environ.get("GEMINI_IMAGE_RATIO", sheet_ratio())
+IMAGE_RATIO_BG = os.environ.get("GEMINI_IMAGE_RATIO_BG", "16:9")
+
+
+class QuotaBlocked(RuntimeError):
+    """구글이 그림 만들기를 **아예** 안 받아 주는 상태(한도 0). 기다려도 안 된다."""
+
+
+def quota_blocked(err):
+    """429 가 **분당 제한**인지 **아예 0**인지 가린다.
+
+    ⚠️ 2026-08-13 실측 — 이 둘은 완전히 다른 일인데 겉모습이 똑같다.
+       분당 제한이면 잠깐 뒤 다시 하면 되지만, `limit: 0` 은 그 모델이 무료로는
+       **하루 0장**이라는 뜻이라 내일도 안 된다(결제를 걸어야 열린다).
+       구분하지 못하면 손님이 되는 줄 알고 버튼을 계속 헛눌러야 한다."""
+    t = str(err)
+    return "limit: 0" in t or "limit 0" in t
 
 
 def gen_image(key, model, prompt, out_path, size=None, ratio=None):
@@ -475,6 +527,12 @@ def gen_image(key, model, prompt, out_path, size=None, ratio=None):
     base = {"contents": [{"role": "user", "parts": [{"text": prompt}]}]}
     size = size or IMAGE_SIZE
     ratio = ratio or IMAGE_RATIO
+    if ratio not in RATIO_ALL:
+        # ⚠️ 2026-08-13 — 받아 주지 않는 값(1:2)을 보내 400 으로 전부 거절당했다.
+        #    보내기 전에 여기서 걸러 **가장 가까운 값으로 바꿔 준다.**
+        near = min(RATIO_SAFE, key=lambda k: abs(RATIO_ALL[k] - _as_num(ratio)))
+        print(f"      ⚠️ 구글이 '{ratio}' 는 안 받는다 → '{near}' 로 바꿔 보낸다")
+        ratio = near
     tries = [
         {"responseModalities": ["IMAGE"],
          "imageConfig": {"aspectRatio": ratio, "imageSize": size}},
@@ -504,9 +562,38 @@ def gen_image(key, model, prompt, out_path, size=None, ratio=None):
             return out_path
         except Exception as e:
             last = e
+            if quota_blocked(e):
+                # 하루 한도가 0 이다 — 조건을 낮춰도, 내일 다시 해도 안 된다.
+                raise QuotaBlocked(str(e)) from None
             if "429" in str(e) or "quota" in str(e).lower():
                 raise                                   # 할당량은 낮춰도 안 된다
     raise last or RuntimeError("이미지를 받지 못했다")
+
+
+def _as_num(ratio):
+    try:
+        a, b = str(ratio).split(":")
+        return float(a) / float(b)
+    except Exception:
+        return 1.0
+
+
+BILLING_HELP = (
+    "\n" + "─" * 60 + "\n"
+    "❌ 구글이 **그림 만들기**를 안 받아 줍니다 (하루 한도 0).\n"
+    "\n"
+    "   무엇이 문제인가\n"
+    "     열쇠(GEMINI_API_KEY)는 멀쩡합니다. 글자(대본) 만들기는 지금도 됩니다.\n"
+    "     다만 그림 모델 세 가지가 전부 '무료로는 하루 0장' 상태입니다.\n"
+    "     → 잠깐 밀린 것이 아니라서 **기다려도, 내일 다시 눌러도 안 됩니다.**\n"
+    "\n"
+    "   어떻게 푸나 (둘 중 하나)\n"
+    "     ① 구글 AI 스튜디오에서 그 열쇠의 프로젝트에 **결제를 걸어 둡니다.**\n"
+    "        https://aistudio.google.com/apikey 에서 열쇠의 프로젝트를 눌러\n"
+    "        'Set up Billing' 을 하면 그림 모델이 열립니다.\n"
+    "     ② 결제를 안 걸겠다면 인물 그림은 **지금 있는 것을 계속 씁니다.**\n"
+    "        소리와 배경 사진은 원래 0원이라 이것과 상관없이 잘 만들어집니다.\n"
+    + "─" * 60)
 
 
 def bg_prompt(code):
@@ -612,17 +699,73 @@ def cmd_images(args):
 
     print(f"{len(jobs)}개 생성")
     made = 0
+    blocked = None
     for kind, code, path, prompt in jobs:
         try:
             m = models.get(kind) or models.get("char") or models.get("bg")
-            gen_image(key, m, prompt, path)
+            gen_image(key, m, prompt, path,
+                      size=IMAGE_SIZE_BG if kind == "bg" else IMAGE_SIZE,
+                      ratio=IMAGE_RATIO_BG if kind == "bg" else IMAGE_RATIO)
             made += 1
             print(f"  {kind} {code} → {path.name}  ({m})")
             if kind == "char":
                 process_sheet(path, code)
+        except QuotaBlocked as e:
+            # ⚠️ 2026-08-13 — 여기서 **바로 멈춘다.** 하루 한도가 0 이면 남은
+            #    6장을 더 두드려 봐야 똑같이 거절당한다(4단계씩 28번 헛수고).
+            blocked = e
+            print(f"  {kind} {code} 실패: 하루 한도 0")
+            break
         except Exception as e:
             print(f"  {kind} {code} 실패: {type(e).__name__}: {e}")
     print(f"\n완료 {made}/{len(jobs)}")
+    if blocked:
+        print(BILLING_HELP)
+    # ⚠️ 2026-08-13 — 예전에는 한 장도 못 만들어도 0(성공)으로 끝났다.
+    #    깃허브 화면에는 **초록 체크**가 뜨고 손님은 다 된 줄 안다. 그러면 안 된다.
+    #    한 장이라도 만들었으면 성공, 하나도 못 만들었으면 실패로 알린다.
+    if made == 0 and jobs:
+        return 3 if blocked else 1
+    return 0
+
+
+def cmd_probe(_args):
+    """그림을 **만들 수 있는 상태인지만** 두드려 본다.
+
+    ⚠️ 2026-08-13 에 이것이 없어서 손님이 헛수고를 할 뻔했다. [기본 3가지] 를
+       누르면 소리·배경까지 다 끝내고 **마지막에** 인물에서 막히는데, 그마저
+       `|| true` 로 삼켜져 깃허브에는 초록 체크가 떴다. 다 된 줄 알게 된다.
+       그래서 값이 나가기 전에 **먼저 물어볼 수 있는 버튼**을 만든다.
+
+    값: 막혀 있으면 **0원**(거절당하면 돈이 안 나간다). 열려 있으면 시험용
+        그림 한 장 값(약 57원)이 나가고, 그 한 장으로 크기가 얼마나 오는지까지
+        같이 알 수 있다 — 이게 사실 확인하려던 바로 그것이다."""
+    key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if not key:
+        print("❌ GEMINI_API_KEY 가 없다.")
+        return 2
+    print("그림을 만들 수 있는 상태인지 확인합니다 (막혀 있으면 0원).")
+    print(f"  요청할 조건 — 크기 {IMAGE_SIZE} · 비율 {IMAGE_RATIO}"
+          f" (인물 시트 {COLS}열 {ROWS}행에 맞춘 값)")
+    out = Path(tempfile.gettempdir()) / "probe.png"
+    for kind in ("char", "bg"):
+        model = pick_image_model(key, kind)
+        if not model:
+            print(f"  {kind}: 쓸 모델을 못 찾았다")
+            continue
+        try:
+            gen_image(key, model, "A plain red circle on a white background.", out,
+                      size=IMAGE_SIZE_BG if kind == "bg" else IMAGE_SIZE,
+                      ratio=IMAGE_RATIO_BG if kind == "bg" else IMAGE_RATIO)
+            print(f"  ✅ {kind}: {model} — 만들 수 있습니다")
+        except QuotaBlocked:
+            print(f"  ❌ {kind}: {model} — 하루 한도 0 (막혀 있습니다)")
+            print(BILLING_HELP)
+            return 3
+        except Exception as e:
+            print(f"  ⚠️ {kind}: {model} — {type(e).__name__}: {str(e)[:200]}")
+            return 1
+    print("\n그림 만들기: 열려 있습니다. [기본 3가지] 를 눌러도 됩니다.")
     return 0
 
 
@@ -767,12 +910,49 @@ def cmd_sync(args):
     return 1 if fail else 0
 
 
+# 시트 한 장이 이만큼은 되어야 한 칸(18분의 1)이 쓸 만해진다.
+# 2K(9:16) 가 약 4.1MP 이므로 그보다 조금 낮게 잡아 여유를 둔다.
+MIN_SHEET_MP = 3.5
+
+
+def sheet_report():
+    """시트가 **작아서 흐린 것**을 찾아 알린다. 값 0원.
+
+    ⚠️ 2026-08-13 — 이게 없어서 '두 번 일' 이 날 뻔했다. 시트는 있기만 하면
+       빠진 것으로 안 잡히므로, 1MP 짜리 옛날 시트 5장이 그대로 남아 있어도
+       아무 데도 안 나온다. 그러면 나중에 못 쓰는 2장만 다시 만들게 되고,
+       한 영상 안에서 어떤 배우는 또렷하고 어떤 배우는 흐려진다.
+       **한 번에 다 바꿔야 한다는 것을 여기서 알려 준다.**"""
+    small = []
+    for p in sorted((ASSETS / "sheets").rglob("*.png")):
+        if "old" in p.parts:                 # 되돌리려고 남겨 둔 옛 시트는 세지 않는다
+            continue
+        try:
+            w, h = Image.open(p).size
+        except Exception:
+            continue
+        mp = w * h / 1e6
+        if mp < MIN_SHEET_MP:
+            small.append((p, w, h, mp))
+    if not small:
+        return
+    print(f"\n⚠️ 흐린 시트 {len(small)}장 (한 장이 {MIN_SHEET_MP}MP 는 돼야 합니다)")
+    for p, w, h, mp in small:
+        c, r = sheet_layout((w, h))          # 가로로 그려진 시트는 6열 3행이다
+        print(f"   {p.relative_to(ROOT)}  {w}x{h} = {mp:.2f}MP"
+              f"  → 칸 하나 약 {round(w / c)}x{round(h / r)}")
+    print("   이 시트로 만든 인물은 화면에서 늘려 쓰기 때문에 흐리게 보입니다.")
+    print("   ⭐ 다시 만들 때는 **한꺼번에 전부** 만드십시오. 몇 장만 바꾸면"
+          " 한 영상 안에서 또렷한 배우와 흐린 배우가 섞입니다.")
+
+
 def cmd_check(args):
     mf = json.loads((ASSETS / "manifest.json").read_text(encoding="utf-8"))
     need = mf["required_files"]
     missing = [f for f in need if not (ROOT / f).exists()]
     have = len(need) - len(missing)
     print(f"에셋 {have}/{len(need)}개 준비됨")
+    sheet_report()
     if not missing:
         print("전부 있다. 렌더링 가능.")
         return 0
@@ -816,6 +996,7 @@ def main():
     a.add_argument("--force", action="store_true")
 
     sub.add_parser("check", help="빠진 에셋 목록")
+    sub.add_parser("probe", help="그림을 만들 수 있는 상태인지만 확인 (막혀 있으면 0원)")
 
     args = ap.parse_args()
     if args.cmd == "sheet":
@@ -829,6 +1010,8 @@ def main():
         return cmd_images(args)
     if args.cmd == "audio":
         return cmd_audio(args)
+    if args.cmd == "probe":
+        return cmd_probe(args)
     return cmd_check(args)
 
 

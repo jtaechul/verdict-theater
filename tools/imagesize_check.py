@@ -52,13 +52,33 @@ else:
 print()
 print("② **가로세로 비율**도 요청하는가")
 # 이걸 안 보내서 시트가 가로로도 세로로도 제멋대로 나왔고, 자르기가 어긋나
-# 머리 없는 인물이 나왔다. 3열 6행이면 1:2 다.
+# 머리 없는 인물이 나왔다.
+#
+# ⚠️ 2026-08-13 — 여기가 한때 "1:2 여야 한다" 였다. 3열 6행이니 계산은 맞는데
+#    **구글이 1:2 를 안 받는다.** 그대로 올렸으면 그림 만들기가 전부 HTTP 400 으로
+#    거절당했을 것이다. 그래서 이제 두 가지를 같이 본다 —
+#      ⓐ 받아 주는 값인가 (RATIO_ALL 은 400 응답 본문에서 실측한 목록이다)
+#      ⓑ 시트 모양(COLS x ROWS)에 가장 가까운 값인가
 if "aspectRatio" not in fn:
     bad("aspectRatio 를 안 보낸다 — 시트가 가로로 나오면 자르기가 어긋난다")
-elif G.IMAGE_RATIO != "1:2":
-    bad(f"비율이 {G.IMAGE_RATIO} 다 — 3열 6행 시트는 1:2 여야 한다")
+elif G.IMAGE_RATIO not in G.RATIO_ALL:
+    bad(f"'{G.IMAGE_RATIO}' 는 구글이 **안 받는 값**이다 (HTTP 400). "
+        f"받아 주는 값: {', '.join(sorted(G.RATIO_ALL))}")
+elif G.IMAGE_RATIO != G.sheet_ratio():
+    bad(f"비율이 {G.IMAGE_RATIO} 다 — {G.COLS}열 {G.ROWS}행이면 "
+        f"{G.sheet_ratio()} 가 가장 가깝다")
 else:
-    print(f"   ✅ aspectRatio = {G.IMAGE_RATIO} (3열 6행 = 세로로 길다)")
+    print(f"   ✅ aspectRatio = {G.IMAGE_RATIO} "
+          f"({G.COLS}열 {G.ROWS}행 = 세로로 길다 · 구글이 받아 주는 값)")
+
+print()
+print("②-2 **받아 주지 않는 값**을 보내려 하면 스스로 바꿔 보내는가")
+# 나중에 COLS/ROWS 를 바꾸면 계산값이 또 목록 밖으로 나갈 수 있다. 그때
+# 400 으로 통째로 죽지 않게, 보내기 직전에 가장 가까운 값으로 갈아 끼운다.
+if "RATIO_ALL" not in fn:
+    bad("보내기 전에 목록과 맞춰 보지 않는다 — 목록 밖 값이면 400 으로 전부 죽는다")
+else:
+    print("   ✅ 목록에 없으면 가장 가까운 값으로 바꿔 보낸다")
 
 print()
 print("③ 요청이 거절당해도 그림은 받아 오는가 (한 번 실패로 통째로 못 만들면 안 된다)")
@@ -86,6 +106,48 @@ if doc.exists():
         bad("문서에 안 적혀 있다 — 나중에 또 프롬프트를 고치려 든다")
     else:
         print("   ✅ 적혀 있다 (같은 착각을 되풀이하지 않게)")
+
+print()
+print("⑥ 구글이 그림을 **막아 놓았을 때 크게 알리는가** (조용히 초록불 금지)")
+# ⚠️ 2026-08-13 실측 — 그림 모델 셋이 전부 '무료로는 하루 0장' 이었다.
+#    그런데 ① gen_image 는 429 의 **본문을 버려서** 왜인지 알 수 없었고
+#       ② cmd_images 는 한 장도 못 만들어도 0(성공)으로 끝났고
+#       ③ 워크플로는 그것을 `|| true` 로 삼켰다.
+#    셋이 겹쳐 **깃허브에 초록 체크가 뜨고 인물 그림은 한 장도 없는** 상태가 됐다.
+#    손님은 다 된 줄 알고 다음 단계를 누르게 된다. 그 조합을 여기서 막는다.
+llm = (ROOT / "src" / "llm.py").read_text(encoding="utf-8")
+if "e.read()" not in llm:
+    bad("실패 본문을 버린다 — 429 가 '분당 제한'인지 '한도 0'인지 알 수가 없다")
+elif "key=" not in llm.split("def _detail")[1][:900]:
+    bad("실패 본문을 그대로 찍는다 — 열쇠가 새어 나갈 수 있다")
+else:
+    print("   ✅ 왜 거절당했는지 본문을 붙여 준다 (열쇠는 지우고)")
+
+if not hasattr(G, "QuotaBlocked") or not hasattr(G, "quota_blocked"):
+    bad("'한도 0' 을 따로 구분하지 않는다 — 기다리면 될 줄 알고 계속 헛누른다")
+elif not G.quota_blocked("... limit: 0, model: x") or G.quota_blocked("limit: 60"):
+    bad("'한도 0' 판정이 틀렸다")
+else:
+    print("   ✅ '분당 밀림'과 '하루 한도 0'을 구분한다")
+
+img = src[src.index("def cmd_images("):src.index("\ndef ", src.index("def cmd_images(") + 10)]
+if "made == 0" not in img:
+    bad("한 장도 못 만들어도 성공으로 끝난다 — 초록 체크만 보고 다 된 줄 안다")
+else:
+    print("   ✅ 한 장도 못 만들면 실패로 끝난다")
+
+wf = (ROOT / ".github" / "workflows" / "build-assets.yml").read_text(encoding="utf-8")
+if "images --what char || true" in wf:
+    bad("워크플로가 인물 실패를 `|| true` 로 삼킨다")
+elif "char.rc" not in wf:
+    bad("인물이 만들어졌는지 결과 화면에 안 적는다")
+else:
+    print("   ✅ 인물이 막히면 결과 화면 맨 위에 크게 적는다")
+
+if "그림 만들기 되는지 확인" not in wf or not hasattr(G, "cmd_probe"):
+    bad("값이 나가기 전에 미리 확인할 버튼이 없다")
+else:
+    print("   ✅ 값이 나가기 전에 0원으로 미리 확인하는 버튼이 있다")
 
 print()
 print("─" * 52)

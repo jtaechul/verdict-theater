@@ -18,6 +18,7 @@
    모델이 설명문을 섞지 못하게 막고, 그래도 섞이면 코드가 걷어낸다.
 """
 
+import io
 import json
 import os
 import re
@@ -41,20 +42,56 @@ class BudgetExceeded(RuntimeError):
     """한 실행에서 허용한 호출 수를 넘었다. 과금 폭발 방지 장치."""
 
 
+def _detail(e):
+    """구글이 **왜** 거절했는지를 오류 문구에 붙인다.
+
+    ⚠️ 2026-08-13 — 이게 없어서 오래 헤맸다. urllib 는 실패하면
+       "HTTP Error 429: Too Many Requests" 한 줄만 남기고 **까닭이 적힌 본문을
+       버린다.** 그런데 진짜 정보는 전부 그 본문에 있다 —
+         · 429 가 '분당 제한'인지 '하루 한도 0'인지
+         · 400 이면 어떤 값이 틀렸고 받아 주는 값은 무엇인지
+       (실제로 aspectRatio 에 받아 주지 않는 값을 넣고도 그 사실을 몰랐다.)
+
+    ⚠️ 열쇠는 절대 딸려 나가지 않게 한다 — 주소(url)에 열쇠가 들어 있으므로
+       주소는 손대지 않고 **본문만** 쓰고, 혹시 몰라 key=... 는 지운다."""
+    try:
+        raw = e.read().decode("utf-8", "replace")
+    except Exception:
+        return e
+    raw = re.sub(r"key=[\w\-]+", "key=***", raw)
+    try:
+        body = json.loads(raw).get("error", {}).get("message", "") or raw
+    except Exception:
+        body = raw
+    body = body[:800].strip()
+    # ⚠️ 본문을 한 번 읽으면 사라진다. 그런데 이 오류를 받아서 **다시 본문을 읽는**
+    #    자리가 llm.py 안에 둘 있다(available·_call). 그래서 읽은 것을 그대로 다시
+    #    끼워 넣어, 예전처럼 e.read() 해도 똑같이 나오게 한다.
+    return urllib.error.HTTPError(
+        "(주소 감춤)", e.code, f"{e.reason} — {body}" if body else str(e.reason),
+        e.headers, io.BytesIO(raw.encode("utf-8")))
+
+
 def _post(url, payload, timeout=TIMEOUT):
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         url, data=data,
         headers={"Content-Type": "application/json", "User-Agent": "verdict-theater/1.0"},
     )
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return json.loads(r.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        raise _detail(e) from None
 
 
 def _get(url, timeout=60):
     req = urllib.request.Request(url, headers={"User-Agent": "verdict-theater/1.0"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return json.loads(r.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        raise _detail(e) from None
 
 
 def _strip_fence(s):
