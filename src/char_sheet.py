@@ -318,8 +318,12 @@ def degrid(img):
     #       옆 사람과 이어져 **한 덩어리가 되어 버린다** (실측: M50B 가 덩어리
     #       23개 → 19개로 줄고 5포즈를 잃었다). 선은 칸을 나누는 담이기도 하다.
     #       그래서 **한 줄 한 줄이 아니라 점 하나하나**를 보고 정한다.
-    #         · 양옆이 둘 다 초록 → 그대로 초록 (담을 남긴다)
-    #         · 한쪽이라도 몸    → 양옆 색을 이어 붙인다 (몸을 잇는다)
+    #         · 한쪽이라도 초록 → 그대로 초록 (담을 남긴다)
+    #         · 양쪽이 둘 다 몸 → 양옆 색을 이어 붙인다 (몸을 잇는다)
+    #    ⚠️ 2026-08-13 — 처음엔 '한쪽이라도 몸이면 메운다' 로 했는데, 머리 **바로
+    #       위**를 지나는 선이 그렇게 메워져 머리 위에 **작은 막대 토막**이 남았다
+    #       (위는 초록, 아래는 머리카락 → 메워짐). 선이 몸을 '가로지르는' 경우는
+    #       양쪽이 다 몸이다. 그 경우에만 메워야 맞다.
     base = out.copy()
     green = tuple(A.CHROMA)
 
@@ -334,7 +338,7 @@ def degrid(img):
         lx, rx = max(0, x0 - 1), min(W - 1, x1 + 1)
         for y in range(H):
             lc, rc = bp[lx, y], bp[rx, y]
-            if _is_green(lc) and _is_green(rc):
+            if _is_green(lc) or _is_green(rc):
                 d.line([(x0, y), (x1, y)], fill=green + (255,))
             else:
                 mid = tuple((lc[i] + rc[i]) // 2 for i in range(3))
@@ -345,7 +349,7 @@ def degrid(img):
         ty, by = max(0, y0 - 1), min(H - 1, y1 + 1)
         for x in range(W):
             tc, bc = bp[x, ty], bp[x, by]
-            if _is_green(tc) and _is_green(bc):
+            if _is_green(tc) or _is_green(bc):
                 d.line([(x, y0), (x, y1)], fill=green + (255,))
             else:
                 mid = tuple((tc[i] + bc[i]) // 2 for i in range(3))

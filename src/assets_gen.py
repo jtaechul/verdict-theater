@@ -100,9 +100,15 @@ COLOUR_RULE_EN = (
 )
 COLS, ROWS = 3, 6
 GRID_TRIM = 4                  # 격자선 안쪽으로 이 만큼 잘라낸다
+# 옛 격자 방식으로 되돌리고 싶을 때만 1 로 둔다 (지금은 덩어리 방식이 기본이다).
+FORCE_GRID_SLICE = os.environ.get("VT_GRID_SLICE", "") == "1"
 # 스티커·콜라주 느낌의 컷아웃. 잡지에서 오려 붙인 것처럼 보이게 한다.
 OUTLINE_RATIO = 0.028          # 흰 테두리 두께 = 인물 높이의 2.8%
-TORN_EDGE = True               # 가장자리를 불규칙하게 (매끈하면 기계로 오린 티가 난다)
+# ⚠️ 2026-08-13 — 손님: "하얀 띠 끝이 거칠거칠해." 찢은 종이 느낌을 내려고 일부러
+#    잡음을 섞고 있었는데, 화면에서 4배로 늘리니 '손으로 오린 맛' 이 아니라
+#    그냥 **지저분한 계단**으로 보였다. 껐다. (되살리려면 True 로만 바꾸면 된다)
+TORN_EDGE = False              # 가장자리를 불규칙하게 (지금은 끔 — 거칠어 보인다)
+SMOOTH_EDGE = True             # 가장자리 계단을 지운다 (반투명 한두 픽셀로 메움)
 SHADOW = True                  # 테두리 아래 그림자 → 배경에서 떠오른다
 UPSCALE = 4
 
@@ -259,6 +265,96 @@ def drop_chroma(cell):
     return cell
 
 
+def keep_main_blob(img, erode=5):
+    """**이 칸의 주인공 하나만 남긴다.** 격자선 막대와 옆칸 조각을 떼어 낸다.
+
+    ⚠️ 2026-08-13 손님 지적 셋이 **전부 이 한 가지 때문이었다.**
+       "① 사각 테두리가 남아있어 ② 오른쪽 캐릭터가 아래로 잘려 있어
+        ③ 하얀 띠 끝이 거칠거칠해"
+
+       잘라낸 칸 안에 인물만 있는 게 아니라 **격자선 막대**와 **옆칸 사람의
+       조각**이 같이 들어 있었다. 실측:
+         M70/full_stand   본인 80.3% + 세로막대(480x3856px) 19.7%
+         F70/face_cry     본인 옆에 옆칸 머리카락 조각 + 세로막대
+       그런데 이 경로에는 **덩어리 하나만 남기는 단계가 아예 없었다**
+       (char_sheet.py 에는 있는데 지금 쓰는 assets_gen 경로에만 빠져 있었다).
+
+       그래서 이렇게 됐다.
+         · 막대에도 흰 테두리가 둘러져 → 화면의 **사각 테두리**
+         · 인물 상자가 막대까지 포함해 커져서, 그 상자에 맞춰 크기를 정하면
+           **사람이 작아지고 아래로 밀린다**
+         · 막대의 곧은 직선에 찢은 종이 테두리가 둘러져 **거칠어 보인다**
+
+    어떻게 떼어 내나
+       알파(사람이 있는 자리)를 조금 깎으면 막대와 사람이 붙어 있던 얇은
+       다리가 끊어진다. 그때 **가장 큰 덩어리 하나만** 고르고 다시 부풀린다.
+       격자선은 아무리 길어도 얇아서 깎으면 먼저 끊어지고, 넓이로도 진다."""
+    import numpy as np
+    a = np.asarray(img.getchannel("A"))
+    if a.max() < 8:
+        return img
+    step = max(1, min(a.shape) // 160)          # 빠르게 보려고 줄여서 본다
+    m = a[::step, ::step] > 40
+    if m.sum() == 0:
+        return img
+    # 얇은 다리를 끊는다 (막대와 사람이 닿아 있는 경우)
+    k = max(1, erode // step) if step > 1 else erode
+    if k >= 1:
+        e = m.copy()
+        for _ in range(k):
+            e[1:, :] &= m[:-1, :]
+            e[:-1, :] &= m[1:, :]
+            e[:, 1:] &= m[:, :-1]
+            e[:, :-1] &= m[:, 1:]
+            m2 = e.copy()
+            e = m2
+        core = e if e.sum() else m
+    else:
+        core = m
+    # 가장 큰 덩어리 찾기
+    from collections import deque
+    lab = np.zeros(core.shape, np.int32)
+    best, best_n = None, 0
+    cur = 0
+    for y in range(core.shape[0]):
+        for x in range(core.shape[1]):
+            if core[y, x] and not lab[y, x]:
+                cur += 1
+                q = deque([(y, x)])
+                lab[y, x] = cur
+                n = 0
+                while q:
+                    cy, cx = q.popleft()
+                    n += 1
+                    for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        ny, nx = cy + dy, cx + dx
+                        if (0 <= ny < core.shape[0] and 0 <= nx < core.shape[1]
+                                and core[ny, nx] and not lab[ny, nx]):
+                            lab[ny, nx] = cur
+                            q.append((ny, nx))
+                if n > best_n:
+                    best_n, best = n, cur
+    if best is None:
+        return img
+    keep = lab == best
+    if keep.sum() == core.sum():        # 덩어리가 하나뿐이면 손대지 않는다
+        return img
+    # 깎은 만큼 다시 부풀려 원래 두께로 돌린다 (넉넉히)
+    grow = keep.copy()
+    for _ in range(k + 3):
+        g = grow.copy()
+        g[1:, :] |= grow[:-1, :]
+        g[:-1, :] |= grow[1:, :]
+        g[:, 1:] |= grow[:, :-1]
+        g[:, :-1] |= grow[:, 1:]
+        grow = g
+    mask = Image.fromarray((grow * 255).astype(np.uint8)).resize(
+        img.size, Image.BILINEAR).filter(ImageFilter.GaussianBlur(1.5))
+    out = img.copy()
+    out.putalpha(ImageChops.multiply(img.getchannel("A"), mask))
+    return out
+
+
 def trim_alpha(img, pad=6):
     box = img.getchannel("A").getbbox()
     if not box:
@@ -302,6 +398,22 @@ def white_outline(img, thickness=OUTLINE_RATIO, torn=TORN_EDGE, shadow=SHADOW):
         grown = grown.filter(ImageFilter.MaxFilter(3)).filter(ImageFilter.MinFilter(3))
         grown = ImageChops.lighter(grown, alpha.point(lambda v: 255 if v > 8 else 0))
 
+    # ⭐ 가장자리를 **매끄럽게** 한다 (2026-08-13 손님: "하얀 띠 끝이 거칠거칠해.
+    #    이건 강제로 매끄럽게 처리가 가능하지 않나?" — 가능하다. 이렇게 한다).
+    #
+    #    위에서 `255 아니면 0` 으로 딱 잘라 버려서 가장자리가 **1비트 계단**이 된다.
+    #    거기에 화면에서 4배로 늘리니 계단이 그대로 4배가 되어 눈에 튄다.
+    #    번지게 한 뒤 가운데(128)에서 다시 자르되, **자르지 않고 기울기를 남긴다** —
+    #    반투명한 한두 픽셀이 계단을 메워 준다(안티에일리어싱).
+    if SMOOTH_EDGE:
+        s = max(1.0, w * 0.28)
+        grown = grown.filter(ImageFilter.GaussianBlur(s))
+        # 0~255 를 그대로 두면 테두리가 흐물해진다. 가운데를 기준으로 **가파르게**
+        # 세우되 양 끝 몇 단계는 남겨 둔다 — 그 몇 단계가 계단을 지운다.
+        lo, hi = 108, 148
+        grown = grown.point(lambda v: 0 if v <= lo else (255 if v >= hi else
+                                                        int((v - lo) * 255 / (hi - lo))))
+
     out = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
 
     # ── 2) 그림자 ──
@@ -332,13 +444,53 @@ def process_sheet(sheet_path, code, outdir=None, upscale=UPSCALE,
     """
     outdir = Path(outdir or (ASSETS / "char" / code))
     outdir.mkdir(parents=True, exist_ok=True)
+
+    # ⭐ 2026-08-13 — **격자로 자르지 않는다. 덩어리를 찾아 오려낸다.**
+    #
+    #    손님 지적 셋이 전부 여기서 나왔다.
+    #      "① 사각 테두리가 남아있어 ② 오른쪽 캐릭터가 아래로 잘려 있어
+    #       ③ 하얀 띠 끝이 거칠거칠해"
+    #
+    #    까닭: 4K 시트의 실제 배치가 **3열 6행이 아니다.** 실측(M70) —
+    #      1~4행은 3칸씩(얼굴·상반신 12개)인데
+    #      5~6행은 **4칸**이고 전신 서기는 두 행을 통째로 쓴다.
+    #    그런데 여기서는 3열 6행 균등으로 우겨서 나눴다. 위쪽 12칸은 우연히
+    #    맞고 아래쪽은 전부 어긋나, 한 칸에 **옆 사람 + 격자선 막대**가 같이
+    #    들어갔다. 그 막대에도 흰 테두리가 둘러지니 화면에 사각 테두리가 되고,
+    #    인물 상자가 막대까지 포함해 커지니 사람이 작아져 아래로 밀렸다.
+    #
+    #    격자를 맞히려 애쓸 일이 아니다. **격자를 안 보면 된다.**
+    #    char_sheet.py 가 이미 그렇게 한다 — 배경 초록을 지우고 남은 덩어리를
+    #    하나씩 떼어낸 뒤, 어느 덩어리가 어느 포즈인지 값싼 모델에게 눈으로
+    #    확인시킨다(인물당 한 번). 실측: M70 4K 시트에서 **17/17 정확**.
+    #
+    #    ⚠️ 확인할 열쇠가 없으면 순서대로 짝지어야 하는데, 배치가 제멋대로면
+    #       그건 또 어긋난다. 그때만 옛 격자 방식으로 물러선다.
+    key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if key and not FORCE_GRID_SLICE:
+        try:
+            import char_sheet as CS          # 여기서 부른다 (서로 부르는 꼴을 피한다)
+            poses = [c for c in CELL_ORDER if c]
+            cols, rows = CS.grid_for(len(poses))
+            CS.slice_sheet(str(sheet_path), code, poses, cols, rows,
+                           outdir=outdir, key=key)
+            made = sorted(outdir.glob("*.png"))
+            if len(made) >= len(poses) - 2:      # 두어 개 빠지는 건 감수한다
+                print(f"{code}: 컷아웃 {len(made)}개 → {outdir} (덩어리 방식)")
+                return made
+            print(f"  ⚠️ 덩어리 방식으로 {len(made)}개밖에 못 만들었다 — 격자 방식으로 다시 한다")
+        except Exception as e:                  # noqa: BLE001
+            print(f"  ⚠️ 덩어리 방식 실패({type(e).__name__}: {e}) — 격자 방식으로 간다")
+
     img = Image.open(sheet_path).convert("RGBA")
     cells = slice_sheet(img)
     made = []
     for i, (cell, name) in enumerate(zip(cells, CELL_ORDER)):
         if name is None:
             continue
-        cut = trim_alpha(drop_chroma(cell))
+        # ⭐ 격자선 막대·옆칸 조각을 떼어 내고 **주인공 하나만** 남긴다.
+        #    이 한 줄이 없어서 사각 테두리·인물 축소·거친 가장자리가 다 생겼다.
+        cut = trim_alpha(keep_main_blob(drop_chroma(cell)))
         if cut is None:
             print(f"  {i + 1:2d}번 칸 비어 있음 → {name} 건너뜀")
             continue
