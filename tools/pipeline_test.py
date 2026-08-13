@@ -169,24 +169,48 @@ else:
     print("   ✅ 시트 내용의 지문(.from_sheet)으로 판단한다")
 
 print()
-print("⑩ 다듬기(despike)가 남는 것이 없어질 때까지 도는가")
-# 실측: 새 컷아웃 119장이 31 → 11 → 1 → 0, 다섯 번에야 수렴했다.
-# 한 번만 돌면 --check 가 남은 것을 잡아 영상 만들기가 멈춘다.
-dp = (ROOT / "src" / "despike.py").read_text(encoding="utf-8")
-if "MAX_PASS" not in dp or "for pass_n in range" not in dp:
-    bad("despike 가 한 번만 돈다 — 잘라낸 단면에서 새 삐죽이가 드러나 검사에 걸린다")
+print("⑩ 시트 격자를 **그림에서 찾아** 자르는가")
+# ⚠️ 2026-08-12 최악의 사고. ① 코드가 3열6행을 못박아 뒀는데 시트 6장이
+#    6열3행(가로)이었고, ② 배치를 알아내도 칸 높이가 균등하지 않아
+#    (M50A 실측 232·469, 균등이면 256·512) 아랫줄 머리가 딸려 들어왔다.
+#    짐작을 버리고 그려진 선을 직접 찾는다.
+if not hasattr(G, "sheet_grid") or not hasattr(G, "sheet_ok"):
+    bad("sheet_grid/sheet_ok 가 없다 — 배치를 짐작하면 머리 없는 인물이 나온다")
 else:
-    print("   ✅ 수렴할 때까지 돈다 (상한 8회)")
+    print("   ✅ sheet_grid(선 실측) + sheet_ok(자를 수 있는지 판정)")
 
 print()
-print("⑪ sync 가 다시 자른 것을 **그 자리에서** 다듬는가")
-# 자르기와 다듬기가 떨어져 있으면 순서 사고가 난다 — 다듬기 뒤에 다시 잘라 버린
-# 것이 2026-08-12 의 실패다. sync 안에 붙어 있어야 순서를 틀릴 수가 없다.
-sy = src[src.index("def cmd_sync"):src.index("def cmd_check")]
-if "despike.py" not in sy:
-    bad("sync 가 자르기만 하고 다듬지 않는다 — 어디서 불리느냐에 따라 또 터진다")
+print("⑪ 있는 시트가 **실제로** 바르게 잘리는가 (그림을 직접 잘라 잰다)")
+# 짐작이 아니라 진짜로 자른다. 못 자를 시트는 sheets/bad/ 로 치워져 있어야 한다.
+try:
+    from PIL import Image
+    sheets = sorted((ROOT / "assets" / "sheets").glob("*.png"))
+    if not sheets:
+        print("   · 시트가 없어 건너뛴다")
+    for sp in sheets:
+        good, why = G.sheet_ok(Image.open(sp).convert("RGBA"))
+        if good:
+            print(f"   ✅ {sp.stem}: {why}")
+        else:
+            bad(f"{sp.stem}: {why} — sheets/bad/ 로 치워졌어야 한다")
+except ImportError:
+    print("   · Pillow 가 없어 건너뛴다")
+
+print()
+print("⑫ 다듬기(despike)를 부르지 않는가 (손님 선택 2026-08-12)")
+# 다듬기가 그림을 최대 78% 갉아먹었다. 끄기로 했으므로 되살아나면 잡는다.
+for name, txt in (("영상 만들기", wf), ("그림 만들기", ba)):
+    live = [l for l in txt.split("\n")
+            if "despike.py" in l and not l.strip().startswith("#")]
+    if live:
+        bad(f"{name} 이 다시 다듬기를 부른다: {live[0].strip()[:60]}")
+    else:
+        print(f"   ✅ {name}: 안 부른다")
+sy2 = src[src.index("def cmd_sync"):src.index("def cmd_check")]
+if "despike" in sy2 and "despike.py" in sy2:
+    bad("sync 가 다시 다듬기를 부른다")
 else:
-    print("   ✅ 자른 직후 다듬는다 (순서를 틀릴 수 없다)")
+    print("   ✅ sync: 안 부른다")
 
 print()
 print("─" * 52)

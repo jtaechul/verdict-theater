@@ -116,17 +116,119 @@ CELL_ORDER = [
 
 
 # ── 1. 시트 후처리 ───────────────────────────────────────
+def _lines(mask, thr=0.80, edge=0.03):
+    """마젠타가 **한 줄을 거의 가득 채운** 자리를 격자선으로 본다.
+
+    ⚠️ 임계값을 높게 잡는 것이 핵심이다. 격자선은 그림 끝에서 끝까지 이어지지만
+       인물이 입은 자주색·연보라 옷은 그렇지 않다. 낮게 잡으면 옷이 선으로
+       잘못 잡힌다(실측: 0.5 로 하면 F70 이 7열, M50B 가 8열로 세어졌다).
+    가장자리(양 끝 3%)는 시트 테두리이므로 경계에서 뺀다."""
+    n = len(mask)
+    on = mask > thr
+    out, start = [], None
+    for i, v in enumerate(list(on) + [False]):
+        if v and start is None:
+            start = i
+        elif not v and start is not None:
+            out.append((start + i) // 2)
+            start = None
+    return [c for c in out if edge * n < c < (1 - edge) * n]
+
+
+def sheet_grid(img):
+    """이 시트의 **진짜 칸 경계**를 찾는다 → (세로경계들, 가로경계들) 또는 None.
+
+    ⚠️ 2026-08-12 — 여기가 없어서 영상이 통째로 망가졌다. 사정은 이렇다.
+       ① 코드는 3열 6행을 **못박아** 두고 있었는데, 제미나이가 그린 시트 7장 중
+          6장이 **6열 3행(가로)** 이었다. 칸 경계를 통째로 빗나가 얼굴 반쪽·
+          몸통 중간이 잘려 나왔다 — 머리 없는 인물이 그대로 영상에 들어갔다.
+       ② 배치를 비율로 알아내 균등 분할해 봤더니 그것도 부족했다. 칸 높이가
+          **균등하지 않기 때문**이다 (M50A 실측: 가로선이 232·469 인데
+          균등이면 256·512 여야 한다). 그래서 첫 줄 컷에 아랫줄 사람의 머리가
+          딸려 들어와 목 밑에 **가로 막대기**로 나왔다.
+       → 짐작하지 않는다. 그려진 선을 **직접 찾아** 그 자리에서 자른다.
+
+    18칸(3x6 또는 6x3)이 안 나오면 None 을 돌려준다. 그 시트는 배치가
+    제멋대로라 자를 수 없다 — 다시 만드는 편이 낫다(호출한 쪽이 알린다)."""
+    import numpy as np
+    a = np.asarray(img.convert("RGB")).astype(int)
+    r, g, b = a[:, :, 0], a[:, :, 1], a[:, :, 2]
+    mag = (r > 100) & (b > 100) & (g < np.minimum(r, b) - 40)
+    vs = _lines(mag.mean(axis=0))          # 세로선 → 열을 가른다
+    hs = _lines(mag.mean(axis=1))          # 가로선 → 행을 가른다
+    if (len(vs) + 1, len(hs) + 1) in ((COLS, ROWS), (ROWS, COLS)):
+        return vs, hs
+    return None
+
+
+def sheet_layout(size):
+    """선을 못 찾았을 때 쓰는 **차선책** — 가로세로 비율로 배치를 짐작한다.
+
+    18칸을 3열 6행으로 펴면 세로로 길고, 6열 3행으로 펴면 가로로 길다."""
+    W, H = size
+    return (COLS, ROWS) if W < H else (ROWS, COLS)
+
+
 def slice_sheet(img):
-    """3열 6행으로 자른다. 격자선(검은 3px)이 남지 않게 안쪽으로 조금 더 자른다."""
+    """시트를 18칸으로 자른다. **그려진 격자선을 찾아 그 자리에서** 자른다.
+
+    선을 못 찾으면 비율로 짐작해 균등 분할한다(그때는 칸이 조금 어긋날 수 있다)."""
     W, H = img.size
-    cw, ch = W / COLS, H / ROWS
+    grid = sheet_grid(img)
+    if grid:
+        vs, hs = grid
+        xs = [0] + list(vs) + [W]
+        ys = [0] + list(hs) + [H]
+    else:
+        cols, rows = sheet_layout(img.size)
+        xs = [round(W * i / cols) for i in range(cols + 1)]
+        ys = [round(H * i / rows) for i in range(rows + 1)]
     cells = []
-    for r in range(ROWS):
-        for c in range(COLS):
-            box = (int(c * cw) + GRID_TRIM, int(r * ch) + GRID_TRIM,
-                   int((c + 1) * cw) - GRID_TRIM, int((r + 1) * ch) - GRID_TRIM)
-            cells.append(img.crop(box))
+    for r in range(len(ys) - 1):
+        for c in range(len(xs) - 1):
+            # 선 자체가 컷에 딸려 들어오지 않게 안쪽으로 조금 물러난다.
+            t = max(GRID_TRIM, round(min(xs[c + 1] - xs[c], ys[r + 1] - ys[r]) * 0.02))
+            cells.append(img.crop((xs[c] + t, ys[r] + t,
+                                   xs[c + 1] - t, ys[r + 1] - t)))
     return cells
+
+
+def sheet_ok(img):
+    """이 시트를 **제대로 자를 수 있는가** → (되는가, 까닭).
+
+    ⚠️ 2026-08-12 — 이 검사가 없어서 머리 없는 인물이 영상까지 나갔다.
+       제미나이가 시트를 늘 시킨 대로 그리지는 않는다. 실측 7장 중 2장(F70·M50B)은
+       왼쪽은 3열 4행, 오른쪽은 칸 크기가 제각각인 **비균등 배치**로 그려 왔다.
+       그런 시트는 어떻게 잘라도 한 칸에 두 사람이 들어간다 — 다시 만드는 수밖에 없다.
+
+    판정 기준 둘. 짐작이 아니라 잘라 보고 잰다.
+      ① 17칸에 인물이 들어 있는가 (18번째는 비어 있어야 정상)
+      ② 한 칸에 **덩어리가 하나**인가 — 둘이면 옆칸·아랫칸이 딸려 온 것이다
+    """
+    import numpy as np
+    cells = slice_sheet(img)
+    if len(cells) != COLS * ROWS:
+        return False, f"{len(cells)}칸으로 잘린다 (18칸이어야 한다)"
+    empty, split = [], []
+    for i, c in enumerate(cells[:17]):
+        a = np.asarray(drop_chroma(c).getchannel("A"))
+        if (a > 16).mean() <= 0.05:
+            empty.append(i + 1)
+            continue
+        rows = (a > 16).sum(axis=1) > a.shape[1] * 0.01
+        n, prev = 0, False
+        for v in rows:
+            if v and not prev:
+                n += 1
+            prev = v
+        if n >= 2:
+            split.append(i + 1)
+    if empty:
+        return False, f"{len(empty)}칸이 비어 있다 (칸 {empty[:6]})"
+    if split:
+        return False, (f"{len(split)}칸에 사람이 둘씩 들어간다 (칸 {split[:6]}) — "
+                       "시트 배치가 제멋대로다")
+    return True, "17칸 정상"
 
 
 def drop_chroma(cell):
@@ -144,6 +246,14 @@ def drop_chroma(cell):
                      and abs(b - CHROMA[2]) < CHROMA_TOL and g > r + 40 and g > b + 20)
             if green or is_magenta(r, g, b):
                 px[x, y] = (r, g, b, 0)
+            # ⚠️ 2026-08-12 — 위 조건만으로는 **가장자리의 초록이 남는다.**
+            #    그림 가장자리는 인물 색과 배경 초록이 섞인 중간색(안티앨리어싱)이라
+            #    '순수 초록' 검사를 통과하지 못한다. 그래서 머리카락 둘레에 얇은
+            #    초록 실선이 남았고, 그 위에 흰 테두리를 두르니 더 도드라졌다.
+            #    → 초록이 확실히 우세한 픽셀은 남은 초록기를 **빼서** 중화한다.
+            elif g > r + 18 and g > b + 18:
+                k = min(g - r, g - b)            # 얼마나 초록에 물들었나
+                px[x, y] = (r, max(0, g - k), b, a)
     return cell
 
 
@@ -554,7 +664,6 @@ def cmd_sync(args):
         print("시트가 없다. 반영할 것이 없다.")
         return 0
     import hashlib
-    import subprocess as sub
     done, skip, fail, resliced = 0, 0, [], []
     for sp in sheets:
         name = sp.stem                       # F50A 또는 F50A-2
@@ -574,6 +683,22 @@ def cmd_sync(args):
         if len(have) >= want and same and not args.force:
             skip += 1
             continue
+        # ⭐ 자르기 전에 **자를 수 있는 시트인지** 본다 (2026-08-12).
+        #    못 자를 시트를 억지로 자르면 머리 없는 인물이 나온다.
+        #    그런 시트는 옆으로 치워 둔다 — 그러면 다음 '없는 인물 만들기' 가
+        #    시트가 없다고 보고 **자동으로 다시 그린다**(한 장 약 57원).
+        try:
+            good, why = sheet_ok(Image.open(sp).convert("RGBA"))
+        except Exception as e:
+            good, why = False, f"열지 못했다: {e}"
+        if not good:
+            junk = ASSETS / "sheets" / "bad"
+            junk.mkdir(parents=True, exist_ok=True)
+            sp.rename(junk / sp.name)
+            print(f"  {name}: 이 시트로는 못 자른다 — {why}")
+            print(f"        → sheets/bad/ 로 치웠다. 다시 그리면 채워진다.")
+            fail.append(name)
+            continue
         try:
             made = process_sheet(sp, name)
             print(f"  {name}: 컷아웃 {len(made)}개 만듦 "
@@ -584,16 +709,9 @@ def cmd_sync(args):
         except Exception as e:
             print(f"  {name}: 자르기 실패 — {type(e).__name__}: {e}")
             fail.append(name)
-    # ⭐ 방금 자른 것은 **바로 다듬는다** (어깨 삐죽이·떨어져 나온 조각 제거).
-    #    자르기와 다듬기가 떨어져 있으면 순서 사고가 난다 — 실제로 [영상 만들기]가
-    #    다듬기(11번 단계) 뒤에 다시 잘라서(12번) 검사(14번)에 걸렸다.
-    #    여기서 붙여 두면 sync 가 언제 어디서 불려도 결과가 늘 다듬어진 상태다.
-    if resliced:
-        r = sub.run([sys.executable, str(ROOT / "src" / "despike.py"),
-                     "--only", ",".join(resliced)], capture_output=True, text=True)
-        tail = [l for l in (r.stdout or "").splitlines() if l.strip()][-3:]
-        print("  다듬기: " + ("; ".join(tail) if tail else "남은 것 없음")
-              + ("" if r.returncode == 0 else "  ⚠️ 다듬기 실패 — 배치 검사가 잡는다"))
+    # ⚠️ 2026-08-12 — 여기서 다듬기(despike)를 부르던 것을 **뺐다**(손님 선택).
+    #    다듬기가 그림을 최대 78% 까지 갉아먹었다. 자세한 사정은 워크플로 주석 참고.
+    #    이제 자른 그대로가 최종본이다.
     print(f"시트 {len(sheets)}장 · 반영 {done} · 그대로 {skip}"
           + (f" · 실패 {', '.join(fail)}" if fail else ""))
     return 1 if fail else 0
