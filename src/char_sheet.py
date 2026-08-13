@@ -303,13 +303,53 @@ def degrid(img):
         return img, 0
 
     out = img.convert("RGBA")
-    d = ImageDraw.Draw(out)
     pad = 2                       # 선 가장자리의 흐릿한 곳까지 함께 덮는다
-    fill = tuple(A.CHROMA) + (255,)
-    for a, b in gc:
-        d.rectangle([a - pad, 0, b + pad, H - 1], fill=fill)
-    for a, b in gr:
-        d.rectangle([0, a - pad, W - 1, b + pad], fill=fill)
+
+    # ⚠️ 2026-08-13 — 여기가 선을 **배경 초록으로 덮고** 있었다. 선이 초록 위에만
+    #    있으면 옳지만, 실측한 시트에서는 선이 **인물의 몸통을 가로질러** 지나갔다.
+    #    그러면 초록으로 덮은 자리가 크로마 키에 걷혀 **몸에 투명한 틈**이 뚫리고,
+    #    흰 테두리(white_outline)가 그 틈을 따라 둘러쳐져 **허리를 가로지르는
+    #    흰 막대**가 되어 나왔다. (F70 full_stand·full_walk·full_sit 실측)
+    #
+    #    그래서 덮지 않고 **메운다.** 선 바로 바깥의 두 색을 가져와 이어 붙인다.
+    #      · 선이 초록 위를 지나면 → 양쪽이 초록이라 초록으로 메워진다 (전과 같다)
+    #      · 선이 몸 위를 지나면   → 양쪽이 옷·살색이라 몸이 이어진다 (틈이 안 생긴다)
+    #    ⚠️ 다만 **전부 메우면 안 된다.** 선이 초록 위를 지나는 자리까지 메우면
+    #       옆 사람과 이어져 **한 덩어리가 되어 버린다** (실측: M50B 가 덩어리
+    #       23개 → 19개로 줄고 5포즈를 잃었다). 선은 칸을 나누는 담이기도 하다.
+    #       그래서 **한 줄 한 줄이 아니라 점 하나하나**를 보고 정한다.
+    #         · 양옆이 둘 다 초록 → 그대로 초록 (담을 남긴다)
+    #         · 한쪽이라도 몸    → 양옆 색을 이어 붙인다 (몸을 잇는다)
+    base = out.copy()
+    green = tuple(A.CHROMA)
+
+    def _is_green(px):
+        r, g, b = px[0], px[1], px[2]
+        return g > 90 and g > r + 40 and g > b + 40
+
+    d = ImageDraw.Draw(out)
+    bp = base.load()
+    for a, b in gc:                                   # 세로선
+        x0, x1 = max(0, a - pad), min(W - 1, b + pad)
+        lx, rx = max(0, x0 - 1), min(W - 1, x1 + 1)
+        for y in range(H):
+            lc, rc = bp[lx, y], bp[rx, y]
+            if _is_green(lc) and _is_green(rc):
+                d.line([(x0, y), (x1, y)], fill=green + (255,))
+            else:
+                mid = tuple((lc[i] + rc[i]) // 2 for i in range(3))
+                d.line([(x0, y), (x1, y)], fill=mid + (255,))
+    bp = out.load()                                   # 세로선 결과를 반영해 다시 읽는다
+    for a, b in gr:                                   # 가로선
+        y0, y1 = max(0, a - pad), min(H - 1, b + pad)
+        ty, by = max(0, y0 - 1), min(H - 1, y1 + 1)
+        for x in range(W):
+            tc, bc = bp[x, ty], bp[x, by]
+            if _is_green(tc) and _is_green(bc):
+                d.line([(x, y0), (x, y1)], fill=green + (255,))
+            else:
+                mid = tuple((tc[i] + bc[i]) // 2 for i in range(3))
+                d.line([(x, y0), (x, y1)], fill=mid + (255,))
     return out, len(gc) + len(gr)
 
 
