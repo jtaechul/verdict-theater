@@ -138,6 +138,60 @@ if guard:
     else:
         print("   ✅ 모델을 부르기 전에 막는다 (값 0원)")
 
+print()
+print("⭐ 그림값도 막히는가 (2026-08-13 — 여기가 통째로 비어 있었다)")
+# ⚠️ cost.PRICES 는 **글자 값**만 적혀 있었다. 그림은 장당 값이라 계산이 안 됐고,
+#    그래서 assets_gen.gen_image 는 돈 계산도·장부 기록도·한도 검사도 하나도
+#    안 했다. 무료 한도가 0이라 그림이 아예 안 만들어지던 동안엔 안 드러났는데,
+#    결제를 걸면 그 순간부터 **그림값만 한도 밖에서 새어 나간다.**
+sys.path.insert(0, str(ROOT / "src"))
+import assets_gen as G                                  # noqa: E402
+import cost as C                                        # noqa: E402
+
+ag = (ROOT / "src" / "assets_gen.py").read_text(encoding="utf-8")
+fn = ag[ag.index("def gen_image("):ag.index("\ndef ", ag.index("def gen_image(") + 10)]
+
+if not hasattr(C, "image_krw"):
+    bad("그림 한 장 값을 계산할 방법이 없다")
+elif C.image_krw("듣도보도못한모델") < C.image_krw("gemini-3-pro-image", "4K"):
+    bad("모르는 모델을 싸게 잡는다 — 적게 잡으면 한도가 안 걸려 막는 시늉만 한다")
+else:
+    print(f"   ✅ 장당 값을 계산한다 (모르는 모델은 비싸게: "
+          f"{C.image_krw('모르는것'):,.0f}원)")
+
+# 막는 자리가 **부르는 자리보다 앞**에 있어야 한다. 뒤면 돈이 이미 나간 뒤다.
+cap = fn.find("IMAGE_RUN_KRW")
+call = fn.find("_post(")
+if cap < 0 or "month_total" not in fn:
+    bad("그림을 부르기 전에 한도를 안 본다")
+elif call >= 0 and cap > call:
+    bad("한도를 보는 자리가 부르는 자리보다 뒤에 있다 — 돈이 이미 나간 뒤다")
+else:
+    print(f"   ✅ 부르기 전에 한 번 실행 한도({G.IMAGE_RUN_KRW:,.0f}원)와 "
+          f"이번 달 한도({C.MONTH_KRW:,.0f}원)를 본다")
+
+if "cost.record(" not in fn:
+    bad("그림값을 장부에 안 남긴다 — 이번 달 얼마 썼는지 영영 모른다")
+else:
+    print("   ✅ 만들 때마다 장부에 남긴다 (state/spend.json)")
+
+if "usageMetadata" not in fn:
+    bad("구글이 실제로 무엇을 셌는지 안 찍는다 — 추정값이 맞는지 확인할 길이 없다")
+else:
+    print("   ✅ 구글이 센 것(usageMetadata)을 같이 찍는다 (추정값 검증용)")
+
+# 인물 전부를 만들어도 한 번 실행 한도 안에 들어와야 한다 (아니면 늘 걸린다)
+worst = C.image_krw(G.IMAGE_MODEL_ORDER["char"][0], G.IMAGE_SIZE) * len(G.CHAR_LOOK)
+if worst > G.IMAGE_RUN_KRW:
+    bad(f"인물 {len(G.CHAR_LOOK)}명이 약 {worst:,.0f}원인데 한도가 "
+        f"{G.IMAGE_RUN_KRW:,.0f}원이다 — 정상 작업이 늘 막힌다")
+elif worst * 2 < G.IMAGE_RUN_KRW:
+    bad(f"한도({G.IMAGE_RUN_KRW:,.0f}원)가 실제 값({worst:,.0f}원)의 두 배를 넘는다 "
+        "— 두 배가 새도 안 막히므로 막는 시늉만 하는 것이다")
+else:
+    print(f"   ✅ 한도가 실제 값 바로 위에 있다 (인물 {len(G.CHAR_LOOK)}명 "
+          f"약 {worst:,.0f}원 · 한도 {G.IMAGE_RUN_KRW:,.0f}원)")
+
 import shutil
 shutil.rmtree(tmp, ignore_errors=True)
 print()

@@ -53,6 +53,7 @@ except ModuleNotFoundError:                        # pragma: no cover - 환경�
     Image = ImageChops = ImageFilter = _NoPillow()
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import cost                        # noqa: E402  그림값을 장부에 남기고 한도로 막는다
 from llm import BASE, _get, _post  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -503,6 +504,18 @@ IMAGE_RATIO = os.environ.get("GEMINI_IMAGE_RATIO", sheet_ratio())
 IMAGE_RATIO_BG = os.environ.get("GEMINI_IMAGE_RATIO_BG", "16:9")
 
 
+# ⭐ 한 번 누를 때 그림에 쓸 수 있는 최대 금액 (원).
+#    인물 7명을 4K 로 다 만들어도 약 1,900원이므로 2,500원이면 정상 실행은
+#    통과하고, 무언가 잘못 돌아 계속 만들기 시작하면 거기서 멈춘다.
+#    ⚠️ 한도는 **실제 드는 값보다 조금만 위**에 있어야 뜻이 있다.
+IMAGE_RUN_KRW = float(os.environ.get("VT_IMAGE_RUN_KRW", "2500"))
+_img_run_krw = 0.0          # 이번 실행에서 그림에 쓴 값 (원)
+
+
+class RunCapReached(RuntimeError):
+    """이번 실행의 그림값 한도를 다 썼다."""
+
+
 class QuotaBlocked(RuntimeError):
     """구글이 그림 만들기를 **아예** 안 받아 주는 상태(한도 0). 기다려도 안 된다."""
 
@@ -540,6 +553,21 @@ def gen_image(key, model, prompt, out_path, size=None, ratio=None):
         {"responseModalities": ["IMAGE"], "imageConfig": {"aspectRatio": ratio}},
         {"responseModalities": ["IMAGE", "TEXT"]},          # 예전 방식 (마지막 보루)
     ]
+    # ⭐ 부르기 **전에** 돈을 막는다 (2026-08-13). 여기가 통째로 비어 있었다 —
+    #    그림값은 장부에도 안 남고 한도에도 안 걸렸다. 무료 한도가 0이라
+    #    아무것도 안 만들어지던 동안엔 안 드러났는데, 결제를 걸면 그 순간부터
+    #    **그림값만 한도 밖에서 새어 나간다.**
+    guess = cost.image_krw(model, size)
+    if cost.month_total() + guess > cost.MONTH_KRW:
+        raise cost.MonthlyCapReached(
+            f"이번 달 한도({cost.MONTH_KRW:,.0f}원)에 걸렸습니다. "
+            f"지금까지 {cost.month_total():,.0f}원 썼고 이 그림이 약 {guess:,.0f}원입니다.")
+    global _img_run_krw
+    if _img_run_krw + guess > IMAGE_RUN_KRW:
+        raise RunCapReached(
+            f"이번 실행의 그림값 한도({IMAGE_RUN_KRW:,.0f}원)에 걸렸습니다. "
+            f"이미 약 {_img_run_krw:,.0f}원 썼습니다.")
+
     last = None
     for i, cfg in enumerate(tries):
         try:
@@ -559,6 +587,16 @@ def gen_image(key, model, prompt, out_path, size=None, ratio=None):
                 print(f"      크기 {w}x{h} = {w * h / 1e6:.2f} MP ({want})")
             except Exception:
                 pass
+            # ⭐ 값을 장부에 남기고, 구글이 실제로 무엇을 셌는지도 같이 찍는다.
+            #    usageMetadata 가 진짜 청구 근거다 — 이걸 보고 cost.IMAGE_USD 의
+            #    추정값을 실측값으로 고쳐야 장부가 맞는다.
+            um = res.get("usageMetadata") or {}
+            _img_run_krw += guess
+            cost.record("image", guess, f"{model} {size} {ratio} {out_path.name}")
+            print(f"      값 약 {guess:,.0f}원 (이번 실행 누적 {_img_run_krw:,.0f}원 "
+                  f"/ 한도 {IMAGE_RUN_KRW:,.0f}원)")
+            if um:
+                print(f"      구글이 센 것: {um}")
             return out_path
         except Exception as e:
             last = e
