@@ -318,12 +318,20 @@ def degrid(img):
     #       옆 사람과 이어져 **한 덩어리가 되어 버린다** (실측: M50B 가 덩어리
     #       23개 → 19개로 줄고 5포즈를 잃었다). 선은 칸을 나누는 담이기도 하다.
     #       그래서 **한 줄 한 줄이 아니라 점 하나하나**를 보고 정한다.
-    #         · 한쪽이라도 초록 → 그대로 초록 (담을 남긴다)
-    #         · 양쪽이 둘 다 몸 → 양옆 색을 이어 붙인다 (몸을 잇는다)
-    #    ⚠️ 2026-08-13 — 처음엔 '한쪽이라도 몸이면 메운다' 로 했는데, 머리 **바로
-    #       위**를 지나는 선이 그렇게 메워져 머리 위에 **작은 막대 토막**이 남았다
-    #       (위는 초록, 아래는 머리카락 → 메워짐). 선이 몸을 '가로지르는' 경우는
-    #       양쪽이 다 몸이다. 그 경우에만 메워야 맞다.
+    #         · 양옆이 둘 다 초록 → 그대로 초록 (담을 남긴다)
+    #         · 한쪽이라도 몸    → 양옆 색을 이어 붙인다 (몸을 잇는다)
+    #
+    #    ⚠️⚠️ 2026-08-13 — 여기를 '한쪽이라도 초록이면 초록으로 덮는다' 로
+    #       바꿨다가 **인물 셋의 목이 잘렸다**(M70 full_back·full_sit·full_walk).
+    #       까닭: 모델이 **머리 꼭대기 위로 격자선을 긋는다.** 그 선은 위가 초록,
+    #       아래가 머리카락이다. '한쪽이라도 초록이면 초록' 이면 **머리 꼭대기가
+    #       통째로 지워지고**, 그 자리에서 덩어리가 끊겨 목 아래만 남는다.
+    #       손님: "미친놈아 이건 목이 잘렸잖아" — 맞는 지적이다.
+    #
+    #       ⭐ 규칙: **의심스러우면 지우지 말고 이어 붙인다.**
+    #          잘못 이어 붙이면 작은 막대 토막이 남을 뿐이지만,
+    #          잘못 지우면 **사람의 머리가 없어진다.** 둘의 무게가 다르다.
+    #          (막대 토막은 아래 목 검사와 keep_main_blob 이 줄여 준다)
     base = out.copy()
     green = tuple(A.CHROMA)
 
@@ -338,7 +346,7 @@ def degrid(img):
         lx, rx = max(0, x0 - 1), min(W - 1, x1 + 1)
         for y in range(H):
             lc, rc = bp[lx, y], bp[rx, y]
-            if _is_green(lc) or _is_green(rc):
+            if _is_green(lc) and _is_green(rc):
                 d.line([(x0, y), (x1, y)], fill=green + (255,))
             else:
                 mid = tuple((lc[i] + rc[i]) // 2 for i in range(3))
@@ -349,7 +357,7 @@ def degrid(img):
         ty, by = max(0, y0 - 1), min(H - 1, y1 + 1)
         for x in range(W):
             tc, bc = bp[x, ty], bp[x, by]
-            if _is_green(tc) or _is_green(bc):
+            if _is_green(tc) and _is_green(bc):
                 d.line([(x, y0), (x, y1)], fill=green + (255,))
             else:
                 mid = tuple((tc[i] + bc[i]) // 2 for i in range(3))
@@ -455,6 +463,50 @@ def split_wide(mask, box, cell_w, want):
     return [(x0 + edges[i], y0, x0 + edges[i + 1], y1) for i in range(len(edges) - 1)]
 
 
+SMALL_PART = 0.55      # 이만큼보다 작으면 '떨어져 나온 조각(머리·손)' 으로 본다
+
+
+def _reattach(base, boxes):
+    """깎다가 떨어져 나온 머리·손을 **원래 몸에 도로 붙인다.**
+
+    base   깎기 **전** 알파(원본 연결 상태)
+    boxes  깎은 뒤 찾은 덩어리들 [(x0,y0,x1,y1,area,points), ...]
+
+    원본에서 한 덩어리인 것끼리 묶고, 그 안에서 가장 큰 것이 압도적이면
+    나머지를 거기에 합친다. 엇비슷하면 서로 다른 사람이므로 그대로 둔다."""
+    if len(boxes) < 2:
+        return boxes
+    orig = components(base, min_area=1)          # 깎기 전의 진짜 연결 상태
+    if not orig:
+        return boxes
+    owner = {}                                   # 원본 덩어리 번호 → 깎은 덩어리 목록
+    for oi, ob in enumerate(orig):
+        pts = set(ob[5])
+        for bi, bb in enumerate(boxes):
+            if bb[5] and len(pts.intersection(bb[5])) > len(bb[5]) * 0.5:
+                owner.setdefault(oi, []).append(bi)
+    out, dropped = list(boxes), set()
+    for _oi, group in owner.items():
+        if len(group) < 2:
+            continue
+        group.sort(key=lambda i: boxes[i][4], reverse=True)
+        head, rest = group[0], group[1:]
+        big = boxes[head][4]
+        joined = [i for i in rest if boxes[i][4] < big * SMALL_PART]
+        if not joined:
+            continue                              # 엇비슷하다 = 서로 다른 사람
+        pts = list(boxes[head][5])
+        for i in joined:
+            pts += list(boxes[i][5])
+            dropped.add(i)
+        xs = [p % base.width for p in pts]
+        ys = [p // base.width for p in pts]
+        out[head] = (min(xs), min(ys), max(xs) + 1, max(ys) + 1, len(pts), pts)
+        names = ", ".join(str(i + 1) for i in joined)
+        print(f"    (깎다가 떨어진 조각 {names} 번을 몸에 도로 붙였다 — 목 잘림 방지)")
+    return [b for i, b in enumerate(out) if i not in dropped]
+
+
 def find_figures(sheet, cols, rows, scale=8, want=0):
     """시트에서 인물 덩어리들을 찾아 왼→오른쪽, 위→아래 순서로 돌려준다.
 
@@ -484,6 +536,28 @@ def find_figures(sheet, cols, rows, scale=8, want=0):
     # 그 선은 초록으로 판정되지 않아서, 그냥 두면 인물들을 전부 이어 버린다.
     if not boxes:
         return keyed, []
+
+    # ⭐⭐ 2026-08-13 — **잘려 나간 머리를 도로 붙인다.** (손님: "이건 목이 잘렸잖아")
+    #
+    #    위에서 붙은 인물을 떼려고 최대 25(줄인 그림에서)만큼 깎는다. 그런데
+    #    원래 크기로는 그게 **200픽셀**이다. 목은 그보다 얇다. 그래서 인물을
+    #    떼기 전에 **목이 먼저 끊어지고**, 떨어진 머리는 따로 한 덩어리가 된다.
+    #    (실측: M70 full_back·full_sit·full_walk 셋이 목 아래만 남았다)
+    #
+    #    더 나쁜 것은 **그게 성공처럼 보였다는 점**이다. 위 반복문은 덩어리가
+    #    `want` 개가 될 때까지 깎는 정도를 키우는데, 머리가 떨어지면 덩어리 수가
+    #    늘어난다 — 즉 **머리를 자를수록 목표를 채운 것처럼 보인다.**
+    #
+    #    바로잡는 기준은 하나다. **깎기 전 원본에서 이어져 있었으면 한 사람이다.**
+    #    깎는 것은 '붙은 두 사람을 가릴' 때만 쓰고, 최종 판단은 원본이 한다.
+    #    원본에서 한 덩어리인데 깎은 뒤 여럿으로 갈렸다면,
+    #      · 크기가 엇비슷하면  → 서로 다른 사람이다 (그대로 둔다)
+    #      · 하나가 압도적이면  → 머리·손이 떨어진 것이다 (도로 붙인다)
+    # (한때 _reattach() 로 떨어진 조각을 도로 붙여 봤다. 그런데 이 시트는
+    #  칸 사이가 너무 좁아 원본에서 **아래 칸 사람들까지 한 덩어리**라,
+    #  붙였더니 옆 사람이 통째로 딸려 왔다. 실측으로 확인하고 뺐다.
+    #  ⭐ 진짜 해결은 여기가 아니라 **시트를 제대로 그리게 하는 것**이다 —
+    #     칸마다 넉넉한 여백, 인물에 닿지 않는 격자선. char_sheet_prompt 참조.)
 
     # 줄로 묶는다 — 세로 가운데가 비슷한 것끼리 한 줄
     boxes.sort(key=lambda b: (b[1] + b[3]) / 2)
@@ -607,7 +681,17 @@ def label_figures(keyed, figs, poses, key):
         "Rules: 'face' = head fills the frame; 'bust' = head and shoulders/chest; "
         "'full' = whole body including legs.\n"
         "Each name may be used at most once. If no cut-out fits a name, leave that name out.\n"
-        'Answer with JSON only: {"1": "<pose name>", "2": "<pose name>", ...}'
+        "\n"
+        # ⭐ 2026-08-13 — 목이 잘렸는지도 **같은 호출에서 같이 묻는다.**
+        #    값은 0원 더 안 든다. 손님: "미친놈아 이건 목이 잘렸잖아."
+        #    자로 재는 방법(폭 프로필)도 해 봤는데 머리 있는 것 0.55 · 잘린 것 0.66
+        #    으로 여유가 너무 좁아 믿을 수 없었다. 그림을 보는 눈에게 직접 묻는
+        #    것이 가장 확실하고, 어차피 부르는 김이라 공짜다.
+        "ALSO report broken cut-outs. A cut-out is BROKEN if the head is missing or\n"
+        "sliced off — the top of the skull cut flat, or only the body below the neck.\n"
+        "A back view still counts as having a head (you see hair from behind).\n"
+        'Answer with JSON only: {"poses": {"1": "<pose name>", ...}, '
+        '"headless": [<numbers whose head is missing>]}'
     )
     body = {"contents": [{"role": "user", "parts": [
         {"text": prompt},
@@ -622,14 +706,30 @@ def label_figures(keyed, figs, poses, key):
     except Exception as e:
         print(f"    확인 실패({e}) — 순서대로 짝짓는다")
         return None
+    # 옛 모양({"1": "face_neutral"})도 그대로 읽는다 — 모델이 가끔 그렇게 답한다.
+    pos = ans.get("poses") if isinstance(ans.get("poses"), dict) else ans
+    bad = set()
+    for n in (ans.get("headless") or []):
+        try:
+            bad.add(int(n) - 1)
+        except (TypeError, ValueError):
+            continue
     out = {}
-    for k, v in ans.items():
+    for k, v in pos.items():
         try:
             i = int(k) - 1
         except ValueError:
             continue
         if 0 <= i < len(figs) and v in poses and v not in out.values():
             out[i] = v
+    if bad:
+        # ⭐ 목이 잘린 것은 **저장하지 않는다.** 빠진 것이 낫다 —
+        #    빠지면 무결성 검사가 막아 주지만, 목 잘린 채로 들어가면 그대로 방송된다.
+        drop = sorted(out[i] for i in bad if i in out)
+        for i in bad:
+            out.pop(i, None)
+        if drop:
+            print(f"    ⚠️ 목이 잘려 **버린다**: {', '.join(drop)}")
     return out or None
 
 
