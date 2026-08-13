@@ -134,7 +134,15 @@ QUERIES = {
                      "small bedroom interior quiet"],
     "office_community": ["public office counter interior", "government office desks interior",
                          "administrative office counter"],
-    "daily_market": ["traditional market alley stalls", "street market narrow alley",
+    # ⚠️ 2026-08-13 — 이 하나만 계속 실패했다. 제미나이가 후보를 전부 물리쳤다:
+    #    "All candidates contain people or readable text."
+    #    당연하다 — '시장 골목' 으로 찾으면 장 보는 사람이 안 찍힌 사진이 거의 없다.
+    #    그래서 **문 열기 전·닫은 뒤의 빈 시장**을 먼저 찾는다. 사람이 없는 시각의
+    #    시장은 골목·차양·좌판이 그대로 보여서 배경으로는 오히려 더 낫다.
+    #    (원래 검색어는 뒤에 남겨 둔다 — 앞의 것으로 못 찾으면 그때 쓴다)
+    "daily_market": ["empty market stalls early morning", "closed market shutters alley",
+                     "covered market arcade empty", "market stall crates produce",
+                     "traditional market alley stalls", "street market narrow alley",
                      "market street awnings stalls"],
     # 반찬가게에 딱 맞는 사진은 없다 — '반찬통이 늘어선 진열대' 로 노린다
     "daily_sidedish": ["deli counter food containers", "food stall display containers",
@@ -265,6 +273,8 @@ JUDGE_MODEL = os.environ.get("BG_JUDGE_MODEL", "gemini-3.1-flash-lite")
 GEMINI = "https://generativelanguage.googleapis.com/v1beta"
 GRID = (4, 3)               # 가로 4 × 세로 3 = 12장
 TILE = 320
+BATCH = GRID[0] * GRID[1]   # 한 번에 보여 주는 후보 수
+ROUNDS = 3                  # 다 물리면 몇 판까지 다시 보여 줄지 (12 x 3 = 36장)
 
 
 def contact_sheet(images):
@@ -381,7 +391,12 @@ def pick(code, sources, used, gkey="", dry=False):
                 seen.add(p["key"])
                 pool.append(p)
                 qs.append(q)
-        if len(pool) >= GRID[0] * GRID[1]:
+        # ⚠️ 2026-08-13 — 여기가 12장만 모으고 멈췄다. 그런데 제미나이는 그 12장을
+        #    **한 번에 보고 전부 물리칠 수 있다**("사람이나 글자가 들어 있다").
+        #    그러면 뒤쪽 검색어는 써 보지도 못하고 그 배경은 실패로 끝났다.
+        #    실제로 daily_market 하나가 그렇게 계속 실패했다.
+        #    이제 세 판 분량(36장)까지 모아 두고, 아래에서 12장씩 나눠 물어본다.
+        if len(pool) >= BATCH * ROUNDS:
             break
 
     if dry:
@@ -398,13 +413,20 @@ def pick(code, sources, used, gkey="", dry=False):
     pool = [pool[i] for i in order]
     qs = [qs[i] for i in order]
     if gkey:
-        try:
-            got = judge(code, pool, gkey)
-        except Exception as e:
-            print(f"    제미나이 심사 실패({e}) — 설명글 기준으로만 고른다")
-            got = None
-        if got:
-            return got, qs[[p["key"] for p in pool].index(got["key"])]
+        # 12장씩 나눠 물어본다. 한 판이 통째로 물러나도 다음 판이 남아 있다.
+        for start in range(0, len(pool), BATCH):
+            batch = pool[start:start + BATCH]
+            if not batch:
+                break
+            try:
+                got = judge(code, batch, gkey)
+            except Exception as e:
+                print(f"    제미나이 심사 실패({e}) — 설명글 기준으로만 고른다")
+                return pool[0], qs[0]
+            if got:
+                return got, qs[[p["key"] for p in pool].index(got["key"])]
+            if start + BATCH < len(pool):
+                print(f"    {len(batch)}장 다 물렀다 — 다음 {min(BATCH, len(pool) - start - BATCH)}장으로 다시 본다")
         return None, None
     return pool[0], qs[0]
 
