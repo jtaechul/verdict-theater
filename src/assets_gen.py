@@ -265,6 +265,34 @@ def drop_chroma(cell):
     return cell
 
 
+def lines_touch_figures(sheet):
+    """칸 선이 **인물에 닿아 있는가** → (닿은 비율, 나쁜가). 0원.
+
+    ⭐ 2026-08-13 손님: "애시당초 선은 마젠타로 긋고 배경을 초록으로 만들었으면
+       이런 일이 없었을 텐데 왜 자꾸 반복되는 거야?"
+
+       **색은 처음부터 그렇게 하고 있었다.** 마젠타 선 · 초록 배경이 맞다.
+       빠져 있던 것은 색이 아니라 **어디에 그으라는 말**이었다.
+       "3열 6행 격자" 라고만 시켜 놓으니 모델이 인물 위로도 선을 그었다.
+       선이 머리에 겹치면 지워도 남겨도 안 되는 상태가 된다 — 같은 픽셀이라서.
+
+       그래서 이제 **잰다.** 규칙만 적어 두고 지켜졌는지 안 재면,
+       안 지켜진 채로 그대로 다음 단계로 넘어간다. 그게 반복의 진짜 까닭이다.
+       (실측: 지금 시트 7장 전부 1.2~1.9% 가 닿아 있다 — 전부 나쁜 시트다)"""
+    import numpy as np
+    a = np.asarray(sheet.convert("RGB")).astype(int)
+    r, g, b = a[:, :, 0], a[:, :, 1], a[:, :, 2]
+    mag = (r > 100) & (b > 100) & (g < np.minimum(r, b) - 40)
+    green = (g > 90) & (g > r + 40) & (g > b + 40)
+    body = ~mag & ~green
+    if body.sum() == 0 or mag.sum() == 0:
+        return 0.0, False
+    near = np.asarray(Image.fromarray((mag * 255).astype(np.uint8))
+                      .filter(ImageFilter.MaxFilter(7))) > 60
+    ratio = float((near & body).sum() / body.sum())
+    return ratio, ratio > 0.005
+
+
 def keep_main_blob(img, erode=5):
     """**이 칸의 주인공 하나만 남긴다.** 격자선 막대와 옆칸 조각을 떼어 낸다.
 

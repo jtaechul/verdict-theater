@@ -114,13 +114,39 @@ eq("monitor" in words, False, "낱말 표에 monitor 없음")
 eq(any("monitor" in v for v in A.BY_BG.values()), False, "배경 표에 monitor 없음")
 eq((A.SFX_DIR / "monitor.mp3").exists(), False, "monitor.mp3 파일도 없음")
 
-print("\n[5-2] 빼 달라고 한 소리를 **다시 만들 방법이 남아 있지 않은가**")
-# ⚠️ 2026-08-12 — 파일만 지우고 '만드는 법' 을 남겨 뒀더니, [소리 (비용 0원)]
-#    버튼 한 번이면 되살아나는 상태였다. 지우는 것으로는 부족하다.
+print("\n[5-2] ⭐ 빼 달라고 한 소리가 **되살아날 길이 하나도 없는가** (전부 훑는다)")
+# ⚠️ 2026-08-12 — 파일만 지우고 '만드는 법' 을 남겼더니 버튼 한 번에 되살아났다.
+# ⚠️⚠️ 2026-08-13 — 그래서 '만드는 법' 도 지웠는데 **또 살아 있었다.**
+#    이번엔 tools/get_sfx.py 의 '받아오는 법'(PROFILES)이 남아 있었다.
+#    손님: "시계 효과음 척척척척척은 아직 안 지워졌어. 왜 자꾸 반복되는 거야?"
+#
+#    ⭐ 되풀이된 진짜 까닭 — **길을 하나씩 막았기 때문이다.**
+#       소리 하나가 생기는 길은 넷이다.
+#         ① 합성해서 만든다      src/assets_gen.py  SFX_RECIPE · AMB_RECIPE
+#         ② 인터넷에서 받아온다  tools/get_sfx.py   PROFILES
+#         ③ 낱말을 보고 깐다     tools/add_sfx.py   BY_WORD
+#         ④ 배경을 보고 깐다     tools/add_sfx.py   BY_BG
+#       그때그때 눈에 띈 길만 막으니 남은 길로 계속 돌아왔다.
+#       이제 **넷을 한 검사에서 전부 훑는다.** 새 길이 생기면 여기에 더한다.
 sys.path.insert(0, str(HERE.parent / "src"))
 import assets_gen as G  # noqa: E402
+try:
+    import get_sfx as GS
+    DOWNLOAD = set(GS.PROFILES)
+except Exception:                                   # noqa: BLE001
+    DOWNLOAD = set()
+    print("  (받아오는 표를 못 읽었습니다 — get_sfx.py 확인 필요)")
+
+WAYS = [
+    ("합성해서 만드는 길 (assets_gen.SFX_RECIPE)", set(G.SFX_RECIPE)),
+    ("방 소리 만드는 길 (assets_gen.AMB_RECIPE)", set(G.AMB_RECIPE)),
+    ("인터넷에서 받아오는 길 (get_sfx.PROFILES)", DOWNLOAD),
+    ("낱말 보고 까는 길 (add_sfx.BY_WORD)", {n for _w, n in A.BY_WORD}),
+    ("배경 보고 까는 길 (add_sfx.BY_BG)", {n for v in A.BY_BG.values() for n in v}),
+]
 for nm in sorted(A.BANNED_SFX | {"monitor"}):
-    eq(nm in G.SFX_RECIPE or nm in G.AMB_RECIPE, False, f"'{nm}' 만드는 법이 없다")
+    for why, names in WAYS:
+        eq(nm in names, False, f"'{nm}' — {why}")
 
 print("\n[5-3] 빼 달라고 한 소리는 파일이 멀쩡해도 안 쓴다")
 # footsteps 는 삑이 아니라 둔탁한 잡음이라 is_beep 로는 안 걸린다.

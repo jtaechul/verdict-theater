@@ -110,6 +110,32 @@ def main():
             print(f"     {r:.2f}  {name}")
 
     print()
+    print("⭐ 시트의 칸 선이 인물에 닿아 있지 않은가 (닿으면 어떻게 잘라도 안 된다)")
+    # ⭐ 2026-08-13 손님: "선은 마젠타로 긋고 배경을 초록으로 했으면 이런 일이
+    #    없었을 텐데 왜 자꾸 반복되는 거야?"
+    #    색은 처음부터 맞았다. 빠진 것은 **어디에 그으라는 말**이었고,
+    #    더 빠진 것은 **그게 지켜졌는지 재는 일**이었다. 여기서 잰다.
+    sys.path.insert(0, str(ROOT / "src"))
+    try:
+        import assets_gen as G
+        from PIL import Image as _I
+        sheets = sorted((ROOT / "assets" / "sheets").glob("*.png"))
+        if not sheets:
+            print("   (시트가 없습니다)")
+        for sp in sheets:
+            ratio, isbad = G.lines_touch_figures(_I.open(sp))
+            mark = "❌ 닿았다" if isbad else "✅"
+            print(f"   {mark} {sp.name:12s} 인물의 {ratio * 100:.1f}% 가 선에 닿아 있다")
+            if isbad:
+                FAIL.append(f"{sp.name}: 칸 선이 인물에 닿아 있다")
+        if any("칸 선이 인물에" in f for f in FAIL):
+            print("   → 이런 시트는 **어떻게 잘라도** 안 된다. 선을 지우면 머리가")
+            print("      같이 지워지고, 남기면 흰 막대가 된다 (같은 픽셀이라서).")
+            print("      [캐릭터 전부 다시 만들기] 로 시트를 새로 받아야 한다.")
+    except Exception as e:                              # noqa: BLE001
+        print(f"   (재지 못했습니다: {e})")
+
+    print()
     print("⭐ 만들 때도 묻는가 (올린 뒤에만 잡으면 이미 늦다)")
     cs = (ROOT / "src" / "char_sheet.py").read_text(encoding="utf-8")
     if "headless" not in cs:
