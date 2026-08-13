@@ -110,6 +110,9 @@ jobs:
           # 2026-08-12: [영상 만들기] 하나로 그림까지 다 되어야 한다.
           # '있는 것 반영 → 없는 것 만들기' 순서가 깨지면 여기서 걸린다.
           python3 tools/pipeline_test.py
+          # 2026-08-12: 그림 크기를 프롬프트로 정하려 했으나 모델이 무시한다.
+          # API(imageConfig)로 요청해야 한다 — 그것이 빠지면 또 1MP 로 돌아간다.
+          python3 tools/imagesize_check.py
 
       - name: 관리자 페이지가 안 깨지는가
         run: |

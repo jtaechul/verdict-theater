@@ -445,18 +445,68 @@ def pick_image_model(key, kind="char"):
     return cands[0] if cands else None
 
 
-def gen_image(key, model, prompt, out_path):
-    res = _post(f"{BASE}/models/{model}:generateContent?key={key}", {
-        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-        "generationConfig": {"responseModalities": ["IMAGE", "TEXT"]},
-    }, timeout=300)
-    parts = (res.get("candidates") or [{}])[0].get("content", {}).get("parts", [])
-    blob = next((p["inlineData"] for p in parts if "inlineData" in p), None)
-    if not blob:
-        raise RuntimeError("이미지가 오지 않았다")
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_bytes(base64.b64decode(blob["data"]))
-    return out_path
+# ⭐ 그림 크기와 가로세로 비율은 **프롬프트가 아니라 API 로 정한다** (2026-08-12).
+#
+#    손님 지적: "프롬프트에 해상도를 최대로 높여서 제작하도록 수정하면 되잖아?"
+#    → 프롬프트로는 **안 된다는 것이 실측으로 확인됐다.** docs/char-prompts.md 의
+#      블록 7개에는 `at least 2048 x 4096 pixels` 가 전부 적혀 있는데,
+#      나온 시트 7장은 예외 없이 1.05~1.08 MP 였다(비율만 다르고 픽셀 총량은 같다).
+#      모델은 프롬프트의 크기 지시를 무시하고 자기 기본값으로 낸다.
+#
+#    ⚠️ 그런데 **API 로는 된다.** src/char_sheet.py 가 이미 그렇게 부르고 있었다 —
+#       `imageConfig: {aspectRatio, imageSize}`. 이쪽 경로만 그걸 안 보내고 있었다.
+#       한 장에 18칸을 우겨넣는데 그 한 장이 1MP 라, 칸 하나가 228x224 밖에 안 되고
+#       그 안의 전신 인물은 **105x302** 였다. 그걸 화면에서 800px 로 늘려 쓰니
+#       흐리고 계단이 보이는 것이 당연했다. 장수를 늘려 돈을 더 쓸 일이 아니라,
+#       **같은 한 장을 크게 받으면 되는 일**이었다.
+#
+#    비율도 같이 정한다. 이걸 안 보내서 시트가 가로로도 세로로도 제멋대로 나왔고,
+#    그래서 자르기가 어긋나 머리 없는 인물이 나왔다. 3열 6행이면 1:2 다.
+IMAGE_SIZE = os.environ.get("GEMINI_IMAGE_SIZE", "2K")
+IMAGE_RATIO = os.environ.get("GEMINI_IMAGE_RATIO", "1:2")   # 3열 6행 = 세로로 길다
+
+
+def gen_image(key, model, prompt, out_path, size=None, ratio=None):
+    """그림 한 장을 받아 저장한다. **크기와 비율을 API 로 요청한다.**
+
+    ⚠️ 모델마다 받아 주는 것이 다르다. 요청이 거절당하면 조건을 한 단계씩
+       내려 가며 다시 부른다 — 끝내 안 되면 예전처럼 기본 크기로라도 받는다.
+       (한 번의 실패로 그림을 통째로 못 만드는 일이 없게)"""
+    base = {"contents": [{"role": "user", "parts": [{"text": prompt}]}]}
+    size = size or IMAGE_SIZE
+    ratio = ratio or IMAGE_RATIO
+    tries = [
+        {"responseModalities": ["IMAGE"],
+         "imageConfig": {"aspectRatio": ratio, "imageSize": size}},
+        {"responseModalities": ["IMAGE"], "imageConfig": {"imageSize": size}},
+        {"responseModalities": ["IMAGE"], "imageConfig": {"aspectRatio": ratio}},
+        {"responseModalities": ["IMAGE", "TEXT"]},          # 예전 방식 (마지막 보루)
+    ]
+    last = None
+    for i, cfg in enumerate(tries):
+        try:
+            res = _post(f"{BASE}/models/{model}:generateContent?key={key}",
+                        {**base, "generationConfig": cfg}, timeout=600)
+            parts = (res.get("candidates") or [{}])[0].get("content", {}).get("parts", [])
+            blob = next((p["inlineData"] for p in parts if "inlineData" in p), None)
+            if not blob:
+                last = RuntimeError("이미지가 오지 않았다")
+                continue
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_bytes(base64.b64decode(blob["data"]))
+            # 실제로 몇 픽셀로 왔는지 **매번 찍는다.** 요청이 먹혔는지 눈으로 안다.
+            try:
+                w, h = Image.open(out_path).size
+                want = "요청대로" if i == 0 else f"{i}단계 낮춰서"
+                print(f"      크기 {w}x{h} = {w * h / 1e6:.2f} MP ({want})")
+            except Exception:
+                pass
+            return out_path
+        except Exception as e:
+            last = e
+            if "429" in str(e) or "quota" in str(e).lower():
+                raise                                   # 할당량은 낮춰도 안 된다
+    raise last or RuntimeError("이미지를 받지 못했다")
 
 
 def bg_prompt(code):
