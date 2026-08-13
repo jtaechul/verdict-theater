@@ -3120,6 +3120,17 @@ def main():
     print(f"  💰 {SPEND.line()}")
     if reused > 0:
         print(f"     (만들어 둔 음성 {reused}컷을 그대로 다시 썼다 — 그만큼 값이 안 나갔다)")
+    # ⚠️ 2026-08-13 — 여기서 값을 **찍기만 하고 장부에 안 남기고 있었다.**
+    #    한 편에 500원씩 나가는데 이번 달 누적에 하나도 안 잡혔고, 그래서
+    #    월 한도(MONTH_KRW)가 목소리에는 통째로 안 걸렸다. 그림과 똑같은 구멍이다.
+    if SPEND.calls:
+        try:
+            import cost as _c
+            _c.record("voice", SPEND.won(), f"{SPEND.calls}컷 · {Path(out).name}")
+            print(f"     (장부에 적었습니다 — 이번 달 누적 {_c.month_total():,.0f}원 "
+                  f"/ 한도 {_c.MONTH_KRW:,.0f}원)")
+        except Exception as e:                          # noqa: BLE001
+            print(f"     (장부에 못 적었다: {e} — 제작은 계속한다)")
 
     # 소리가 자주 끊기면 그것은 "영상이 나왔다" 가 아니라 "음성이 실패했다" 이다.
     # 예전에는 여기서 0 을 돌려줘서, 소리 없는 영상이 성공으로 올라갈 수 있었다.
