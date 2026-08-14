@@ -46,7 +46,11 @@ LOGO_BAND = 700                    # 하단 이만큼은 비워 둔다 (제미�
 # ── 판정 기준 (숫자마다 근거를 옆에 적는다) ──────────────
 GREEN_LOOSE = 60                   # 이 안이면 '초록 계열' 로 본다
 GREEN_TIGHT = 20                   # 이 안이면 '순수 초록'
-MIN_GREEN_RATIO = 0.70             # 바탕이 이만큼은 초록이어야 한다
+# ⚠️ 2026-08-14 실측 — 70% 로 잡았다가 **멀쩡한 시트가 걸렸다**(58.3%).
+#    인물 12명을 크게 그리면 초록이 58% 까지 내려가는 것이 정상이다.
+#    이 검사의 뜻은 '바탕이 초록이 맞는가' 이지 '초록이 많은가' 가 아니다.
+#    합격 표본이 0장일 때 어림으로 잡은 숫자였다 — 실측으로 다시 잡는다.
+MIN_GREEN_RATIO = 0.50             # 바탕이 이만큼은 초록이어야 한다
 MAX_DIRT = 0.0005                  # 인물 밖 오염 0.05% 까지 봐준다
 
 SLIM_RATIO = 8.0                   # 긴변/짧은변 이 이상이면 '막대·선'
@@ -285,9 +289,17 @@ def check(path, kind="face", verbose=True):
           f"{HOLE_BAD:,}px 미만", big_hole < HOLE_BAD)
 
     # G10 ── 경계 혼색 폭. 자른 뒤 테두리가 남을지 미리 본다.
+    # ⚠️ 2026-08-14 — 처음에 `혼색픽셀 / sqrt(몸픽셀)` 로 어림했다가 21.5px 라는
+    #    말도 안 되는 값이 나왔다(눈으로 보면 경계는 또렷하다). 단위가 안 맞는
+    #    엉터리 식이었다. 제대로 잰다 — **혼색 넓이 ÷ 둘레 길이 = 띠의 폭**.
+    #    둘레는 몸 마스크를 1픽셀 부풀린 것과의 차이로 구한다.
+    from PIL import ImageFilter as _F
+    bimg = Image.fromarray((body * 255).astype("uint8"))
+    grown1 = np.asarray(bimg.filter(_F.MaxFilter(3))) > 128
+    perim = int((grown1 & ~body).sum())
     edge = int((loose & ~tight).sum())
-    per = edge / max(1, int(body.sum()) ** 0.5)
-    g.add("G10", "경계 혼색 폭(어림)", f"{per:.1f}px",
+    per = edge / max(1, perim)
+    g.add("G10", "경계 혼색 폭", f"{per:.1f}px",
           f"{EDGE_MIX_OK} 이하", per <= EDGE_MIX_OK, warn=per <= EDGE_MIX_WARN)
 
     if verbose:

@@ -69,6 +69,13 @@ jobs:
         with:
           python-version: '3.12'
 
+      # ⚠️ 2026-08-14 — 여기엔 아무것도 안 깔고 있었다. src/script.py 는 자기 갈래를
+      #    따라 들어가면 render.py(Pillow) 를 읽고, 돈 검사기는 numpy 를 읽는다.
+      #    **대본값(3,000원)이 나간 뒤에** 넘어질 수 있는 자리라 미리 깔아 둔다.
+      #    (tools/deps_test.py 가 이 줄과 코드가 맞는지 매번 대조한다)
+      - name: 도구 준비
+        run: python3 -m pip install --quiet Pillow numpy
+
       # 대본은 Claude 나 Gemini 중 하나만 있어도 된다. 둘 다 없으면 아무것도 못 한다.
       - name: 열쇠 확인
         env:

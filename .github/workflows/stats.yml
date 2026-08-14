@@ -30,6 +30,10 @@ jobs:
         with:
           python-version: '3.12'
 
+      # src/stats.py → upload.py → render.py 가 Pillow 를 읽는다 (2026-08-14 확인)
+      - name: 도구 준비
+        run: python3 -m pip install --quiet Pillow
+
       - name: 성과 수집
         env:
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
