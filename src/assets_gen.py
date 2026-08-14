@@ -122,6 +122,56 @@ CELL_ORDER = [
     "full_back", "full_sit_down", None,
 ]
 
+# ⭐ 2026-08-14 — 시트를 **두 장**으로 나눴다(한 장에 18칸을 우겨넣은 것이 붕괴의
+#    뿌리였다). 그래서 "한 장에 몇 명이 있고 이름이 무엇인가" 가 장마다 다르다.
+#    ⚠️ 순서는 **프롬프트에 적은 순서 그대로**여야 한다. 확인할 열쇠가 없을 때는
+#       이 순서대로 짝지어지기 때문이다. CELL_ORDER 를 잘라 쓰지 않고 따로 적는
+#       까닭도 그것이다 — 전신 다섯의 순서가 CELL_ORDER 와 다르다
+#       (프롬프트: 서기·걷기·뒷모습·앉기·주저앉기 / CELL_ORDER: …앉기·뒷모습…).
+#       둘이 어긋나지 않는지는 tools/limit_test.py 가 잰다.
+SHEET_POSES = {
+    "face": ["face_neutral", "face_sad", "face_anger",      # 첫째 무리
+             "face_shock", "face_cold", "face_cry",         # 둘째 무리
+             "bust_neutral", "bust_sad", "bust_anger",      # 셋째 무리
+             "bust_shock", "bust_cold", "bust_cry"],        # 넷째 무리
+    "full": ["full_stand", "full_walk", "full_back",        # 위 무리 셋
+             "full_sit", "full_sit_down"],                  # 아래 무리 둘
+}
+
+
+GRID_RUNS_MIN = 5          # 끝에서 끝까지 이어진 마젠타 줄이 이만큼이면 '옛 격자 시트'
+
+
+def sheet_kind(path):
+    """이 시트가 어떤 종류인가 — 'face' · 'full' · None(옛 18칸 격자 시트).
+
+    이름이 `_full` 로 끝나면 전신 시트다. 그 밖에는 **마젠타 격자선이 있는지**를
+    그림에서 직접 재서 가른다. 선이 있으면 옛 시트, 없으면 새 얼굴 시트다.
+
+    ⚠️ 처음엔 `sheet_grid()`(18칸이 딱 맞는지) 로 가르려 했는데 **틀렸다.**
+       실측: F70·M50B 는 선이 멀쩡히 있는 옛 시트인데 18칸이 딱 안 떨어져
+       sheet_grid 가 None 을 줬고, 그래서 '새 얼굴 시트' 로 오해했다.
+       그러면 17명짜리 시트에 12개 이름표를 붙여 이름이 통째로 밀린다.
+       물어야 할 것은 '18칸이 맞는가' 가 아니라 **'선이 있는가'** 다.
+
+    실측(2026-08-14) — 끝에서 끝까지 이어진 마젠타 줄의 개수:
+       옛 시트 6장: 24 · 25 · 26 · 29 · 33 · 35   (가장 적은 것이 24)
+       새 시트 1장: 0
+    사이가 넉넉히 벌어져 있으므로 5로 자른다. 인물이 입은 자주색 옷은 그림
+    끝에서 끝까지 이어지지 않으므로 여기 걸리지 않는다."""
+    p = Path(path)
+    if p.stem.endswith("_full"):
+        return "full"
+    try:
+        import numpy as np
+        a = np.asarray(Image.open(p).convert("RGB").reduce(4)).astype(int)
+        r, g, b = a[:, :, 0], a[:, :, 1], a[:, :, 2]
+        mag = (r > 100) & (b > 100) & (g < np.minimum(r, b) - 40)
+        runs = int((mag.mean(axis=0) > 0.80).sum() + (mag.mean(axis=1) > 0.80).sum())
+    except Exception:                        # noqa: BLE001
+        return None                          # 못 재면 옛 방식으로 다룬다(안전한 쪽)
+    return None if runs >= GRID_RUNS_MIN else "face"
+
 
 # ── 1. 시트 후처리 ───────────────────────────────────────
 def _lines(mask, thr=0.80, edge=0.03):
@@ -464,11 +514,14 @@ def white_outline(img, thickness=OUTLINE_RATIO, torn=TORN_EDGE, shadow=SHADOW):
     return trim_alpha(out, pad=2) or out
 
 
-def process_sheet(sheet_path, code, outdir=None, upscale=UPSCALE,
+def process_sheet(sheet_path, code, kind=None, outdir=None, upscale=UPSCALE,
                   outline=OUTLINE_RATIO, torn=TORN_EDGE, shadow=SHADOW):
-    """시트 한 장 → 컷아웃 17개.
+    """시트 한 장 → 컷아웃.
 
     시트 생성 → 슬라이싱 → 크로마키 제거 → **스티커 테두리 + 그림자** → 4배 업스케일 → 저장
+
+    kind — 'face'(얼굴6+상반신6=12개) · 'full'(전신5개) · None(옛 18칸 시트 17개).
+           두 시트 모두 **같은 폴더**(assets/char/CODE)에 쓰므로 합쳐서 17개가 된다.
     """
     outdir = Path(outdir or (ASSETS / "char" / code))
     outdir.mkdir(parents=True, exist_ok=True)
@@ -494,21 +547,37 @@ def process_sheet(sheet_path, code, outdir=None, upscale=UPSCALE,
     #
     #    ⚠️ 확인할 열쇠가 없으면 순서대로 짝지어야 하는데, 배치가 제멋대로면
     #       그건 또 어긋난다. 그때만 옛 격자 방식으로 물러선다.
+    # ⭐ 2026-08-14 — 시트를 **두 장**으로 나눈 뒤로 한 장에 든 사람 수가 달라졌다.
+    #    얼굴 시트 12명 · 전신 시트 5명. 그런데 여기는 여태 옛 17개짜리 이름표를
+    #    쓰고 있었다. 그대로 두면 12명짜리 시트에 17개를 짝지으려다 이름이 밀리고,
+    #    "17개 중 12개밖에 못 만들었다" 며 **격자 방식으로 물러선다.**
+    #    선이 없는 시트를 격자로 자르면 반드시 어긋난다(실측: 한 칸에 사람 둘).
+    #    → 시트 종류를 받아 그 종류의 이름표만 쓰고, 격자로는 절대 안 물러선다.
+    poses = SHEET_POSES.get(kind) or [c for c in CELL_ORDER if c]
     key = os.environ.get("GEMINI_API_KEY", "").strip()
     if key and not FORCE_GRID_SLICE:
         try:
             import char_sheet as CS          # 여기서 부른다 (서로 부르는 꼴을 피한다)
-            poses = [c for c in CELL_ORDER if c]
             cols, rows = CS.grid_for(len(poses))
-            CS.slice_sheet(str(sheet_path), code, poses, cols, rows,
-                           outdir=outdir, key=key)
-            made = sorted(outdir.glob("*.png"))
-            if len(made) >= len(poses) - 2:      # 두어 개 빠지는 건 감수한다
-                print(f"{code}: 컷아웃 {len(made)}개 → {outdir} (덩어리 방식)")
-                return made
-            print(f"  ⚠️ 덩어리 방식으로 {len(made)}개밖에 못 만들었다 — 격자 방식으로 다시 한다")
+            names, _missing = CS.slice_sheet(str(sheet_path), code, poses,
+                                             cols, rows, outdir=outdir, key=key)
+            # ⚠️ 예전엔 폴더의 png 개수를 셌다. 두 시트가 **같은 폴더**에 쓰므로
+            #    그러면 전신 시트가 0장을 만들어도 얼굴 12장 덕에 통과해 버린다.
+            #    이번에 실제로 만든 것만 센다.
+            if len(names) >= len(poses) - 2:     # 두어 개 빠지는 건 감수한다
+                print(f"{code}: 컷아웃 {len(names)}개 → {outdir} (덩어리 방식)")
+                return [outdir / f"{n}.png" for n in names]
+            print(f"  ⚠️ 덩어리 방식으로 {len(names)}/{len(poses)}개밖에 못 만들었다")
         except Exception as e:                  # noqa: BLE001
-            print(f"  ⚠️ 덩어리 방식 실패({type(e).__name__}: {e}) — 격자 방식으로 간다")
+            print(f"  ⚠️ 덩어리 방식 실패({type(e).__name__}: {e})")
+
+    if kind in SHEET_POSES:
+        # 선이 없는 시트다. 격자로 자를 것이 아예 없으므로 **여기서 멈춘다.**
+        # 억지로 자르면 한 칸에 사람이 둘씩 들어간 조각이 나온다 (실측).
+        raise RuntimeError(
+            f"{kind} 시트는 격자가 없어 덩어리 방식으로만 자를 수 있는데 실패했다. "
+            "시트를 다시 그려야 한다 (컷아웃은 만들지 않았다).")
+    print("  → 옛 격자 시트이므로 격자 방식으로 다시 한다")
 
     img = Image.open(sheet_path).convert("RGBA")
     cells = slice_sheet(img)
@@ -1039,7 +1108,8 @@ def cmd_images(args):
                     print(f"     원본은 assets/sheets/bad/{path.name} 에 두었다.")
                     made -= 1
                     continue
-                process_sheet(path, code.replace("_full", ""))
+                # 두 시트가 **같은 폴더**(assets/char/M70)에 쓴다 → 합쳐 17개.
+                process_sheet(path, code.replace("_full", ""), kind=sk)
         except QuotaBlocked as e:
             # ⚠️ 2026-08-13 — 여기서 **바로 멈춘다.** 하루 한도가 0 이면 남은
             #    6장을 더 두드려 봐야 똑같이 거절당한다(4단계씩 28번 헛수고).
@@ -1200,10 +1270,17 @@ def cmd_sync(args):
     import hashlib
     done, skip, fail, resliced = 0, 0, [], []
     for sp in sheets:
-        name = sp.stem                       # F50A 또는 F50A-2
-        outdir = ASSETS / "char" / name
+        name = sp.stem                       # F50A 또는 F50A-2 또는 M70_full
+        # ⭐ 2026-08-14 — 시트가 두 장으로 나뉜 뒤로 **파일 이름 = 인물 코드가 아니다.**
+        #    M70_full.png 는 M70 의 전신 시트이고, 컷아웃은 assets/char/M70 에
+        #    얼굴 시트 것과 **함께** 들어가야 한다(합쳐 17개). 그대로 뒀으면
+        #    assets/char/M70_full 이라는 엉뚱한 폴더가 생기고, 12개짜리 얼굴
+        #    시트를 17개 기준으로 재서 매번 "모자란다" 며 다시 잘랐을 것이다.
+        kind = sheet_kind(sp)
+        code = name[:-5] if kind == "full" else name
+        outdir = ASSETS / "char" / code
         have = sorted(outdir.glob("*.png"))
-        want = len([c for c in CELL_ORDER if c])
+        want = len(SHEET_POSES.get(kind) or [c for c in CELL_ORDER if c])
         # ⚠️ 2026-08-12 — 여기가 **파일 시각**으로 판단하고 있었다. 그래서 사고가 났다.
         #    깃허브는 실행 때마다 저장소를 새로 내려받아 모든 파일 시각이 그때가 되고,
         #    같은 이름으로 덮어써도 폴더 시각은 안 바뀐다. 결과: 매 실행 "다시 자름" —
@@ -1212,17 +1289,30 @@ def cmd_sync(args):
         #    시각은 CI 에서 거짓말을 한다. **시트 내용의 지문**으로 판단한다.
         #    지문은 컷아웃 폴더에 .from_sheet 로 남기고 저장소에 같이 커밋된다.
         sheet_id = hashlib.sha256(sp.read_bytes()).hexdigest()[:16]
-        marker = outdir / ".from_sheet"
+        # 두 시트가 한 폴더를 같이 쓰므로 지문도 시트마다 따로 남긴다.
+        # (하나로 두면 전신 시트가 얼굴 시트의 지문을 덮어써서 서로 지운다)
+        marker = outdir / (".from_sheet" if kind is None else f".from_sheet_{kind}")
         same = marker.exists() and marker.read_text(encoding="utf-8").strip() == sheet_id
-        if len(have) >= want and same and not args.force:
+        # 얼굴 시트가 만드는 12개는 이 폴더 17개 중 일부다 —
+        # 그 시트가 만들 몫이 다 있는지만 본다.
+        mine = ([p for p in have if p.stem in SHEET_POSES[kind]] if kind else have)
+        if len(mine) >= want and same and not args.force:
             skip += 1
             continue
         # ⭐ 자르기 전에 **자를 수 있는 시트인지** 본다 (2026-08-12).
         #    못 자를 시트를 억지로 자르면 머리 없는 인물이 나온다.
         #    그런 시트는 옆으로 치워 둔다 — 그러면 다음 '없는 인물 만들기' 가
         #    시트가 없다고 보고 **자동으로 다시 그린다**(한 장 약 57원).
+        # ⚠️ 새 시트(선 없음)는 sheet_ok 로 재면 안 된다 — 그건 **격자를 찾는**
+        #    자다. 선이 없는 것이 정상인 시트를 "격자가 없다" 고 내다 버린다.
+        #    새 시트는 sheet_gate 가 잰다(그림 만든 직후 이미 한 번 쟀다).
         try:
-            good, why = sheet_ok(Image.open(sp).convert("RGBA"))
+            if kind in SHEET_POSES:
+                import sheet_gate
+                rc = sheet_gate.check(sp, kind, verbose=False)
+                good, why = rc == 0, "시트 검사(sheet_gate)에서 걸렸다"
+            else:
+                good, why = sheet_ok(Image.open(sp).convert("RGBA"))
         except Exception as e:
             good, why = False, f"열지 못했다: {e}"
         if not good:
@@ -1234,12 +1324,12 @@ def cmd_sync(args):
             fail.append(name)
             continue
         try:
-            made = process_sheet(sp, name)
-            print(f"  {name}: 컷아웃 {len(made)}개 만듦 "
-                  f"({'새 시트' if not have else '다시 자름'})")
+            made = process_sheet(sp, code, kind=kind)
+            print(f"  {name}: 컷아웃 {len(made)}개 만듦 → char/{code} "
+                  f"({'새 시트' if not mine else '다시 자름'})")
             marker.write_text(sheet_id + "\n", encoding="utf-8")
             done += 1
-            resliced.append(name)
+            resliced.append(code)
         except Exception as e:
             print(f"  {name}: 자르기 실패 — {type(e).__name__}: {e}")
             fail.append(name)
@@ -1344,7 +1434,8 @@ def main():
 
     args = ap.parse_args()
     if args.cmd == "sheet":
-        process_sheet(args.path, args.code, upscale=args.upscale,
+        process_sheet(args.path, args.code, kind=sheet_kind(args.path),
+                      upscale=args.upscale,
                       outline=args.outline, torn=not args.smooth,
                       shadow=not args.no_shadow)
         return 0

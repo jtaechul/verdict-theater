@@ -93,6 +93,86 @@ else:
           f"(배우 {n}명 × {len(poses)} = {n * len(poses)}장)")
 
 print()
+print("⑤ 시트 두 장이 **합쳐서** 필요한 포즈를 다 만드는가")
+# ⚠️ 2026-08-14 — 시트를 얼굴12 + 전신5 두 장으로 나눴는데, 자르는 쪽은 여태
+#    옛 17개짜리 이름표 하나만 쓰고 있었다. 그러면 12명짜리 시트에 17개를
+#    짝지으려다 이름이 밀리고, "모자란다" 며 **격자 방식으로 물러선다** —
+#    선이 없는 시트를 격자로 자르면 한 칸에 사람이 둘씩 들어간다(실측).
+#    그림을 265원 주고 뽑은 **다음에야** 드러날 일이라 여기서 미리 막는다.
+need = [c for c in G.CELL_ORDER if c]
+got = G.SHEET_POSES["face"] + G.SHEET_POSES["full"]
+if sorted(got) != sorted(need):
+    miss = sorted(set(need) - set(got))
+    extra = sorted(set(got) - set(need))
+    bad("두 시트를 합쳐도 포즈가 안 맞는다"
+        + (f" · 빠진 것 {miss}" if miss else "")
+        + (f" · 없는 것 {extra}" if extra else ""))
+elif len(got) != len(set(got)):
+    bad("두 시트에 같은 포즈가 겹쳐 들어 있다 — 한쪽이 다른 쪽을 덮어쓴다")
+else:
+    print(f"   ✅ 얼굴 {len(G.SHEET_POSES['face'])} + 전신 "
+          f"{len(G.SHEET_POSES['full'])} = {len(got)}개, 필요한 것과 똑같다")
+
+# 검사기가 세는 사람 수와 이름표 개수가 같아야 한다
+import sheet_gate as SG                                    # noqa: E402
+for k in ("face", "full"):
+    if SG.KINDS[k]["n"] != len(G.SHEET_POSES[k]):
+        bad(f"{k}: 검사기는 {SG.KINDS[k]['n']}명을 세는데 이름표는 "
+            f"{len(G.SHEET_POSES[k])}개다")
+    else:
+        print(f"   ✅ {k}: 검사기가 세는 {SG.KINDS[k]['n']}명과 이름표 개수가 같다")
+
+# 이름표 차례가 **프롬프트에 적은 차례**와 같아야 한다
+# (확인할 열쇠가 없으면 이 차례대로 짝지어지므로, 어긋나면 이름이 통째로 밀린다)
+ORDER_WORDS = {
+    "face": ["무표정", "슬픔", "분노", "놀람", "냉담", "울음"],
+    "full": ["똑바로 서기", "걷기", "뒷모습", "의자에 앉기", "바닥에 주저앉기"],
+}
+for k, words in ORDER_WORDS.items():
+    p = G.char_sheet_prompt("M70", k)
+    at = [p.find(w) for w in words]
+    if -1 in at:
+        bad(f"{k} 프롬프트에서 '{words[at.index(-1)]}' 를 못 찾았다")
+    elif at != sorted(at):
+        bad(f"{k} 프롬프트의 차례가 이름표 차례와 다르다 — 열쇠가 없으면 이름이 밀린다")
+    else:
+        print(f"   ✅ {k}: 프롬프트에 적힌 차례와 이름표 차례가 같다")
+
+print()
+print("⑥ 새 시트를 **격자로 자르려 들지 않는가** (선이 없는데 격자로 자르면 어긋난다)")
+ag = (ROOT / "src" / "assets_gen.py").read_text(encoding="utf-8")
+fn = ag[ag.index("def process_sheet("):ag.index("\ndef ", ag.index("def process_sheet(") + 10)]
+if "kind in SHEET_POSES" not in fn or "raise RuntimeError" not in fn:
+    bad("덩어리 방식이 실패하면 새 시트도 격자로 자르러 간다 — 반드시 어긋난다")
+else:
+    print("   ✅ 새 시트는 덩어리 방식이 실패하면 **멈춘다** (컷아웃을 안 만든다)")
+if "glob(\"*.png\")" in fn.split("if kind in SHEET_POSES")[0]:
+    bad("만든 개수를 폴더의 png 수로 센다 — 두 시트가 한 폴더를 써서 서로 속인다")
+else:
+    print("   ✅ 이번에 실제로 만든 것만 센다 (폴더 개수로 세지 않는다)")
+
+print()
+print("⑦ 저장소에 있는 시트를 **옛것/새것으로 바르게 가리는가**")
+# ⚠️ 2026-08-14 — 처음엔 '18칸이 딱 맞는가' 로 갈랐는데, 선이 멀쩡히 있는 옛 시트
+#    F70·M50B 가 18칸이 안 떨어져 **새 시트로 오해**됐다. 그러면 17명짜리 시트에
+#    12개 이름표가 붙어 이름이 통째로 밀린다. 이제는 '선이 있는가' 를 잰다.
+from PIL import Image                                      # noqa: E402
+sheets = sorted((ROOT / "assets" / "sheets").glob("*.png"))
+if not sheets:
+    print("   (시트가 없어 건너뜀)")
+for sp in sheets:
+    k = G.sheet_kind(sp)
+    try:
+        grid = G.sheet_grid(Image.open(sp).convert("RGBA"))
+    except Exception:                                       # noqa: BLE001
+        grid = None
+    if k == "face" and grid:
+        bad(f"{sp.name}: 격자가 잡히는데 '새 시트' 로 봤다 — 이름표가 밀린다")
+    else:
+        n = len(G.SHEET_POSES.get(k) or [c for c in G.CELL_ORDER if c])
+        print(f"   ✅ {sp.name:14s} → {k or '옛 격자 시트'} (포즈 {n}개)")
+
+print()
 print("─" * 52)
 print("✅ 생성 상한: 정상" if ok else "❌ 생성 상한: 문제 있음")
 sys.exit(0 if ok else 1)
