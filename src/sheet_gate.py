@@ -113,11 +113,11 @@ FILL_LO = 0.68                     # 칸을 최소 이만큼은 채워야 한다
 #    실제로 멀쩡한 시트(폭 888 · 키 1264)를 두 번 떨어뜨렸다.
 
 
-def _spec(n, bands, name, face_rows=0):
+def _spec(n, bands, name, face_rows=0, fill_lo=FILL_LO):
     rows, cols = len(bands), max(bands)
     tw, th = W_EXP / cols, H_EXP / rows
     return {"n": n, "bands": bands, "name": name, "face_rows": face_rows,
-            "h_range": (int(th * FILL_LO), int(th)),   # 위 한계 = 제 칸 높이
+            "h_range": (int(th * fill_lo), int(th)),   # 위 한계 = 제 칸 높이
             "w_max": int(tw),                          # 위 한계 = 제 칸 폭
             "tile": (int(tw), int(th))}
 
@@ -125,9 +125,19 @@ def _spec(n, bands, name, face_rows=0):
 # 시트 종류별 기대치 (face_rows = 위에서 몇 줄이 '얼굴' 인가 — 얼굴은 잘리면 안 된다)
 KINDS = {
     # 얼굴 6 + 상반신 6 = 12명, 가로 3명씩 4무리 (위 2줄이 얼굴)
+    #   열둘이 **다 같은 크기**로 그려지므로 아래 한계를 칸의 68% 로 바짝 잡아도 된다.
     "face": _spec(12, [3, 3, 3, 3], "얼굴+상반신 시트", face_rows=2),
     # 전신 5명, 위 3 + 아래 2 (얼굴 줄 없음 — 전신은 밑변에 닿아도 발만 평평해진다)
-    "full": _spec(5, [3, 2], "전신 시트", face_rows=0),
+    #
+    # ⚠️⚠️ 아래 한계를 얼굴 시트보다 **훨씬 낮게** 잡는다. 다섯 자세 가운데
+    #      **의자에 앉기**와 **바닥에 주저앉기**는 프롬프트가 일부러
+    #      "자세 때문에 자연히 더 낮아진다" 고 시킨 것이라, 선 사람의 절반쯤 된다.
+    #      얼굴 시트와 같은 68%(1871px)로 재면 **똑바로 그려진 시트가 앉은 자세
+    #      때문에 떨어진다.** 그 한 줄 때문에 265원이 날아갈 뻔했다.
+    #      ⭐ 아직 전신 시트 표본이 0장이므로 이 값은 **예측**이다. 첫 장을 받으면
+    #         실측으로 다시 잡는다. 다만 '앉으면 낮아진다' 는 우리가 시킨 것이라
+    #         틀릴 수 없고, 조각·부스러기는 35%(≈963px)로도 충분히 걸러진다.
+    "full": _spec(5, [3, 2], "전신 시트", face_rows=0, fill_lo=0.35),
 }
 
 
