@@ -46,16 +46,22 @@ def bad(msg):
 CHAR_MUST = ("애니", "극화체", "그림")            # 인물 프롬프트에 있어야 하는 말
 CHAR_BAN = ("실사 사진이다", "사진처럼")           # 인물 프롬프트에 있으면 안 되는 말
 BG_MUST = ("실사", "사진")
-MOE_BAN = ("눈을 크게", "어려 보이게")             # 이건 **금지 문장**으로 있어야 한다
+# ⚠️ 2026-08-14 — 프롬프트를 다시 쓰면서 **같은 뜻을 다른 말로** 적었다.
+#    옛말: "눈을 크게 그리거나 어려 보이게 만들지 않는다"
+#    새말: "눈은 얼굴 가로폭의 5분의 1 이하 크기로, 실제 사람 눈 비율대로 그린다"
+#    새말이 더 낫다(숫자라서 모델이 따르기 쉽다). 검사는 **뜻**을 보아야지
+#    문구를 외워서는 안 된다 — 문구만 보면 좋아진 프롬프트를 불합격시킨다.
+#    그래서 '이 중 하나라도 있으면 통과' 로 바꾼다.
+MOE_BAN = ("눈을 크게", "어려 보이게", "실제 사람 눈 비율", "5분의 1 이하")
 
 print("① 인물 프롬프트가 애니를 시키는가 (7명 전부)")
 for code in sorted(G.CHAR_LOOK):
-    p = G.char_sheet_prompt(code)
+    p = G.char_sheet_prompt(code) + G.char_sheet_prompt(code, 'full')
     if not any(w in p for w in CHAR_MUST):
         bad(f"{code}: 화풍을 안 적었다 — 안 적으면 AI 가 알아서 정한다(이번 사고의 원인)")
     elif any(w in p for w in CHAR_BAN):
         bad(f"{code}: 인물에 실사를 시키고 있다 — 손님 결정은 '인물은 애니' 다")
-    elif not all(w in p for w in MOE_BAN):
+    elif not any(w in p for w in MOE_BAN):
         # 눈 큰 소녀풍이 나오면 흐린 법정 사진 위에서 반드시 겉돈다
         bad(f"{code}: 모에풍을 막는 문장이 없다 — 배경 사진 위에서 겉돈다")
     else:
@@ -66,8 +72,10 @@ print("② 인물 프롬프트가 최고 화질을 요구하는가")
 # 2026-08-12 실측: 제가 손님께 드린 프롬프트에는 해상도·디테일 지시가
 # **하나도 없었다.** 배경 쪽에는 'High detail … at least 1920x1080' 이 있었는데.
 for code in sorted(G.CHAR_LOOK):
-    p = G.char_sheet_prompt(code)
-    if "최고 화질" not in p and "고화질" not in p:
+    p = G.char_sheet_prompt(code) + G.char_sheet_prompt(code, 'full')
+    # 옛말 "최고 화질" / 새말 "머리카락 한 올까지 또렷하게" — 뜻이 같다
+    if not any(w in p for w in ("최고 화질", "고화질", "또렷하게 보이고",
+                                "초점이 맞아", "한 올까지")):
         bad(f"{code}: 화질 지시가 없다")
         break
 else:
@@ -78,7 +86,7 @@ print("③ 인물마다 옷 색이 다른가 (덮어쓰기가 되살아나지 �
 # 예전에 시트 프롬프트가 "의상은 남색 상의 + 검정 하의" 로 **전원을 덮어썼다.**
 # 그래서 아버지와 차남이 같은 사람처럼 보였다.
 for code, look in sorted(G.CHAR_LOOK.items()):
-    p = G.char_sheet_prompt(code)
+    p = G.char_sheet_prompt(code) + G.char_sheet_prompt(code, 'full')
     if "인물 의상은" in p or "의상은 남색" in p:
         bad(f"{code}: 옷 색을 덮어쓰는 문장이 돌아왔다 — CHAR_LOOK 이 무의미해진다")
         break
