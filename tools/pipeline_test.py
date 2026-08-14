@@ -187,12 +187,25 @@ try:
     sheets = sorted((ROOT / "assets" / "sheets").glob("*.png"))
     if not sheets:
         print("   · 시트가 없어 건너뛴다")
+    # ⚠️ 2026-08-14 — 여기서 모든 시트를 **격자 기준**(sheet_ok)으로 쟀다.
+    #    새 시트는 격자선이 아예 없는 것이 정상이므로, 격자로 재면 멀쩡한 시트가
+    #    "6칸에 사람이 둘씩" 으로 나온다. 실제로 그렇게 나왔다.
+    #    시트마다 종류를 보고 **그 종류에 맞는 자**로 잰다.
+    import sheet_gate as SG
     for sp in sheets:
-        good, why = G.sheet_ok(Image.open(sp).convert("RGBA"))
-        if good:
-            print(f"   ✅ {sp.stem}: {why}")
-        else:
-            bad(f"{sp.stem}: {why} — sheets/bad/ 로 치워졌어야 한다")
+        kind = G.sheet_kind(sp)
+        if kind is None:                       # 옛 격자 시트 → 격자로 잰다
+            good, why = G.sheet_ok(Image.open(sp).convert("RGBA"))
+            if good:
+                print(f"   ✅ {sp.stem}: {why}")
+            else:
+                bad(f"{sp.stem}: {why} — sheets/bad/ 로 치워졌어야 한다")
+        else:                                   # 새 시트 → 시트 검사기로 잰다
+            if SG.check(sp, kind, verbose=False) == 0:
+                print(f"   ✅ {sp.stem}: {kind} 시트 · 검사 통과")
+            else:
+                bad(f"{sp.stem}: {kind} 시트가 검사에 걸린다 "
+                    "— sheets/bad/ 로 치워졌어야 한다")
 except ImportError:
     print("   · Pillow 가 없어 건너뛴다")
 
