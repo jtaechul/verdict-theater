@@ -103,6 +103,85 @@ else:
     print("   ✅ 얼굴6+상반신6 / 전신5 두 장으로 나눈다")
 
 print()
+print("⑦ 프롬프트에 적은 숫자대로 그리면 **검사를 통과하는가** (산수로 미리 본다)")
+# ⚠️ 2026-08-14 — 265원짜리 시범 시트가 넷에서 걸렸다(간격 88 · 가장자리 64 ·
+#    밴드 92px 침범 · 폭 840). 뿌리는 프롬프트 숫자와 검사 기준이 **서로 안 맞는
+#    것**이었는데, 그걸 아무도 안 재고 있었다. 그림을 뽑아 봐야만 알 수 있었으니
+#    확인 한 번에 265원이 든 셈이다.
+#
+#    이제는 종이 위에서 먼저 푼다. 프롬프트에 적힌 숫자를 그대로 읽어
+#    **두 끝**을 다 넣어 본다:
+#      ⓐ 모델이 시킨 대로 그렸을 때 (숫자 그대로)
+#      ⓑ 모델이 크게 그렸을 때 (실측 1.23배 — 시범 시트에서 잰 값)
+#    두 경우 모두 검사(G4 간격 · G5 가장자리 · G6 밴드 · G8 크기)를 지나야 한다.
+import re                                              # noqa: E402
+import sheet_gate as SG                                # noqa: E402
+
+OVER = 1.23        # 실측: 세로 950 요구 → 1168 · 폭 720 요구 → 840
+EDGE_SHARE = 0.12  # 실측: 남는 가로 폭 552 중 가장자리로 간 것 64 = 12%
+
+
+def num(text, pat, label):
+    m = re.search(pat, text)
+    if not m:
+        bad(f"프롬프트에서 '{label}' 숫자를 못 찾았다 — 산수를 할 수 없다")
+        return None
+    return int(m.group(1))
+
+
+for kind in ("face", "full"):
+    p = G.char_sheet_prompt("M70", kind)
+    K = SG.KINDS[kind]
+    rows, cols = len(K["bands"]), max(K["bands"])
+
+    band = num(p, r"맨 아래쪽 (\d+)픽셀", "하단 밴드")
+    edge_w = num(p, r"끝에서 (\d+)픽셀 이상", "가장자리 여백")
+    hs = [int(x) for x in re.findall(r"세로 \*\*(\d+)픽셀\*\*", p)]
+    ws = [int(x) for x in re.findall(r"폭은 (\d+)픽셀을 넘지 않는다", p)]
+    if band is None or edge_w is None or not hs or not ws:
+        continue
+
+    h_ask, w_ask = max(hs), max(ws)
+    for name, f in (("시킨 대로", 1.0), (f"{OVER}배 크게", OVER)):
+        h, w = h_ask * f, w_ask * f
+
+        # 세로 — 위 여백과 하단 밴드를 뺀 자리를 줄들이 나눠 쓴다
+        room_v = SG.H_EXP - edge_w - band
+        gap_v = (room_v - rows * h) / max(1, rows - 1)
+        # 가로 — 남는 폭을 가장자리 둘과 사이 간격들이 나눠 갖는다.
+        #        모델은 가장자리를 가장 야박하게 준다(실측 12%씩).
+        slack_h = SG.W_EXP - cols * w
+        edge_got = slack_h * EDGE_SHARE
+        gap_h = (slack_h - 2 * edge_got) / max(1, cols - 1)
+
+        lo, hi = K["h_range"]
+        probs = []
+        if gap_v < SG.MIN_GAP or gap_h < SG.MIN_GAP:
+            probs.append(f"G4 간격 세로{gap_v:.0f}·가로{gap_h:.0f}(≥{SG.MIN_GAP})")
+        if edge_got < SG.MIN_EDGE:
+            probs.append(f"G5 가장자리 {edge_got:.0f}(≥{SG.MIN_EDGE})")
+        if gap_v < 0:
+            probs.append(f"G6 하단 밴드 침범 — 줄이 안 들어간다")
+        if not (lo <= h <= hi):
+            probs.append(f"G8 키 {h:.0f}(기준 {lo}~{hi})")
+        if w > K["w_max"]:
+            probs.append(f"G8 폭 {w:.0f}(기준 {K['w_max']} 이하)")
+
+        if probs:
+            bad(f"{kind} · {name} 그리면 걸린다: " + " · ".join(probs))
+        else:
+            print(f"   ✅ {kind} · {name}: 간격 세로{gap_v:.0f}·가로{gap_h:.0f} · "
+                  f"가장자리{edge_got:.0f} · 키{h:.0f} · 폭{w:.0f}")
+
+    # 요구하는 밴드가 재는 밴드보다 커야 넘쳐도 버틸 여유가 생긴다
+    if band <= SG.LOGO_BAND:
+        bad(f"{kind}: 하단 밴드를 {band} 요구하고 {SG.LOGO_BAND} 로 잰다 — "
+            "여유가 0이라 조금만 넘쳐도 걸린다")
+    else:
+        print(f"   ✅ {kind}: 밴드를 {band} 요구하고 {SG.LOGO_BAND} 로 잰다 "
+              f"— {band - SG.LOGO_BAND}px 이 버텨 준다")
+
+print()
 print("─" * 52)
 print("✅ 시트 검사 장치: 정상" if ok else "❌ 시트 검사 장치: 문제 있음")
 sys.exit(0 if ok else 1)
