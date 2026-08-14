@@ -312,7 +312,19 @@ def gen_design(llm, base, case_txt):
                     effort="high")
 
 
-def gen_act(llm, base, design, act):
+def gen_act(llm, base, design, act, written=""):
+    """written — 이미 쓴 막의 첫 대사들. 훅을 **맨 나중에** 쓸 때 넘긴다.
+
+    ⚠️ 2026-08-14 운영자: "오프닝 훅 부분은 전혀 연결이 되지 않아. 앞뒤 대사 간의
+       개연성도 없고 너무 생뚱맞은 내용이 들어가 있다."
+       뿌리는 **차례**였다. 막을 하나씩 따로 쓰는데 훅이 맨 처음이라,
+       훅을 쓸 때 1막은 아직 존재하지도 않았다. 이어질 수가 없다.
+       실제로 EP002 는 훅 마지막 줄과 1막 첫 줄이 **똑같은 문장**이었다 —
+         훅 H05  "그 사람은 오래전에 집을 나가 있었습니다."
+         1막 A1-01 "그 사람은 이미 오래전에 집을 나가 있었습니다."
+       게다가 훅에서 말하는 사람이 주인공이 아니라 **동거인**이었다.
+       보는 사람은 주인공이 누구인지도 모른 채 22초를 보낸 셈이다.
+    """
     aid, title, start, end, n, bgm = act
     prefix = "H" if aid == "hook" else f"A{aid[-1]}"
     beats = next((a.get("beats", []) for a in design["acts"] if a["id"] == aid), [])
@@ -326,6 +338,11 @@ def gen_act(llm, base, design, act):
             .replace("{{BEATS}}", " / ".join(beats) or "(설계에 없음)")
             .replace("{{EXTRA}}", ACT_EXTRA.get(aid, ""))
             .replace("{{PREFIX}}", prefix))
+    if written:
+        task += ("\n\n## 이미 쓴 본편의 첫머리 (이 막이 여기로 이어져야 한다)\n"
+                 + written +
+                 "\n\n⚠️ 위 문장을 **그대로 되풀이하지 마라.** 같은 말을 두 번 하면\n"
+                 "   보는 사람은 되감긴 줄 안다. 위로 자연스럽게 넘어가되 **다른 말**로 쓴다.")
     # ⭐ 생각 깊이 (손님 선택 · 2026-08-11 "생각 깊이만 낮추기")
     #
     #    모델은 답을 내기 전에 속으로 '생각' 을 하고, 그 생각도 글값과 똑같이
@@ -583,7 +600,19 @@ def _make_hook_only(ep, prefer):
         out = llm.json(prompts.fill(
             body,
             CASE=case,
-            HOOK=json.dumps(hook["cuts"], ensure_ascii=False, indent=1),
+            HOOK=json.dumps(
+                [{"id": c.get("id"), "sec": c.get("sec"), "bg": c.get("bg"),
+                  "speaker": c.get("speaker"), "text": c.get("text"),
+                  "화면에_있는_사람": [
+                      {"code": x.get("code"),
+                       "이름": next((h.get("name") for h in (doc.get("characters") or [])
+                                   if h.get("code") == x.get("code")), ""),
+                       "관계": next((h.get("role") for h in (doc.get("characters") or [])
+                                   if h.get("code") == x.get("code")), ""),
+                       "목소리": next((h.get("voice") for h in (doc.get("characters") or [])
+                                    if h.get("code") == x.get("code")), "")}
+                      for x in (c.get("chars") or [])]}
+                 for c in hook["cuts"]], ensure_ascii=False, indent=1),
             FOLLOW="\n".join(follow)),
             tier="pro", max_output_tokens=4096, temperature=0.7,
             label="도입 훅 다시", effort="high")
@@ -591,18 +620,34 @@ def _make_hook_only(ep, prefer):
         print(f"실패: {e}")
         return 1
 
-    new = {c.get("id"): (c.get("text") or "").strip()
-           for c in (out.get("cuts") or []) if c.get("id")}
+    new = {c.get("id"): c for c in (out.get("cuts") or []) if c.get("id")}
     if not new:
         print("새 대사를 받지 못했다. 대본은 그대로 둔다.")
         return 1
 
+    # ⭐ 말하는 이도 바꿀 수 있게 한다. 글자만 바꿔서는 못 고치는 것이 있기 때문이다 —
+    #    EP002 훅은 **주인공(아내)이 한 마디도 안 하고** 동거인과 시동생만 말했다.
+    #    누구 이야기인지 모른 채 22초가 지나간다. 대사를 아무리 고쳐도 그건 안 고쳐진다.
+    #    ⚠️ 다만 **그 컷 화면에 이미 서 있는 사람**으로만 바꾼다. 화면에 없는 사람이
+    #       말하면 그림과 소리가 따로 논다.
+    voice_of = {c.get("code"): c.get("voice") for c in (doc.get("characters") or [])}
     changed = 0
     for c in hook["cuts"]:
-        t = new.get(c.get("id"))
+        got = new.get(c.get("id")) or {}
+        t = (got.get("text") or "").strip()
         if t and t != c.get("text"):
             c["text"] = t
             changed += 1
+        sp = (got.get("speaker") or "").strip()
+        if sp and sp != c.get("speaker"):
+            here = {voice_of.get(x.get("code")) for x in (c.get("chars") or [])}
+            if sp == "narrator" or sp in here:
+                print(f"   [{c.get('id')}] 말하는 이 {c.get('speaker')} → {sp}")
+                c["speaker"] = sp
+                changed += 1
+            else:
+                print(f"   [{c.get('id')}] 말하는 이를 {sp} 로 바꾸려 했으나 "
+                      f"그 사람은 이 컷 화면에 없다 — 그대로 둔다")
     if not changed:
         print("바뀐 대사가 없다.")
         return 1
@@ -618,7 +663,20 @@ def _make_hook_only(ep, prefer):
         print(f"  [{w}] {m}")
     print("\n⭐ 음성은 따로 만들 것이 없다. [3. 영상 만들기] 를 누르면")
     print("   **글자가 바뀐 다섯 컷만** 다시 녹음되고 나머지는 그대로 쓰인다.")
-    return 0 if not r.errors else 1
+    # ⚠️ 검증에 걸려도 **빨간 X 로 끝내지 않는다.** 새 훅은 이미 저장됐고,
+    #    다섯 컷짜리 자잘한 흠은 한 번 더 누르면(약 150원) 고쳐진다.
+    #    여기서 실패로 끝내면 손님은 "또 실패했다" 만 보게 되는데, 실제로는
+    #    대본이 좋아진 채로 저장돼 있다. 대신 아래처럼 **크게 알린다.**
+    #    (진짜로 못 쓸 대본이면 [3. 영상 만들기] 가 같은 검증으로 다시 막는다)
+    if r.errors:
+        print()
+        print("=" * 60)
+        print(f"⚠️ 새 훅은 저장했지만 기계 검증에서 {len(r.errors)}가지가 걸렸습니다.")
+        for w, m in r.errors[:5]:
+            print(f"   · [{w}] {m}")
+        print("   → [도입 훅만 다시 쓰기] 를 한 번 더 누르면 다시 씁니다(약 150원).")
+        print("=" * 60)
+    return 0
 
 
 def _shorts_retry(doc, prefer):
@@ -843,11 +901,25 @@ def main():
             # 2단계 막별 생성
             print("\n[2단계] 막별 컷 생성")
             cuts = {}
-            for act in ACTS:
+            # ⭐ 2026-08-14 — **훅을 맨 나중에 쓴다.**
+            #    예전에는 ACTS 차례대로 훅부터 썼는데, 그때 1막은 아직 없었다.
+            #    있지도 않은 뒤 이야기에 이어지게 쓸 방법이 없으니 훅이 겉돌았다
+            #    (운영자: "전혀 연결이 되지 않아. 너무 생뚱맞은 내용이 들어가 있다").
+            #    이제 본편을 먼저 다 쓰고, 그 첫머리를 손에 쥔 채 훅을 쓴다.
+            body_first = [a for a in ACTS if a[0] != "hook"]
+            hook_act = next(a for a in ACTS if a[0] == "hook")
+            for act in body_first:
                 c = gen_act(llm, base, design, act)
                 cuts[act[0]] = c
                 print(f"  {act[0]:5s} {len(c):3d}컷 {sum(x.get('sec', 0) for x in c):6.1f}초 "
                       f"(목표 {act[4]}컷 {act[3] - act[2]}초)")
+            opening = "\n".join(
+                f"[{c.get('id')}] {c.get('text', '')}" for c in (cuts.get("act1") or [])[:8])
+            c = gen_act(llm, base, design, hook_act, written=opening)
+            cuts["hook"] = c
+            print(f"  {'hook':5s} {len(c):3d}컷 {sum(x.get('sec', 0) for x in c):6.1f}초 "
+                  f"(목표 {hook_act[4]}컷 {hook_act[3] - hook_act[2]}초) "
+                  f"← 본편을 다 쓴 뒤에 쓴다")
             doc = assemble(design, cuts)
 
             # 여기까지가 가장 비싸고 오래 걸리는 부분이다(설계 1회 + 막별 6회).

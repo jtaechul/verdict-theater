@@ -62,6 +62,13 @@ HOOK_WINDOW = 22.0   # 도입 훅에 주어진 시간(초) — script.py 의 ACT
 ok = True
 
 
+def _similar(a, b):
+    """두 문장이 얼마나 같은가 0~1. 조사·부호를 지우고 글자 겹침으로 본다."""
+    import difflib
+    n = lambda s: re.sub(r"[\s.,!?…·\"'‘’“”]|이미|그냥|정말", "", s or "")
+    return difflib.SequenceMatcher(None, n(a), n(b)).ratio()
+
+
 def bad(m):
     global ok
     print(f"   ❌ {m}")
@@ -146,7 +153,44 @@ def check(path):
         warn("빨리 읽어야 하는 컷 (잘리지는 않고 컷이 길어진다): "
              + " · ".join(f"{cid} 1초에 {r:.1f}자" for cid, r in fast))
 
-    # ⑤ 첫 컷은 사람 대사로, 3초 안에
+    # ⑤ 훅이 **뒤 이야기와 이어지는가** (2026-08-14 · 운영자 지적의 핵심)
+    #    "전혀 연결이 되지 않아. 앞뒤 대사 간의 개연성도 없고 너무 생뚱맞다."
+    #    실제로 EP002 는 훅 마지막 줄과 1막 첫 줄이 **거의 같은 문장**이었다.
+    #      훅 H05   "그 사람은 오래전에 집을 나가 있었습니다."
+    #      1막 A1-01 "그 사람은 이미 오래전에 집을 나가 있었습니다."
+    #    같은 말을 두 번 들으면 보는 사람은 되감긴 줄 안다.
+    acts = doc.get("acts") or []
+    body = next((a for a in acts if a.get("id") != "hook" and a.get("cuts")), None)
+    if body:
+        first = (body["cuts"][0].get("text") or "").strip()
+        dup = [(cid, t) for cid, t, _s in texts if t and _similar(t, first) >= 0.7]
+        if dup:
+            cid, t = dup[0]
+            bad(f"[{cid}] 이 문장이 본편 첫 줄과 거의 같다 — 되감긴 줄 안다\n"
+                f"          훅   : {t}\n"
+                f"          본편 : {first}")
+        else:
+            print("   ✅ 훅 문장이 본편 첫 줄과 겹치지 않는다")
+
+    # ⑥ **주인공이 훅에서 말하는가**
+    #    EP002 훅에서 입을 연 사람은 주인공(아내)이 아니라 **동거인**과 시동생이었다.
+    #    주인공은 한 마디도 안 했다. 누구 이야기인지 모른 채 22초가 지나간다.
+    chars = doc.get("characters") or []
+    lead = next((c for c in chars if (c.get("role") or "") in
+                 ("아내", "남편", "어머니", "아버지", "주인공")), chars[0] if chars else None)
+    if lead:
+        voices = {c.get("speaker") for c in cuts}
+        lv = lead.get("voice") or ""
+        if lv and lv not in voices:
+            spoke = [c.get("speaker") for c in cuts if c.get("speaker") != "narrator"]
+            who = {c.get("voice"): f"{c.get('name')}({c.get('role')})" for c in chars}
+            bad(f"주인공 {lead.get('name')}({lead.get('role')})이(가) 훅에서 "
+                f"한 마디도 안 한다 — 입을 연 사람: "
+                f"{', '.join(who.get(v, v) for v in spoke) or '나레이션뿐'}")
+        else:
+            print(f"   ✅ 주인공 {lead.get('name')}({lead.get('role')})이(가) 훅에서 말한다")
+
+    # ⑦ 첫 컷은 사람 대사로, 3초 안에
     cid0, t0, sec0 = texts[0]
     if (cuts[0].get("speaker") or "") == "narrator":
         warn(f"[{cid0}] 첫 컷이 나레이션이다 — 사람 대사로 시작하는 편이 붙잡는다")
