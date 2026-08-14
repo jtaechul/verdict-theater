@@ -22,6 +22,10 @@ on:
           - '대본 생성만'
           - '이어서 마저 만들기'
           - '쇼츠만 다시'
+          # ⭐ 2026-08-14 운영자: "오프닝 훅 부분은 대사가 전혀 무슨 내용인지
+          #    파악도 안 된다. 대사랑 음성 다 변경할 수 있도록 해."
+          #    12분을 다시 만들면 3,000원인데 훅은 다섯 컷이라 한 번 부르면 끝난다.
+          - '도입 훅만 다시 쓰기 (앞 22초 · 약 150원)'
       case:
         description: '판례일련번호 (비우면 대기열에서 가장 좋은 소재를 고름)'
         required: false
@@ -185,6 +189,38 @@ jobs:
           python3 src/script.py --resume "$EP" $W 2>&1 | tee script.log
 
       # 대본은 이미 있고 쇼츠만 실패했을 때. 26분짜리 생성을 되풀이하지 않는다.
+      # ⭐ 도입 훅(앞 22초) 대사만 다시 쓴다. 나머지 막은 손대지 않는다.
+      #    음성은 따로 만들 것이 없다 — tts 가 **대사 글자로 이름을 짓기 때문에**
+      #    글자가 바뀐 다섯 컷만 저절로 다시 녹음되고 나머지 114컷은 그대로 쓰인다.
+      - name: 도입 훅만 다시 쓰기
+        if: startsWith(inputs.mode, '도입 훅만')
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          VT_RUN_KRW: ${{ inputs.budget || '3000' }}
+        run: |
+          set -o pipefail
+          EP="${{ inputs.episode }}"
+          if [ -z "$EP" ]; then
+            EP=$(ls -1 data/scripts/EP*.json 2>/dev/null \
+                 | grep -v '\.eval\.\|\.shorts\.\|\.draft\.' | sort | tail -1 \
+                 | xargs -r basename | sed 's/\.json$//')
+          fi
+          if [ -z "$EP" ]; then
+            echo "::error::만들어진 회차가 없습니다."
+            exit 1
+          fi
+          echo "대상 회차: $EP"
+          case "${{ inputs.writer }}" in
+            "Claude") W="--writer claude" ;;
+            "Gemini") W="--writer gemini" ;;
+            *) W="" ;;
+          esac
+          python3 src/script.py --hook-only "$EP" $W 2>&1 | tee script.log
+          echo ""
+          echo "──── 훅이 알아들을 수 있는 말인가 (0원) ────"
+          python3 tools/hook_test.py "$EP" 2>&1 | tee -a script.log || true
+
       - name: 쇼츠만 다시 만들기
         if: inputs.mode == '쇼츠만 다시'
         env:

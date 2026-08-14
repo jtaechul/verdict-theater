@@ -266,8 +266,19 @@ ACT_TASK = """
 """
 
 ACT_EXTRA = {
+    # ⚠️ 2026-08-14 운영자: "오프닝 훅 부분은 대사가 전혀 무슨 내용인지 파악도 안 된다."
+    #    EP002 훅이 실제로 이랬다 — "저한테 다 맡기고 가셨어요"(저가 누구?) ·
+    #    "조문객들은 선희 씨를 비켜"(선희가 누구?) · "그 사람 … 저 사람"(같은 사람?).
+    #    **가리키는 말만 있고 가리키는 대상이 없었다.** 보는 사람은 되감지 않는다.
     "hook": "**첫 컷은 3.0초 이내, 인물 대사로 시작한다.** 금액·결말을 밝히지 않는다. "
-            "22초가 끝날 때 답 없는 질문을 남긴다.",
+            "22초가 끝날 때 답 없는 질문을 남긴다.\n"
+            "⭐ **아무 사정도 모르는 사람이 처음 보는 22초다.**\n"
+            "  · 사람은 이름이 아니라 **관계**로 부른다. '선희 씨'(✗) → '이십 년을 같이 산 아내'(○). "
+            "이름은 관계를 붙인 뒤에만 쓴다.\n"
+            "  · **그 사람·저 사람·그 자리·저기·거기** 같은 가리키는 말을 쓰지 않는다. "
+            "가리킬 것이 있으면 그 자리에 정체를 그대로 적는다.\n"
+            "  · 다섯 컷을 다 보면 **누가(관계로) · 어디서 · 무엇을 다투는지** 셋이 다 남아야 한다.\n"
+            "  · 한 문장에 한 가지만 말한다. 쉼표로 두 문장을 이어 붙이지 않는다.",
     "act1": "**금액을 한 번도 쓰지 않는다.** 걸린 것은 숫자가 아니라 물건과 관계로 말한다 "
             "— '12억 400만 원' 이 아니라 '세 아들이 다 자란 그 집'. "
             "이 막은 인물 관계를 세우는 곳이다. `family` 그래픽을 반드시 한 번 넣고, "
@@ -527,6 +538,89 @@ def _make_shorts_only(ep, prefer):
     return 0 if not r.errors else 1
 
 
+def _make_hook_only(ep, prefer):
+    """이미 저장된 대본의 **도입 훅(앞 22초) 대사만** 다시 쓴다.
+
+    ⚠️ 2026-08-14 운영자: "이 오프닝 훅 부분은 대사랑 음성 다 변경할 수 있도록 해."
+       12분 대본을 통째로 다시 만들면 3,000원이 든다. 훅은 다섯 컷뿐이라
+       **한 번 부르면 끝나고 값이 1/20 도 안 된다.**
+       음성은 따로 손댈 것이 없다 — tts 가 **대사 글자로 이름을 짓기 때문에**
+       글자가 바뀐 다섯 컷만 저절로 다시 녹음되고 나머지 114컷은 그대로 쓰인다.
+    """
+    path = SCRIPTS / f"{ep}.json"
+    if not path.exists():
+        print(f"{ep} 대본이 없다: {path}")
+        return 2
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    acts = doc.get("acts") or []
+    hook = next((a for a in acts if a.get("id") == "hook"), None)
+    if not hook or not hook.get("cuts"):
+        print(f"{ep} 에 도입 훅이 없다.")
+        return 2
+
+    print(f"{ep} 도입 훅 {len(hook['cuts'])}컷 — 대사만 다시 쓴다\n")
+    print("지금 대사")
+    for c in hook["cuts"]:
+        print(f"   [{c.get('id')}] {c.get('text','')}")
+
+    follow = []
+    for a in acts:
+        if a.get("id") == "hook":
+            continue
+        for c in (a.get("cuts") or [])[:6]:
+            follow.append(c.get("text", ""))
+        if len(follow) >= 12:
+            break
+    meta = doc.get("meta") or {}
+    case = (f"사건 종류: {meta.get('case_type','')}\n"
+            f"한 줄 요약: {meta.get('logline','')}\n"
+            f"등장인물: {json.dumps(doc.get('characters'), ensure_ascii=False)[:900]}")
+
+    try:
+        llm, who = writer(max_calls=3, prefer=prefer or None)
+        print(f"\n다시 쓰는 곳: {who}")
+        body = prompts.load("hook_rewrite")
+        out = llm.json(prompts.fill(
+            body,
+            CASE=case,
+            HOOK=json.dumps(hook["cuts"], ensure_ascii=False, indent=1),
+            FOLLOW="\n".join(follow)),
+            tier="pro", max_output_tokens=4096, temperature=0.7,
+            label="도입 훅 다시", effort="high")
+    except (LLMError, ClaudeError) as e:
+        print(f"실패: {e}")
+        return 1
+
+    new = {c.get("id"): (c.get("text") or "").strip()
+           for c in (out.get("cuts") or []) if c.get("id")}
+    if not new:
+        print("새 대사를 받지 못했다. 대본은 그대로 둔다.")
+        return 1
+
+    changed = 0
+    for c in hook["cuts"]:
+        t = new.get(c.get("id"))
+        if t and t != c.get("text"):
+            c["text"] = t
+            changed += 1
+    if not changed:
+        print("바뀐 대사가 없다.")
+        return 1
+
+    print(f"\n새 대사 ({changed}컷 바뀜)")
+    for c in hook["cuts"]:
+        print(f"   [{c.get('id')}] {c.get('text','')}")
+
+    _save(path, doc)
+    r = validate_doc(doc)
+    print(f"\n기계 검증: 통과 {len(r.oks)} · 오류 {len(r.errors)}")
+    for w, m in r.errors[:5]:
+        print(f"  [{w}] {m}")
+    print("\n⭐ 음성은 따로 만들 것이 없다. [3. 영상 만들기] 를 누르면")
+    print("   **글자가 바뀐 다섯 컷만** 다시 녹음되고 나머지는 그대로 쓰인다.")
+    return 0 if not r.errors else 1
+
+
 def _shorts_retry(doc, prefer):
     """쇼츠는 대본과 달리 짧고 싸다. 한 곳이 실패하면 다른 곳으로 한 번 더 해본다.
 
@@ -583,6 +677,8 @@ def main():
     ap.add_argument("--dry-run", action="store_true", help="모델 호출 없이 배관만 시험")
     ap.add_argument("--writer", default="", choices=["", "claude", "gemini"],
                     help="대본을 쓸 곳. 비우면 CLAUDE_API_KEY 가 있을 때 claude")
+    ap.add_argument("--hook-only", default="", metavar="EP002",
+                    help="도입 훅(앞 22초) 대사만 다시 쓴다. 나머지 막은 그대로 둔다")
     ap.add_argument("--shorts-only", default="", metavar="EP001",
                     help="이미 만든 대본에 쇼츠만 붙인다 (대본을 다시 만들지 않는다)")
     ap.add_argument("--resume", default="", metavar="EP001",
@@ -590,6 +686,8 @@ def main():
     args = ap.parse_args()
 
     # 쇼츠만 다시: 26분짜리 대본 생성을 처음부터 되풀이할 이유가 없다.
+    if args.hook_only:
+        return _make_hook_only(args.hook_only, args.writer)
     if args.shorts_only:
         return _make_shorts_only(args.shorts_only, args.writer)
 
