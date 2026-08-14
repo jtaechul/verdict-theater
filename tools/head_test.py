@@ -43,6 +43,9 @@ CHARS = ROOT / "assets" / "char"
 # 위에서 이만큼 내려온 자리의 폭을 본다 / 이 값을 넘으면 목이 잘린 것으로 본다.
 DEPTH = 0.15
 WIDE = 0.62
+
+# 이 자세는 등이 맨 위에 오는 것이 정상이라 위 셈법으로 못 잰다 (2026-08-14)
+POSE_SKIP = {"full_sit_down"}
 # 전신·상반신만 본다. 얼굴 컷은 머리가 화면을 채우는 것이 정상이다.
 CHECK_PREFIX = ("full_", "bust_")
 
@@ -93,6 +96,16 @@ def main():
             continue
         for p in sorted(d.glob("*.png")):
             if not p.stem.startswith(CHECK_PREFIX):
+                continue
+            # ⚠️ 2026-08-14 — 이 자가 **멀쩡한 그림을 목 잘림으로 몰았다.**
+            #    `full_sit_down`(바닥에 주저앉기)은 프롬프트가 "고개를 아래로
+            #    숙이고 등을 둥글게 만다" 고 시킨 자세다. 그러면 실루엣의 맨 위가
+            #    머리가 아니라 **둥글게 만 등**이라 당연히 넓다(실측 0.74).
+            #    이 자는 '맨 위가 좁으면 머리' 라는 셈법이라 그 자세를 못 읽는다.
+            #    ⭐ 기준을 무르게 하는 것이 아니다 — **이 자세 하나만** 뺀다.
+            #       나머지 열여섯 컷은 그대로 이 자로 잰다. 이 자세에 머리가
+            #       붙어 있는지는 만들 때 눈(label_figures 의 headless 물음)이 본다.
+            if p.stem in POSE_SKIP:
                 continue
             r = shoulder_ratio(p)
             if r is None:
