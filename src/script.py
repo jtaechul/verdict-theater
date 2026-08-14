@@ -887,7 +887,40 @@ def main():
             #    컷을 만드는 이 두 단계가 전체 값의 8할이고 20분을 먹는다.
             #    이미 만들어 둔 컷이 있는데 처음부터 다시 쓰는 것은 그냥 돈을 두 번 내는 것이다.
             doc = resume_doc
+            design_acts = doc.pop("design_acts", None)
+            # ⭐ 2026-08-14 — 막을 만들다 중단된 초벌은 **빈 막**이 있다.
+            #    예전 이어서 만들기는 그걸 모른 채 검증·채점으로 직행해서,
+            #    반쪽짜리 대본이 그대로 굴러갔다. 빈 막만 골라 마저 만든다.
+            #    (있는 막은 다시 만들지 않는다 — 돈을 두 번 내지 않는다)
+            empty = [a for a in ACTS
+                     if not next((x.get("cuts") for x in doc.get("acts", [])
+                                  if x.get("id") == a[0]), None)]
+            if empty:
+                print(f"\n[이어서] 빠진 막 {len(empty)}개를 마저 만든다: "
+                      + " · ".join(a[0] for a in empty))
+                design = {k: doc.get(k) for k in
+                          ("meta", "anonymization", "law", "characters")}
+                design["acts"] = design_acts or [{"id": a[0]} for a in ACTS]
+                design["youtube"] = doc.get("youtube", {})
+                cuts = {x["id"]: x.get("cuts", []) for x in doc.get("acts", [])}
+                for act in [a for a in empty if a[0] != "hook"]:
+                    c = gen_act(llm, base, design, act)
+                    cuts[act[0]] = c
+                    print(f"  {act[0]:5s} {len(c):3d}컷")
+                    draft = assemble(design, cuts)
+                    draft["design_acts"] = design["acts"]
+                    _save(SCRIPTS / f"{ep}.draft.json", draft)
+                if any(a[0] == "hook" for a in empty):
+                    # 훅은 본편이 다 있는 상태에서 맨 나중에 (겉돌지 않게)
+                    opening = "\n".join(
+                        f"[{c0.get('id')}] {c0.get('text', '')}"
+                        for c0 in (cuts.get("act1") or [])[:8])
+                    hk = next(a for a in ACTS if a[0] == "hook")
+                    cuts["hook"] = gen_act(llm, base, design, hk, written=opening)
+                    print(f"  hook  {len(cuts['hook']):3d}컷 ← 본편을 다 쓴 뒤에 쓴다")
+                doc = assemble(design, cuts)
             draft = json.loads(json.dumps(doc))
+            _save(SCRIPTS / f"{ep}.draft.json", draft)
             print(f"\n[1·2단계 건너뜀] 이미 만들어 둔 컷 {doc['meta'].get('cut_count')}개를 그대로 쓴다")
             print("  (여기서부터 검증·채점·보강·쇼츠만 한다 — 값이 8할 줄어든다)")
         else:
@@ -913,6 +946,15 @@ def main():
                 cuts[act[0]] = c
                 print(f"  {act[0]:5s} {len(c):3d}컷 {sum(x.get('sec', 0) for x in c):6.1f}초 "
                       f"(목표 {act[4]}컷 {act[3] - act[2]}초)")
+                # ⭐⭐ 2026-08-14 — **막 하나가 끝날 때마다 그 자리에서 저장한다.**
+                #    예전엔 여섯 막이 다 끝난 뒤에야 초벌을 저장했다. 그래서 3막
+                #    도중에 돈 한도에 걸리자, 이미 만든 1·2막 67컷(719원어치)이
+                #    변수 안에만 있다가 **통째로 버려졌다** ("아직 만든 것이 없어
+                #    남길 것이 없다"). 로컬 파일 쓰기는 0원이다 — 매번 남긴다.
+                #    design_acts 는 빠진 막을 나중에 마저 쓸 때 필요한 재료(비트)다.
+                draft = assemble(design, cuts)
+                draft["design_acts"] = design.get("acts")
+                _save(SCRIPTS / f"{ep}.draft.json", draft)
             opening = "\n".join(
                 f"[{c.get('id')}] {c.get('text', '')}" for c in (cuts.get("act1") or [])[:8])
             c = gen_act(llm, base, design, hook_act, written=opening)
@@ -996,6 +1038,10 @@ def main():
         doc = best or draft
         if doc is None:
             print("  아직 만든 것이 없어 남길 것이 없다.")
+            # 저장할 대본은 없어도 **쓴 돈은 장부에 남긴다** (2026-08-14 —
+            # EP003 중단 때 719원이 장부에 안 적혀 이번 달 합계가 어긋났다).
+            cost.record("대본 만들기", getattr(llm, "spent_krw", lambda: 0)(),
+                        f"{ep} · 중단 · 저장 못 함")
             return 1
         sh = {"shorts": []}
         salvaged = True

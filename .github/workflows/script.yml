@@ -78,7 +78,8 @@ jobs:
       #    **대본값(3,000원)이 나간 뒤에** 넘어질 수 있는 자리라 미리 깔아 둔다.
       #    (tools/deps_test.py 가 이 줄과 코드가 맞는지 매번 대조한다)
       - name: 도구 준비
-        run: python3 -m pip install --quiet Pillow numpy
+        # PyYAML 은 mode_test 가 워크플로 파일을 읽는 데 쓴다 (deps_test 가 잡아냄)
+        run: python3 -m pip install --quiet Pillow numpy PyYAML
 
       # 대본은 Claude 나 Gemini 중 하나만 있어도 된다. 둘 다 없으면 아무것도 못 한다.
       - name: 열쇠 확인
@@ -138,6 +139,7 @@ jobs:
           python3 tools/script_resume_test.py
           python3 tools/money_guard_test.py
           python3 tools/call_path_test.py
+          python3 tools/mode_test.py
 
       # 도중에 멈춘 대본을 **이어서** 마저 만든다.
       # 컷을 만드는 1·2단계가 전체 값의 8할이고 20분을 먹는다. 이미 만들어 둔
@@ -277,8 +279,15 @@ jobs:
         # '소재 심사만' 을 직접 고른 경우에는 재고와 상관없이 무조건 심사한다.
         # 그 밖의 경우에는 쓸 소재가 3건 미만일 때만 심사한다 (3건은 여유분이다 —
         # 0 이 될 때까지 기다리면 대본을 만들려는 순간 소재가 없어 멈춘다).
-        if: inputs.mode != '대본 생성만' && inputs.mode != '쇼츠만 다시'
-            && inputs.mode != '이어서 마저 만들기'
+        #
+        # ⚠️⚠️ 2026-08-14 — 이 조건이 원래 **"이 모드만 빼고 다"(빼기 목록)** 였다.
+        #    '도입 훅만 다시 쓰기' 모드를 새로 만들면서 빼기 목록에 안 넣었더니,
+        #    훅을 고친 **뒤에 본편 생성까지 이어서 돌았다.** 아무도 시키지 않은
+        #    EP003 을 만들다 한도에 걸려 빨간 X — 719원이 그냥 나갔다.
+        #    빼기 목록은 새 모드가 생길 때마다 같은 사고가 난다(길을 하나씩 막는 꼴).
+        #    **"이 모드일 때만"(허용 목록)** 으로 바꾼다 — 새 모드는 여기 적기 전에는
+        #    절대 이 단계로 못 들어온다. (tools/mode_test.py 가 이 꼴을 지킨다)
+        if: (inputs.mode == '둘다' || inputs.mode == '소재 심사만')
             && (inputs.mode == '소재 심사만'
                 || fromJSON(steps.stock.outputs.ready) < 3)
         env:
@@ -299,8 +308,8 @@ jobs:
       - name: 대본 생성 + 채점 + 보강 + 쇼츠
         # success() 를 적어두는 이유: 심사가 죽었으면 대본도 만들면 안 된다.
         # 안 적어도 같게 동작하지만(기본값), 돈이 걸린 조건이라 눈에 보이게 둔다.
-        if: success() && inputs.mode != '소재 심사만' && inputs.mode != '쇼츠만 다시'
-            && inputs.mode != '이어서 마저 만들기'
+        # ⚠️ 위와 같은 까닭으로 허용 목록이다. '둘다'와 '대본 생성만' 에서만 돈다.
+        if: success() && (inputs.mode == '둘다' || inputs.mode == '대본 생성만')
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
