@@ -1125,6 +1125,23 @@ def cmd_images(args):
                     bad = ASSETS / "sheets" / "bad"
                     bad.mkdir(parents=True, exist_ok=True)
                     path.rename(bad / path.name)
+                    # ⭐⭐ 2026-08-14 — **불합격이라도 그림을 눈으로 볼 수 있게 한다.**
+                    #    이날 사고 셋이 전부 같은 모양이었다: 검사기가 "불합격" 이라
+                    #    했고, 그 말만 믿고 **아무도 그림을 열어 보지 않았다.**
+                    #    열어 봤더니 세 번 다 그림은 멀쩡했고 틀린 쪽은 검사기였다.
+                    #    숫자표만 남기면 또 그렇게 된다. 작은 미리보기를 같이 남긴다
+                    #    — 폰에서 한 번 누르면 보인다. 값은 0원.
+                    try:
+                        prev = bad / "preview"
+                        prev.mkdir(parents=True, exist_ok=True)
+                        _im = Image.open(bad / path.name).convert("RGB")
+                        _im.reduce(max(1, _im.width // 700)).save(
+                            prev / f"{path.stem}.jpg", quality=82)
+                        print(f"     👁 미리보기: assets/sheets/bad/preview/{path.stem}.jpg")
+                        print("        ⭐ **숫자보다 그림을 먼저 보십시오.** "
+                              "검사기가 틀렸을 수도 있습니다(2026-08-14 에 세 번 그랬다).")
+                    except Exception as _e:                 # noqa: BLE001
+                        print(f"     (미리보기를 못 만들었다: {_e})")
                     print(f"  ⚠️ {code} 시트가 검사에 걸려 **컷아웃을 만들지 않는다.**")
                     print(f"     원본은 assets/sheets/bad/{path.name} 에 두었다.")
                     made -= 1

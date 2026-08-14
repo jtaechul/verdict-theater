@@ -434,7 +434,40 @@ def check(path, kind="face", verbose=True):
         print("인물 덩어리 목록 (위→아래, 왼→오른쪽)")
         for i, (a, x0, y0, x1, y1) in enumerate(bs, 1):
             print(f"  {i:2d}. {x1 - x0:4d}x{y1 - y0:4d}px  at ({x0:4d},{y0:4d})")
+
+    # ⭐⭐ 표본이 아직 없는 종류는 **막지 않고 알리기만 한다** (2026-08-14)
+    #
+    #    이날 하루에 좋은 시트를 세 번 떨어뜨렸다. 뿌리는 늘 같았다 —
+    #    **합격한 그림을 한 장도 못 본 채로 채점표를 먼저 썼다.**
+    #    로고 밴드 700px(로고는 없었다) · 폭 820(진짜는 888) · 초록 50%(진짜는 46)
+    #    · 간격 120(전신은 80이 정상) — 전부 눈대중이었고 전부 틀렸다.
+    #
+    #    그러니 그 종류의 **사람이 확인한 시트가 하나도 없을 때는** 이 자를
+    #    믿으면 안 된다. 그때는 불합격을 내지 않고 크게 알리기만 한다.
+    #    (나쁜 그림이 새어 나가도 목 잘림 검사와 [영상 만들기]가 다시 막는다)
+    #    한 장이라도 assets/sheets/ 에 살아남으면 = 사람이 보고 받아들인 것이므로
+    #    그때부터 이 자가 진짜로 막는다.
+    if rc != 0 and not proven(kind):
+        print()
+        print("=" * 68)
+        print(f"⚠️ 이 종류({kind})는 **사람이 확인한 시트가 아직 한 장도 없습니다.**")
+        print("   그래서 위 기준은 눈대중일 수 있습니다 — 실제로 2026-08-14 에")
+        print("   좋은 시트를 세 번 떨어뜨렸습니다(로고 밴드·폭·초록 비율).")
+        print("   **막지 않고 넘깁니다. 그림을 눈으로 보고 판단하십시오.**")
+        print("=" * 68)
+        return 0
     return rc
+
+
+def proven(kind):
+    """이 종류의 시트가 assets/sheets/ 에 살아 있는가 = 사람이 보고 받아들였는가."""
+    d = Path(__file__).resolve().parent.parent / "assets" / "sheets"
+    if not d.is_dir():
+        return False
+    for p in d.glob("*.png"):
+        if (kind == "full") == p.stem.endswith("_full"):
+            return True
+    return False
 
 
 # ── ⭐ 이 코드가 진짜 맞는지 가짜 그림으로 시험한다 ────────
