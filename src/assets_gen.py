@@ -763,7 +763,11 @@ IMAGE_RATIO_BG = os.environ.get("GEMINI_IMAGE_RATIO_BG", "16:9")
 #    인물 7명을 4K 로 다 만들어도 약 1,900원이므로 2,500원이면 정상 실행은
 #    통과하고, 무언가 잘못 돌아 계속 만들기 시작하면 거기서 멈춘다.
 #    ⚠️ 한도는 **실제 드는 값보다 조금만 위**에 있어야 뜻이 있다.
-IMAGE_RUN_KRW = float(os.environ.get("VT_IMAGE_RUN_KRW", "2500"))
+# ⚠️ 2026-08-14 — 2,500원이었다. 그런데 시트를 **두 장**(얼굴/전신)으로 나눈 뒤
+#    배우 7명 = 14장 = 약 3,710원이 됐다. 한도가 그대로라 [캐릭터 전부]를 누르면
+#    **9장째에서 반드시 멈춘다.** 정상 작업이 늘 막히는 한도는 한도가 아니다.
+#    (tools/money_guard_test.py 가 "배우 수 x 2장" 으로 이 값을 대조한다)
+IMAGE_RUN_KRW = float(os.environ.get("VT_IMAGE_RUN_KRW", "4000"))
 _img_run_krw = 0.0          # 이번 실행에서 그림에 쓴 값 (원)
 
 
@@ -1068,6 +1072,18 @@ def cmd_images(args):
                 jobs.append(("bg", code, p, bg_prompt(code)))
     if args.what in ("char", "all"):
         codes = [args.code] if args.code else list(CHAR_LOOK)
+        # ⭐ 2026-08-14 — **이미 사람이 확인한 인물은 건드리지 않는다.**
+        #    [캐릭터 전부 다시 만들기] 는 --force 라서 확인이 끝난 M70 까지
+        #    덮어쓰게 돼 있었다. 530원이 그냥 나가고, 더 나쁘게는 좋은 시트가
+        #    나쁜 것으로 바뀔 수 있다 (같은 그림은 두 번 다시 안 나온다).
+        _skip = {c.strip().upper()
+                 for c in (getattr(args, "skip", "") or "").split(",") if c.strip()}
+        if _skip:
+            gone = [c for c in codes if c.upper() in _skip]
+            codes = [c for c in codes if c.upper() not in _skip]
+            if gone:
+                print(f"  {', '.join(gone)} 는 **건드리지 않는다** "
+                      f"(이미 확인이 끝난 인물 — 값을 두 번 쓰지 않는다)")
         # ⭐ 두 번째 얼굴(벌) 만들기 — 회차마다 얼굴이 바뀌게 하려는 것이다.
         #    (2026-08-12 손님: "왜 저기에 그냥 모형이 들어가 있어?")
         #    ⚠️ 판사는 만들지 않는다. 같은 법정, 같은 재판장이 채널의 얼굴이다(손님 지시).
@@ -1106,6 +1122,7 @@ def cmd_images(args):
     print(f"{len(jobs)}개 생성")
     made = 0
     blocked = None
+    quarantined = []
     for kind, code, path, prompt in jobs:
         try:
             m = models.get(kind) or models.get("char") or models.get("bg")
@@ -1142,12 +1159,19 @@ def cmd_images(args):
                               "검사기가 틀렸을 수도 있습니다(2026-08-14 에 세 번 그랬다).")
                     except Exception as _e:                 # noqa: BLE001
                         print(f"     (미리보기를 못 만들었다: {_e})")
+                    quarantined.append(path.stem)
                     print(f"  ⚠️ {code} 시트가 검사에 걸려 **컷아웃을 만들지 않는다.**")
                     print(f"     원본은 assets/sheets/bad/{path.name} 에 두었다.")
                     made -= 1
                     continue
                 # 두 시트가 **같은 폴더**(assets/char/M70)에 쓴다 → 합쳐 17개.
                 process_sheet(path, code.replace("_full", ""), kind=sk)
+        except RunCapReached as e:
+            # ⚠️ 한도에 닿았는데 계속 돌면 남은 장마다 똑같이 거절당한다.
+            #    하루 한도와 똑같이 그 자리에서 멈춘다.
+            print(f"  {kind} {code} 실패: 한 번 실행 한도({IMAGE_RUN_KRW:,.0f}원)에 닿았다")
+            print(f"     → 만든 것은 남는다. 버튼을 한 번 더 누르면 이어서 만든다.")
+            break
         except QuotaBlocked as e:
             # ⚠️ 2026-08-13 — 여기서 **바로 멈춘다.** 하루 한도가 0 이면 남은
             #    6장을 더 두드려 봐야 똑같이 거절당한다(4단계씩 28번 헛수고).
@@ -1156,7 +1180,20 @@ def cmd_images(args):
             break
         except Exception as e:
             print(f"  {kind} {code} 실패: {type(e).__name__}: {e}")
+    # ⭐ 2026-08-14 — "완료 9/12" 만 찍으면 **어느 인물이 걸렸는지** 알 수 없다.
+    #    요약 화면은 로그 끝 30줄만 보여주므로, 결론을 여기서 이름까지 적는다.
     print(f"\n완료 {made}/{len(jobs)}")
+    if quarantined:
+        print()
+        print("─" * 60)
+        print(f"검사에 걸려 컷아웃을 안 만든 시트 {len(quarantined)}장:")
+        for q in quarantined:
+            print(f"   · {q}   → 미리보기 assets/sheets/bad/preview/{q}.jpg")
+        print("⭐ **숫자표보다 미리보기 그림을 먼저 보십시오.**")
+        print("   2026-08-14 에 세 번, 그림은 멀쩡했고 틀린 쪽은 검사기였습니다.")
+        print("─" * 60)
+    if made and made == len(jobs):
+        print("✅ 요청한 시트를 모두 만들고 컷아웃까지 마쳤습니다.")
     if blocked:
         print(BILLING_HELP)
     # ⚠️ 2026-08-13 — 예전에는 한 장도 못 만들어도 0(성공)으로 끝났다.
@@ -1455,6 +1492,11 @@ def main():
     i = sub.add_parser("images", help="캐릭터 시트·배경 생성")
     i.add_argument("--what", choices=["bg", "char", "all"], default="all")
     i.add_argument("--code", default="")
+    # ⚠️ 2026-08-14 — 이것이 없어서 [캐릭터 전부 다시 만들기] 가 **이미 확인한
+    #    M70 까지 덮어썼다.** 확인된 것을 다시 그리면 530원이 그냥 나가고,
+    #    더 나쁘게는 좋은 시트가 나쁜 것으로 바뀔 수도 있다.
+    i.add_argument("--skip", default="",
+                   help="건드리지 않을 인물 코드(쉼표로 여럿). 예: M70")
     i.add_argument("--variant", type=int, default=1,
                    help="몇 번째 얼굴(벌)을 만들지. 2 면 assets/char/F50A-2/ 로 들어가고 "
                         "회차마다 번갈아 쓴다. 판사는 만들지 않는다")

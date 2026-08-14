@@ -181,15 +181,19 @@ else:
     print("   ✅ 구글이 센 것(usageMetadata)을 같이 찍는다 (추정값 검증용)")
 
 # 인물 전부를 만들어도 한 번 실행 한도 안에 들어와야 한다 (아니면 늘 걸린다)
-worst = C.image_krw(G.IMAGE_MODEL_ORDER["char"][0], G.IMAGE_SIZE) * len(G.CHAR_LOOK)
+# ⚠️ 2026-08-14 — 여기가 배우당 **한 장**으로 세고 있었다. 시트를 얼굴/전신
+#    두 장으로 나눈 뒤로 실제는 두 배다. 그래서 한도가 모자란 것을 못 잡았다.
+SHEETS_PER_CHAR = len(G.SHEET_POSES)          # 얼굴 시트 + 전신 시트 = 2
+worst = (C.image_krw(G.IMAGE_MODEL_ORDER["char"][0], G.IMAGE_SIZE)
+         * len(G.CHAR_LOOK) * SHEETS_PER_CHAR)
 if worst > G.IMAGE_RUN_KRW:
-    bad(f"인물 {len(G.CHAR_LOOK)}명이 약 {worst:,.0f}원인데 한도가 "
+    bad(f"인물 {len(G.CHAR_LOOK)}명 x {SHEETS_PER_CHAR}장이 약 {worst:,.0f}원인데 한도가 "
         f"{G.IMAGE_RUN_KRW:,.0f}원이다 — 정상 작업이 늘 막힌다")
 elif worst * 2 < G.IMAGE_RUN_KRW:
     bad(f"한도({G.IMAGE_RUN_KRW:,.0f}원)가 실제 값({worst:,.0f}원)의 두 배를 넘는다 "
         "— 두 배가 새도 안 막히므로 막는 시늉만 하는 것이다")
 else:
-    print(f"   ✅ 한도가 실제 값 바로 위에 있다 (인물 {len(G.CHAR_LOOK)}명 "
+    print(f"   ✅ 한도가 실제 값 바로 위에 있다 (인물 {len(G.CHAR_LOOK)}명 x {SHEETS_PER_CHAR}장 "
           f"약 {worst:,.0f}원 · 한도 {G.IMAGE_RUN_KRW:,.0f}원)")
 
 import shutil
