@@ -58,5 +58,17 @@
     "kind": "대본 만들기",
     "krw": 1415,
     "note": "EP003 · 컷 118개"
+  },
+  {
+    "date": "2026-08-15",
+    "kind": "voice",
+    "krw": 85,
+    "note": "24컷 · voice"
+  },
+  {
+    "date": "2026-08-15",
+    "kind": "voice",
+    "krw": 3,
+    "note": "7컷 · voice"
   }
 ]
