@@ -135,16 +135,25 @@ def main():
         sheets = sorted((ROOT / "assets" / "sheets").glob("*.png"))
         if not sheets:
             print("   (시트가 없습니다)")
+        touched = []
         for sp in sheets:
             ratio, isbad = G.lines_touch_figures(_I.open(sp))
-            mark = "❌ 닿았다" if isbad else "✅"
+            mark = "⚠️ 닿았다" if isbad else "✅"
             print(f"   {mark} {sp.name:12s} 인물의 {ratio * 100:.1f}% 가 선에 닿아 있다")
             if isbad:
-                FAIL.append(f"{sp.name}: 칸 선이 인물에 닿아 있다")
-        if any("칸 선이 인물에" in f for f in FAIL):
-            print("   → 이런 시트는 **어떻게 잘라도** 안 된다. 선을 지우면 머리가")
-            print("      같이 지워지고, 남기면 흰 막대가 된다 (같은 픽셀이라서).")
-            print("      [캐릭터 전부 다시 만들기] 로 시트를 새로 받아야 한다.")
+                touched.append(sp.name)
+        if touched:
+            # ⚠️ 2026-08-15 — 여기가 **실패(FAIL)** 였는데 경고로 내린다. 까닭:
+            #    방송에 나가는 것은 시트가 아니라 **컷아웃**이다. 시트에 선이
+            #    닿아 있어도 이미 잘라 둔 컷아웃이 멀쩡하면(위의 목 잘림 검사가
+            #    직접 잰다) 영상은 문제없이 나간다. 실제로 EP001 이 그렇게 나갔다.
+            #    이 시트로 **다시 자르는 것**만 위험한데, 그건 자르는 단계
+            #    (sync 의 sheet_ok · sheet_gate)가 따로 막는다.
+            #    원칙: 직접 잰 것(컷아웃)은 불합격, 다른 단계 소관(시트)은 경고.
+            #    이 실패 때문에 멀쩡한 컷아웃을 쓰는 배우까지 몽땅 다시 만들어야
+            #    영상이 나가는 구조였다 — 2,120원을 헛돈 쓰게 만드는 길이었다.
+            print(f"   ⚠️ 선 닿은 시트 {len(touched)}장 — 이 시트로 다시 자르지만 않으면 된다.")
+            print("      (배우를 새로 만들면 이 시트들도 함께 새것으로 바뀐다)")
     except Exception as e:                              # noqa: BLE001
         print(f"   (재지 못했습니다: {e})")
 
