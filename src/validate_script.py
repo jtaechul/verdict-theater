@@ -275,6 +275,17 @@ def check_plural(doc, r):
 #   ② 어머니가 자기 아들을 '동생' 이라 부르는 식의 **시점 어긋난 호칭**
 GHOST_PEOPLE = ("조카", "사위", "며느리", "손자", "손녀", "이모", "삼촌",
                 "고모", "매형", "처남", "올케", "형수", "제수")
+# ⚠️ 2026-08-15 — 위 목록이 **말하는 사람을 안 보고 낱말만 막다가** 멀쩡한 대사를
+#    잡았다. EP002 H04: 시동생(배역에 있음)이 아내(배역에 있음)를 "형수님" 이라
+#    부른다 — 한국 가족드라마에서 이보다 자연스러운 호칭이 없다. 그런데
+#    '형수' 가 목록에 있어 영상 제작이 통째로 막혔다.
+#    유령 인물 검사의 뜻은 "**배역에 없는 사람**이 불쑥 나오면 멈칫한다" 이다.
+#    호칭이 배역에 있는 사람을 가리키면 유령이 아니다. 그 짝만 허용한다 —
+#    (말하는 이의 관계, 낱말) → 이 관계가 배역에 있어야 통과.
+ADDRESS_OK = {
+    # 시동생이 '형수' 라 부르는 사람 = 형의 아내. 배역에 '아내' 가 있으면 실존.
+    ("시동생", "형수"): ("아내",),
+}
 # 부모가 **자기를 형제 자리에 놓고** 말하는 경우만 잡는다.
 # ⚠️ '너희 형은 바쁘잖니' 는 어머니가 차남에게 하는 **자연스러운** 말이다.
 #    처음에 '형은' 을 통째로 막았더니 멀쩡한 대사가 걸렸다 — 규칙을 좁혔다.
@@ -302,12 +313,16 @@ def check_dialogue(doc, r):
         if not text:
             prev = None
             continue
+        role = code2role.get(sp[2:] if sp.startswith("v_") else sp, "")
+        roles = set(code2role.values())
         for w in GHOST_PEOPLE:
             if w in text:
+                allow = ADDRESS_OK.get((role, w))
+                if allow and any(a in roles for a in allow):
+                    continue          # 배역에 있는 사람을 바르게 부른 것 — 유령이 아니다
                 r.error(cid, f"배역에 없는 사람 '{w}' 이 대사에 나온다 — "
                              "배역에 넣거나 대사를 고쳐야 한다")
                 bad += 1
-        role = code2role.get(sp[2:] if sp.startswith("v_") else sp, "")
         for pat in WRONG_CALL.get(role, ()):
             if re.search(pat, text):
                 r.error(cid, f"{role} 가 자기를 형제 자리에 놓고 말한다 — "

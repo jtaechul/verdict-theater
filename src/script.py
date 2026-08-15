@@ -656,14 +656,70 @@ def _make_hook_only(ep, prefer):
     for c in hook["cuts"]:
         print(f"   [{c.get('id')}] {c.get('text','')}")
 
+    # ⭐⭐ 2026-08-15 — **저장하기 전에** 검증하고, 걸리면 그 오류를 그대로 먹여
+    #    다시 쓰게 한다(최대 2번). 지난번엔 검증에 걸린 훅('형수' 호칭 · 자막
+    #    53자)을 그대로 저장하고 초록불로 끝냈다 — 그래서 다음 날 [영상 만들기]가
+    #    대본 검사에서 빨간 X 로 터졌다. 실패를 값싼 자리(여기, 재시도 150원)에서
+    #    비싼 자리(영상 버튼, 운영자의 하루)로 미룬 셈이다. 다시는 미루지 않는다.
+    hook_ids = {c.get("id") for c in hook["cuts"]}
+
+    def hook_errors(d):
+        r0 = validate_doc(d)
+        return [(w, m) for w, m in r0.errors
+                if w in hook_ids or any(h in str(m) for h in hook_ids)], r0
+
+    errs, r = hook_errors(doc)
+    for retry in (1, 2):
+        if not errs:
+            break
+        print(f"\n⚠️ 새 훅이 대본 검사 {len(errs)}건에 걸렸다 — 오류를 먹여 다시 쓴다 ({retry}/2)")
+        for w, m in errs:
+            print(f"   [{w}] {m}")
+        fb = "\n".join(f"[{w}] {m}" for w, m in errs)
+        try:
+            out2 = llm.json(prompts.fill(
+                body, CASE=case,
+                HOOK=json.dumps(hook["cuts"], ensure_ascii=False, indent=1),
+                FOLLOW="\n".join(follow))
+                + "\n\n## 방금 쓴 훅이 기계 검사에 걸렸다 — 아래를 고쳐 다시 내라\n" + fb,
+                tier="pro", max_output_tokens=4096, temperature=0.7,
+                label=f"도입 훅 다시({retry + 1}차)", effort="high")
+        except (LLMError, ClaudeError) as e:
+            print(f"   재시도 실패: {e}")
+            break
+        new2 = {c.get("id"): c for c in (out2.get("cuts") or []) if c.get("id")}
+        for c in hook["cuts"]:
+            got = new2.get(c.get("id")) or {}
+            t = (got.get("text") or "").strip()
+            if t:
+                c["text"] = t
+            sp2 = (got.get("speaker") or "").strip()
+            if sp2:
+                here = {voice_of.get(x.get("code")) for x in (c.get("chars") or [])}
+                if sp2 == "narrator" or sp2 in here:
+                    c["speaker"] = sp2
+        errs, r = hook_errors(doc)
+
+    if errs:
+        # 세 번을 써도 검사를 못 넘겼다. **저장하지 않는다** — 옛 훅이 검사는
+        # 통과하는 상태이므로, 어설픈 새 훅으로 영상 제작까지 막는 것보다 낫다.
+        print(f"\n❌ 재시도 후에도 대본 검사 {len(errs)}건이 남았다. **저장하지 않는다.**")
+        for w, m in errs:
+            print(f"   [{w}] {m}")
+        print("   옛 훅이 그대로 남아 있다 — [도입 훅만 다시 쓰기] 를 한 번 더 누르십시오.")
+        cost.record("도입 훅 다시 쓰기", getattr(llm, "spent_krw", lambda: 0)(),
+                    f"{ep} · 검사 못 넘겨 저장 안 함")
+        return 1
+
     _save(path, doc)
-    r = validate_doc(doc)
+    cost.record("도입 훅 다시 쓰기", getattr(llm, "spent_krw", lambda: 0)(), ep)
     print(f"\n기계 검증: 통과 {len(r.oks)} · 오류 {len(r.errors)}")
     for w, m in r.errors[:5]:
         print(f"  [{w}] {m}")
     print("\n⭐ 음성은 따로 만들 것이 없다. [3. 영상 만들기] 를 누르면")
     print("   **글자가 바뀐 다섯 컷만** 다시 녹음되고 나머지는 그대로 쓰인다.")
-    # ⚠️ 검증에 걸려도 **빨간 X 로 끝내지 않는다.** 새 훅은 이미 저장됐고,
+    # ⚠️ 여기 남는 오류는 **훅과 무관한 옛 오류**뿐이다(훅 오류는 위에서 재시도로
+    #    없앴거나 저장을 포기했다). 옛 오류 때문에 빨간 X 를 내지 않는다.
     #    다섯 컷짜리 자잘한 흠은 한 번 더 누르면(약 150원) 고쳐진다.
     #    여기서 실패로 끝내면 손님은 "또 실패했다" 만 보게 되는데, 실제로는
     #    대본이 좋아진 채로 저장돼 있다. 대신 아래처럼 **크게 알린다.**

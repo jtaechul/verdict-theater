@@ -40,6 +40,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "src"))      # 진짜 검사기(validate_script)를 부르기 위해
 SCRIPTS = ROOT / "data" / "scripts"
 
 # ① 훅에서 쓰면 안 되는 '가리키는 말'
@@ -184,13 +185,36 @@ def check(path):
         if lv and lv not in voices:
             spoke = [c.get("speaker") for c in cuts if c.get("speaker") != "narrator"]
             who = {c.get("voice"): f"{c.get('name')}({c.get('role')})" for c in chars}
-            bad(f"주인공 {lead.get('name')}({lead.get('role')})이(가) 훅에서 "
-                f"한 마디도 안 한다 — 입을 연 사람: "
-                f"{', '.join(who.get(v, v) for v in spoke) or '나레이션뿐'}")
+            # ⚠️ 2026-08-15 — 처음엔 불합격이었는데 **멀쩡한 EP001 이 걸렸다.**
+            #    EP001 훅은 장남(소송을 건 당사자)이 말한다 — 주인공이 침묵해도
+            #    훌륭한 훅이다. EP002 옛 훅이 나빴던 진짜 까닭은 '주인공 침묵'이
+            #    아니라 **말하는 사람이 누군지 알 수 없던 것**이고, 그건 위의
+            #    ①②(가리키는 말·소개 없는 이름)가 직접 잰다. 이건 어림이라 경고로.
+            warn(f"주인공 {lead.get('name')}({lead.get('role')})이(가) 훅에서 "
+                 f"말하지 않는다 — 입을 연 사람: "
+                 f"{', '.join(who.get(v, v) for v in spoke) or '나레이션뿐'}")
         else:
             print(f"   ✅ 주인공 {lead.get('name')}({lead.get('role')})이(가) 훅에서 말한다")
 
-    # ⑦ 첫 컷은 사람 대사로, 3초 안에
+    # ⑦ **영상 제작이 쓰는 바로 그 검사기**로도 훅을 잰다 (2026-08-15)
+    #    이 검사(hook_test)는 훅을 통과시켰는데, [영상 만들기]의 대본 검사가
+    #    같은 훅을 두 건('형수' 호칭 · 자막 53자)으로 막았다 — **자가 두 개라서
+    #    서로 모르는 규칙이 있었다.** 여기서 진짜 검사기(validate_doc)를 그대로
+    #    돌려 훅 컷을 가리키는 오류만 뽑는다. 규칙집은 하나다.
+    try:
+        from validate_script import validate_doc
+        ids = {c.get("id") for c in cuts}
+        verrs = [(w, m) for w, m in validate_doc(doc).errors
+                 if w in ids or any(h in str(m) for h in ids if h)]
+        if verrs:
+            for w, m in verrs:
+                bad(f"[영상 검사기] [{w}] {m}")
+        else:
+            print("   ✅ 영상 제작이 쓰는 대본 검사기도 훅을 통과시킨다")
+    except Exception as e:                              # noqa: BLE001
+        warn(f"영상 검사기를 못 돌렸다: {e}")
+
+    # ⑧ 첫 컷은 사람 대사로, 3초 안에
     cid0, t0, sec0 = texts[0]
     if (cuts[0].get("speaker") or "") == "narrator":
         warn(f"[{cid0}] 첫 컷이 나레이션이다 — 사람 대사로 시작하는 편이 붙잡는다")
