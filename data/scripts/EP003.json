@@ -289,7 +289,7 @@
           "speaker": "narrator",
           "text": "사십 년을 기다린 아내 앞에, 처음 보는 얼굴이 서 있었습니다.",
           "gfx": null,
-          "sfx": "sfx_footsteps",
+          "sfx": null,
           "amb": "amb_funeral",
           "blackout": false
         },
@@ -423,7 +423,7 @@
             "type": "nametag",
             "text": "차정우 · 58세 · 장남"
           },
-          "sfx": null,
+          "sfx": "sfx_paper",
           "amb": "amb_home",
           "blackout": false
         },
@@ -579,7 +579,7 @@
           "speaker": "narrator",
           "text": "겨울이 오면 남편 내복을 한 벌씩 샀습니다.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_paper",
           "amb": "amb_home",
           "blackout": false
         },
@@ -776,7 +776,7 @@
           "speaker": "narrator",
           "text": "그 뒤로 사십 년, 순덕 씨는 그 집에서 혼자 늙었습니다.",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },
@@ -894,7 +894,7 @@
           "speaker": "narrator",
           "text": "아버지 이야기가 나오면, 큰아들은 늘 자리에서 일어났습니다.",
           "gfx": null,
-          "sfx": "sfx_footsteps",
+          "sfx": null,
           "amb": "amb_street",
           "blackout": false
         },
@@ -1036,7 +1036,7 @@
           "speaker": "narrator",
           "text": "남편이 떠났다는 소식도, 아들의 전화로 들었습니다.",
           "gfx": null,
-          "sfx": "sfx_phone",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },
@@ -1108,7 +1108,7 @@
           "speaker": "v_M50B",
           "text": "엄마… 그 건물들, 이미 남의 이름으로 넘어가 있어.",
           "gfx": null,
-          "sfx": "sfx_heartbeat",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": true
         }
@@ -1137,7 +1137,7 @@
           "speaker": "narrator",
           "text": "정우 씨는 아침 아홉 시에 등기소 문 앞에 서 있었습니다.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_stamp",
           "amb": "amb_street",
           "blackout": false
         },
@@ -1197,7 +1197,7 @@
           "speaker": "narrator",
           "text": "소유자 칸에 모르는 이름 둘이 나란히 찍혀 있었습니다.",
           "gfx": null,
-          "sfx": "sfx_heartbeat",
+          "sfx": null,
           "amb": "amb_street",
           "blackout": false
         },
@@ -1309,7 +1309,7 @@
           "speaker": "narrator",
           "text": "순덕 씨가 남편의 병을 알기도 전에, 종이는 이미 만들어져 있었습니다.",
           "gfx": null,
-          "sfx": "sfx_heartbeat",
+          "sfx": "sfx_paper",
           "amb": "amb_home",
           "blackout": false,
           "tag": "twist"
@@ -1420,7 +1420,7 @@
           "speaker": "narrator",
           "text": "미경 씨는 그날 밤 열한 시에 문자를 보냈습니다.",
           "gfx": null,
-          "sfx": "sfx_phone",
+          "sfx": null,
           "amb": "amb_home",
           "blackout": false
         },
@@ -1463,7 +1463,7 @@
             "type": "nametag",
             "text": "한도현 · 52세 · 아들"
           },
-          "sfx": "sfx_phone",
+          "sfx": null,
           "amb": "amb_street",
           "blackout": false
         },
@@ -1595,7 +1595,7 @@
           "speaker": "narrator",
           "text": "골목 끝에서, 아버지는 우리 집 반대편으로 걸어갔습니다.",
           "gfx": null,
-          "sfx": "sfx_footsteps",
+          "sfx": null,
           "amb": "amb_street",
           "blackout": false,
           "flashback_label": "차정우 씨의 기억"
@@ -2282,7 +2282,7 @@
           "speaker": "narrator",
           "text": "아무도 대답하지 않았습니다.",
           "gfx": null,
-          "sfx": "sfx_clock",
+          "sfx": null,
           "amb": "amb_street",
           "blackout": false
         },
@@ -2724,7 +2724,7 @@
           "speaker": "v_JUDGE",
           "text": "유증받은 그 건물의 지분 일부를 아내와 네 자녀에게 돌려주십시오.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_paper",
           "amb": "amb_court",
           "blackout": false
         },
@@ -2801,7 +2801,7 @@
           "speaker": "narrator",
           "text": "남매는 복도에서 서로를 보지 못했습니다.",
           "gfx": null,
-          "sfx": null,
+          "sfx": "sfx_door",
           "amb": "amb_court",
           "blackout": true
         }

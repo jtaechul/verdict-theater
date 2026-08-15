@@ -154,6 +154,11 @@ jobs:
           #    값이 목록과 정확히 같아야 받는다. 눈으로는 못 잡는다 — 기계가 맞춘다.
           python3 tools/admin_choice_check.py
 
+          # ⭐ 2026-08-15 — 안내문 끝의 따옴표 하나 때문에 [영상 만들기]가
+          #    실패 이유도 못 보여 주고 죽었다. YAML 검사는 통과였다 — 문제는
+          #    YAML 안의 **bash 글**이었다. 이제 모든 실행 칸을 bash 로 미리 읽는다.
+          python3 tools/bash_check.py
+
           python3 - <<'PY'
           import pathlib, sys, yaml
           bad = 0

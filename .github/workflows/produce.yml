@@ -24,11 +24,11 @@ on:
   workflow_dispatch:
     inputs:
       episode:
-        description: '회차 (비우면 대본이 있는 가장 최근 회차)'
+        description: '회차 (비우면 아직 발행 안 된 가장 이른 회차 — 영상은 차례대로 나갑니다)'
         required: false
         default: ''
       art:
-        description: '없는 그림을 만들까요 (인물 그림이 빠지면 회색 실루엣이 나갑니다)'
+        description: '없는 그림을 만들까요 (빠지면 회색 실루엣이 나감 · 자동 구매는 300원까지만)'
         required: true
         default: '없는 것만 만든다'
         type: choice
@@ -129,7 +129,24 @@ jobs:
         run: |
           EP="${{ env.EPISODE }}"
           if [ -z "$EP" ]; then
-            EP=$(ls -1 data/scripts/EP*.json 2>/dev/null | grep -v '\.eval\.\|\.shorts\.' | sort | tail -1 | xargs -n1 basename | sed 's/\.json//')
+            # ⚠️ 2026-08-15 — 예전에는 '번호가 가장 큰 대본'을 골랐다. 그런데
+            #    [도입 훅만] 버튼이 잘못 새어 EP003 대본이 **손님 승인 없이**
+            #    만들어져 있었고, 그대로면 [영상 만들기]가 아직 안 나간 EP002 를
+            #    제쳐 두고 EP003 에 돈을 쓸 뻔했다.
+            #    영상은 **차례대로** 나간다 — 발행 안 된 것 중 가장 이른 회차를 고른다.
+            #    (다른 회차를 만들고 싶으면 회차 칸에 EP 번호를 적으면 그대로 따른다)
+            EP=$(python3 - <<'PY'
+          import json, pathlib
+          st = {}
+          f = pathlib.Path("state/episodes.json")
+          if f.exists():
+              st = json.loads(f.read_text(encoding="utf-8"))
+          eps = sorted(p.stem for p in pathlib.Path("data/scripts").glob("EP*.json")
+                       if ".eval" not in p.name and ".shorts" not in p.name)
+          todo = [e for e in eps if st.get(e, {}).get("stage") != "published"]
+          print(todo[0] if todo else "")
+          PY
+            )
           fi
           if [ -z "$EP" ]; then
             echo "## 만들 대본이 없습니다" >> "$GITHUB_STEP_SUMMARY"
@@ -235,6 +252,13 @@ jobs:
       - name: 없는 그림 만들기 (있는 것은 그대로 쓴다)
         if: inputs.art != '만들지 않는다 (있는 것으로)'
         env:
+          # ⚠️ 2026-08-15 — 이 단계가 **묻지 않고 약 1,325원**을 쓴 일이 있다.
+          #    그림 보관 방식이 바뀌면서 배우 전원의 새 시트가 '없는 그림'으로
+          #    잡혔고, 이 단계는 시키는 대로 전부 사 버렸다. 영상 버튼은 영상을
+          #    만드는 버튼이지 그림을 사는 버튼이 아니다 — 한 번에 시트 한 장
+          #    값(약 265원)까지만 스스로 메우고, 그보다 크면 멈춰서
+          #    [0. 에셋 만들기](값이 단추에 적혀 있다)로 안내한다.
+          VT_IMAGE_RUN_KRW: '300'
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           # ⭐ 사진 창고를 **둘** 걸어 둔다. 하나가 막혀도 배경 받기가 안 멈춘다.
           #    (2026-08-12 손님: 열쇠를 둘 다 넣어 뒀는데 한쪽만 쓰고 있었다)
@@ -292,6 +316,9 @@ jobs:
               echo ""
               echo "**'없는 그림을 만들까요'** 를 **없는 것만 만든다** 로 놓고 다시 실행하십시오."
               echo "(인물 한 장에 약 57원입니다. 한 번 만들면 다음 회차부터는 그대로 씁니다)"
+              echo ""
+              echo "⚠️ 여러 장이 한꺼번에 빠져 **300원이 넘게 들 때** 이 버튼은 돈을 더 쓰지 않습니다."
+              echo "   그때는 **[0. 에셋 만들기]** 에서 만드십시오 — 단추마다 값이 적혀 있습니다."
             } >> "$GITHUB_STEP_SUMMARY"
             echo "::error::인물 그림 ${N}장이 빠져 있습니다. 회색 실루엣이 나가므로 멈춥니다."
             exit 1
@@ -310,18 +337,25 @@ jobs:
           #    빠진 그림은 위에서 막고 있었는데 **망가진 그림은 아무도 안 막았다.**
           #    빠진 것보다 망가진 것이 나쁘다 — 빠지면 멈추기라도 하는데
           #    망가진 것은 조용히 방송된다. 여기서 멈춘다.
+          # ⚠️ 2026-08-15 — 바로 아래 안내문 끝에 따옴표가 하나 더 붙어 있었다.
+          #    그 한 글자 때문에 이 단계 전체가 '문장이 안 끝났다' 며 죽어서,
+          #    손님은 **왜 실패했는지 안내문조차 못 봤다.** 이제 자체 점검이
+          #    워크플로의 모든 실행 칸을 bash 로 미리 읽어 본다(tools/bash_check.py).
           if ! python3 tools/head_test.py > head.log 2>&1; then
             cat head.log
             {
               echo "## 목이 잘린 인물이 있어 영상을 만들지 않았습니다"
               echo ""
               echo '```'
-              head -n 20 head.log
+              head -n 30 head.log
               echo '```'
               echo ""
-              echo "지금 걸리는 것은 전부 **옛 격자 시트를 쓰는 배우들**입니다."
-              echo "**[0. 에셋 만들기] → [망가진 배우 2명만 (F70·M50B · 4장 · 약 1,060원)]** 을"
-              echo "한 번 돌리면 풀립니다 (더 싼 최소 수리 · 6명 전부는 3,180원).""
+              echo "위에 이름이 찍힌 배우의 그림이 망가져 있습니다. 고치는 길 두 가지:"
+              echo ""
+              echo "1. **[0. 에셋 만들기] → [소리 + 배경 사진만 (0원)]** — 갖고 있는"
+              echo "   시트에서 그림을 다시 오려냅니다. **돈이 안 드니 이것부터** 해 보십시오."
+              echo "2. 그래도 걸리면 그 배우의 시트 자체가 망가진 것입니다 —"
+              echo "   **[0. 에셋 만들기]** 에서 그 배우가 든 다시 만들기 단추를 누르십시오."
             } >> "$GITHUB_STEP_SUMMARY"
             echo "::error::목이 잘린 인물이 있습니다. 그대로 방송될 수 없어 멈춥니다."
             exit 1

@@ -313,9 +313,14 @@ def check(path, kind="face", verbose=True):
         #    그건 G3(개수)·G7(무리별 인원)이 **직접** 잰다. 여기는 어림이다.
         #    → 자를 수 없을 만큼 붙었을 때만 불합격(24px, 자를 때 필요한 최소),
         #      120px 에 못 미치면 경고로만 알린다.
+        # ⚠️ 2026-08-15 (3차) — 16px 간격을 불합격으로 몰아 **좋은 F70 시트를 두 번
+        #    연속 죽였다(530원).** 이 검사기 자신이 12명을 12덩어리로 정확히 분리해
+        #    놓고("자를 수 있다"는 실증) 간격 숫자로 떨어뜨린 것이다.
+        #    붙어 버리면 덩어리 개수가 줄어 G3·G7 이 직접 잡는다 — 여기는 어림이다.
+        #    원칙(2026-08-14 정립): 직접 잰 것만 불합격, 어림은 경고.
         g.add("G4", "인물 사이 최소 간격", f"{gap}px",
-              f"{EDGE_OK}px 이상 (넉넉히는 {MIN_GAP})",
-              gap >= MIN_GAP, warn=gap >= EDGE_OK)
+              f"{MIN_GAP}px 권장 (붙으면 G3·G7 이 잡는다)",
+              gap >= MIN_GAP, warn=True)
 
     # G5 ── 잘렸나 (가장자리 여백이 아니라 **잘림**을 잰다)
     #
@@ -333,20 +338,44 @@ def check(path, kind="face", verbose=True):
     #    날아간다), 상반신·전신은 **밑변만** 닿아도 된다.
     if bs:
         n_face = spec.get("face_rows", 0) * (spec["bands"][0] if spec["bands"] else 0)
-        worst_bad = None
+        worst_bad, graze = None, None
         for i, (_a, x0, y0, x1, y1) in enumerate(bs):
             is_face = i < n_face
-            room = {"왼쪽": x0, "위": y0, "오른쪽": W - x1}
+            room = {"왼쪽": ("L", x0), "위": ("T", y0), "오른쪽": ("R", W - x1)}
             if is_face:
-                room["아래"] = H - y1     # 얼굴은 턱이 잘리면 안 되니 밑변도 본다
+                room["아래"] = ("B", H - y1)   # 얼굴은 턱이 잘리면 안 되니 밑변도 본다
             # 상반신·전신은 밑변을 안 본다 — 원래 허리·발에서 평평하게 끝나는
             # 그림이라 밑변에 닿아도 잘린 티가 없다(2026-08-14 눈으로 확인).
-            for side, px in room.items():
-                if px < EDGE_OK and (worst_bad is None or px < worst_bad[1]):
-                    worst_bad = (f"{i + 1}번 {side}", px, is_face)
+            for side, (ax, px) in room.items():
+                if px >= EDGE_OK:
+                    continue
+                # ⚠️ 2026-08-15 (3차) — 옆면에 닿았다고 무조건 불합격으로 몰다가
+                #    좋은 F70 시트를 죽였다. 닿은 것은 12번 인물의 **한복 소매 끝**
+                #    이었다(얼굴 아님). '닿았다'가 아니라 **'얼마나 잘렸나'**를 잰다:
+                #    끝변에 닿은 몸 픽셀 길이가 인물 키의 4분의 1을 넘으면 반쪽이
+                #    잘린 것(불합격), 그 밑이면 소매 스침(경고). 얼굴 줄은 그대로
+                #    무조건 불합격 — 얼굴이 잘리면 방송을 못 한다.
+                if is_face:
+                    worst_bad = worst_bad or (f"{i + 1}번 {side}", px)
+                    continue
+                col = {"L": body[y0:y1, x0:min(x0 + 3, W)],
+                       "R": body[y0:y1, max(0, x1 - 3):x1],
+                       "T": body[y0:min(y0 + 3, H), x0:x1],
+                       "B": body[max(0, y1 - 3):y1, x0:x1]}[ax]
+                contact = int(col.any(axis=1).sum() if ax in "LR"
+                              else col.any(axis=0).sum())
+                span = (y1 - y0) if ax in "LR" else (x1 - x0)
+                if contact > span * 0.25:
+                    worst_bad = worst_bad or (
+                        f"{i + 1}번 {side} (닿은 길이 {contact}px)", px)
+                else:
+                    graze = graze or f"{i + 1}번 {side} 스침 {contact}px"
         if worst_bad:
             g.add("G5", "잘린 인물", f"{worst_bad[0]} {worst_bad[1]}px",
                   f"{EDGE_OK}px 이상", False)
+        elif graze:
+            g.add("G5", "잘린 인물", f"없음 ({graze})",
+                  f"얼굴·반쪽 잘림만 막는다", True, warn=True)
         else:
             g.add("G5", "잘린 인물", "없음", f"각 변 {EDGE_OK}px 이상", True)
 
