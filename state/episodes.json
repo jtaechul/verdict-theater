@@ -33,5 +33,15 @@
     "case_type": "유류분",
     "created_at": "2026-08-11",
     "validation_errors": 0
+  },
+  "EP003": {
+    "case_id": "239125",
+    "gate_score": 92,
+    "stage": "scripting",
+    "script_score": 97,
+    "revise_count": 0,
+    "case_type": "유류분",
+    "created_at": "2026-08-15",
+    "validation_errors": 2
   }
 }

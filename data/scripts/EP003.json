@@ -1,0 +1,3897 @@
+{
+  "meta": {
+    "case_id": "239125",
+    "case_type": "유류분",
+    "title_candidates": [
+      "믿었던 사십 년",
+      "그 사람은 오래전에 집을 나갔습니다",
+      "아버지가 남긴 마지막 종이 한 장"
+    ],
+    "logline": "두 집 살림 사십 년, 남편이 남긴 종이 한 장",
+    "runtime_sec": 720,
+    "cut_count": 118,
+    "episode": "EP003"
+  },
+  "anonymization": {
+    "names": [
+      {
+        "code": "F50A",
+        "name": "윤순덕",
+        "age": 66,
+        "role": "본처"
+      },
+      {
+        "code": "M50B",
+        "name": "차정우",
+        "age": 58,
+        "role": "장남"
+      },
+      {
+        "code": "F50B",
+        "name": "차미경",
+        "age": 55,
+        "role": "장녀"
+      },
+      {
+        "code": "F70",
+        "name": "한말숙",
+        "age": 70,
+        "role": "동거인"
+      },
+      {
+        "code": "M50A",
+        "name": "한도현",
+        "age": 52,
+        "role": "동거인의 아들"
+      },
+      {
+        "code": "M70",
+        "name": "차성표",
+        "age": 78,
+        "role": "망인·남편"
+      },
+      {
+        "code": "JUDGE",
+        "name": "재판장",
+        "age": 0,
+        "role": "재판장"
+      }
+    ],
+    "region_original_level": "가상지명: 한서시",
+    "amount_scale": 1.42,
+    "amounts_used": [
+      {
+        "label": "본처 위자료 인정액",
+        "value": "1,400만 원"
+      },
+      {
+        "label": "본처가 오래전 받은 돈",
+        "value": "2억 8,000만 원"
+      }
+    ],
+    "years_relative_only": true,
+    "judge_name_removed": true,
+    "case_number_used": false
+  },
+  "law": {
+    "refs_from_case": [
+      "민법 제1004조",
+      "민법 제1064조",
+      "민법 제1113조",
+      "민법 제1114조",
+      "민법 제1116조"
+    ],
+    "refs_source": "본문추출",
+    "explain_5act": "법은 가족에게 최소한의 몫을 남겨 두는데, 그것을 유류분이라고 부릅니다."
+  },
+  "characters": [
+    {
+      "code": "F50A",
+      "name": "윤순덕",
+      "age": 66,
+      "role": "본처",
+      "nametag": "윤순덕 · 66세 · 아내",
+      "voice": "v_F50A",
+      "voice_card": {
+        "speech": "낮고 평평한 존댓말. 목소리를 높이는 법이 없다",
+        "habit": "자기 얘기를 하다 말고 남의 안부를 묻는다 — '밥은 먹었니'",
+        "avoid": "상대를 욕하지 않는다. '그 여자'라는 말을 입에 안 담는다"
+      },
+      "note": "주인공. 사십 년을 혼자 견딘 아내"
+    },
+    {
+      "code": "M50B",
+      "name": "차정우",
+      "age": 58,
+      "role": "장남",
+      "nametag": "차정우 · 58세 · 장남",
+      "voice": "v_M50B",
+      "voice_card": {
+        "speech": "반말과 존댓말이 섞인다. 어머니에겐 짧게, 밖에선 사무적으로",
+        "habit": "말끝에 '됐어'를 붙여 대화를 끊는다",
+        "avoid": "아버지를 '아버지'라고 부르지 않는다. 늘 '그 사람'"
+      },
+      "note": "어머니를 대신해 서류를 뗀다"
+    },
+    {
+      "code": "F50B",
+      "name": "차미경",
+      "age": 55,
+      "role": "장녀",
+      "nametag": "차미경 · 55세 · 장녀",
+      "voice": "v_F50B",
+      "voice_card": {
+        "speech": "빠르고 날이 서 있다. 물음표로 끝나는 말이 많다",
+        "habit": "상대 말을 자르고 들어온다",
+        "avoid": "울지 않으려고 웃어버린다. 슬프다는 말을 안 한다"
+      },
+      "note": "어머니에게 왜 참았냐고 따지는 딸"
+    },
+    {
+      "code": "F70",
+      "name": "한말숙",
+      "age": 70,
+      "role": "동거인",
+      "nametag": "한말숙 · 70세 · 동거인",
+      "voice": "v_F70",
+      "voice_card": {
+        "speech": "정중한 존댓말. 흔들림이 없다",
+        "habit": "질문에 질문으로 답한다 — '그럼 제가 뭘 했어야 했나요'",
+        "avoid": "변명하지 않는다. 미안하다는 말을 하지 않는다"
+      },
+      "note": "사십 년을 함께 산 사람. 자기 나름의 논리가 있다"
+    },
+    {
+      "code": "M50A",
+      "name": "한도현",
+      "age": 52,
+      "role": "동거인의 아들",
+      "nametag": "한도현 · 52세 · 아들",
+      "voice": "v_M50A",
+      "voice_card": {
+        "speech": "차갑고 짧다. 감정을 싣지 않는다",
+        "habit": "'법원에서 확인하세요' 같은 절차 언어로 대화를 닫는다",
+        "avoid": "목소리를 높이지 않는다. 화를 내지 않는다"
+      },
+      "note": "뻔뻔한 한 줄의 주인"
+    },
+    {
+      "code": "M70",
+      "name": "차성표",
+      "age": 78,
+      "role": "남편·망인",
+      "nametag": "차성표 · 78세 · 남편",
+      "voice": "v_M70",
+      "voice_card": {
+        "speech": "느리고 낮다. 설명을 하지 않는다",
+        "habit": "대답 대신 헛기침을 한다",
+        "avoid": "약속을 입에 담지 않는다"
+      },
+      "note": "회상에만 등장. 끝내 아무 말도 남기지 않았다"
+    },
+    {
+      "code": "JUDGE",
+      "name": "재판장",
+      "age": 0,
+      "role": "재판장",
+      "nametag": "재판장",
+      "voice": "v_JUDGE",
+      "voice_card": {
+        "speech": "단정한 존댓말. 결론을 먼저 말한다",
+        "habit": "문장을 짧게 끊는다",
+        "avoid": "감정을 싣지 않는다"
+      },
+      "note": "4막에만 등장"
+    }
+  ],
+  "acts": [
+    {
+      "id": "hook",
+      "title": "도입 훅",
+      "start_sec": 0,
+      "end_sec": 22,
+      "bgm": "hook",
+      "cuts": [
+        {
+          "id": "H01",
+          "sec": 2.7,
+          "bg": "funeral_reception",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "bust_cold",
+              "pos": "left",
+              "scale": 1.15
+            },
+            {
+              "code": "F50A",
+              "pose": "face_shock",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "v_M50A",
+          "text": "이 건물들, 저희 앞으로 넘어갔습니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "한도현 · 52세 · 아들"
+          },
+          "sfx": "sfx_paper",
+          "amb": "amb_funeral",
+          "blackout": false
+        },
+        {
+          "id": "H02",
+          "sec": 4.6,
+          "bg": "funeral_reception",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_shock",
+              "pos": "center",
+              "scale": 1.1
+            }
+          ],
+          "speaker": "narrator",
+          "text": "상복 소매 끝을 쥔 손이 그대로 굳었습니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤순덕 · 66세 · 아내"
+          },
+          "sfx": null,
+          "amb": "amb_funeral",
+          "blackout": false
+        },
+        {
+          "id": "H03",
+          "sec": 4.4,
+          "bg": "funeral_reception",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50B",
+              "pose": "bust_anger",
+              "pos": "right",
+              "scale": 1.0
+            },
+            {
+              "code": "M50A",
+              "pose": "full_back",
+              "pos": "left",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "v_F50B",
+          "text": "무슨 소리예요, 지금?",
+          "gfx": {
+            "type": "nametag",
+            "text": "차미경 · 55세 · 장녀"
+          },
+          "sfx": null,
+          "amb": "amb_funeral",
+          "blackout": false
+        },
+        {
+          "id": "H04",
+          "sec": 4.5,
+          "bg": "funeral_hall",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "full_stand",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "사십 년을 기다린 아내 앞에, 처음 보는 얼굴이 서 있었습니다.",
+          "gfx": null,
+          "sfx": "sfx_footsteps",
+          "amb": "amb_funeral",
+          "blackout": false
+        },
+        {
+          "id": "H05",
+          "sec": 5.4,
+          "bg": "funeral_altar",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_sad",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "narrator",
+          "text": "아내보다 먼저 알고 있던 사람들은, 누구였을까요.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_funeral",
+          "blackout": true
+        }
+      ]
+    },
+    {
+      "id": "act1",
+      "title": "기다린 집",
+      "start_sec": 22,
+      "end_sec": 240,
+      "bgm": "past",
+      "cuts": [
+        {
+          "id": "A1-01",
+          "sec": 6.4,
+          "bg": "funeral_parking",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "full_back",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "남편의 장례가 끝나고, 순덕 씨는 혼자 남았습니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤순덕 · 66세 · 아내"
+          },
+          "sfx": null,
+          "amb": "amb_funeral",
+          "blackout": false
+        },
+        {
+          "id": "A1-02",
+          "sec": 6.6,
+          "bg": "etc_alley_night",
+          "flashback": false,
+          "chars": [],
+          "speaker": "narrator",
+          "text": "남편이 남긴 것은 한서시 골목의 상가 건물들이었습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-03",
+          "sec": 6.5,
+          "bg": "etc_alley_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "full_stand",
+              "pos": "center",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "순덕 씨가 한 번도 들어가 본 적 없는 건물들이었습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-04",
+          "sec": 6.3,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_sad",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "남편과 한집에 산 마지막 밤이 언제였는지, 기억나지 않았습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-05",
+          "sec": 6.6,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "bust_cold",
+              "pos": "left",
+              "scale": 1.1
+            },
+            {
+              "code": "F50A",
+              "pose": "face_neutral",
+              "pos": "right",
+              "scale": 0.9
+            }
+          ],
+          "speaker": "v_M50B",
+          "text": "엄마, 그 사람 서류 정리는 내가 할게. 됐어.",
+          "gfx": {
+            "type": "nametag",
+            "text": "차정우 · 58세 · 장남"
+          },
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-06",
+          "sec": 6.2,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_sad",
+              "pos": "right",
+              "scale": 0.95
+            },
+            {
+              "code": "M50B",
+              "pose": "bust_neutral",
+              "pos": "left",
+              "scale": 1.1
+            }
+          ],
+          "speaker": "v_F50A",
+          "text": "그래. 너 저녁은 먹었니.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-07",
+          "sec": 6.5,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50B",
+              "pose": "bust_anger",
+              "pos": "left",
+              "scale": 1.05
+            },
+            {
+              "code": "F50A",
+              "pose": "face_neutral",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "v_F50B",
+          "text": "엄마는 왜 아직도 그 집 얘기를 안 해?",
+          "gfx": {
+            "type": "nametag",
+            "text": "차미경 · 55세 · 장녀"
+          },
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-08",
+          "sec": 6.4,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_sad",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "순덕 씨는 대답 대신 국을 한 번 더 저었습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-09",
+          "sec": 6.6,
+          "bg": "home_living_day",
+          "flashback": false,
+          "chars": [],
+          "speaker": "narrator",
+          "text": "이 집에는 오래전부터, 사람 수보다 밥그릇이 하나 많았습니다.",
+          "gfx": {
+            "type": "family",
+            "nodes": [
+              {
+                "name": "윤순덕",
+                "rel": "아내"
+              },
+              {
+                "name": "차정우",
+                "rel": "장남"
+              },
+              {
+                "name": "차미경",
+                "rel": "장녀"
+              },
+              {
+                "name": "차성표",
+                "rel": "남편"
+              },
+              {
+                "name": "한말숙",
+                "rel": "남편과 함께 산 사람"
+              },
+              {
+                "name": "한도현",
+                "rel": "그 사람의 아들"
+              }
+            ]
+          },
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-10",
+          "sec": 6.5,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "full_sit",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "명절이면 네 그릇을 차렸습니다. 한 그릇은 늘 그대로 물렸습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-11",
+          "sec": 6.3,
+          "bg": "home_closet",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "full_sit_down",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "겨울이 오면 남편 내복을 한 벌씩 샀습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-12",
+          "sec": 6.6,
+          "bg": "home_closet",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_sad",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "narrator",
+          "text": "서랍 안에는 포장도 뜯지 않은 내복이 열 벌 넘게 있었습니다.",
+          "gfx": null,
+          "sfx": "sfx_paper",
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-13",
+          "sec": 6.4,
+          "bg": "home_closet",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50B",
+              "pose": "face_shock",
+              "pos": "left",
+              "scale": 1.05
+            },
+            {
+              "code": "F50A",
+              "pose": "bust_neutral",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "v_F50B",
+          "text": "이걸 다… 해마다 샀다고? 왜?",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-14",
+          "sec": 6.5,
+          "bg": "home_closet",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_neutral",
+              "pos": "right",
+              "scale": 1.0
+            },
+            {
+              "code": "F50B",
+              "pose": "bust_anger",
+              "pos": "left",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "v_F50A",
+          "text": "올겨울엔 들어오려나 싶어서. 그게, 나는….",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-15",
+          "sec": 6.6,
+          "bg": "home_bedroom",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "M70",
+              "pose": "full_stand",
+              "pos": "left",
+              "scale": 1.05
+            },
+            {
+              "code": "F50A",
+              "pose": "full_stand",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "남편이 가방을 싸던 밤이 있었습니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "차성표 · 78세 · 남편"
+          },
+          "sfx": null,
+          "amb": "amb_home",
+          "flashback_label": "윤순덕 씨의 기억",
+          "blackout": false
+        },
+        {
+          "id": "A1-16",
+          "sec": 6.2,
+          "bg": "home_bedroom",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "M70",
+              "pose": "bust_cold",
+              "pos": "left",
+              "scale": 1.1
+            },
+            {
+              "code": "F50A",
+              "pose": "face_sad",
+              "pos": "right",
+              "scale": 0.9
+            }
+          ],
+          "speaker": "v_M70",
+          "text": "…흠흠.",
+          "gfx": {
+            "type": "nametag",
+            "text": "차성표 · 78세 · 남편"
+          },
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-17",
+          "sec": 6.5,
+          "bg": "home_entrance",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_sad",
+              "pos": "right",
+              "scale": 0.95
+            },
+            {
+              "code": "M70",
+              "pose": "full_back",
+              "pos": "left",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "v_F50A",
+          "text": "밥은 먹고 가요.",
+          "gfx": null,
+          "sfx": "sfx_door",
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-18",
+          "sec": 6.4,
+          "bg": "home_entrance",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "full_stand",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "남편은 아무 설명도 하지 않고 문을 닫았습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-19",
+          "sec": 6.3,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "full_sit",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "그 뒤로 사십 년, 순덕 씨는 그 집에서 혼자 늙었습니다.",
+          "gfx": null,
+          "sfx": "sfx_clock",
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-20",
+          "sec": 6.6,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50B",
+              "pose": "bust_anger",
+              "pos": "left",
+              "scale": 1.05
+            },
+            {
+              "code": "F50A",
+              "pose": "face_neutral",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "v_F50B",
+          "text": "엄마는 왜 그때 안 잡았어? 한 번을 안 잡았잖아.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-21",
+          "sec": 6.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_sad",
+              "pos": "right",
+              "scale": 1.0
+            },
+            {
+              "code": "F50B",
+              "pose": "bust_neutral",
+              "pos": "left",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "v_F50A",
+          "text": "붙잡으면… 그 사람이 더 멀리 갈까 봐.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-22",
+          "sec": 6.4,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50B",
+              "pose": "face_cry",
+              "pos": "left",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "v_F50B",
+          "text": "그래서 우리는? 우리는 뭐가 되는데?",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-23",
+          "sec": 6.3,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_sad",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "딸의 원망은 아버지가 아니라 어머니를 향했습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-24",
+          "sec": 6.6,
+          "bg": "daily_restaurant",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "full_stand",
+              "pos": "left",
+              "scale": 1.1
+            },
+            {
+              "code": "F50B",
+              "pose": "bust_neutral",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "아버지 이야기가 나오면, 큰아들은 늘 자리에서 일어났습니다.",
+          "gfx": null,
+          "sfx": "sfx_footsteps",
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-25",
+          "sec": 6.4,
+          "bg": "daily_restaurant",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "bust_cold",
+              "pos": "left",
+              "scale": 1.1
+            },
+            {
+              "code": "F50B",
+              "pose": "face_anger",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "v_M50B",
+          "text": "그 사람 얘기 그만하자. 됐어.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-26",
+          "sec": 6.5,
+          "bg": "daily_restaurant",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "full_back",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "narrator",
+          "text": "정우 씨는 자기 결혼식에도 아버지를 부르지 않았습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-27",
+          "sec": 6.3,
+          "bg": "daily_market",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "full_walk",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "순덕 씨는 그 얘기를 아무에게도 하지 않았습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-28",
+          "sec": 6.6,
+          "bg": "medical_room_shared",
+          "flashback": false,
+          "chars": [],
+          "speaker": "narrator",
+          "text": "남편은 몇 해 전부터 병으로 자주 입원했다고 합니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_hospital",
+          "blackout": false
+        },
+        {
+          "id": "A1-29",
+          "sec": 6.5,
+          "bg": "medical_waiting",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "full_sit",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "병실을 지킨 사람은 사십 년을 함께 산 다른 사람이었습니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "한말숙 · 70세 · 동거인"
+          },
+          "sfx": null,
+          "amb": "amb_hospital",
+          "blackout": false
+        },
+        {
+          "id": "A1-30",
+          "sec": 6.4,
+          "bg": "home_living_day",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_neutral",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "narrator",
+          "text": "순덕 씨는 그 병원에 한 번도 불려가지 않았습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-31",
+          "sec": 6.6,
+          "bg": "home_living_day",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_shock",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "narrator",
+          "text": "남편이 떠났다는 소식도, 아들의 전화로 들었습니다.",
+          "gfx": null,
+          "sfx": "sfx_phone",
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-32",
+          "sec": 6.5,
+          "bg": "office_registry",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "full_sit",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "narrator",
+          "text": "장례가 끝난 주, 정우 씨는 등기부를 떼러 갔습니다.",
+          "gfx": null,
+          "sfx": "sfx_paper",
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A1-33",
+          "sec": 6.6,
+          "bg": "home_living_day",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "bust_shock",
+              "pos": "left",
+              "scale": 1.1
+            },
+            {
+              "code": "F50A",
+              "pose": "face_neutral",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "돌아온 아들은 봉투를 들고, 어머니 앞에 앉았습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A1-34",
+          "sec": 6.6,
+          "bg": "home_living_day",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "face_anger",
+              "pos": "left",
+              "scale": 1.15
+            },
+            {
+              "code": "F50A",
+              "pose": "face_shock",
+              "pos": "right",
+              "scale": 0.9
+            }
+          ],
+          "speaker": "v_M50B",
+          "text": "엄마… 그 건물들, 이미 남의 이름으로 넘어가 있어.",
+          "gfx": null,
+          "sfx": "sfx_heartbeat",
+          "amb": "amb_home",
+          "blackout": true
+        }
+      ]
+    },
+    {
+      "id": "act2",
+      "title": "이미 정해져 있던 날짜",
+      "start_sec": 240,
+      "end_sec": 446,
+      "bgm": "reveal",
+      "cuts": [
+        {
+          "id": "A2-01",
+          "sec": 5.7,
+          "bg": "office_registry",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "full_stand",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "narrator",
+          "text": "정우 씨는 아침 아홉 시에 등기소 문 앞에 서 있었습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A2-02",
+          "sec": 6.1,
+          "bg": "office_registry",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "bust_neutral",
+              "pos": "left",
+              "scale": 1.1
+            }
+          ],
+          "speaker": "v_M50B",
+          "text": "그 집 등기부, 한 통만 떼 주세요.",
+          "gfx": null,
+          "sfx": "sfx_paper",
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A2-03",
+          "sec": 6.4,
+          "bg": "office_registry",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "face_neutral",
+              "pos": "center",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "narrator",
+          "text": "종이 두 장. 그 안에 사십 년이 다 들어 있었습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A2-04",
+          "sec": 6.3,
+          "bg": "office_registry",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "face_shock",
+              "pos": "center",
+              "scale": 1.2
+            }
+          ],
+          "speaker": "narrator",
+          "text": "소유자 칸에 모르는 이름 둘이 나란히 찍혀 있었습니다.",
+          "gfx": null,
+          "sfx": "sfx_heartbeat",
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A2-05",
+          "sec": 5.9,
+          "bg": "office_registry",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "bust_shock",
+              "pos": "center",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "narrator",
+          "text": "이전 원인 칸에는 '유증'이라고 적혀 있었습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A2-06",
+          "sec": 6.2,
+          "bg": "home_living_day",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "bust_sad",
+              "pos": "left",
+              "scale": 1.1
+            },
+            {
+              "code": "F50A",
+              "pose": "face_neutral",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "v_M50B",
+          "text": "엄마. 그 종이, 벌써 있었더라고. 한참 전에.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-07",
+          "sec": 5.9,
+          "bg": "home_living_day",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_neutral",
+              "pos": "center",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "v_F50A",
+          "text": "한참이라니… 언제를 말하는 거니.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-08",
+          "sec": 6.4,
+          "bg": "home_living_day",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "bust_cold",
+              "pos": "left",
+              "scale": 1.1
+            },
+            {
+              "code": "F50A",
+              "pose": "face_shock",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "v_M50B",
+          "text": "아버지 쓰러지기 훨씬 전이야. 그 사람 멀쩡할 때. 됐어.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-09",
+          "sec": 6.6,
+          "bg": "home_living_day",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_shock",
+              "pos": "center",
+              "scale": 1.2
+            }
+          ],
+          "speaker": "narrator",
+          "text": "순덕 씨가 남편의 병을 알기도 전에, 종이는 이미 만들어져 있었습니다.",
+          "gfx": null,
+          "sfx": "sfx_heartbeat",
+          "amb": "amb_home",
+          "blackout": false,
+          "tag": "twist"
+        },
+        {
+          "id": "A2-10",
+          "sec": 6.7,
+          "bg": "home_living_day",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_shock",
+              "pos": "center",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "narrator",
+          "text": "순서를 늘어놓자, 비로소 무슨 일이 있었는지 보였습니다.",
+          "gfx": {
+            "type": "timeline",
+            "items": [
+              {
+                "label": "남편이 집을 나감",
+                "when": "사십 년쯤 전"
+              },
+              {
+                "label": "공증서 작성",
+                "when": "그 뒤 오랜 세월이 지나"
+              },
+              {
+                "label": "남편 첫 입원",
+                "when": "공증서 작성 두 해 뒤"
+              },
+              {
+                "label": "부고를 아들에게 전해 들음",
+                "when": "그로부터 얼마 뒤"
+              },
+              {
+                "label": "등기 이전",
+                "when": "장례 직후"
+              }
+            ]
+          },
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-11",
+          "sec": 6.0,
+          "bg": "home_living_day",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_sad",
+              "pos": "center",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "v_F50A",
+          "text": "그 사람은 건강할 때 다 정해 놨던 거네요.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-12",
+          "sec": 6.3,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50B",
+              "pose": "bust_anger",
+              "pos": "left",
+              "scale": 1.1
+            },
+            {
+              "code": "F50A",
+              "pose": "face_sad",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "v_F50B",
+          "text": "엄마는 알았어? 몰랐지? 우리한테 왜 아무도 말을 안 해?",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-13",
+          "sec": 6.1,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50B",
+              "pose": "face_anger",
+              "pos": "center",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "narrator",
+          "text": "미경 씨는 그날 밤 열한 시에 문자를 보냈습니다.",
+          "gfx": null,
+          "sfx": "sfx_phone",
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-14",
+          "sec": 6.2,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50B",
+              "pose": "bust_neutral",
+              "pos": "center",
+              "scale": 1.1
+            }
+          ],
+          "speaker": "v_F50B",
+          "text": "그 서류 사본 좀 보내 주세요. 그것만 보면 됩니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-15",
+          "sec": 5.8,
+          "bg": "etc_alley_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "bust_cold",
+              "pos": "center",
+              "scale": 1.1
+            }
+          ],
+          "speaker": "v_M50A",
+          "text": "법원에서 확인하세요.",
+          "gfx": {
+            "type": "nametag",
+            "text": "한도현 · 52세 · 아들"
+          },
+          "sfx": "sfx_phone",
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A2-16",
+          "sec": 6.4,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50B",
+              "pose": "face_shock",
+              "pos": "center",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "narrator",
+          "text": "답장은 그 일곱 글자가 전부였습니다. 화도 없이, 짧게.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-17",
+          "sec": 6.0,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50B",
+              "pose": "bust_anger",
+              "pos": "left",
+              "scale": 1.1
+            },
+            {
+              "code": "M50B",
+              "pose": "face_cold",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "v_F50B",
+          "text": "숨긴 거잖아. 보여줄 게 떳떳하면 왜 안 보내?",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-18",
+          "sec": 6.2,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "bust_cold",
+              "pos": "left",
+              "scale": 1.1
+            },
+            {
+              "code": "F50B",
+              "pose": "face_anger",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "v_M50B",
+          "text": "보여줄 마음이 있었으면 진작 왔겠지. 됐어.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-19",
+          "sec": 6.3,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_neutral",
+              "pos": "center",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "narrator",
+          "text": "순덕 씨는 아무 말도 하지 않고 식은 국을 다시 데웠습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-20",
+          "sec": 6.1,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "full_sit",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "narrator",
+          "text": "정우 씨는 그때 오래 묻어 둔 이야기를 꺼냈습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-21",
+          "sec": 6.4,
+          "bg": "etc_alley_night",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "M70",
+              "pose": "full_walk",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "골목 끝에서, 아버지는 우리 집 반대편으로 걸어갔습니다.",
+          "gfx": null,
+          "sfx": "sfx_footsteps",
+          "amb": "amb_street",
+          "blackout": false,
+          "flashback_label": "차정우 씨의 기억"
+        },
+        {
+          "id": "A2-22",
+          "sec": 6.2,
+          "bg": "etc_alley_night",
+          "flashback": true,
+          "chars": [
+            {
+              "code": "M70",
+              "pose": "full_back",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "가방을 들고, 한 번도 뒤를 돌아보지 않았습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A2-23",
+          "sec": 6.3,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "face_cry",
+              "pos": "center",
+              "scale": 1.2
+            }
+          ],
+          "speaker": "v_M50B",
+          "text": "나 그거 봤어. 그날. 근데 아무한테도 말 안 했어.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-24",
+          "sec": 6.5,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "bust_cry",
+              "pos": "left",
+              "scale": 1.1
+            },
+            {
+              "code": "F50A",
+              "pose": "face_sad",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "v_M50B",
+          "text": "말하면 엄마가 무너질 것 같아서. 그냥 삼켰어. 됐어.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-25",
+          "sec": 6.2,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_cry",
+              "pos": "center",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "narrator",
+          "text": "삼십 년을 혼자 지고 온 말이, 밥상 위에 떨어졌습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-26",
+          "sec": 6.1,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_sad",
+              "pos": "left",
+              "scale": 1.0
+            },
+            {
+              "code": "M50B",
+              "pose": "face_cry",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "v_F50A",
+          "text": "그걸 그 어린 게… 밥은 먹었니.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-27",
+          "sec": 6.4,
+          "bg": "home_bedroom",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "full_sit",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "narrator",
+          "text": "그날 밤, 순덕 씨는 처음으로 목소리를 냈습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-28",
+          "sec": 6.6,
+          "bg": "home_bedroom",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_sad",
+              "pos": "center",
+              "scale": 1.2
+            }
+          ],
+          "speaker": "v_F50A",
+          "text": "그 사람이 나한테 뭘 남겼는지 알고 싶었어요. 돈 말고.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-29",
+          "sec": 6.3,
+          "bg": "office_lawyer",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50B",
+              "pose": "bust_neutral",
+              "pos": "left",
+              "scale": 1.05
+            },
+            {
+              "code": "M50B",
+              "pose": "face_neutral",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "며칠 뒤, 서류 뭉치 하나가 더 도착했습니다.",
+          "gfx": null,
+          "sfx": "sfx_paper",
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-30",
+          "sec": 6.5,
+          "bg": "office_lawyer",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50B",
+              "pose": "face_shock",
+              "pos": "center",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "narrator",
+          "text": "병원비 영수증이었습니다. 보호자 칸에 낯선 이름이 있었습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A2-31",
+          "sec": 6.4,
+          "bg": "medical_room_single",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "full_sit",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "narrator",
+          "text": "남편의 마지막 몇 해, 침대 옆을 지킨 사람이 있었습니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "한말숙 · 70세 · 동거인"
+          },
+          "sfx": null,
+          "amb": "amb_hospital",
+          "blackout": false
+        },
+        {
+          "id": "A2-32",
+          "sec": 6.2,
+          "bg": "medical_waiting",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50B",
+              "pose": "face_shock",
+              "pos": "left",
+              "scale": 1.05
+            },
+            {
+              "code": "M50B",
+              "pose": "face_cold",
+              "pos": "right",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "v_F50B",
+          "text": "그럼 우리는… 그동안 뭐였는데?",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_hospital",
+          "blackout": false
+        },
+        {
+          "id": "A2-33",
+          "sec": 6.3,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_neutral",
+              "pos": "center",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "narrator",
+          "text": "순덕 씨는 그 종이를 오래 들여다보다, 조용히 접었습니다.",
+          "gfx": null,
+          "sfx": "sfx_paper",
+          "amb": "amb_home",
+          "blackout": true
+        }
+      ]
+    },
+    {
+      "id": "act3",
+      "title": "두 사람의 사십 년",
+      "start_sec": 446,
+      "end_sec": 634,
+      "bgm": "conflict",
+      "cuts": [
+        {
+          "id": "A3-01",
+          "sec": 5.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "full_sit",
+              "pos": "left",
+              "scale": 1.0
+            },
+            {
+              "code": "F70",
+              "pose": "full_sit",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "먼저 만나자고 한 사람은 순덕 씨였습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-02",
+          "sec": 6.0,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_neutral",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "v_F50A",
+          "text": "얼굴은 한번 봐야 할 것 같아서요.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-03",
+          "sec": 6.0,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "face_neutral",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "v_F70",
+          "text": "저도 그렇게 생각하고 있었습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-04",
+          "sec": 6.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_sad",
+              "pos": "left",
+              "scale": 1.0
+            },
+            {
+              "code": "F70",
+              "pose": "bust_neutral",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "v_F50A",
+          "text": "그이 밥은… 그이 밥은 잘 드셨어요?",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-05",
+          "sec": 6.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "bust_cold",
+              "pos": "center",
+              "scale": 1.1
+            }
+          ],
+          "speaker": "v_F70",
+          "text": "마지막 삼 년, 기저귀는 제가 갈았습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-06",
+          "sec": 6.0,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_shock",
+              "pos": "center",
+              "scale": 1.1
+            }
+          ],
+          "speaker": "narrator",
+          "text": "순덕 씨는 컵에서 손을 떼지 못했습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-07",
+          "sec": 6.5,
+          "bg": "home_living_day",
+          "flashback": true,
+          "flashback_label": "윤순덕 씨의 기억",
+          "chars": [
+            {
+              "code": "M70",
+              "pose": "full_stand",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "v_M70",
+          "text": "흠… 다녀올게.",
+          "gfx": null,
+          "sfx": "sfx_door",
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A3-08",
+          "sec": 5.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_sad",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "narrator",
+          "text": "그이는 한 번도 설명해 주지 않았습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-09",
+          "sec": 6.0,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "face_cold",
+              "pos": "left",
+              "scale": 1.05
+            },
+            {
+              "code": "F50A",
+              "pose": "face_sad",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "v_F70",
+          "text": "그럼 제가 뭘 했어야 했나요.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-10",
+          "sec": 5.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_sad",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "v_F50A",
+          "text": "아니요. 그런 뜻으로 온 건 아니고…",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-11",
+          "sec": 6.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_sad",
+              "pos": "left",
+              "scale": 1.0
+            },
+            {
+              "code": "F70",
+              "pose": "bust_neutral",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "두 사람 사이에 사십 년이 놓여 있었습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-12",
+          "sec": 4.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "full_stand",
+              "pos": "left",
+              "scale": 1.1
+            },
+            {
+              "code": "F50A",
+              "pose": "face_shock",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "그때 문이 열렸습니다.",
+          "gfx": null,
+          "sfx": "sfx_door",
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-13",
+          "sec": 3.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "bust_cold",
+              "pos": "left",
+              "scale": 1.15
+            },
+            {
+              "code": "F50A",
+              "pose": "face_shock",
+              "pos": "right",
+              "scale": 0.9
+            }
+          ],
+          "speaker": "v_M50A",
+          "text": "아버지가 고른 겁니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false,
+          "tag": "anger_line"
+        },
+        {
+          "id": "A3-14",
+          "sec": 6.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "bust_cold",
+              "pos": "left",
+              "scale": 1.1
+            },
+            {
+              "code": "F50A",
+              "pose": "bust_sad",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "v_M50A",
+          "text": "그때 이억 팔천, 받으셨다고 들었습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-15",
+          "sec": 6.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_sad",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "v_F50A",
+          "text": "그건 집 사려고… 어머님 모실 때 쓴 거라…",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-16",
+          "sec": 6.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_sad",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "그 집에서 순덕 씨는 시어머니 임종을 지켰습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-17",
+          "sec": 5.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_neutral",
+              "pos": "left",
+              "scale": 1.05
+            },
+            {
+              "code": "M50A",
+              "pose": "bust_cold",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "v_F50A",
+          "text": "나는 사십 년을 기다렸는데요.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-18",
+          "sec": 4.5,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "face_neutral",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "narrator",
+          "text": "아무도 대답하지 않았습니다.",
+          "gfx": null,
+          "sfx": "sfx_clock",
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-19",
+          "sec": 6.0,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "full_stand",
+              "pos": "right",
+              "scale": 1.0
+            },
+            {
+              "code": "F50A",
+              "pose": "full_sit",
+              "pos": "left",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "v_F70",
+          "text": "저는 사과하러 나온 게 아닙니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-20",
+          "sec": 6.0,
+          "bg": "daily_cafe",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "full_sit",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "식은 커피 두 잔이 그대로 남았습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_street",
+          "blackout": false
+        },
+        {
+          "id": "A3-21",
+          "sec": 6.0,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50B",
+              "pose": "bust_anger",
+              "pos": "left",
+              "scale": 1.05
+            },
+            {
+              "code": "M50B",
+              "pose": "bust_cold",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "v_F50B",
+          "text": "소송해. 지금 안 하면 그냥 끝이야.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A3-22",
+          "sec": 5.5,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "face_cold",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "v_M50B",
+          "text": "그 사람 물건은 하나도 갖기 싫어. 됐어.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A3-23",
+          "sec": 6.5,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50B",
+              "pose": "face_anger",
+              "pos": "left",
+              "scale": 1.05
+            },
+            {
+              "code": "M50B",
+              "pose": "face_cold",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "v_F50B",
+          "text": "그게 왜 그 사람 물건이야? 엄마 거잖아.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A3-24",
+          "sec": 5.5,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "bust_cold",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "v_M50B",
+          "text": "엄마가 언제 달라고 한 적 있어? 됐어.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A3-25",
+          "sec": 6.5,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "full_sit",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "어머니는 그 옆에서 아무 말도 하지 않았습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A3-26",
+          "sec": 6.5,
+          "bg": "home_entrance",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "full_back",
+              "pos": "left",
+              "scale": 1.05
+            },
+            {
+              "code": "F50B",
+              "pose": "full_stand",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "남매는 현관에서 서로 등을 돌렸습니다.",
+          "gfx": null,
+          "sfx": "sfx_door",
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A3-27",
+          "sec": 5.5,
+          "bg": "home_entrance",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50B",
+              "pose": "bust_anger",
+              "pos": "left",
+              "scale": 1.05
+            },
+            {
+              "code": "F50A",
+              "pose": "bust_sad",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "v_F50B",
+          "text": "엄마가 참아서 우리가 이렇게 된 거야.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A3-28",
+          "sec": 6.0,
+          "bg": "home_entrance",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50B",
+              "pose": "face_cry",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "v_F50B",
+          "text": "…아니, 엄마. 그 말은 그게 아니라…",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A3-29",
+          "sec": 6.0,
+          "bg": "home_entrance",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_neutral",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "v_F50A",
+          "text": "밥은 먹고 가라. 국 데워 놨어.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A3-30",
+          "sec": 6.0,
+          "bg": "home_bedroom",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "full_sit_down",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "밤에 순덕 씨는 서랍 하나를 열었습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A3-31",
+          "sec": 6.0,
+          "bg": "home_closet",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_sad",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "narrator",
+          "text": "해마다 사 두고 못 준 내복 열 벌이었습니다.",
+          "gfx": null,
+          "sfx": "sfx_paper",
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A3-32",
+          "sec": 6.5,
+          "bg": "home_closet",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_cry",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "narrator",
+          "text": "버리려다, 순덕 씨는 그것을 도로 넣었습니다.",
+          "gfx": null,
+          "sfx": "sfx_tear",
+          "amb": "amb_home",
+          "blackout": true
+        }
+      ]
+    },
+    {
+      "id": "act4",
+      "title": "법정",
+      "start_sec": 634,
+      "end_sec": 689,
+      "bgm": "court",
+      "cuts": [
+        {
+          "id": "A4-01",
+          "sec": 5.5,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "bust_cold",
+              "pos": "left",
+              "scale": 1.1
+            }
+          ],
+          "speaker": "v_M50A",
+          "text": "숨긴 적 없습니다. 원본은 공증사무소에 있었습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-02",
+          "sec": 5.0,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50A",
+              "pose": "face_cold",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "v_M50A",
+          "text": "물어보셨으면 법원에서 확인하시면 됐습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-03",
+          "sec": 6.5,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "JUDGE",
+              "pose": "bust_neutral",
+              "pos": "center",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "v_JUDGE",
+          "text": "유언서를 숨겼다고 볼 수 없습니다. 등기 말소 청구는 받아들이지 않습니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "재판장"
+          },
+          "sfx": "sfx_gavel",
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-04",
+          "sec": 5.5,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_neutral",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "순덕 씨는 무릎 위에서 손을 한 번 고쳐 잡았습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-05",
+          "sec": 6.5,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "JUDGE",
+              "pose": "bust_neutral",
+              "pos": "center",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "v_JUDGE",
+          "text": "다만 유류분이 있습니다. 법이 가족에게 최소한으로 남겨 둔 몫입니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-06",
+          "sec": 6.5,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "JUDGE",
+              "pose": "bust_neutral",
+              "pos": "center",
+              "scale": 1.15
+            }
+          ],
+          "speaker": "v_JUDGE",
+          "text": "유증받은 그 건물의 지분 일부를 아내와 네 자녀에게 돌려주십시오.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-07",
+          "sec": 6.5,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "JUDGE",
+              "pose": "bust_neutral",
+              "pos": "left",
+              "scale": 1.15
+            },
+            {
+              "code": "F70",
+              "pose": "face_cold",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "v_JUDGE",
+          "text": "그리고 아내에게 위자료 1,400만 원을 지급하십시오.",
+          "gfx": {
+            "type": "amount",
+            "value": "1,400만 원",
+            "note": "사십 년의 값"
+          },
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false,
+          "tag": "verdict"
+        },
+        {
+          "id": "A4-08",
+          "sec": 6.0,
+          "bg": "court_room",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_neutral",
+              "pos": "center",
+              "scale": 1.05
+            }
+          ],
+          "speaker": "narrator",
+          "text": "순덕 씨는 웃지도, 울지도 않았습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": false
+        },
+        {
+          "id": "A4-09",
+          "sec": 6.0,
+          "bg": "court_hall",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50B",
+              "pose": "face_cry",
+              "pos": "left",
+              "scale": 1.0
+            },
+            {
+              "code": "M50B",
+              "pose": "full_back",
+              "pos": "right",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "남매는 복도에서 서로를 보지 못했습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_court",
+          "blackout": true
+        }
+      ]
+    },
+    {
+      "id": "act5",
+      "title": "남은 서랍",
+      "start_sec": 689,
+      "end_sec": 720,
+      "bgm": "outro",
+      "cuts": [
+        {
+          "id": "A5-01",
+          "sec": 6.5,
+          "bg": "home_kitchen",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "full_stand",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "순덕 씨는 그날도 밥상을 차렸습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A5-02",
+          "sec": 6.5,
+          "bg": "home_living_day",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "full_sit_down",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "narrator",
+          "text": "세 그릇. 네 번째 자리는 놓지 않았습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A5-03",
+          "sec": 6.0,
+          "bg": "home_living_day",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "M50B",
+              "pose": "full_sit",
+              "pos": "left",
+              "scale": 1.05
+            },
+            {
+              "code": "F50A",
+              "pose": "face_neutral",
+              "pos": "right",
+              "scale": 0.95
+            }
+          ],
+          "speaker": "v_F50A",
+          "text": "밥은 먹었니.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A5-04",
+          "sec": 6.0,
+          "bg": "home_living_day",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "bust_sad",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "법은 최소한의 몫은 남겼지만, 마음은 나눠 주지 못했습니다.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": false
+        },
+        {
+          "id": "A5-05",
+          "sec": 6.0,
+          "bg": "home_living_night",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "full_back",
+              "pos": "center",
+              "scale": 1.0
+            }
+          ],
+          "speaker": "narrator",
+          "text": "기다린 세월은, 누구에게 인정받아야 하는 걸까요.",
+          "gfx": null,
+          "sfx": null,
+          "amb": "amb_home",
+          "blackout": true,
+          "tag": "question"
+        }
+      ]
+    }
+  ],
+  "shorts": [
+    {
+      "no": 1,
+      "kind": "궁금증형",
+      "publish_offset_days": 1,
+      "est_sec": 28.3,
+      "intro_line": "장례식장에서 생긴 일",
+      "outro_line": "결말은 본편에서 확인하세요.",
+      "hook_reason": "첫 컷에 낯선 남자가 건물이 자기 것이라 통보하는 대사를 배치해 1초 안에 상황이 뒤집힌다",
+      "cuts": [
+        {
+          "id": "S1-01",
+          "from": "H01",
+          "sec": 2.3,
+          "bg": "funeral_reception",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "M50A",
+            "pose": "bust_cold",
+            "pos_y": 0.35,
+            "scale": 1.4
+          },
+          "speaker": "v_M50A",
+          "text": "이 건물들, 저희 겁니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "한도현 · 52세 · 아들"
+          },
+          "sfx": "sfx_paper",
+          "amb": "amb_funeral"
+        },
+        {
+          "id": "S1-02",
+          "from": "H02",
+          "sec": 2.0,
+          "bg": "funeral_reception",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_shock",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "narrator",
+          "text": "상복 소매 끝이 굳었습니다",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤순덕 · 66세 · 아내"
+          },
+          "sfx": null,
+          "amb": "amb_funeral"
+        },
+        {
+          "id": "S1-03",
+          "from": "H03",
+          "sec": 2.0,
+          "bg": "funeral_reception",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50B",
+            "pose": "bust_anger",
+            "pos_y": 0.35,
+            "scale": 1.35
+          },
+          "speaker": "v_F50B",
+          "text": "무슨 소리예요, 지금?",
+          "gfx": {
+            "type": "nametag",
+            "text": "차미경 · 55세 · 장녀"
+          },
+          "sfx": null,
+          "amb": "amb_funeral"
+        },
+        {
+          "id": "S1-04",
+          "from": "H04",
+          "sec": 2.2,
+          "bg": "funeral_hall",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_sad",
+            "pos_y": 0.4,
+            "scale": 1.3
+          },
+          "speaker": "narrator",
+          "text": "낯선 얼굴이 서 있었다",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤순덕 · 66세 · 아내"
+          },
+          "sfx": "sfx_footsteps",
+          "amb": "amb_funeral"
+        },
+        {
+          "id": "S1-05",
+          "from": "H05",
+          "sec": 2.2,
+          "bg": "funeral_altar",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_sad",
+            "pos_y": 0.4,
+            "scale": 1.3
+          },
+          "speaker": "narrator",
+          "text": "먼저 알던 사람은 누구였을까",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤순덕 · 66세 · 아내"
+          },
+          "sfx": null,
+          "amb": "amb_funeral"
+        },
+        {
+          "id": "S1-06",
+          "from": "A1-34",
+          "sec": 2.4,
+          "bg": "home_living_day",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "M50B",
+            "pose": "face_anger",
+            "pos_y": 0.35,
+            "scale": 1.4
+          },
+          "speaker": "v_M50B",
+          "text": "건물들, 이미 넘어갔어",
+          "gfx": {
+            "type": "nametag",
+            "text": "차정우 · 58세 · 장남"
+          },
+          "sfx": "sfx_heartbeat",
+          "amb": "amb_home"
+        },
+        {
+          "id": "S1-07",
+          "from": "A2-04",
+          "sec": 2.0,
+          "bg": "office_registry",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "M50B",
+            "pose": "face_shock",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "narrator",
+          "text": "모르는 이름 둘이 찍혀 있었다",
+          "gfx": {
+            "type": "nametag",
+            "text": "차정우 · 58세 · 장남"
+          },
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S1-08",
+          "from": "A2-05",
+          "sec": 2.0,
+          "bg": "office_registry",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "M50B",
+            "pose": "bust_shock",
+            "pos_y": 0.35,
+            "scale": 1.35
+          },
+          "speaker": "narrator",
+          "text": "이전 원인엔 '유증'이라고",
+          "gfx": {
+            "type": "nametag",
+            "text": "차정우 · 58세 · 장남"
+          },
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S1-09",
+          "from": "A2-09",
+          "sec": 2.3,
+          "bg": "home_living_day",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_shock",
+            "pos_y": 0.4,
+            "scale": 1.35
+          },
+          "speaker": "narrator",
+          "text": "종이는 이미 만들어져 있었다",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤순덕 · 66세 · 아내"
+          },
+          "sfx": "sfx_heartbeat",
+          "amb": "amb_home"
+        },
+        {
+          "id": "S1-10",
+          "from": "A2-10",
+          "sec": 2.3,
+          "bg": "home_living_day",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "bust_shock",
+            "pos_y": 0.35,
+            "scale": 1.35
+          },
+          "speaker": "narrator",
+          "text": "순서를 늘어놓자 보였다",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤순덕 · 66세 · 아내"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S1-11",
+          "from": "A2-11",
+          "sec": 2.2,
+          "bg": "home_living_day",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_sad",
+            "pos_y": 0.4,
+            "scale": 1.3
+          },
+          "speaker": "v_F50A",
+          "text": "건강할 때 다 정해 놨던 거네요",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤순덕 · 66세 · 아내"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S1-12",
+          "from": "A2-16",
+          "sec": 2.2,
+          "bg": "home_living_night",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50B",
+            "pose": "face_shock",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "narrator",
+          "text": "답장은 일곱 글자가 전부였다",
+          "gfx": {
+            "type": "nametag",
+            "text": "차미경 · 55세 · 장녀"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S1-13",
+          "from": null,
+          "sec": 2.2,
+          "bg": "home_living_night",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_neutral",
+            "pos_y": 0.4,
+            "scale": 1.3
+          },
+          "speaker": "narrator",
+          "text": "그 종이엔 무엇이 적혀 있었을까",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤순덕 · 66세 · 아내"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        }
+      ],
+      "youtube": {
+        "title": "장례식장에 나타난 낯선 남자, 그가 내민 서류",
+        "description_body": "장례식이 끝나기도 전에, 낯선 사람이 서류를 내밀었습니다. 그 종이엔 무엇이 적혀 있었을까요.",
+        "tags": [
+          "유류분",
+          "상속",
+          "가족드라마",
+          "유산분쟁",
+          "두집살림"
+        ]
+      }
+    },
+    {
+      "no": 2,
+      "kind": "분노형",
+      "publish_offset_days": 2,
+      "est_sec": 27.9,
+      "intro_line": "재산 나눈 뒤 그가 한 말",
+      "outro_line": "여러분이라면 어떻게 하시겠습니까?",
+      "hook_reason": "첫 컷에 '아버지가 고른 겁니다'라는 뻔뻔한 대사를 바로 배치해 1초 안에 분노를 자극한다",
+      "cuts": [
+        {
+          "id": "S2-01",
+          "from": "A3-13",
+          "sec": 2.0,
+          "bg": "daily_cafe",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "M50A",
+            "pose": "bust_cold",
+            "pos_y": 0.35,
+            "scale": 1.4
+          },
+          "speaker": "v_M50A",
+          "text": "아버지가 고른 겁니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "한도현 · 52세 · 아들"
+          },
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-02",
+          "from": "A3-14",
+          "sec": 2.3,
+          "bg": "daily_cafe",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "M50A",
+            "pose": "bust_cold",
+            "pos_y": 0.35,
+            "scale": 1.4
+          },
+          "speaker": "v_M50A",
+          "text": "그때 이억 팔천 받으셨죠?",
+          "gfx": {
+            "type": "nametag",
+            "text": "한도현 · 52세 · 아들"
+          },
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-03",
+          "from": "A3-15",
+          "sec": 2.2,
+          "bg": "daily_cafe",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_sad",
+            "pos_y": 0.4,
+            "scale": 1.3
+          },
+          "speaker": "v_F50A",
+          "text": "그건 어머님 모시려 쓴 돈인데",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤순덕 · 66세 · 아내"
+          },
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-04",
+          "from": "A3-16",
+          "sec": 2.2,
+          "bg": "daily_cafe",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_sad",
+            "pos_y": 0.4,
+            "scale": 1.3
+          },
+          "speaker": "narrator",
+          "text": "시어머니 임종도 그 집에서 지켰다",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤순덕 · 66세 · 아내"
+          },
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-05",
+          "from": "A3-17",
+          "sec": 2.2,
+          "bg": "daily_cafe",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "bust_neutral",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "v_F50A",
+          "text": "나는 사십 년을 기다렸는데요",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤순덕 · 66세 · 아내"
+          },
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-06",
+          "from": "A3-18",
+          "sec": 2.0,
+          "bg": "daily_cafe",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F70",
+            "pose": "face_neutral",
+            "pos_y": 0.4,
+            "scale": 1.3
+          },
+          "speaker": "narrator",
+          "text": "아무도 대답하지 않았다",
+          "gfx": {
+            "type": "nametag",
+            "text": "한말숙 · 70세 · 동거인"
+          },
+          "sfx": "sfx_clock",
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-07",
+          "from": "A3-19",
+          "sec": 2.2,
+          "bg": "daily_cafe",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F70",
+            "pose": "face_neutral",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "v_F70",
+          "text": "사과하러 나온 게 아닙니다.",
+          "gfx": {
+            "type": "nametag",
+            "text": "한말숙 · 70세 · 동거인"
+          },
+          "sfx": null,
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-08",
+          "from": "A2-15",
+          "sec": 2.0,
+          "bg": "etc_alley_night",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "M50A",
+            "pose": "bust_cold",
+            "pos_y": 0.35,
+            "scale": 1.4
+          },
+          "speaker": "v_M50A",
+          "text": "법원에서 확인하세요.",
+          "gfx": {
+            "type": "nametag",
+            "text": "한도현 · 52세 · 아들"
+          },
+          "sfx": "sfx_phone",
+          "amb": "amb_street"
+        },
+        {
+          "id": "S2-09",
+          "from": "A2-16",
+          "sec": 2.0,
+          "bg": "home_living_night",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50B",
+            "pose": "face_shock",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "narrator",
+          "text": "그 일곱 글자가 답의 전부였다",
+          "gfx": {
+            "type": "nametag",
+            "text": "차미경 · 55세 · 장녀"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S2-10",
+          "from": "A3-21",
+          "sec": 2.2,
+          "bg": "home_living_night",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50B",
+            "pose": "bust_anger",
+            "pos_y": 0.35,
+            "scale": 1.4
+          },
+          "speaker": "v_F50B",
+          "text": "소송해. 지금 안 하면 끝이야",
+          "gfx": {
+            "type": "nametag",
+            "text": "차미경 · 55세 · 장녀"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S2-11",
+          "from": "A3-22",
+          "sec": 2.2,
+          "bg": "home_living_night",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "M50B",
+            "pose": "face_cold",
+            "pos_y": 0.35,
+            "scale": 1.4
+          },
+          "speaker": "v_M50B",
+          "text": "그 사람 물건 갖기 싫어. 됐어.",
+          "gfx": {
+            "type": "nametag",
+            "text": "차정우 · 58세 · 장남"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S2-12",
+          "from": "A3-24",
+          "sec": 2.2,
+          "bg": "home_living_night",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "M50B",
+            "pose": "bust_cold",
+            "pos_y": 0.35,
+            "scale": 1.4
+          },
+          "speaker": "v_M50B",
+          "text": "엄마가 언제 달라고 했어?",
+          "gfx": {
+            "type": "nametag",
+            "text": "차정우 · 58세 · 장남"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S2-13",
+          "from": null,
+          "sec": 2.2,
+          "bg": "home_living_night",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_neutral",
+            "pos_y": 0.4,
+            "scale": 1.3
+          },
+          "speaker": "narrator",
+          "text": "어머니는 그 옆에서 말이 없었다",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤순덕 · 66세 · 아내"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        }
+      ],
+      "youtube": {
+        "title": "\"아버지가 고른 겁니다\" 동거인 아들의 그 한마디",
+        "description_body": "사십 년을 기다린 아내 앞에서, 동거인의 아들은 담담하게 그 말을 했습니다.",
+        "tags": [
+          "유류분",
+          "상속분쟁",
+          "혼외자",
+          "본처소송",
+          "가족갈등"
+        ]
+      }
+    },
+    {
+      "no": 3,
+      "kind": "공감형",
+      "publish_offset_days": 4,
+      "est_sec": 28.5,
+      "intro_line": "사십 년, 혼자 기다린 밥상",
+      "outro_line": "그 말 한마디를 못 해서 멀어진 가족이, 당신에게도 있습니까?",
+      "hook_reason": "첫 컷에 뜯지도 않은 내복 열 벌이라는 이상한 디테일을 클로즈업으로 보여줘 시선을 붙든다",
+      "cuts": [
+        {
+          "id": "S3-01",
+          "from": "A1-12",
+          "sec": 2.3,
+          "bg": "home_closet",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_sad",
+            "pos_y": 0.4,
+            "scale": 1.3
+          },
+          "speaker": "narrator",
+          "text": "뜯지 않은 내복이 열 벌 있었다",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤순덕 · 66세 · 아내"
+          },
+          "sfx": "sfx_paper",
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-02",
+          "from": "A1-13",
+          "sec": 2.0,
+          "bg": "home_closet",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50B",
+            "pose": "face_shock",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "v_F50B",
+          "text": "이걸 다… 해마다 샀다고?",
+          "gfx": {
+            "type": "nametag",
+            "text": "차미경 · 55세 · 장녀"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-03",
+          "from": "A1-14",
+          "sec": 2.3,
+          "bg": "home_closet",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_neutral",
+            "pos_y": 0.4,
+            "scale": 1.3
+          },
+          "speaker": "v_F50A",
+          "text": "올겨울엔 들어오려나 싶어서",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤순덕 · 66세 · 아내"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-04",
+          "from": "A1-19",
+          "sec": 2.3,
+          "bg": "home_living_night",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "bust_sad",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "narrator",
+          "text": "그렇게 사십 년, 혼자 늙었다",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤순덕 · 66세 · 아내"
+          },
+          "sfx": "sfx_clock",
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-05",
+          "from": "A1-31",
+          "sec": 2.3,
+          "bg": "home_living_day",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_shock",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "narrator",
+          "text": "남편이 떠났단 소식도 전화로 들었다",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤순덕 · 66세 · 아내"
+          },
+          "sfx": "sfx_phone",
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-06",
+          "from": "A3-31",
+          "sec": 2.0,
+          "bg": "home_closet",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "bust_sad",
+            "pos_y": 0.4,
+            "scale": 1.3
+          },
+          "speaker": "narrator",
+          "text": "내복 열 벌은 그대로였다",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤순덕 · 66세 · 아내"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-07",
+          "from": "A3-32",
+          "sec": 2.2,
+          "bg": "home_closet",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_cry",
+            "pos_y": 0.4,
+            "scale": 1.3
+          },
+          "speaker": "narrator",
+          "text": "버리려다, 도로 넣었다",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤순덕 · 66세 · 아내"
+          },
+          "sfx": "sfx_tear",
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-08",
+          "from": "A3-23",
+          "sec": 2.2,
+          "bg": "home_living_night",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50B",
+            "pose": "face_anger",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "v_F50B",
+          "text": "그게 왜 그 사람 물건이야?",
+          "gfx": {
+            "type": "nametag",
+            "text": "차미경 · 55세 · 장녀"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-09",
+          "from": "A3-24",
+          "sec": 2.2,
+          "bg": "home_living_night",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "M50B",
+            "pose": "bust_cold",
+            "pos_y": 0.35,
+            "scale": 1.4
+          },
+          "speaker": "v_M50B",
+          "text": "엄마가 언제 달라고 했어?",
+          "gfx": {
+            "type": "nametag",
+            "text": "차정우 · 58세 · 장남"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-10",
+          "from": "A3-27",
+          "sec": 2.2,
+          "bg": "home_entrance",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50B",
+            "pose": "bust_anger",
+            "pos_y": 0.35,
+            "scale": 1.4
+          },
+          "speaker": "v_F50B",
+          "text": "엄마가 참아서 이렇게 됐어",
+          "gfx": {
+            "type": "nametag",
+            "text": "차미경 · 55세 · 장녀"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-11",
+          "from": "A3-28",
+          "sec": 2.0,
+          "bg": "home_entrance",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50B",
+            "pose": "face_cry",
+            "pos_y": 0.38,
+            "scale": 1.35
+          },
+          "speaker": "v_F50B",
+          "text": "…아니, 엄마. 그게 아니라…",
+          "gfx": {
+            "type": "nametag",
+            "text": "차미경 · 55세 · 장녀"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-12",
+          "from": "A3-29",
+          "sec": 2.3,
+          "bg": "home_entrance",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "face_neutral",
+            "pos_y": 0.4,
+            "scale": 1.3
+          },
+          "speaker": "v_F50A",
+          "text": "밥은 먹고 가라. 국 데워놨어",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤순덕 · 66세 · 아내"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S3-13",
+          "from": null,
+          "sec": 2.2,
+          "bg": "home_entrance",
+          "bg_crop": "center",
+          "flashback": false,
+          "char": {
+            "code": "F50A",
+            "pose": "full_back",
+            "pos_y": 0.42,
+            "scale": 1.25
+          },
+          "speaker": "narrator",
+          "text": "말 대신, 밥을 지었다",
+          "gfx": {
+            "type": "nametag",
+            "text": "윤순덕 · 66세 · 아내"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        }
+      ],
+      "youtube": {
+        "title": "뜯지 않은 내복 열 벌, 사십 년을 기다린 아내",
+        "description_body": "명절마다 네 그릇을 차린 아내가, 서랍 속에 감춰둔 것은 열 벌의 내복이었습니다.",
+        "tags": [
+          "가족드라마",
+          "부모유산",
+          "형제갈등",
+          "두집살림",
+          "유류분"
+        ]
+      }
+    }
+  ],
+  "youtube": {
+    "description_body": "남편은 사십 년 전 집을 나갔고, 아내는 명절마다 네 그릇을 차렸습니다. 장례식이 끝나기도 전에 낯선 사람들이 서류를 내밀었습니다. 법정에 선 두 여자는, 각자의 사십 년을 들고 서 있었습니다.",
+    "chapters": [
+      {
+        "sec": 0,
+        "label": "장례식장에 선 낯선 사람"
+      },
+      {
+        "sec": 22,
+        "label": "네 그릇의 밥상"
+      },
+      {
+        "sec": 240,
+        "label": "종이에 찍힌 날짜"
+      },
+      {
+        "sec": 446,
+        "label": "두 사람이 마주 앉다"
+      },
+      {
+        "sec": 634,
+        "label": "법원의 판단"
+      },
+      {
+        "sec": 689,
+        "label": "세 그릇"
+      }
+    ],
+    "pinned_comment": "말 한마디 못 하고 흘려보낸 세월이, 여러분에게도 있습니까?",
+    "tags": [
+      "유류분",
+      "상속",
+      "위자료",
+      "혼외자",
+      "상속분쟁",
+      "부모유산",
+      "두집살림",
+      "본처소송",
+      "유산상속",
+      "가족재산싸움",
+      "상간소송",
+      "형제갈등"
+    ]
+  }
+}
