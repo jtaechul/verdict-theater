@@ -22,5 +22,35 @@
     "kind": "voice",
     "krw": 3,
     "note": "7컷 · voice"
+  },
+  {
+    "date": "2026-08-15",
+    "kind": "image",
+    "krw": 265,
+    "note": "gemini-3.1-flash-image 4K 9:16 F50A_full.png"
+  },
+  {
+    "date": "2026-08-15",
+    "kind": "image",
+    "krw": 265,
+    "note": "gemini-3.1-flash-image 4K 9:16 F50B_full.png"
+  },
+  {
+    "date": "2026-08-15",
+    "kind": "image",
+    "krw": 265,
+    "note": "gemini-3.1-flash-image 4K 9:16 M50A_full.png"
+  },
+  {
+    "date": "2026-08-15",
+    "kind": "image",
+    "krw": 265,
+    "note": "gemini-3.1-flash-image 4K 9:16 F70.png"
+  },
+  {
+    "date": "2026-08-15",
+    "kind": "image",
+    "krw": 265,
+    "note": "gemini-3.1-flash-image 4K 9:16 JUDGE_full.png"
   }
 ]
