@@ -90,6 +90,44 @@ for i, (pos, wfname) in enumerate(starts):
             print(f"✅ {wfname} · '{key}' 선택지 {len(chosen)}개 전부 일치")
 
 # ── 꼭 보여야 하는 버튼이 접힌 칸에 묻히지 않았는가 ──────────
+# ── [다음에 할 일] 큰 버튼이 보내는 값도 목록에 있는가 ──────────
+# ⚠️ 2026-08-16 — 영상 만들기의 회차 칸이 고르는 칸(choice)이 되면서,
+#    큰 버튼이 보내던 빈 값('')이 목록에 없어 **깃허브가 거절할 뻔했다.**
+#    위 검사는 실행 카드의 선택지만 봤지, 큰 버튼(NEXT_RUN)이 보내는 값은
+#    안 봤다. 같은 규칙(정확히 같아야 받는다)이므로 여기서도 맞춰 본다.
+print()
+print("── [다음에 할 일] 큰 버튼이 보내는 값 ──")
+nm = re.search(r"const NEXT_RUN = \{(.*?)\n\};", src, re.S)
+if not nm:
+    bad += 1
+    print("❌ NEXT_RUN 을 못 찾았다 — 큰 버튼 검사를 못 한다")
+else:
+    for em in re.finditer(
+            r"file:\s*'([^']+\.yml)'[^{]*inputs:\s*\{([^}]*)\}", nm.group(1)):
+        wfname, body = em.group(1), em.group(2)
+        path = WF / wfname
+        if not path.exists():
+            bad += 1
+            print(f"❌ 큰 버튼이 없는 워크플로를 가리킨다: {wfname}")
+            continue
+        doc = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        on = doc.get("on") if isinstance(doc.get("on"), dict) else doc.get(True)
+        wfin = ((on or {}).get("workflow_dispatch") or {}).get("inputs") or {}
+        for km in re.finditer(r"(\w+):\s*'((?:[^'\\]|\\.)*)'", body):
+            key, val = km.group(1), km.group(2).replace("\\'", "'")
+            spec = wfin.get(key)
+            if spec is None:
+                bad += 1
+                print(f"❌ {wfname} · 큰 버튼이 보내는 '{key}' 칸이 워크플로에 없다")
+                continue
+            allowed = [str(o) for o in (spec.get("options") or [])]
+            if allowed and val not in allowed:
+                bad += 1
+                print(f"❌ {wfname} · '{key}': 큰 버튼이 목록에 없는 값을 보낸다"
+                      f" — 눌러도 거절당한다\n     보내는 값: {val!r}")
+            else:
+                print(f"✅ {wfname} · '{key}' = {val!r}")
+
 # ⚠️ 2026-08-12 — 손님: "관리자 페이지 안에 그림 소리 만들기가 없잖아."
 #    버튼은 **있었다.** 다만 fold('가끔 쓰는 것 …') 안에 들어 있어서
 #    한 번 더 눌러야 보였다. 등장인물 그림이 없으면 영상이 아예 안 나오는데

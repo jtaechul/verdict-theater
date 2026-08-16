@@ -93,6 +93,18 @@ def next_episode_id(eps):
     return f"EP{n:03d}"
 
 
+def order_gate(eps, scripts_dir=None):
+    """발행 전인데 대본이 있는 회차 목록(이른 차례부터). 비어 있으면 새 회차를 만들어도 된다.
+
+    ⭐ 회차는 차례대로 간다 (2026-08-16 손님: "회차가 갑자기 다음 회차로 넘어가는
+       문제도 해결해야 해"). 앞 회차가 발행되기 전에 새 회차 대본을 만들면
+       영상 만들기·관리자 화면까지 줄줄이 다음 회차로 끌려간다 — 여기서 막는다.
+       (state 에만 있고 대본 파일이 없는 유령 회차는 세지 않는다)"""
+    sd = scripts_dir if scripts_dir is not None else SCRIPTS
+    return sorted(e for e, v in eps.items()
+                  if v.get("stage") != "published" and (sd / f"{e}.json").exists())
+
+
 # 가사사건을 알아보는 말들. 사건명에 이 중 하나라도 있으면 쓸 수 없다.
 # (가정법원 판결문은 공개 대상이 아니다 — 지침 6번)
 FAMILY_COURT = ["이혼", "재산분할", "양육권", "양육비", "친권",
@@ -835,6 +847,29 @@ def main():
         print(f"[dry-run] 샘플 검증 — 통과 {len(r.oks)} · 오류 {len(r.errors)}")
         print("[dry-run] 선택 로직·검증·저장 경로 정상. 실제 생성은 API 키가 필요하다.")
         return 0 if not r.errors else 1
+
+    # ⭐⭐ 회차는 차례대로 간다 (2026-08-16 손님: "제작할 대본/영상 회차가 갑자기
+    #    다음 회차로 넘어가는 문제도 해결해야 해").
+    #    앞 회차가 발행되기 전에는 새 회차 대본을 만들지 않는다. 실제 사고:
+    #    [도입 훅만] 버튼이 잘못 새어 EP003 대본이 승인 없이 만들어졌고(719원),
+    #    영상 만들기까지 EP002 를 제쳐 두고 EP003 을 집을 뻔했다.
+    #    영상 만들기의 회차 자동 선택(발행 안 된 가장 이른 회차)과 같은 규칙이다.
+    #    값 0원 — 모델을 부르기 전에 여기서 멈춘다.
+    if not args.resume:
+        busy = order_gate(eps)
+        if busy and os.environ.get("VT_NEW_EP_OK", "") != "1":
+            first = busy[0]
+            st = (eps.get(first) or {}).get("stage", "")
+            print(f"❌ {first} 이(가) 아직 발행 전입니다 — 새 회차 대본을 만들지 않습니다.")
+            print(f"   (발행 전 회차: {', '.join(busy)} · 회차는 차례대로 갑니다)")
+            if st == "evaluated":
+                print(f"   → {first} 는 대본이 준비된 상태입니다. [3. 영상 만들기]를 누르면 됩니다.")
+            else:
+                print(f"   → {first} 대본을 먼저 마무리하십시오"
+                      " ([이어서 마저 만들기] 또는 [도입 훅만 다시 쓰기]).")
+            print("   (부득이하게 순서를 건너뛰어야 하면 관리자에게 요청하십시오 — "
+                  "VT_NEW_EP_OK=1 로만 풀립니다)")
+            return 7
 
     # 이어서 만들 때는 소재를 새로 고르지 않는다. 그 회차가 쓰던 판례를 그대로 쓴다.
     row = None
