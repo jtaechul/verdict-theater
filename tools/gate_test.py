@@ -159,6 +159,32 @@ else:
     print("   ✅ 밴드를 미리 버리지 않고, 로고 같은 덩어리가 있으면 그때 잡는다")
 
 print()
+print("⑩ ⭐ 지금 쓰이는 실물 시트가 **전부** 통과하는가 (돈 낸 시트를 오판하지 않게)")
+# ⚠️ 2026-08-16 — 네 번째 오판(265원). 방금 돈 내고 받은 멀쩡한 F50A 시트를
+#    어림 검사 두 개(가로지르는 줄 90% 셈 · 채움 비율 0.68)가 불합격시켜 격리했다.
+#    ⑦의 기준 시트 한 장(M70)만 재서는 못 잡는다 — 시트마다 몸집·자세가 달라
+#    어느 한 장에서만 어긋나는 오판이 있다. 그래서 **저장소의 새 방식 시트 전부**를
+#    잰다. 규칙을 조였다가 쓰던 시트가 도로 떨어지게 되면 여기서 빨간불이 켜진다. 0원.
+sheets_dir = ROOT / "assets" / "sheets"
+if SG is None:
+    bad("검사기가 없어 실물 시트를 재지 못한다")
+else:
+    tried, hit = 0, 0
+    for p in sorted(sheets_dir.glob("*.png")):      # bad/·old/ 하위 폴더는 제외된다
+        kind = G.sheet_kind(p)
+        if kind is None:                            # 옛 격자 시트 — 새 자의 대상이 아니다
+            continue
+        tried += 1
+        if SG.check(p, kind, verbose=False) != 0:
+            hit += 1
+            bad(f"{p.name} — 지금 쓰이는 시트인데 불합격이 나온다. 기준이 실물보다 "
+                f"엄격해졌다: `python3 src/sheet_gate.py {p.relative_to(ROOT)} --kind {kind}`")
+    if tried == 0:
+        print("   (새 방식 시트가 없어 건너뜀)")
+    elif hit == 0:
+        print(f"   ✅ 쓰이는 새 방식 시트 {tried}장 전부 통과")
+
+print()
 print("─" * 52)
 print("✅ 시트 검사 장치: 정상" if ok else "❌ 시트 검사 장치: 문제 있음")
 sys.exit(0 if ok else 1)
