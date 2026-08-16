@@ -762,6 +762,37 @@ def nametag_align(spec, chars, placed, W, H, bottom=None):
     return "left"
 
 
+def unify_kinds(chars, cut_id=None):
+    """한 컷에 둘 이상이 설 때, 얼굴 컷을 같은 표정의 상반신 컷으로 바꿔 틀을 통일한다.
+
+    ⭐ 2026-08-16 손님: "두 이미지 중 하나가 상대적으로 너무 작은 건 이상하잖아."
+       같은 컷에 '얼굴만 스티커'(face)와 '가슴까지 스티커'(bust)가 섞이면,
+       머리 크기를 똑같이 맞춰도 몸통 몫 때문에 얼굴 컷 쪽만 조그맣게 떠 보인다
+       (EP002 실측: 강태원 상반신 옆에 아내 얼굴 컷 — 절반 크기로 보였다).
+       그 표정의 상반신 그림이 없거나 머리가 잘린 그림이면 그대로 둔다."""
+    if len(chars) < 2:
+        return chars
+    kinds = {(c.get("pose") or "").split("_")[0] for c in chars}
+    if "face" not in kinds or kinds == {"face"}:
+        return chars
+    fixed = []
+    for c in chars:
+        pose = c.get("pose") or ""
+        if pose.startswith("face_"):
+            alt = "bust_" + pose[5:]
+            d_ = _char_dir(c.get("code", ""))
+            if not d_.is_dir():
+                d_ = ASSETS / "char" / c.get("code", "")
+            q = d_ / f"{alt}.png"
+            if q.exists() and not is_headless(q, alt):
+                if PLACE_LOG is not None:
+                    PLACE_LOG.append({"cut": cut_id,
+                                      "kind_fix": f"{c.get('code')} {pose}→{alt}"})
+                c = dict(c, pose=alt)
+        fixed.append(c)
+    return fixed
+
+
 def pick_one(cut, chars):
     """세로 쇼츠는 한 명만 세운다 — **누구를 남길지** 고른다.
 
@@ -816,6 +847,8 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False,
     chars = cut.get("chars") or []
     if vertical and len(chars) > 1:
         chars = pick_one(cut, chars)            # 세로는 한 명만. 두 명이면 화면이 죽는다
+
+    chars = unify_kinds(chars, cut.get("id"))
     head_top, face_bottom = H, 0                # 실제로 앉힌 인물의 위·아래 얼굴선
 
     # ⭐ 같은 컷에 선 사람들은 **머리 크기가 같아야** 한다.
