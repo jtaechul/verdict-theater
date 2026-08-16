@@ -1737,9 +1737,13 @@ def align_narrator(pool, key, cuts, out, pin, book, gmap):
         보통 0원(이미 맞으면 재지 않고 끝). 벌어졌을 때만 통당 한 번 호출
         (약 30~60원), 최대 ALIGN_TRIES 번. **다시 읽혀서 오히려 더 벌어지면
         예전 통을 되살린다** — 시도해서 더 나빠지는 일은 없다.
+    돌려주기
+        실제로 새로 읽혀 **바뀐 컷 목록.** (2026-08-16 — 이 함수가 받아쓰기
+        대조 **뒤**로 옮겨졌으므로, 여기서 바뀐 컷은 부른 쪽이 그 컷만
+        받아쓰기를 다시 돌려 내용을 확인해야 한다)
     """
     if not GROUP_ON or ALIGN_TRIES <= 0 or not key:
-        return
+        return []
     # 지난 실행이 도중에 죽어 남긴 챙겨두기 폴더가 있으면 지운다
     shutil.rmtree(out / "_align_bak", ignore_errors=True)
     narr = [c for c in cuts if c.get("speaker", "narrator") == "narrator"
@@ -1779,8 +1783,9 @@ def align_narrator(pool, key, cuts, out, pin, book, gmap):
     if len(meds) < 2 or spread <= ALIGN_SPREAD:
         if len(meds) >= 2:
             print(f"  해설 통 맞추기: {len(meds)}통 폭 {spread:.1f}반음 — 손댈 것 없음")
-        return
+        return []
 
+    made_ids = []
     order = {c["id"]: i for i, c in enumerate(narr)}
     for t in range(ALIGN_TRIES):
         # 다시 읽힐 통 고르기: **다른 통들의 가운데**에서 가장 벗어난 통.
@@ -1828,6 +1833,7 @@ def align_narrator(pool, key, cuts, out, pin, book, gmap):
                 ok_new = True
                 gmap.update(newg)
                 meds, spread = meds2, spread2
+                made_ids += [c for c, _ in lines]
                 print(f"    새 통이 더 낫다 — 폭 {spread:.1f}반음")
 
         if not ok_new:
@@ -1859,6 +1865,7 @@ def align_narrator(pool, key, cuts, out, pin, book, gmap):
         pass
     if spread > ALIGN_SPREAD:
         print(f"  ⚠️ 해설 통 폭이 아직 {spread:.1f}반음이다 — 검사기가 알려줄 것이다")
+    return made_ids
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -2753,6 +2760,237 @@ def normalize_pitch(out, cuts, retake=None):
         pass
 
 
+# ─────────────────────────────────────────────────────────────────────
+# ⭐⭐ 해설 통 높이 '마무리' — 검사기와 같은 잣대 · 0원 · 결정적 (2026-08-15)
+#
+# 왜 생겼나 (영상 만들기 네 번째 실패의 뿌리 — 실측)
+#   ① 통 맞추기(align)가 폭 4.1반음으로 맞추고 끝났다.
+#   ② 그 **뒤에** 도는 받아쓰기 대조가 새로 쓴 도입부 통을 다시 읽혔다(99Hz).
+#   ③ 검사기(voiceguard)는 그 최종 상태를 재서 5.0반음 초과라며 막았다.
+#   맞추는 자와 검사하는 자가 **다른 시점, 다른 계산법**으로 재는 한,
+#   "맞췄다"와 "불합격"이 동시에 참이 된다 — 몇 번을 눌러도 복불복이다.
+#
+# 그래서 규칙 셋:
+#   1. 소리를 바꾸는 모든 일이 끝난 **맨 뒤**에서 잰다 (main 의 마지막 손질).
+#   2. 검사기와 **같은 함수**(narrator_take_stats)로 잰다 — 잣대는 하나다.
+#   3. 남은 차이는 **통째로 음을 옮겨**(0원) 문턱 안으로 닫는다.
+#      한 통을 같은 비율로 옮기므로 통 안의 자연스러움은 그대로고,
+#      한 통 최대 ±2반음(_pitch_max 와 같은 근거 — 사람이 못 느끼는 폭)만 옮긴다.
+#      ±2반음으로 못 닫는 폭(9반음 초과)만 통 다시 읽기(align, 유료)로 넘긴다.
+#
+# 아래 문턱 값들은 voiceguard 가 **여기서 가져다 쓴다.** 두 곳에 따로 적지 않는다.
+VOICE_WARN = float(os.environ.get("VT_VOICE_WARN", "3.0"))       # 반음 — 경고
+VOICE_STOP = float(os.environ.get("VT_VOICE_STOP", "5.0"))       # 반음 — 홀로 컷 중단
+VOICE_SPREAD = float(os.environ.get("VT_VOICE_SPREAD", "5.0"))   # 반음 — 통끼리 중단
+VOICE_MIN_CUTS = 5                       # 이보다 적으면 가운뎃값을 못 믿는다
+SETTLE_MAX = float(os.environ.get("TTS_SETTLE_MAX", "2.0"))      # 한 컷 누적 최대 이동
+SETTLE_MARGIN = float(os.environ.get("TTS_SETTLE_MARGIN", "0.5"))  # 문턱 안쪽 여유
+
+
+def narrator_take_stats(pairs, gmap):
+    """해설 [(컷, Hz)] + 통 이름표 → (가운뎃값, 통별 컷, 통별 가운뎃값, 홀로 컷, 통 폭).
+
+    ⚠️ 검사기(voiceguard)와 마무리(settle_narrator)가 **이 함수 하나**로 같이 잰다.
+       잣대가 둘이면 '맞췄다' 와 '불합격' 이 동시에 참이 된다 — 실제로 그랬다."""
+    import statistics
+    takes, solo = {}, []
+    for cid, hz in pairs:
+        sig = gmap.get(cid)
+        if sig:
+            takes.setdefault(sig, []).append((cid, hz))
+        else:
+            solo.append((cid, hz))
+    mid = statistics.median(h for _, h in pairs) if pairs else 0.0
+    meds = {sig: statistics.median(h for _, h in got) for sig, got in takes.items()}
+    spread = 0.0
+    if len(meds) >= 2:
+        vals = sorted(12.0 * math.log2(v) for v in meds.values())
+        spread = vals[-1] - vals[0]
+    return mid, takes, meds, solo, spread
+
+
+def narrator_pairs(out, cuts):
+    """검사기와 같은 조건(대사 있음 · 파일 있음 · 무음 아님)으로 해설 컷의 높이를 잰다."""
+    pairs = []
+    for c in cuts:
+        if c.get("speaker", "narrator") != "narrator":
+            continue
+        if not (c.get("text") or "").strip():
+            continue
+        p = out / f"{c['id']}.mp3"
+        if not p.exists() or p.with_suffix(".silent").exists():
+            continue
+        hz = measure_f0(p)
+        if hz:
+            pairs.append((c["id"], hz))
+    return pairs
+
+
+def _shift_file(p, move):
+    """파일 하나의 음높이를 move 반음 옮긴다(길이 유지·0원). 성공 여부를 돌려준다."""
+    ratio = 2 ** (move / 12.0)
+    tmp = p.with_suffix(".fix.mp3")
+    try:
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(p),
+                        "-af", _pitch_filter(ratio), "-b:a", "160k", str(tmp)],
+                       check=True, timeout=120)
+        tmp.replace(p)
+        return True
+    except Exception:
+        tmp.unlink(missing_ok=True)
+        return False
+
+
+def _led_sha(p):
+    """장부용 파일 지문. 소리가 다시 녹음되면 지문이 달라져 장부가 저절로 무효다."""
+    import hashlib
+    try:
+        return hashlib.sha1(p.read_bytes()).hexdigest()[:16]
+    except Exception:
+        return ""
+
+
+def _led_load(out):
+    """옮김 장부를 읽되, **파일 지문이 안 맞는 항목은 버린다** (새로 녹음된 컷)."""
+    try:
+        raw = json.loads((out / "settle.json").read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    led = {}
+    for cid, v in raw.items():
+        if isinstance(v, dict) and _led_sha(out / f"{cid}.mp3") == v.get("sha"):
+            led[cid] = v
+    return led
+
+
+def _led_save(out, led):
+    try:
+        (out / "settle.json").write_text(json.dumps(led, ensure_ascii=False),
+                                         encoding="utf-8")
+    except Exception:
+        pass
+
+
+def settle_narrator(out, cuts, gmap, ledger=None):
+    """해설 통끼리 남은 높이 차를 음 옮기기(0원)로 검사기 문턱 안에 닫는다.
+
+    여기서 닫히면 검사기는 반드시 통과한다 — 같은 함수로 재기 때문이다.
+    돌려주기: 최종 통 폭(반음), 잴 것이 없으면 None.
+
+    ⭐ 옮김 장부 (2026-08-16 검토에서 나온 구멍 두 개를 막는다)
+       한 컷을 옮긴 반음을 장부(settle.json)에 적어 두고, 몇 번을 불려도
+       **누적 이동이 ±SETTLE_MAX 를 절대 못 넘게** 한다. 장부가 없으면
+       ① 같은 실행 안에서 '옮김 → 다시 읽기 실패 → 또 옮김' = ±4반음
+       ② 보관함에 저장된 옮긴 소리를 **다음 실행이 또** 옮김 — 으로 쌓여
+       2026-08-06 의 "기괴한 소리" 를 마무리 장치가 도로 만들 수 있다.
+       장부는 파일 지문과 함께 적어서, 컷이 새로 녹음되면 저절로 무효가 된다."""
+    if not shutil.which("ffmpeg"):
+        return None
+    try:
+        import numpy  # noqa: F401
+    except ImportError:
+        print("  ⚠️ numpy 가 없어 해설 통 높이 마무리를 못 한다 — 검사기가 막을 수 있다")
+        return None
+    if ledger is None:
+        ledger = _led_load(out)
+
+    pairs = narrator_pairs(out, cuts)
+    if len(pairs) < VOICE_MIN_CUTS:          # 검사기도 이만큼 적으면 판정하지 않는다
+        return None
+    mid, takes, meds, solo, spread = narrator_take_stats(pairs, gmap)
+    goal = VOICE_SPREAD - SETTLE_MARGIN
+    solo_goal = VOICE_STOP - SETTLE_MARGIN
+
+    def solo_bad(mid_, solo_):
+        return [(cid, hz, 12.0 * math.log2(hz / mid_)) for cid, hz in solo_
+                if abs(12.0 * math.log2(hz / mid_)) > solo_goal]
+
+    if spread <= goal and not solo_bad(mid, solo):
+        if len(meds) >= 2:
+            print(f"  해설 통 높이 마무리: {len(meds)}통 폭 {spread:.1f}반음 — 손댈 것 없음")
+        return spread
+
+    # ⚠️ 옮길 때는 **높이를 잰 컷만이 아니라 그 통의 모든 컷**을 같이 옮긴다.
+    #    짧거나 조용해서 못 잰 컷(실측으로 가끔 있다)만 빼놓으면, 같은 통
+    #    안에서 그 컷 혼자 2반음 어긋난다 — '한 통 = 한 목소리' 가 깨진다.
+    members = {}
+    for c in cuts:
+        if c.get("speaker", "narrator") != "narrator":
+            continue
+        if not (c.get("text") or "").strip():
+            continue
+        sig = gmap.get(c["id"])
+        if not sig:
+            continue
+        p2 = out / f"{c['id']}.mp3"
+        if p2.exists() and not p2.with_suffix(".silent").exists():
+            members.setdefault(sig, []).append(c["id"])
+
+    def done(c):
+        v = ledger.get(c)
+        return v.get("st", 0.0) if isinstance(v, dict) else (v or 0.0)
+
+    def mark(c, move):
+        ledger[c] = {"st": done(c) + move, "sha": _led_sha(out / f"{c}.mp3")}
+
+    def clamp_move(want, cids):
+        """통의 모든 컷이 누적 한도(±SETTLE_MAX) 안에 남는 한도로 이동을 줄인다."""
+        lo = max((-SETTLE_MAX - done(c)) for c in cids)
+        hi = min((SETTLE_MAX - done(c)) for c in cids)
+        if lo > hi:
+            return 0.0
+        return max(lo, min(hi, want))
+
+    # ① 통 옮기기 — 양 극단의 가운데(로그 기준)로, 통째로 같은 비율.
+    if len(meds) >= 2 and spread > goal:
+        logs = {sig: 12.0 * math.log2(v) for sig, v in meds.items()}
+        center = (max(logs.values()) + min(logs.values())) / 2.0
+        print(f"  해설 통 높이 마무리: 폭 {spread:.1f}반음 — 통째로 음을 옮겨 닫는다"
+              f" (0원 · 통당 누적 최대 ±{SETTLE_MAX:.0f}반음)")
+        for sig, got in sorted(takes.items(), key=lambda kv: kv[1][0][0]):
+            cids = members.get(sig) or [cid for cid, _ in got]
+            move = clamp_move(center - logs[sig], cids)
+            if abs(move) < 0.15:
+                continue                     # 티도 안 나는 이동은 파일만 축낸다
+            okn = 0
+            for cid in cids:
+                if _shift_file(out / f"{cid}.mp3", move):
+                    okn += 1
+                    mark(cid, move)
+            master = out / f"_master_{sig}.mp3"
+            if master.exists():              # 원본도 같이 — 나중에 다시 잘라도 유지되게
+                if not _shift_file(master, move):
+                    # 원본만 못 옮기면 나중에 다시 자를 때 높이가 되돌아간다.
+                    # 그래도 방송 사고는 아니다 — 그때 장부 지문이 어긋나
+                    # 마무리가 다시 닫고, 안 닫히면 검사기가 막는다.
+                    print(f"    ⚠️ 통 원본({master.name})은 못 옮겼다 — 다음에 다시 자르면 재조정된다")
+            note = "" if okn == len(cids) else f" (⚠️ {len(cids) - okn}컷은 못 옮김)"
+            print(f"    통 {cids[0]}~{cids[-1]} ({len(cids)}컷) {move:+.1f}반음{note}")
+
+    # ② 홀로 컷(이름표 없는 컷) — 옮긴 뒤의 실제 가운뎃값 기준으로.
+    pairs = narrator_pairs(out, cuts)        # 짐작 금지 — 옮긴 파일을 다시 잰다
+    mid, takes, meds, solo, spread = narrator_take_stats(pairs, gmap)
+    for cid, hz, off in solo_bad(mid, solo):
+        move = clamp_move(-off, [cid])
+        if abs(move) < 0.15:
+            continue
+        if _shift_file(out / f"{cid}.mp3", move):
+            mark(cid, move)
+            print(f"    홀로 컷 {cid} {off:+.1f}반음 → {move:+.1f}반음 옮김")
+
+    _led_save(out, ledger)                   # 다음 실행도 이 장부를 본다 (보관함에 같이 저장)
+
+    # ③ 최종 실측 — 검사기가 볼 바로 그 상태.
+    pairs = narrator_pairs(out, cuts)
+    mid, takes, meds, solo, spread = narrator_take_stats(pairs, gmap)
+    worst_solo = max((abs(12.0 * math.log2(hz / mid)) for _, hz in solo), default=0.0)
+    ok = spread <= VOICE_SPREAD and worst_solo <= VOICE_STOP
+    print(f"  해설 통 높이 마무리 끝: 폭 {spread:.1f}반음"
+          + (f" · 홀로 컷 최대 {worst_solo:.1f}반음" if solo else "")
+          + (" — 검사기 문턱 안" if ok else " — ⚠️ 아직 문턱 밖 (통 다시 읽기로 넘긴다)"))
+    return spread
+
+
 def silent(out_mp3, sec, marker=True):
     """무음 파일. **ffmpeg 를 부르지 않는다.**
 
@@ -3060,15 +3298,17 @@ def main():
             else:
                 silent(p, float(c.get("sec", 6.0)) - 0.6)
 
-    # ⭐ 컷마다 '어느 통에서 나왔는지' 를 남기고, 해설 통끼리 높이를 맞춘다.
-    #    2026-08-08: 검사기가 통 하나 높았던 해설(폭 5.1반음)을 막아 실행이
-    #    실패했다. 여기서 미리 재고, 벌어진 통만 소액으로 다시 읽혀 맞춘다.
+    # ⭐ 컷마다 '어느 통에서 나왔는지' 이름표를 남긴다 — 받아쓰기 대조와
+    #    맨 뒤의 통 높이 정리가 이 이름표를 쓴다.
+    #    ⚠️ 2026-08-15 — 예전에는 **여기서** 통 높이 맞추기(align)까지 했다.
+    #       그런데 이 뒤의 받아쓰기 대조가 도입부 통을 다시 읽혀(99Hz) 맞춰 놓은
+    #       높이를 도로 흐트러뜨렸고, 검사기만 그 최종 상태를 보고 막았다.
+    #       맞추기는 소리를 바꾸는 모든 일이 끝난 **맨 뒤**로 옮겼다(아래).
     gmap = {}
     try:
         gmap = map_groups(cuts, out, pin, gbook)
-        align_narrator(pool, key, cuts, out, pin, book, gmap)
     except Exception as e:
-        print(f"  ⚠️ 해설 통 맞추기를 건너뛴다({type(e).__name__})")
+        print(f"  ⚠️ 통 이름표를 못 붙였다({type(e).__name__})")
 
     # ⭐ 받아쓰기 대조 — 자막에 있는 문장이 소리에도 다 있는지 **내용으로** 확인.
     #    어긋난 통은 여기서 다시 만들고, 그래도 안 맞으면 렌더링 전에 멈춘다.
@@ -3105,6 +3345,33 @@ def main():
 
     normalize_pitch(out, cuts, retake=retake)
     normalize_timbre(out, cuts, retake=retake)
+
+    # ⭐⭐ 해설 통 높이 정리 — **소리를 바꾸는 모든 일이 끝난 맨 뒤**에서 한다.
+    #    (2026-08-15 네 번째 실패의 뿌리 — settle_narrator 위 설명 참조)
+    #    ① 돈 안 드는 음 옮기기로 먼저 닫는다 (±2반음까지 — 폭 9반음까지 닫힌다)
+    #    ② 그래도 문턱 밖이면(통이 아주 크게 튐) 통을 다시 읽힌 뒤(유료·최대 2번)
+    #       — 새로 읽힌 컷은 **그 컷만 받아쓰기를 다시** 돌려 내용을 확인한다
+    #       (맞추기가 받아쓰기 뒤로 왔으므로, 안 그러면 새 통이 검증을 빠져나간다)
+    #    ③ 한 번 더 닫는다. 옮김 장부(settle.json) 덕에 **한 컷의 누적 이동은
+    #       몇 번을 닫아도 ±2반음을 못 넘는다.** 닫히면 검사기는 반드시 통과한다.
+    try:
+        left = settle_narrator(out, cuts, gmap)
+        if left is not None and left > VOICE_SPREAD:
+            redone = align_narrator(pool, key, cuts, out, pin, book, gmap) or []
+            if redone:
+                # 새로 읽힌 컷은 파일 지문이 바뀌어 옮김 장부가 저절로 무효다.
+                try:
+                    fresh = [c for c in cuts if c.get("id") in set(redone)]
+                    if not stt_verify(pool, key, fresh, out, pin, book, gmap):
+                        print("  ❌ 다시 읽힌 통이 받아쓰기 대조에 걸렸다 — 여기서 멈춘다")
+                        return 1
+                except Exception as e:                     # noqa: BLE001
+                    print(f"  ⚠️ 다시 읽힌 통의 받아쓰기 재확인을 못 했다({type(e).__name__})")
+            settle_narrator(out, cuts, gmap)
+    except Exception as e:
+        print(f"  ⚠️ 해설 통 높이 마무리를 건너뛴다({type(e).__name__})"
+              " — 검사기가 대신 막아 준다")
+
     try:
         (out / "recipe.json").write_text(json.dumps(book, ensure_ascii=False),
                                          encoding="utf-8")

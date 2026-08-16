@@ -18,17 +18,23 @@
 
 ⭐ 2026-08-08 — **통(take) 단위로 판정한다.**
     해설은 여러 줄을 '한 통'(호출 1번)으로 만들어 자른다. **한 통 안은 같은
-    목소리라는 것을 만든 방식이 보장한다.** 그런데 이 검사가 컷 단위로만 재서,
-    같은 통에서 나온 컷의 억양(H02 +4.6반음 — 극적인 훅 문장)까지 '다른 사람'
-    으로 오판해 멀쩡한 실행을 막았다(전체 폭 5.1반음 > 문턱 5.0).
-    이제 tts.py 가 남기는 이름표(groups.json: 컷 → 통)를 읽어
+    목소리라는 것을 만든 방식이 보장한다.** tts.py 가 남기는 이름표(groups.json)를 읽어
       · **통끼리** 가운뎃값 차이가 크면 → 중단 (진짜 다른 사람처럼 들린다)
       · 통 **안**에서 튀는 컷 → 경고만 (같은 통 = 같은 사람. 억양이다)
       · 이름표가 없는 컷(따로 만든 컷) → 예전처럼 컷 단위로 엄격히
-    이름표 파일이 아예 없으면(옛 캐시) 예전 방식 그대로 돈다.
+    중단은 여전히 **해설에만** 건다. 등장인물 대사의 높낮이는 연기라 경고만 한다.
 
-    중단은 여전히 **해설에만** 건다. 등장인물 대사의 높낮이는 연기라 경고만 한다
-    (2026-08-07 실측: 장남 폭 9.1반음이 전부 한 통에서 나온 연기였다).
+⭐⭐ 2026-08-15 — **잣대를 tts.py 와 하나로 합쳤다.** (네 번째 실패의 뿌리)
+    맞추는 쪽(tts)은 "폭 4.1반음, 통과" 라 하고 이 검사기는 "5.0반음, 불합격" 이라
+    했다 — 서로 딴 계산법이었기 때문이다. 이제 통 폭 계산(narrator_take_stats)과
+    문턱 값(VOICE_*)을 **tts.py 에서 가져다 쓴다.** tts 의 마무리(settle)가 닫으면
+    여기는 반드시 통과한다. 여기서 막혔다면 마무리가 못 돈 것이니
+    실행 기록에서 '해설 통 높이 마무리' 줄을 찾아보면 된다.
+
+    같은 날 함께 고친 것: **쇼츠 대본을 실제로 검사한다.** 예전에는 --shorts 를
+    받아도 쇼츠 파일에 acts 칸이 없어 **한 컷도 안 재고 통과**시키고 있었다.
+    본편과 쇼츠는 **따로** 판정한다 — 각각 다른 영상이라 서로 섞어 재면
+    영상 하나 안에서는 멀쩡한데도 막는 억울한 중단이 생긴다.
 """
 
 import argparse
@@ -41,12 +47,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 os.environ.setdefault("GEMINI_API_KEY", "")     # 재기만 한다 — 모델은 안 부른다
-from tts import measure_f0  # noqa: E402
-
-WARN = float(os.environ.get("VT_VOICE_WARN", "3.0"))   # 반음
-STOP = float(os.environ.get("VT_VOICE_STOP", "5.0"))   # 반음
-SPREAD_STOP = float(os.environ.get("VT_VOICE_SPREAD", "5.0"))
-MIN_CUTS = 5            # 이보다 적으면 가운뎃값을 못 믿는다
+from tts import (measure_f0, narrator_take_stats,               # noqa: E402
+                 VOICE_WARN as WARN, VOICE_STOP as STOP,
+                 VOICE_SPREAD as SPREAD_STOP, VOICE_MIN_CUTS as MIN_CUTS)
 
 
 def semitone(hz, mid):
@@ -56,24 +59,13 @@ def semitone(hz, mid):
 def narrator_by_takes(items, gmap, warns, stops):
     """해설을 통 단위로 판정한다. 표에 찍을 (가운뎃값, 폭, 통 설명줄들)을 돌려준다.
 
-    items = [(cid, hz)] · gmap = {cid: 통 이름표}"""
-    takes, solo = {}, []
-    for cid, hz in items:
-        sig = gmap.get(cid)
-        if sig:
-            takes.setdefault(sig, []).append((cid, hz))
-        else:
-            solo.append((cid, hz))
-
-    mid = statistics.median(h for _, h in items)
+    items = [(cid, hz)] · gmap = {cid: 통 이름표}
+    ⚠️ 폭 계산은 tts.narrator_take_stats — 맞추는 쪽과 **같은 함수**다."""
+    mid, takes, meds, solo, spread = narrator_take_stats(items, gmap)
     lines = []
 
     # ① 통끼리 — 가운뎃값의 폭이 크면 진짜 다른 사람처럼 들린다 → 중단
-    meds = {sig: statistics.median(h for _, h in got) for sig, got in takes.items()}
-    spread = 0.0
     if len(meds) >= 2:
-        vals = sorted(12.0 * math.log2(v) for v in meds.values())
-        spread = vals[-1] - vals[0]
         for sig, got in sorted(takes.items(), key=lambda kv: kv[1][0][0]):
             off = semitone(meds[sig], mid)
             lines.append(f"      통 {got[0][0]}~{got[-1][0]} ({len(got)}컷)"
@@ -100,56 +92,40 @@ def narrator_by_takes(items, gmap, warns, stops):
     return mid, spread, lines
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("script")
-    ap.add_argument("--voice", default="build/voice")
-    ap.add_argument("--shorts", action="store_true", help="쇼츠 대본도 함께 본다")
-    a = ap.parse_args()
+def doc_cuts(doc):
+    """본편({acts:[{cuts}]})과 쇼츠({shorts:[{cuts}]}) 모두에서 컷을 꺼낸다.
 
-    docs = [json.loads(Path(a.script).read_text(encoding="utf-8"))]
-    if a.shorts:
-        sp = Path(a.script).with_suffix(".shorts.json")
-        if sp.exists():
-            docs.append(json.loads(sp.read_text(encoding="utf-8")))
+    ⚠️ 2026-08-15 — 예전에는 acts 만 봤다. 쇼츠 파일에는 acts 가 없어서
+       --shorts 검사가 **아무것도 안 재고 조용히 통과**하고 있었다."""
+    if doc.get("acts"):
+        return [c for a in doc["acts"] for c in (a.get("cuts") or [])]
+    return [c for s_ in doc.get("shorts", []) for c in (s_.get("cuts") or [])]
 
-    vdir = Path(a.voice)
-    if not vdir.is_dir():
-        print(f"❌ 음성 폴더가 없다: {vdir}")
-        return 2
 
-    try:
-        gmap = json.loads((vdir / "groups.json").read_text(encoding="utf-8"))
-    except Exception:
-        gmap = {}
-
+def judge_doc(label, cuts, vdir, gmap, warns, stops):
+    """대본 하나(본편 또는 쇼츠)를 판정해 표를 찍는다. 잰 컷 수를 돌려준다."""
     by = {}
     seen = set()
-    for doc in docs:
-        for act in doc.get("acts", []):
-            for c in act.get("cuts", []):
-                cid = c.get("id")
-                if cid in seen or not (c.get("text") or "").strip():
-                    continue
-                p = vdir / f"{cid}.mp3"
-                if not p.exists() or p.with_suffix(".silent").exists():
-                    continue
-                seen.add(cid)
-                hz = measure_f0(p)
-                if hz:
-                    by.setdefault(c.get("speaker", "narrator"), []).append((cid, hz))
+    for c in cuts:
+        cid = c.get("id")
+        if not cid or cid in seen or not (c.get("text") or "").strip():
+            continue
+        p = vdir / f"{cid}.mp3"
+        if not p.exists() or p.with_suffix(".silent").exists():
+            continue
+        seen.add(cid)
+        hz = measure_f0(p)
+        if hz:
+            by.setdefault(c.get("speaker", "narrator"), []).append((cid, hz))
 
     if not by:
-        # ⚠️ 조용히 통과시키면 안 된다. '검사했는데 괜찮음' 과
-        #    '검사를 아예 못 함' 은 완전히 다른 말이다.
-        print("⚠️ 잰 컷이 하나도 없다 — 검사를 못 했다 (numpy 가 없거나 음성이 없다)")
-        return 3
+        print(f"  [{label}] 잰 컷이 없다 — 음성이 아직 없는 대본이다")
+        return 0
 
-    print(f"목소리 한결같음 검사 — {Path(a.script).stem}\n")
+    print(f"  [{label}]")
     print(f"    {'인물':10s}{'컷':>4s}{'가운뎃값':>10s}{'폭':>8s}   가장 벗어난 컷")
     print("    " + "-" * 62)
 
-    warns, stops = [], []
     for sp in sorted(by):
         items = by[sp]
         name = "해설" if sp == "narrator" else sp
@@ -193,17 +169,55 @@ def main():
             else:
                 warns.append(f"{name} 전체 폭 {spread:.1f}반음 — 대사 연기라 감정 폭일"
                              " 수 있음. 영상에서 귀로 확인 요망")
+    return len(seen)
 
-    print()
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("script")
+    ap.add_argument("--voice", default="build/voice")
+    ap.add_argument("--shorts", action="store_true", help="쇼츠 대본도 함께 본다")
+    a = ap.parse_args()
+
+    # (이름, 대본) — 본편과 쇼츠는 각각 딴 영상이므로 **따로** 판정한다.
+    docs = [("본편", json.loads(Path(a.script).read_text(encoding="utf-8")))]
+    if a.shorts:
+        sp = Path(a.script).with_suffix(".shorts.json")
+        if sp.exists():
+            docs.append(("쇼츠", json.loads(sp.read_text(encoding="utf-8"))))
+
+    vdir = Path(a.voice)
+    if not vdir.is_dir():
+        print(f"❌ 음성 폴더가 없다: {vdir}")
+        return 2
+
+    try:
+        gmap = json.loads((vdir / "groups.json").read_text(encoding="utf-8"))
+    except Exception:
+        gmap = {}
+
+    print(f"목소리 한결같음 검사 — {Path(a.script).stem}\n")
+    warns, stops = [], []
+    measured = 0
+    for label, doc in docs:
+        measured += judge_doc(label, doc_cuts(doc), vdir, gmap, warns, stops)
+        print()
+
+    if not measured:
+        # ⚠️ 조용히 통과시키면 안 된다. '검사했는데 괜찮음' 과
+        #    '검사를 아예 못 함' 은 완전히 다른 말이다.
+        print("⚠️ 잰 컷이 하나도 없다 — 검사를 못 했다 (numpy 가 없거나 음성이 없다)")
+        return 3
+
     if stops:
         print(f"❌ 목소리가 흩어졌습니다 ({len(stops)}건). 이대로 영상을 만들면 안 됩니다.")
         for s in stops[:12]:
             print(f"    {s}")
         if len(stops) > 12:
             print(f"    … 그 밖에 {len(stops) - 12}건")
-        print("\n   '3. 영상 만들기' 를 그냥 다시 누르십시오 — 만든 음성은 보관되어"
-              "\n   있고, 다음 실행이 벗어난 통만 소액(통당 약 30~60원)으로 다시 읽혀"
-              "\n   맞춥니다. 보관함을 지울 필요 없습니다.")
+        print("\n   이 멈춤은 정상이라면 안 나옵니다 — 음성 만들기 끝의 '해설 통 높이"
+              "\n   마무리' 가 같은 잣대로 미리 닫기 때문입니다. 실행 기록(음성 단계)에서"
+              "\n   그 줄이 왜 못 닫았는지(ffmpeg 실패 등)를 보면 원인이 나옵니다.")
         return 1
     if warns:
         print(f"⚠️ 살펴볼 컷이 {len(warns)}개 있습니다 (영상은 만듭니다 —"

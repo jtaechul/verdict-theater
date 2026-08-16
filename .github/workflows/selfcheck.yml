@@ -89,6 +89,10 @@ jobs:
           python3 tools/voice_len_test.py
           python3 tools/voice_test_pitch.py
           python3 tools/voice_test_guard.py
+          # ⭐ 2026-08-15: 통 맞추기(4.1반음)와 검사기(5.0반음)가 딴 잣대를 써서
+          #    영상 만들기가 네 번째로 실패했다. 마무리(settle)가 검사기와 같은
+          #    함수로 닫는지 — 그날의 실측(74/86/99Hz)을 가짜 음성으로 재현해 본다.
+          python3 tools/voice_settle_test.py
           python3 tools/voice_test_stt.py
           python3 tools/shorts_test.py
           python3 tools/voice_test_cast.py
