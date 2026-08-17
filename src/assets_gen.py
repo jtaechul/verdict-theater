@@ -564,9 +564,24 @@ def process_sheet(sheet_path, code, kind=None, outdir=None, upscale=UPSCALE,
     if (key or kind in SHEET_POSES) and not FORCE_GRID_SLICE:
         try:
             import char_sheet as CS          # 여기서 부른다 (서로 부르는 꼴을 피한다)
-            cols, rows = CS.grid_for(len(poses))
+            # ⚠️ 2026-08-17 — grid_for 는 옛 17칸+로고칸 시절의 계산기라 12포즈를
+            #    (4,4)로 내놓는다. 새 시트의 배치는 프롬프트가 3열로 못 박았으므로
+            #    (얼굴 3x4 · 전신 3x2) 계산하지 않고 그대로 쓴다. (4,4)로 짝지으면
+            #    얼굴 여섯이 전부 어긋나 조용히 빠진다 — M50A 실측 사고.
+            if kind == "face":
+                cols, rows = 3, 4
+            elif kind == "full":
+                cols, rows = 3, 2
+            else:
+                cols, rows = CS.grid_for(len(poses))
+            # ⚠️ 2026-08-17 — 새 시트(선 없음)는 **모델 눈 확인을 쓰지 않는다.**
+            #    배치가 프롬프트로 고정돼 있어(3열, 위 여섯=얼굴 아래 여섯=상반신)
+            #    차례대로 짝짓는 쪽이 정답인데, 눈 확인 모델이 떠 있는 머리 여섯의
+            #    이름을 못 붙여 6/12 만 저장하고 죽었다(M50A 실측 — CI·로컬 동일).
+            #    옛 격자 시트는 배치가 제멋대로라 지금처럼 눈 확인을 그대로 쓴다.
             names, _missing = CS.slice_sheet(str(sheet_path), code, poses,
-                                             cols, rows, outdir=outdir, key=key)
+                                             cols, rows, outdir=outdir,
+                                             key=("" if kind in SHEET_POSES else key))
             # ⚠️ 예전엔 폴더의 png 개수를 셌다. 두 시트가 **같은 폴더**에 쓰므로
             #    그러면 전신 시트가 0장을 만들어도 얼굴 12장 덕에 통과해 버린다.
             #    이번에 실제로 만든 것만 센다.

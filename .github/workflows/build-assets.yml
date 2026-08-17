@@ -226,10 +226,18 @@ jobs:
                 done < broken.txt
                 echo "" | tee -a build.log
                 echo "── 새 시트를 컷아웃으로 반영 (0원) ──" | tee -a build.log
-                python3 src/assets_gen.py sync 2>&1 | tee -a build.log || true
+                # ⚠️ 2026-08-17 — 여기 둘이 `|| true` 였다. 자르기가 얼굴 여섯을
+                #    빠뜨리고 죽었는데(격자 어긋남) 실행은 초록불로 끝나, 잘린
+                #    얼굴이 그대로 남은 채 "성공"이 됐다. 자르기·목 잘림 검사의
+                #    실패도 맨 끝 판정에 넣는다 — 초록불은 전부 됐다는 뜻이어야 한다.
+                if ! python3 src/assets_gen.py sync 2>&1 | tee -a build.log; then
+                  FAILED="$FAILED 자르기(sync)"
+                fi
                 echo "" | tee -a build.log
                 echo "── 다시 재기 (0원) — 남은 문제가 있으면 여기 찍힌다 ──" | tee -a build.log
-                python3 tools/head_test.py 2>&1 | tee -a build.log || true
+                if ! python3 tools/head_test.py 2>&1 | tee -a build.log; then
+                  FAILED="$FAILED 목잘림검사(head_test)"
+                fi
                 if [ -n "$FAILED" ]; then
                   echo "" | tee -a build.log
                   echo "❌ 검사에 걸려 못 쓴 시트:$FAILED" | tee -a build.log
