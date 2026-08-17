@@ -763,34 +763,45 @@ def nametag_align(spec, chars, placed, W, H, bottom=None):
 
 
 def unify_kinds(chars, cut_id=None):
-    """한 컷에 둘 이상이 설 때, 얼굴 컷을 같은 표정의 상반신 컷으로 바꿔 틀을 통일한다.
+    """한 컷에 둘 이상이 설 때, 틀(얼굴/상반신/전신)을 통일한다.
 
     ⭐ 2026-08-16 손님: "두 이미지 중 하나가 상대적으로 너무 작은 건 이상하잖아."
        같은 컷에 '얼굴만 스티커'(face)와 '가슴까지 스티커'(bust)가 섞이면,
        머리 크기를 똑같이 맞춰도 몸통 몫 때문에 얼굴 컷 쪽만 조그맣게 떠 보인다
        (EP002 실측: 강태원 상반신 옆에 아내 얼굴 컷 — 절반 크기로 보였다).
-       그 표정의 상반신 그림이 없거나 머리가 잘린 그림이면 그대로 둔다."""
+    ⭐ 2026-08-17 손님: "아직도 등장인물이 과도하게 작게 나온다. 저런 사이즈는
+       존재할 수 없어." — 같은 병의 남은 절반. **전신(full)과 상반신이 섞인
+       컷**에서 머리를 맞추면, 상반신 그림은 머리가 몸의 절반이라 몸 전체가
+       화면의 22%로 쪼그라든다(EP002 A1-15 실측: 전신 91% 옆에 상반신 22%).
+       전신이 선 컷에서는 나머지도 전신(full_stand)으로 바꿔 같은 자로 잰다.
+       바꿀 그림이 없거나 머리가 잘린 그림이면 그대로 둔다(크기 하한선이 지킨다)."""
     if len(chars) < 2:
         return chars
     kinds = {(c.get("pose") or "").split("_")[0] for c in chars}
+
+    def swap(c, alt):
+        d_ = _char_dir(c.get("code", ""))
+        if not d_.is_dir():
+            d_ = ASSETS / "char" / c.get("code", "")
+        q = d_ / f"{alt}.png"
+        if q.exists() and not is_headless(q, alt):
+            if PLACE_LOG is not None:
+                PLACE_LOG.append({"cut": cut_id,
+                                  "kind_fix": f"{c.get('code')} {c.get('pose')}→{alt}"})
+            return dict(c, pose=alt)
+        return c
+
+    if "full" in kinds and (kinds & {"bust", "face"}):
+        # 전신 컷이다 — 방 전체가 보이는 장면이므로 전부 전신으로 세운다.
+        # 표정별 전신은 없으므로 기본 서기(full_stand)로 간다. 인물이 작게
+        # 잡히는 장면이라 표정보다 '같은 거리에 서 있는 것' 이 훨씬 중요하다.
+        return [c if (c.get("pose") or "").startswith("full_")
+                else swap(c, "full_stand") for c in chars]
+
     if "face" not in kinds or kinds == {"face"}:
         return chars
-    fixed = []
-    for c in chars:
-        pose = c.get("pose") or ""
-        if pose.startswith("face_"):
-            alt = "bust_" + pose[5:]
-            d_ = _char_dir(c.get("code", ""))
-            if not d_.is_dir():
-                d_ = ASSETS / "char" / c.get("code", "")
-            q = d_ / f"{alt}.png"
-            if q.exists() and not is_headless(q, alt):
-                if PLACE_LOG is not None:
-                    PLACE_LOG.append({"cut": cut_id,
-                                      "kind_fix": f"{c.get('code')} {pose}→{alt}"})
-                c = dict(c, pose=alt)
-        fixed.append(c)
-    return fixed
+    return [swap(c, "bust_" + c["pose"][5:])
+            if (c.get("pose") or "").startswith("face_") else c for c in chars]
 
 
 def pick_one(cut, chars):
@@ -867,6 +878,11 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False,
         want = max(min(want_px), min(min(cap_px), max(want_px)))
         for p in fit:
             new = min(p["cap"], want / p["hw"])
+            # ⭐ 2026-08-17 하한선 — "저런 사이즈는 존재할 수 없어"(손님).
+            #    머리 맞추기가 어떤 이유로든 인물을 제 뜻의 55% 아래로 줄이려 하면
+            #    거기서 멈춘다. 머리가 조금 어긋나는 것보다 사람이 화면에 파묻히는
+            #    쪽이 훨씬 나쁘다 (EP002 A1-15: 상반신이 전신 옆에서 22%까지 줄었다).
+            new = max(new, p["target_h"] * 0.55)
             # ⚠️ **줄이는 것은 자막 띠가 있을 때만** 한다. 띠가 없으면 자막이 화면 위에
             #    떠 있어서, 인물을 줄이면 자막이 얼굴을 덮는다.
             #    (지금 본편·쇼츠 둘 다 띠를 쓰므로 사실상 늘 줄일 수 있다.)
@@ -991,6 +1007,9 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False,
                 chin=chin_y(sprite), banded=banded, rect=q["rect"],
                 head=head_width(sprite, q["pose"]),   # 화면에 나온 머리 폭
                 listening=q["listening"],
+                # 정보 카드가 뜬 컷은 인물이 일부러 작아진다(카드가 주인공).
+                # 파묻힘 검사가 이 설계를 오판하지 않도록 표시를 남긴다.
+                gfx=bool(cut.get("gfx")),
                 # 띠가 있으면 자막이 무대 밖이라 얼굴을 덮을 수가 없다.
                 sub_top=(None if banded else
                          G.subtitle_top(cut.get("text", ""), W, H, vertical))))

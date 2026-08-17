@@ -131,6 +131,20 @@ def main():
     #    2026-08-17 — 틀 통일 메모(kind_fix)에 W·H 가 없는데 배치 검사가 배치
     #    기록으로 착각해 KeyError 로 죽었고, EP002 재제작이 통째로 실패했다.
     #    합성 시험만으로는 기록 모양의 약속을 못 지킨다 — 실물 대본으로 잰다.
+    # 파묻힌 인물 규칙(2026-08-17 손님: "저런 사이즈는 존재할 수 없어")이
+    # 배치 검사에서 사라지면 여기서 잡는다. 전신+상반신 혼합 통일도 함께 본다.
+    cp = (ROOT / "tools" / "check_place.py").read_text(encoding="utf-8")
+    if "파묻힌 인물" in cp and "0.40" in cp:
+        ok("배치 검사가 파묻힌 인물(무대 40% 미만)을 잡는다")
+    else:
+        bad("배치 검사에서 파묻힌 인물 규칙이 사라졌다")
+    got = R.unify_kinds([{"code": "M70", "pose": "full_stand"},
+                         {"code": "F50A", "pose": "bust_neutral"}], "TEST")
+    if [c["pose"] for c in got] == ["full_stand", "full_stand"]:
+        ok("전신+상반신 혼합이 전신으로 통일된다 (bust_neutral → full_stand)")
+    else:
+        bad(f"전신 혼합이 통일되지 않는다: {[c['pose'] for c in got]}")
+
     import subprocess
     ep = ROOT / "data" / "scripts" / "EP002.json"
     if ep.exists():

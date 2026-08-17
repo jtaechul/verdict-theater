@@ -60,6 +60,7 @@ def main():
 
     bad_bottom, bad_side, bad_top, bad_face = [], [], [], []
     bad_overlap, bad_tag, bad_near, bad_head = [], [], [], []
+    bad_small = []
     n = 0
     for W, H, vert in ((1920, 1080, False), (1080, 1920, True)):
         for i, cut in enumerate(cuts):
@@ -78,6 +79,17 @@ def main():
                 # ⚠️ 무대 크기로 잰다 — 화면 크기가 아니다(맨 위 설명 참고).
                 sw, sh = p["W"], p["H"]
                 tag = f"{'세로' if vert else '가로'} {cid:6s} {p['code']}/{p['pose']}"
+                # 0) ⭐ 파묻힌 인물 (2026-08-17 손님: "저런 사이즈는 존재할 수 없어")
+                #    전신+상반신 혼합에서 머리 맞추기가 상반신을 무대의 22%까지
+                #    줄여 사람이 배경에 파묻혔다. 어떤 이유로든 인물이 무대 세로의
+                #    40% 아래로 내려오면 여기서 잡는다 — 원인이 무엇이든 그 크기는
+                #    존재하면 안 된다.
+                #    ⚠️ 정보 카드 컷(gfx)은 예외 — 카드가 주인공이라 인물이
+                #       일부러 작아진다(EP002 A4-07 판사 39% 는 정상 설계).
+                if p["h"] < sh * 0.40 and not p.get("gfx"):
+                    bad_small.append(
+                        f"{tag}  세로 {p['h']}px = 무대의 {p['h'] / sh * 100:.0f}%"
+                        " (40% 아래 금지)")
                 # 1) 아래끝이 무대 바닥에 닿는가 (인물 아래끝 = y + h - bleed)
                 if not p["pose"].startswith("full"):
                     body_bottom = p["y"] + p["h"] - p["bleed"]
@@ -159,7 +171,8 @@ def main():
     R.PLACE_LOG = None
 
     print(f"검사한 인물 배치 {n}건 ({ep})\n")
-    rows_all = (("아래끝이 바닥에 안 닿음", bad_bottom),
+    rows_all = (("파묻힌 인물 (무대 40% 미만)", bad_small),
+                ("아래끝이 바닥에 안 닿음", bad_bottom),
                 ("좌우 잘림", bad_side),
                 ("머리 위 잘림", bad_top),
                 ("자막이 얼굴을 덮음", bad_face),
