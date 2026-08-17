@@ -36,6 +36,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # 2026-08-17: 바로 앞 커밋과 비교해 '그림 관련 파일이 바뀌었는가' 를
+          # 가리려면 커밋이 두 개 필요하다 (기본값 1개면 비교 자체가 안 된다).
+          fetch-depth: 2
 
       - uses: actions/setup-python@v5
         with:
@@ -119,9 +123,27 @@ jobs:
           #       받아야 하는 경우). 실제로 **막는 자리는 [영상 만들기]** 다 —
           #       produce.yml 이 같은 검사를 하고 걸리면 영상을 안 만든다.
           # ⭐ 2026-08-14: 시트를 만든 뒤 반드시 재는가 (프롬프트 규칙 + 검사기 자기시험)
-          python3 tools/gate_test.py
+          # ⭐ 2026-08-17: GitHub 무료 실행시간(월 2,000분)이 바닥나 모든 버튼이
+          #    멈추는 사고가 났다. 8월에 자체 점검만 71회·306분 — 그림이 안 바뀐
+          #    커밋에서도 매번 4K 시트 11장 + 컷아웃 전부를 다시 쟀기 때문이다.
+          #    그림과 그림 규칙이 그대로면 재도 결과가 같다 — 아래 목록의 파일이
+          #    바뀐 커밋에서만 실물 전수 검사(⑩·목 잘림·배치)를 돌리고, 아니면
+          #    건너뛴다. 못 가리는 경우(첫 커밋·수동 실행·병합)는 안전하게 전부 잰다.
+          IMG_PAT='^assets/|^src/(sheet_gate|render|assets_gen)\.py$|^tools/(head_test|gate_test|place_test|broken_sheets)\.py$'
+          IMG=1
+          if [ "${{ github.event_name }}" = "push" ] && CHANGED=$(git diff --name-only HEAD^ HEAD 2>/dev/null); then
+            echo "$CHANGED" | grep -qE "$IMG_PAT" || IMG=0
+          fi
+          if [ "$IMG" = 1 ]; then
+            python3 tools/gate_test.py
+          else
+            echo "(그림 관련 파일이 안 바뀐 커밋 — 실물 전수 검사는 건너뛰고 장치 검사만 한다)"
+            python3 tools/gate_test.py --light
+          fi
           python3 src/sheet_gate.py --selftest
-          python3 tools/head_test.py || echo "::warning::목이 잘린 인물이 있습니다 — [영상 만들기]가 막습니다"
+          if [ "$IMG" = 1 ]; then
+            python3 tools/head_test.py || echo "::warning::목이 잘린 인물이 있습니다 — [영상 만들기]가 막습니다"
+          fi
           # 2026-08-12: [영상 만들기] 하나로 그림까지 다 되어야 한다.
           # '있는 것 반영 → 없는 것 만들기' 순서가 깨지면 여기서 걸린다.
           python3 tools/pipeline_test.py
@@ -144,8 +166,11 @@ jobs:
           #    영상 만들기·관리자 큰 버튼이 같은 '차례대로' 규칙을 쓰는지 본다.
           python3 tools/order_test.py
           # ⭐ 2026-08-16: 정수리 잘린 얼굴 18장 + 얼굴/상반신 섞임(한 명만 작게)이
-          #    EP002 방송에 나갔다 — 배치·검사 재발 방지 시험.
-          python3 tools/place_test.py
+          #    EP002 방송에 나갔다 — 배치·검사 재발 방지 시험. (실물 4K 그림을
+          #    여러 장 읽으므로, 그림 관련 커밋에서만 돈다 — 위 IMG 판정과 동일)
+          if [ "$IMG" = 1 ]; then
+            python3 tools/place_test.py
+          fi
           python3 tools/hook_test.py || echo "::warning::도입 훅이 알아듣기 어렵습니다 — [2. 대본 만들기] → [도입 훅만 다시 쓰기]"
 
       - name: 관리자 페이지가 안 깨지는가
