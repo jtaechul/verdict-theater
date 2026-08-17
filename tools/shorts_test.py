@@ -148,6 +148,18 @@ _speed = {v[1] for v in tts.VOICE_STYLE.values()}
 check("목소리 쪽 배속이 코드에 적힌 값과 맞다", R.SPEECH_SPEED in _speed,
       f"대본 인물들의 배속 {sorted(_speed)}")
 
+# ⚠️ 2026-08-17 손님: "쇼츠 말미에 똑같은 나레이션이 2번 반복돼."
+#    마무리 카드가 마지막 컷을 복사하며 음성 연결고리(nar_id)까지 물려받아
+#    직전 나레이션을 한 번 더 틀었다. 카드는 제 녹음이 없으면 조용해야 한다.
+_out = R.make_outro_cut({"id": "S9-99", "sec": 2.0, "bg": "home_living",
+                         "nar_id": "A3-19", "text": "마지막 문장",
+                         "speaker": "narrator", "chars": []},
+                        "결말은 본편에서 확인하세요.")
+check("마무리 카드가 직전 컷의 목소리를 물려받지 않는다 (나레이션 2번 반복 방지)",
+      "nar_id" not in _out, f"남은 칸 수 {len(_out)}")
+check("마무리 카드에 인물·효과음이 없다 (글자만 남는 설계)",
+      _out.get("chars") == [] and _out.get("sfx") is None, "")
+
 print("\n" + "=" * 72)
 print("  모두 통과" if not fails else f"  실패 {len(fails)}건: {fails}")
 print("=" * 72)

@@ -900,6 +900,16 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False,
     # ⭐ 자리는 대본이 적은 대로 쓰되, **겹치면 흩는다** (assign_slots 설명 참조).
     slots = assign_slots(chars, vertical)
 
+    def sink(kind):
+        """얼굴 컷은 무대 바닥보다 조금 아래로 가라앉힌다.
+
+        ⚠️ 2026-08-17 손님: "목이 둥둥 떠 있는 느낌은 어색해. 목 아래 라운딩된
+           부분이 화면 하단 검은 화면에 잘 가려질 수 있게." 얼굴 컷은 목에서
+           잘리는데, 그 잘린 단면(흰 테두리가 도는 곳)이 자막 띠 바로 위에서
+           숨쉬기 애니메이션과 함께 들썩여 스티커가 떠 있는 티가 났다.
+           단면을 띠 뒤로 내려 목이 띠에 자연스럽게 걸친 것처럼 보이게 한다."""
+        return int(H * 0.05) if kind == "face" else 0
+
     def seat(sprite, kind, avoid_gfx=False):
         """이 그림을 무대에 앉힐 y. 아래끝을 바닥에 붙이는 것이 원칙이다."""
         if kind == "full":
@@ -909,7 +919,7 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False,
                 y = H - sprite.height + bottom_bleed(sprite)
         else:
             # 인물의 진짜 아래끝(흰 테두리 제외)을 화면 바닥에 붙인다
-            y = H - sprite.height + bottom_bleed(sprite)
+            y = H - sprite.height + bottom_bleed(sprite) + sink(kind)
         # 세로에서는 위쪽 정보 카드를 피해야 한다
         if avoid_gfx and vertical and gfx_bottom and y < gfx_bottom + int(H * 0.035):
             y = gfx_bottom + int(H * 0.035)
@@ -977,8 +987,9 @@ def _stage_plates(cut, W, H, vertical=False, top_line="", banded=False,
         y = max(y, edge)                            # 머리 위가 잘리지 않게
 
         # ⭐ 마지막으로 한 번 더 바닥에 붙인다. 위 클램프들이 인물을 들어 올렸을 수 있다.
+        #    (얼굴 컷은 sink 만큼 더 내려 목의 잘린 단면을 자막 띠 뒤로 숨긴다)
         if kind != "full":
-            y = max(edge, H - sprite.height + bottom_bleed(sprite))
+            y = max(edge, H - sprite.height + bottom_bleed(sprite) + sink(kind))
 
         placed.append(dict(code=ccode, pose=pose, sprite=sprite, kind=kind,
                            edge=edge, x=x, y=y, listening=listening))
@@ -2054,6 +2065,11 @@ def make_outro_cut(last_cut, text, sec=4.2):
     c["speaker"] = "narrator"
     c["blackout"] = True
     c["chars"] = []                      # 마무리는 글자만. 인물이 남으면 시선이 흩어진다
+    # ⚠️ 2026-08-17 손님: "쇼츠 말미에 똑같은 나레이션이 2번 반복돼."
+    #    복사할 때 음성 연결고리(nar_id)까지 물려받아, 마무리 카드가 직전 컷의
+    #    나레이션을 한 번 더 틀고 있었다. 마무리 카드는 제 녹음이 없으면 조용히
+    #    (배경 소리만) 나가는 것이 맞다 — 남의 목소리를 빌리면 안 된다.
+    c.pop("nar_id", None)
     return c
 
 

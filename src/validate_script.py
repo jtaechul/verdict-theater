@@ -639,6 +639,33 @@ def check_nametags(doc, r):
         r.ok(f"등장인물 {len(seen)}명 모두 첫 등장에 네임태그가 있다")
 
 
+def check_typos(doc, r):
+    """흔한 맞춤법 오타 — 나레이션이 오타 그대로 소리 내어 읽는다.
+
+    ⚠️ 2026-08-17 손님이 방송에서 발견: "시어머니 밥을 챘습니다"(EP002 A3-19).
+       '챘'은 낚아챘·눈치챘처럼 앞말에 붙을 때만 말이 된다 — 어절 첫 글자로
+       나오면 무조건 오타다(차렸/챙겼의 잘못). 자막은 물론 **음성까지** 오타로
+       나가므로 대본 단계에서 잡는다. 목록은 '항상 틀린 것'만 담는다 —
+       애매한 것을 넣으면 멀쩡한 문장을 막는다."""
+    pats = [
+        (r"(?:^|[\s\"'「])챘", "'챘'이 어절 첫 글자다 — 차렸/챙겼의 오타"),
+        (r"됬", "'됬'은 항상 오타다 — 됐"),
+        (r"어떻해", "'어떻해'는 항상 오타다 — 어떡해"),
+        (r"왠만", "'왠만'은 항상 오타다 — 웬만"),
+        (r"몇일", "'몇일'은 항상 오타다 — 며칠"),
+    ]
+    bad = []
+    for _, c in all_cuts(doc):
+        t = c.get("text") or ""
+        for p, why in pats:
+            if re.search(p, t):
+                bad.append(f"{c.get('id')} 「{t[:24]}…」 — {why}")
+    if bad:
+        r.error("맞춤법", f"오타 {len(bad)}곳: " + " / ".join(bad[:3]))
+    else:
+        r.ok("흔한 오타 없음 (챘·됬·어떻해·왠만·몇일)")
+
+
 def check_anonymization(doc, r):
     blob = "\n".join((c.get("text") or "") for _, c in all_cuts(doc))
     blob += "\n" + (doc.get("youtube", {}).get("description_body") or "")
@@ -1257,6 +1284,7 @@ def validate_doc(doc, mf=None, with_shorts=True, shorts_doc=None):
     check_blackout(doc, r)
     check_char_layout(doc, r)
     check_nametags(doc, r)
+    check_typos(doc, r)
     check_anonymization(doc, r)
     check_amount_onscreen(doc, r)
     check_region(doc, r)
