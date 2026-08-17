@@ -347,6 +347,13 @@ color:var(--gold);font-size:15px;font-weight:700}
 .empty{color:var(--dim);text-align:center;padding:26px 0;font-size:14px}
 .toast{position:fixed;left:14px;right:14px;bottom:20px;background:#232735;
 border:1px solid var(--line);border-radius:12px;padding:14px;z-index:50;display:none}
+.errbox{position:fixed;left:14px;right:14px;bottom:20px;background:#2b1d20;
+border:1px solid #7a3a44;border-radius:12px;padding:14px;z-index:60;display:none;
+word-break:break-all;font-size:13px;line-height:1.5}
+.errbox b{color:#ff8896;display:block;margin-right:44px}
+.errbox .ebody{margin-top:8px;color:#c8cbd6}
+.errbox .eclose{position:absolute;top:10px;right:12px;background:none;border:1px solid #7a3a44;
+border-radius:8px;color:#ff8896;font-size:13px;padding:4px 10px}
 table{width:100%;border-collapse:collapse;font-size:14px}
 td{padding:8px 4px;border-bottom:1px solid var(--line)}
 td:first-child{color:var(--dim)}
@@ -370,6 +377,7 @@ function appHtml() {
 <header><h1>판결<span>극장</span> 관리자</h1></header>
 <div class="wrap" id="app"><div class="empty">불러오는 중…</div></div>
 <div class="toast" id="toast"></div>
+<div class="errbox" id="errbox"></div>
 <script>
 const WF = ${JSON.stringify(WORKFLOWS)};
 const STAGE = ${JSON.stringify(STAGE_LABEL)};
@@ -389,6 +397,24 @@ function toast(msg, ms = 3600) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.style.display = 'block';
   clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', ms);
+}
+// ⭐ 2026-08-17: 버튼이 거부당한 **이유**가 6초짜리 알림으로만 떴다 사라져서,
+//    손님도 개발자도 원인을 못 읽었다 ("또 실패"만 남음). 실패는 닫기 전까지
+//    화면에 남는 상자로 보여준다. 내용은 textContent 로만 넣는다(주입 방지).
+function showErr(title, detail) {
+  const b = document.getElementById('errbox');
+  b.textContent = '';
+  b.style.position = 'fixed';
+  const x = document.createElement('button');
+  x.className = 'eclose'; x.textContent = '닫기';
+  x.onclick = () => { b.style.display = 'none'; };
+  const t = document.createElement('b');
+  t.textContent = title;
+  const d = document.createElement('div');
+  d.className = 'ebody'; d.textContent = detail || '';
+  b.appendChild(x); b.appendChild(t); b.appendChild(d);
+  b.style.display = 'block';
+  document.getElementById('toast').style.display = 'none';
 }
 const mmss = (s) => Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0');
 
@@ -1014,7 +1040,11 @@ async function goNext(key) {
       body: JSON.stringify({ file: w.file, inputs: w.inputs }) });
     j = await r.json();
   } catch (e) { j = { ok: false, error: '연결이 끊겼습니다' }; }
-  if (!j.ok) { toast('실패: ' + (j.error || '알 수 없는 이유'), 6000); return; }
+  if (!j.ok) {
+    showErr(w.name + ' — 실행이 시작되지 못했습니다',
+            (j.error || '알 수 없는 이유') + (j.detail ? '  [깃허브 원문] ' + j.detail : ''));
+    return;
+  }
   toast(w.name + ' 시작했습니다. 이 화면이 저절로 갱신됩니다.', 6000);
   watch();
 }
@@ -1373,11 +1403,20 @@ async function run(i) {
   const inputs = {};
   w.inputs.forEach(inp => { inputs[inp.k] = document.getElementById('i_'+i+'_'+inp.k).value; });
   toast(w.name + ' 실행 요청 중…');
-  const r = await fetch('/api/run', { method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ file: w.file, inputs }) });
-  const j = await r.json();
-  if (!j.ok) { toast('실패: ' + (j.error || '알 수 없는 이유'), 6000); return; }
+  // 2026-08-17: 통신이 끊기면 여기서 그대로 멈춰 "요청 중…"만 영원히 떠 있었다.
+  let j = {};
+  try {
+    const r = await fetch('/api/run', { method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ file: w.file, inputs }) });
+    if (r.status === 401) { location.href = '/'; return; }
+    j = await r.json();
+  } catch (e) { j = { ok: false, error: '연결이 끊겼습니다 — 인터넷을 확인하고 다시 눌러 주십시오' }; }
+  if (!j.ok) {
+    showErr(w.name + ' — 실행이 시작되지 못했습니다',
+            (j.error || '알 수 없는 이유') + (j.detail ? '  [깃허브 원문] ' + j.detail : ''));
+    return;
+  }
   toast(w.name + ' 시작됨. 아래 "최근 실행"이 저절로 갱신됩니다.', 6000);
   watch();
 }
@@ -1800,9 +1839,24 @@ export default {
           return Response.json({ ok: false, error: '알 수 없는 워크플로' }, { status: 400 });
         const clean = {};
         for (const [k, v] of Object.entries(inputs || {})) if (v !== '') clean[k] = String(v);
-        await gh(env, `/repos/${REPO}/actions/workflows/${file}/dispatches`, {
-          method: 'POST', body: JSON.stringify({ ref: BRANCH, inputs: clean }),
-        });
+        // ⭐ 2026-08-17: 깃허브가 실행 요청을 거절해도 이유가 화면에 안 남아
+        //    "또 실패"만 반복됐다. 흔한 거절 코드는 쉬운 말로 풀고 원문도 붙인다.
+        try {
+          await gh(env, `/repos/${REPO}/actions/workflows/${file}/dispatches`, {
+            method: 'POST', body: JSON.stringify({ ref: BRANCH, inputs: clean }),
+          });
+        } catch (e) {
+          const s = String(e && e.message ? e.message : e);
+          const m = s.match(/GitHub (\d{3})/);
+          const code = m ? m[1] : '';
+          const why =
+            code === '401' ? '깃허브 열쇠(GH_TOKEN)가 만료되었거나 취소되었습니다. 열쇠를 새로 만들어 관리자 페이지에 다시 넣어야 합니다.'
+            : code === '403' ? '깃허브 열쇠(GH_TOKEN)에 실행 권한(actions: write)이 없거나, 깃허브가 요청을 거부했습니다.'
+            : code === '404' ? '깃허브가 저장소나 워크플로 파일을 찾지 못했습니다. 열쇠에 이 저장소 접근 권한이 빠졌을 때도 이렇게 나옵니다.'
+            : code === '422' ? '버튼이 보낸 선택지 값이 워크플로의 목록과 다릅니다.'
+            : '깃허브가 실행 요청을 받지 않았습니다.';
+          return Response.json({ ok: false, error: why, detail: s.slice(0, 220) }, { status: 502 });
+        }
         return Response.json({ ok: true });
       }
 
