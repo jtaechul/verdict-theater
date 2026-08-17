@@ -653,11 +653,24 @@ jobs:
           FILES=(build/*.mp4)
           [ -f build/thumb.jpg ] && FILES+=(build/thumb.jpg)
           [ -f build/meta.json ] && FILES+=(build/meta.json)
+          # ⚠️ 2026-08-17 — 깃허브가 순간 장애(HTTP 503)를 내서 업로드 한 번이
+          #    끊겼고, 그 한 번 때문에 **1시간 렌더가 통째로 실패**로 찍혔다
+          #    (실행 컴퓨터가 사라지면 영상도 사라져 다시 만들 수밖에 없다).
+          #    순간 장애는 재시도가 답이다 — 4번까지, 간격을 늘려 가며 다시 민다.
+          up() {
+            local n
+            for n in 1 2 3 4; do
+              if "$@"; then return 0; fi
+              echo "  업로드 실패 (시도 $n/4) — $((n * 15))초 뒤 다시"
+              sleep $((n * 15))
+            done
+            "$@"
+          }
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "${FILES[@]}" --clobber
+            up gh release upload "$TAG" "${FILES[@]}" --clobber
             echo "보관함 갱신: $TAG (${#FILES[@]}개)"
           else
-          gh release create "$TAG" \
+          up gh release create "$TAG" \
             --title "$EP 영상" \
             --notes "관리자 페이지에서 보기 위한 파일입니다. 저장소 커밋이 아닙니다." \
             --prerelease \
