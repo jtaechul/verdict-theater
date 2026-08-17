@@ -127,6 +127,23 @@ def main():
     else:
         bad("렌더러의 크기 셈이 바뀌었다 — 이 시험을 함께 고치십시오")
 
+    # ── 4. 실물 대본으로 배치 검사 전체를 통과하는가 ──────────
+    #    2026-08-17 — 틀 통일 메모(kind_fix)에 W·H 가 없는데 배치 검사가 배치
+    #    기록으로 착각해 KeyError 로 죽었고, EP002 재제작이 통째로 실패했다.
+    #    합성 시험만으로는 기록 모양의 약속을 못 지킨다 — 실물 대본으로 잰다.
+    import subprocess
+    ep = ROOT / "data" / "scripts" / "EP002.json"
+    if ep.exists():
+        r = subprocess.run([sys.executable, str(ROOT / "tools" / "check_place.py"),
+                            "EP002"], capture_output=True, text=True)
+        if r.returncode == 0:
+            ok("실물 대본(EP002)이 배치 검사 전체를 통과한다")
+        else:
+            tail_line = ((r.stdout + r.stderr).strip().splitlines() or ["?"])[-1]
+            bad("실물 대본이 배치 검사에서 죽는다: " + tail_line[:120])
+    else:
+        print("   (EP002 대본이 없어 실물 배치 검사는 건너뜀)")
+
     print("─" * 52)
     if FAIL:
         print(f"❌ 인물 배치 시험: {len(FAIL)}가지 실패")

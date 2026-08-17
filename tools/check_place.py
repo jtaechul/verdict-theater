@@ -67,7 +67,11 @@ def main():
                 continue
             R.PLACE_LOG = []
             R.build_plates(cut, W, H, vertical=vert)
-            here = list(R.PLACE_LOG)
+            # ⚠️ 2026-08-17 — 틀 통일 메모(kind_fix: 얼굴→상반신 바꿈)는 배치
+            #    기록이 아니라서 W·H·rect 가 없다. 이걸 배치로 착각해 KeyError 로
+            #    죽는 바람에 EP002 재제작이 통째로 실패했다. 아래 모든 검사(자리·
+            #    겹침·이름표)가 같은 목록을 쓰므로 **여기서 한 번에 걸러낸다.**
+            here = [p for p in R.PLACE_LOG if "kind_fix" not in p]
             cid = cut.get("id", f"#{i}")
             for p in here:
                 n += 1
