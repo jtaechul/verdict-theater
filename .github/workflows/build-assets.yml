@@ -12,6 +12,14 @@ name: 0. 에셋 만들기
 #   1) 소리 (비용 0원) → 2) 배우 한 명 다시 만들기 → 결과 확인 → 3) 나머지 전부
 
 on:
+  # ⭐ 2026-08-17: 관리자 페이지를 거치지 않고 수리를 실행하는 길.
+  #    `.repair-request` 파일이 main 에 올라오면 '망가진 시트만 찾아서 다시
+  #    만들기' 모드로 스스로 돈다. Claude(개발 세션)의 깃허브 연동은 버튼 실행
+  #    (workflow_dispatch) 권한이 없어 403 이 나므로, 있는 권한(커밋)으로 연다.
+  #    걸린 시트가 없으면 0원으로 끝난다 — 실수로 올라와도 돈이 새지 않는다.
+  push:
+    branches: [main]
+    paths: ['.repair-request']
   workflow_dispatch:
     inputs:
       what:
@@ -115,7 +123,11 @@ jobs:
           FREESOUND_TOKEN: ${{ secrets.FREESOUND_TOKEN }}
         run: |
           set -o pipefail
-          case "${{ inputs.what }}" in
+          # 버튼(workflow_dispatch)이면 고른 값 그대로, `.repair-request` push 로
+          # 불려왔으면 값이 비어 있으므로 수리 모드로 돈다 (위 on: 주석 참조).
+          WHAT="${{ inputs.what }}"
+          [ -n "$WHAT" ] || WHAT='망가진 시트만 찾아서 다시 만들기 (걸린 시트만 · 시트당 약 265원)'
+          case "$WHAT" in
             "기본 3가지"*)
               # ⭐ 빠진 것을 **한 번에** 채운다. 순서에 뜻이 있다 —
               #    공짜인 것부터 다 하고, 값이 드는 인물을 맨 뒤에 둔다.
@@ -309,8 +321,10 @@ jobs:
       - name: 결과 화면
         if: always()
         run: |
+          WHAT="${{ inputs.what }}"
+          [ -n "$WHAT" ] || WHAT='망가진 시트만 찾아서 다시 만들기 (걸린 시트만 · 시트당 약 265원)'
           {
-            echo "## 에셋 만들기 — ${{ inputs.what }}"
+            echo "## 에셋 만들기 — ${WHAT}"
             echo ""
             # ⭐ 2026-08-13 — 인물 그림이 막혔다는 사실을 **맨 위에** 크게 적는다.
             #    로그 맨 아래에만 적으면 손님이 못 보고 다 된 줄 안다.
@@ -347,14 +361,16 @@ jobs:
         run: |
           git config user.name  "verdict-theater-bot"
           git config user.email "actions@github.com"
+          WHAT="${{ inputs.what }}"
+          [ -n "$WHAT" ] || WHAT='망가진 시트만 찾아서 다시 만들기 (걸린 시트만 · 시트당 약 265원)'
           git add assets 2>/dev/null || true
           git diff --cached --quiet && exit 0
           N=$(git diff --cached --name-only | wc -l)
-          git commit -m "에셋: ${{ inputs.what }} — 파일 ${N}개 [skip ci]"
+          git commit -m "에셋: ${WHAT} — 파일 ${N}개 [skip ci]"
           # ⚠️ 직접 push 하지 않는다. 밀렸을 때 rebase 충돌이 나면 예전 방식은
           #    커밋을 조용히 버리고 "Everything up-to-date" 로 성공 처리했다.
           #    (2026-08-10 EP002 대본 실종) tools/push.sh 가 그 자리를 안전하게 처리한다.
-          bash tools/push.sh "에셋: ${{ inputs.what }} — 파일 ${N}개 [skip ci]" assets
+          bash tools/push.sh "에셋: ${WHAT} — 파일 ${N}개 [skip ci]" assets
 
       - name: 실패 알림
         if: failure() && env.HOOK != ''
