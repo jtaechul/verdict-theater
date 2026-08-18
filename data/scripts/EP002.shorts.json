@@ -5,11 +5,45 @@
       "no": 1,
       "kind": "궁금증형",
       "publish_offset_days": 1,
-      "est_sec": 28.5,
-      "intro_line": "장례식의 낯선 여자",
+      "est_sec": 27.3,
+      "intro_line": "패소한 날, 그가 간 곳은",
       "outro_line": "결말은 본편에서 확인하세요.",
-      "hook_reason": "동거인의 대사 '저한테 다 맡기고 가셨어요'가 첫 화면에서 상황을 즉시 뒤집으며 정체를 궁금하게 만든다",
+      "hook_reason": "표지에서 상반된 표정과 큰 금액을 동시에 보여주고, 곧바로 동거인의 도발적 대사로 넘어가 1초 안에 정체를 궁금하게 만든다",
       "cuts": [
+        {
+          "id": "S1-00",
+          "from": null,
+          "sec": 0.8,
+          "cover": true,
+          "bg": "office_registry",
+          "bg_crop": "center",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50A",
+              "pose": "face_shock",
+              "pos_y": 0.35,
+              "scale": 1.4,
+              "pos": "left"
+            },
+            {
+              "code": "F50B",
+              "pose": "bust_cold",
+              "pos_y": 0.4,
+              "scale": 1.3,
+              "pos": "right"
+            }
+          ],
+          "speaker": "narrator",
+          "text": "",
+          "gfx": {
+            "type": "amount",
+            "value": "9억 800만 원",
+            "note": "이십 년의 값"
+          },
+          "sfx": null,
+          "amb": "amb_street"
+        },
         {
           "id": "S1-01",
           "from": "H01",
@@ -90,7 +124,7 @@
             "scale": 1.35
           },
           "speaker": "narrator",
-          "text": "그는 오래전 집을 나갔었다.",
+          "text": "남편은 오래전 집을 나갔습니다.",
           "gfx": null,
           "sfx": null,
           "amb": "amb_street"
@@ -147,9 +181,9 @@
             "scale": 1.45
           },
           "speaker": "narrator",
-          "text": "서류 아래 날짜가 있었다.",
+          "text": "서류 아래, 낯선 날짜 하나.",
           "gfx": null,
-          "sfx": "sfx_heartbeat",
+          "sfx": null,
           "amb": "amb_street"
         },
         {
@@ -181,9 +215,9 @@
           "flashback": false,
           "char": {
             "code": "F50A",
-            "pose": "face_shock",
-            "pos_y": 0.35,
-            "scale": 1.45
+            "pose": "bust_shock",
+            "pos_y": 0.38,
+            "scale": 1.4
           },
           "speaker": "narrator",
           "text": "같은 날, 보험금 주인이 바뀌었다.",
@@ -243,7 +277,7 @@
             "scale": 1.35
           },
           "speaker": "narrator",
-          "text": "혼자 버스를 탔습니다.",
+          "text": "선희 씨는 혼자 버스를 탔다.",
           "gfx": null,
           "sfx": null,
           "amb": "amb_home"
@@ -262,7 +296,7 @@
             "scale": 1.35
           },
           "speaker": "narrator",
-          "text": "왜 그날, 그곳에 갔을까요.",
+          "text": "결말은 본편에서 확인하세요.",
           "gfx": null,
           "sfx": null,
           "amb": "amb_home"
@@ -282,11 +316,45 @@
       "no": 2,
       "kind": "분노형",
       "publish_offset_days": 2,
-      "est_sec": 25.5,
-      "intro_line": "동거인의 뻔뻔한 말",
+      "est_sec": 27.9,
+      "intro_line": "도장값, 받았잖아요",
       "outro_line": "여러분이라면 어떻게 하시겠습니까?",
-      "hook_reason": "첫 컷에 '도장 안 찍은 값, 받으신 거죠'라는 뻔뻔한 대사를 바로 배치해 1초 안에 분노를 유발한다",
+      "hook_reason": "표지 대비 표정 뒤, 동거인의 뻔뻔한 '도장 안 찍은 값, 받았잖아요' 대사를 최우선 배치해 1초 안에 분노를 유발한다",
       "cuts": [
+        {
+          "id": "S2-00",
+          "from": null,
+          "sec": 0.8,
+          "cover": true,
+          "bg": "daily_cafe",
+          "bg_crop": "center",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F50B",
+              "pose": "face_cold",
+              "pos_y": 0.35,
+              "scale": 1.4,
+              "pos": "left"
+            },
+            {
+              "code": "F50A",
+              "pose": "bust_sad",
+              "pos_y": 0.4,
+              "scale": 1.3,
+              "pos": "right"
+            }
+          ],
+          "speaker": "narrator",
+          "text": "",
+          "gfx": {
+            "type": "amount",
+            "value": "9억 800만 원",
+            "note": "그 몫을 되찾기까지"
+          },
+          "sfx": null,
+          "amb": "amb_street"
+        },
         {
           "id": "S2-01",
           "from": "A3-09",
@@ -301,7 +369,7 @@
             "scale": 1.5
           },
           "speaker": "v_F50B",
-          "text": "도장 안 찍은 값, 받으신 거죠.",
+          "text": "도장 안 찍은 값, 받았잖아요.",
           "gfx": {
             "type": "nametag",
             "text": "한미주 · 51세 · 동거인"
@@ -324,7 +392,7 @@
             "scale": 1.4
           },
           "speaker": "v_F50B",
-          "text": "몇 번을 빌었잖아요, 이혼을.",
+          "text": "이혼해 달라 몇 번을 빌었잖아요.",
           "gfx": null,
           "sfx": null,
           "amb": "amb_street"
@@ -362,7 +430,7 @@
             "scale": 1.4
           },
           "speaker": "v_F50B",
-          "text": "육 년, 병원 데려간 사람 저예요.",
+          "text": "육 년, 병원도 제가 데려갔어요.",
           "gfx": null,
           "sfx": null,
           "amb": "amb_street"
@@ -441,17 +509,39 @@
             "scale": 1.4
           },
           "speaker": "narrator",
-          "text": "미주 씨는 대답하지 않았다.",
+          "text": "미주 씨는 답하지 않았다.",
           "gfx": null,
           "sfx": null,
           "amb": "amb_street"
         },
         {
           "id": "S2-09",
-          "from": "A3-16",
-          "sec": 2.2,
+          "from": "A3-14",
+          "sec": 2.0,
           "bg": "home_living_day",
-          "bg_crop": "center",
+          "bg_crop": "left",
+          "flashback": false,
+          "char": {
+            "code": "M50B",
+            "pose": "bust_sad",
+            "pos_y": 0.4,
+            "scale": 1.4
+          },
+          "speaker": "v_M50B",
+          "text": "형 병원 사람들도 다 알았대요.",
+          "gfx": {
+            "type": "nametag",
+            "text": "강태원 · 56세 · 시동생"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
+        {
+          "id": "S2-10",
+          "from": "A3-16",
+          "sec": 2.0,
+          "bg": "home_living_day",
+          "bg_crop": "right",
           "flashback": false,
           "char": {
             "code": "F50A",
@@ -466,7 +556,7 @@
           "amb": "amb_home"
         },
         {
-          "id": "S2-10",
+          "id": "S2-11",
           "from": "A3-17",
           "sec": 2.0,
           "bg": "home_living_day",
@@ -480,17 +570,14 @@
           },
           "speaker": "v_M50B",
           "text": "조용히 끝내는 게 낫습니다.",
-          "gfx": {
-            "type": "nametag",
-            "text": "강태원 · 56세 · 시동생"
-          },
+          "gfx": null,
           "sfx": null,
           "amb": "amb_home"
         },
         {
-          "id": "S2-11",
+          "id": "S2-12",
           "from": "A3-18",
-          "sec": 2.3,
+          "sec": 2.2,
           "bg": "home_living_day",
           "bg_crop": "center",
           "flashback": false,
@@ -507,9 +594,9 @@
           "amb": "amb_home"
         },
         {
-          "id": "S2-12",
+          "id": "S2-13",
           "from": null,
-          "sec": 2.4,
+          "sec": 2.3,
           "bg": "home_living_day",
           "bg_crop": "center",
           "flashback": false,
@@ -540,11 +627,45 @@
       "no": 3,
       "kind": "공감형",
       "publish_offset_days": 4,
-      "est_sec": 26.3,
-      "intro_line": "이십 년 며느리였다",
-      "outro_line": "그 말 한마디를 못 해서 멀어진 가족이, 당신에게도 있습니까?",
-      "hook_reason": "시어머니의 '네가 내 딸이지, 남이냐'라는 대사가 첫 화면에서 따뜻함과 아픔을 동시에 던져 몰입시킨다",
+      "est_sec": 27.6,
+      "intro_line": "이십 년 간병, 상속은 0원",
+      "outro_line": "그 말 한마디 못해, 멀어진 가족이 있습니까?",
+      "hook_reason": "표지의 대비되는 표정과 함께, 시어머니의 '네가 내 딸이지, 남이냐'라는 대사가 곧바로 따뜻함과 아픔을 던져 몰입시킨다",
       "cuts": [
+        {
+          "id": "S3-00",
+          "from": null,
+          "sec": 0.8,
+          "cover": true,
+          "bg": "home_kitchen",
+          "bg_crop": "center",
+          "flashback": false,
+          "chars": [
+            {
+              "code": "F70",
+              "pose": "bust_sad",
+              "pos_y": 0.35,
+              "scale": 1.35,
+              "pos": "left"
+            },
+            {
+              "code": "F50A",
+              "pose": "face_neutral",
+              "pos_y": 0.4,
+              "scale": 1.3,
+              "pos": "right"
+            }
+          ],
+          "speaker": "narrator",
+          "text": "",
+          "gfx": {
+            "type": "amount",
+            "value": "9억 800만 원",
+            "note": "정 하나엔 값이 없었다"
+          },
+          "sfx": null,
+          "amb": "amb_home"
+        },
         {
           "id": "S3-01",
           "from": "A1-11",
@@ -686,8 +807,8 @@
         },
         {
           "id": "S3-08",
-          "from": "A3-19",
-          "sec": 2.0,
+          "from": null,
+          "sec": 2.2,
           "bg": "home_kitchen",
           "bg_crop": "center",
           "flashback": false,
@@ -698,7 +819,7 @@
             "scale": 1.4
           },
           "speaker": "narrator",
-          "text": "장례 후에도 밥을 지었다.",
+          "text": "장례가 끝난 뒤에도, 밥을 지었다.",
           "gfx": null,
           "sfx": null,
           "amb": "amb_home"
@@ -725,7 +846,7 @@
         {
           "id": "S3-10",
           "from": "A3-21",
-          "sec": 2.0,
+          "sec": 2.2,
           "bg": "home_kitchen",
           "bg_crop": "right",
           "flashback": false,
@@ -736,7 +857,7 @@
             "scale": 1.4
           },
           "speaker": "v_F50A",
-          "text": "저는 이십 년 이 집 사람이었어요.",
+          "text": "저는 이십 년, 이 집 사람이었어요.",
           "gfx": null,
           "sfx": null,
           "amb": "amb_home"
@@ -782,7 +903,7 @@
         {
           "id": "S3-13",
           "from": null,
-          "sec": 2.3,
+          "sec": 2.4,
           "bg": "home_entrance",
           "bg_crop": "center",
           "flashback": false,
@@ -793,7 +914,7 @@
             "scale": 1.4
           },
           "speaker": "narrator",
-          "text": "가족이라 부른 이름이 낯설어질 때.",
+          "text": "그 말 한마디 못해, 멀어진 가족이 있습니까?",
           "gfx": null,
           "sfx": null,
           "amb": "amb_home"
