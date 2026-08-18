@@ -27,12 +27,13 @@
   "EP002": {
     "case_id": "230761",
     "gate_score": 98,
-    "stage": "evaluated",
+    "stage": "published",
     "script_score": 99,
     "revise_count": 0,
     "case_type": "유류분",
     "created_at": "2026-08-11",
-    "validation_errors": 0
+    "validation_errors": 0,
+    "longform_id": "VhUdR2Zm_Nc"
   },
   "EP003": {
     "case_id": "239125",
