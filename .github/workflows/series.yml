@@ -65,8 +65,12 @@ jobs:
             echo "> 규격에 안 맞으면 **저장하지 않습니다.** 그 경우 위 목록을 보고 다시 실행하십시오."
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: 저장소에 올리기
-        if: success()
+      # ⚠️ 2026-08-19 — 첫 실행이 규격에 걸렸을 때 **받아 둔 대본이 사라졌다.**
+      #    실행이 끝나면 그 컴퓨터가 없어지기 때문이다. 값은 이미 나갔는데
+      #    다시 사야 하는 구조였다. 걸린 것도 저장한다 — 기준만 손보면
+      #    그대로 통과시킬 수 있다(0원).
+      - name: 저장소에 올리기 (걸린 것도 남긴다)
+        if: always()
         run: |
           git config user.name  "verdict-theater-bot"
           git config user.email "actions@github.com"

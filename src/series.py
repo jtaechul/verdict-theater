@@ -41,6 +41,12 @@ CUTS = 5               # 한 화 5컷
 SEC = 6                # 컷 하나 6초 (플로우 무료 하루 50크레딧 = 45크레딧)
 ROLES = ["후킹", "상황", "맞섬", "뒤집기", "끊기"]
 
+# ⚠️ 2026-08-19 첫 실행에서 20군데가 걸렸는데 **15군데가 이 한 줄** 때문이었다.
+#    지난 줄거리를 18자로 정해 뒀는데, 한국어로 지난 화를 요약하기엔 너무 짧다.
+#    실물로 재보지 않고 숫자를 적은 내 잘못이다(시트 검사 오판 265원과 같은 실수).
+#    화면 아래 한 줄 자막으로 읽히는 길이는 30자까지가 무난하다.
+RECAP_MAX = 30
+
 # 프롬프트 6줄 규격 — 이 순서, 이 이름이 아니면 반려한다
 LINES = ["SHOT:", "SUBJECT:", "ACTION:", "DIALOGUE:", "SETTING:", "STYLE:", "Avoid:"]
 STYLE_FIX = ("STYLE: Korean TV drama realism, muted desaturated palette, soft "
@@ -49,8 +55,11 @@ STYLE_FIX = ("STYLE: Korean TV drama realism, muted desaturated palette, soft "
 
 # ⚠️ 영상에 글자가 나오는 가장 큰 원인은 '글자가 있는 물건'을 부른 것이다.
 #    "글자 넣지 마" 라고 적는 것보다 이것들을 안 부르는 쪽이 확실하다.
+#    ⚠️ 2026-08-19 — 여기 'phone' 이 있어서 **전화를 받는 장면**이 막혔다.
+#       전화기 자체에는 글자가 없다. 글자가 나오는 것은 '화면' 이다.
+#       phone 은 빼고 phone screen 만 잡는다 — 드라마에 전화 장면은 필수다.
 TEXT_BAIT = ["document", "paper", "letter", "sign", "signage", "banner", "screen",
-             "monitor", "phone", "newspaper", "book", "label", "nameplate",
+             "monitor", "newspaper", "book", "label", "nameplate",
              "certificate", "contract", "poster", "subtitle", "caption", "text"]
 
 
@@ -88,6 +97,35 @@ def case_json(row):
     return json.dumps(d, ensure_ascii=False, indent=2)
 
 
+AVOID_FIX = ("Avoid: on-screen text, signage, documents with visible writing, "
+             "screens, extra people in focus.")
+
+
+def normalize(doc):
+    """고쳐 쓸 수 있는 것은 **버리지 말고 우리가 고친다.**
+
+    ⚠️ 2026-08-19 — STYLE 줄 한 글자가 다르다고 16화 전체를 버리고 다시 사게
+       돼 있었다. 그 줄은 어차피 **모든 컷에서 똑같아야 하는 고정 문구**라
+       모델에게 받을 이유가 없다. 여기서 갈아 끼운다.
+       (내용에 관한 것 — 후킹·글자 나올 물건·대사 길이 — 은 고치지 않는다.
+        그건 이야기를 바꾸는 일이라 사람이 판단할 몫이다.)"""
+    n = 0
+    for e in doc.get("episodes") or []:
+        for c in e.get("cuts") or []:
+            lines = (c.get("prompt") or "").split("\n")
+            out = []
+            for l in lines:
+                if l.startswith("STYLE:") and l != STYLE_FIX:
+                    l, n = STYLE_FIX, n + 1
+                elif l.startswith("Avoid:") and l != AVOID_FIX:
+                    l, n = AVOID_FIX, n + 1
+                out.append(l)
+            c["prompt"] = "\n".join(out)
+    if n:
+        print(f"  (고정 문구 {n}줄을 우리가 채워 넣었다 — 이것 때문에 버리지 않는다)")
+    return doc
+
+
 # ── 검사 ────────────────────────────────────────────────
 def check(doc):
     """규격을 어긴 곳을 전부 찾아 돌려준다. 하나라도 있으면 저장하지 않는다."""
@@ -105,8 +143,9 @@ def check(doc):
             bad.append(f"{no}화: 컷이 {len(cuts)}개다 (있어야 할 것 {CUTS}개)")
         if no != 1 and not (e.get("recap") or "").strip():
             bad.append(f"{no}화: 지난 줄거리(recap)가 비었다")
-        if len(e.get("recap") or "") > 18:
-            bad.append(f"{no}화: 지난 줄거리가 18자를 넘는다")
+        if len(e.get("recap") or "") > RECAP_MAX:
+            bad.append(f"{no}화: 지난 줄거리가 {RECAP_MAX}자를 넘는다 "
+                       f"({len(e['recap'])}자)")
 
         for c in cuts:
             n = c.get("n", "?")
@@ -170,7 +209,7 @@ def main():
         if not doc:
             print(f"❌ {args.check} 가 없다", file=sys.stderr)
             return 2
-        bad = check(doc)
+        bad = check(normalize(doc))
         summary(doc, args.check, doc.get("case_id", ""))
         for b in bad:
             print(f"  ❌ {b}")
@@ -194,6 +233,7 @@ def main():
     doc = llm.json(body, tier="pro", max_output_tokens=32768, temperature=0.85,
                    label="시리즈", effort="high")
 
+    doc = normalize(doc)
     doc["case_id"] = row["case_id"]
     doc["series_id"] = sid
     doc["spec"] = {"episodes": EPISODES, "cuts": CUTS, "sec": SEC}
