@@ -37,6 +37,13 @@ const WORKFLOWS = [
              { k: 'queries', label: '직접 검색어 (비우면 자동)', type: 'text', v: '' },
              { k: 'pages', label: '페이지 수', type: 'text', v: '3' }] },
 
+  { file: 'series.yml', name: '2. 시리즈 대본 만들기',
+    desc: '판례 하나를 30초짜리 16화로 쪼갭니다. 매일 한 편씩 내고 16일이면 '
+        + '8분 롱폼이 공짜로 나옵니다 (글만 쓰므로 수백 원)',
+    inputs: [{ k: 'case', label: '판례 번호 (비우면 자동)', type: 'text', v: '' },
+             { k: 'writer', label: '누가 쓸까요', type: 'select',
+               opts: ['Gemini', 'Claude'] }] },
+
   { file: 'script.yml', name: '2. 대본 만들기',
     desc: '소재를 골라 대본을 씁니다 (회차당 수백 원)',
     inputs: [{ k: 'mode', label: '무엇을 할까요', type: 'select',
@@ -356,7 +363,7 @@ function home() {
   //    맞는 지적이었다. '가끔 쓰는 것' 에 넣어 뒀는데, 등장인물 그림이 없으면
   //    영상이 아예 안 나오므로 **지금 이것이 가장 중요한 버튼**이다.
   //    꺼내서 영상 만들기 바로 위에 둔다 — 순서도 실제로 그 순서다.
-  h += wfList(['stats.yml']);
+  h += wfList(['series.yml', 'stats.yml']);
   h += '</div>';
 
   h += collectCard();

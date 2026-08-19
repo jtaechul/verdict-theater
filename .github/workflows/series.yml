@@ -1,0 +1,75 @@
+name: 2. 시리즈 대본 만들기
+
+# 판례 1건 → 30초짜리 16화 시리즈 (구글 영상 제작용).
+#
+# ⭐ 2026-08-18 대개편 — 영상을 구글(옴니 플래시)이 만든다.
+#    하루 무료 크레딧 50개 = 6초 클립 5개 = 30초. 그래서 12분짜리 한 회차 대신
+#    **하루 30초 × 16화**로 쪼갠다. 16일이면 8분 롱폼이 공짜로 나온다.
+#
+# 값: 글만 쓴다 — 시리즈 하나(16화 전부)에 수백 원. 영상값은 여기서 안 나간다.
+
+on:
+  workflow_dispatch:
+    inputs:
+      case:
+        description: '판례 번호 (비우면 점수가 가장 높은 것으로 자동)'
+        required: false
+        default: ''
+      writer:
+        description: '누가 쓸까요'
+        required: true
+        default: 'Gemini'
+        type: choice
+        options:
+          - 'Gemini'
+          - 'Claude'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: series
+  cancel-in-progress: false
+
+jobs:
+  series:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 시리즈 대본 만들기
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          VT_WRITER: ${{ inputs.writer }}
+        run: |
+          set -o pipefail
+          W=$(echo "${{ inputs.writer }}" | tr 'A-Z' 'a-z')
+          python3 src/series.py --case "${{ inputs.case }}" --writer "$W" 2>&1 | tee series.log
+
+      - name: 결과 화면
+        if: always()
+        run: |
+          {
+            echo "## 시리즈 대본"
+            echo ""
+            echo '```'
+            tail -n 30 series.log 2>/dev/null || echo "기록 없음"
+            echo '```'
+            echo ""
+            echo "> 규격에 안 맞으면 **저장하지 않습니다.** 그 경우 위 목록을 보고 다시 실행하십시오."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 저장소에 올리기
+        if: success()
+        run: |
+          git config user.name  "verdict-theater-bot"
+          git config user.email "actions@github.com"
+          git add data/series state/series.json 2>/dev/null || true
+          git diff --cached --quiet && exit 0
+          bash tools/push.sh "시리즈: 대본 추가 [skip ci]" data/series state

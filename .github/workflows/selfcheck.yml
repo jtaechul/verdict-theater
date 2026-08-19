@@ -57,6 +57,11 @@ jobs:
       - name: 돈 막는 장치가 진짜로 막는가
         run: python3 tools/money_guard_test.py
 
+      # ⭐ 2026-08-18: 시리즈 대본이 규격(6초×5컷×16화 · 후킹 먼저 · 영상에 글자 금지)을
+      #    지키는지 재는 검사기가, 그 자체로 맞는지 가짜 대본으로 시험한다.
+      - name: 시리즈 대본 검사기가 진짜로 잡는가
+        run: python3 tools/series_test.py
+
       - name: 관리자 페이지가 안 깨지는가
         run: |
           node tools/check_admin.mjs

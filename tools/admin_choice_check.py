@@ -144,6 +144,7 @@ else:
 #    만들기'(build-assets)와 옛 '영상 만들기'(produce)가 없어졌다.
 #    새 흐름의 버튼(오늘 한 편 · 완성 · 롱폼 묶기)이 붙으면 여기에 다시 넣는다.
 MUST_SHOW = {
+    "series.yml": "시리즈 대본 만들기",
     "script.yml": "대본 만들기",
     "collect.yml": "재판 기록 모으기",
 }
