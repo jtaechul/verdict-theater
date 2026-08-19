@@ -1,15 +1,12 @@
 name: 0. 자체 점검 (값 0원)
 
 # 코드를 올릴 때마다 **자동으로** 돈다. 버튼을 누를 필요가 없다.
+# 모델을 부르지 않으므로 **비용 0원**, 1분이면 끝난다.
 #
-# 왜 만들었나 (2026-08-11)
-#   손님이 「대본 만들기」를 눌렀는데 두 번 연달아 실패했다. 원인은 둘 다
-#   코드를 읽기만 해도 알 수 있는 실수였는데, **아무도 읽지 않았다.**
-#   고쳐서 올린 코드가 맞는지 확인하는 유일한 방법이 '손님이 버튼을 누르는 것'
-#   이었던 셈이다. 그래서 실패할 때마다 손님의 돈과 시간이 나갔다.
-#
-#   이제 올리는 순간 여기서 먼저 돈다. 여기가 빨간 X 면 버튼을 누르기 전에 안다.
-#   모델을 부르지 않으므로 **비용은 0원**이고 20초면 끝난다.
+# ⭐ 2026-08-18 대개편 — 영상 제작을 구글(옴니 플래시)에 맡기면서
+#    그림 합성·음성 제작·인물 오려내기가 통째로 없어졌다. 그것들을 지키던
+#    검사 27개도 함께 tools/off/ 로 치웠다. 여기 남은 것은 **지금도 도는 것**
+#    (소재 모으기 · 대본 · 유튜브 올리기 · 관리자 페이지)을 지키는 검사뿐이다.
 
 on:
   push:
@@ -36,11 +33,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          # 2026-08-17: 바로 앞 커밋과 비교해 '그림 관련 파일이 바뀌었는가' 를
-          # 가리려면 커밋이 두 개 필요하다 (기본값 1개면 비교 자체가 안 된다).
-          fetch-depth: 2
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -48,8 +40,8 @@ jobs:
       - name: 파이썬 문법
         run: python3 -m py_compile src/*.py tools/*.py
 
-      # ⭐ 이 검사가 2026-08-11 의 두 번 실패를 다 잡는다.
-      #    부르는 자리와 받는 자리를 코드에서 맞춰 본다. 인터넷도 열쇠도 필요 없다.
+      # ⭐ 2026-08-11 의 두 번 실패를 다 잡는 검사.
+      #    모델을 부르는 자리와 받는 자리를 코드에서 맞춰 본다.
       - name: 모델 부르는 자리가 규격에 맞는가
         run: python3 tools/callsite_check.py
 
@@ -65,144 +57,28 @@ jobs:
       - name: 돈 막는 장치가 진짜로 막는가
         run: python3 tools/money_guard_test.py
 
-      # 2026-08-11: 음성 119컷이 멀쩡한데 '받아쓰기 검사' 가 구글 503 에 막혀
-      # 영상이 통째로 안 나왔다. 이제 자로 재는 쪽이 판정한다 — 그게 살아 있는지 본다.
-      # ⚠️ 2026-08-12 — 여기가 비어 있어서 사고가 났다.
-      #    자체 점검이 아래 검사들을 **안 돌리고 있었다.** 그래서 tts.py 를 고친
-      #    커밋이 초록불로 올라갔고, 손님이 [영상 만들기] 를 눌렀을 때야 터졌다.
-      #    (voice_test_stt 가 8건 실패 — '소리 없는 컷이 그대로 통과' 하는 구멍)
-      #    영상 만들기가 돌리는 검사는 **여기서도 똑같이** 돌아야 한다.
-      #    모델을 안 부르므로 값은 0원, 5~8분 걸린다.
-      - name: 영상 만들기가 쓰는 검사 전부 (값 0원)
-        run: |
-          # ⚠️ 2026-08-12 — 이 줄이 없어서 자체 점검이 10초 만에 죽었다.
-          #    영상 만들기에는 '도구 준비' 단계가 따로 있는데 여기엔 없었다.
-          #    음성 검사는 가짜 소리를 ffmpeg 로 만들어 시험하므로 반드시 있어야 한다.
-          #    (ubuntu-latest 이미지에서 ffmpeg 가 빠졌다 — 있다고 믿으면 안 된다)
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg fonts-nanum
-          # ⚠️ PyYAML 도 여기 있어야 한다. limit_test·pipeline_test 가 워크플로
-          #    파일을 읽는데, 이 단계에 설치가 빠져 자체 점검이 두 번 빨간불이
-          #    났다 (2026-08-12 실측: No module named 'yaml').
-          python3 -m pip install --quiet Pillow numpy PyYAML
-          for cmd in ffmpeg ffprobe; do
-            command -v "$cmd" >/dev/null || { echo "::error::$cmd 가 없습니다"; exit 1; }
-          done
-          python3 tools/voice_test_split.py
-          python3 tools/voice_test_group.py
-          python3 tools/voice_len_test.py
-          python3 tools/voice_test_pitch.py
-          python3 tools/voice_test_guard.py
-          # ⭐ 2026-08-15: 통 맞추기(4.1반음)와 검사기(5.0반음)가 딴 잣대를 써서
-          #    영상 만들기가 네 번째로 실패했다. 마무리(settle)가 검사기와 같은
-          #    함수로 닫는지 — 그날의 실측(74/86/99Hz)을 가짜 음성으로 재현해 본다.
-          python3 tools/voice_settle_test.py
-          python3 tools/voice_test_stt.py
-          python3 tools/shorts_test.py
-          python3 tools/voice_test_cast.py
-          python3 tools/sfx_test.py
-          python3 tools/timelabel_test.py
-          python3 tools/variant_test.py
-          # 2026-08-12: 배경 사진 창고가 한 곳만 걸려 있었다. 한쪽이 막히면
-          # 배경을 통째로 못 받는 상태였다 — 두 곳이 다 살아 있는지 본다.
-          python3 tools/bg_source_test.py
-          # 2026-08-12: 배경은 실사인데 **인물 프롬프트에만 화풍이 없어** 애니가
-          # 나왔다. 손님이 모르는 사이에 채널 화풍이 갈라졌다 — 다시는 못 갈라지게 본다.
-          python3 tools/style_check.py
-          # 2026-08-12: 인물을 배경에서 떼어냈다. 다시 한 장으로 합쳐지면
-          # '숨쉬기' 가 카메라 떨림으로 되돌아가는데 화면만 봐서는 모른다.
-          python3 tools/motion_test.py
-          # 2026-08-12: 버튼의 생성 상한이 6인데 배우는 7명이라 한 명이
-          # 말없이 빠지고 있었다. 배우가 늘거나 줄면 여기서 먼저 걸린다.
-          python3 tools/limit_test.py
-          # ⭐ 2026-08-13: 목이 잘린 인물이 있는지 본다.
-          #    손님: "미친놈아 이건 목이 잘렸잖아" — 목 아래만 남은 인물이
-          #    그대로 방송에 나갔다.
-          #    ⚠️ 여기서는 **알리기만 한다.** 자체 점검은 '코드가 멀쩡한가' 를 보는
-          #       곳이고, 그림이 망가진 것은 코드 잘못이 아닐 수 있다(시트를 다시
-          #       받아야 하는 경우). 실제로 **막는 자리는 [영상 만들기]** 다 —
-          #       produce.yml 이 같은 검사를 하고 걸리면 영상을 안 만든다.
-          # ⭐ 2026-08-14: 시트를 만든 뒤 반드시 재는가 (프롬프트 규칙 + 검사기 자기시험)
-          # ⭐ 2026-08-17: GitHub 무료 실행시간(월 2,000분)이 바닥나 모든 버튼이
-          #    멈추는 사고가 났다. 8월에 자체 점검만 71회·306분 — 그림이 안 바뀐
-          #    커밋에서도 매번 4K 시트 11장 + 컷아웃 전부를 다시 쟀기 때문이다.
-          #    그림과 그림 규칙이 그대로면 재도 결과가 같다 — 아래 목록의 파일이
-          #    바뀐 커밋에서만 실물 전수 검사(⑩·목 잘림·배치)를 돌리고, 아니면
-          #    건너뛴다. 못 가리는 경우(첫 커밋·수동 실행·병합)는 안전하게 전부 잰다.
-          IMG_PAT='^assets/|^src/(sheet_gate|render|assets_gen)\.py$|^tools/(head_test|gate_test|place_test|broken_sheets)\.py$'
-          IMG=1
-          if [ "${{ github.event_name }}" = "push" ] && CHANGED=$(git diff --name-only HEAD^ HEAD 2>/dev/null); then
-            echo "$CHANGED" | grep -qE "$IMG_PAT" || IMG=0
-          fi
-          if [ "$IMG" = 1 ]; then
-            python3 tools/gate_test.py
-          else
-            echo "(그림 관련 파일이 안 바뀐 커밋 — 실물 전수 검사는 건너뛰고 장치 검사만 한다)"
-            python3 tools/gate_test.py --light
-          fi
-          python3 src/sheet_gate.py --selftest
-          if [ "$IMG" = 1 ]; then
-            python3 tools/head_test.py || echo "::warning::목이 잘린 인물이 있습니다 — [영상 만들기]가 막습니다"
-          fi
-          # 2026-08-12: [영상 만들기] 하나로 그림까지 다 되어야 한다.
-          # '있는 것 반영 → 없는 것 만들기' 순서가 깨지면 여기서 걸린다.
-          python3 tools/pipeline_test.py
-          # 2026-08-12: 그림 크기를 프롬프트로 정하려 했으나 모델이 무시한다.
-          # API(imageConfig)로 요청해야 한다 — 그것이 빠지면 또 1MP 로 돌아간다.
-          python3 tools/imagesize_check.py
-          # ⭐ 2026-08-14: 버튼이 부르는 코드가 쓰는 꾸러미를 워크플로가 진짜 까는가.
-          #    시범 1장이 **다 그려진 뒤에**(265원 나간 뒤에) numpy 가 없어 넘어졌다.
-          #    코드에 import 를 더할 때마다 사람이 워크플로 열다섯 개를 뒤질 리 없으니,
-          #    코드를 직접 읽어 pip 줄과 대조한다.
-          python3 tools/deps_test.py
-          # ⭐ 2026-08-14: 도입 훅(앞 22초)이 알아들을 수 있는 말인가.
-          #    운영자: "오프닝 훅 대사가 전혀 무슨 내용인지 파악도 안 된다."
-          #    ⚠️ 알리기만 한다 — 대본이 흐린 것은 코드 잘못이 아니라
-          #       [도입 훅만 다시 쓰기] 로 고칠 일이다.
-          # ⭐ 2026-08-14: 버튼 모드마다 돈 쓰는 단계가 딱 맞는 것만 도는가.
-          #    '도입 훅만' 버튼이 본편 생성까지 끌고 가 719원이 샜다 — 다시는 못 새게.
-          python3 tools/mode_test.py
-          # ⭐ 2026-08-16: 회차가 저절로 다음으로 넘어가던 문제 — 대본 만들기·
-          #    영상 만들기·관리자 큰 버튼이 같은 '차례대로' 규칙을 쓰는지 본다.
-          python3 tools/order_test.py
-          # ⭐ 2026-08-16: 정수리 잘린 얼굴 18장 + 얼굴/상반신 섞임(한 명만 작게)이
-          #    EP002 방송에 나갔다 — 배치·검사 재발 방지 시험. (실물 4K 그림을
-          #    여러 장 읽으므로, 그림 관련 커밋에서만 돈다 — 위 IMG 판정과 동일)
-          if [ "$IMG" = 1 ]; then
-            python3 tools/place_test.py
-          fi
-          python3 tools/hook_test.py || echo "::warning::도입 훅이 알아듣기 어렵습니다 — [2. 대본 만들기] → [도입 훅만 다시 쓰기]"
-
       - name: 관리자 페이지가 안 깨지는가
         run: |
           node tools/check_admin.mjs
           node tools/check_fold.mjs
 
-      - name: 워크플로 파일이 문법에 맞는가 + 관리자 버튼이 실제로 눌리는가
+      - name: 워크플로 문법 + 관리자 버튼이 실제로 눌리는가
         run: |
-          # YAML 을 읽으려면 이 라이브러리가 있어야 한다. 러너에 기본으로는 없다.
           python3 -m pip install --quiet PyYAML
-
-          # ⚠️ 2026-08-12 — 관리자 페이지의 '배경 그림 전부' 버튼이 **눌러도
-          #    거절당하고 있었다.** 보내는 글자가 '배경 전부' 인데 워크플로에 있는
-          #    이름은 '배경 전부 (AI 로 그림 · 값 나감)' 였다. 깃허브는 고르는 칸의
-          #    값이 목록과 정확히 같아야 받는다. 눈으로는 못 잡는다 — 기계가 맞춘다.
+          # ⚠️ 2026-08-12 — 관리자 페이지가 보내는 글자와 워크플로의 목록이
+          #    한 글자라도 다르면 깃허브가 거절한다. 눈으로는 못 잡는다.
           python3 tools/admin_choice_check.py
-
-          # ⭐ 2026-08-15 — 안내문 끝의 따옴표 하나 때문에 [영상 만들기]가
-          #    실패 이유도 못 보여 주고 죽었다. YAML 검사는 통과였다 — 문제는
-          #    YAML 안의 **bash 글**이었다. 이제 모든 실행 칸을 bash 로 미리 읽는다.
+          # ⚠️ 2026-08-15 — 따옴표 하나가 남아 실행 칸 전체가 죽은 적이 있다.
           python3 tools/bash_check.py
-
           python3 - <<'PY'
           import pathlib, sys, yaml
           bad = 0
-          for p in sorted(pathlib.Path(".github/workflows").glob("*.yml")):
+          for f in sorted(pathlib.Path(".github/workflows").glob("*.yml")):
               try:
-                  yaml.safe_load(p.read_text(encoding="utf-8"))
-                  print(f"  ✅ {p.name}")
+                  yaml.safe_load(f.read_text(encoding="utf-8"))
+                  print(f"  OK {f.name}")
               except Exception as e:
-                  print(f"  ❌ {p.name}: {e}")
+                  print(f"  X  {f.name}: {e}")
                   bad += 1
           sys.exit(1 if bad else 0)
           PY
@@ -212,13 +88,10 @@ jobs:
         run: |
           {
             if [ "${{ job.status }}" = "success" ]; then
-              echo "## 자체 점검 통과"
-              echo ""
-              echo "버튼을 눌러도 되는 상태입니다. (이 점검은 모델을 부르지 않아 **비용 0원**입니다)"
+              echo "## 자체 점검 통과 (값 0원)"
             else
               echo "## 자체 점검 실패 — 버튼을 누르지 마십시오"
               echo ""
-              echo "지금 버튼을 누르면 돈만 나가고 실패합니다."
               echo "위의 빨간 칸을 열어 어느 검사가 걸렸는지 보십시오."
             fi
           } >> "$GITHUB_STEP_SUMMARY"

@@ -24,170 +24,37 @@ const BRANCH = 'main';
 const GH = 'https://api.github.com';
 
 const WORKFLOWS = [
-  // ⚠️ 각 항목의 **보내는 값**(opts 의 문자열 또는 {v:...})은 워크플로가 아는 글자
-  //    그대로여야 한다. 쉬운 말은 **보이는 글**(t)과 help 에만 쓴다.
-  //    (2026-08-08 손님: "알아듣기 어려운 부분은 전부 쉽게 알아보게 바꿔")
-  // ⚠️ 2026-08-12 — 여기에 선택지가 **여덟 개** 달려 있었다.
-  //    손님: "대본 만들고 나면 그냥 효과음·등장인물·배경 생성하기 눌러서
-  //           기본값으로 한꺼번에 진행되게 하면 되는 거 아니야? 이렇게
-  //           복잡하게 만들 필요가 없을 거 같은데?"
-  //    맞는 말이다. 여덟 개 중 일곱은 **문제가 생겼을 때** 쓰는 것인데
-  //    앞에 나와 있었다. 평소에 고를 것은 사실상 하나다.
-  //    ⭐ 화면에는 셋만 둔다. 나머지는 워크플로에 그대로 있어 필요하면
-  //       깃허브에서 직접 고를 수 있다 — 없앤 것이 아니라 치운 것이다.
-  { file: 'build-assets.yml', name: '2-2. 효과음·등장인물·배경 만들기',
-    desc: '대본을 만든 다음 단계입니다. 그대로 실행하시면 세 가지를 한꺼번에 '
-        + '만들고, 결과를 보신 뒤 영상 만들기로 넘어가시면 됩니다 (약 399원)',
-    inputs: [{ k: 'what', label: '무엇을 만들까요', type: 'select',
-               help: '그대로 두고 실행하시면 됩니다. 이미 있는 것은 다시 만들지 '
-                   + '않으므로 여러 번 눌러도 값은 한 번만 듭니다.',
-               opts: [{ v: '기본 3가지 (효과음 + 등장인물 + 배경사진 · 약 399원)',
-                        t: '효과음 + 등장인물 + 배경사진 한꺼번에 (약 399원)' },
-                      // ⭐ 2026-08-16 손님: "특정 회차를 위한 기능이 너무 많아."
-                      //    한때의 수리용 단추 넷(시범 1장 M70 ×2 · 망가진 배우 2명 ·
-                      //    남은 배우 6명)을 뺐다 — 그 수리는 끝났고, 남겨 두면
-                      //    멀쩡한 배우를 또 사는 지뢰다. 배우 하나가 또 망가지면
-                      //    아래 [배우 한 명 다시 만들기]로 그 배우만 고친다.
-                      { v: '소리 + 배경 사진만 (0원)',
-                        t: '효과음 + 배경사진만 (0원)' },
-                      { v: '망가진 시트만 찾아서 다시 만들기 (걸린 시트만 · 시트당 약 265원)',
-                        t: '망가진 시트만 찾아서 다시 만들기 — 검사에 걸린 것만, 없으면 0원' },
-                      { v: '배우 한 명 다시 만들기 (code 칸의 배우 · 2장 · 약 530원)',
-                        t: '배우 한 명 다시 만들기 — 아래에서 고른 배우만 (약 530원)' },
-                      { v: '캐릭터 전부 다시 만들기 (M70 포함 14장 · 약 3,710원)',
-                        t: '배우 7명 전부 새로 만들기 (약 3,710원)' },
-                      { v: '그림 만들기 되는지 확인 (막혀 있으면 0원)',
-                        t: '그림을 만들 수 있는 상태인지 먼저 확인 (막혀 있으면 0원)' },
-                      { v: '빠진 것 확인만', t: '무엇이 빠졌는지 확인만 (0원)' },
-                      { v: '소리 (비용 0원)', t: '효과음만 다시 만들기 (0원)' }] },
-             { k: 'code', label: '어느 배우를 (한 명 다시 만들기용)', type: 'select',
-               help: "위에서 '배우 한 명 다시 만들기'를 골랐을 때만 씁니다. 다른 것을 골랐으면 그대로 두십시오.",
-               opts: [{ v: 'F70', t: 'F70 — 70대 여성 (예: 시어머니 역)' },
-                      { v: 'M70', t: 'M70 — 70대 남성 (예: 아버지 역)' },
-                      { v: 'F50A', t: 'F50A — 50대 여성 A' },
-                      { v: 'F50B', t: 'F50B — 50대 여성 B' },
-                      { v: 'M50A', t: 'M50A — 50대 남성 A' },
-                      { v: 'M50B', t: 'M50B — 50대 남성 B' },
-                      { v: 'JUDGE', t: 'JUDGE — 재판장' }] }] },
-
+  // ⭐ 2026-08-18 대개편 — 영상은 구글(옴니 플래시)이 만든다.
+  //    그림·소리·목소리를 우리가 만들던 카드들(에셋 만들기·효과음·목소리 오디션·
+  //    목소리 바꾸기·썸네일·옛 영상 만들기)을 통째로 뺐다.
+  //    남는 것은 지금도 도는 것뿐이다 — 소재 모으기 · 대본 · 성과 · 유튜브.
   { file: 'collect.yml', name: '1. 재판 기록 모으기',
-    desc: '나라의 판례 자료실에서 실제 재판 기록을 받아와, 쓸 만한 것만 골라 대기열에 쌓습니다',
-    inputs: [{ k: 'max_calls', label: '자료실에 물어볼 횟수', type: 'text', def: '180',
-               help: '자료실이 하루 200번까지만 답해 줍니다. 그래서 180이 기본값입니다. '
-                   + '그대로 두고 실행하시면 됩니다. (한 번 물으면 기록 여러 건이 옵니다)' },
-             { k: 'queries', label: '찾을 낱말', type: 'text', def: '',
-               help: '비워 두면 미리 정해 둔 낱말 40개(상속·유언 등)로 모두 찾습니다. 그대로 두십시오.' }] },
+    desc: '판례를 모아 대기열에 쌓습니다 (0원)',
+    inputs: [{ k: 'max_calls', label: '최대 요청 수', type: 'text', v: '180' },
+             { k: 'topic', label: '갈래', type: 'select',
+               opts: ['전부', '불륜', '상속', '재산', '부양', '노년',
+                      '가업', '혼외자', '제사', '빚'] },
+             { k: 'queries', label: '직접 검색어 (비우면 자동)', type: 'text', v: '' },
+             { k: 'pages', label: '페이지 수', type: 'text', v: '3' }] },
 
   { file: 'script.yml', name: '2. 대본 만들기',
-    desc: '재판 기록을 골라 12분 본편 대본과 쇼츠 3편 대본을 씁니다 (약 10분)',
-    inputs: [{ k: 'mode', label: '어디까지 할까요', type: 'select',
-               help: '보통은 맨 위 그대로 두십시오. 쓸 소재가 남아 있으면 심사를 건너뛰고 바로 대본을 씁니다.',
-               opts: [{ v: '둘다', t: '대본 만들기 (소재 없을 때만 심사)' },
-                      { v: '소재 심사만', t: '소재 고르기만 (대본은 안 씀)' },
-                      { v: '대본 생성만', t: '심사는 절대 안 함 — 대본만' },
+    desc: '소재를 골라 대본을 씁니다 (회차당 수백 원)',
+    inputs: [{ k: 'mode', label: '무엇을 할까요', type: 'select',
+               opts: ['둘다', '소재 심사만', '대본 생성만', '이어서 마저 만들기',
+                      '쇼츠만 다시',
                       { v: '도입 훅만 다시 쓰기 (앞 22초 · 약 150원)',
-                        t: '오프닝 22초 대사만 다시 — 음성도 그 다섯 컷만 다시 녹음됨 (약 150원)' },
-                      { v: '쇼츠만 다시', t: '쇼츠 대본만 다시 쓰기' }] },
-             { k: 'writer', label: '대본을 쓸 AI', type: 'select',
-               help: '그대로 두십시오. 앞의 AI가 막히면 저절로 다른 AI가 이어서 씁니다.',
-               opts: [{ v: '자동 (Claude 우선)', t: '자동 (권장)' },
-                      { v: 'Claude', t: 'Claude 로만' },
-                      { v: 'Gemini', t: 'Gemini 로만' }] },
-             { k: 'gate_limit', label: '살펴볼 기록 수', type: 'text', def: '10',
-               help: '대기열 위에서부터 몇 건을 AI가 읽어보고 고를지입니다. 10이면 넉넉합니다.' },
-             // ⭐ 한도를 여기서 고칠 수 있게 둔다. GitHub 설정에 들어갈 일이 없어야 한다.
-             { k: 'budget', label: '한 번에 쓸 수 있는 돈 (원)', type: 'text', def: '3000',
-               help: '지금 한 편에 약 2,100원 듭니다. 이 금액을 넘으면 그 자리에서 멈추고, 만들던 대본은 저장합니다. 그때는 [이어서 마저 만들기] 를 누르면 됩니다.' },
-             { k: 'episode', label: '회차 번호', type: 'text', def: '',
-               help: "위에서 '쇼츠 대본만 다시 쓰기' 를 골랐을 때만 적습니다 (예: EP001). 보통은 비워 두십시오." }] },
-
-  { file: 'produce.yml', name: '3. 영상 만들기',
-    desc: '빠진 그림을 먼저 만들고, 대본으로 본편·쇼츠 영상을 만듭니다 (약 40분). 유튜브에는 영상을 보신 뒤 따로 올립니다',
-    // ⭐ 이 칸이 화면에 없어서 손님이 '그림은 언제 만들어지나' 를 알 수 없었다.
-    //    실제로는 영상 만들기가 빠진 그림을 알아서 만든다(0원 반영 → 없는 것만 생성).
-    //    보이게 해서 무슨 일이 일어나는지 알 수 있게 한다.
-    // ⭐ 2026-08-16 손님: "여기 회차 선택하는 부분이 없어."
-    //    워크플로에는 회차 고르는 칸을 달아 놓고 **이 화면에는 안 달았다.**
-    //    화면에 없는 칸은 없는 기능이나 같다 — 맨 위에 단다.
-    //    ⚠️ 선택지 글자는 produce.yml 목록과 한 글자도 달라선 안 된다
-    //       (admin_choice_check 가 올릴 때마다 맞춰 본다).
-    inputs: [{ k: 'episode', label: '어느 회차를', type: 'select',
-               help: "'자동'은 아직 발행 안 된 가장 이른 회차를 만듭니다 — 차례대로 갑니다. "
-                   + '특정 회차만 만들고 싶으면 직접 고르십시오.',
-               opts: [{ v: '자동 (발행 안 된 가장 이른 회차)',
-                        t: '자동 — 차례대로 (발행 안 된 가장 이른 회차)' },
-                      { v: 'EP001', t: 'EP001' },
-                      { v: 'EP002', t: 'EP002' },
-                      { v: 'EP003', t: 'EP003' },
-                      { v: 'EP004', t: 'EP004' },
-                      { v: 'EP005', t: 'EP005' },
-                      { v: 'EP006', t: 'EP006' }] },
-             { k: 'art', label: '빠진 그림을 만들까요', type: 'select',
-               help: '보통은 맨 위 그대로. 등장인물 그림이 없으면 회색 사람이 나가므로 '
-                   + '영상 만들기가 알아서 만듭니다 (한 명당 약 57원). 배경은 늘 0원입니다.',
-               opts: [{ v: '없는 것만 만든다', t: '빠진 것만 알아서 만들기 (보통 이것)' },
-                      { v: '배경만 만든다 (0원)', t: '배경만 받아오기 (0원)' },
-                      { v: '만들지 않는다 (있는 것으로)', t: '만들지 않고 있는 것으로' }] },
-             { k: 'voice', label: '목소리', type: 'select',
-               help: '보통은 맨 위 그대로. 이미 만들어 둔 목소리는 다시 사지 않고 그대로 씁니다.',
-               opts: [{ v: '음성 생성', t: '목소리 넣기 (보통 이것)' },
-                      { v: '무음으로 시험', t: '소리 없이 화면만 확인 (0원)' }] },
-             { k: 'only', label: '어떤 영상을', type: 'select',
-               help: '하나만 골라 그것만 다시 만들 수 있습니다. 목소리는 그대로 쓰므로 값이 안 듭니다.',
-               opts: [{ v: '', t: '전부 (본편 + 쇼츠 3편)' },
-                      { v: 'longform', t: '본편만 (가로 12분)' },
-                      { v: 'short1', t: '쇼츠 1번만' },
-                      { v: 'short2', t: '쇼츠 2번만' },
-                      { v: 'short3', t: '쇼츠 3번만' }] },
-             { k: 'limit', label: '앞부분만 시험', type: 'text', def: '0',
-               help: '0이면 전체를 만듭니다. 숫자를 넣으면 그 개수의 장면만 빠르게 만들어 화면을 확인합니다.' }] },
-
-  // 2026-08-09 손님: "나중에도 이러면 어떡해. 목소리를 바꾸고 싶은 사람이 있으면
-  //                   어떻게 해야 되는지도 방법을 같이 고민해서 제안해 줘."
-  { file: 'voiceaudition.yml', name: '목소리 오디션 다시 만들기',
-    desc: '목소리 30개를 같은 대사로 읽혀 한 파일로 들려드립니다. 한 번 약 280원, 그 뒤로는 0원',
-    inputs: [{ k: 'dry', label: '실제로 만들까요', type: 'select',
-               help: "'계획만' 을 고르면 값이 얼마나 들지만 알려드리고 끝납니다 (0원).",
-               opts: [{ v: '아니오 (실제로 만듭니다)', t: '실제로 만들기 (약 280원)' },
-                      { v: '예 (계획만 보기 · 0원)', t: '계획만 보기 (0원)' }] },
-             { k: 'only', label: '몇 개만 들어볼까요', type: 'text', def: '',
-               help: '비워 두면 30개 전부입니다. 몇 개만 다시 들으려면 이름을 쉼표로 '
-                   + '적으십시오 (예: Orus,Umbriel,Iapetus).' }] },
-
-  { file: 'sfx.yml', name: '소리·음악 받아오기', rare: true,
-    desc: '효과음과 배경음악을 Freesound 에서 진짜 녹음으로 받아 넣습니다 (0원)',
-    // ⚠️ v(보내는 글자)는 워크플로의 선택지와 **한 글자도 달라선 안 된다.**
-    //    다르면 깃허브가 거절해서 눌러도 아무 일이 안 일어난다.
-    //    (tools/admin_choice_check.py 가 올릴 때마다 맞춰 본다)
-    inputs: [{ k: 'kind', label: '무엇을 받을까요', type: 'select',
-               help: '배경음악은 8곡 중 빠진 것만 받아옵니다. 둘 다 0원입니다.',
-               opts: [{ v: '효과음', t: '효과음' },
-                      { v: '배경음악 (빠진 것만 · 0원)', t: '배경음악 — 빠진 것만 받기' },
-                      { v: '배경음악 (후보만 들어보기)', t: '배경음악 — 후보만 들어보기' }] },
-             { k: 'name', label: '어떤 효과음 (위에서 효과음을 골랐을 때만)', type: 'select',
-               help: '고른 소리를 새로 받아 넣습니다. 지금 쓰는 것은 덮어씁니다.',
-               opts: [{ v: 'clock phone heartbeat', t: '가짜 소리 3가지 한꺼번에 (권장)' },
-                      { v: 'clock', t: '시계 초침' }, { v: 'phone', t: '전화벨' },
-                      { v: 'heartbeat', t: '심장 뛰는 소리' },
-                      { v: 'footsteps', t: '발소리' }, { v: 'door', t: '문 여닫는 소리' },
-                      { v: 'gavel', t: '의사봉' }, { v: 'paper', t: '종이 넘기는 소리' },
-                      { v: 'all', t: '전부 다시 받기' }] },
-             { k: 'query', label: '무엇을 찾을까요 (영어)', type: 'text', def: '',
-               help: '보통은 비워 두십시오 — 소리마다 알맞은 말이 이미 정해져 있습니다. '
-                   + '여러 소리를 한꺼번에 받을 때는 반드시 비워 두셔야 합니다.' },
-             { k: 'install', label: '바로 넣을까요', type: 'select',
-               help: "'듣기만' 을 고르면 후보만 받아 두고 지금 소리는 그대로 둡니다.",
-               opts: [{ v: 'best', t: '기계가 고른 1순위를 바로 넣기' },
-                      { v: '', t: '듣기만 하고 안 넣기' }] }] },
+                        t: '도입 훅만 다시 쓰기 (약 150원)' }] },
+             { k: 'episode', label: "회차 ('쇼츠만 다시' 일 때 · 예: EP002)", type: 'text', v: '' },
+             { k: 'writer', label: '누가 쓸까요', type: 'select',
+               opts: ['자동 (Claude 우선)', 'Claude', 'Gemini'] },
+             { k: 'gate_limit', label: '살펴볼 소재 수', type: 'text', v: '10' },
+             { k: 'budget', label: '값 상한(원)', type: 'text', v: '3000' }] },
 
   { file: 'stats.yml', name: '4. 성과 보기',
-    desc: '올린 영상이 얼마나 보였는지 — 조회수, 끝까지 본 비율 등을 확인합니다 (0원)',
+    desc: '올린 영상이 얼마나 보였는지 확인합니다 (0원)',
     inputs: [] },
 
-  // hidden — 실행 목록에는 안 보이고 '영상 보기' 화면의 [다시 만들기] 버튼만 부른다.
-  // 여기 적어 두는 이유는 /api/run 이 **이 명단에 있는 것만** 실행하기 때문이다.
-  { file: 'castvoice.yml', name: '등장인물 목소리 바꾸기', desc: '', inputs: [], hidden: true },
-  { file: 'thumbnail.yml', name: '썸네일 다시 만들기', desc: '', inputs: [], hidden: true },
+  // hidden — 실행 목록에는 안 보이고 '영상 보기' 화면의 버튼만 부른다.
   { file: 'youtube-upload.yml', name: '유튜브에 올리기', desc: '', inputs: [], hidden: true },
 ];
 
@@ -483,15 +350,13 @@ function home() {
   h += '<div class="card"><h2>실행 <small style="font-weight:400;color:#9599ab">'
      + '— 위에서부터 차례대로 누르시면 됩니다</small></h2>';
   h += wfList(['collect.yml', 'script.yml']);
-  h += fold('목소리 고르기 (등장인물 목소리 · 오디션)', voiceBlock());
+  // 2026-08-18: 목소리 고르기 제거 — 소리는 구글이 영상과 함께 만든다.
   // ⚠️ 2026-08-12 — 그림 만들기가 **접힌 칸 안에 숨어 있었다.**
   //    손님: "관리자 페이지 안에 그림 소리 만들기가 없잖아."
   //    맞는 지적이었다. '가끔 쓰는 것' 에 넣어 뒀는데, 등장인물 그림이 없으면
   //    영상이 아예 안 나오므로 **지금 이것이 가장 중요한 버튼**이다.
   //    꺼내서 영상 만들기 바로 위에 둔다 — 순서도 실제로 그 순서다.
-  h += wfList(['build-assets.yml']);
-  h += wfList(['produce.yml', 'stats.yml']);
-  h += fold('가끔 쓰는 것 (효과음·배경음악)', wfList(['sfx.yml']));
+  h += wfList(['stats.yml']);
   h += '</div>';
 
   h += collectCard();
@@ -623,67 +488,7 @@ async function fillAudition() {
   box.innerHTML = s + '</table>';
 }
 
-// 목소리 관련을 한 묶음으로 그린다 — **대본 아래, 영상 만들기 위**에 접힌 채로 들어간다.
-// (2026-08-09 손님: "등장인물 목소리는 대본 아래쪽에 배치되는 게 정상일 듯하고,
-//                   감추기가 가능해야 해." — 목소리 일은 대본을 쓴 뒤에 하는 것이 순서다)
-function voiceBlock() {
-  let h = '';
-
-  // ① 지금 누가 어떤 목소리를 쓰는지 + 바꾸기
-  if ((S.voiceList||[]).length) {
-    const ROLES = [['v_M50A','장남'],['v_M50B','차남'],['v_F50A','어머니'],
-                   ['v_F50B','며느리'],['v_M70','아버지'],['v_F70','할머니'],
-                   ['v_JUDGE','재판장'],['narrator','해설']];
-    const now = S.cast || {};
-    const hzOf = {}; S.voiceList.forEach(v => { hzOf[v.name] = v.hz; });
-    h += '<div class="wf"><b>등장인물 목소리</b>'
-      + '<small>지금 누가 어떤 목소리를 쓰는지 보고, 여기서 바꿉니다</small>';
-    h += '<table style="width:100%;margin:8px 0 12px">';
-    ROLES.forEach(([k, ko]) => {
-      const v = now[k];
-      const hz = v ? hzOf[v] : null;
-      h += '<tr><td style="padding:4px 0;color:#e6e8f0">' + esc(ko) + '</td>'
-        + '<td style="text-align:right;color:#9599ab;font-size:13px">'
-        + (v ? esc(v) + (hz ? ' · ' + Math.round(hz) + 'Hz' : '')
-             : '<span style="color:#6b6f80">기본값</span>') + '</td></tr>';
-    });
-    h += '</table>';
-    h += '<label>누구를<select id="cv_who">'
-      + ROLES.map(([k, ko]) => '<option value="' + k + '">' + esc(ko) + '</option>').join('')
-      + '</select></label>';
-    h += '<label>어떤 목소리로<select id="cv_voice">'
-      + S.voiceList.map(v => {
-          const band = v.hz < 155 ? '남자' : (v.hz < 165 ? '애매' : '여자');
-          return '<option value="' + esc(v.name) + '">' + esc(v.name)
-               + ' · ' + Math.round(v.hz) + 'Hz · ' + band + '</option>';
-        }).join('') + '</select></label>';
-    h += '<div style="color:#9599ab;font-size:12.5px;margin:-6px 0 10px;line-height:1.5">'
-      + '아래 <b>오디션</b>에서 들어보시고 고르십시오. 남자 배역에 여자 음역을 '
-      + '고르면 저장되지 않고 알려드립니다.</div>';
-    h += '<button onclick="changeVoice()">이 목소리로 바꾸기</button>';
-    h += '<div style="color:#9599ab;font-size:13px;margin-top:9px">'
-      + '바꾸는 것만으로는 <b>값이 들지 않습니다.</b> 다음에 [영상 만들기] 를 누르실 때 '
-      + '<b>그 사람 대사만</b> 새로 만들어집니다 (장남이면 60~100원).</div>';
-    h += '</div>';
-  }
-
-  // ② 오디션 들어보기 (이름을 누르면 그 목소리 자리로 넘어간다)
-  if (S.audition) {
-    h += '<div class="wf"><b>오디션 들어보기 (30개)</b>'
-      + '<small>낮은 목소리부터 이어 붙였습니다 · ' + mb(S.audition.size)
-      + (S.audition.at ? ' · ' + esc(ago(S.audition.at)) + ' 만듦' : '') + '</small>'
-      + '<div style="color:#9599ab;font-size:13px;margin:8px 0">'
-      + '<b>이름을 누르면 그 목소리부터 들립니다.</b></div>'
-      + '<audio id="auplay" controls preload="none" style="width:100%"'
-      + ' src="/api/audio?id=' + S.audition.id + '"></audio>'
-      + '<div id="aulist" style="margin-top:10px;color:#9599ab;font-size:13px">'
-      + '목록 불러오는 중…</div></div>';
-  }
-
-  // ③ 오디션을 새로 만드는 메뉴 (값이 드는 것이라 맨 아래)
-  h += wfList(['voiceaudition.yml']);
-  return h;
-}
+// 2026-08-18: 목소리 오디션 카드 제거 — 소리는 구글이 영상과 함께 만든다.
 
 // ── 지난 수집 결과 ──────────────────────────────────────
 // 2026-08-10 손님: "수집 결과 보기는 관리자 페이지의 메뉴나 버튼으로 넣어야 될 거
@@ -790,37 +595,7 @@ function wfList(files) {
   return h;
 }
 
-// 배역 목소리를 바꾼다. 바꾸기만 하고 값은 들지 않는다 —
-// 실제 음성은 다음 [영상 만들기] 때 그 사람 대사만 새로 만들어진다.
-async function changeVoice() {
-  const who = (document.getElementById('cv_who') || {}).value || '';
-  const voice = (document.getElementById('cv_voice') || {}).value || '';
-  if (!who || !voice) return;
-  if (!confirm('목소리를 ' + voice + ' 로 바꿀까요?\\n\\n'
-             + '지금은 값이 들지 않습니다.\\n'
-             + '다음에 [영상 만들기] 를 누르실 때 그 사람 대사만 새로 만들어집니다.')) return;
-  toast('바꾸는 중…');
-  const since = Date.now();
-  let j = {};
-  try {
-    const r = await fetch('/api/run', { method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ file: 'castvoice.yml', inputs: { who: who, voice: voice } }) });
-    j = await r.json();
-  } catch (e) { j = { ok: false, error: '연결이 끊겼습니다' }; }
-  if (!j.ok) { toast('실패: ' + (j.error || '알 수 없는 이유'), 8000); return; }
-  watchRun('castvoice.yml', since, (r) => {
-    if (r.conclusion === 'success') {
-      toast('바꿨습니다. 다음 [영상 만들기] 부터 이 목소리로 만들어집니다.', 10000);
-      load();
-    } else if (r.conclusion === 'timeout') {
-      toast('아직입니다. 잠시 뒤 새로고침해 주십시오.', 9000);
-    } else {
-      toast('바꾸지 못했습니다 — 배역에 안 맞는 높이일 수 있습니다. '
-            + '[작업] 화면의 최근 실행에서 까닭을 보십시오.', 14000);
-    }
-  }, 8, 5);
-}
+// 2026-08-18: 목소리 바꾸기 제거 — 배역별 목소리를 우리가 고르지 않는다.
 
 // 아직 안 살펴본 판례가 **무슨 사건인지** 판결문에서 꺼내 보여준다. 값 0원.
 // (3차 평가를 돌리기 전에는 한 줄 요약이 없다. 그래도 판결문에는 법원이 쓴
@@ -1025,9 +800,6 @@ const NEXT_RUN = {
   // ⚠️ 2026-08-16 — 회차 칸이 고르는 칸(choice)이 되면서 빈 값('')은
   //    깃허브가 거절한다. 목록에 있는 '자동'을 그대로 보낸다
   //    (자동 = 발행 안 된 가장 이른 회차 — 차례대로 간다).
-  produce: { file: 'produce.yml', name: '영상 만들기',
-             inputs: { episode: '자동 (발행 안 된 가장 이른 회차)',
-                       limit: '0', voice: '음성 생성' } },
 };
 
 async function goNext(key) {
@@ -1137,12 +909,7 @@ function uploadCard(ep, v) {
     + '유튜브에 올리지 않고, <b>올리기 직전까지</b> 되는지만 확인합니다.<br>'
     + '유튜브 열쇠·영상·제목·설명이 준비됐는지 여기서 알 수 있습니다.</div>';
 
-  h += '<div style="height:12px"></div>'
-    + '<button class="ghost" onclick="remakeOne(\\'' + ep + '\\',\\'' + what + '\\')">'
-    + '이 영상만 다시 만들기</button>'
-    + '<div style="color:#9599ab;font-size:13px;margin-top:9px">'
-    + '이것 하나만 새로 만듭니다. 나머지 영상은 그대로 둡니다.<br>'
-    + '음성은 이미 만들어 둔 것을 그대로 쓰므로 <b>값이 들지 않습니다.</b></div>';
+  // 2026-08-18: [이 영상만 다시 만들기] 제거 — 새 방식(구글 영상)에서 다시 붙인다.
   h += '</div>';
   return h;
 }
@@ -1220,26 +987,10 @@ async function makeScript(cid, nm) {
     j = await r.json();
   } catch (e) { j = { ok: false, error: '연결이 끊겼습니다' }; }
   if (!j.ok) { toast('실패: ' + (j.error || '알 수 없는 이유'), 6000); return; }
-  toast('시작했습니다 (10분 안팎). 완성 알림이 오면 대본을 읽어보시고, 괜찮으면 [2-2. 효과음·등장인물·배경 만들기] → [3. 영상 만들기] 순서로 누르십시오.', 9000);
+  toast('시작했습니다 (10분 안팎). 완성 알림이 오면 대본을 읽어보시고, 괜찮으면 다음 단계로 넘어가시면 됩니다.', 9000);
 }
 
-async function remakeOne(ep, what) {
-  if (!confirm('「' + (VIDEO_LABEL_JS[what + '.mp4'] || what) + '」 만 다시 만듭니다.\\n'
-             + '음성은 그대로 쓰므로 값이 들지 않습니다. 진행할까요?')) return;
-  toast('다시 만드는 중…');
-  let j = {};
-  try {
-    const r = await fetch('/api/run', { method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ file: 'produce.yml',
-                             inputs: { episode: ep, only: what,
-                                       voice: '음성 생성', upload: '올리지 않음',
-                                       limit: '0' } }) });
-    j = await r.json();
-  } catch (e) { j = { ok: false, error: '연결이 끊겼습니다' }; }
-  if (!j.ok) { toast('실패: ' + (j.error || '알 수 없는 이유'), 6000); return; }
-  toast('시작했습니다. 다 되면 [새로 불러오기] 를 눌러 확인하십시오.', 9000);
-}
+// 2026-08-18: 한 편만 다시 만들기 제거 — 새 방식(구글 영상)에서 다시 붙인다.
 
 const VIDEO_LABEL_JS = {
   'longform.mp4': '본편 (가로)',
@@ -1309,33 +1060,7 @@ async function saveThumb(ep) {
   }
 }
 
-async function remakeThumb(ep) {
-  const v = (document.getElementById('tv') || {}).value || '문구 1';
-  toast('썸네일 다시 만드는 중… (' + v + ')');
-  const since = Date.now();
-  let j = {};
-  try {
-    const r = await fetch('/api/run', { method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ file: 'thumbnail.yml', inputs: { episode: ep, variant: v } }) });
-    j = await r.json();
-  } catch (e) { j = { ok: false, error: '연결이 끊겼습니다' }; }
-  if (!j.ok) { toast('실패: ' + (j.error || '알 수 없는 이유'), 6000); return; }
-  // ⭐ 다 되면 **저절로 새로 불러온다.** 예전에는 "1분쯤 뒤에 눌러 보십시오" 라고만
-  //    했는데, 너무 일찍 누르면 옛 그림이 나와 "안 바뀐다" 로 보였다 (손님 지적).
-  toast('만드는 중입니다. 다 되면 저절로 새 그림이 뜹니다.', 12000);
-  watchRun('thumbnail.yml', since, (r) => {
-    if (r.conclusion === 'success') {
-      toast('새 썸네일이 나왔습니다 (' + v + ').', 8000);
-      videos(ep);
-    } else if (r.conclusion === 'timeout') {
-      toast('아직입니다. 잠시 뒤 [새로 불러오기]를 눌러 주십시오.', 9000);
-    } else {
-      toast('만들지 못했습니다 (' + (CONCL[r.conclusion] || r.conclusion || '알 수 없음')
-            + '). [작업] 화면에서 까닭을 볼 수 있습니다.', 12000);
-    }
-  }, 8, 6);
-}
+// 2026-08-18: 썸네일 다시 만들기 제거 — 새 방식에서 다시 붙인다.
 
 function play(ep, i) {
   VIEW = 'video';

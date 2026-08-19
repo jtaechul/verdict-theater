@@ -59,7 +59,14 @@ for i, (pos, wfname) in enumerate(starts):
         while j < len(scope) and depth:
             depth += (scope[j] == "[") - (scope[j] == "]")
             j += 1
-        chosen = re.findall(r"v:\s*'((?:[^'\\]|\\.)*)'", scope[om.end():j])
+        body = scope[om.end():j]
+        # ⭐ 2026-08-18 — 여기가 `{ v: '...' }` 꼴만 읽고 있었다. 그래서 글자만
+        #    적은 선택지( opts: ['둘다', '소재 심사만', …] )는 **검사에서 통째로
+        #    빠졌다.** 눌러도 거절당하는 그 사고를 막으려고 만든 검사인데,
+        #    정작 가장 흔한 형태를 안 보고 있었던 것이다. 둘 다 읽는다.
+        chosen = re.findall(r"v:\s*'((?:[^'\\]|\\.)*)'", body)
+        plain = re.sub(r"\{[^{}]*\}", "", body)          # {v:…,t:…} 짝은 위에서 이미 읽었다
+        chosen += re.findall(r"'((?:[^'\\]|\\.)*)'", plain)
         chosen = [c.replace("\\'", "'") for c in chosen]
         if not chosen:
             continue
@@ -133,9 +140,10 @@ else:
 #    한 번 더 눌러야 보였다. 등장인물 그림이 없으면 영상이 아예 안 나오는데
 #    그 버튼이 '가끔 쓰는 것' 에 있었던 것이다.
 #    "있다" 와 "보인다" 는 다르다 — 여기서 그것을 지킨다.
+# ⭐ 2026-08-18 대개편 — 영상을 구글(옴니 플래시)이 만들면서 '등장인물 그림
+#    만들기'(build-assets)와 옛 '영상 만들기'(produce)가 없어졌다.
+#    새 흐름의 버튼(오늘 한 편 · 완성 · 롱폼 묶기)이 붙으면 여기에 다시 넣는다.
 MUST_SHOW = {
-    "build-assets.yml": "등장인물 그림 만들기",
-    "produce.yml": "영상 만들기",
     "script.yml": "대본 만들기",
     "collect.yml": "재판 기록 모으기",
 }
