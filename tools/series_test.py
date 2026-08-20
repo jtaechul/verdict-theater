@@ -38,9 +38,7 @@ def good_prompt(dialogue=SOLO):
             "ACTION: 시동생 holds out a closed folder toward 며느리.\n"
             f"DIALOGUE: {dialogue}\n"
             "SETTING: Korean funeral hall reception room, evening, dim light.\n"
-            + S.STYLE_FIX + "\n"
-            "Avoid: on-screen text, signage, documents with visible writing, "
-            "screens, extra people in focus.")
+            + S.STYLE_FIX + "\n" + S.AVOID_FIX)
 
 
 def good_doc():
@@ -232,6 +230,58 @@ for e in d["episodes"]:
 S.check(d)
 ck("샷이 단조로우면 알려 준다", any("샷 크기" in w for w in S.soft(d)))
 ck("그렇다고 16화를 버리지는 않는다 (샷)", S.check(d) == [], str(S.check(d))[:60])
+
+print("\n⑬ 고정 문구를 글자로 베껴 두지 않았는가")
+# ⚠️ 2026-08-20 — STYLE·Avoid 를 손봤더니 시험과 프롬프트 예시가 옛 글자를
+#    베껴 두고 있어 80컷이 통째로 걸렸다. 코드에서 가져오는지 확인한다.
+_t = (ROOT / "tools" / "series_test.py").read_text(encoding="utf-8")
+ck("시험이 Avoid 를 코드에서 가져온다", "S.AVOID_FIX" in _t)
+_p = (ROOT / "prompts" / "series_gen.md").read_text(encoding="utf-8")
+ck("프롬프트 예시가 지금 STYLE 과 같다", S.STYLE_FIX[7:40] in _p, S.STYLE_FIX[7:40])
+ck("프롬프트 예시가 지금 Avoid 와 같다", S.AVOID_FIX[7:40] in _p)
+ck("고정 문구에 '한 번에 찍기' 가 들어 있다",
+   "single continuous take" in S.STYLE_FIX and "no scene change" in S.STYLE_FIX)
+ck("고정 문구에 '중간에 옷·얼굴 바뀜 금지' 가 들어 있다",
+   "changing clothes or face mid-shot" in S.AVOID_FIX)
+
+print("\n⑫ 눈앞의 사람을 남 부르듯 하지 않는가 (2026-08-20 · 실제 영상)")
+CH = [{"name": "본처", "flow_prompt": "Korean woman, 52 years old, …"},
+      {"name": "내연녀", "flow_prompt": "Korean woman, 42 years old, …"},
+      {"name": "남편", "flow_prompt": "Korean man, 55 years old, …"}]
+
+
+def cut(subj, dia):
+    return {"n": 1, "prompt": f"SUBJECT: {subj}\nDIALOGUE: {dia}"}
+
+
+ck("마주 본 사람을 '저 여자' 라고 하면 잡는다",
+   facing := S.facing_error(
+       cut("본처 in a cardigan facing 내연녀 in a red dress.",
+           '본처: "저 여자가 이유였어?"'), CH), str(facing))
+ck("자리에 없는 사람 얘기는 안 잡는다 (2화 3컷 같은 것)",
+   S.facing_error(cut("본처 in a blouse facing 남편 in a suit.",
+                      '본처: "평생 그 여자랑 살지 마."'), CH) == [])
+ck("죽은 사람을 '그 사람' 이라 해도 안 잡는다 (14화 1컷 같은 것)",
+   S.facing_error(cut("내연녀 in a dress facing 본처 in a suit.",
+                      '본처: "죽던 날까지 그 사람 거였어."'), CH) == [])
+ck("혼자 있는 컷은 남 얘기를 해도 된다",
+   S.facing_error(cut("본처 in a cardigan.", '본처: "저 여자가 문제야."'), CH) == [])
+
+d = good_doc()
+d["characters"] = CH
+d["episodes"][0]["cuts"][0]["prompt"] = (
+    "SHOT: Medium two-shot, static camera.\n"
+    "SUBJECT: 본처 in a cardigan facing 내연녀 in a red dress.\n"
+    "ACTION: 본처 stares.\n"
+    'DIALOGUE: 본처: "저 여자가 이유였어? 대체 언제부터 그런 거야?"\n'
+    "SETTING: hallway, evening.\n" + S.STYLE_FIX + "\n" + S.AVOID_FIX)
+d["episodes"][0]["cuts"][0]["subtitle"] = '"저 여자가 이유였어?"'
+S.normalize(d)
+dia = [l for l in d["episodes"][0]["cuts"][0]["prompt"].split("\n")
+       if l.startswith("DIALOGUE:")][0]
+ck("우리가 '당신' 으로 고쳐 준다", "당신이 이유였어" in dia, dia[10:52])
+ck("자막도 같이 고친다", "당신" in d["episodes"][0]["cuts"][0]["subtitle"])
+ck("고친 것을 반드시 알려 준다", any("당신" in w for w in S.soft(d)))
 
 print("\n⑧ 사람이 실제로 하는 말인가 (2026-08-20 손님: '말도 어색해')")
 d = good_doc()

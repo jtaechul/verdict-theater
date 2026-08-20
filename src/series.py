@@ -125,7 +125,16 @@ SUB_MAX = 60           # 자막은 주고받은 대사를 다 담아야 한다 (
 
 # 프롬프트 6줄 규격 — 이 순서, 이 이름이 아니면 반려한다
 LINES = ["SHOT:", "SUBJECT:", "ACTION:", "DIALOGUE:", "SETTING:", "STYLE:", "Avoid:"]
-STYLE_FIX = ("STYLE: Korean TV drama realism, muted desaturated palette, soft "
+# ⚠️ 2026-08-20 운영자: "중간에 화면에서 배경이 바뀐다거나, 남자 주인공 옷이
+#    바뀌고 얼굴이 바뀌는 부분도 있다."
+#    6초 클립 **한 개 안에서** 장면이 갈아엎히는 것이다. 영상 만드는 쪽은
+#    가만 두면 중간에 컷을 바꾸거나 다른 사람을 넣는다.
+#    → 모든 컷에 **한 번에 찍은 것처럼** 이라고 못 박는다. 이 줄은 고정 문구라
+#      normalize 가 80컷에 자동으로 갈아 끼운다 — **지금 대본도 그대로 고쳐진다.**
+STYLE_FIX = ("STYLE: one single continuous take, no cut, no scene change, "
+             "same location and same person from first frame to last, "
+             "identical clothing throughout, "
+             "Korean TV drama realism, muted desaturated palette, soft "
              "practical lighting, 35mm lens look, shallow depth of field, "
              "natural skin texture, no stylization.")
 
@@ -200,7 +209,10 @@ def case_json(row):
 #    주고받는 대화를 하려면 두 사람이 같이 화면에 있어야 한다. 막고 싶은 것은
 #    지나가는 행인이지 상대역이 아니므로 'background extras' 로 못 박는다.
 AVOID_FIX = ("Avoid: on-screen text, signage, documents with visible writing, "
-             "screens, background extras in focus.")
+             "screens, background extras in focus, "
+             "cutting to another shot, changing the background mid-shot, "
+             "the person changing clothes or face mid-shot, "
+             "swapping in a different actor.")
 
 
 def fix_outfits(doc):
@@ -275,6 +287,55 @@ def fix_outfits(doc):
     return n
 
 
+# 받침이 있고 없고에 따라 조사가 달라진다. '당신' 은 받침이 있으므로
+# 받침 있는 쪽 조사로 바꿔 줘야 한다 — 안 그러면 "당신가" 가 된다.
+JOSA = {"가": "이", "는": "은", "를": "을", "와": "과", "야": "아",
+        "라": "이라", "랑": "이랑", "로": "으로"}
+
+
+def to_you(text, word):
+    """'저 여자가' → '당신이' 처럼 조사까지 맞춰 바꾼다."""
+    def rep(m):
+        return "당신" + JOSA.get(m.group(1) or "", m.group(1) or "")
+    return re.sub(re.escape(word) + r"(랑|라|가|는|를|와|야|로)?", rep, text)
+
+
+def fix_facing(doc):
+    """맞은편 사람을 3인칭으로 부른 대사를 '당신' 으로 고친다.
+
+    ⚠️ 대사를 우리가 손대는 것은 조심스럽지만, 이것 하나로 16화를 다시 사는
+       것이 더 나쁘다. "저 여자가 이유였어?" → "당신이 이유였어?" 는 뜻이
+       그대로고 말도 자연스럽다. 고친 곳은 **손볼 곳으로 반드시 알린다.**
+    """
+    chars = doc.get("characters") or []
+    out = []
+    for e in doc.get("episodes") or []:
+        for c in e.get("cuts") or []:
+            hit = facing_error(c, chars)
+            if not hit:
+                continue
+            lines = (c.get("prompt") or "").split("\n")
+            for i, l in enumerate(lines):
+                if not l.startswith("DIALOGUE:"):
+                    continue
+                new = l
+                for w in hit:
+                    new = to_you(new, w)
+                if new != l:
+                    lines[i] = new
+                    out.append(f"{e.get('no')}화 {c.get('n')}컷: "
+                               f"'{', '.join(hit)}' → '당신' 으로 고쳤다 "
+                               f"(맞은편 사람을 남 부르듯 했다) — 읽어 보십시오")
+            c["prompt"] = "\n".join(lines)
+            # 자막도 같이
+            sub = c.get("subtitle") or ""
+            for w in hit:
+                sub = to_you(sub, w)
+            c["subtitle"] = sub
+    doc["_facing_fixed"] = out
+    return len(out)
+
+
 def normalize(doc):
     """고쳐 쓸 수 있는 것은 **버리지 말고 우리가 고친다.**
 
@@ -312,6 +373,9 @@ def normalize(doc):
             c["prompt"] = "\n".join(out)
     if n:
         print(f"  (고정 문구 {n}줄을 우리가 채워 넣었다 — 이것 때문에 버리지 않는다)")
+    j = fix_facing(doc)
+    if j:
+        print(f"  (맞은편 사람을 3인칭으로 부른 대사 {j}곳을 고쳤다)")
     k = fix_outfits(doc)
     if k:
         print(f"  (옷차림 {k}줄을 인물표대로 맞췄다 — 컷마다 옷이 바뀌면 딴사람으로 보인다)")
@@ -346,7 +410,7 @@ STIFF_MAX = 5          # 이보다 많으면 대본 전체가 법률 설명이�
 
 def soft(doc):
     """버릴 것까진 아니지만 사람이 한 번 봐야 할 곳."""
-    out = list(doc.get("_soft_extra") or [])
+    out = list(doc.get("_soft_extra") or []) + list(doc.get("_facing_fixed") or [])
     for e in doc.get("episodes") or []:
         for c in e.get("cuts") or []:
             act = next((l for l in (c.get("prompt") or "").split("\n")
@@ -366,6 +430,64 @@ def soft(doc):
                                        f"'{w}' — 사람은 그렇게 말하지 않는다 "
                                        f'("{say}")')
     return out
+
+
+# ⚠️ 2026-08-20 운영자: "본처가 내연녀한테 얘기를 하고 있는데, 대사가 '저 여자'
+#    라고 지칭을 하고 있어."
+#    맞은편에 있는 사람을 남 얘기하듯 부르면 장면이 통째로 어긋난다.
+#    (1화 3컷 — 본처가 내연녀를 마주 보고 "저 여자가 이유였어?")
+#    화면에 누가 있는지는 SUBJECT 로, 남녀는 flow_prompt 로 안다.
+THIRD_F = ["저 여자", "그 여자", "저년", "그년"]
+THIRD_M = ["저 남자", "그 남자", "저놈", "그놈", "저 새끼", "그 새끼"]
+THIRD_ANY = ["저 사람", "그 사람", "저것들", "그것들", "저 인간", "그 인간"]
+
+
+def gender(ch):
+    t = (ch.get("flow_prompt") or "").lower()
+    if "woman" in t or "female" in t:
+        return "f"
+    if "man" in t or "male" in t:
+        return "m"
+    return "?"
+
+
+def facing_error(cut, chars):
+    """맞은편에 있는 사람을 3인칭으로 부르는가.
+
+    ⚠️ 처음 만든 검사가 **세 군데 중 두 군데를 잘못 잡았다.**
+         2화 3컷  본처→남편  "평생 그 여자랑 떳떳하게 살지 마."
+         14화 1컷 본처→내연녀 "죽던 날까지 그 사람 거였어."
+       둘 다 **그 자리에 없는 사람** 얘기라 멀쩡한 대사다.
+
+    그래서 이렇게 좁힌다 — 그 낱말이 가리킬 수 있는 사람이 **한 명도 밖에
+    남아 있지 않을 때만** 잡는다.
+      · "저 여자" → 이야기 속 여자가 **전부** 이 컷에 있으면 오류
+      · "그 사람" → 등장인물이 **전부** 이 컷에 있으면 오류
+    """
+    lines = (cut.get("prompt") or "").split("\n")
+    subj = next((l for l in lines if l.startswith("SUBJECT:")), "")
+    named = [c for c in chars if (c.get("name") or "").strip()]
+    here = [c for c in named if c["name"] in subj]
+    if len(here) < 2:
+        return []                       # 혼자 있는 컷은 남 얘기를 해도 된다
+
+    def all_here(g=None):
+        pool = [c for c in named if g is None or gender(c) == g]
+        return bool(pool) and all(c in here for c in pool)
+
+    dia = next((l for l in lines if l.startswith("DIALOGUE:")), "")
+    hit = []
+    for say in re.findall(r'"([^"]*)"', dia):
+        for w in THIRD_F:
+            if w in say and all_here("f"):
+                hit.append(w)
+        for w in THIRD_M:
+            if w in say and all_here("m"):
+                hit.append(w)
+        for w in THIRD_ANY:
+            if w in say and all_here():
+                hit.append(w)
+    return sorted(set(hit))
 
 
 # ── 검사 ────────────────────────────────────────────────
@@ -408,7 +530,10 @@ def check(doc):
                 bad.append(f"{tag}: 6줄 규격이 아니다 — {got[:8]}")
             if STYLE_FIX not in p:
                 bad.append(f"{tag}: STYLE 줄이 고정 문구와 다르다")
-            if not p.rstrip().endswith("focus."):
+            # ⚠️ 예전엔 `endswith("focus.")` 였다. 고정 문구를 손보는 순간
+            #    80컷이 통째로 걸렸다 — 문구를 글자로 베껴 두면 이렇게 된다.
+            #    고정 문구 자체와 견준다.
+            if not p.rstrip().endswith(AVOID_FIX):
                 bad.append(f"{tag}: Avoid 줄로 끝나지 않는다")
 
             # ⭐ 글자가 나올 물건을 불렀는가 (영상에 글자 금지 — 운영자 지시)
@@ -418,6 +543,11 @@ def check(doc):
                 bad.append(f"{tag}: 글자가 나올 물건을 불렀다 — {', '.join(hit)}")
 
             # 한국어 대사 — 6초에 들어가는 양 (한 줄 · 총합 · 말하는 사람 수)
+            f3 = facing_error(c, doc.get("characters") or [])
+            if f3:
+                bad.append(f"{tag}: 맞은편 사람을 '{', '.join(f3)}' 라고 부른다 "
+                           f"— 앞에 두고 남 얘기하듯 말하면 장면이 어긋난다")
+
             says = []
             for line in p.split("\n"):
                 if line.startswith("DIALOGUE:"):

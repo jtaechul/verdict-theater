@@ -1,6 +1,6 @@
 # series_gen.md — 시리즈 대본 프롬프트 (구글 영상 제작용)
 
-> **버전** v1.9 · 2026-08-20
+> **버전** v2.0 · 2026-08-20
 > **용도** 판례 1건 → 30초짜리 16화 시리즈 (매일 1화 발행, 16일 뒤 8분 롱폼)
 > **호출 위치** `src/series.py` (관리자 페이지 [시리즈 만들기])
 > **모델** Gemini (운영자 지시, 2026-08-18)
@@ -63,8 +63,8 @@ SUBJECT: 등장인물 이름 + 옷차림 (얼굴 묘사 금지 — 캐릭터로 
 ACTION: 동작 하나
 DIALOGUE: 말하는 사람과 톤 + 한국어 대사. 두 사람이 주고받으면 ` / ` 로 잇는다 (없으면 "None.")
 SETTING: 장소 + 조명
-STYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.
-Avoid: on-screen text, signage, documents with visible writing, screens, background extras in focus.
+STYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.
+Avoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor.
 ```
 
 **지켜야 할 것**
@@ -92,6 +92,28 @@ Avoid: on-screen text, signage, documents with visible writing, screens, backgro
     · 감정이 터지는 컷 → `Close-up on {이름}`
     · 장면을 여는 컷 → `Wide shot` 또는 `Over-the-shoulder`
   마지막 5컷(끊기)은 **클로즈업**으로 얼굴에 붙여 끝낸다.
+- ⭐ **맞은편에 있는 사람을 3인칭으로 부르지 않는다** (2026-08-20 · 실제 영상).
+  첫 화 3컷에서 본처가 **내연녀를 마주 보고** `"저 여자가 이유였어?"` 라고 했다.
+  눈앞에 두고 남 얘기하듯 말하면 장면이 통째로 어긋난다.
+
+  ✗ `본처 facing 내연녀` 인데 `"저 여자가 이유였어?"`
+  ○ `"당신이 이유였어?"` · `"네가 이유였어?"`
+
+  `저 여자` `그 여자` `저 사람` `그놈` 같은 말은 **그 자리에 없는 사람**에게만
+  쓴다. 화면에 있는 사람은 `당신` · `너` · 이름으로 부른다.
+
+  뒤집어 말하면, `SUBJECT` 에 없는 사람에게 말을 걸어도 안 된다.
+  말을 주고받는 사람은 **둘 다 화면 안에** 있어야 한다.
+
+- ⭐ **한 컷은 한 번에 찍은 것처럼** (2026-08-20 · 실제 영상).
+  6초 클립 하나 안에서 **배경이 바뀌고, 옷이 바뀌고, 얼굴이 딴사람이 되는**
+  일이 있었다. 영상 만드는 쪽은 가만 두면 중간에 장면을 갈아엎는다.
+  그래서 모든 컷의 `STYLE`·`Avoid` 고정 문구에
+  `STYLE: one single continuous take, no cut, no scene change` 와
+  `cutting to another shot, changing the background mid-shot,
+  the person changing clothes or face mid-shot` 을 넣어 두었다.
+  **이 두 줄은 손대지 않는다** — 우리 프로그램이 자동으로 채운다.
+
 - ⭐ **`SETTING` 은 한 화에 두 곳까지** (2026-08-20 · 실제 영상).
   첫 화가 거실 → 복도로 넘어갔는데 아무 설명이 없어 갑자기 튀어 보였다.
     · 같은 장소인 컷은 SETTING 을 **한 글자도 다르지 않게** 쓴다
@@ -362,7 +384,7 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
           "role": "후킹",
           "subtitle": "\"이 집, 오늘 안에 비워 주세요.\" / \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"",
           "caption": "장례를 치른 다음 날, 시동생이 집을 요구했다",
-          "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.\nACTION: 시동생 holds out a closed folder toward 며느리, who does not take it.\nDIALOGUE: 시동생 (calm and cold): \"이 집, 오늘 안에 비워 주세요.\" / 며느리 (trembling): \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+          "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.\nACTION: 시동생 holds out a closed folder toward 며느리, who does not take it.\nDIALOGUE: 시동생 (calm and cold): \"이 집, 오늘 안에 비워 주세요.\" / 며느리 (trembling): \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
         }
       ]
     }
@@ -402,6 +424,7 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 - [ ] 같은 인물의 `SUBJECT` 가 **모든 컷에서 한 글자도 같은가** (다르면 딴사람이 나온다)
 - [ ] 한 화에 `SHOT` 크기가 **세 가지 이상** 섞였는가 (5컷은 클로즈업)
 - [ ] `SETTING` 이 한 화에 **두 곳 이내**이고, 바뀌는 컷에 `caption` 을 달았는가
+- [ ] 화면에 **있는** 사람을 `저 여자` `그 사람` 처럼 3인칭으로 부른 대사가 없는가
 - [ ] 대사에 `유류분` `한정승인` `시효` 같은 **서류 말투**가 없는가
 - [ ] 숫자·법률·경위는 `caption` 이 지고 있는가 (입은 감정만 말하는가)
 - [ ] 소리 내어 읽었을 때 **사람이 실제로 하는 말**로 들리는가
