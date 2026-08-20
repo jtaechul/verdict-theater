@@ -196,6 +196,12 @@ def build(ch):
         bits.append(face)
     if outfit:
         bits.append(f"always wears {outfit}")
+    # ⭐ 목소리도 캐릭터 정보에 넣는다 (2026-08-20 운영자 지시).
+    #    플로우에서 목소리를 미리 골라 두면 그것이 프롬프트를 눌러 이긴다 —
+    #    미리 고르지 말고 **여기와 컷 프롬프트로** 목소리를 준다.
+    voice = (ch.get("voice") or "").strip()
+    if voice:
+        bits.append(f"speaks with {voice}")
     desc = f"{label} — " + ". ".join(x.strip(" .") for x in bits if x) + "."
     return "\n".join(sheet), desc
 
@@ -226,6 +232,8 @@ def stale(ch):
     if not blob.strip():
         return False
     if LOOK not in (ch.get("flow_sheet") or ""):
+        return True
+    if (ch.get("voice") or "").strip() and "speaks with" not in (ch.get("flow_desc") or ""):
         return True
     return any(re.search(re.escape(a), blob, re.I) for a, _ in SAFE)
 

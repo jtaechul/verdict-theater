@@ -40,6 +40,8 @@ def good_prompt(dialogue=SOLO):
             f"DIALOGUE: {dialogue}\n"
             + S.AUDIO_FIX + "\n"
             + "SETTING: Korean funeral hall reception room, evening, dim light.\n"
+            # 아래 두 줄도 시스템이 붙이는 고정 줄이다 (코드에서 가져온다)
+            + S.CONT_FIRST + "\n" + S.COLOR_FIX + "\n"
             + S.STYLE_FIX + "\n" + S.AVOID_FIX)
 
 
@@ -408,6 +410,43 @@ ck("인물표에 적어 둔 목소리를 그대로 쓴다",
    S.voice_of({"voice": "a whispery voice"}) == "a whispery voice")
 ck("프롬프트 규칙에도 voice 가 적혀 있다",
    "voice" in (ROOT / "prompts" / "series_gen.md").read_text(encoding="utf-8"))
+
+print("\n⑬-5 컷끼리 이어지고 색이 통일되는가 (2026-08-20 운영자 지시)")
+d5 = S.normalize(good_doc())
+p1 = d5["episodes"][0]["cuts"][0]["prompt"]
+p2 = d5["episodes"][0]["cuts"][1]["prompt"]
+p3 = d5["episodes"][1]["cuts"][0]["prompt"]
+ck("모든 컷에 색 지시가 있다",
+   all(S.COLOR_FIX in c["prompt"] for e in d5["episodes"] for c in e["cuts"]))
+ck("색 지시가 컷마다 글자 하나 안 다르다",
+   len({[l for l in c["prompt"].split("\n") if l.startswith("COLOR:")][0]
+        for e in d5["episodes"] for c in e["cuts"]}) == 1)
+ck("색 지시가 없으면 반려한다",
+   any("색 지시" in b for b in S.check(
+       {**d5, "episodes": [{**d5["episodes"][0], "cuts": [
+           {**d5["episodes"][0]["cuts"][0],
+            "prompt": p1.replace(S.COLOR_FIX + "\n", "")}]}]})))
+ck("맨 첫 컷은 '첫 장면' 이라고 적는다", S.CONT_FIRST in p1)
+ck("같은 화 다음 컷은 '이어진다' 고 적는다", "continues straight on" in p2, )
+ck("앞 컷에서 무엇이 있었는지 적어 준다",
+   "steps in front" in p2 or "holds out" in p2, p2.split("CONTINUITY:")[1][:60])
+ck("화가 넘어가면 '같은 이야기의 뒷날' 로 적는다",
+   "same continuing story" in p3)
+ck("모든 컷에 이어짐 지시가 있다",
+   all("CONTINUITY:" in c["prompt"] for e in d5["episodes"] for c in e["cuts"]))
+ck("두 번 돌려도 이어짐·색이 겹치지 않는다",
+   S.normalize(d5)["episodes"][0]["cuts"][0]["prompt"].count("CONTINUITY:") == 1
+   and d5["episodes"][0]["cuts"][0]["prompt"].count("COLOR:") == 1)
+ck("색·이어짐 지시가 다른 검사에 안 걸린다",
+   not S.policy_hits(S.COLOR_FIX + S.CONT_FIRST)
+   and not [w for w in S.TEXT_HARD
+            if re.search(rf"\b{w}\b", (S.COLOR_FIX + S.CONT_FIRST).lower())])
+# ⭐ 플로우에서 목소리를 미리 고르면 프롬프트가 안 먹는다 → 인물 정보에도 넣는다
+ck("인물표에 목소리가 박힌다",
+   all((c.get("voice") or "").strip() for c in d5["characters"]))
+ck("인물 설명 칸에도 목소리가 실린다",
+   all("speaks with" in (c.get("flow_desc") or "") for c in d5["characters"]),
+   (d5["characters"][0].get("flow_desc") or "")[-60:])
 
 print("\n⑬-3 정책에 막히는 말이 없는가 (2026-08-20 · 플로우가 실제로 거절했다)")
 # ⚠️ 플로우: "이 프롬프트는 유명인의 동영상 생성에 관한 정책을 위반할 가능성이…"

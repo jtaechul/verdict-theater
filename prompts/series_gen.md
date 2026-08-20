@@ -73,6 +73,8 @@ DIALOGUE: 말하는 사람과 톤 + 한국어 대사. 주고받으면 ` / ` 로 
 VOICE: (우리가 붙인다) 인물마다 어떤 목소리인가
 AUDIO: (우리가 붙인다) 낭독이 아니라 그 자리에서 하는 말이라는 못
 SETTING: 장소 + 조명
+CONTINUITY: (우리가 붙인다) 앞 컷에서 이어지는 장면이라는 못
+COLOR: (우리가 붙인다) 모든 컷에 똑같은 색
 STYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, grounded everyday Korean realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.
 Avoid: overlapping voices, on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different person.
 ```
@@ -426,6 +428,10 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 
 **`native Korean speaker` 는 반드시 넣는다** — 안 넣으면 외국인이 읽는 소리가 난다.
 
+> ⚠️ **플로우에서 캐릭터 목소리를 미리 골라 두지 않는다.**
+> 미리 골라 두면 그 목소리가 프롬프트를 눌러 이겨서, 여기에 뭘 적어도 안 먹는다.
+> 목소리는 **캐릭터 설명 칸**과 **컷 프롬프트** 두 곳으로만 준다.
+
 **같은 화에 나오는 두 사람의 목소리는 확실히 달라야 한다.**
 높낮이(low/mid/clear)와 말버릇(clipped / trails off / unhurried)을 서로 다르게 준다.
 
@@ -504,6 +510,31 @@ DIALOGUE: [LANGUAGE: KOREAN] each person speaks one after another, never overlap
 
 너는 `voice` 칸만 채우면 된다. 컷 프롬프트의 `VOICE:` `AUDIO:` 줄은
 시스템이 자동으로 붙인다 (해설자 금지·입모양 맞추기·숨소리 등).
+
+---
+
+## ⭐ 컷끼리 이어 붙었을 때 한 편으로 보이게 (2026-08-20)
+
+다섯 조각을 따로 뽑아 이어 붙이면 **딴 작품 다섯 개**처럼 보이기 쉽다.
+두 가지를 시스템이 모든 컷에 똑같이 넣어 막는다.
+
+### `CONTINUITY` — 장면 연장
+
+앞 컷에서 무엇이 있었는지 한 토막 적어 주고 "거기서 이어진다" 고 못 박는다.
+
+- 같은 화 · 같은 장소 → *같은 방, 같은 사람, 같은 옷·머리·빛. 앞 컷이 끝난
+  바로 그 자리에서 이어 간다*
+- 같은 화 · 장소가 바뀜 → *조금 뒤 다른 곳. 사람·옷·얼굴·색은 그대로*
+- 화가 넘어감 → *같은 이야기의 뒷날. 사람·얼굴·목소리·색은 그대로*
+- 맨 첫 컷 → *이야기의 첫 장면. 여기서부터 이어진다*
+
+**너는 `SETTING` 만 정확히 쓰면 된다** — 장소가 같은지 다른지를 보고
+시스템이 알맞은 문장을 고른다. 그래서 같은 장소는 **글자 그대로 같게** 쓴다.
+
+### `COLOR` — 색 통일
+
+모든 컷에 **글자 하나 다르지 않은** 색 지시를 넣는다. 컷마다 색이 튀면
+이어 붙였을 때 바로 티가 난다. 이 줄은 시스템이 붙이니 적지 않는다.
 
 ---
 
@@ -698,6 +729,8 @@ DIALOGUE: [LANGUAGE: KOREAN] each person speaks one after another, never overlap
 - [ ] `hook` 이 판결문에 **실제로 있는 일**인가 (과장은 되나 거짓은 안 된다)
 - [ ] 인물마다 `voice` 를 정했는가 (높낮이·나이대·말버릇 — 없으면 로봇이 읽는다)
 - [ ] `voice` 에 **native Korean speaker** 가 들어갔는가 (없으면 외국인이 읽는 소리가 난다)
+- [ ] 같은 장소를 이어 쓰는 컷들의 `SETTING` 이 **글자 그대로 같은가**
+      (다르면 이어지는 장면이 아니라 딴 곳으로 읽힌다)
 - [ ] 대사에 **숨 쉴 쉼표**가 들어갔는가 (한 문장을 끝까지 밀면 외국어처럼 늘어진다)
 - [ ] 소리에 관한 것을 `no ~` 로 적지 않고 **바라는 것만** 적었는가
 - [ ] 같은 화에 나오는 두 사람의 `voice` 가 **서로 확실히 다른가**

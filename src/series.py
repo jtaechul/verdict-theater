@@ -126,8 +126,20 @@ SUB_MAX = 60           # 자막은 주고받은 대사를 다 담아야 한다 (
 
 # 프롬프트 6줄 규격 — 이 순서, 이 이름이 아니면 반려한다
 LINES = ["SHOT:", "SUBJECT:", "ACTION:", "DIALOGUE:", "AUDIO:",
-         "SETTING:", "STYLE:", "Avoid:"]
+         "SETTING:", "CONTINUITY:", "COLOR:", "STYLE:", "Avoid:"]
 LINES_OPT = ["VOICE:"]      # 대사가 있는 컷에만 붙는다
+
+# ⭐⭐ 2026-08-20 운영자: "영상 색상톤도 통일시켜야 할 것 같아."
+#    컷마다 색이 튀면 다섯 조각을 이어 붙였을 때 딴 작품처럼 보인다.
+#    STYLE 줄의 "muted desaturated palette" 만으로는 느슨하다 —
+#    **모든 컷에 글자 그대로 똑같은 색 지시**를 따로 한 줄 둔다.
+#    (고정 문구라 normalize 가 80컷에 자동으로 갈아 끼운다)
+COLOR_FIX = ("COLOR: the same colour grade in every shot of the series — "
+             "warm neutral base, slightly lifted blacks, gentle amber "
+             "highlights from the practical lamps, muted greens and cyans, "
+             "natural unsaturated skin tones, low overall contrast, "
+             "a calm evening television look that stays identical from the "
+             "first shot to the last.")
 
 # ⭐⭐ 2026-08-20 운영자: "나레이션이 너무 로봇 같은데?"
 #    프롬프트를 다시 보니 **소리에 관한 지시가 한 줄도 없었다.**
@@ -615,6 +627,88 @@ def fix_lipsync(doc):
     return n
 
 
+# ⭐⭐ 2026-08-20 운영자: "과거 제작된 영상의 연장선상에서 제작될 수 있도록
+#    scene extension(장면 연장)도 매 프롬프트에 반영하자."
+#    컷 하나하나를 따로 뽑으면 다섯 조각이 서로 남남처럼 보인다.
+#    **앞 컷에서 이어지는 장면**이라고 말해 주면 방·빛·사람이 이어진다.
+#    · 같은 화 안에서 장소가 같으면 → "바로 그 방에서 이어진다"
+#    · 장소가 바뀌면 → "같은 사람·같은 색으로, 장소만 옮긴다"
+#    · 화가 넘어가면 → "같은 이야기의 뒷날. 사람과 색은 그대로"
+#    · 맨 첫 컷 → "이야기의 첫 장면. 여기서부터 이어진다"
+CONT_FIRST = ("CONTINUITY: this is the opening shot of the story; establish "
+              "the room and the people here, and every later shot continues "
+              "from this look.")
+
+
+def _gist(prompt):
+    """앞 컷이 무엇으로 끝났는지 한 토막 (동작 줄에서 딴다)."""
+    act = next((l for l in str(prompt or "").split("\n")
+                if l.startswith("ACTION:")), "")
+    act = act[len("ACTION:"):].replace(LIPSYNC, "").strip().rstrip(".")
+    return act[:110]
+
+
+def _place(prompt):
+    return next((l for l in str(prompt or "").split("\n")
+                 if l.startswith("SETTING:")), "")
+
+
+def fix_continuity(doc):
+    """컷마다 '앞 장면에서 이어진다' 를 적어 준다 (장면 연장)."""
+    flat = [(e, c) for e in (doc.get("episodes") or [])
+            for c in (e.get("cuts") or [])]
+    n = 0
+    for k, (e, c) in enumerate(flat):
+        if k == 0:
+            line = CONT_FIRST
+        else:
+            pe, pc = flat[k - 1]
+            gist = _gist(pc.get("prompt"))
+            if pe is not e:
+                line = ("CONTINUITY: this shot belongs to the same continuing "
+                        "story as the previous shot, in which " + gist +
+                        ". It is a later moment, so the place may change, but "
+                        "the same people, the same faces, the same voices and "
+                        "exactly the same colour grade carry over.")
+            elif _place(pc.get("prompt")) == _place(c.get("prompt")):
+                line = ("CONTINUITY: this shot continues straight on from the "
+                        "previous shot, in which " + gist + ". Same room, same "
+                        "people, same clothes, same hair, same light and the "
+                        "same colour grade — pick up exactly where that shot "
+                        "ended, as one unbroken scene.")
+            else:
+                line = ("CONTINUITY: this shot follows the previous shot, in "
+                        "which " + gist + ". The scene moves to another place "
+                        "a little later, but the same people, the same "
+                        "clothes, the same faces and exactly the same colour "
+                        "grade carry over.")
+        lines = [l for l in (c.get("prompt") or "").split("\n")
+                 if not l.startswith("CONTINUITY:")]
+        at = next((i for i, l in enumerate(lines)
+                   if l.startswith(("COLOR:", "STYLE:"))), len(lines))
+        lines.insert(at, line)
+        if c.get("prompt") != "\n".join(lines):
+            n += 1
+        c["prompt"] = "\n".join(lines)
+    return n
+
+
+def fix_color(doc):
+    """모든 컷에 **똑같은** 색 지시를 넣는다 (색이 튀면 딴 작품처럼 보인다)."""
+    n = 0
+    for e in doc.get("episodes") or []:
+        for c in e.get("cuts") or []:
+            lines = [l for l in (c.get("prompt") or "").split("\n")
+                     if not l.startswith("COLOR:")]
+            at = next((i for i, l in enumerate(lines)
+                       if l.startswith("STYLE:")), len(lines))
+            lines.insert(at, COLOR_FIX)
+            if c.get("prompt") != "\n".join(lines):
+                n += 1
+            c["prompt"] = "\n".join(lines)
+    return n
+
+
 def fix_subject_dup(doc):
     """SUBJECT 줄에서 **같은 사람이 두 번** 나오는 것을 지운다.
 
@@ -942,6 +1036,14 @@ def normalize(doc):
     if q:
         print(f"  (한 줄에 같은 사람을 두 번 적은 SUBJECT {q}줄을 정리했다 "
               f"— 그대로 두면 사람이 한 명 더 그려진다)")
+    # ⭐⭐ 2026-08-20 운영자: "플로우에서 캐릭터 음성을 미리 지정해 둔 것이
+    #    원인으로 보인다. 그걸 해제할 테니 **캐릭터 정보와 매번 프롬프트에**
+    #    목소리 정보를 넣자."
+    #    → 인물표에 목소리를 박아 두면 인물 설명 칸(flow_desc)에도 실린다.
+    for ch in doc.get("characters") or []:
+        v = voice_of(ch)
+        if (ch.get("voice") or "").strip() != v:
+            ch["voice"], ch["flow_desc"] = v, ""
     c2 = charsheet.fill(doc)
     if c2:
         print(f"  (인물 {c2}명의 기준 사진 프롬프트를 풀세트로 채웠다)")
@@ -962,6 +1064,12 @@ def normalize(doc):
     if g:
         print(f"  (대사 {g}줄에 한국어 표시·숨 쉴 자리를 넣었다 — 영어 억양이 "
               f"한글에 씌워지는 것을 막는다)")
+    k2 = fix_color(doc)
+    if k2:
+        print(f"  (색 지시 {k2}컷을 하나로 맞췄다 — 컷마다 색이 튀면 딴 작품처럼 보인다)")
+    k3 = fix_continuity(doc)
+    if k3:
+        print(f"  (앞 장면에서 이어진다는 지시 {k3}컷에 붙였다 — 장면 연장)")
     v = fix_voice(doc)
     if v:
         print(f"  (목소리·소리 지시 {v}줄을 붙였다 — 이게 없으면 또박또박 "
@@ -1237,6 +1345,11 @@ def check(doc):
             if AUDIO_FIX not in p and AUDIO_SILENT not in p:
                 bad.append(f"{tag}: AUDIO 줄이 없다 — 그대로 두면 화면 밖 "
                            f"해설자가 또박또박 읽어 로봇처럼 들린다")
+            if COLOR_FIX not in p:
+                bad.append(f"{tag}: 색 지시가 고정 문구와 다르다 "
+                           f"— 컷마다 색이 튀면 딴 작품처럼 보인다")
+            if "CONTINUITY:" not in p:
+                bad.append(f"{tag}: 앞 장면에서 이어진다는 지시가 없다")
             if STYLE_FIX not in p:
                 bad.append(f"{tag}: STYLE 줄이 고정 문구와 다르다")
             # ⚠️ 예전엔 `endswith("focus.")` 였다. 고정 문구를 손보는 순간
