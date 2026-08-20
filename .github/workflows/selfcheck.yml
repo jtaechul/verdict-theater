@@ -78,6 +78,14 @@ jobs:
       - name: 길이 상한에서 돈을 되풀이해 쓰지 않는가
         run: python3 tools/truncate_test.py
 
+      # ⭐ 2026-08-20 운영자: "제미나이 워터마크는 자동으로 없애게끔 해줘.
+      #    이걸 코드에 반드시 반영해." / "가로 4, 세로 3으로 크롭해서 쇼츠에"
+      #    가짜 워터마크를 실제로 얹은 영상을 만들어, 지워졌는지 픽셀로 잰다.
+      - name: 워터마크가 지워지고 4:3 으로 잘리는가
+        run: |
+          sudo apt-get install -y ffmpeg >/dev/null 2>&1 || true
+          python3 tools/clip_test.py
+
       - name: 관리자 페이지가 안 깨지는가
         run: |
           node tools/check_admin.mjs

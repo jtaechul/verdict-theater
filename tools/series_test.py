@@ -223,6 +223,26 @@ ck("그렇다고 16화를 버리지는 않는다", S.check(d) == [], str(S.check
 d = good_doc()
 ck("멀쩡한 대본에는 손볼 곳이 없다", S.soft(d) == [], str(S.soft(d))[:60])
 
+# ⭐ 2026-08-20 — 첫 실제 영상에서 여자 손가락이 남자 옷 속으로 녹아들었다.
+d = good_doc()
+d["episodes"][1]["cuts"][0]["prompt"] = good_prompt().replace(
+    "ACTION: 시동생 holds out a closed folder toward 며느리.",
+    "ACTION: 며느리 grabs 시동생 by the arm firmly.")
+ck("서로 몸이 닿는 동작을 알려 준다", any("몸이 닿는" in w for w in S.soft(d)),
+   next((w[:46] for w in S.soft(d) if "몸이 닿는" in w), ""))
+ck("그렇다고 16화를 버리지는 않는다 (접촉)", S.check(d) == [], str(S.check(d))[:60])
+
+# 혼자 하는 몸짓은 걸리면 안 된다 (닿지 않으므로 오류가 안 난다)
+for act in ["며느리 clenches her fists tightly.",
+            "며느리 steps in front of 시동생, blocking his way.",
+            "며느리 slams her palm on the table.",
+            "며느리 reaches out but stops short."]:
+    d = good_doc()
+    d["episodes"][1]["cuts"][0]["prompt"] = good_prompt().replace(
+        "ACTION: 시동생 holds out a closed folder toward 며느리.", "ACTION: " + act)
+    ck(f"혼자 하는 몸짓은 그냥 둔다 — {act[:26]}…",
+       not any("몸이 닿는" in w for w in S.soft(d)))
+
 print("\n⑨ 통과하면 지난 반려본을 치우는가 (2026-08-20 — 옛 파일을 새 것으로 잘못 읽었다)")
 import inspect
 src = inspect.getsource(S.main)

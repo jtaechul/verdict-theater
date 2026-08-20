@@ -249,6 +249,17 @@ def normalize(doc):
 #    반려가 아니라 **손볼 곳**으로 알려 준다.
 SPOKEN_BAN = ["내연녀", "내연남", "상간녀", "상간남", "피상속인"]
 
+# ⭐ 2026-08-20 — 첫 실제 영상에서 **여자 손가락이 남자 옷 속으로 녹아들었다.**
+#    영상 만드는 쪽이 두 사람이 닿는 자리를 아직 제대로 못 그린다.
+#    닿는 동작을 안 부르면 그 오류가 아예 안 생긴다.
+#    ⚠️ 반려까지 하지는 않는다 — 이야기를 바꾸는 일이라 사람이 볼 몫이고,
+#       무엇보다 이런 것으로 16화를 다시 사면 안 된다. **손볼 곳**으로 알린다.
+TOUCH = ["grab", "grabs", "grabbing", "grip", "grips", "holds her", "holds his",
+         "takes her hand", "takes his hand", "push", "pushes", "shove", "shoves",
+         "shakes her", "shakes his", "hug", "hugs", "embrace", "embraces",
+         "slaps", "snatches", "clutches his", "clutches her", "pulls her",
+         "pulls his", "touches", "hands over", "hands her", "hands him"]
+
 # 서류·판결문에나 쓰는 말. 싸우는 사람 입에서 나오면 즉시 가짜가 된다.
 # ⚠️ 한두 줄은 봐준다(법정 장면에서는 실제로 나온다). 대사 전체가 법률
 #    설명이 되어 버리는 것을 막는 것이 목적이므로 **줄 수로** 센다.
@@ -263,6 +274,13 @@ def soft(doc):
     out = []
     for e in doc.get("episodes") or []:
         for c in e.get("cuts") or []:
+            act = next((l for l in (c.get("prompt") or "").split("\n")
+                        if l.startswith("ACTION:")), "").lower()
+            hit = [w for w in TOUCH if re.search(rf"\b{w}\b", act)]
+            if hit:
+                out.append(f"{e.get('no')}화 {c.get('n')}컷: 서로 몸이 닿는 동작 "
+                           f"— {', '.join(sorted(set(hit)))} "
+                           f"(손이 옷 속으로 녹아든다)")
             for l in (c.get("prompt") or "").split("\n"):
                 if not l.startswith("DIALOGUE:"):
                     continue

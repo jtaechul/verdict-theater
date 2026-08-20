@@ -1,6 +1,6 @@
 # series_gen.md — 시리즈 대본 프롬프트 (구글 영상 제작용)
 
-> **버전** v1.5 · 2026-08-20
+> **버전** v1.6 · 2026-08-20
 > **용도** 판례 1건 → 30초짜리 16화 시리즈 (매일 1화 발행, 16일 뒤 8분 롱폼)
 > **호출 위치** `src/series.py` (관리자 페이지 [시리즈 만들기])
 > **모델** Gemini (운영자 지시, 2026-08-18)
@@ -74,6 +74,23 @@ Avoid: on-screen text, signage, documents with visible writing, screens, backgro
 - `SUBJECT` 에 얼굴을 묘사하지 않는다. "52세, 갸름한 얼굴…" 을 쓰면 미리 정해 둔
   캐릭터와 싸워 얼굴이 흔들린다. **이름과 옷차림만** 쓴다.
 - `ACTION` 은 **동작 하나**. 6초에 두 가지 이상을 넣으면 다 뭉개진다.
+- ⭐ **서로 몸이 닿는 동작을 쓰지 않는다** (2026-08-20 · 실제 영상에서 확인).
+  첫 클립에서 여자가 남자 팔을 잡았는데 **손가락이 옷 속으로 녹아들어 갔다.**
+  영상 만드는 쪽이 두 사람이 닿는 자리를 아직 제대로 못 그린다. 닿는 곳이
+  없으면 그런 오류가 아예 안 생긴다.
+
+  ✗ 쓰지 않는다: `grabs ... by the arm` `holds her wrist` `pushes him`
+     `hands over a folder` `takes her hand` `blocks the door with his body`
+     `shakes her shoulders` `snatches the phone from`
+  ○ 대신 쓴다: 혼자서 하는 몸짓과 거리
+     `steps in front of 남편, blocking his way`  (막되 닿지는 않는다)
+     `reaches out but stops short`               (뻗다가 멈춘다 — 더 애타 보인다)
+     `slams her palm on the table`               (사람이 아니라 물건을 친다)
+     `turns her back and grips her own sleeve`   (제 옷을 쥔다)
+     `points at him, hand trembling`             (가리킨다)
+
+  물건을 건네는 장면도 마찬가지다 — 주고받는 순간을 그리지 말고
+  `sets it down on the table and steps back` 처럼 **놓고 물러나게** 한다.
 - 대사가 있는 컷은 **말하는 사람이 전부 화면 안에** 있어야 한다. 화면 밖 목소리는
   입이 안 보여 소리가 붕 뜬다. 주고받는 컷은 `SHOT` 을 **two-shot(두 사람이 같이
   보이는 샷)** 으로 잡는다.
@@ -336,6 +353,7 @@ skin texture, Korean TV drama realism.` 로 끝).
 - [ ] 대사가 있는 컷은 말하는 사람이 화면 안에 있는가
 - [ ] 한 컷 대사가 **30~34음절**인가 (세어 봤는가)
 - [ ] 주고받는 컷이 **세 번**(A→B→A) 오가는가 (두 번이면 6초가 빈다)
+- [ ] **서로 몸이 닿는 동작**이 한 컷도 없는가 (손이 옷 속으로 녹아든다)
 - [ ] 대사에 `유류분` `한정승인` `시효` 같은 **서류 말투**가 없는가
 - [ ] 숫자·법률·경위는 `caption` 이 지고 있는가 (입은 감정만 말하는가)
 - [ ] 소리 내어 읽었을 때 **사람이 실제로 하는 말**로 들리는가
