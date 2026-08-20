@@ -150,13 +150,21 @@ def normalize(doc):
                 elif l.startswith("Avoid:") and l != AVOID_FIX:
                     l, n = AVOID_FIX, n + 1
                 out.append(l)
+            # 대사 없는 컷에 DIALOGUE 줄을 통째로 빠뜨리는 일이 있다.
+            # 빈 값이 'None.' 으로 정해져 있으므로 우리가 끼워 넣는다
+            # (이야기를 바꾸는 게 아니라 빈칸을 채우는 것뿐이다).
+            if not any(l.startswith("DIALOGUE:") for l in out):
+                at = next((i for i, l in enumerate(out)
+                           if l.startswith("SETTING:")), len(out))
+                out.insert(at, "DIALOGUE: None.")
+                n += 1
             # 아예 빠뜨린 경우에도 우리가 붙인다 — 고정 문구라 받을 이유가 없다
             if not any(l.startswith("STYLE:") for l in out):
                 out.append(STYLE_FIX)
                 n += 1
-            if not any(l.startswith("Avoid:") for l in out):
-                out.append(AVOID_FIX)
-                n += 1
+            # Avoid 는 **맨 끝**이어야 한다. 순서만 바뀐 것으로 16화를 다시 살 수 없다.
+            out = [l for l in out if not l.startswith("Avoid:")]
+            out.append(AVOID_FIX)
             c["prompt"] = "\n".join(out)
     if n:
         print(f"  (고정 문구 {n}줄을 우리가 채워 넣었다 — 이것 때문에 버리지 않는다)")

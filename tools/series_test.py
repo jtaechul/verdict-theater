@@ -133,6 +133,20 @@ d["episodes"][3]["cuts"][1]["prompt"] = "\n".join(
 ck("STYLE·Avoid 줄이 없으면 우리가 채운다", S.check(S.normalize(d)) == [],
    str(S.check(S.normalize(d)))[:60])
 
+# 대사 없는 컷에서 DIALOGUE 줄을 통째로 빠뜨리는 일이 있다 — 빈칸만 채운다
+d = good_doc()
+d["episodes"][5]["cuts"][3]["prompt"] = "\n".join(
+    l for l in good_prompt("None.").split("\n") if not l.startswith("DIALOGUE:"))
+ck("DIALOGUE 줄이 없으면 우리가 채운다", S.check(S.normalize(d)) == [],
+   str(S.check(S.normalize(d)))[:60])
+
+# 줄 순서만 바뀐 것으로 16화를 다시 살 수는 없다
+d = good_doc()
+d["episodes"][6]["cuts"][0]["prompt"] = good_prompt("None.").replace(
+    S.STYLE_FIX + "\nAvoid:", "Avoid:").rstrip() + "\n" + S.STYLE_FIX
+ck("Avoid 가 맨 끝이 아니면 우리가 옮긴다", S.check(S.normalize(d)) == [],
+   str(S.check(S.normalize(d)))[:60])
+
 print("\n④ 규격 숫자가 실제 운영 조건과 맞는가")
 ck("6초 × 5컷 = 30초", S.SEC * S.CUTS == 30, f"{S.SEC}×{S.CUTS}")
 ck("16화 × 30초 = 8분 (롱폼 한 편)", S.EPISODES * S.SEC * S.CUTS == 480)
