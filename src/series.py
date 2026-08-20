@@ -51,8 +51,21 @@ RECAP_MAX = 30
 #    실제 드라마 한 줄을 재보니 "재판장님, 저는 그 돈을 만진 적이 없습니다." = 24자,
 #    말하면 약 3.5초다. 6초 클립에 넉넉히 들어간다. 18자는 한국어 한 문장을
 #    끝맺지도 못하는 길이라 억지 대사가 나온다.
-DIA_MAX = 24
-SUB_MAX = 30           # 자막은 대사를 담아야 하므로 대사보다 짧으면 안 된다
+DIA_MAX = 24           # 한 사람이 한 번에 하는 말
+
+# ⚠️ 2026-08-20 손님: "뭔 대사가 저렇게 짧아.. 무슨 한 컷에 대사를 한 명만 치면
+#    스토리 전개가 전혀 안 되지 않아?"  — 재봤더니 둘 다 맞았다.
+#      · 80컷 **전부** 말하는 사람이 1명 (주고받는 대화가 한 번도 없다)
+#      · 대사 평균 13.9자 (6초에 28~33자가 들어가는데 절반도 안 썼다)
+#    원인은 모델이 아니라 내 규격이었다 — 프롬프트에 '대사 한 줄', '말하는
+#    사람'(단수) 이라고 못 박아 두었다.
+#    한국어는 초당 약 5자. 6초 클립에서 앞뒤 숨 쉴 틈을 빼면 약 5.5초를 말하니
+#    **한 컷에 28자**까지 들어간다. 두 사람이면 각 14자씩 — 실제 드라마 한
+#    합이 딱 그 길이다("이 집, 이제 저희 겁니다." 14자).
+DIA_TOTAL = 28         # 한 컷에 나오는 모든 대사를 합친 길이
+TALKERS_MAX = 2        # 한 컷에 말하는 사람 (6초에 세 명은 뭉갠다)
+TALK_MIN = 2           # 한 화 5컷 중 **주고받는 컷**이 최소 몇 컷이어야 하는가
+SUB_MAX = 40           # 자막은 두 사람 대사를 다 담아야 한다 (' / ' 로 나눈다)
 
 # 프롬프트 6줄 규격 — 이 순서, 이 이름이 아니면 반려한다
 LINES = ["SHOT:", "SUBJECT:", "ACTION:", "DIALOGUE:", "SETTING:", "STYLE:", "Avoid:"]
@@ -127,8 +140,11 @@ def case_json(row):
     return json.dumps(d, ensure_ascii=False, indent=2)
 
 
+# ⚠️ 'extra people in focus' 는 **두 번째 주인공까지 막는 말**로 읽힌다.
+#    주고받는 대화를 하려면 두 사람이 같이 화면에 있어야 한다. 막고 싶은 것은
+#    지나가는 행인이지 상대역이 아니므로 'background extras' 로 못 박는다.
 AVOID_FIX = ("Avoid: on-screen text, signage, documents with visible writing, "
-             "screens, extra people in focus.")
+             "screens, background extras in focus.")
 
 
 def normalize(doc):
@@ -217,6 +233,7 @@ def check(doc):
             bad.append(f"{no}화: 지난 줄거리가 {RECAP_MAX}자를 넘는다 "
                        f"({len(e['recap'])}자)")
 
+        talk = 0          # 이 화에서 두 사람이 주고받은 컷 수
         for c in cuts:
             n = c.get("n", "?")
             tag = f"{no}화 {n}컷"
@@ -240,13 +257,24 @@ def check(doc):
             if hit:
                 bad.append(f"{tag}: 글자가 나올 물건을 불렀다 — {', '.join(hit)}")
 
-            # 한국어 대사 길이 (6초에 18자 넘게는 안 들어간다)
+            # 한국어 대사 — 6초에 들어가는 양 (한 줄 · 총합 · 말하는 사람 수)
+            says = []
             for line in p.split("\n"):
                 if line.startswith("DIALOGUE:"):
-                    for say in re.findall(r'"([^"]*)"', line):
-                        if len(say) > DIA_MAX:
-                            bad.append(f"{tag}: 대사가 {len(say)}자다 "
-                                       f"({DIA_MAX}자 이내) — {say}")
+                    says += re.findall(r'"([^"]*)"', line)
+            for say in says:
+                if len(say) > DIA_MAX:
+                    bad.append(f"{tag}: 한 사람 대사가 {len(say)}자다 "
+                               f"({DIA_MAX}자 이내) — {say}")
+            total = sum(len(x) for x in says)
+            if total > DIA_TOTAL:
+                bad.append(f"{tag}: 대사를 다 합치면 {total}자다 "
+                           f"({DIA_TOTAL}자 이내 — 6초에 안 들어간다)")
+            if len(says) > TALKERS_MAX:
+                bad.append(f"{tag}: 한 컷에서 {len(says)}번 말한다 "
+                           f"({TALKERS_MAX}번 이내 — 6초에 그 이상은 뭉개진다)")
+            if len(says) >= 2:
+                talk += 1
             if len(c.get("subtitle") or "") > SUB_MAX:
                 bad.append(f"{tag}: 자막이 {SUB_MAX}자를 넘는다")
             # 지시대명사 — 컷은 하나씩 따로 만들어져 모델이 못 알아듣는다.
@@ -260,6 +288,12 @@ def check(doc):
                     not any(nm and nm in subj for nm in names):
                 bad.append(f"{tag}: SUBJECT 에 이름 없이 지시대명사를 썼다 "
                            f"— 누가 화면에 있는지 이름으로 적는다")
+
+        # ⭐ 한 명이 혼잣말만 5번 하면 이야기가 안 굴러간다 (2026-08-20 손님 지적).
+        #    맞섬·뒤집기 같은 컷은 반드시 주고받아야 장면이 앞으로 나간다.
+        if cuts and talk < TALK_MIN:
+            bad.append(f"{no}화: 두 사람이 주고받는 컷이 {talk}컷뿐이다 "
+                       f"({TALK_MIN}컷 이상 — 혼잣말만 이으면 이야기가 안 굴러간다)")
     return bad
 
 

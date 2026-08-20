@@ -1,6 +1,6 @@
 # series_gen.md — 시리즈 대본 프롬프트 (구글 영상 제작용)
 
-> **버전** v1.2 · 2026-08-20
+> **버전** v1.3 · 2026-08-20
 > **용도** 판례 1건 → 30초짜리 16화 시리즈 (매일 1화 발행, 16일 뒤 8분 롱폼)
 > **호출 위치** `src/series.py` (관리자 페이지 [시리즈 만들기])
 > **모델** Gemini (운영자 지시, 2026-08-18)
@@ -61,10 +61,10 @@
 SHOT: 샷 크기 + 카메라 움직임 (하나만)
 SUBJECT: 등장인물 이름 + 옷차림 (얼굴 묘사 금지 — 캐릭터로 고정돼 있다)
 ACTION: 동작 하나
-DIALOGUE: 말하는 사람과 톤 + 한국어 대사 한 줄 (없으면 "None.")
+DIALOGUE: 말하는 사람과 톤 + 한국어 대사. 두 사람이 주고받으면 ` / ` 로 잇는다 (없으면 "None.")
 SETTING: 장소 + 조명
 STYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.
-Avoid: on-screen text, signage, documents with visible writing, screens, extra people in focus.
+Avoid: on-screen text, signage, documents with visible writing, screens, background extras in focus.
 ```
 
 **지켜야 할 것**
@@ -74,9 +74,41 @@ Avoid: on-screen text, signage, documents with visible writing, screens, extra p
 - `SUBJECT` 에 얼굴을 묘사하지 않는다. "52세, 갸름한 얼굴…" 을 쓰면 미리 정해 둔
   캐릭터와 싸워 얼굴이 흔들린다. **이름과 옷차림만** 쓴다.
 - `ACTION` 은 **동작 하나**. 6초에 두 가지 이상을 넣으면 다 뭉개진다.
-- 대사가 있는 컷은 **말하는 사람이 화면 안에** 있어야 한다. 화면 밖 목소리는
-  입이 안 보여 소리가 붕 뜬다.
-- 한국어 대사는 **12~24자.** 6초에 그 이상은 안 들어간다.
+- 대사가 있는 컷은 **말하는 사람이 전부 화면 안에** 있어야 한다. 화면 밖 목소리는
+  입이 안 보여 소리가 붕 뜬다. 주고받는 컷은 `SHOT` 을 **two-shot(두 사람이 같이
+  보이는 샷)** 으로 잡는다.
+
+## ⭐ 대사 — 주고받아야 이야기가 굴러간다 (2026-08-20 · 실물로 재서 고침)
+
+앞서 만든 대본은 **80컷 전부 한 사람만 말했고, 대사 평균이 13.9자**였다.
+혼잣말 다섯 개를 이어 붙인 꼴이라 장면이 앞으로 나가지 않았다.
+
+한국어는 초당 약 5자다. 6초 클립에서 앞뒤 숨 쉴 틈을 빼면 약 5.5초를 말하니
+**한 컷에 28자**가 들어간다. 두 사람이면 각 14자씩 — 실제 드라마 한 합이
+딱 그 길이다.
+
+- **한 컷 대사 총합 28자 이내**, 한 사람이 한 번에 하는 말은 **24자 이내**
+- 한 컷에 말하는 횟수는 **최대 2번** (6초에 세 번은 뭉개진다)
+- **한 화 5컷 중 최소 2컷은 두 사람이 주고받는다.** 특히 `맞섬`·`뒤집기` 는
+  받아치는 말이 있어야 장면이 뒤집힌다.
+- 5자짜리 반응만 던지지 않는다 (`"뭐라고요?"` 같은 것 하나로 6초를 채우지 않는다).
+  받아치는 말까지 붙여 6초를 꽉 채운다.
+
+주고받는 컷은 이렇게 쓴다:
+
+```
+SHOT: Medium two-shot, static camera, both faces visible.
+DIALOGUE: 시동생 (cold): "이 집, 이제 저희 겁니다." / 며느리 (trembling): "무슨 소리예요, 그게."
+```
+
+혼자 말하는 컷은 이렇게 쓴다 (한 화에 세 컷까지):
+
+```
+DIALOGUE: 며느리 (barely holding back): "그이 관 앞에서 할 소리는 아니잖아요."
+```
+
+`subtitle` 에는 두 사람 대사를 ` / ` 로 이어 그대로 적는다 (40자 이내).
+
 - 화면비·해상도를 쓰지 않는다. 그건 설정에서 정한다.
 - **대사에 배역 딱지를 쓰지 않는다.** `내연녀` `상간녀` `피상속인` 같은 말은
   판결문·기사에나 쓰는 제3자 호칭이라, 사람이 입으로 하면 즉시 어색해진다.
@@ -172,7 +204,7 @@ skin texture, Korean TV drama realism.` 로 끝).
           "n": 1,
           "role": "후킹",
           "subtitle": "\"이 집, 이제 저희 겁니다.\"",
-          "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.\nACTION: 시동생 holds out a closed folder toward 며느리, who does not take it.\nDIALOGUE: 시동생 says in Korean, calm and cold: \"이 집, 이제 저희 겁니다.\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+          "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.\nACTION: 시동생 holds out a closed folder toward 며느리, who does not take it.\nDIALOGUE: 시동생 (calm and cold): \"이 집, 이제 저희 겁니다.\" / 며느리 (trembling): \"무슨 소리예요, 그게.\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
         }
       ]
     }
@@ -202,7 +234,9 @@ skin texture, Korean TV drama realism.` 로 끝).
 - [ ] 모든 `prompt` 에 `STYLE:` 줄이 **글자 그대로 똑같이** 들어갔는가
 - [ ] 문서·간판·화면처럼 **글자가 나올 물건**을 부른 컷이 하나도 없는가
 - [ ] 대사가 있는 컷은 말하는 사람이 화면 안에 있는가
-- [ ] 한국어 대사가 전부 24자 이내인가
+- [ ] 한 컷 대사 총합이 **28자 이내**인가 (한 사람 한 번은 24자 이내)
+- [ ] **모든 화에 주고받는 컷이 2컷 이상** 있는가 (혼잣말만 이어 붙이지 않았는가)
+- [ ] 주고받는 컷의 `SHOT` 이 two-shot 인가
 - [ ] 대사에 `내연녀` 같은 **배역 딱지**가 들어간 곳이 없는가
 - [ ] 1화부터 16화까지 **일어난 순서대로**인가 (죽은 사람이 뒤에서 살아나지 않는가)
 - [ ] 실명·지명·법원명·사건번호·절대 연도가 없는가
