@@ -196,6 +196,19 @@ border:1px solid var(--line);background:#161822;color:var(--ink);min-height:48px
 label{display:block;margin:10px 0 0;font-size:13px;color:var(--dim)}
 .wf{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;background:#191b25}
 .wf b{display:block;font-size:16px}.wf small{color:var(--dim);display:block;margin:3px 0 10px}
+/* 시리즈 — 클립 프롬프트를 눌러서 복사하는 상자 (2026-08-20) */
+.pbox{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;
+background:#161822}
+.pname{font-weight:700;font-size:15px;margin-bottom:4px}
+/* 프롬프트 본문. 길어도 화면을 밀지 않게 가로는 접고 세로로만 늘린다. */
+.ptext{font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;color:#aeb3c4;
+background:#101219;border:1px solid var(--line);border-radius:9px;padding:10px;
+white-space:pre-wrap;word-break:break-word;max-height:190px;overflow-y:auto;margin-bottom:9px}
+/* 1~16화 고르는 번호판. 손가락으로 눌리게 44px 이상. */
+.epgrid{display:grid;grid-template-columns:repeat(8,1fr);gap:7px}
+.epn{width:100%;min-height:44px;padding:0;font-size:15px;font-weight:700;
+background:#262a38;color:var(--dim);border-radius:10px}
+.epn.on{background:var(--gold);color:#1a1608}
 .ep{padding:13px 0;border-bottom:1px solid var(--line)}
 .ep:last-child{border-bottom:0}
 .ep b{font-size:15px}.ep small{color:var(--dim);display:block;font-size:13px}
@@ -312,6 +325,128 @@ async function load() {
   home();
 }
 
+// ⭐ 2026-08-20 손님: "관리자페이지에서 못봐??"
+//    시리즈 대본(16화 × 5컷)을 만들어 놓고 화면에 안 띄워서 GitHub 링크를 드렸다.
+//    손님은 GitHub 에 안 들어간다. 클립 프롬프트는 **여기서 복사**해 구글 플로우에
+//    붙여 넣는 것이 실제 작업 순서이므로, 복사 버튼까지 여기 있어야 한다.
+function seriesCard() {
+  const list = Object.entries(S.series || {}).sort((a, b) => b[0].localeCompare(a[0]));
+  let h = '<div class="card"><h2>시리즈 대본 <small style="font-weight:400;color:#9599ab">'
+        + '— 하루 한 화(30초)씩 · 16화 모이면 8분 롱폼</small></h2>';
+  if (!list.length) {
+    h += '<div class="empty">아직 만든 시리즈가 없습니다.<br>'
+       + '아래 <b>2. 시리즈 대본 만들기</b>를 눌러 시작하십시오.</div></div>';
+    return h;
+  }
+  list.forEach(([sid, v]) => {
+    const made = v.made || 0, tot = v.episodes || 16;
+    h += '<div class="ep"><div class="ep-top"><div><b>' + esc(v.title || sid) + '</b>'
+       + '<small>' + sid + ' · ' + tot + '화 · 만든 영상 ' + made + '/' + tot + '화</small></div>'
+       + '<span class="pill ' + (made >= tot ? 'ok' : 'go') + '">'
+       + (made >= tot ? '롱폼 가능' : (made + 1) + '화 차례') + '</span></div>'
+       + '<div class="btns">' + mini('대본 보기', 'seriesView(\\'' + sid + '\\')', 'gold') + '</div></div>';
+  });
+  return h + '</div>';
+}
+
+// 눌러서 복사. 아이폰 사파리는 https 에서 clipboard 가 되지만, 안 될 때를 대비해
+// 옛 방식(execCommand)도 남겨 둔다 — 복사가 안 되면 이 화면은 쓸모가 없다.
+function copyText(id, label) {
+  const el = document.getElementById(id);
+  const t = el ? el.textContent : '';
+  const done = () => toast((label || '프롬프트') + ' 복사했습니다');
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(t).then(done, () => fallbackCopy(t, done));
+  } else fallbackCopy(t, done);
+}
+function fallbackCopy(t, done) {
+  const a = document.createElement('textarea');
+  a.value = t; a.style.position = 'fixed'; a.style.opacity = '0';
+  document.body.appendChild(a); a.select();
+  try { document.execCommand('copy'); done(); }
+  catch (e) { toast('복사가 안 됩니다. 글자를 길게 눌러 직접 복사하십시오.'); }
+  document.body.removeChild(a);
+}
+
+let SDOC = null, SID = '', SEP = 1;
+
+async function seriesView(sid, ep) {
+  SID = sid; SEP = ep || 1;
+  if (!SDOC || SDOC._sid !== sid) {
+    document.getElementById('app').innerHTML = '<div class="empty">대본 불러오는 중…</div>';
+    const r = await fetch('/api/series?sid=' + encodeURIComponent(sid));
+    const j = await r.json();
+    if (!j.doc) { document.getElementById('app').innerHTML =
+      '<div class="card"><div class="empty">대본을 찾을 수 없습니다.</div>'
+      + '<button class="ghost" onclick="home()">돌아가기</button></div>'; return; }
+    SDOC = j.doc; SDOC._sid = sid;
+  }
+  seriesRender();
+}
+
+function seriesRender() {
+  VIEW = 'series';
+  const d = SDOC, eps = d.episodes || [], e = eps[SEP - 1] || {};
+  const sp = d.spec || { sec: 6, cuts: 5 };
+
+  let h = '<button class="ghost" onclick="SDOC=null;home()">← 목록</button>'
+        + '<div style="height:12px"></div>';
+
+  h += '<div class="card"><h2>' + SID + '</h2>'
+     + '<div style="font-size:18px;font-weight:700;margin-bottom:10px">'
+     + esc(d.title || '') + '</div>';
+  h += row('전체', eps.length + '화 × ' + sp.cuts + '컷 × ' + sp.sec + '초');
+  h += row('한 화 길이', (sp.cuts * sp.sec) + '초');
+  h += row('다 모으면', Math.round(eps.length * sp.cuts * sp.sec / 60 * 10) / 10 + '분 롱폼');
+  h += row('하루 크레딧', (sp.cuts * sp.sec * 1.5) + ' / 무료 50');
+  h += '</div>';
+
+  // ① 캐릭터 — 플로우에서 얼굴을 먼저 만들어 두어야 화마다 같은 사람이 나온다
+  h += '<div class="card"><h2>① 먼저 구글 플로우에서 인물 3명을 만듭니다 '
+     + '<small style="font-weight:400;color:#9599ab">— 한 번만 하면 됩니다</small></h2>';
+  (d.characters || []).forEach((c, i) => {
+    const cid = 'ch' + i;
+    h += '<div class="pbox"><div class="pname">' + esc(c.name) + '</div>'
+       + '<div class="ptext" id="' + cid + '">' + esc(c.flow_prompt || '') + '</div>'
+       + mini('이 인물 프롬프트 복사', 'copyText(\\'' + cid + '\\',\\'' + esc(c.name) + '\\')') + '</div>';
+  });
+  h += '</div>';
+
+  // ② 화 고르기
+  h += '<div class="card"><h2>② 오늘 만들 화를 고릅니다</h2><div class="epgrid">';
+  eps.forEach((x, i) => {
+    h += '<button class="epn' + (i + 1 === SEP ? ' on' : '') + '" onclick="SEP=' + (i + 1)
+       + ';seriesRender();scrollTo(0,0)">' + (i + 1) + '</button>';
+  });
+  h += '</div></div>';
+
+  // ③ 이 화의 5컷
+  h += '<div class="card"><h2>③ ' + SEP + '화 — ' + esc(e.title || '') + '</h2>';
+  if (e.recap) h += '<div style="color:#9599ab;font-size:14px;margin-bottom:10px">'
+                  + '지난 줄거리: ' + esc(e.recap) + '</div>';
+  (e.cuts || []).forEach((c, i) => {
+    const pid = 'p' + SEP + '_' + (i + 1);
+    const say = (String(c.prompt || '').split(String.fromCharCode(10))
+      .find(l => l.indexOf('DIALOGUE:') === 0) || '').replace('DIALOGUE:', '').trim();
+    h += '<div class="pbox"><div class="pname">' + c.n + '컷 · ' + esc(c.role || '')
+       + ' <span style="color:#9599ab;font-weight:400">(' + sp.sec + '초)</span></div>';
+    h += '<div style="color:#c8cbd6;font-size:14px;margin:6px 0">' + esc(say) + '</div>';
+    if (c.subtitle) h += '<div style="color:#c6a04a;font-size:13px;margin-bottom:6px">'
+                       + '얹을 자막: ' + esc(c.subtitle) + '</div>';
+    h += '<div class="ptext" id="' + pid + '">' + esc(c.prompt || '') + '</div>'
+       + mini('이 컷 프롬프트 복사', 'copyText(\\'' + pid + '\\',\\'' + c.n + '컷\\')', 'gold')
+       + '</div>';
+  });
+  h += '</div>';
+
+  h += '<div class="card"><div class="btns">'
+     + (SEP > 1 ? mini('◀ ' + (SEP - 1) + '화', 'SEP=' + (SEP - 1) + ';seriesRender();scrollTo(0,0)') : '')
+     + (SEP < eps.length ? mini((SEP + 1) + '화 ▶', 'SEP=' + (SEP + 1) + ';seriesRender();scrollTo(0,0)') : '')
+     + '</div></div>';
+
+  document.getElementById('app').innerHTML = h;
+}
+
 function home() {
   VIEW = 'home';
   const eps = Object.entries(S.episodes || {}).sort((a,b) => b[0].localeCompare(a[0]));
@@ -327,6 +462,8 @@ function home() {
   h += row('지금까지 만든 편수', eps.length + '편');
   h += row('그림·소리 준비', (S.assets ? S.assets.have + ' / ' + S.assets.need + ' 개' : '-'));
   h += '</div>';
+
+  h += seriesCard();
 
   h += '<div class="card"><h2>회차</h2>';
   if (!eps.length) h += '<div class="empty">아직 만든 영상이 없습니다.<br>아래 <b>2. 대본 만들기</b>를 눌러 시작하십시오.</div>';
@@ -1280,9 +1417,13 @@ export default {
 
     try {
       if (url.pathname === '/api/state') {
-        const [episodes, queue, manifest, runsRes, files, rels, scriptFiles] = await Promise.all([
+        const [episodes, queue, series, manifest, runsRes, files, rels, scriptFiles] = await Promise.all([
           getJson(env, 'state/episodes.json'),
           getJson(env, 'state/queue.json'),
+          // ⭐ 2026-08-20 손님: "관리자페이지에서 못봐??"
+          //    시리즈 대본을 만들어 놓고 화면에 안 띄워, GitHub 링크를 드렸다.
+          //    손님은 GitHub 에 안 들어간다 — 여기서 다 보여야 한다.
+          getJson(env, 'state/series.json'),
           getJson(env, 'assets/manifest.json'),
           gh(env, `/repos/${REPO}/actions/runs?per_page=10`).catch(() => ({ workflow_runs: [] })),
           listDir(env, 'assets/bg').catch(() => []),
@@ -1343,6 +1484,7 @@ export default {
           queue: Array.isArray(queue) ? queue : [],
           assets,
           videos,
+          series: series || {},
           drafts,          // 만들다 만 대본의 회차들 (초벌 파일이 실제로 있는 것만)
           audition,
           cast,
@@ -1563,6 +1705,15 @@ export default {
           getJson(env, `data/scripts/${ep}.shorts.json`),
         ]);
         return Response.json({ doc, shorts });
+      }
+
+      // ⭐ 시리즈 대본 한 편 (16화 × 5컷). 클립 프롬프트를 여기서 복사해
+      //    구글 플로우에 붙여 넣는다.
+      if (url.pathname === '/api/series') {
+        const sid = url.searchParams.get('sid') || '';
+        if (!/^S\d{3}$/.test(sid)) return Response.json({ error: 'bad sid' }, { status: 400 });
+        const doc = await getJson(env, `data/series/${sid}.json`);
+        return Response.json({ doc });
       }
 
       if (url.pathname === '/api/run' && req.method === 'POST') {

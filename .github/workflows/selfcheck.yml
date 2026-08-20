@@ -67,6 +67,12 @@ jobs:
       - name: 반려된 대본을 진짜로 살려 두는가
         run: python3 tools/save_step_test.py
 
+      # ⭐ 2026-08-20 손님: "관리자페이지에서 못봐??"
+      #    진짜 대본을 넣고 화면 코드를 그대로 돌려, 클립 프롬프트가
+      #    한 줄도 안 빠지고 나오는지 본다 (그걸 그대로 플로우에 붙여 넣는다).
+      - name: 시리즈 대본이 관리자 페이지에 실제로 그려지는가
+        run: python3 tools/series_screen_test.py
+
       - name: 관리자 페이지가 안 깨지는가
         run: |
           node tools/check_admin.mjs
