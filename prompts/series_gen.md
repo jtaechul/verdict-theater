@@ -69,6 +69,8 @@ SHOT: 샷 크기 + 카메라 움직임 (하나만)
 SUBJECT: 등장인물을 가리키는 **영어 관계말** + 옷차림 (얼굴 묘사 절대 금지 — 아래 ⚠️ 참고)
 ACTION: 동작 하나
 DIALOGUE: 말하는 사람과 톤 + 한국어 대사. 두 사람이 주고받으면 ` / ` 로 잇는다 (없으면 "None.")
+VOICE: (우리가 붙인다) 인물마다 어떤 목소리인가
+AUDIO: (우리가 붙인다) 낭독이 아니라 그 자리에서 하는 말이라는 못
 SETTING: 장소 + 조명
 STYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, grounded everyday Korean realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.
 Avoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different person.
@@ -401,6 +403,44 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 
 ---
 
+## ⭐⭐ 목소리 — 안 정해 주면 로봇이 읽는다 (2026-08-20 · 실제로 그랬다)
+
+운영자: **"나레이션이 너무 로봇 같은데?"**
+
+첫 영상들의 프롬프트를 다시 보니 **소리에 관한 지시가 한 줄도 없었다.**
+있는 것이라곤 `(furious)` 같은 한 낱말뿐이었다. 그러면 영상 만드는 쪽은
+가장 안전한 쪽 — **또박또박 읽는 낭독**을 고른다. 그게 로봇처럼 들리는 것이다.
+게다가 대사가 화면 밖 **해설자 목소리**로 얹히는 일도 잦다.
+
+### 인물마다 `voice` 를 적는다 (필수)
+
+인물표의 각 인물에 `voice` 칸을 채운다. **한 줄, 영어로.**
+높낮이 · 나이대 · 말버릇 세 가지가 들어가야 한다.
+
+| ✗ 이러면 로봇이 읽는다 | ○ 이렇게 적는다 |
+|---|---|
+| (아무것도 없음) | a low, slightly gravelly man's voice in his fifties, clipped and impatient, drops in volume at the end |
+| angry voice | a warm mid-range woman's voice in her fifties, weary and a little breathy, trails off at the end of a sentence |
+| young female voice | a clear woman's voice in her forties, cool and unhurried, with a small lilt at the end |
+
+**같은 화에 나오는 두 사람의 목소리는 확실히 달라야 한다.**
+높낮이(low/mid/clear)와 말버릇(clipped / trails off / unhurried)을 서로 다르게 준다.
+
+### `DIALOGUE` 의 톤도 한 낱말로 끝내지 않는다
+
+| ✗ | ○ |
+|---|---|
+| `(furious)` | `(voice rising, almost shouting)` |
+| `(annoyed)` | `(flat, not looking at her)` |
+| `(sad)` | `(quiet, swallowing before she speaks)` |
+
+### `VOICE` · `AUDIO` 두 줄은 **우리가 붙인다**
+
+너는 `voice` 칸만 채우면 된다. 컷 프롬프트의 `VOICE:` `AUDIO:` 줄은
+시스템이 자동으로 붙인다 (해설자 금지·입모양 맞추기·숨소리 등).
+
+---
+
 ## ⭐ 정책에 막히는 말 (2026-08-20 · 실제로 막혔다)
 
 플로우가 컷 프롬프트를 이렇게 되돌려 보냈다 —
@@ -532,7 +572,7 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
   "title": "이십 년 며느리, 상속은 0원",
   "case_id": "230761",
   "characters": [
-    { "name": "며느리", "face_tag": "50s, oval face, low bun", "outfit": "a black mourning hanbok", "flow_prompt": "Korean woman, 52 years old, oval face, tired eyes with fine lines, dark brown hair in a low bun, worn calm expression. Photorealistic, natural skin texture, plain natural look." }
+    { "name": "며느리", "face_tag": "50s, oval face, low bun", "voice": "a warm mid-range woman's voice in her fifties, weary and a little breathy, trails off at the end of a sentence", "outfit": "a black mourning hanbok", "flow_prompt": "Korean woman, 52 years old, oval face, tired eyes with fine lines, dark brown hair in a low bun, worn calm expression. Photorealistic, natural skin texture, plain natural look." }
   ],
   "episodes": [
     {
@@ -568,6 +608,7 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 | `recap` | 2화부터 채운다. 지난 줄거리 한 줄, **30자 이내** (1화는 빈 문자열) |
 | `hook` | **화면 맨 위에 30초 내내 붙어 있을 한 줄.** **22자 이내.** 이걸 보고 남느냐 떠나느냐가 갈린다 — 제목이 아니라 **후킹**이다. 위 「후킹과 제목」 규칙을 그대로 따른다 (○ `이혼 패소 날 재산이 사라졌다` / ✗ `집을 나가는 남편`) |
 | `yt_title` | **유튜브에 올릴 제목.** **40자 이내.** `(n/16)` 과 `#shorts` 는 우리가 붙이니 적지 않는다 (○ `바람난 남편이 통장을 비우고 집을 나갔습니다`) |
+| `voice` | 인물마다 **필수.** 목소리 한 줄(영어) — 높낮이·나이대·말버릇 |
 | `characters` | 3명 이하 |
 
 ---
@@ -589,6 +630,9 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 - [ ] `hook` 이 **상태가 아니라 사건**인가 (`집을 나가는 남편` ✗ → `남편이 통장을 비우고 집을 나갔다` ○)
 - [ ] `hook` 에 숫자나 배신·상실·뒤집기가 드러나는가 (밋밋하면 아무도 안 본다)
 - [ ] `hook` 이 판결문에 **실제로 있는 일**인가 (과장은 되나 거짓은 안 된다)
+- [ ] 인물마다 `voice` 를 정했는가 (높낮이·나이대·말버릇 — 없으면 로봇이 읽는다)
+- [ ] 같은 화에 나오는 두 사람의 `voice` 가 **서로 확실히 다른가**
+- [ ] `DIALOGUE` 의 톤이 한 낱말이 아니라 **어떻게 말하는지**를 적었는가
 - [ ] 인물마다 `outfit`(색까지) 과 `face_tag`(짧게) 를 정했는가
 - [ ] `flow_prompt` 에 **나이·얼굴형·눈·코입·피부·머리·몸·표정**이 다 들어갔는가
 - [ ] 같은 인물의 `SUBJECT` 가 **모든 컷에서 한 글자도 같은가** (다르면 딴사람이 나온다)

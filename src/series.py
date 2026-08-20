@@ -125,7 +125,110 @@ TALK_MIN = 2           # 한 화 5컷 중 **주고받는 컷**이 최소 몇 컷
 SUB_MAX = 60           # 자막은 주고받은 대사를 다 담아야 한다 (' / ' 로 나눈다)
 
 # 프롬프트 6줄 규격 — 이 순서, 이 이름이 아니면 반려한다
-LINES = ["SHOT:", "SUBJECT:", "ACTION:", "DIALOGUE:", "SETTING:", "STYLE:", "Avoid:"]
+LINES = ["SHOT:", "SUBJECT:", "ACTION:", "DIALOGUE:", "AUDIO:",
+         "SETTING:", "STYLE:", "Avoid:"]
+LINES_OPT = ["VOICE:"]      # 대사가 있는 컷에만 붙는다
+
+# ⭐⭐ 2026-08-20 운영자: "나레이션이 너무 로봇 같은데?"
+#    프롬프트를 다시 보니 **소리에 관한 지시가 한 줄도 없었다.**
+#    있는 것이라곤 `(furious)` 같은 한 낱말뿐. 그러면 영상 만드는 쪽은
+#    안전한 쪽 — **또박또박 읽는 낭독**을 고른다. 그게 로봇처럼 들리는 것이다.
+#    게다가 대사가 화면 밖 **해설자 목소리**로 얹히는 일도 잦다.
+#    → 두 줄을 새로 붙인다.
+#      VOICE — 누가 어떤 목소리로 말하는가 (인물마다 다르게)
+#      AUDIO — 낭독이 아니라 **그 자리에서 하는 말**이라고 못 박는다
+#    ⚠️ "on screen" 이라고 썼더니 **screen(화면)** 이 '글자 나올 물건' 검사에
+#       걸려 80컷이 통째로 반려됐다. `between words` 의 **words** 도 '읽는 말'
+#       로 걸려 봉투가 나오는 컷을 막았다. 고정 문구는 다른 검사에 걸리는
+#       낱말을 피해서 쓴다 — 한 낱말이 80컷을 통째로 막는다.
+AUDIO_FIX = ("AUDIO: the two people in the shot say the lines themselves with their "
+             "lips moving in sync, real spontaneous speech rather than "
+             "narration, uneven rhythm with short breaths between phrases and "
+             "voices slightly overlapping when they argue, quiet room tone of "
+             "the location, no voice-over, no narrator, no background music, "
+             "no sound effects.")
+AUDIO_SILENT = ("AUDIO: nobody speaks in this shot, only the quiet room tone "
+                "of the location, no voice-over, no narrator, no background "
+                "music, no sound effects.")
+
+# 인물 설명에서 성격을 읽어 목소리를 짓는다 (인물표에 voice 가 없을 때)
+VOICE_TONE = [
+    ("tired", "weary and a little breathy, trails off at the end of a sentence"),
+    ("worn", "weary and a little breathy, trails off at the end of a sentence"),
+    ("agitated", "clipped and impatient, drops in volume at the end"),
+    ("angry", "tight and rising, breaks a little when it gets loud"),
+    ("confident", "cool and unhurried, with a small lilt at the end"),
+    ("sharp", "quick and cutting, barely waits for the other person"),
+    ("calm", "steady and low, unhurried"),
+    ("gentle", "soft and slow, warm"),
+    ("cold", "flat and quiet, almost bored"),
+]
+
+
+def voice_of(ch):
+    """인물 하나 → 목소리 한 줄. 인물표에 적혀 있으면 그것을 쓴다."""
+    v = (ch.get("voice") or "").strip()
+    if v:
+        return v
+    low = (ch.get("flow_prompt") or "").lower()
+    male = bool(re.search(r"\bman\b|\bmale\b|\bboy\b", low))
+    m = re.search(r"(\d+)\s*years?\s*old", low)
+    age = int(m.group(1)) if m else 45
+    pitch = ("a low, slightly gravelly man's voice" if male
+             else ("a warm mid-range woman's voice" if age >= 50
+                   else "a clear woman's voice"))
+    band = ("in his" if male else "in her") + \
+           (" fifties" if 50 <= age < 60 else
+            " forties" if 40 <= age < 50 else
+            " sixties" if 60 <= age < 70 else
+            " thirties" if 30 <= age < 40 else " middle years")
+    tone = next((t for w, t in VOICE_TONE if w in low), "plain and everyday")
+    return f"{pitch} {band}, {tone}"
+
+
+def fix_voice(doc):
+    """컷마다 VOICE·AUDIO 줄을 붙인다. 로봇 낭독을 막는 가장 큰 손잡이다."""
+    vs = {}
+    for ch in doc.get("characters") or []:
+        v = voice_of(ch)
+        for k in ((ch.get("name") or "").strip(), (ch.get("role_en") or "").strip()):
+            if k:
+                vs[k] = v
+    n = 0
+    for e in doc.get("episodes") or []:
+        for c in e.get("cuts") or []:
+            lines = [l for l in (c.get("prompt") or "").split("\n")
+                     if not l.startswith(("VOICE:", "AUDIO:"))]
+            di = next((i for i, l in enumerate(lines)
+                       if l.startswith("DIALOGUE:")), None)
+            if di is None:
+                c["prompt"] = "\n".join(lines)
+                continue
+            said = lines[di][len("DIALOGUE:"):].strip()
+            # ⚠️ 말하는 사람은 **따옴표 밖**에서만 찾는다. 대사 안에 '남편' 같은
+            #    낱말이 들어 있으면(예: "내 남편이 왜 거기서 죽어") 그것을
+            #    말하는 사람으로 잘못 잡아 VOICE 줄에 한글이 섞였다.
+            outside = " ".join(b for i, b in enumerate(said.split('"')) if i % 2 == 0)
+            add = []
+            if said and said.lower() not in ("none.", "none"):
+                # 이 컷에서 실제로 말하는 사람만 골라 넣는다 (긴 이름부터)
+                who = sorted([k for k in vs if k in outside],
+                             key=lambda k: outside.index(k))
+                seen, keep = set(), []
+                for k in who:
+                    if vs[k] in seen:
+                        continue
+                    seen.add(vs[k])
+                    keep.append(f"{k} — {vs[k]}")
+                if keep:
+                    add.append("VOICE: " + "; ".join(keep) + ".")
+                add.append(AUDIO_FIX)
+            else:
+                add.append(AUDIO_SILENT)
+            lines[di + 1:di + 1] = add
+            n += len(add)
+            c["prompt"] = "\n".join(lines)
+    return n
 
 # ⭐⭐ 2026-08-20 운영자: "프롬프트 복사하니까 또 이렇게 뜬다" —
 #      shot:%20Medium%20two-shot,...%20%EB%82%A8%ED%8E%B8...
@@ -680,6 +783,12 @@ def normalize(doc):
         print(f"  (컷 프롬프트의 한글 배역말 {nm}줄을 영어 관계말로 바꿨다 "
               f"— 기계가 사람 이름으로 읽어 유명인 검사에 걸린다)")
         charsheet.fill(doc)        # 인물 설명 칸도 영어 관계말로 다시 만든다
+    # ⭐ 목소리·소리 줄은 **맨 마지막**. 배역말이 영어로 바뀐 뒤라야
+    #    VOICE 줄의 이름이 DIALOGUE 줄의 이름과 맞는다.
+    v = fix_voice(doc)
+    if v:
+        print(f"  (목소리·소리 지시 {v}줄을 붙였다 — 이게 없으면 또박또박 "
+              f"읽는 낭독이 되어 로봇처럼 들린다)")
     return doc
 
 
@@ -930,6 +1039,7 @@ def check(doc):
                 bad.append(f"{tag}: 역할이 '{c.get('role')}' 이다 (있어야 할 것 '{want}')")
 
             got = [l.split(":")[0] + ":" for l in p.split("\n") if ":" in l]
+            got = [l for l in got if l not in LINES_OPT]     # VOICE 는 선택
             if got[:len(LINES)] != LINES:
                 bad.append(f"{tag}: 6줄 규격이 아니다 — {got[:8]}")
             if not p.startswith(HEAD_FIX):
@@ -948,6 +1058,9 @@ def check(doc):
             if ph:
                 bad.append(f"{tag}: 정책에 막히는 말 — {', '.join(ph)} "
                            f"(플로우가 '유명인 동영상 생성' 으로 거절한다)")
+            if AUDIO_FIX not in p and AUDIO_SILENT not in p:
+                bad.append(f"{tag}: AUDIO 줄이 없다 — 그대로 두면 화면 밖 "
+                           f"해설자가 또박또박 읽어 로봇처럼 들린다")
             if STYLE_FIX not in p:
                 bad.append(f"{tag}: STYLE 줄이 고정 문구와 다르다")
             # ⚠️ 예전엔 `endswith("focus.")` 였다. 고정 문구를 손보는 순간

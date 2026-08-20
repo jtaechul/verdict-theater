@@ -38,7 +38,8 @@ def good_prompt(dialogue=SOLO):
             "SUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.\n"
             "ACTION: 시동생 holds out a closed folder toward 며느리.\n"
             f"DIALOGUE: {dialogue}\n"
-            "SETTING: Korean funeral hall reception room, evening, dim light.\n"
+            + S.AUDIO_FIX + "\n"
+            + "SETTING: Korean funeral hall reception room, evening, dim light.\n"
             + S.STYLE_FIX + "\n" + S.AVOID_FIX)
 
 
@@ -141,7 +142,10 @@ ex = json.loads('"' + raw.split('"prompt": "')[1].split('"\n')[0] + '"')
 d = good_doc()
 for n in range(S.CUTS):
     d["episodes"][0]["cuts"][n]["prompt"] = ex
-ck("프롬프트 파일의 예시 컷이 통과한다", S.check(d) == [], str(S.check(d))[:80])
+# ⚠️ VOICE·AUDIO 줄은 **우리가 붙이는 것**이라 예시에는 없다 (프롬프트에도
+#    "우리가 붙인다" 라고 적어 두었다). 실제 길과 똑같이 고쳐 준 뒤에 잰다.
+ck("프롬프트 파일의 예시 컷이 통과한다", S.check(S.normalize(d)) == [],
+   str(S.check(S.normalize(d)))[:80])
 
 # 고정 문구를 아예 빠뜨려도 우리가 채워 넣는다 (버리지 않는다)
 d = good_doc()
@@ -312,6 +316,42 @@ ck("고쳐 주면 머리말이 되살아난다",
    all(c["prompt"].startswith(S.HEAD_FIX)
        for e in S.normalize(d)["episodes"] for c in e["cuts"]))
 ck("고친 뒤에는 검사가 조용하다", S.check(d) == [], str(S.check(d))[:60])
+
+print("\n⑬-4 목소리 지시가 붙는가 (2026-08-20 운영자: '나레이션이 로봇 같다')")
+# ⚠️ 소리에 관한 지시가 한 줄도 없으면 영상 만드는 쪽은 **또박또박 읽는
+#    낭독**을 고른다. 게다가 화면 밖 해설자 목소리로 얹히는 일도 잦다.
+d = S.normalize(good_doc())
+c1 = d["episodes"][0]["cuts"][0]["prompt"]
+ck("AUDIO 줄이 붙는다", "AUDIO:" in c1)
+ck("해설자를 못 박아 막는다", "no narrator" in c1 and "no voice-over" in c1)
+ck("입모양을 맞추라고 한다", "lips moving in sync" in c1)
+ck("낭독이 아니라고 한다", "rather than narration" in c1)
+ck("대사 있는 컷에 VOICE 줄이 붙는다",
+   any("VOICE:" in c["prompt"] for e in d["episodes"] for c in e["cuts"]))
+sil = [c["prompt"] for e in d["episodes"] for c in e["cuts"]
+       if "DIALOGUE: None." in c["prompt"]]
+if sil:
+    ck("대사 없는 컷은 조용한 AUDIO 를 쓴다", "nobody speaks" in sil[0])
+    ck("대사 없는 컷엔 VOICE 를 안 붙인다", "VOICE:" not in sil[0])
+ck("두 번 돌려도 줄이 안 늘어난다",
+   S.normalize(d)["episodes"][0]["cuts"][0]["prompt"].count("AUDIO:") == 1)
+ck("AUDIO 줄이 없으면 반려한다",
+   any("AUDIO" in b for b in S.check(
+       {**d, "episodes": [{**d["episodes"][0], "cuts": [
+           {**d["episodes"][0]["cuts"][0],
+            "prompt": c1.replace(S.AUDIO_FIX + "\n", "")}]}]})))
+# 고정 문구가 다른 검사에 걸리면 80컷이 통째로 막힌다 (screen · words 로 실제로 겪었다)
+ck("AUDIO 고정 문구가 '글자 나올 물건' 검사에 안 걸린다",
+   not [w for w in S.TEXT_HARD if re.search(rf"\b{w}\b", S.AUDIO_FIX.lower())],
+   str([w for w in S.TEXT_HARD if re.search(rf"\b{w}\b", S.AUDIO_FIX.lower())]))
+ck("AUDIO 고정 문구가 정책 검사에 안 걸린다", not S.policy_hits(S.AUDIO_FIX))
+ck("목소리가 사람마다 다르게 나온다",
+   S.voice_of({"flow_prompt": "Korean man, 55 years old, agitated expression."})
+   != S.voice_of({"flow_prompt": "Korean woman, 42 years old, confident eyes."}))
+ck("인물표에 적어 둔 목소리를 그대로 쓴다",
+   S.voice_of({"voice": "a whispery voice"}) == "a whispery voice")
+ck("프롬프트 규칙에도 voice 가 적혀 있다",
+   "voice" in (ROOT / "prompts" / "series_gen.md").read_text(encoding="utf-8"))
 
 print("\n⑬-3 정책에 막히는 말이 없는가 (2026-08-20 · 플로우가 실제로 거절했다)")
 # ⚠️ 플로우: "이 프롬프트는 유명인의 동영상 생성에 관한 정책을 위반할 가능성이…"

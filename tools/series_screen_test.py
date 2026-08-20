@@ -209,9 +209,12 @@ for i, ch in enumerate(doc.get("characters", [])):
         bad_eq.append(f"인물{i + 1} 사진")
 ck("복사되는 글자가 원본과 **한 글자도** 다르지 않다", not bad_eq, ", ".join(bad_eq))
 ck("%20 같은 URL 인코딩이 섞이지 않는다", not bad_enc, ", ".join(bad_enc))
+# ⚠️ 줄 수를 숫자로 못 박아 두면 줄이 하나 늘 때마다 시험이 깨진다
+#    (머리말 · VOICE · AUDIO 를 붙일 때마다 실제로 깨졌다). **대본과 견준다.**
 ck("줄바꿈이 진짜 줄바꿈으로 남아 있다",
-   all(copied.get(f"p1_{i}", "").count("\n") == 7 for i in range(1, len(e1["cuts"]) + 1)),
-   "각 프롬프트 머리말 + 7줄")
+   all(copied.get(f"p1_{i}", "").count("\n") == e1["cuts"][i - 1]["prompt"].count("\n")
+       for i in range(1, len(e1["cuts"]) + 1)),
+   f"컷마다 {e1['cuts'][0]['prompt'].count(chr(10)) + 1}줄")
 
 # ⭐⭐ 2026-08-20 두 번째 사고 — 우리 클립보드는 멀쩡한데, **붙여 넣는 쪽**이
 #    `SHOT:` 을 주소 이름(http: 같은 것)으로 읽어 글자를 통째로 %20 · %EB.. 로
