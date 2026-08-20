@@ -752,8 +752,14 @@ function seriesRender() {
   (e.cuts || []).forEach((c, i) => {
     const pid = 'p' + SEP + '_' + (i + 1);
     COPY[pid] = String(c.prompt || '');
-    const say = (String(c.prompt || '').split(String.fromCharCode(10))
-      .find(l => l.indexOf('DIALOGUE:') === 0) || '').replace('DIALOGUE:', '').trim();
+    // ⚠️ 대사는 이제 여러 줄이다 — DIALOGUE 줄 + 그 아래 들여쓴 대사 줄들.
+    //    한 줄만 집으면 화면에 '한국어로 말하라' 는 머리말만 뜬다.
+    const _pl = String(c.prompt || '').split(String.fromCharCode(10));
+    const _di = _pl.findIndex(l => l.indexOf('DIALOGUE:') === 0);
+    let _dj = _di + 1;
+    while (_dj < _pl.length && _pl[_dj].indexOf('  ') === 0) _dj++;
+    const say = _di < 0 ? ''
+      : _pl.slice(_di, _dj).join(' / ').replace('DIALOGUE:', '').trim();
     h += '<div class="pbox"><div class="pname">' + c.n + '컷 · ' + esc(c.role || '')
        + ' <span style="color:#9599ab;font-weight:400">(' + sp.sec + '초)</span></div>';
     h += '<div style="color:#c8cbd6;font-size:14px;margin:6px 0">' + esc(say) + '</div>';

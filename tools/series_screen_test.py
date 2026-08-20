@@ -298,8 +298,7 @@ ck("16화 1컷 대사가 뜬다",
 #    `SHOT:` (16화에도 똑같이 있는 줄) 로 밀렸다. 줄 이름으로 집는다.
 # ⚠️ DIALOGUE 줄 **앞머리**는 모든 화가 똑같다(한국어로 말하라는 고정 문구).
 #    그 화에만 있는 것은 **따옴표 안 대사**다. 그것으로 견준다.
-_d1 = next(l for l in e1["cuts"][0]["prompt"].split("\n") if l.startswith("DIALOGUE:"))
-_say1 = re.findall(r'"([^"]+)"', _d1)[0]
+_say1 = S.dia_says(e1["cuts"][0]["prompt"])[0]
 ck("1화 내용은 더 이상 안 보인다", _say1 not in ep16, _say1[:30])
 
 print("\n" + "─" * 52)

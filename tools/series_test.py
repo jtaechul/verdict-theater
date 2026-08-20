@@ -356,14 +356,21 @@ ck("대사 바로 옆에 대문자 한국어 표시를 붙인다", S.DIA_LANG in
 _dl = S.normalize(good_doc())
 _dl["episodes"][0]["cuts"][0]["prompt"] = good_prompt(
     '본처 (furious): "당신 진짜 제정신이야?" / 남편 (annoyed): "더는 숨 막혀서 못 살아."')
+S.fix_lipsync(_dl)
 S.fix_dialogue_lang(_dl)
-_d1 = next(l for l in _dl["episodes"][0]["cuts"][0]["prompt"].split("\n")
-           if l.startswith("DIALOGUE:"))
+_d1 = S.dia_text(_dl["episodes"][0]["cuts"][0]["prompt"])
 ck("말투 괄호마다 in Korean 을 붙인다", _d1.count("in Korean)") == 2, _d1[:90])
+ck("한 사람에 한 줄로 나눈다", len(_d1.split("\n")) == 3, _d1.count("\n"))
+S.fix_dialogue_lang(_dl)
 ck("두 번 붙여도 안 겹친다",
-   (S.fix_dialogue_lang(_dl),
-    next(l for l in _dl["episodes"][0]["cuts"][0]["prompt"].split("\n")
-         if l.startswith("DIALOGUE:")).count("in Korean)"))[1] == 2)
+   S.dia_text(_dl["episodes"][0]["cuts"][0]["prompt"]).count("in Korean)") == 2)
+ck("두 번 붙여도 줄이 안 늘어난다",
+   len(S.dia_text(_dl["episodes"][0]["cuts"][0]["prompt"]).split("\n")) == 3)
+ck("차례대로 말하라고 못 박는다", S.DIA_ORDER in _d1)
+ck("입모양 맞추기가 ACTION 에 있다",
+   S.LIPSYNC.strip() in next(l for l in
+                             _dl["episodes"][0]["cuts"][0]["prompt"].split("\n")
+                             if l.startswith("ACTION:")))
 ck("AUDIO 에 서울 억양을 못 박는다", "standard Seoul intonation" in c1)
 # ⭐ 제미나이 자문 2번 — `no foreign accent` 는 오히려 foreign 을 불러들인다.
 #    소리에 관한 것은 **바라는 것만** 적는다.
@@ -473,9 +480,9 @@ d["episodes"][0]["cuts"][0]["prompt"] = (
     "SETTING: hallway, evening.\n" + S.STYLE_FIX + "\n" + S.AVOID_FIX)
 d["episodes"][0]["cuts"][0]["subtitle"] = '"저 여자가 이유였어?"'
 S.normalize(d)
-dia = [l for l in d["episodes"][0]["cuts"][0]["prompt"].split("\n")
-       if l.startswith("DIALOGUE:")][0]
-ck("우리가 '당신' 으로 고쳐 준다", "당신이 이유였어" in dia, dia[10:52])
+# 대사는 여러 줄이 되었으므로 **덩어리**에서 본다
+dia = S.dia_text(d["episodes"][0]["cuts"][0]["prompt"])
+ck("우리가 '당신' 으로 고쳐 준다", "당신이 이유였어" in dia, dia[-52:])
 ck("자막도 같이 고친다", "당신" in d["episodes"][0]["cuts"][0]["subtitle"])
 ck("고친 것을 반드시 알려 준다", any("당신" in w for w in S.soft(d)))
 

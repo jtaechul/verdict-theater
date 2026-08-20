@@ -157,13 +157,18 @@ LINES_OPT = ["VOICE:"]      # 대사가 있는 컷에만 붙는다
 #       그리고 대사가 한국어라는 것을 **대문자 표시**로 못 박고,
 #       말투 괄호마다 `in Korean` 을 붙인다 (제미나이 자문 3·4번).
 DIA_LANG = "[LANGUAGE: KOREAN] "
+# ⭐ 제미나이가 다시 써 온 것에서 가장 값진 한 줄 — **겹쳐 말하지 않는다.**
+#    6초짜리에서 목소리가 겹치면 한국어가 뭉개져 더 어색하게 들린다.
+#    우리 쪽에도 이득이다 — 가라오케 자막이 **말 사이 정적**으로 사람을
+#    가르는데, 겹쳐 말하면 그 경계를 못 찾는다.
+DIA_ORDER = "each person speaks one after another, never overlapping"
 AUDIO_FIX = ("AUDIO: the two people in the shot say the lines themselves with "
              "their lips moving in sync, every line spoken in natural, fluent "
              "and highly authentic everyday Korean by native speakers with "
              "standard Seoul intonation, real spontaneous speech with uneven "
-             "rhythm, short breaths between phrases and voices slightly "
-             "overlapping when they argue, with only the quiet room tone of "
-             "the location underneath.")
+             "rhythm and short breaths between phrases, each person "
+             "speaking one after another so every word stays clear, with only "
+             "the quiet room tone of the location underneath.")
 AUDIO_SILENT = ("AUDIO: the shot is quiet, with only the room tone of the "
                 "location and the small everyday sounds of the place.")
 
@@ -211,40 +216,96 @@ def add_breath(say, tone):
     return t
 
 
+# ⭐⭐ 2026-08-20 — 제미나이가 다시 써 온 것을 보고 고친다.
+#    대사를 한 줄에 ` / ` 로 이어 붙이지 않고 **한 사람에 한 줄**로 나눈다.
+#    말 차례가 눈에 보이면 영상 만드는 쪽이 억양을 사람마다 새로 잡는다.
+#      DIALOGUE: [LANGUAGE: KOREAN] each person speaks one after another…
+#        Wife (furious, in Korean): "당신 진짜 제정신이야?!"
+#        Husband (annoyed, in Korean): "더는 숨 막혀서 못 살아."
+#    ⚠️ 아래 대사 줄은 **두 칸 들여쓴다.** 줄 이름 검사가 `Wife:` 를 규격 줄로
+#       착각하지 않게 하려는 것이다 (들여쓴 줄은 검사에서 건너뛴다).
+DIA_INDENT = "  "
+
+
+def dia_span(lines):
+    """DIALOGUE 줄 + 그 아래 들여쓴 대사 줄들의 범위 (시작, 끝)."""
+    i = next((k for k, l in enumerate(lines) if l.startswith("DIALOGUE:")), None)
+    if i is None:
+        return None, None
+    j = i + 1
+    while j < len(lines) and lines[j].startswith(DIA_INDENT):
+        j += 1
+    return i, j
+
+
+def dia_text(prompt):
+    """대사 덩어리를 한 덩이 글로 (음절 세기·금지어 검사에 쓴다)."""
+    lines = str(prompt or "").split("\n")
+    i, j = dia_span(lines)
+    return "\n".join(lines[i:j]) if i is not None else ""
+
+
+def dia_says(prompt):
+    """대사 덩어리에서 따옴표 안 말만 뽑는다."""
+    return re.findall(r'"([^"]*)"', dia_text(prompt))
+
+
+def turn_label(who):
+    """`the wife` → `Wife` (말 차례가 눈에 확 들어오게)."""
+    t = re.sub(r"^the\s+", "", str(who or "").strip())
+    return t[:1].upper() + t[1:] if t else t
+
+
 def fix_dialogue_lang(doc):
-    """대사 줄에 한국어 표시·말투 맥락·숨 쉴 자리를 넣는다 (제미나이 자문 3·4번)."""
+    """대사를 **한 사람에 한 줄**로 나누고, 한국어 표시·맥락·숨을 넣는다.
+
+    제미나이 자문 3·4번 + 다시 써 온 것 반영 (2026-08-20).
+    """
     n = 0
     for e in doc.get("episodes") or []:
         for c in e.get("cuts") or []:
             lines = (c.get("prompt") or "").split("\n")
-            for i, l in enumerate(lines):
-                if not l.startswith("DIALOGUE:"):
-                    continue
-                body = l[len("DIALOGUE:"):].strip()
-                # 예전에 쓰던 긴 안내문을 걷어낸다. 지금은 대문자 표시 하나로
-                # 못 박고, 말투 괄호마다 `in Korean` 을 붙인다.
-                body = re.sub(r"\(all lines spoken[^)]*\)\s*", "", body)
-                body = body.replace(DIA_LANG, "").strip()
-                if not body or body.lower() in ("none.", "none"):
-                    continue
-                bits, tone = body.split('"'), ""
-                for j, b in enumerate(bits):
+            a, b = dia_span(lines)
+            if a is None:
+                continue
+            # ⚠️ 이미 여러 줄로 나눠 둔 것을 다시 고칠 때, 머리말(한국어 표시 ·
+            #    차례대로 말하기)까지 대사로 끌어들이면 줄이 뭉개지고 말이
+            #    겹쳐 붙는다. 머리말은 **떼어 내고** 대사만 다시 짠다.
+            head = lines[a][len("DIALOGUE:"):]
+            for junk in (DIA_LANG, DIA_ORDER):
+                head = head.replace(junk, "")
+            head = re.sub(r"\(all lines spoken[^)]*\)\s*", "", head).strip()
+            said = [l.strip() for l in lines[a + 1:b] if l.strip()]
+            if not said:
+                said = [x.strip() for x in head.split(" / ") if x.strip()]
+                head = ""
+            if head:                      # 머리말 자리에 대사가 남아 있으면 앞에 붙인다
+                said = [x.strip() for x in head.split(" / ") if x.strip()] + said
+            if not said or " ".join(said).lower() in ("none.", "none"):
+                continue
+
+            # 한 사람에 한 마디씩 끊는다
+            turns, tone = [], ""
+            for part in said:
+                bits = part.split('"')
+                for j, bb in enumerate(bits):
                     if j % 2 == 0:
-                        # 따옴표 밖 — 말투 괄호에 'in Korean' 을 붙인다
-                        m = re.findall(r"\(([^)]+)\)", b)
+                        m = re.findall(r"\(([^)]+)\)", bb)
                         tone = m[-1] if m else tone
                         bits[j] = re.sub(
                             r"\(([^)]+)\)",
                             lambda x: x.group(0) if "korean" in x.group(1).lower()
-                            else f"({x.group(1)}, in Korean)", b)
+                            else f"({x.group(1)}, in Korean)", bb)
                     else:
-                        bits[j] = add_breath(b, tone)
-                body = '"'.join(bits)
-                if not body.startswith(DIA_LANG):
-                    body = DIA_LANG + body
-                new = "DIALOGUE: " + body
-                if new != l:
-                    lines[i], n = new, n + 1
+                        bits[j] = add_breath(bb, tone)
+                who = bits[0].strip().rstrip(":").strip()
+                bits[0] = turn_label(who) + (": " if who else "")
+                turns.append(DIA_INDENT + '"'.join(bits).strip())
+
+            block = [f"DIALOGUE: {DIA_LANG}{DIA_ORDER}"] + turns
+            if lines[a:b] != block:
+                lines[a:b] = block
+                n += 1
             c["prompt"] = "\n".join(lines)
     return n
 
@@ -275,7 +336,11 @@ def fix_voice(doc):
     vs = {}
     for ch in doc.get("characters") or []:
         v = voice_of(ch)
-        for k in ((ch.get("name") or "").strip(), (ch.get("role_en") or "").strip()):
+        # ⚠️ 대사 줄의 이름표는 `Wife:` 처럼 짧게 쓴다. 그 꼴도 같이 넣어 두지
+        #    않으면 말하는 사람을 못 찾아 VOICE 줄이 통째로 빠진다.
+        for k in ((ch.get("name") or "").strip(),
+                  (ch.get("role_en") or "").strip(),
+                  turn_label(ch.get("role_en") or "")):
             if k:
                 vs[k] = v
     n = 0
@@ -283,12 +348,13 @@ def fix_voice(doc):
         for c in e.get("cuts") or []:
             lines = [l for l in (c.get("prompt") or "").split("\n")
                      if not l.startswith(("VOICE:", "AUDIO:"))]
-            di = next((i for i, l in enumerate(lines)
-                       if l.startswith("DIALOGUE:")), None)
+            di, dend = dia_span(lines)
             if di is None:
                 c["prompt"] = "\n".join(lines)
                 continue
-            said = lines[di][len("DIALOGUE:"):].strip()
+            # ⚠️ 대사가 여러 줄이 되었으므로 **덩어리 전체**를 본다.
+            #    한 줄만 보면 말하는 사람이 안 잡혀 VOICE 줄이 안 붙었다.
+            said = "\n".join(lines[di:dend])[len("DIALOGUE:"):].strip()
             # ⚠️ 말하는 사람은 **따옴표 밖**에서만 찾는다. 대사 안에 '남편' 같은
             #    낱말이 들어 있으면(예: "내 남편이 왜 거기서 죽어") 그것을
             #    말하는 사람으로 잘못 잡아 VOICE 줄에 한글이 섞였다.
@@ -309,7 +375,7 @@ def fix_voice(doc):
                 add.append(AUDIO_FIX)
             else:
                 add.append(AUDIO_SILENT)
-            lines[di + 1:di + 1] = add
+            lines[dend:dend] = add          # 대사 덩어리 **아래**에 붙인다
             n += len(add)
             c["prompt"] = "\n".join(lines)
     return n
@@ -427,7 +493,7 @@ def case_json(row):
 # ⚠️ 'extra people in focus' 는 **두 번째 주인공까지 막는 말**로 읽힌다.
 #    주고받는 대화를 하려면 두 사람이 같이 화면에 있어야 한다. 막고 싶은 것은
 #    지나가는 행인이지 상대역이 아니므로 'background extras' 로 못 박는다.
-AVOID_FIX = ("Avoid: on-screen text, signage, documents with visible writing, "
+AVOID_FIX = ("Avoid: overlapping voices, on-screen text, signage, documents with visible writing, "
              "screens, background extras in focus, "
              "cutting to another shot, changing the background mid-shot, "
              "the person changing clothes or face mid-shot, "
@@ -524,6 +590,28 @@ def fix_names(doc):
                     lines[i], n = new, n + 1
             c["prompt"] = "\n".join(lines)
     doc["_name_map"] = mp
+    return n
+
+
+# ⭐ 제미나이가 다시 써 온 것에서 가져온 둘째 — **입모양 맞추기를 ACTION 에.**
+#    소리 줄(AUDIO)보다 **그림 지시 옆**에 두는 것이 더 잘 먹는다.
+LIPSYNC = (" Both people keep their lips moving in exact sync with the "
+           "Korean lines they say.")
+
+
+def fix_lipsync(doc):
+    """ACTION 줄 끝에 입모양 맞추기를 붙인다."""
+    n = 0
+    for e in doc.get("episodes") or []:
+        for c in e.get("cuts") or []:
+            if "DIALOGUE: None." in (c.get("prompt") or ""):
+                continue
+            lines = (c.get("prompt") or "").split("\n")
+            for i, l in enumerate(lines):
+                if not l.startswith("ACTION:") or LIPSYNC.strip() in l:
+                    continue
+                lines[i], n = l.rstrip() + LIPSYNC, n + 1
+            c["prompt"] = "\n".join(lines)
     return n
 
 
@@ -771,9 +859,9 @@ def fix_facing(doc):
             if not hit:
                 continue
             lines = (c.get("prompt") or "").split("\n")
-            for i, l in enumerate(lines):
-                if not l.startswith("DIALOGUE:"):
-                    continue
+            a, b = dia_span(lines)
+            for i in range(a or 0, b or 0):
+                l = lines[i]
                 new = l
                 for w in hit:
                     new = to_you(new, w)
@@ -869,6 +957,7 @@ def normalize(doc):
         charsheet.fill(doc)        # 인물 설명 칸도 영어 관계말로 다시 만든다
     # ⭐ 목소리·소리 줄은 **맨 마지막**. 배역말이 영어로 바뀐 뒤라야
     #    VOICE 줄의 이름이 DIALOGUE 줄의 이름과 맞는다.
+    fix_lipsync(doc)
     g = fix_dialogue_lang(doc)
     if g:
         print(f"  (대사 {g}줄에 한국어 표시·숨 쉴 자리를 넣었다 — 영어 억양이 "
@@ -1020,10 +1109,8 @@ def soft(doc):
                 out.append(f"{e.get('no')}화 {c.get('n')}컷: 서로 몸이 닿는 동작 "
                            f"— {', '.join(sorted(set(hit)))} "
                            f"(손이 옷 속으로 녹아든다)")
-            for l in (c.get("prompt") or "").split("\n"):
-                if not l.startswith("DIALOGUE:"):
-                    continue
-                for say in re.findall(r'"([^"]*)"', l):
+            if True:
+                for say in dia_says(c.get("prompt")):
                     for w in SPOKEN_BAN:
                         if w in say:
                             out.append(f"{e.get('no')}화 {c.get('n')}컷: 대사에 "
@@ -1075,9 +1162,9 @@ def facing_error(cut, chars):
         pool = [c for c in named if g is None or gender(c) == g]
         return bool(pool) and all(c in here for c in pool)
 
-    dia = next((l for l in lines if l.startswith("DIALOGUE:")), "")
     hit = []
-    for say in re.findall(r'"([^"]*)"', dia):
+    for say in re.findall(r'"([^"]*)"', "\n".join(lines[slice(*dia_span(lines))])
+                          if dia_span(lines)[0] is not None else ""):
         for w in THIRD_F:
             if w in say and all_here("f"):
                 hit.append(w)
@@ -1126,7 +1213,8 @@ def check(doc):
             if want and c.get("role") != want:
                 bad.append(f"{tag}: 역할이 '{c.get('role')}' 이다 (있어야 할 것 '{want}')")
 
-            got = [l.split(":")[0] + ":" for l in p.split("\n") if ":" in l]
+            got = [l.split(":")[0] + ":" for l in p.split("\n")
+                   if ":" in l and not l.startswith(DIA_INDENT)]
             got = [l for l in got if l not in LINES_OPT]     # VOICE 는 선택
             if got[:len(LINES)] != LINES:
                 bad.append(f"{tag}: 6줄 규격이 아니다 — {got[:8]}")
@@ -1169,10 +1257,7 @@ def check(doc):
                 bad.append(f"{tag}: 맞은편 사람을 '{', '.join(f3)}' 라고 부른다 "
                            f"— 앞에 두고 남 얘기하듯 말하면 장면이 어긋난다")
 
-            says = []
-            for line in p.split("\n"):
-                if line.startswith("DIALOGUE:"):
-                    says += re.findall(r'"([^"]*)"', line)
+            says = dia_says(p)
             total = sum(syl(x) for x in says)
             if total > DIA_SYL_MAX:
                 bad.append(f"{tag}: 대사가 다 합쳐 {total}음절이다 "

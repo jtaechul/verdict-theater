@@ -68,12 +68,13 @@ Fictional scene, invented characters, cinematic realism. 6-second single continu
 SHOT: 샷 크기 + 카메라 움직임 (하나만)
 SUBJECT: 등장인물을 가리키는 **영어 관계말** + 옷차림 (얼굴 묘사 절대 금지 — 아래 ⚠️ 참고)
 ACTION: 동작 하나
-DIALOGUE: 말하는 사람과 톤 + 한국어 대사. 두 사람이 주고받으면 ` / ` 로 잇는다 (없으면 "None.")
+DIALOGUE: 말하는 사람과 톤 + 한국어 대사. 주고받으면 ` / ` 로 잇는다 (없으면 "None.")
+          → 시스템이 **한 사람에 한 줄**로 나눠서 다시 적는다
 VOICE: (우리가 붙인다) 인물마다 어떤 목소리인가
 AUDIO: (우리가 붙인다) 낭독이 아니라 그 자리에서 하는 말이라는 못
 SETTING: 장소 + 조명
 STYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, grounded everyday Korean realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.
-Avoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different person.
+Avoid: overlapping voices, on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different person.
 ```
 
 **지켜야 할 것**
@@ -481,6 +482,24 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 부르는 말·감탄사 뒤, 또는 문장이 꺾이는 자리에만 넣는다.
 (`"당신 명의로"` 처럼 꾸미는 말에 쉼표를 넣으면 뜻이 망가진다)
 
+### 대사는 **한 사람에 한 줄** (시스템이 나눈다)
+
+한 줄에 ` / ` 로 이어 붙이면 영상 만드는 쪽이 한 사람이 쭉 읽는 것으로 본다.
+줄을 나누면 말 차례가 눈에 보여 사람마다 억양을 새로 잡는다.
+
+```
+DIALOGUE: [LANGUAGE: KOREAN] each person speaks one after another, never overlapping
+  Wife (furious, in Korean): "당신 진짜 제정신이야?!"
+  Husband (annoyed, in Korean): "더는 숨 막혀서 못 살아."
+  Wife (shouting, in Korean): "누구 맘대로 집을 나가!"
+```
+
+**겹쳐 말하지 않는다.** 6초짜리에서 목소리가 겹치면 한국어가 뭉개져 더
+어색하게 들린다. 우리 쪽에도 이득이다 — 가라오케 자막이 **말 사이 정적**으로
+사람을 가르는데, 겹쳐 말하면 그 경계를 못 찾는다.
+
+**입모양 맞추기는 `ACTION` 줄에 붙인다** — 소리 줄보다 그림 지시 옆이 더 잘 먹는다.
+
 ### `VOICE` · `AUDIO` 두 줄은 **우리가 붙인다**
 
 너는 `voice` 칸만 채우면 된다. 컷 프롬프트의 `VOICE:` `AUDIO:` 줄은
@@ -634,7 +653,7 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
           "role": "후킹",
           "subtitle": "\"이 집, 오늘 안에 비워 주세요.\" / \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"",
           "caption": "장례를 치른 다음 날, 시동생이 집을 요구했다",
-          "prompt": "Fictional scene, invented characters, cinematic realism. 6-second single continuous take.\nSHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: the brother-in-law in a black suit facing the daughter-in-law in black mourning hanbok.\nACTION: the brother-in-law sets a closed folder on the table and steps back.\nDIALOGUE: the brother-in-law (calm and cold): \"이 집, 오늘 안에 비워 주세요.\" / the daughter-in-law (trembling): \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, grounded everyday Korean realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different person."
+          "prompt": "Fictional scene, invented characters, cinematic realism. 6-second single continuous take.\nSHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: the brother-in-law in a black suit facing the daughter-in-law in black mourning hanbok.\nACTION: the brother-in-law sets a closed folder on the table and steps back.\nDIALOGUE: the brother-in-law (calm and cold): \"이 집, 오늘 안에 비워 주세요.\" / the daughter-in-law (trembling): \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, grounded everyday Korean realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: overlapping voices, on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different person."
         }
       ]
     }

@@ -221,10 +221,15 @@ if p.exists():
             for l in c["prompt"].split("\n") if l.startswith("SUBJECT:")
             and any(re.search(rf"(?<![\w가-힣]){re.escape(n)}\(", l) for n in names)])
     ko = [c["name"] for c in real["characters"]]
+    # ⚠️ 대사는 이제 여러 줄이다 (`  Wife (…): "…"`). 대사 **덩어리 전체**를
+    #    빼고 봐야 한다 — 안 그러면 대사 안의 '남편' 을 잘못 잡는다.
+    def outside_dia(pr):
+        ls = pr.split("\n")
+        a, b = S.dia_span(ls)
+        return ls[:a] + ls[b:] if a is not None else ls
     ck("컷 프롬프트 대사 밖에 한글 배역말이 없다",
        not [1 for e in real["episodes"] for c in e["cuts"]
-            for l in c["prompt"].split("\n")
-            if not l.startswith("DIALOGUE:") and any(n in l for n in ko)])
+            for l in outside_dia(c["prompt"]) if any(n in l for n in ko)])
     ck("모든 컷이 머리말로 시작한다",
        all(c["prompt"].startswith(S.HEAD_FIX)
            for e in real["episodes"] for c in e["cuts"]))
