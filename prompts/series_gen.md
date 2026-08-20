@@ -52,12 +52,19 @@
 
 ---
 
-# 클립 프롬프트 규격 (6줄 고정)
+# 클립 프롬프트 규격 (머리말 1줄 + 6줄 고정)
 
-각 컷의 `prompt` 는 **아래 여섯 줄 + 마지막 Avoid 줄**로만 쓴다. 영어로 쓰되
-대사만 한국어를 그대로 둔다. 줄 이름과 순서를 바꾸지 않는다.
+각 컷의 `prompt` 는 **머리말 한 줄 + 아래 여섯 줄 + 마지막 Avoid 줄**로만 쓴다.
+영어로 쓰되 대사만 한국어를 그대로 둔다. 줄 이름과 순서를 바꾸지 않는다.
+
+> ⭐ **맨 앞 머리말 줄은 반드시 있어야 한다.** 없이 `SHOT:` 으로 시작하면
+> 붙여 넣는 쪽이 `단어:` 를 **인터넷 주소 이름**으로 읽어 버려
+> (`http:` `mailto:` 처럼) 글자가 `shot:%20Medium%20...%EB%82%A8%ED%8E%B8`
+> 처럼 통째로 깨진다. 실제로 운영자가 두 번 겪었다.
+> 머리말은 콜론 없이 쓴다 — 그래야 주소로 안 읽힌다.
 
 ```
+Live-action Korean drama, 6-second single continuous take.
 SHOT: 샷 크기 + 카메라 움직임 (하나만)
 SUBJECT: 등장인물 이름 + 옷차림 (얼굴 묘사 금지 — 캐릭터로 고정돼 있다)
 ACTION: 동작 하나
@@ -152,6 +159,7 @@ Avoid: on-screen text, signage, documents with visible writing, screens, backgro
 `맞섬`·`뒤집기` 는 받아치는 말이 있어야 장면이 뒤집힌다. 이렇게 쓴다:
 
 ```
+Live-action Korean drama, 6-second single continuous take.
 SHOT: Medium two-shot, static camera, both faces visible.
 DIALOGUE: 아내 (furious): "여기가 어디라고 와? 당장 안 나가면 경찰 부른다." / 동거녀 (calm): "마지막 가는 길인데 인사도 못 해요?"
 ```
@@ -467,7 +475,7 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
           "role": "후킹",
           "subtitle": "\"이 집, 오늘 안에 비워 주세요.\" / \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"",
           "caption": "장례를 치른 다음 날, 시동생이 집을 요구했다",
-          "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.\nACTION: 시동생 holds out a closed folder toward 며느리, who does not take it.\nDIALOGUE: 시동생 (calm and cold): \"이 집, 오늘 안에 비워 주세요.\" / 며느리 (trembling): \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
+          "prompt": "Live-action Korean drama, 6-second single continuous take.\nSHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.\nACTION: 시동생 holds out a closed folder toward 며느리, who does not take it.\nDIALOGUE: 시동생 (calm and cold): \"이 집, 오늘 안에 비워 주세요.\" / 며느리 (trembling): \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
         }
       ]
     }
@@ -484,7 +492,7 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 | `role` | 1~5 순서대로 `후킹` `상황` `맞섬` `뒤집기` `끊기` |
 | `subtitle` | 화면에 우리가 얹을 **대사 자막**. **60자 이내.** 주고받으면 ` / ` 로 잇는다 |
 | `caption` | 화면에 우리가 얹을 **설명 자막** (없으면 빈 문자열). 숫자·법률·경위처럼 입으로 하면 어색한 사실을 여기 적는다. 40자 이내 |
-| `prompt` | 위 6줄 규격 그대로. 줄바꿈은 `\n` |
+| `prompt` | 위 규격 그대로 — **머리말 줄 + 6줄**. 줄바꿈은 `\n` |
 | `recap` | 2화부터 채운다. 지난 줄거리 한 줄, **30자 이내** (1화는 빈 문자열) |
 | `hook` | **화면 맨 위에 30초 내내 붙어 있을 한 줄.** **22자 이내.** 이걸 보고 남느냐 떠나느냐가 갈린다 — 제목이 아니라 **후킹**이다. 위 「후킹과 제목」 규칙을 그대로 따른다 (○ `이혼 패소 날 재산이 사라졌다` / ✗ `집을 나가는 남편`) |
 | `yt_title` | **유튜브에 올릴 제목.** **40자 이내.** `(n/16)` 과 `#shorts` 는 우리가 붙이니 적지 않는다 (○ `바람난 남편이 통장을 비우고 집을 나갔습니다`) |
@@ -496,7 +504,9 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 
 - [ ] 16화 × 5컷 = 80컷이 다 있는가
 - [ ] 모든 화의 컷1이 **대사 또는 충격 장면**으로 시작하는가 (설명 금지)
-- [ ] 모든 `prompt` 가 `SHOT:` 으로 시작해 `Avoid:` 로 끝나는가
+- [ ] 모든 `prompt` 가 **머리말 줄**(`Live-action Korean drama, 6-second single continuous take.`) 로 시작하는가
+      (`SHOT:` 으로 시작하면 붙여 넣을 때 주소로 읽혀 글자가 통째로 깨진다)
+- [ ] 머리말 다음이 `SHOT:` 이고 `Avoid:` 로 끝나는가
 - [ ] 모든 `prompt` 에 `STYLE:` 줄이 **글자 그대로 똑같이** 들어갔는가
 - [ ] 문서·간판·화면처럼 **글자가 나올 물건**을 부른 컷이 하나도 없는가
 - [ ] 대사가 있는 컷은 말하는 사람이 화면 안에 있는가

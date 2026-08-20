@@ -33,7 +33,8 @@ SOLO = ('시동생 says in Korean, calm: "이 집, 오늘 안에 비워 주세�
 
 
 def good_prompt(dialogue=SOLO):
-    return ("SHOT: Medium two-shot, static camera.\n"
+    return (S.HEAD_FIX + "\n"
+            "SHOT: Medium two-shot, static camera.\n"
             "SUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.\n"
             "ACTION: 시동생 holds out a closed folder toward 며느리.\n"
             f"DIALOGUE: {dialogue}\n"
@@ -269,12 +270,31 @@ print("\n⑬ 고정 문구를 글자로 베껴 두지 않았는가")
 _t = (ROOT / "tools" / "series_test.py").read_text(encoding="utf-8")
 ck("시험이 Avoid 를 코드에서 가져온다", "S.AVOID_FIX" in _t)
 _p = (ROOT / "prompts" / "series_gen.md").read_text(encoding="utf-8")
+ck("프롬프트 예시가 지금 머리말과 같다", S.HEAD_FIX in _p, S.HEAD_FIX)
 ck("프롬프트 예시가 지금 STYLE 과 같다", S.STYLE_FIX[7:40] in _p, S.STYLE_FIX[7:40])
 ck("프롬프트 예시가 지금 Avoid 와 같다", S.AVOID_FIX[7:40] in _p)
 ck("고정 문구에 '한 번에 찍기' 가 들어 있다",
    "single continuous take" in S.STYLE_FIX and "no scene change" in S.STYLE_FIX)
 ck("고정 문구에 '중간에 옷·얼굴 바뀜 금지' 가 들어 있다",
    "changing clothes or face mid-shot" in S.AVOID_FIX)
+
+print("\n⑬-2 붙여 넣을 때 주소로 읽히지 않는가 (2026-08-20 · 두 번째 사고)")
+# ⚠️ `SHOT:` 으로 시작하면 붙여 넣는 쪽이 `shot:` 을 주소 이름으로 읽어
+#    글자가 통째로 %20 · %EB.. 로 깨진다. 실제로 운영자가 두 번 겪었다.
+ck("머리말에 콜론이 없다", ":" not in S.HEAD_FIX, S.HEAD_FIX)
+ck("머리말이 있으면 주소로 안 읽힌다", not S.looks_like_url(good_prompt()))
+ck("머리말이 없으면 주소로 읽힌다",
+   S.looks_like_url(good_prompt().split("\n", 1)[1]))
+d = good_doc()
+for e in d["episodes"]:
+    for c in e["cuts"]:
+        c["prompt"] = c["prompt"].split("\n", 1)[1]        # 머리말을 뗀다
+ck("머리말이 빠진 대본을 검사가 잡는다", any("주소" in b or "머리말" in b
+                                        for b in S.check(d)), str(S.check(d))[:60])
+ck("고쳐 주면 머리말이 되살아난다",
+   all(c["prompt"].startswith(S.HEAD_FIX)
+       for e in S.normalize(d)["episodes"] for c in e["cuts"]))
+ck("고친 뒤에는 검사가 조용하다", S.check(d) == [], str(S.check(d))[:60])
 
 print("\n⑫ 눈앞의 사람을 남 부르듯 하지 않는가 (2026-08-20 · 실제 영상)")
 CH = [{"name": "본처", "flow_prompt": "Korean woman, 52 years old, …"},

@@ -20,6 +20,9 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "src"))
+import series as S                                          # noqa: E402
+
 FAIL = []
 
 
@@ -205,8 +208,18 @@ for i, ch in enumerate(doc.get("characters", [])):
 ck("복사되는 글자가 원본과 **한 글자도** 다르지 않다", not bad_eq, ", ".join(bad_eq))
 ck("%20 같은 URL 인코딩이 섞이지 않는다", not bad_enc, ", ".join(bad_enc))
 ck("줄바꿈이 진짜 줄바꿈으로 남아 있다",
-   all(copied.get(f"p1_{i}", "").count("\n") == 6 for i in range(1, len(e1["cuts"]) + 1)),
-   "각 프롬프트 7줄")
+   all(copied.get(f"p1_{i}", "").count("\n") == 7 for i in range(1, len(e1["cuts"]) + 1)),
+   "각 프롬프트 머리말 + 7줄")
+
+# ⭐⭐ 2026-08-20 두 번째 사고 — 우리 클립보드는 멀쩡한데, **붙여 넣는 쪽**이
+#    `SHOT:` 을 주소 이름(http: 같은 것)으로 읽어 글자를 통째로 %20 · %EB.. 로
+#    바꿔 놓았다. 그래서 복사되는 글이 주소로 읽히는지를 직접 재 본다.
+url_like = [k for k, v in copied.items() if S.looks_like_url(v)]
+ck("복사되는 글이 '단어:' 로 시작하지 않는다 (주소로 읽힌다)",
+   not url_like, " ".join(url_like))
+ck("컷 프롬프트가 머리말로 시작한다",
+   all(copied.get(f"p1_{i}", "").startswith(S.HEAD_FIX)
+       for i in range(1, len(e1["cuts"]) + 1)), S.HEAD_FIX)
 cl = out.get("clip") or {}
 ck("단추를 누르면 클립보드에 실제로 들어간다", bool(cl.get("last")), cl.get("how") or "안 들어감")
 ck("아이폰이 쓰는 길(write + ClipboardItem)로 넣는다", cl.get("how") == "write",
@@ -276,8 +289,10 @@ e16 = doc["episodes"][15]
 ck("16화 제목이 뜬다", (e16.get("title") or "") in ep16, e16.get("title", ""))
 ck("16화 1컷 대사가 뜬다",
    (e16["cuts"][0].get("subtitle") or "").replace('"', "&quot;") in ep16)
-ck("1화 내용은 더 이상 안 보인다",
-   (e1["cuts"][0]["prompt"].split("\n")[1][:40]) not in ep16)
+# ⚠️ 예전엔 `split("\n")[1]` 로 두 번째 줄을 봤는데, 머리말이 생기면서 그 자리가
+#    `SHOT:` (16화에도 똑같이 있는 줄) 로 밀렸다. 줄 이름으로 집는다.
+_d1 = next(l for l in e1["cuts"][0]["prompt"].split("\n") if l.startswith("DIALOGUE:"))
+ck("1화 내용은 더 이상 안 보인다", _d1[:40] not in ep16, _d1[:40])
 
 print("\n" + "─" * 52)
 print(f"❌ 시리즈 화면: {len(FAIL)}가지 실패" if FAIL else "✅ 시리즈 화면: 전부 통과")

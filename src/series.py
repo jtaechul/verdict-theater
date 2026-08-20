@@ -126,6 +126,28 @@ SUB_MAX = 60           # 자막은 주고받은 대사를 다 담아야 한다 (
 
 # 프롬프트 6줄 규격 — 이 순서, 이 이름이 아니면 반려한다
 LINES = ["SHOT:", "SUBJECT:", "ACTION:", "DIALOGUE:", "SETTING:", "STYLE:", "Avoid:"]
+
+# ⭐⭐ 2026-08-20 운영자: "프롬프트 복사하니까 또 이렇게 뜬다" —
+#      shot:%20Medium%20two-shot,...%20%EB%82%A8%ED%8E%B8...
+#
+#    원인을 찾았다. **우리 복사 코드 잘못이 아니다.**
+#    프롬프트가 `SHOT:` 으로 시작하는데, 붙여 넣는 쪽(크롬·플로우 입력칸)이
+#    `단어:` 로 시작하는 글을 **인터넷 주소(URL)** 로 읽는다.
+#    `http:` `mailto:` 처럼 `shot:` 을 주소 이름으로 본 것이다. 그러면
+#      · 주소 이름은 소문자로 바뀌고 (SHOT: → shot:)
+#      · 나머지는 주소 규칙대로 %20 · %EB.. 로 바뀐다
+#    실제로 브라우저에 `new URL(프롬프트)` 를 넣으면 손님이 본 그 글자가 나온다.
+#    (첫 물음표 앞의 `:` 만 %3A 로 바뀐 것도 주소 규칙 그대로다)
+#
+#    그래서 **주소로 보일 여지 자체를 없앤다** — 맨 앞에 콜론 없는 머리말을
+#    한 줄 둔다. 첫 낱말 뒤에 곧바로 `:` 가 오지 않으면 주소가 아니다.
+#    이 줄은 영상에도 도움이 되는 말이라 버리는 줄이 아니다.
+HEAD_FIX = f"Live-action Korean drama, {SEC}-second single continuous take."
+
+
+def looks_like_url(t):
+    """붙여 넣을 때 주소로 오해받을 글인가 (맨 앞이 `단어:` 인가)."""
+    return bool(re.match(r"^[A-Za-z][A-Za-z0-9+.\-]*:", str(t or "").lstrip()))
 # ⚠️ 2026-08-20 운영자: "중간에 화면에서 배경이 바뀐다거나, 남자 주인공 옷이
 #    바뀌고 얼굴이 바뀌는 부분도 있다."
 #    6초 클립 **한 개 안에서** 장면이 갈아엎히는 것이다. 영상 만드는 쪽은
@@ -501,6 +523,12 @@ def normalize(doc):
             # Avoid 는 **맨 끝**이어야 한다. 순서만 바뀐 것으로 16화를 다시 살 수 없다.
             out = [l for l in out if not l.startswith("Avoid:")]
             out.append(AVOID_FIX)
+            # ⭐ 머리말은 **맨 앞**이어야 한다. 없으면 붙여 넣을 때 `SHOT:` 이
+            #    주소 이름으로 읽혀 글자가 %20 · %EB.. 로 깨진다 (2026-08-20).
+            out = [l for l in out if l.strip() and not l.startswith("Live-action Korean drama,")]
+            out.insert(0, HEAD_FIX)
+            if (c.get("prompt") or "").split("\n")[:1] != [HEAD_FIX]:
+                n += 1
             c["prompt"] = "\n".join(out)
     if n:
         print(f"  (고정 문구 {n}줄을 우리가 채워 넣었다 — 이것 때문에 버리지 않는다)")
@@ -736,6 +764,12 @@ def check(doc):
             got = [l.split(":")[0] + ":" for l in p.split("\n") if ":" in l]
             if got[:len(LINES)] != LINES:
                 bad.append(f"{tag}: 6줄 규격이 아니다 — {got[:8]}")
+            if not p.startswith(HEAD_FIX):
+                bad.append(f"{tag}: 머리말이 없다 — 그대로 두면 붙여 넣을 때 "
+                           f"주소로 읽혀 글자가 깨진다")
+            if looks_like_url(p):
+                bad.append(f"{tag}: 맨 앞이 '단어:' 라 주소로 읽힌다 "
+                           f"({p.split(chr(10))[0][:24]})")
             if STYLE_FIX not in p:
                 bad.append(f"{tag}: STYLE 줄이 고정 문구와 다르다")
             # ⚠️ 예전엔 `endswith("focus.")` 였다. 고정 문구를 손보는 순간
