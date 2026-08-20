@@ -169,6 +169,33 @@ if shutil.which("ffmpeg"):
                v.index(max(v)) == want,
                " ".join(f"{x // 100000}" for x in v))
 
+print("\n⑦ 올린 압축파일에서 컷을 제대로 골라내는가")
+import tempfile as _t
+with _t.TemporaryDirectory() as dd:
+    dd = Path(dd)
+    for nm in ["S001_c001.mp4", "S001_c002.mp4", "S001_c003.mp4",
+               "S001_c004.mp4", "S001_c005.mp4"]:
+        (dd / nm).touch()
+    got = S.pick_clips(dd, 5)
+    ck("이름에 컷 번호가 있으면 그 번호대로",
+       [got[i].name for i in range(1, 6)] == sorted(x.name for x in dd.glob("*.mp4")))
+with _t.TemporaryDirectory() as dd:
+    dd = Path(dd)
+    for nm in ["zz.mp4", "aa.mp4", "mm.mp4", "bb.mp4", "cc.mp4"]:
+        (dd / nm).touch()
+    got = S.pick_clips(dd, 5)
+    ck("번호가 없으면 이름 순서대로", got[1].name == "aa.mp4" and got[5].name == "zz.mp4",
+       " ".join(got[i].name for i in range(1, 6)))
+with _t.TemporaryDirectory() as dd:
+    dd = Path(dd)
+    (dd / "sub").mkdir()
+    for i, nm in enumerate(["cut1.mp4", "cut2.mp4"]):
+        (dd / "sub" / nm).touch()
+    got = S.pick_clips(dd, 2)
+    ck("압축을 풀면 폴더가 생겨도 찾아낸다", len(got) == 2, str(len(got)))
+    ck("맥에서 딸려오는 ._ 파일은 무시한다",
+       all(not v.name.startswith("._") for v in got.values()))
+
 print("\n" + "─" * 52)
 print(f"❌ 쇼츠 배치: {len(FAIL)}가지 실패" if FAIL else "✅ 쇼츠 배치: 전부 통과")
 sys.exit(1 if FAIL else 0)

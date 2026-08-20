@@ -196,6 +196,11 @@ border:1px solid var(--line);background:#161822;color:var(--ink);min-height:48px
 label{display:block;margin:10px 0 0;font-size:13px;color:var(--dim)}
 .wf{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;background:#191b25}
 .wf b{display:block;font-size:16px}.wf small{color:var(--dim);display:block;margin:3px 0 10px}
+/* 만든 영상 올리는 칸 */
+.upbox{border:1px dashed #3a4055;border-radius:12px;padding:14px;background:#161822}
+.upbox input[type=file]{width:100%;margin:0 0 10px;padding:10px;border-radius:9px;
+border:1px solid var(--line);background:#101219;color:var(--ink);font-size:15px}
+.uphint{color:var(--dim);font-size:13px;line-height:1.5;margin-top:8px}
 /* 시리즈 — 클립 프롬프트를 눌러서 복사하는 상자 (2026-08-20) */
 .pbox{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;
 background:#161822}
@@ -435,6 +440,55 @@ function copyFailed(label, why) {
 
 let SDOC = null, SID = '', SEP = 1;
 
+// ⭐ 압축파일을 그대로 서버로 보낸다. 서버가 깃허브 릴리스에 올리고
+//    [3. 올린 영상으로 쇼츠 만들기] 를 부른다.
+async function upClips() {
+  const el = document.getElementById('clipzip');
+  const msg = document.getElementById('upmsg');
+  const f = el && el.files && el.files[0];
+  if (!f) { msg.textContent = '먼저 압축파일을 고르십시오.'; return; }
+  const mb = f.size / 1048576;
+  if (mb > 90) { showErr('파일이 큽니다',
+    Math.round(mb) + 'MB 입니다. 90MB 까지만 올릴 수 있습니다.'); return; }
+  msg.textContent = f.name + ' (' + mb.toFixed(1) + 'MB) 올리는 중… 잠시 기다리십시오.';
+  try {
+    const r = await fetch('/api/upload-clips?sid=' + encodeURIComponent(SID)
+                          + '&ep=' + SEP, { method: 'POST', body: f });
+    const j = await r.json();
+    if (!j.ok) { showErr('올리지 못했습니다', (j.error || '') + ' ' + (j.detail || '')); 
+                 msg.textContent = ''; return; }
+    msg.textContent = '✅ 올렸습니다. 쇼츠를 만드는 중입니다 (2~4분).';
+    toast(SEP + '화 영상을 올렸습니다');
+    watchShort();
+  } catch (e) {
+    showErr('올리지 못했습니다', String(e && e.message ? e.message : e));
+    msg.textContent = '';
+  }
+}
+
+// 다 만들어졌는지 30초마다 들여다본다
+let SHORTW = null;
+async function watchShort() {
+  clearInterval(SHORTW);
+  const tick = async () => {
+    let j = null;
+    try { j = await (await fetch('/api/short?sid=' + SID + '&ep=' + SEP
+                                 + '&t=' + Date.now())).json(); } catch (e) { return; }
+    if (!j || !j.ready) return;
+    clearInterval(SHORTW);
+    const b = document.getElementById('shortbox');
+    if (!b) return;
+    b.innerHTML = '<div style="margin-top:12px"><b>완성된 쇼츠</b>'
+      + '<video controls playsinline style="width:100%;border-radius:12px;margin-top:8px" '
+      + 'src="/api/short?sid=' + SID + '&ep=' + SEP + '&play=1&t=' + Date.now() + '"></video>'
+      + '<div class="uphint">' + Math.round((j.size || 0) / 1048576 * 10) / 10
+      + 'MB · 마음에 들면 유튜브에 올리십시오.</div></div>';
+    toast('쇼츠가 만들어졌습니다');
+  };
+  await tick();
+  SHORTW = setInterval(tick, 30000);
+}
+
 async function seriesView(sid, ep) {
   SID = sid; SEP = ep || 1;
   if (!SDOC || SDOC._sid !== sid) {
@@ -482,15 +536,29 @@ function seriesRender() {
   h += '</div>';
 
   // ② 화 고르기
-  h += '<div class="card"><h2>② 오늘 만들 화를 고릅니다</h2><div class="epgrid">';
+  h += '<div class="card"><h2>② 만들 화를 고릅니다</h2><div class="epgrid">';
   eps.forEach((x, i) => {
     h += '<button class="epn' + (i + 1 === SEP ? ' on' : '') + '" onclick="SEP=' + (i + 1)
        + ';seriesRender();scrollTo(0,0)">' + (i + 1) + '</button>';
   });
   h += '</div></div>';
 
-  // ③ 이 화의 5컷
-  h += '<div class="card"><h2>③ ' + SEP + '화 — ' + esc(e.title || '') + '</h2>';
+  // ③ 만든 영상 올리기 — 여기서 쇼츠가 나온다
+  h += '<div class="card"><h2>③ 만든 영상 올리면 쇼츠가 됩니다 '
+     + '<small style="font-weight:400;color:#9599ab">— 5컷을 압축(zip)해서 한 번에'
+     + '</small></h2>';
+  h += '<div class="upbox">'
+     + '<input type="file" id="clipzip" accept=".zip,application/zip">'
+     + '<div class="uphint">플로우에서 받은 ' + SEP + '화 클립 5개를 압축해서 고르십시오. '
+     + '파일 이름에 c001~c005 가 있으면 그 번호대로, 없으면 이름 순서대로 붙입니다.</div>'
+     + '<button class="gold" onclick="upClips()">' + SEP + '화 올리고 쇼츠 만들기</button>'
+     + '<div id="upmsg" class="uphint"></div>'
+     + '</div>';
+  h += '<div id="shortbox"></div>';
+  h += '</div>';
+
+  // ④ 이 화의 5컷
+  h += '<div class="card"><h2>④ ' + SEP + '화 — ' + esc(e.title || '') + '</h2>';
   if (e.recap) h += '<div style="color:#9599ab;font-size:14px;margin-bottom:10px">'
                   + '지난 줄거리: ' + esc(e.recap) + '</div>';
   (e.cuts || []).forEach((c, i) => {
@@ -1787,6 +1855,85 @@ export default {
         if (!/^S\d{3}$/.test(sid)) return Response.json({ error: 'bad sid' }, { status: 400 });
         const doc = await getJson(env, `data/series/${sid}.json`);
         return Response.json({ doc });
+      }
+
+      // ⭐ 2026-08-20 운영자: "압축파일로 올릴 거니까 영상 올리면 쇼츠로 만들 수
+      //    있게 메뉴 만들어."
+      //    받은 압축파일을 **릴리스 자산**으로 올린다. 저장소에 커밋하면 안 된다
+      //    (MP4 는 지워도 깃 이력에 영구히 남아 저장소가 되돌릴 수 없이 커진다).
+      //    올린 뒤 곧바로 [3. 올린 영상으로 쇼츠 만들기] 를 부른다.
+      if (url.pathname === '/api/upload-clips' && req.method === 'POST') {
+        const sid = url.searchParams.get('sid') || '';
+        const ep = String(parseInt(url.searchParams.get('ep') || '0', 10) || 0);
+        if (!/^S\d{3}$/.test(sid) || +ep < 1 || +ep > 99)
+          return Response.json({ ok: false, error: '회차를 고르십시오' }, { status: 400 });
+        const body = await req.arrayBuffer();
+        if (!body.byteLength)
+          return Response.json({ ok: false, error: '파일이 비었습니다' }, { status: 400 });
+        if (body.byteLength > 90 * 1024 * 1024)
+          return Response.json({ ok: false, error:
+            '파일이 90MB 를 넘습니다. 클립을 나눠 올리거나 화질을 낮춰 주십시오.' },
+            { status: 400 });
+
+        const tag = `clips-${sid}-ep${String(ep).padStart(2, '0')}`;
+        try {
+          let rel;
+          try {
+            rel = await gh(env, `/repos/${REPO}/releases/tags/${tag}`);
+          } catch (e) {
+            rel = await gh(env, `/repos/${REPO}/releases`, {
+              method: 'POST',
+              body: JSON.stringify({ tag_name: tag, name: tag, body: '올린 클립' }),
+            });
+          }
+          // 다시 올릴 수 있어야 하므로 같은 이름은 지우고 새로 올린다
+          for (const a of rel.assets || []) {
+            if (a.name === 'clips.zip')
+              await gh(env, `/repos/${REPO}/releases/assets/${a.id}`, { method: 'DELETE' });
+          }
+          const up = await fetch(
+            `https://uploads.github.com/repos/${REPO}/releases/${rel.id}/assets?name=clips.zip`,
+            { method: 'POST', body,
+              headers: {
+                'Authorization': `Bearer ${env.GH_TOKEN}`,
+                'Content-Type': 'application/zip',
+                'User-Agent': 'verdict-theater-admin',
+                'X-GitHub-Api-Version': '2022-11-28',
+              } });
+          if (!up.ok)
+            throw new Error(`올리기 실패 ${up.status}: ${(await up.text()).slice(0, 200)}`);
+
+          await gh(env, `/repos/${REPO}/actions/workflows/shorts.yml/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({ ref: BRANCH, inputs: { sid, ep } }),
+          });
+          return Response.json({ ok: true, tag, size: body.byteLength });
+        } catch (e) {
+          return Response.json({ ok: false, error: '올리지 못했습니다',
+            detail: String(e && e.message ? e.message : e).slice(0, 220) }, { status: 502 });
+        }
+      }
+
+      // 만들어진 쇼츠를 화면에서 바로 본다 (릴리스에서 그대로 흘려보낸다)
+      if (url.pathname === '/api/short') {
+        const sid = url.searchParams.get('sid') || '';
+        const ep = String(parseInt(url.searchParams.get('ep') || '0', 10) || 0);
+        if (!/^S\d{3}$/.test(sid)) return new Response('bad', { status: 400 });
+        const tag = `short-${sid}-ep${String(ep).padStart(2, '0')}`;
+        let rel = null;
+        try { rel = await gh(env, `/repos/${REPO}/releases/tags/${tag}`); } catch { rel = null; }
+        const a = (rel && (rel.assets || []).find((x) => x.name === 'short.mp4')) || null;
+        if (!a) return Response.json({ ready: false });
+        if (url.searchParams.get('play') !== '1')
+          return Response.json({ ready: true, size: a.size, at: a.updated_at });
+        const r0 = await fetch(`${GH}/repos/${REPO}/releases/assets/${a.id}`, {
+          headers: {
+            'Authorization': `Bearer ${env.GH_TOKEN}`,
+            'Accept': 'application/octet-stream',
+            'User-Agent': 'verdict-theater-admin',
+          } });
+        return new Response(r0.body, { headers: {
+          'Content-Type': 'video/mp4', 'Cache-Control': 'no-store' } });
       }
 
       if (url.pathname === '/api/run' && req.method === 'POST') {

@@ -195,6 +195,29 @@ ck("두 번째 길로 가도 글자는 그대로다",
 nepn = ep1.count('class="epn')
 ck("1~16화 번호판이 다 있다", nepn == len(doc["episodes"]), f"{nepn}개")
 
+print("\n③-3 만든 영상을 올리는 칸이 있는가 (2026-08-20 운영자 지시)")
+ck("압축파일 고르는 칸이 있다", 'id="clipzip"' in ep1 and 'accept=".zip' in ep1)
+ck("올리기 단추가 있다", "upClips()" in ep1)
+ck("완성된 쇼츠가 나올 자리가 있다", 'id="shortbox"' in ep1)
+ck("고른 화 번호가 단추에 찍힌다", "1화 올리고 쇼츠 만들기" in ep1)
+
+wk = (ROOT / "admin" / "worker.js").read_text(encoding="utf-8")
+ck("서버에 올리는 길이 있다", "'/api/upload-clips'" in wk)
+ck("완성본을 보는 길이 있다", "'/api/short'" in wk)
+ck("압축파일을 **릴리스**에 올린다 (저장소 커밋 금지)",
+   "uploads.github.com" in wk and "releases" in wk)
+ck("올린 뒤 쇼츠 만들기를 자동으로 부른다", "shorts.yml/dispatches" in wk)
+ck("너무 큰 파일은 막는다", "90 * 1024 * 1024" in wk)
+
+wf = ROOT / ".github" / "workflows" / "shorts.yml"
+ck("쇼츠 워크플로가 있다", wf.exists())
+if wf.exists():
+    y = wf.read_text(encoding="utf-8")
+    ck("워크플로가 압축파일을 받아 푼다", "release_file.py get" in y and "unzip" in y)
+    ck("워크플로가 결과를 릴리스에 올린다", "release_file.py put" in y)
+    ck("완성 영상을 저장소에 커밋하지 않는다",
+       "git commit" not in y and "push.sh" not in y)
+
 print("\n④ 다른 화로 넘어가도 그 화 내용이 나오는가")
 e16 = doc["episodes"][15]
 ck("16화 제목이 뜬다", (e16.get("title") or "") in ep16, e16.get("title", ""))

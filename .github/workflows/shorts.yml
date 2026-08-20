@@ -1,0 +1,85 @@
+name: 3. 올린 영상으로 쇼츠 만들기
+
+# 플로우에서 받은 클립 5개(압축파일)로 30초 쇼츠 한 편을 만든다.
+#
+# 어떻게 오나
+#   관리자 페이지에서 압축파일을 고르면 → 워커가 릴리스 `clips-S001-ep01` 에
+#   올리고 → 이 워크플로를 부른다 → 결과는 릴리스 `short-S001-ep01` 에 남는다.
+#
+# ⚠️ 완성 영상은 **저장소에 커밋하지 않는다** (지침). 릴리스에만 올린다.
+
+on:
+  workflow_dispatch:
+    inputs:
+      sid:
+        description: '시리즈 번호'
+        required: true
+        default: 'S001'
+      ep:
+        description: '몇 화'
+        required: true
+        default: '1'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: shorts
+  cancel-in-progress: false
+
+jobs:
+  shorts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SID: ${{ inputs.sid }}
+      EPNO: ${{ inputs.ep }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 준비물 (ffmpeg · 글자 그리기)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg unzip
+          python3 -m pip install --quiet pillow
+
+      - name: 올린 압축파일 받기
+        run: |
+          set -euo pipefail
+          EP=$(printf '%02d' "$EPNO")
+          echo "EP=$EP" >> "$GITHUB_ENV"
+          mkdir -p build/in
+          python3 tools/release_file.py get "clips-${SID}-ep${EP}" clips.zip build/clips.zip
+          unzip -q -o build/clips.zip -d build/in
+          echo "받은 영상:"
+          find build/in -type f \( -iname '*.mp4' -o -iname '*.mov' -o -iname '*.m4v' \) \
+            -printf '  %f\n' | sort
+
+      - name: 쇼츠 만들기
+        run: |
+          set -o pipefail
+          python3 src/shorts.py "$SID" "$EPNO" --clips build/in --out build/shorts \
+            2>&1 | tee shorts.log
+
+      - name: 릴리스에 올리기 (저장소에는 안 넣는다)
+        run: |
+          set -euo pipefail
+          OUT="build/shorts/${SID}_ep${EP}_short.mp4"
+          test -f "$OUT" || { echo "❌ 만들어진 영상이 없습니다"; exit 1; }
+          python3 tools/release_file.py put "short-${SID}-ep${EP}" short.mp4 "$OUT"
+
+      - name: 결과 화면
+        if: always()
+        run: |
+          {
+            echo "## 쇼츠 만들기"
+            echo ""
+            echo '```'
+            tail -n 25 shorts.log 2>/dev/null || echo "기록 없음"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

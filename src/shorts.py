@@ -278,6 +278,32 @@ def hook_of(ep, doc):
             or str(doc.get("title") or "").strip())
 
 
+def pick_clips(d, n):
+    """받은 파일들을 컷 번호에 맞춘다.
+
+    플로우에서 내려받은 이름은 제각각이라 한 가지 규칙만 믿으면 안 된다.
+      ① 이름 안에 c001 · c1 같은 컷 번호가 있으면 그것으로
+      ② 없으면 **이름 순서대로** 1컷·2컷·… (내려받은 순서가 만든 순서다)
+    무엇을 몇 컷으로 봤는지 화면에 찍어 준다 — 엉뚱하게 붙으면 바로 보이게.
+    """
+    d = Path(d)
+    vids = sorted([p for p in d.rglob("*") if p.suffix.lower() in
+                   (".mp4", ".mov", ".m4v", ".webm") and not p.name.startswith("._")])
+    out = {}
+    for p in vids:
+        m = re.search(r"c(?:ut)?[ _-]?(\d{1,3})(?!\d)", p.stem, re.I)
+        if m:
+            k = int(m.group(1))
+            if 1 <= k <= n and k not in out:
+                out[k] = p
+    if len(out) < n:                       # 번호를 못 찾았다 → 이름 순서대로
+        rest = [p for p in vids if p not in out.values()]
+        for k in range(1, n + 1):
+            if k not in out and rest:
+                out[k] = rest.pop(0)
+    return out
+
+
 def episode(sid, no, clips_dir, out_dir):
     """한 화(5컷)를 모아 30초 쇼츠 하나로."""
     doc = json.loads((ROOT / "data" / "series" / f"{sid}.json").read_text(encoding="utf-8"))
@@ -291,15 +317,16 @@ def episode(sid, no, clips_dir, out_dir):
     print(f"{sid} {no}화 「{ep.get('title','')}」")
     print(f"  후킹 문구: {hook}")
 
+    files = pick_clips(clips_dir, len(ep["cuts"]))
     parts = []
     for c in ep["cuts"]:
         n = int(c["n"])
-        src = next((p for p in sorted(clips_dir.glob(f"*c{n:03d}*.mp4"))), None)
+        src = files.get(n)
         if not src:
-            raise SystemExit(f"❌ {n}컷 클립이 없다 ({clips_dir}/*c{n:03d}*.mp4)")
+            raise SystemExit(f"❌ {n}컷 클립이 없다 ({clips_dir})")
         d = compose(src, hook, c.get("subtitle"), tmp / f"cut{n}.mp4", tmp)
         parts.append(d)
-        print(f"  ✅ {n}컷 — {src.name}")
+        print(f"  ✅ {n}컷 ← {src.name}")
 
     lst = tmp / "list.txt"
     lst.write_text("".join(f"file '{p.resolve()}'\n" for p in parts), encoding="utf-8")
