@@ -348,9 +348,20 @@ def fix_outfits(doc):
                     new = re.sub(rf"({re.escape(nm)})(?:\([^)]*\))?\s+in\s+"
                                  rf"[^,.]*?(?=\s+facing\s|[,.]|$)",
                                  rf"\1 in {of}", new)
-                for nm, ft in face.items():
-                    new = re.sub(rf"(?<![\w가-힣]){re.escape(nm)}(?!\()",
-                                 f"{nm}({ft})", new)
+                # ⭐⭐ 2026-08-20 — 여기서 이름 뒤에 얼굴을 박았더니 플로우가
+                #    **모든 컷을 거절했다**: "유명인의 동영상 생성에 관한 정책을
+                #    위반할 가능성이 있습니다."
+                #    `남편(55, square face, short neatly parted black hair)` 는
+                #    기계 눈에 "**남편**이라는 사람, 55살, 이 얼굴" 로 보인다 —
+                #    실존 인물을 찍어 달라는 말과 똑같은 꼴이다.
+                #    (본처·남편은 배역말인데 기계는 사람 이름으로 읽는다)
+                #    첫 영상이 성공했을 때는 `남편 in a casual jacket` 이었다.
+                #    얼굴은 **플로우 캐릭터(기준 사진)** 가 잡아 주는 몫이고,
+                #    컷 프롬프트는 이름 + 옷차림까지만 적는다.
+                #    → 박아 둔 것이 있으면 **떼어 낸다.**
+                for nm in names:
+                    new = re.sub(rf"(?<![\w가-힣]){re.escape(nm)}\([^)]*\)",
+                                 nm, new)
                 if new != l:
                     lines[i] = new
                     n += 1
@@ -532,7 +543,13 @@ def normalize(doc):
             out.append(AVOID_FIX)
             # ⭐ 머리말은 **맨 앞**이어야 한다. 없으면 붙여 넣을 때 `SHOT:` 이
             #    주소 이름으로 읽혀 글자가 %20 · %EB.. 로 깨진다 (2026-08-20).
-            out = [l for l in out if l.strip() and not l.startswith("Live-action Korean drama,")]
+            # ⚠️ 예전엔 머리말 글자("Live-action Korean drama,")를 그대로 베껴
+            #    걸러 냈다. 머리말을 손보는 순간 옛 것이 안 걸러져 **줄이 매번
+            #    하나씩 늘어났다.** 고정 문구를 글자로 베끼면 늘 이렇게 된다.
+            #    → 콜론 없는 '머리말 꼴' 을 통째로 걸러 내고 지금 것을 넣는다.
+            out = [l for l in out if l.strip()
+                   and l != HEAD_FIX
+                   and not re.match(r"^[^:]*single continuous take\.\s*$", l)]
             out.insert(0, HEAD_FIX)
             if (c.get("prompt") or "").split("\n")[:1] != [HEAD_FIX]:
                 n += 1
@@ -809,6 +826,12 @@ def check(doc):
             if looks_like_url(p):
                 bad.append(f"{tag}: 맨 앞이 '단어:' 라 주소로 읽힌다 "
                            f"({p.split(chr(10))[0][:24]})")
+            for nm in names:
+                if nm and re.search(rf"(?<![\w가-힣]){re.escape(nm)}\(", p):
+                    bad.append(f"{tag}: 이름 뒤에 얼굴 설명을 붙였다 "
+                               f"({nm}(…)) — 플로우가 '유명인 동영상 생성' 으로 "
+                               f"거절한다. 얼굴은 캐릭터로 잡는다")
+                    break
             ph = policy_hits(p)
             if ph:
                 bad.append(f"{tag}: 정책에 막히는 말 — {', '.join(ph)} "

@@ -15,6 +15,7 @@
        → 후킹이 비었거나 밋밋하면 알려야 한다.
 """
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -111,8 +112,25 @@ S.fix_outfits(d3)
 sub = next(l for l in d3["episodes"][0]["cuts"][0]["prompt"].split("\n")
            if l.startswith("SUBJECT:"))
 print("      " + sub)
-ck("컷 프롬프트 이름 뒤에 얼굴이 붙는다", "본처(" in sub and "남편(" in sub, sub[:60])
-ck("얼굴 못이 두 번 겹쳐 붙지 않는다", "((" not in sub)
+# ⭐⭐ 2026-08-20 — 여기에 얼굴을 박았더니 플로우가 80컷을 전부 거절했다.
+#    "유명인의 동영상 생성에 관한 정책을 위반할 가능성이 있습니다."
+#    기계는 `남편(55, square face…)` 를 '남편이라는 사람, 55살, 이 얼굴' 로
+#    읽는다. 얼굴은 플로우 캐릭터가 잡는 몫이고 컷에는 **적지 않는다.**
+ck("컷 프롬프트 이름 뒤에 얼굴을 안 붙인다",
+   "본처(" not in sub and "남편(" not in sub, sub[:70])
+ck("이름과 옷차림은 그대로 남는다", "본처" in sub and "남편" in sub)
+
+d3b = doc_with(["본처 stands still."])
+d3b["episodes"][0]["cuts"][0]["prompt"] = d3b["episodes"][0]["cuts"][0]["prompt"].replace(
+    "SUBJECT: 본처 in a cardigan facing 남편 in a jacket.",
+    "SUBJECT: 본처(52, oval face, low bun) in a cardigan "
+    "facing 남편(55, square face) in a jacket.")
+ck("얼굴을 박아 둔 컷을 검사가 잡는다",
+   any("유명인" in b for b in S.check(d3b)), str(S.check(d3b))[:70])
+S.fix_outfits(d3b)
+sub_b = next(l for l in d3b["episodes"][0]["cuts"][0]["prompt"].split("\n")
+             if l.startswith("SUBJECT:"))
+ck("고쳐 주면 얼굴이 떼어진다", "(" not in sub_b, sub_b[:70])
 
 print("\n④-2 한 줄에 같은 사람을 두 번 적은 SUBJECT")
 d4 = doc_with(["본처 stands still."])
@@ -170,9 +188,16 @@ if p.exists():
            for l in c["prompt"].split("\n")
            if l.startswith("SUBJECT:") and l.count(" facing ") > 1]
     ck("한 줄에 같은 사람을 두 번 적은 곳이 없다", not dup, " ".join(dup))
-    ck("모든 컷에 얼굴 못이 박혔다",
-       all("(" in l for e in real["episodes"] for c in e["cuts"]
-           for l in c["prompt"].split("\n") if l.startswith("SUBJECT:")))
+    ck("컷에 얼굴을 적어 둔 곳이 없다 (정책에 막힌다)",
+       not [1 for e in real["episodes"] for c in e["cuts"]
+            for l in c["prompt"].split("\n") if l.startswith("SUBJECT:")
+            and any(re.search(rf"(?<![\w가-힣]){re.escape(n)}\(", l) for n in names)])
+    ck("모든 컷이 머리말로 시작한다",
+       all(c["prompt"].startswith(S.HEAD_FIX)
+           for e in real["episodes"] for c in e["cuts"]))
+    ck("머리말이 겹쳐 들어간 컷이 없다",
+       all(c["prompt"].count(S.HEAD_FIX) == 1
+           for e in real["episodes"] for c in e["cuts"]))
 else:
     print("   (S001 이 없어 건너뛴다)")
 

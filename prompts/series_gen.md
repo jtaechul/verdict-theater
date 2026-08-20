@@ -66,7 +66,7 @@
 ```
 Fictional scene, invented characters, realistic live footage. 6-second single continuous take.
 SHOT: 샷 크기 + 카메라 움직임 (하나만)
-SUBJECT: 등장인물 이름 + 옷차림 (얼굴 묘사 금지 — 캐릭터로 고정돼 있다)
+SUBJECT: 등장인물 이름 + 옷차림 (얼굴 묘사 절대 금지 — 아래 ⚠️ 참고)
 ACTION: 동작 하나
 DIALOGUE: 말하는 사람과 톤 + 한국어 대사. 두 사람이 주고받으면 ` / ` 로 잇는다 (없으면 "None.")
 SETTING: 장소 + 조명
@@ -328,11 +328,17 @@ Korean woman, 52 years old,
 **나이와 얼굴형·눈·머리는 반드시** 넣는다 — 이 넷이 없으면 매번 딴사람이 나온다.
 `Photorealistic…` 같은 화풍 문구는 **적지 않는다** (우리가 붙인다).
 
-### `face_tag` · `outfit` — 컷마다 똑같이 붙일 것
+### `face_tag` · `outfit`
 
 `face_tag` 는 위 설명에서 **가장 눈에 띄는 대여섯 낱말**만 뽑은 것이다
-(예: `52, oval face, tired eyes, low bun`). 컷마다 이름 뒤에 붙는다.
-`outfit` 은 **색까지** 정한 옷차림이다.
+(예: `oval face, tired eyes, low bun`). **플로우에서 캐릭터(기준 사진)를
+만들 때만 쓴다.**
+
+> ⚠️ `face_tag` 를 **컷 프롬프트에 넣지 않는다.** 한때 이름 뒤에 붙였다가
+> 80컷이 전부 거절됐다 (「정책에 막히는 말」 참고). 컷의 `SUBJECT` 는
+> **이름 + 옷차림**까지만이다.
+
+`outfit` 은 **색까지** 정한 옷차림이다. 이것은 컷마다 똑같이 적는다.
 
 이름은 **관계**로 짓는다 (며느리 · 시동생 · 시어머니). 실명은 쓰지 않는다.
 
@@ -403,6 +409,21 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 원인은 **실제 방송·배우를 가리키는 말**이 겹친 것이었다.
 `Live-action Korean drama` + `Korean TV drama realism` + `swapping in a different actor`
 → "실제로 방영된 한국 드라마를 실존 배우로 다시 만들어 달라" 로 읽힌다.
+
+### ⚠️ `SUBJECT` 에 얼굴을 적으면 **모든 컷이 막힌다** (실제로 겪었다)
+
+`SUBJECT: 남편(55, square face, short neatly parted black hair) …` 로 적었더니
+80컷이 전부 거절됐다. 기계 눈에는 이렇게 보인다 —
+**"남편이라는 사람, 55살, 이 얼굴"** = 실존 인물을 찍어 달라는 말.
+`본처` `남편` 은 배역말인데 기계는 **사람 이름**으로 읽는다.
+
+| ✗ 막힌다 | ○ 통과한다 |
+|---|---|
+| `남편(55, square face, short black hair) in a casual jacket` | `남편 in a casual jacket` |
+| `본처, a 52-year-old woman with an oval face` | `본처 in a simple cardigan` |
+
+얼굴은 **플로우 캐릭터(기준 사진)** 가 잡아 준다. 컷 프롬프트는
+**이름 + 옷차림**까지만 적는다. 나이·얼굴형·머리 모양을 컷에 적지 않는다.
 
 ### 절대 쓰지 않는 말
 
@@ -563,6 +584,8 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 - [ ] 주고받는 컷의 `SHOT` 이 two-shot 인가
 - [ ] 대사에 `내연녀` 같은 **배역 딱지**가 들어간 곳이 없는가
 - [ ] 1화부터 16화까지 **일어난 순서대로**인가 (죽은 사람이 뒤에서 살아나지 않는가)
+- [ ] `SUBJECT` 에 **나이·얼굴형·머리 모양**을 적지 않았는가
+      (`남편(55, square face…)` ✗ → `남편 in a casual jacket` ○ · 적으면 80컷이 전부 막힌다)
 - [ ] `actor` `celebrity` `K-drama` 처럼 **실제 방송·배우를 가리키는 말**이 없는가
       (있으면 플로우가 "유명인 동영상 생성 정책" 으로 막아 영상이 아예 안 나온다)
 - [ ] 실명·지명·법원명·사건번호·절대 연도가 없는가

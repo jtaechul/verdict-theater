@@ -215,15 +215,27 @@ ck("1화 옷을 뒷화 옷으로 덮어쓰지 않는다",
    "casual jacket" in d["episodes"][0]["cuts"][0]["prompt"]
    and "black suit" in d["episodes"][1]["cuts"][0]["prompt"])
 
-# face_tag 는 이름 뒤에 똑같이 붙는다
+# ⭐⭐ 2026-08-20 — 한때 face_tag 를 이름 뒤에 박았다. 그랬더니 플로우가
+#    **80컷을 전부 거절했다**: "유명인의 동영상 생성에 관한 정책을 위반할
+#    가능성이 있습니다." 기계는 `시동생(50s, square face)` 를
+#    '시동생이라는 사람, 50대, 이 얼굴' 로 읽는다 — 실존 인물을 찍어 달라는 말.
+#    얼굴은 **플로우 캐릭터(기준 사진)** 가 잡는 몫이다. 컷에는 적지 않는다.
+#    → 박아 둔 것이 있으면 떼어 낸다.
 d = good_doc()
 d["characters"] = [{"name": "시동생", "face_tag": "50s, square face"},
                    {"name": "며느리", "face_tag": "50s, oval face"}]
+for c in d["episodes"][0]["cuts"]:
+    c["prompt"] = c["prompt"].replace(
+        "SUBJECT: 시동생 in a black suit facing 며느리",
+        "SUBJECT: 시동생(50s, square face) in a black suit facing 며느리")
+ck("얼굴을 박아 둔 컷을 반려한다", any("유명인" in b for b in S.check(d)),
+   str(S.check(d))[:70])
 S.fix_outfits(d)
 subj = [l for l in d["episodes"][0]["cuts"][0]["prompt"].split("\n")
         if l.startswith("SUBJECT:")][0]
-ck("얼굴표가 이름 뒤에 붙는다", "시동생(50s, square face)" in subj, subj[:60])
-ck("두 번 붙지 않는다", subj.count("(50s, square face)") == 1)
+ck("얼굴표를 이름 뒤에서 떼어 낸다", "(50s, square face)" not in subj, subj[:64])
+ck("이름과 옷차림은 그대로 둔다", "시동생" in subj and "black suit" in subj)
+ck("떼어 낸 뒤에는 검사가 조용하다", not any("유명인" in b for b in S.check(d)))
 
 # 샷·장소는 알려만 준다 (버리지 않는다)
 d = good_doc()
