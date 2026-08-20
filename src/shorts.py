@@ -230,6 +230,35 @@ def overlay_png(hook, sub, out, live=None):
     return out
 
 
+LOUD_TARGET = -20.0     # 컷마다 맞출 평균 소리 크기(dB)
+PEAK_LIMIT = -1.0       # 이보다 커지면 소리가 깨진다
+
+
+def gain_for(src):
+    """이 클립을 얼마나 키우거나 줄여야 다른 컷과 소리가 같아지는가.
+
+    ⚠️ 2026-08-20 — 1화 완성본을 재보니 컷마다 평균 소리가
+         -18.6 / -26.1 / -25.0 / -19.8 / -19.4 dB
+       로 **7.5dB 나 차이났다.** 2·3컷만 확 작아 볼륨이 들쭉날쭉했다.
+       플로우가 컷마다 따로 만들어 주므로 저절로는 안 맞는다.
+
+    소리를 눌러 짜는(compressor) 대신 **크기만 옮긴다** — 원래 강약은 그대로
+    두고, 다만 커져서 깨질 것 같으면 그만큼만 올린다.
+    """
+    err = subprocess.run(["ffmpeg", "-v", "info", "-i", str(src),
+                          "-af", "volumedetect", "-f", "null", "-"],
+                         capture_output=True, text=True).stderr
+    m = re.search(r"mean_volume: ([-\d.]+)", err)
+    x = re.search(r"max_volume: ([-\d.]+)", err)
+    if not m:
+        return 0.0
+    mean, peak = float(m.group(1)), float(x.group(1)) if x else 0.0
+    g = LOUD_TARGET - mean
+    if peak + g > PEAK_LIMIT:                 # 깨지지 않는 만큼만
+        g = PEAK_LIMIT - peak
+    return round(g, 2)
+
+
 def compose(src, hook, sub, out, tmp):
     """받은 클립 한 개 → 쇼츠 한 컷 (워터마크 지우고 4:3 자르고 글자 얹기)."""
     src, out, tmp = Path(src), Path(out), Path(tmp)
@@ -261,10 +290,15 @@ def compose(src, hook, sub, out, tmp):
            "-i", str(src)]
     for q in pngs:
         cmd += ["-i", str(q)]
+    # 소리: 컷마다 크기를 맞추고, 앞뒤 0.05초를 부드럽게 (이어 붙일 때 '툭' 소리 방지)
+    g = gain_for(src)
+    af = (f"volume={g}dB,afade=t=in:st=0:d=0.05,"
+          f"afade=t=out:st={max(0, sec - 0.05):.3f}:d=0.05")
     cmd += ["-filter_complex", ";".join(vf), "-map", "[o]", "-map", "1:a?",
-           "-c:v", "libx264", "-preset", "medium", "-crf", "19",
-           "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
-           "-shortest", "-movflags", "+faststart", str(out)]
+            "-af", af,
+            "-c:v", "libx264", "-preset", "medium", "-crf", "19",
+            "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
+            "-shortest", "-movflags", "+faststart", str(out)]
     p = subprocess.run(cmd, capture_output=True, text=True)
     if p.returncode != 0:
         raise RuntimeError(f"ffmpeg 실패:\n{p.stderr[:600]}")
@@ -378,7 +412,7 @@ def episode(sid, no, clips_dir, out_dir):
             raise SystemExit(f"❌ {n}컷 클립이 없다 ({clips_dir})")
         d = compose(src, hook, c.get("subtitle"), tmp / f"cut{n}.mp4", tmp)
         parts.append(d)
-        print(f"  ✅ {n}컷 ← {src.name}")
+        print(f"  ✅ {n}컷 ← {src.name}  (소리 {gain_for(src):+.1f}dB)")
 
     lst = tmp / "list.txt"
     lst.write_text("".join(f"file '{p.resolve()}'\n" for p in parts), encoding="utf-8")

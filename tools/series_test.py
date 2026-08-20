@@ -163,6 +163,26 @@ d["episodes"][6]["cuts"][0]["prompt"] = good_prompt("None.").replace(
 ck("Avoid 가 맨 끝이 아니면 우리가 옮긴다", S.check(S.normalize(d)) == [],
    str(S.check(S.normalize(d)))[:60])
 
+print("\n⑩ 컷마다 옷이 바뀌지 않게 맞추는가 (2026-08-20 · 실제 영상에서 확인)")
+d = good_doc()
+d["characters"] = [{"name": "며느리", "outfit": "a black mourning hanbok"},
+                   {"name": "시동생", "outfit": "a charcoal suit"}]
+d["episodes"][0]["cuts"][1]["prompt"] = good_prompt("None.").replace(
+    "SUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.",
+    "SUBJECT: 며느리 in a beige cardigan.")
+S.fix_outfits(d)
+subj = next(l for l in d["episodes"][0]["cuts"][1]["prompt"].split("\n")
+            if l.startswith("SUBJECT:"))
+ck("옷차림이 인물표대로 갈아 끼워진다", "a black mourning hanbok" in subj, subj[:64])
+ck("두 사람이 나오는 줄도 각자 옷으로 바뀐다",
+   "a charcoal suit" in d["episodes"][0]["cuts"][0]["prompt"]
+   and "a black mourning hanbok" in d["episodes"][0]["cuts"][0]["prompt"])
+d2 = good_doc()          # outfit 이 없는 옛 대본은 건드리지 않는다
+before = d2["episodes"][0]["cuts"][0]["prompt"]
+S.fix_outfits(d2)
+ck("옷차림을 안 정한 옛 대본은 그대로 둔다",
+   d2["episodes"][0]["cuts"][0]["prompt"] == before)
+
 print("\n⑧ 사람이 실제로 하는 말인가 (2026-08-20 손님: '말도 어색해')")
 d = good_doc()
 STIFF_SAY = ['"대법원 판례상 사망보험금은 전부 내 거라고 나왔어. 더 할 말 있으면 해 봐."',

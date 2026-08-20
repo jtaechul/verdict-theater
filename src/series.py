@@ -203,6 +203,39 @@ AVOID_FIX = ("Avoid: on-screen text, signage, documents with visible writing, "
              "screens, background extras in focus.")
 
 
+def fix_outfits(doc):
+    """모든 컷에서 같은 인물은 **똑같은 옷**을 입게 만든다.
+
+    ⚠️ 2026-08-20 — 1화 완성본을 보니 본처의 카디건이 1컷 초록 → 3컷 베이지 →
+       5컷 초록으로 튀었다. SUBJECT 에 `본처 in a simple cardigan` 이라고만 써
+       색을 안 정해 줬기 때문이다. 영상 만드는 쪽은 매번 새로 고른다.
+
+    인물마다 `outfit` 을 정해 두고 SUBJECT 를 그것으로 갈아 끼운다.
+    **버리지 않고 우리가 고친다** — 옷 색이 달라졌다고 16화를 다시 살 수는 없다.
+    """
+    outfit = {(c.get("name") or "").strip(): (c.get("outfit") or "").strip()
+              for c in (doc.get("characters") or [])}
+    outfit = {k: v for k, v in outfit.items() if k and v}
+    if not outfit:
+        return 0
+    n = 0
+    for e in doc.get("episodes") or []:
+        for c in e.get("cuts") or []:
+            lines = (c.get("prompt") or "").split("\n")
+            for i, l in enumerate(lines):
+                if not l.startswith("SUBJECT:"):
+                    continue
+                new = l
+                for nm, of in outfit.items():
+                    new = re.sub(rf"({re.escape(nm)})\s+in\s+[^,.]*?(?=\s+facing\s|[,.]|$)",
+                                 rf"\1 in {of}", new)
+                if new != l:
+                    lines[i] = new
+                    n += 1
+            c["prompt"] = "\n".join(lines)
+    return n
+
+
 def normalize(doc):
     """고쳐 쓸 수 있는 것은 **버리지 말고 우리가 고친다.**
 
@@ -240,6 +273,9 @@ def normalize(doc):
             c["prompt"] = "\n".join(out)
     if n:
         print(f"  (고정 문구 {n}줄을 우리가 채워 넣었다 — 이것 때문에 버리지 않는다)")
+    k = fix_outfits(doc)
+    if k:
+        print(f"  (옷차림 {k}줄을 인물표대로 맞췄다 — 컷마다 옷이 바뀌면 딴사람으로 보인다)")
     return doc
 
 
