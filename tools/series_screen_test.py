@@ -218,6 +218,25 @@ if wf.exists():
     ck("완성 영상을 저장소에 커밋하지 않는다",
        "git commit" not in y and "push.sh" not in y)
 
+print("\n③-4 유튜브 올리기 설정이 붙어 있는가 (2026-08-20 운영자 지시)")
+wk = (ROOT / "admin" / "worker.js").read_text(encoding="utf-8")
+ck("올릴 글을 만들어 주는 길이 있다", "'/api/yt-meta'" in wk)
+ck("고친 글을 저장하는 길이 있다", "'/api/yt-save'" in wk)
+ck("올리기를 시작하는 길이 있다", "'/api/yt-up'" in wk)
+ck("제목·설명·해시태그를 고칠 수 있다",
+   "id=\"ytt\"" in wk and "id=\"ytd\"" in wk and "id=\"ytg\"" in wk)
+ck("공개 범위를 고를 수 있다", "id=\"ytp\"" in wk and "unlisted" in wk)
+ck("연습(안 올리고 확인만) 이 있다", "ytUp(true)" in wk)
+ck("전체 공개는 한 번 더 묻는다", "전체 공개로 올립니다" in wk)
+wf = ROOT / ".github" / "workflows" / "shorts-upload.yml"
+ck("올리기 워크플로가 있다", wf.exists())
+if wf.exists():
+    y = wf.read_text(encoding="utf-8")
+    ck("화면에서 고친 글을 먼저 쓴다", "meta.json build/meta.json" in y)
+    ck("없으면 대본에서 만든다", "src/ytmeta.py" in y)
+    ck("영상은 릴리스에서 꺼낸다", "release_file.py get" in y)
+    ck("완성 영상을 저장소에 커밋하지 않는다", "git add build" not in y)
+
 print("\n④ 다른 화로 넘어가도 그 화 내용이 나오는가")
 e16 = doc["episodes"][15]
 ck("16화 제목이 뜬다", (e16.get("title") or "") in ep16, e16.get("title", ""))

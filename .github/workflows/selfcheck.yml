@@ -91,6 +91,11 @@ jobs:
       - name: 릴리스에 파일 올리고 내리는 도구가 성한가
         run: python3 -m py_compile tools/release_file.py src/shorts.py src/clip.py
 
+      # ⭐ 2026-08-20 운영자: "제목·설명·해시태그 아무것도 안 들어가 있어."
+      #    같은 계산이 파이썬과 관리자 페이지 두 곳에 있다 — 결과가 같은지 맞춘다.
+      - name: 유튜브에 올릴 글이 두 곳에서 같은가
+        run: python3 tools/ytmeta_test.py
+
       - name: 쇼츠 배치(후킹·영상·자막)가 제자리인가
         run: |
           python3 -m pip install --quiet pillow 2>/dev/null || true

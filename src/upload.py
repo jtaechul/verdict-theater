@@ -637,6 +637,50 @@ def cmd_publish(args):
     return 0
 
 
+def cmd_series(args):
+    """⭐ 시리즈 쇼츠 한 편을 올린다 (2026-08-20 운영자 지시).
+
+    옛 회차(EP001) 방식과 달리 **대본 파일에 기대지 않는다.** 올릴 글은
+    관리자 페이지에서 확인·수정한 그대로 meta.json 에 담겨 온다 —
+    화면에서 본 것과 실제로 올라가는 것이 반드시 같아야 하기 때문이다.
+    """
+    video = Path(args.video)
+    if not video.exists():
+        print(f"❌ 영상이 없다: {video}")
+        return 2
+    meta = json.loads(Path(args.meta).read_text(encoding="utf-8"))
+    title = (meta.get("title") or "").strip()
+    desc = meta.get("description") or ""
+    tags = [t for t in (meta.get("tags") or []) if t]
+    privacy = (args.privacy or meta.get("privacy") or "private").strip()
+    if privacy not in ("private", "unlisted", "public"):
+        print(f"❌ 공개 범위가 이상하다: {privacy}")
+        return 2
+    if not title:
+        print("❌ 제목이 비었다")
+        return 2
+
+    print(f"올릴 것 — {video.name} ({video.stat().st_size / 1048576:.1f}MB)")
+    print(f"  제목: {title}")
+    print(f"  해시태그: {' '.join('#' + t for t in tags)}")
+    print(f"  공개 범위: {privacy}")
+    if args.dry:
+        print("\n(연습이라 실제로는 올리지 않았다)")
+        return 0
+
+    token = access_token()
+    vid = upload_video(token, video, title, desc, tags,
+                       vertical=True, privacy=privacy)
+    print(f"\n✅ 올렸다 — https://youtu.be/{vid}")
+    st = _load(ROOT / "state" / "series.json", {})
+    row = st.setdefault(meta.get("sid") or args.sid, {})
+    row.setdefault("uploaded", {})[str(meta.get("ep") or args.ep)] = {
+        "video_id": vid, "privacy": privacy, "title": title}
+    (ROOT / "state" / "series.json").write_text(
+        json.dumps(st, ensure_ascii=False, indent=1), encoding="utf-8")
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -674,8 +718,19 @@ def main():
     u.add_argument("--dry", action="store_true",
                    help="연습 — 올리기 직전까지만 해 보고 실제로는 올리지 않는다")
 
+    r = sub.add_parser("series", help="시리즈 쇼츠 한 편을 올린다")
+    r.add_argument("sid")
+    r.add_argument("ep")
+    r.add_argument("--video", required=True)
+    r.add_argument("--meta", required=True)
+    r.add_argument("--privacy", default="", help="private / unlisted / public")
+    r.add_argument("--dry", action="store_true",
+                   help="연습 — 올리기 직전까지만 해 보고 실제로는 올리지 않는다")
+
     args = ap.parse_args()
     try:
+        if args.cmd == "series":
+            return cmd_series(args)
         if args.cmd == "meta":
             return cmd_meta(args)
         if args.cmd == "public":

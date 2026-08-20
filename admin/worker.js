@@ -86,6 +86,68 @@ const STAGE_LABEL = {
 };
 
 // ── GitHub 호출 (토큰은 여기서만 쓰인다) ───────────────────
+// ⭐ 올릴 제목·설명·해시태그를 대본에서 만든다 (2026-08-20).
+//    ⚠️ src/ytmeta.py 와 **같은 결과**가 나와야 한다. 화면에서 본 것과
+//       실제로 올라가는 것이 다르면 안 되기 때문이다.
+//       (워크플로는 손님이 고친 meta.json 이 있으면 그것을 먼저 쓴다)
+const YT_BASE_TAGS = ['판결극장', '실화사연', '사연', '법률사연', '쇼츠드라마', 'shorts'];
+const YT_TOPIC = [
+  [['유류분', '상속', '상속재산', '한정승인'], ['유류분', '상속', '상속분쟁']],
+  [['내연', '불륜', '바람', '상간', '동거녀'], ['불륜', '외도', '상간소송']],
+  [['이혼', '위자료', '재산분할'], ['이혼', '위자료', '재산분할']],
+  [['보험금', '사망보험'], ['보험금분쟁']],
+  [['사기', '횡령', '빼돌', '가로챈'], ['재산다툼']],
+  [['층간', '이웃'], ['이웃분쟁']],
+  [['임대', '전세', '보증금'], ['부동산분쟁']],
+  [['폭행', '상해'], ['형사사건']],
+];
+
+function ytClean(t) { return String(t == null ? '' : t).replace(/\s+/g, ' ').trim(); }
+
+function ytMeta(doc, no) {
+  const eps = doc.episodes || [];
+  const ep = eps.find((e) => +e.no === +no) || {};
+  const total = eps.length;
+  const series = ytClean(doc.title);
+  const hook = ytClean(ep.hook) || ytClean(ep.title);
+  const cut1 = (ep.cuts || [])[0] || {};
+  const line = ytClean(String(cut1.subtitle || '').split(' / ')[0]).replace(/^"|"$/g, '');
+
+  let title = ytClean(ep.yt_title);
+  if (!title) title = (hook || line || series) + ' (' + no + '/' + total + ')';
+  if (title.toLowerCase().indexOf('#shorts') < 0 && title.length + 8 <= 100)
+    title += ' #shorts';
+  title = title.slice(0, 100);
+
+  let tags = (ep.yt_tags || []).map((x) => ytClean(x).replace(/^#/, '')).filter(Boolean);
+  if (!tags.length) {
+    const blob = [doc.case_type, series, hook, ep.recap].map(ytClean).join(' ');
+    tags = [];
+    YT_TOPIC.forEach(([keys, out]) => {
+      if (keys.some((k) => blob.indexOf(k) >= 0))
+        out.forEach((t) => { if (tags.indexOf(t) < 0) tags.push(t); });
+    });
+    tags = tags.slice(0, 5);
+  }
+  YT_BASE_TAGS.forEach((b) => { if (tags.indexOf(b) < 0) tags.push(b); });
+  tags = tags.slice(0, 15);
+
+  let desc = ytClean(ep.yt_desc);
+  if (!desc) {
+    const recap = ytClean(ep.recap);
+    const body = ['[' + series + '] ' + no + '화 / 전 ' + total + '화'];
+    if (hook) { body.push(''); body.push(hook); }
+    if (recap && +no > 1) body.push('(지난 이야기: ' + recap + ')');
+    body.push('', '실제 판결문을 바탕으로 각색한 이야기입니다.',
+              '등장인물의 이름·지명·금액은 모두 바꾸었습니다.', '',
+              '매일 한 편씩 올라갑니다. 다음 화도 놓치지 마세요.', '',
+              tags.map((t) => '#' + t).join(' '));
+    desc = body.join('\n');
+  }
+  return { sid: doc.series_id || '', ep: +no, title,
+           description: desc.slice(0, 4900), tags, privacy: 'private' };
+}
+
 async function gh(env, path, init = {}) {
   const r = await fetch(`${GH}${path}`, {
     ...init,
@@ -196,6 +258,15 @@ border:1px solid var(--line);background:#161822;color:var(--ink);min-height:48px
 label{display:block;margin:10px 0 0;font-size:13px;color:var(--dim)}
 .wf{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;background:#191b25}
 .wf b{display:block;font-size:16px}.wf small{color:var(--dim);display:block;margin:3px 0 10px}
+/* 유튜브에 올릴 글 */
+.ytbox{border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px;
+background:#161822}
+.ytbox label{display:block;margin:12px 0 0;font-size:13px;color:var(--dim)}
+.ytbox label small{color:#6d7182}
+.ytd{width:100%;min-height:150px;margin-top:6px;padding:11px;border-radius:10px;
+border:1px solid var(--line);background:#101219;color:var(--ink);
+font:14px/1.55 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;
+resize:vertical}
 /* 만든 영상 올리는 칸 */
 .upbox{border:1px dashed #3a4055;border-radius:12px;padding:14px;background:#161822}
 .upbox input[type=file]{width:100%;margin:0 0 10px;padding:10px;border-radius:9px;
@@ -467,6 +538,90 @@ async function upClips() {
 }
 
 // 다 만들어졌는지 30초마다 들여다본다
+// ⭐ 유튜브에 올릴 글 (2026-08-20 운영자: "제목·설명·해시태그 아무것도 안 들어가
+//    있어. 업로드 설정도 같이 추가해 줘.")
+//    대본에서 만들어 보여 주고, **고친 그대로** 올린다.
+async function ytLoad() {
+  const b = document.getElementById('ytbox');
+  if (!b) return;
+  b.innerHTML = '<div class="uphint">올릴 글 준비 중…</div>';
+  let m = null;
+  try {
+    m = await (await fetch('/api/yt-meta?sid=' + SID + '&ep=' + SEP
+                           + '&t=' + Date.now())).json();
+  } catch (e) { b.innerHTML = '<div class="uphint">올릴 글을 못 불러왔습니다.</div>'; return; }
+  if (m.error) { b.innerHTML = '<div class="uphint">' + esc(m.error) + '</div>'; return; }
+  YT = m;
+  b.innerHTML =
+    '<div class="ytbox"><b>유튜브에 올릴 내용</b>'
+    + (m.saved ? '<div class="uphint">(전에 고쳐 두신 것입니다)</div>' : '')
+    + '<label>제목 <small>100자까지</small></label>'
+    + '<input id="ytt" maxlength="100" value="' + esc(m.title) + '">'
+    + '<label>해시태그 <small>쉼표로 나눕니다</small></label>'
+    + '<input id="ytg" value="' + esc((m.tags || []).join(', ')) + '">'
+    + '<label>설명</label>'
+    + '<textarea id="ytd" class="ytd">' + esc(m.description) + '</textarea>'
+    + '<label>공개 범위</label>'
+    + '<select id="ytp">'
+    + '<option value="private">비공개 (나만 보기) — 먼저 확인하실 때</option>'
+    + '<option value="unlisted">일부 공개 (링크 있는 사람만)</option>'
+    + '<option value="public">전체 공개</option>'
+    + '</select>'
+    + '<div class="btns" style="margin-top:12px">'
+    + mini('글 저장', 'ytSave()')
+    + mini('연습 (안 올리고 확인만)', 'ytUp(true)')
+    + mini('유튜브에 올리기', 'ytUp(false)', 'gold')
+    + '</div><div id="ytmsg" class="uphint"></div></div>';
+}
+
+let YT = null;
+
+function ytForm() {
+  const t = (document.getElementById('ytt') || {}).value || '';
+  const g = ((document.getElementById('ytg') || {}).value || '')
+    .split(',').map((x) => x.trim().replace(/^#/, '')).filter(Boolean);
+  const d = (document.getElementById('ytd') || {}).value || '';
+  const p = (document.getElementById('ytp') || {}).value || 'private';
+  return { sid: SID, ep: SEP, title: t, description: d, tags: g, privacy: p };
+}
+
+async function ytSave() {
+  const msg = document.getElementById('ytmsg');
+  const f = ytForm();
+  if (!f.title.trim()) { showErr('제목이 비었습니다', '제목을 적어 주십시오.'); return; }
+  msg.textContent = '저장하는 중…';
+  const r = await fetch('/api/yt-save', { method: 'POST', body: JSON.stringify(f) });
+  const j = await r.json();
+  if (!j.ok) { showErr('저장하지 못했습니다', (j.error || '') + ' ' + (j.detail || ''));
+               msg.textContent = ''; return; }
+  msg.textContent = '✅ 저장했습니다. 이대로 올라갑니다.';
+  toast('올릴 글을 저장했습니다');
+}
+
+async function ytUp(dry) {
+  const msg = document.getElementById('ytmsg');
+  const f = ytForm();
+  if (!f.title.trim()) { showErr('제목이 비었습니다', '제목을 적어 주십시오.'); return; }
+  if (!dry && f.privacy === 'public'
+      && !confirm('전체 공개로 올립니다. 되돌리려면 유튜브 앱에서 직접 바꿔야 합니다. 올릴까요?'))
+    return;
+  msg.textContent = '올릴 글을 저장하는 중…';
+  let r = await fetch('/api/yt-save', { method: 'POST', body: JSON.stringify(f) });
+  let j = await r.json();
+  if (!j.ok) { showErr('저장하지 못했습니다', (j.error || '') + ' ' + (j.detail || ''));
+               msg.textContent = ''; return; }
+  msg.textContent = dry ? '연습으로 확인하는 중…' : '유튜브에 올리는 중…';
+  r = await fetch('/api/yt-up', { method: 'POST',
+    body: JSON.stringify({ sid: SID, ep: SEP, privacy: f.privacy, dry: !!dry }) });
+  j = await r.json();
+  if (!j.ok) { showErr('올리지 못했습니다', (j.error || '') + ' ' + (j.detail || ''));
+               msg.textContent = ''; return; }
+  msg.textContent = dry
+    ? '연습을 시작했습니다. 2~3분 뒤 [지금 상태] 에서 결과를 보십시오.'
+    : '올리기를 시작했습니다. 2~5분 걸립니다.';
+  toast(dry ? '연습으로 확인합니다' : '유튜브에 올리는 중입니다');
+}
+
 let SHORTW = null;
 async function watchShort() {
   clearInterval(SHORTW);
@@ -482,8 +637,10 @@ async function watchShort() {
       + '<video controls playsinline style="width:100%;border-radius:12px;margin-top:8px" '
       + 'src="/api/short?sid=' + SID + '&ep=' + SEP + '&play=1&t=' + Date.now() + '"></video>'
       + '<div class="uphint">' + Math.round((j.size || 0) / 1048576 * 10) / 10
-      + 'MB · 마음에 들면 유튜브에 올리십시오.</div></div>';
+      + 'MB · 영상을 보신 뒤 아래에서 올리십시오.</div>'
+      + '<div id="ytbox"></div></div>';
     toast('쇼츠가 만들어졌습니다');
+    ytLoad();
   };
   await tick();
   SHORTW = setInterval(tick, 30000);
@@ -1934,6 +2091,83 @@ export default {
           } });
         return new Response(r0.body, { headers: {
           'Content-Type': 'video/mp4', 'Cache-Control': 'no-store' } });
+      }
+
+      // ⭐ 2026-08-20 운영자: "동영상 올릴 때 제목·설명·해시태그 아무것도 안 들어가
+      //    있어. 업로드 설정도 같이 추가해 줘."
+      //    올릴 글을 만들어 주고(대본에서 · 0원), 손님이 고친 것을 릴리스에 담아 둔다.
+      //    올릴 때 그 글을 그대로 쓴다 — 화면에서 본 것과 올라가는 것이 같아야 한다.
+      if (url.pathname === '/api/yt-meta') {
+        const sid = url.searchParams.get('sid') || '';
+        const ep = String(parseInt(url.searchParams.get('ep') || '0', 10) || 0);
+        if (!/^S\d{3}$/.test(sid)) return Response.json({ error: 'bad sid' }, { status: 400 });
+        const tag = `short-${sid}-ep${String(ep).padStart(2, '0')}`;
+        // 손님이 고쳐 둔 것이 있으면 그것을 먼저
+        try {
+          const rel = await gh(env, `/repos/${REPO}/releases/tags/${tag}`);
+          const a = (rel.assets || []).find((x) => x.name === 'meta.json');
+          if (a) {
+            const r0 = await fetch(`${GH}/repos/${REPO}/releases/assets/${a.id}`, {
+              headers: { 'Authorization': `Bearer ${env.GH_TOKEN}`,
+                         'Accept': 'application/octet-stream',
+                         'User-Agent': 'verdict-theater-admin' } });
+            const saved = await r0.json();
+            return Response.json({ ...saved, saved: true });
+          }
+        } catch (e) { /* 아직 없다 — 아래에서 만든다 */ }
+        const doc = await getJson(env, `data/series/${sid}.json`);
+        if (!doc) return Response.json({ error: '대본이 없습니다' }, { status: 404 });
+        return Response.json({ ...ytMeta(doc, +ep), saved: false });
+      }
+
+      if (url.pathname === '/api/yt-save' && req.method === 'POST') {
+        const { sid, ep, title, description, tags, privacy } = await req.json();
+        if (!/^S\d{3}$/.test(sid || ''))
+          return Response.json({ ok: false, error: '회차가 이상합니다' }, { status: 400 });
+        if (!String(title || '').trim())
+          return Response.json({ ok: false, error: '제목을 적어 주십시오' }, { status: 400 });
+        const tag = `short-${sid}-ep${String(ep).padStart(2, '0')}`;
+        const meta = { sid, ep: +ep, title: String(title).slice(0, 100),
+                       description: String(description || '').slice(0, 4900),
+                       tags: (tags || []).slice(0, 15), privacy: privacy || 'private' };
+        try {
+          const rel = await gh(env, `/repos/${REPO}/releases/tags/${tag}`);
+          for (const a of rel.assets || []) {
+            if (a.name === 'meta.json')
+              await gh(env, `/repos/${REPO}/releases/assets/${a.id}`, { method: 'DELETE' });
+          }
+          const up = await fetch(
+            `https://uploads.github.com/repos/${REPO}/releases/${rel.id}/assets?name=meta.json`,
+            { method: 'POST', body: JSON.stringify(meta, null, 1),
+              headers: { 'Authorization': `Bearer ${env.GH_TOKEN}`,
+                         'Content-Type': 'application/json',
+                         'User-Agent': 'verdict-theater-admin' } });
+          if (!up.ok) throw new Error(`${up.status}: ${(await up.text()).slice(0, 160)}`);
+          return Response.json({ ok: true });
+        } catch (e) {
+          return Response.json({ ok: false, error: '저장하지 못했습니다',
+            detail: String(e && e.message ? e.message : e).slice(0, 200) }, { status: 502 });
+        }
+      }
+
+      if (url.pathname === '/api/yt-up' && req.method === 'POST') {
+        const { sid, ep, privacy, dry } = await req.json();
+        if (!/^S\d{3}$/.test(sid || ''))
+          return Response.json({ ok: false, error: '회차가 이상합니다' }, { status: 400 });
+        const P = { public: '전체 공개', unlisted: '일부 공개 (링크 있는 사람만)',
+                    private: '비공개 (나만 보기)' }[privacy || 'private'];
+        try {
+          await gh(env, `/repos/${REPO}/actions/workflows/shorts-upload.yml/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({ ref: BRANCH, inputs: {
+              sid, ep: String(ep), privacy: P,
+              mode: dry ? '연습 (올리지 않고 확인만)' : '진짜로 올리기' } }),
+          });
+          return Response.json({ ok: true });
+        } catch (e) {
+          return Response.json({ ok: false, error: '올리기를 시작하지 못했습니다',
+            detail: String(e && e.message ? e.message : e).slice(0, 200) }, { status: 502 });
+        }
       }
 
       if (url.pathname === '/api/run' && req.method === 'POST') {

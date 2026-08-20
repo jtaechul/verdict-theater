@@ -1,0 +1,112 @@
+name: 4. 쇼츠 유튜브에 올리기
+
+# 관리자 페이지에서 **완성된 쇼츠를 눈으로 본 뒤** 누르는 버튼이 부른다.
+# 제목·설명·해시태그는 화면에서 확인·수정한 그대로 릴리스에 담겨 온다 —
+# 보여드린 것과 실제로 올라가는 것이 반드시 같아야 하기 때문이다.
+#
+# 영상은 저장소에 없다(커밋 금지). `short-S001-ep01` 릴리스에서 꺼내 온다.
+
+on:
+  workflow_dispatch:
+    inputs:
+      sid:
+        description: '시리즈 번호'
+        required: true
+        default: 'S001'
+      ep:
+        description: '몇 화'
+        required: true
+        default: '1'
+      privacy:
+        description: '공개 범위'
+        required: true
+        default: '비공개 (나만 보기)'
+        type: choice
+        options:
+          - '비공개 (나만 보기)'
+          - '일부 공개 (링크 있는 사람만)'
+          - '전체 공개'
+      mode:
+        description: '연습이면 올리지 않고 되는지만 봅니다'
+        required: true
+        default: '진짜로 올리기'
+        type: choice
+        options:
+          - '진짜로 올리기'
+          - '연습 (올리지 않고 확인만)'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: shorts-upload
+  cancel-in-progress: false
+
+jobs:
+  up:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+      SID: ${{ inputs.sid }}
+      EPNO: ${{ inputs.ep }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 올릴 영상과 글 받기
+        run: |
+          set -euo pipefail
+          EP=$(printf '%02d' "$EPNO")
+          echo "EP=$EP" >> "$GITHUB_ENV"
+          mkdir -p build
+          python3 tools/release_file.py get "short-${SID}-ep${EP}" short.mp4 build/short.mp4
+          # 관리자 페이지에서 고친 글이 있으면 그것을, 없으면 대본에서 만든다
+          if python3 tools/release_file.py get "short-${SID}-ep${EP}" meta.json build/meta.json; then
+            echo "화면에서 확인한 글을 그대로 씁니다"
+          else
+            echo "올릴 글이 없어 대본에서 만듭니다"
+            python3 src/ytmeta.py "$SID" "$EPNO" --out build/meta.json
+          fi
+
+      - name: 유튜브에 올리기
+        run: |
+          set -euo pipefail
+          case "${{ inputs.privacy }}" in
+            *전체*) P=public ;;
+            *일부*) P=unlisted ;;
+            *)      P=private ;;
+          esac
+          DRY=""
+          case "${{ inputs.mode }}" in *연습*) DRY="--dry" ;; esac
+          python3 src/upload.py series "$SID" "$EPNO" \
+            --video build/short.mp4 --meta build/meta.json \
+            --privacy "$P" $DRY 2>&1 | tee up.log
+
+      - name: 올린 기록 남기기
+        if: success()
+        run: |
+          set -euo pipefail
+          case "${{ inputs.mode }}" in *연습*) echo "연습이라 기록하지 않습니다"; exit 0 ;; esac
+          git config user.name  "verdict-theater-bot"
+          git config user.email "actions@github.com"
+          git add state/series.json 2>/dev/null || true
+          git diff --cached --quiet && exit 0
+          bash tools/push.sh "쇼츠 유튜브 업로드 기록 [skip ci]" state
+
+      - name: 결과 화면
+        if: always()
+        run: |
+          {
+            echo "## 유튜브 올리기"
+            echo ""
+            echo '```'
+            tail -n 20 up.log 2>/dev/null || echo "기록 없음"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
