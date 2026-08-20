@@ -160,6 +160,12 @@ for c in e1["cuts"]:
             if l.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
                .replace('"', "&quot;") not in ep1]
     ck(f"{c['n']}컷 프롬프트 {len(lines)}줄이 전부 있다", not miss, ("빠짐: " + str(miss)) if miss else "")
+# ⭐ 후킹은 30초 내내 화면 맨 위에 붙는 한 줄이다. 영상을 만들기 전에
+#    운영자가 반드시 눈으로 봐야 한다 (2026-08-20 운영자: "자극적으로 뽑아").
+ck("화면 맨 위 후킹이 보인다", (e1.get("hook") or "") in ep1,
+   (e1.get("hook") or "(비었다)")[:30])
+ck("후킹이라는 이름표가 붙어 있다", "화면 맨 위 후킹" in ep1)
+
 ck("컷마다 복사 버튼이 있다", ep1.count("copyRaw(") >= len(e1["cuts"]),
    f"{ep1.count('copyRaw(')}개")
 
