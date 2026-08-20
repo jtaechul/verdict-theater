@@ -1,0 +1,614 @@
+{
+ "title": "전 재산 훔쳐간 내연녀, 16억 반환 소송",
+ "case_id": "230761",
+ "characters": [
+  {
+   "name": "아내",
+   "flow_prompt": "Korean woman, 52 years old, neat short hair, worn but sharp expression, no makeup. Photorealistic, natural skin texture, Korean TV drama realism."
+  },
+  {
+   "name": "동거녀",
+   "flow_prompt": "Korean woman, 45 years old, long wavy hair, flashy appearance, arrogant expression, heavy makeup. Photorealistic, natural skin texture, Korean TV drama realism."
+  }
+ ],
+ "episodes": [
+  {
+   "no": 1,
+   "title": "장례식장의 불청객",
+   "recap": "",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"여기가 어디라고 뻔뻔하게 와?\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 아내 in black mourning hanbok facing 동거녀 in a dark designer dress.\nACTION: 아내 glares intensely while 동거녀 smirks confidently.\nDIALOGUE: 아내 (cold): \"여기가 어디라고 뻔뻔하게 와?\" / 동거녀 (smirking): \"마지막 인사는 해야지.\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "\"내 남편 뺏어간 걸로 모자라?\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in black mourning hanbok.\nACTION: 아내 clenches her fists, barely holding back her anger.\nDIALOGUE: 아내 (glaring): \"내 남편 뺏어간 걸로 모자라?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"뺏은 게 아니라, 그가 날 선택한 거야.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a dark designer dress.\nACTION: 동거녀 crosses her arms, looking down slightly.\nDIALOGUE: 동거녀 (arrogant): \"뺏은 게 아니라, 그가 날 선택한 거야.\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"게다가 재산도 다 나한테 남겼어.\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 동거녀 in a dark designer dress facing 아내 in black mourning hanbok.\nACTION: 동거녀 leans in slightly, whispering maliciously.\nDIALOGUE: 동거녀 (mocking): \"게다가 재산도 다 나한테 남겼어.\" / 아내 (shocked): \"뭐라고?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"내 재산, 네가 다 가졌다고?\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in black mourning hanbok.\nACTION: 아내 takes a step back, her eyes wide with shock.\nDIALOGUE: 아내 (trembling): \"내 재산, 네가 다 가졌다고?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    }
+   ]
+  },
+  {
+   "no": 2,
+   "title": "텅 빈 상속재산",
+   "recap": "장례식장에 나타난 뻔뻔한 동거녀",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"서류 떼 봤어? 땡전 한 푼 없지?\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 동거녀 in a dark designer dress facing 아내 in black mourning hanbok.\nACTION: 동거녀 smiles brightly while looking at 아내.\nDIALOGUE: 동거녀 (mocking): \"서류 떼 봤어? 땡전 한 푼 없지?\" / 아내 (furious): \"너지?\"\nSETTING: Outside a bank, daytime, overcast natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "\"어떻게 전 재산을 다 빼돌려!\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in black mourning hanbok.\nACTION: 아내 grips her leather bag tightly, glaring intensely.\nDIALOGUE: 아내 (gritting teeth): \"어떻게 전 재산을 다 빼돌려!\"\nSETTING: Outside a bank, daytime, overcast natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"살아있을 때 정당하게 준 거야.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a dark designer dress.\nACTION: 동거녀 shrugs her shoulders casually.\nDIALOGUE: 동거녀 (calm): \"살아있을 때 정당하게 준 거야.\"\nSETTING: Outside a bank, daytime, overcast natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"사망보험금 십오억도 내 이름이더라.\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 동거녀 in a dark designer dress facing 아내 in black mourning hanbok.\nACTION: 동거녀 points at herself with a proud smile.\nDIALOGUE: 동거녀 (laughing): \"사망보험금 십오억도 내 이름이더라.\" / 아내 (shocked): \"미쳤어!\"\nSETTING: Outside a bank, daytime, overcast natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"그 돈, 절대 못 가져가게 할 거야.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in black mourning hanbok.\nACTION: 아내 stares dead ahead, her eyes filled with cold determination.\nDIALOGUE: 아내 (cold): \"그 돈, 절대 못 가져가게 할 거야.\"\nSETTING: Outside a bank, daytime, overcast natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    }
+   ]
+  },
+  {
+   "no": 3,
+   "title": "병원 지분까지",
+   "recap": "보험금 15억을 가로챈 동거녀",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"병원 지분 십이억도 네가 챙겼더라?\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 아내 in a neat grey suit facing 동거녀 in a flashy red blouse.\nACTION: 아내 steps forward aggressively, pointing a finger.\nDIALOGUE: 아내 (sharp): \"병원 지분 십이억도 네가 챙겼더라?\" / 동거녀 (smirking): \"당연하지.\"\nSETTING: Cafe interior, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "\"동업자들하고 미리 각서 썼거든.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a flashy red blouse.\nACTION: 동거녀 takes a sip from a coffee cup, looking relaxed.\nDIALOGUE: 동거녀 (confident): \"동업자들하고 미리 각서 썼거든.\"\nSETTING: Cafe interior, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"죽기 전엔 분명 내 남편 재산이었어.\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 아내 in a neat grey suit facing 동거녀 in a flashy red blouse.\nACTION: 아내 slams her hand lightly on the table.\nDIALOGUE: 아내 (frowning): \"죽기 전엔 분명 내 남편 재산이었어.\" / 동거녀 (laughing): \"그래서?\"\nSETTING: Cafe interior, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"죽자마자 내 계좌로 바로 들어오던데?\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a flashy red blouse.\nACTION: 동거녀 leans in, whispering with a malicious smile.\nDIALOGUE: 동거녀 (mocking): \"죽자마자 내 계좌로 바로 들어오던데?\"\nSETTING: Cafe interior, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"유류분으로 전부 다 토해내게 해줄게.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in a neat grey suit.\nACTION: 아내 glares without blinking, full of resolve.\nDIALOGUE: 아내 (cold): \"유류분으로 전부 다 토해내게 해줄게.\"\nSETTING: Cafe interior, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    }
+   ]
+  },
+  {
+   "no": 4,
+   "title": "남겨진 빚 육억",
+   "recap": "병원 지분마저 미리 빼돌렸다",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"재산은 내가, 빚 육억은 당신이?\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 동거녀 in a flashy red blouse facing 아내 in a neat grey suit.\nACTION: 동거녀 covers her mouth, pretending to be shocked but smiling.\nDIALOGUE: 동거녀 (mocking): \"재산은 내가, 빚 육억은 당신이?\" / 아내 (furious): \"닥쳐.\"\nSETTING: Law firm hallway, daytime, bright overhead light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "\"세금 미납에 대출금까지 남겨놨어.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in a neat grey suit.\nACTION: 아내 breathes heavily, trying to control her anger.\nDIALOGUE: 아내 (gritting teeth): \"세금 미납에 대출금까지 남겨놨어.\"\nSETTING: Law firm hallway, daytime, bright overhead light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"상속 포기하지 그래? 빚쟁이 아줌마.\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 동거녀 in a flashy red blouse facing 아내 in a neat grey suit.\nACTION: 동거녀 waves her hand dismissively.\nDIALOGUE: 동거녀 (taunting): \"상속 포기하지 그래? 빚쟁이 아줌마.\" / 아내 (cold): \"안 해.\"\nSETTING: Law firm hallway, daytime, bright overhead light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"난 한정승인으로 당당하게 맞설 거야.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in a neat grey suit.\nACTION: 아내 lifts her chin confidently, staring down her opponent.\nDIALOGUE: 아내 (calm): \"난 한정승인으로 당당하게 맞설 거야.\"\nSETTING: Law firm hallway, daytime, bright overhead light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"한정승인? 그럼 소송은 어쩌려고?\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a flashy red blouse.\nACTION: 동거녀 frowns, her smile completely vanishing.\nDIALOGUE: 동거녀 (confused): \"한정승인? 그럼 소송은 어쩌려고?\"\nSETTING: Law firm hallway, daytime, bright overhead light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    }
+   ]
+  },
+  {
+   "no": 5,
+   "title": "생활비의 진실",
+   "recap": "알짜 재산 다 뺏기고 남은 빚 6억",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"네 통장에 꽂힌 삼억, 다 찾아냈어.\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 아내 in a neat grey suit facing 동거녀 in a flashy red blouse.\nACTION: 아내 steps forward, pointing accusingly.\nDIALOGUE: 아내 (sharp): \"네 통장에 꽂힌 삼억, 다 찾아냈어.\" / 동거녀 (nervous): \"그건...\"\nSETTING: Empty office room, daytime, bright window light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "\"그건 남편이 순수하게 생활비로 준 돈이야.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a flashy red blouse.\nACTION: 동거녀 waves her hands nervously, trying to look innocent.\nDIALOGUE: 동거녀 (defensive): \"그건 남편이 순수하게 생활비로 준 돈이야.\"\nSETTING: Empty office room, daytime, bright window light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"생활비? 아파트 대출금 갚은 거잖아.\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 아내 in a neat grey suit facing 동거녀 in a flashy red blouse.\nACTION: 아내 smirks, shaking her head slowly.\nDIALOGUE: 아내 (cold): \"생활비? 아파트 대출금 갚은 거잖아.\" / 동거녀 (yelling): \"아니야!\"\nSETTING: Empty office room, daytime, bright window light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"십 년 전 일이야! 시효도 다 끝났어!\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a flashy red blouse.\nACTION: 동거녀 glares fiercely, breathing heavily.\nDIALOGUE: 동거녀 (desperate): \"십 년 전 일이야! 시효도 다 끝났어!\"\nSETTING: Empty office room, daytime, bright window light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"과연 그럴까? 넌 큰 실수 한 거야.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in a neat grey suit.\nACTION: 아내 gives a chilling, victorious smile.\nDIALOGUE: 아내 (smirking): \"과연 그럴까? 넌 큰 실수 한 거야.\"\nSETTING: Empty office room, daytime, bright window light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    }
+   ]
+  },
+  {
+   "no": 6,
+   "title": "소름 돋는 반전",
+   "recap": "10년 전 현금 증여의 꼬리를 잡다",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"보험 바꾼 날짜 봤어.\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 아내 in a neat grey suit facing 동거녀 in a flashy red blouse.\nACTION: 아내 stares intensely, leaning slightly forward.\nDIALOGUE: 아내 (cold): \"보험 바꾼 날짜 봤어.\" / 동거녀 (nervous): \"난 모르는 일이야.\"\nSETTING: Modern living room, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "\"오 년 전, 남편이 이혼 소송 패소한 날!\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in a neat grey suit.\nACTION: 아내 points a finger emphatically.\nDIALOGUE: 아내 (sharp): \"오 년 전, 남편이 이혼 소송 패소한 날!\"\nSETTING: Modern living room, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"그, 그건 그냥 우연의 일치야...\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 동거녀 in a flashy red blouse facing 아내 in a neat grey suit.\nACTION: 동거녀 stutters, backing away slightly.\nDIALOGUE: 동거녀 (trembling): \"그, 그건 그냥 우연의 일치야...\" / 아내 (smirking): \"우연?\"\nSETTING: Modern living room, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"나한테 돈 안 주려고, 그날 다 바꾼 거지.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in a neat grey suit.\nACTION: 아내 glares with a terrifyingly calm expression.\nDIALOGUE: 아내 (cold): \"나한테 돈 안 주려고, 그날 다 바꾼 거지.\"\nSETTING: Modern living room, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"남편이 널 얼마나 끔찍이 싫어했는지 알겠지?\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a flashy red blouse.\nACTION: 동거녀 tries to regain her composure, smiling maliciously.\nDIALOGUE: 동거녀 (mocking): \"남편이 널 얼마나 끔찍이 싫어했는지 알겠지?\"\nSETTING: Modern living room, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    }
+   ]
+  },
+  {
+   "no": 7,
+   "title": "악의적인 증여",
+   "recap": "이혼 패소 당일, 수익자를 바꿨다",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"매월 이천만 원씩 보험료를 냈더라?\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 아내 in a neat grey suit facing 동거녀 in a flashy red blouse.\nACTION: 아내 crosses her arms, looking completely unimpressed.\nDIALOGUE: 아내 (cold): \"매월 이천만 원씩 보험료를 냈더라?\" / 동거녀 (frowning): \"내 맘이야.\"\nSETTING: Parking lot, daytime, harsh sunlight.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "\"자기 돈 자기가 쓰겠다는데 무슨 상관!\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a flashy red blouse.\nACTION: 동거녀 gestures aggressively with her hands.\nDIALOGUE: 동거녀 (defensive): \"자기 돈 자기가 쓰겠다는데 무슨 상관!\"\nSETTING: Parking lot, daytime, harsh sunlight.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"나한테 피해 줄 거 알고 뺀 거잖아.\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 아내 in a neat grey suit facing 동거녀 in a flashy red blouse.\nACTION: 아내 steps closer, forcing 동거녀 to lean back.\nDIALOGUE: 아내 (sharp): \"나한테 피해 줄 거 알고 뺀 거잖아.\" / 동거녀 (nervous): \"증거 있어?\"\nSETTING: Parking lot, daytime, harsh sunlight.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"악의적 증여는 시효 상관없이 다 토해내야 해.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in a neat grey suit.\nACTION: 아내 smiles coldly, entirely in control.\nDIALOGUE: 아내 (calm): \"악의적 증여는 시효 상관없이 다 토해내야 해.\"\nSETTING: Parking lot, daytime, harsh sunlight.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"법원 가서 따져! 난 한 푼도 못 줘.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a flashy red blouse.\nACTION: 동거녀 yells in frustration, clenching her fists.\nDIALOGUE: 동거녀 (yelling): \"법원 가서 따져! 난 한 푼도 못 줘.\"\nSETTING: Parking lot, daytime, harsh sunlight.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    }
+   ]
+  },
+  {
+   "no": 8,
+   "title": "소송의 시작",
+   "recap": "악의적으로 빼돌린 매월 2천만 원",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"법원에서 보자. 소장 보냈으니까.\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 아내 in a neat grey suit facing 동거녀 in a flashy red blouse.\nACTION: 아내 stares down coldly, exuding authority.\nDIALOGUE: 아내 (cold): \"법원에서 보자. 소장 보냈으니까.\" / 동거녀 (shocked): \"소장?\"\nSETTING: Quiet street, daytime, overcast natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "\"유류분 청구? 내가 너한테 줄 돈은 없어.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a flashy red blouse.\nACTION: 동거녀 scoffs, crossing her arms defensively.\nDIALOGUE: 동거녀 (arrogant): \"유류분 청구? 내가 너한테 줄 돈은 없어.\"\nSETTING: Quiet street, daytime, overcast natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"네가 빼돌린 돈, 다 합치면 이십팔억이야.\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 아내 in a neat grey suit facing 동거녀 in a flashy red blouse.\nACTION: 아내 speaks slowly and clearly, emphasizing the amount.\nDIALOGUE: 아내 (sharp): \"네가 빼돌린 돈, 다 합치면 이십팔억이야.\" / 동거녀 (scoffing): \"웃겨.\"\nSETTING: Quiet street, daytime, overcast natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"그건 다 내 정당한 고유 재산이라고!\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a flashy red blouse.\nACTION: 동거녀 raises her voice, her face turning red.\nDIALOGUE: 동거녀 (yelling): \"그건 다 내 정당한 고유 재산이라고!\"\nSETTING: Quiet street, daytime, overcast natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"판사님도 과연 그렇게 생각하실까?\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in a neat grey suit.\nACTION: 아내 smirks slightly, turning away.\nDIALOGUE: 아내 (calm): \"판사님도 과연 그렇게 생각하실까?\"\nSETTING: Quiet street, daytime, overcast natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    }
+   ]
+  },
+  {
+   "no": 9,
+   "title": "보험료의 덫",
+   "recap": "28억 유류분 반환 소송의 시작",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"대법원 판례상 사망보험금은 내 거야.\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 동거녀 in a flashy red blouse facing 아내 in a neat grey suit.\nACTION: 동거녀 smiles triumphantly, looking very confident.\nDIALOGUE: 동거녀 (arrogant): \"대법원 판례상 사망보험금은 내 거야.\" / 아내 (calm): \"맞아.\"\nSETTING: Court courthouse corridor, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "\"보험금 자체는 네 고유 재산이 맞지.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in a neat grey suit.\nACTION: 아내 nods slowly, agreeing without hesitation.\nDIALOGUE: 아내 (calm): \"보험금 자체는 네 고유 재산이 맞지.\"\nSETTING: Court courthouse corridor, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"그럼 소송 취하해.\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 동거녀 in a flashy red blouse facing 아내 in a neat grey suit.\nACTION: 동거녀 laughs, waving her hand dismissively.\nDIALOGUE: 동거녀 (laughing): \"그럼 소송 취하해.\" / 아내 (sharp): \"하지만 보험료는 달라.\"\nSETTING: Court courthouse corridor, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"남편이 널 위해 낸 보험료 십억은 증여야.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in a neat grey suit.\nACTION: 아내 glares piercingly, delivering the final blow.\nDIALOGUE: 아내 (cold): \"남편이 널 위해 낸 보험료 십억은 증여야.\"\nSETTING: Court courthouse corridor, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"보험료를 나보고 토해내라고? 미쳤어?\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a flashy red blouse.\nACTION: 동거녀's smile completely drops, replaced by pure shock.\nDIALOGUE: 동거녀 (shocked): \"보험료를 나보고 토해내라고? 미쳤어?\"\nSETTING: Court courthouse corridor, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    }
+   ]
+  },
+  {
+   "no": 10,
+   "title": "병원 지분의 꼼수",
+   "recap": "보험금은 내 거라는 동거녀의 억지",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"병원 지분도 사망 전에 넘긴 거야.\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 동거녀 in a flashy red blouse facing 아내 in a neat grey suit.\nACTION: 동거녀 crosses her arms tightly, looking defiant.\nDIALOGUE: 동거녀 (arrogant): \"병원 지분도 사망 전에 넘긴 거야.\" / 아내 (cold): \"거짓말.\"\nSETTING: Law firm meeting room, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "\"죽을 때까지 남편 소유였던 거 다 알아.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in a neat grey suit.\nACTION: 아내 taps the table lightly with her finger.\nDIALOGUE: 아내 (sharp): \"죽을 때까지 남편 소유였던 거 다 알아.\"\nSETTING: Law firm meeting room, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"특약에 따라 나한테 온 거라고.\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 동거녀 in a flashy red blouse facing 아내 in a neat grey suit.\nACTION: 동거녀 leans forward, arguing passionately.\nDIALOGUE: 동거녀 (frowning): \"특약에 따라 나한테 온 거라고.\" / 아내 (smirking): \"그게 꼼수지.\"\nSETTING: Law firm meeting room, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"사망 당시 재산이니까, 당연히 상속재산이야.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in a neat grey suit.\nACTION: 아내 smiles coldly, completely cornering her opponent.\nDIALOGUE: 아내 (calm): \"사망 당시 재산이니까, 당연히 상속재산이야.\"\nSETTING: Law firm meeting room, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"진짜 끝까지 돈에 환장해서 물고 늘어지네.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a flashy red blouse.\nACTION: 동거녀 bites her lip, glaring with pure hatred.\nDIALOGUE: 동거녀 (gritting teeth): \"진짜 끝까지 돈에 환장해서 물고 늘어지네.\"\nSETTING: Law firm meeting room, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    }
+   ]
+  },
+  {
+   "no": 11,
+   "title": "물가상승률의 압박",
+   "recap": "병원 지분도 상속재산에 포함된다",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"현금은 십 년 전 가치로 계산해!\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 동거녀 in a flashy red blouse facing 아내 in a neat grey suit.\nACTION: 동거녀 yells, throwing her hands up in frustration.\nDIALOGUE: 동거녀 (yelling): \"현금은 십 년 전 가치로 계산해!\" / 아내 (calm): \"물가가 얼만데.\"\nSETTING: Courthouse lobby, daytime, natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "\"내가 왜 물가 오른 것까지 책임져야 해!\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a flashy red blouse.\nACTION: 동거녀 glares fiercely, breathing heavily.\nDIALOGUE: 동거녀 (desperate): \"내가 왜 물가 오른 것까지 책임져야 해!\"\nSETTING: Courthouse lobby, daytime, natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"법원 환산 기준대로 할 거야.\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 아내 in a neat grey suit facing 동거녀 in a flashy red blouse.\nACTION: 아내 stands perfectly still, unbothered by the yelling.\nDIALOGUE: 아내 (cold): \"법원 환산 기준대로 할 거야.\" / 동거녀 (shocked): \"말도 안 돼.\"\nSETTING: Courthouse lobby, daytime, natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"화폐가치 환산하면 가치가 두 배로 뛰어.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in a neat grey suit.\nACTION: 아내 gives a small, victorious smirk.\nDIALOGUE: 아내 (sharp): \"화폐가치 환산하면 가치가 두 배로 뛰어.\"\nSETTING: Courthouse lobby, daytime, natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"그렇게 부풀려진 큰 돈은 절대 못 줘!\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a flashy red blouse.\nACTION: 동거녀 shakes her head violently in denial.\nDIALOGUE: 동거녀 (frowning): \"그렇게 부풀려진 큰 돈은 절대 못 줘!\"\nSETTING: Courthouse lobby, daytime, natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    }
+   ]
+  },
+  {
+   "no": 12,
+   "title": "한정승인의 마법",
+   "recap": "물가상승률 반영해 가치가 두 배 뛴 현금",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"넌 빚이 많아서 상속액 마이너스잖아.\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 동거녀 in a flashy red blouse facing 아내 in a neat grey suit.\nACTION: 동거녀 smiles brightly, thinking she has won.\nDIALOGUE: 동거녀 (mocking): \"넌 빚이 많아서 상속액 마이너스잖아.\" / 아내 (calm): \"그래서?\"\nSETTING: Restroom mirror area, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "\"마이너스면 빵원이지. 유류분 청구 못 해.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a flashy red blouse.\nACTION: 동거녀 touches up her makeup, looking completely relaxed.\nDIALOGUE: 동거녀 (confident): \"마이너스면 빵원이지. 유류분 청구 못 해.\"\nSETTING: Restroom mirror area, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"아니지. 그 빚만큼 유류분에 더해야지.\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 아내 in a neat grey suit facing 동거녀 in a flashy red blouse.\nACTION: 아내 shakes her head slowly, looking at 동거녀 through the mirror.\nDIALOGUE: 아내 (cold): \"아니지. 그 빚만큼 유류분에 더해야지.\" / 동거녀 (shocked): \"뭐라고?\"\nSETTING: Restroom mirror area, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"내가 왜 네 빚까지 떠안아서 갚아줘야 해!\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a flashy red blouse.\nACTION: 동거녀 turns around abruptly, glaring fiercely.\nDIALOGUE: 동거녀 (yelling): \"내가 왜 네 빚까지 떠안아서 갚아줘야 해!\"\nSETTING: Restroom mirror area, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"네가 재산 다 훔쳐가서 생긴 빚이니까.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in a neat grey suit.\nACTION: 아내 steps closer, her eyes completely cold.\nDIALOGUE: 아내 (sharp): \"네가 재산 다 훔쳐가서 생긴 빚이니까.\"\nSETTING: Restroom mirror area, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    }
+   ]
+  },
+  {
+   "no": 13,
+   "title": "좁혀오는 포위망",
+   "recap": "마이너스 상속, 빚만큼 유류분에 더해라",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"모든 증거 법원에 다 냈어. 넌 끝이야.\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 아내 in a neat grey suit facing 동거녀 in a flashy red blouse.\nACTION: 아내 stares down with absolute authority.\nDIALOGUE: 아내 (cold): \"모든 증거 법원에 다 냈어. 넌 끝이야.\" / 동거녀 (trembling): \"거짓말.\"\nSETTING: Outside courtroom doors, daytime, dim hallway light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "\"남편이 날 진심으로 사랑해서 준 돈이라고!\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a flashy red blouse.\nACTION: 동거녀 yells, tears welling up in her eyes.\nDIALOGUE: 동거녀 (crying): \"남편이 날 진심으로 사랑해서 준 돈이라고!\"\nSETTING: Outside courtroom doors, daytime, dim hallway light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"사랑? 나한테 돈 뺏길까 봐 도피한 거지.\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 아내 in a neat grey suit facing 동거녀 in a flashy red blouse.\nACTION: 아내 smirks, completely unmoved by the tears.\nDIALOGUE: 아내 (sharp): \"사랑? 나한테 돈 뺏길까 봐 도피한 거지.\" / 동거녀 (yelling): \"아니야!\"\nSETTING: Outside courtroom doors, daytime, dim hallway light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"난 그냥 그 사람이 시키는 대로 서명만 했어!\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a flashy red blouse.\nACTION: 동거녀 backs against the wall, looking desperate.\nDIALOGUE: 동거녀 (desperate): \"난 그냥 그 사람이 시키는 대로 서명만 했어!\"\nSETTING: Outside courtroom doors, daytime, dim hallway light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"이제 와서 꼬리 자르고 불쌍한 척하지 마.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in a neat grey suit.\nACTION: 아내 glares down mercilessly.\nDIALOGUE: 아내 (cold): \"이제 와서 꼬리 자르고 불쌍한 척하지 마.\"\nSETTING: Outside courtroom doors, daytime, dim hallway light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    }
+   ]
+  },
+  {
+   "no": 14,
+   "title": "법정의 공방",
+   "recap": "모든 증거가 모이고 궁지에 몰린 동거녀",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"우린 사실혼이었어! 나도 권리가 있다고!\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 동거녀 in a flashy red blouse facing 아내 in a neat grey suit.\nACTION: 동거녀 points a finger aggressively.\nDIALOGUE: 동거녀 (yelling): \"우린 사실혼이었어! 나도 권리가 있다고!\" / 아내 (calm): \"사실혼?\"\nSETTING: Courthouse lobby, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "\"불륜이 언제부터 사실혼으로 둔갑했지?\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in a neat grey suit.\nACTION: 아내 tilts her head, looking utterly disgusted.\nDIALOGUE: 아내 (sharp): \"불륜이 언제부터 사실혼으로 둔갑했지?\"\nSETTING: Courthouse lobby, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"당신네 부부는 이미 파탄 난 상태였어!\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 동거녀 in a flashy red blouse facing 아내 in a neat grey suit.\nACTION: 동거녀 glares fiercely, refusing to back down.\nDIALOGUE: 동거녀 (yelling): \"당신네 부부는 이미 파탄 난 상태였어!\" / 아내 (cold): \"누구 때문에!\"\nSETTING: Courthouse lobby, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"가정 파탄 낸 장본인들이 할 소리는 아니지.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in a neat grey suit.\nACTION: 아내 steps forward, her eyes blazing with suppressed anger.\nDIALOGUE: 아내 (sharp): \"가정 파탄 낸 장본인들이 할 소리는 아니지.\"\nSETTING: Courthouse lobby, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"판사님은 내 억울함 다 알아주실 거야.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a flashy red blouse.\nACTION: 동거녀 bites her lip, clenching her fists.\nDIALOGUE: 동거녀 (gritting teeth): \"판사님은 내 억울함 다 알아주실 거야.\"\nSETTING: Courthouse lobby, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    }
+   ]
+  },
+  {
+   "no": 15,
+   "title": "선고 전야",
+   "recap": "가정 파탄 내놓고 사실혼 주장하는 뻔뻔함",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"내일이 선고야. 돈 준비해 둬.\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 아내 in a neat grey suit facing 동거녀 in a flashy red blouse.\nACTION: 아내 stares coldly, completely relaxed.\nDIALOGUE: 아내 (cold): \"내일이 선고야. 돈 준비해 둬.\" / 동거녀 (frowning): \"한 푼도 못 줘.\"\nSETTING: Quiet street, evening, dim streetlights.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "\"절대 안 뺏길 거야. 다 내 정당한 돈이야.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a flashy red blouse.\nACTION: 동거녀 crosses her arms defensively, looking nervous.\nDIALOGUE: 동거녀 (anxious): \"절대 안 뺏길 거야. 다 내 정당한 돈이야.\"\nSETTING: Quiet street, evening, dim streetlights.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"이십 년 부부 재산, 네가 훔쳤잖아.\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 아내 in a neat grey suit facing 동거녀 in a flashy red blouse.\nACTION: 아내 steps closer, her voice low and threatening.\nDIALOGUE: 아내 (sharp): \"이십 년 부부 재산, 네가 훔쳤잖아.\" / 동거녀 (yelling): \"억지 쓰지 마.\"\nSETTING: Quiet street, evening, dim streetlights.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"그 사람이 당신 정말 지독하고 끔찍하댔어.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 동거녀 in a flashy red blouse.\nACTION: 동거녀 smirks maliciously, trying to hurt her opponent.\nDIALOGUE: 동거녀 (mocking): \"그 사람이 당신 정말 지독하고 끔찍하댔어.\"\nSETTING: Quiet street, evening, dim streetlights.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"내일 법정에서 누가 진짜 지독한지 보자고.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in a neat grey suit.\nACTION: 아내 gives a chilling, confident smile.\nDIALOGUE: 아내 (cold): \"내일 법정에서 누가 진짜 지독한지 보자고.\"\nSETTING: Quiet street, evening, dim streetlights.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    }
+   ]
+  },
+  {
+   "no": 16,
+   "title": "판결의 무게",
+   "recap": "드디어 다가온 16억 반환 선고의 날",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"십육억을 토해내라고? 말도 안 돼!\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 동거녀 in a flashy red blouse facing 아내 in a neat grey suit.\nACTION: 동거녀 screams, grabbing her hair in pure despair.\nDIALOGUE: 동거녀 (screaming): \"십육억을 토해내라고? 말도 안 돼!\" / 아내 (calm): \"현실을 봐.\"\nSETTING: Courthouse steps, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "\"당연한 결과야. 네가 훔친 돈의 절반이지.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in a neat grey suit.\nACTION: 아내 looks down at her opponent with utter indifference.\nDIALOGUE: 아내 (cold): \"당연한 결과야. 네가 훔친 돈의 절반이지.\"\nSETTING: Courthouse steps, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"이러면 난 길거리에 나앉아!\"",
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 동거녀 in a flashy red blouse facing 아내 in a neat grey suit.\nACTION: 동거녀 falls to her knees, crying desperately.\nDIALOGUE: 동거녀 (crying): \"이러면 난 길거리에 나앉아!\" / 아내 (cold): \"내 알 바 아니지.\"\nSETTING: Courthouse steps, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"매일 이자도 오십만 원씩 붙어. 빨리 갚아.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in a neat grey suit.\nACTION: 아내 turns around to leave, looking completely victorious.\nDIALOGUE: 아내 (sharp): \"매일 이자도 오십만 원씩 붙어. 빨리 갚아.\"\nSETTING: Courthouse steps, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"남의 가정 짓밟고 눈에 피눈물 낸 대가야.\"",
+     "prompt": "SHOT: Close-up shot, static camera, focusing on character's expression.\nSUBJECT: 아내 in a neat grey suit.\nACTION: 아내 pauses, looking back over her shoulder one last time.\nDIALOGUE: 아내 (cold): \"남의 가정 짓밟고 눈에 피눈물 낸 대가야.\"\nSETTING: Courthouse steps, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+    }
+   ]
+  }
+ ],
+ "series_id": "S001",
+ "spec": {
+  "episodes": 16,
+  "cuts": 5,
+  "sec": 6
+ }
+}
