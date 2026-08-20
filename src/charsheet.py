@@ -39,8 +39,12 @@ BACKDROP = ("plain flat light-grey studio backdrop, completely empty, "
             "no furniture, no props, no scenery")
 LIGHT = ("soft even studio lighting from the front, no harsh shadow, "
          "no coloured light")
-LOOK = ("photorealistic live-action photograph, 50mm lens, eye level, "
-        "Korean TV drama realism, natural skin texture with visible pores, "
+# ⚠️ 2026-08-20 — 플로우가 "유명인 동영상 생성 정책" 으로 막았다.
+#    `live-action` + `Korean TV drama` + `photo of a Korean woman` 이 겹치면
+#    **실존 배우 사진을 만들어 달라**는 말로 읽힌다. 사진 느낌은 그대로 두고
+#    방송·배우를 가리키는 말만 뺀다.
+LOOK = ("photorealistic studio photograph, 50mm lens, eye level, "
+        "natural skin texture with visible pores, "
         "no beauty filter, no smoothing, no stylization")
 AVOID = ("Avoid: text, letters, watermark, logo, props, furniture, background "
          "scenery, other people, hands doing anything, dramatic or coloured "
@@ -92,7 +96,9 @@ def build(ch):
     outfit = (ch.get("outfit") or "").strip()
     face = (ch.get("face_tag") or "").strip()
 
-    sheet = [f"Character reference photo of a {who}."]
+    # ⭐ 맨 앞에서 **지어낸 인물**임을 밝힌다 — 이 한 마디가 없으면
+    #    "실제 사람 사진을 만들어 달라" 로 읽혀 정책에 막힌다 (2026-08-20).
+    sheet = [f"Character reference sheet for a fictional, invented {who}."]
     if look:
         sheet.append(f"APPEARANCE: {look}.")
     if outfit:
@@ -117,15 +123,55 @@ def build(ch):
     return "\n".join(sheet), desc
 
 
+# 정책에 걸리는 말 → 뜻이 같은 안전한 말 (2026-08-20)
+#   플로우가 "유명인 동영상 생성 정책" 으로 막았다. 실제 방송·배우를 가리키는
+#   말이 겹치면 실존 인물을 만들라는 말로 읽힌다.
+SAFE = [("Korean TV drama realism", "grounded everyday Korean realism"),
+        ("K-drama realism", "grounded everyday Korean realism"),
+        ("photorealistic live-action", "photorealistic"),
+        ("live-action", "live footage"),
+        ("like a Korean actress", "in a plain natural way"),
+        ("like a Korean actor", "in a plain natural way"),
+        ("actress", "person"), ("actor", "person")]
+
+
+def scrub(t):
+    """인물 설명에서 방송·배우를 가리키는 말을 안전한 말로 바꾼다."""
+    out = str(t or "")
+    for a, b in SAFE:
+        out = re.sub(re.escape(a), b, out, flags=re.I)
+    return out
+
+
+def stale(ch):
+    """예전 문구로 만들어 둔 것인가 (정책에 걸리는 말이 남아 있는가)."""
+    blob = (ch.get("flow_sheet") or "") + (ch.get("flow_desc") or "")
+    if not blob.strip():
+        return False
+    if LOOK not in (ch.get("flow_sheet") or ""):
+        return True
+    return any(re.search(re.escape(a), blob, re.I) for a, _ in SAFE)
+
+
 def fill(doc):
-    """인물표에 face_tag · flow_sheet · flow_desc 를 채워 넣는다 (있으면 둔다)."""
+    """인물표에 face_tag · flow_sheet · flow_desc 를 채워 넣는다 (있으면 둔다).
+
+    ⚠️ 단, **예전 문구로 만들어 둔 것은 다시 만든다.** 안 그러면 정책에 걸리는
+       말이 인물표에 그대로 남아 이미 만든 대본은 계속 막힌다 (2026-08-20).
+    """
     n = 0
     for ch in doc.get("characters") or []:
+        ch["flow_prompt"] = scrub(ch.get("flow_prompt"))
+        # 얼굴 못을 **먼저** 박는다 — 아래에서 다시 만들 때도 쓰이기 때문이다
         if not (ch.get("face_tag") or "").strip():
             f = face_of(ch)
             if f:
                 ch["face_tag"] = f
                 n += 1
+        if stale(ch):
+            ch["flow_sheet"], ch["flow_desc"] = build(ch)
+            n += 1
+            continue
         if not (ch.get("flow_sheet") or "").strip():
             ch["flow_sheet"], d = build(ch)
             if not (ch.get("flow_desc") or "").strip():

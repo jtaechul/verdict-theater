@@ -142,7 +142,14 @@ LINES = ["SHOT:", "SUBJECT:", "ACTION:", "DIALOGUE:", "SETTING:", "STYLE:", "Avo
 #    그래서 **주소로 보일 여지 자체를 없앤다** — 맨 앞에 콜론 없는 머리말을
 #    한 줄 둔다. 첫 낱말 뒤에 곧바로 `:` 가 오지 않으면 주소가 아니다.
 #    이 줄은 영상에도 도움이 되는 말이라 버리는 줄이 아니다.
-HEAD_FIX = f"Live-action Korean drama, {SEC}-second single continuous take."
+#    ⭐⭐ 2026-08-20 두 번째 — 플로우가 이 머리말에 이렇게 답했다:
+#       "이 프롬프트는 **유명인의 동영상 생성**에 관한 정책을 위반할 가능성이…"
+#       `Live-action Korean drama` 는 **실제로 방영된 한국 드라마를 실사로
+#       다시 만들어 달라**는 말로 읽힌다. 거기에 Avoid 줄의 `actor`(배우),
+#       STYLE 줄의 `Korean TV drama realism` 까지 겹쳐 "실존 배우"로 보였다.
+#       → 방송·배우를 가리키는 말을 모두 빼고, **지어낸 인물**임을 먼저 밝힌다.
+HEAD_FIX = (f"Fictional scene, invented characters, realistic live footage. "
+            f"{SEC}-second single continuous take.")
 
 
 def looks_like_url(t):
@@ -157,7 +164,7 @@ def looks_like_url(t):
 STYLE_FIX = ("STYLE: one single continuous take, no cut, no scene change, "
              "same location and same person from first frame to last, "
              "identical clothing throughout, "
-             "Korean TV drama realism, muted desaturated palette, soft "
+             "grounded everyday Korean realism, muted desaturated palette, soft "
              "practical lighting, 35mm lens look, shallow depth of field, "
              "natural skin texture, no stylization.")
 
@@ -235,7 +242,7 @@ AVOID_FIX = ("Avoid: on-screen text, signage, documents with visible writing, "
              "screens, background extras in focus, "
              "cutting to another shot, changing the background mid-shot, "
              "the person changing clothes or face mid-shot, "
-             "swapping in a different actor.")
+             "swapping in a different person.")
 
 
 def fix_subject_dup(doc):
@@ -614,6 +621,25 @@ HOOK_FLAT = ["에 대하여", "의 진실", "하는 이유", " 이야기", "의 
              "충격", "경악", "소름"]
 
 
+# ⭐⭐ 2026-08-20 — 플로우가 컷 프롬프트를 통째로 막았다:
+#    "이 프롬프트는 **유명인의 동영상 생성**에 관한 Google 정책을 위반할
+#     가능성이 있습니다."
+#    실제 방송·배우를 가리키는 말이 겹치면 실존 인물을 만들라는 말로 읽힌다.
+#    이건 영상이 **아예 안 나오는** 일이라 손볼 곳이 아니라 **반려**다.
+#    (다만 우리가 자동으로 바꿔 주므로 실제로 반려까지 가는 일은 드물다)
+POLICY_BAN = ["actor", "actress", "celebrity", "famous", "idol",
+              "k-drama", "kdrama", "korean tv drama", "live-action drama",
+              "lookalike", "look-alike", "resembling", "real person",
+              "in the style of a famous"]
+
+
+def policy_hits(t):
+    """정책에 막히는 말을 골라 낸다."""
+    low = str(t or "").lower()
+    return sorted({w for w in POLICY_BAN
+                   if re.search(r"(?<![a-z])" + re.escape(w) + r"(?![a-z])", low)})
+
+
 def hook_warn(doc):
     """후킹이 비었거나 밋밋하면 알린다."""
     out = []
@@ -639,6 +665,18 @@ def hook_warn(doc):
         elif len(t) > YT_TITLE_MAX:
             out.append(f"{no}화: 유튜브 제목이 {len(t)}자다 ({YT_TITLE_MAX}자 넘음)")
     return out
+
+
+def policy_check(doc):
+    """인물표까지 훑어 정책에 막히는 말을 찾는다."""
+    bad = []
+    for ch in doc.get("characters") or []:
+        blob = " ".join(str(ch.get(k) or "") for k in
+                        ("flow_prompt", "flow_sheet", "flow_desc", "outfit", "face_tag"))
+        ph = policy_hits(blob)
+        if ph:
+            bad.append(f"인물 '{ch.get('name')}': 정책에 막히는 말 — {', '.join(ph)}")
+    return bad
 
 
 def soft(doc):
@@ -738,6 +776,7 @@ def check(doc):
         bad.append(f"화 수가 {len(eps)}개다 (있어야 할 것 {EPISODES}개)")
     if len(doc.get("characters") or []) > 3:
         bad.append("등장인물이 3명을 넘는다")
+    bad += policy_check(doc)
     names = [(ch.get("name") or "").strip() for ch in (doc.get("characters") or [])]
 
     for e in eps:
@@ -770,6 +809,10 @@ def check(doc):
             if looks_like_url(p):
                 bad.append(f"{tag}: 맨 앞이 '단어:' 라 주소로 읽힌다 "
                            f"({p.split(chr(10))[0][:24]})")
+            ph = policy_hits(p)
+            if ph:
+                bad.append(f"{tag}: 정책에 막히는 말 — {', '.join(ph)} "
+                           f"(플로우가 '유명인 동영상 생성' 으로 거절한다)")
             if STYLE_FIX not in p:
                 bad.append(f"{tag}: STYLE 줄이 고정 문구와 다르다")
             # ⚠️ 예전엔 `endswith("focus.")` 였다. 고정 문구를 손보는 순간

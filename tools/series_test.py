@@ -296,6 +296,44 @@ ck("고쳐 주면 머리말이 되살아난다",
        for e in S.normalize(d)["episodes"] for c in e["cuts"]))
 ck("고친 뒤에는 검사가 조용하다", S.check(d) == [], str(S.check(d))[:60])
 
+print("\n⑬-3 정책에 막히는 말이 없는가 (2026-08-20 · 플로우가 실제로 거절했다)")
+# ⚠️ 플로우: "이 프롬프트는 유명인의 동영상 생성에 관한 정책을 위반할 가능성이…"
+#    `Live-action Korean drama` + `Korean TV drama realism` + `actor` 가 겹쳐
+#    "실존 배우로 드라마를 다시 만들어 달라" 로 읽혔다.
+import charsheet as _C                                      # noqa: E402
+for nm, txt in (("머리말", S.HEAD_FIX), ("STYLE", S.STYLE_FIX),
+                ("Avoid", S.AVOID_FIX), ("인물 LOOK", _C.LOOK),
+                ("인물 Avoid", _C.AVOID), ("인물 자세", _C.POSE)):
+    ck(f"{nm} 고정 문구가 깨끗하다", not S.policy_hits(txt), str(S.policy_hits(txt)))
+ck("배우를 가리키는 말을 잡는다", S.policy_hits("swapping in a different actor.") == ["actor"])
+ck("유명인을 가리키는 말을 잡는다", "famous" in S.policy_hits("a famous Korean actress"))
+ck("드라마 이름을 가리키는 말을 잡는다",
+   S.policy_hits("Korean TV drama realism") == ["korean tv drama"])
+ck("'stares' 를 'star' 로 잘못 잡지 않는다", not S.policy_hits("she stares at him"))
+d = good_doc()
+d["episodes"][0]["cuts"][0]["prompt"] = good_prompt().replace(
+    "different person.", "different actor.")
+ck("정책에 막히는 컷은 **반려**한다", any("정책" in b for b in S.check(d)),
+   str(S.check(d))[:70])
+d2 = good_doc()
+d2["characters"][0]["flow_prompt"] = "Korean woman, looks like a famous actress."
+ck("인물표에 있어도 반려한다", any("정책" in b for b in S.check(d2)))
+ck("인물 설명을 안전한 말로 바꿔 준다",
+   not S.policy_hits(_C.scrub("Korean TV drama realism, like a Korean actress")),
+   _C.scrub("Korean TV drama realism, like a Korean actress"))
+ck("예전 문구로 만든 인물표는 다시 만든다",
+   _C.stale({"flow_sheet": "LOOK: photorealistic live-action photograph.",
+             "flow_desc": "x"}))
+_ch = {"name": "본처", "flow_prompt": "Korean woman, 52 years old, oval face, "
+       "dark brown hair in a low bun. Photorealistic."}
+_sheet, _desc = _C.build(_ch)
+ck("지금 문구로 만든 인물표는 그냥 둔다",
+   not _C.stale({"flow_sheet": _sheet, "flow_desc": _desc}))
+ck("새로 만든 인물표에도 막히는 말이 없다",
+   not S.policy_hits(_sheet + _desc), str(S.policy_hits(_sheet + _desc)))
+ck("새 인물표가 '지어낸 사람' 이라고 먼저 밝힌다",
+   "fictional" in _sheet.split("\n")[0].lower(), _sheet.split("\n")[0])
+
 print("\n⑫ 눈앞의 사람을 남 부르듯 하지 않는가 (2026-08-20 · 실제 영상)")
 CH = [{"name": "본처", "flow_prompt": "Korean woman, 52 years old, …"},
       {"name": "내연녀", "flow_prompt": "Korean woman, 42 years old, …"},

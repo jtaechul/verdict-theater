@@ -64,14 +64,14 @@
 > 머리말은 콜론 없이 쓴다 — 그래야 주소로 안 읽힌다.
 
 ```
-Live-action Korean drama, 6-second single continuous take.
+Fictional scene, invented characters, realistic live footage. 6-second single continuous take.
 SHOT: 샷 크기 + 카메라 움직임 (하나만)
 SUBJECT: 등장인물 이름 + 옷차림 (얼굴 묘사 금지 — 캐릭터로 고정돼 있다)
 ACTION: 동작 하나
 DIALOGUE: 말하는 사람과 톤 + 한국어 대사. 두 사람이 주고받으면 ` / ` 로 잇는다 (없으면 "None.")
 SETTING: 장소 + 조명
-STYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.
-Avoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor.
+STYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, grounded everyday Korean realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.
+Avoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different person.
 ```
 
 **지켜야 할 것**
@@ -159,7 +159,7 @@ Avoid: on-screen text, signage, documents with visible writing, screens, backgro
 `맞섬`·`뒤집기` 는 받아치는 말이 있어야 장면이 뒤집힌다. 이렇게 쓴다:
 
 ```
-Live-action Korean drama, 6-second single continuous take.
+Fictional scene, invented characters, realistic live footage. 6-second single continuous take.
 SHOT: Medium two-shot, static camera, both faces visible.
 DIALOGUE: 아내 (furious): "여기가 어디라고 와? 당장 안 나가면 경찰 부른다." / 동거녀 (calm): "마지막 가는 길인데 인사도 못 해요?"
 ```
@@ -395,6 +395,37 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 
 ---
 
+## ⭐ 정책에 막히는 말 (2026-08-20 · 실제로 막혔다)
+
+플로우가 컷 프롬프트를 이렇게 되돌려 보냈다 —
+> **"이 프롬프트는 유명인의 동영상 생성에 관한 Google 정책을 위반할 가능성이 있습니다."**
+
+원인은 **실제 방송·배우를 가리키는 말**이 겹친 것이었다.
+`Live-action Korean drama` + `Korean TV drama realism` + `swapping in a different actor`
+→ "실제로 방영된 한국 드라마를 실존 배우로 다시 만들어 달라" 로 읽힌다.
+
+### 절대 쓰지 않는 말
+
+`actor` · `actress` · `celebrity` · `famous` · `star` · `idol` ·
+`K-drama` · `Korean TV drama` · `live-action drama` ·
+실제 드라마·영화 제목 · 실제 배우·가수·정치인 이름 ·
+`looks like ...` · `resembling ...` · `in the style of <사람 이름>`
+
+### 대신 이렇게 쓴다
+
+| ✗ 막힌다 | ○ 통과한다 |
+|---|---|
+| Korean TV drama realism | grounded everyday Korean realism |
+| photorealistic live-action photograph | photorealistic studio photograph |
+| swapping in a different actor | swapping in a different person |
+| a Korean actress in her 50s | a Korean woman in her 50s |
+| looks like a famous actor | ordinary, plain features |
+
+인물은 **지어낸 사람**이다. `flow_prompt` 에도 실제 사람을 떠올리게 하는 말을
+넣지 않는다 — 나이·얼굴형·머리·표정처럼 **생김새만** 적는다.
+
+---
+
 ## ⭐⭐ 후킹과 제목 — 점잖게 쓰면 아무도 안 본다 (2026-08-20 운영자 지시)
 
 > 운영자 원문: **"제목이랑 후킹 좀 더 자극적으로 뽑아. 자꾸 점잔 빼지 말고
@@ -460,7 +491,7 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
   "title": "이십 년 며느리, 상속은 0원",
   "case_id": "230761",
   "characters": [
-    { "name": "며느리", "face_tag": "50s, oval face, low bun", "outfit": "a black mourning hanbok", "flow_prompt": "Korean woman, 52 years old, oval face, tired eyes with fine lines, dark brown hair in a low bun, worn calm expression. Photorealistic, natural skin texture, Korean TV drama realism." }
+    { "name": "며느리", "face_tag": "50s, oval face, low bun", "outfit": "a black mourning hanbok", "flow_prompt": "Korean woman, 52 years old, oval face, tired eyes with fine lines, dark brown hair in a low bun, worn calm expression. Photorealistic, natural skin texture, plain natural look." }
   ],
   "episodes": [
     {
@@ -475,7 +506,7 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
           "role": "후킹",
           "subtitle": "\"이 집, 오늘 안에 비워 주세요.\" / \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"",
           "caption": "장례를 치른 다음 날, 시동생이 집을 요구했다",
-          "prompt": "Live-action Korean drama, 6-second single continuous take.\nSHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.\nACTION: 시동생 holds out a closed folder toward 며느리, who does not take it.\nDIALOGUE: 시동생 (calm and cold): \"이 집, 오늘 안에 비워 주세요.\" / 며느리 (trembling): \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
+          "prompt": "Fictional scene, invented characters, realistic live footage. 6-second single continuous take.\nSHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.\nACTION: 시동생 holds out a closed folder toward 며느리, who does not take it.\nDIALOGUE: 시동생 (calm and cold): \"이 집, 오늘 안에 비워 주세요.\" / 며느리 (trembling): \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, grounded everyday Korean realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different person."
         }
       ]
     }
@@ -504,7 +535,7 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 
 - [ ] 16화 × 5컷 = 80컷이 다 있는가
 - [ ] 모든 화의 컷1이 **대사 또는 충격 장면**으로 시작하는가 (설명 금지)
-- [ ] 모든 `prompt` 가 **머리말 줄**(`Live-action Korean drama, 6-second single continuous take.`) 로 시작하는가
+- [ ] 모든 `prompt` 가 **머리말 줄**(`Fictional scene, invented characters, realistic live footage. 6-second single continuous take.`) 로 시작하는가
       (`SHOT:` 으로 시작하면 붙여 넣을 때 주소로 읽혀 글자가 통째로 깨진다)
 - [ ] 머리말 다음이 `SHOT:` 이고 `Avoid:` 로 끝나는가
 - [ ] 모든 `prompt` 에 `STYLE:` 줄이 **글자 그대로 똑같이** 들어갔는가
@@ -532,6 +563,8 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 - [ ] 주고받는 컷의 `SHOT` 이 two-shot 인가
 - [ ] 대사에 `내연녀` 같은 **배역 딱지**가 들어간 곳이 없는가
 - [ ] 1화부터 16화까지 **일어난 순서대로**인가 (죽은 사람이 뒤에서 살아나지 않는가)
+- [ ] `actor` `celebrity` `K-drama` 처럼 **실제 방송·배우를 가리키는 말**이 없는가
+      (있으면 플로우가 "유명인 동영상 생성 정책" 으로 막아 영상이 아예 안 나온다)
 - [ ] 실명·지명·법원명·사건번호·절대 연도가 없는가
 - [ ] 16화를 순서대로 읽으면 하나의 이야기로 이어지는가
 
