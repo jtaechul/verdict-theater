@@ -150,6 +150,34 @@ ck("마침표가 살아 있다", sub4.endswith("."))
 n4 = S.fix_subject_dup(d4)
 ck("두 번 돌려도 더 안 바뀐다", n4 == 0, f"{n4}줄")
 
+print("\n④-3 한글 배역말을 영어 관계말로 바꾸는가 (2026-08-20 · 세 번째 사고)")
+# ⚠️ 얼굴 설명을 다 뺐는데도 플로우가 막았다. 기계는 `남편` 이 무슨 뜻인지
+#    몰라 **사람 이름**으로 읽는다 → 유명인 검사에 걸린다.
+d5 = doc_with(["본처 steps in front of 남편, blocking the way."])
+d5["episodes"][0]["cuts"][0]["prompt"] = (
+    "SHOT: Medium two-shot.\n"
+    "SUBJECT: 본처 in a cardigan facing 남편 in a jacket.\n"
+    "ACTION: 본처 steps in front of 남편, blocking the way.\n"
+    'DIALOGUE: 본처 (furious): "당신 진짜 제정신이야?"\n'
+    "SETTING: Korean apartment living room.")
+S.fix_names(d5)
+pr5 = d5["episodes"][0]["cuts"][0]["prompt"]
+for l in pr5.split("\n"):
+    print("      " + l)
+ck("SUBJECT 가 영어 관계말이 된다", "the wife" in pr5 and "the husband" in pr5)
+ck("한글 배역말이 대사 밖에 안 남는다",
+   not any(n in l for l in pr5.split("\n") for n in ("본처", "남편")
+           if not l.startswith("DIALOGUE:")),
+   pr5.split("\n")[1])
+ck("따옴표 안 대사는 한국어 그대로다", '"당신 진짜 제정신이야?"' in pr5)
+ck("말하는 사람 이름표도 영어가 된다", "the wife (furious)" in pr5, pr5.split("\n")[3][:40])
+ck("두 번 돌려도 더 안 바뀐다", S.fix_names(d5) == 0)
+ck("배역말 표를 남긴다", d5.get("_name_map", {}).get("본처") == "the wife")
+d6 = doc_with(["본처 stands still."])
+d6["characters"].append({"name": "동업자", "flow_prompt": "Korean man, 60 years old."})
+ck("표에 없는 배역도 영어로 바꾼다",
+   S.name_map(d6).get("동업자") == "the business partner", str(S.name_map(d6)))
+
 print("\n⑤ 후킹 검사")
 ok = doc_with(["본처 stands still."])
 ck("제대로 된 후킹은 조용하다", not S.hook_warn(ok), str(S.hook_warn(ok)))
@@ -192,6 +220,11 @@ if p.exists():
        not [1 for e in real["episodes"] for c in e["cuts"]
             for l in c["prompt"].split("\n") if l.startswith("SUBJECT:")
             and any(re.search(rf"(?<![\w가-힣]){re.escape(n)}\(", l) for n in names)])
+    ko = [c["name"] for c in real["characters"]]
+    ck("컷 프롬프트 대사 밖에 한글 배역말이 없다",
+       not [1 for e in real["episodes"] for c in e["cuts"]
+            for l in c["prompt"].split("\n")
+            if not l.startswith("DIALOGUE:") and any(n in l for n in ko)])
     ck("모든 컷이 머리말로 시작한다",
        all(c["prompt"].startswith(S.HEAD_FIX)
            for e in real["episodes"] for c in e["cuts"]))

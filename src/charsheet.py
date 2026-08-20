@@ -119,7 +119,10 @@ def build(ch):
         bits.append(look)
     if outfit:
         bits.append(f"always wears {outfit}")
-    desc = f"{name} — " + ". ".join(x.strip(" .") for x in bits if x) + "."
+    # ⚠️ 한글 배역말을 그대로 두면 기계가 **사람 이름**으로 읽어 유명인 검사에
+    #    걸린다 (2026-08-20). 플로우에 보내는 글에서는 영어 관계말을 쓴다.
+    label = (ch.get("role_en") or "").strip() or name
+    desc = f"{label} — " + ". ".join(x.strip(" .") for x in bits if x) + "."
     return "\n".join(sheet), desc
 
 

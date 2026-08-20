@@ -64,9 +64,9 @@
 > 머리말은 콜론 없이 쓴다 — 그래야 주소로 안 읽힌다.
 
 ```
-Fictional scene, invented characters, realistic live footage. 6-second single continuous take.
+Fictional scene, invented characters, cinematic realism. 6-second single continuous take.
 SHOT: 샷 크기 + 카메라 움직임 (하나만)
-SUBJECT: 등장인물 이름 + 옷차림 (얼굴 묘사 절대 금지 — 아래 ⚠️ 참고)
+SUBJECT: 등장인물을 가리키는 **영어 관계말** + 옷차림 (얼굴 묘사 절대 금지 — 아래 ⚠️ 참고)
 ACTION: 동작 하나
 DIALOGUE: 말하는 사람과 톤 + 한국어 대사. 두 사람이 주고받으면 ` / ` 로 잇는다 (없으면 "None.")
 SETTING: 장소 + 조명
@@ -159,7 +159,7 @@ Avoid: on-screen text, signage, documents with visible writing, screens, backgro
 `맞섬`·`뒤집기` 는 받아치는 말이 있어야 장면이 뒤집힌다. 이렇게 쓴다:
 
 ```
-Fictional scene, invented characters, realistic live footage. 6-second single continuous take.
+Fictional scene, invented characters, cinematic realism. 6-second single continuous take.
 SHOT: Medium two-shot, static camera, both faces visible.
 DIALOGUE: 아내 (furious): "여기가 어디라고 와? 당장 안 나가면 경찰 부른다." / 동거녀 (calm): "마지막 가는 길인데 인사도 못 해요?"
 ```
@@ -410,6 +410,26 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 `Live-action Korean drama` + `Korean TV drama realism` + `swapping in a different actor`
 → "실제로 방영된 한국 드라마를 실존 배우로 다시 만들어 달라" 로 읽힌다.
 
+### ⚠️ 컷 프롬프트 안에서는 배역을 **영어 관계말**로 부른다
+
+`SUBJECT: 남편 …` 처럼 한글 배역말을 쓰면 기계는 그것이 무슨 뜻인지 모른다.
+아는 것은 "사람 자리에 들어간 모르는 낱말" 뿐이라 **사람 이름**으로 읽고,
+이름 붙은 사람을 사진처럼 만들어 달라는 말이 되어 유명인 검사에 걸린다.
+
+| ✗ 막힌다 | ○ 통과한다 |
+|---|---|
+| `SUBJECT: 남편 in a casual jacket` | `SUBJECT: the husband in a casual jacket` |
+| `ACTION: 본처 steps in front of 남편` | `ACTION: the wife steps in front of the husband` |
+| `DIALOGUE: 본처 (furious): "…"` | `DIALOGUE: the wife (furious): "…"` |
+
+**따옴표 안의 대사는 한국어 그대로 둔다** — 그건 화면에 나올 말이다.
+`characters` 의 `name` 은 한글 그대로 적는다 (화면·도서관에서 쓴다).
+바뀌는 것은 **플로우에 보내는 컷 프롬프트뿐**이다.
+
+관계말 예: 본처 → `the wife` · 남편 → `the husband` ·
+내연녀 → `the other woman` · 며느리 → `the daughter-in-law` ·
+시동생 → `the brother-in-law` · 시어머니 → `the mother-in-law`
+
 ### ⚠️ `SUBJECT` 에 얼굴을 적으면 **모든 컷이 막힌다** (실제로 겪었다)
 
 `SUBJECT: 남편(55, square face, short neatly parted black hair) …` 로 적었더니
@@ -527,7 +547,7 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
           "role": "후킹",
           "subtitle": "\"이 집, 오늘 안에 비워 주세요.\" / \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"",
           "caption": "장례를 치른 다음 날, 시동생이 집을 요구했다",
-          "prompt": "Fictional scene, invented characters, realistic live footage. 6-second single continuous take.\nSHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.\nACTION: 시동생 holds out a closed folder toward 며느리, who does not take it.\nDIALOGUE: 시동생 (calm and cold): \"이 집, 오늘 안에 비워 주세요.\" / 며느리 (trembling): \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, grounded everyday Korean realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different person."
+          "prompt": "Fictional scene, invented characters, cinematic realism. 6-second single continuous take.\nSHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: the brother-in-law in a black suit facing the daughter-in-law in black mourning hanbok.\nACTION: the brother-in-law sets a closed folder on the table and steps back.\nDIALOGUE: the brother-in-law (calm and cold): \"이 집, 오늘 안에 비워 주세요.\" / the daughter-in-law (trembling): \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, grounded everyday Korean realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different person."
         }
       ]
     }
@@ -556,7 +576,7 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 
 - [ ] 16화 × 5컷 = 80컷이 다 있는가
 - [ ] 모든 화의 컷1이 **대사 또는 충격 장면**으로 시작하는가 (설명 금지)
-- [ ] 모든 `prompt` 가 **머리말 줄**(`Fictional scene, invented characters, realistic live footage. 6-second single continuous take.`) 로 시작하는가
+- [ ] 모든 `prompt` 가 **머리말 줄**(`Fictional scene, invented characters, cinematic realism. 6-second single continuous take.`) 로 시작하는가
       (`SHOT:` 으로 시작하면 붙여 넣을 때 주소로 읽혀 글자가 통째로 깨진다)
 - [ ] 머리말 다음이 `SHOT:` 이고 `Avoid:` 로 끝나는가
 - [ ] 모든 `prompt` 에 `STYLE:` 줄이 **글자 그대로 똑같이** 들어갔는가
@@ -584,6 +604,8 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 - [ ] 주고받는 컷의 `SHOT` 이 two-shot 인가
 - [ ] 대사에 `내연녀` 같은 **배역 딱지**가 들어간 곳이 없는가
 - [ ] 1화부터 16화까지 **일어난 순서대로**인가 (죽은 사람이 뒤에서 살아나지 않는가)
+- [ ] 컷 프롬프트 안에서 배역을 **영어 관계말**(`the wife` `the husband`)로 불렀는가
+      (한글 배역말은 사람 이름으로 읽혀 막힌다 · 따옴표 안 대사는 한국어 그대로)
 - [ ] `SUBJECT` 에 **나이·얼굴형·머리 모양**을 적지 않았는가
       (`남편(55, square face…)` ✗ → `남편 in a casual jacket` ○ · 적으면 80컷이 전부 막힌다)
 - [ ] `actor` `celebrity` `K-drama` 처럼 **실제 방송·배우를 가리키는 말**이 없는가

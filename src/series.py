@@ -148,7 +148,9 @@ LINES = ["SHOT:", "SUBJECT:", "ACTION:", "DIALOGUE:", "SETTING:", "STYLE:", "Avo
 #       다시 만들어 달라**는 말로 읽힌다. 거기에 Avoid 줄의 `actor`(배우),
 #       STYLE 줄의 `Korean TV drama realism` 까지 겹쳐 "실존 배우"로 보였다.
 #       → 방송·배우를 가리키는 말을 모두 빼고, **지어낸 인물**임을 먼저 밝힌다.
-HEAD_FIX = (f"Fictional scene, invented characters, realistic live footage. "
+#    ⚠️ `realistic live footage` 도 뺐다 — "실제로 찍은 영상" 으로 읽혀
+#       실존 인물 쪽으로 기운다. 사실적인 느낌은 STYLE 줄이 이미 지고 있다.
+HEAD_FIX = (f"Fictional scene, invented characters, cinematic realism. "
             f"{SEC}-second single continuous take.")
 
 
@@ -245,6 +247,99 @@ AVOID_FIX = ("Avoid: on-screen text, signage, documents with visible writing, "
              "swapping in a different person.")
 
 
+# ⭐⭐ 2026-08-20 세 번째 — 얼굴 설명을 다 뺐는데도 플로우가 계속 막았다.
+#    "이 프롬프트는 유명인의 동영상 생성에 관한 정책을 위반할 가능성이…"
+#    남은 것은 **한글 배역말**이다. `SUBJECT: 남편 …` 에서 기계는 `남편` 이
+#    무슨 뜻인지 모른다 — 아는 것은 "사람 자리에 들어간 모르는 낱말" 뿐이라
+#    **사람 이름**으로 읽는다. 이름이 붙은 사람을 사진처럼 만들어 달라는 말이
+#    되니 유명인 검사에 걸린다.
+#    → 컷 프롬프트에서는 배역을 **영어 관계말**로 적는다.
+#      대사(따옴표 안)는 한국어 그대로 둔다 — 그건 화면에 나올 말이다.
+#    ⚠️ 화면·도서관·DM 에 보이는 이름은 그대로 한글이다. 바뀌는 것은
+#      **플로우에 보내는 컷 프롬프트뿐**이다.
+ROLE_EN = {
+    "본처": "the wife", "아내": "the wife", "부인": "the wife",
+    "남편": "the husband", "전남편": "the former husband",
+    "내연녀": "the other woman", "내연남": "the other man",
+    "상간녀": "the other woman", "상간남": "the other man",
+    "며느리": "the daughter-in-law", "사위": "the son-in-law",
+    "시동생": "the brother-in-law", "시누이": "the sister-in-law",
+    "시어머니": "the mother-in-law", "시아버지": "the father-in-law",
+    "장모": "the mother-in-law", "장인": "the father-in-law",
+    "어머니": "the mother", "아버지": "the father", "엄마": "the mother",
+    "아빠": "the father", "아들": "the son", "딸": "the daughter",
+    "장남": "the eldest son", "장녀": "the eldest daughter",
+    "동생": "the younger sibling", "형": "the older brother",
+    "누나": "the older sister", "언니": "the older sister",
+    "오빠": "the older brother", "고모": "the aunt", "이모": "the aunt",
+    "삼촌": "the uncle", "조카": "the nephew", "손자": "the grandson",
+    "손녀": "the granddaughter", "할머니": "the grandmother",
+    "할아버지": "the grandfather", "사장": "the boss",
+    "동업자": "the business partner", "친구": "the friend",
+    "변호사": "the lawyer", "의사": "the doctor", "간호사": "the nurse",
+    "직원": "the employee", "이웃": "the neighbour",
+}
+WOMAN = ["woman", "female", "her ", "she "]
+
+
+def role_en(ch, used):
+    """배역 하나 → 컷 프롬프트에 쓸 영어 관계말 (겹치면 번호를 붙인다)."""
+    nm = (ch.get("name") or "").strip()
+    en = ROLE_EN.get(nm)
+    if not en:
+        low = (ch.get("flow_prompt") or "").lower()
+        en = "the woman" if any(w in low for w in WOMAN) else "the man"
+    base, i = en, 2
+    while en in used:
+        en, i = f"{base} ({i})", i + 1
+    used.add(en)
+    return en
+
+
+def name_map(doc):
+    """한글 배역말 → 영어 관계말. 긴 이름부터 바꿔야 겹치지 않는다."""
+    used, out = set(), {}
+    for ch in doc.get("characters") or []:
+        nm = (ch.get("name") or "").strip()
+        if nm:
+            out[nm] = role_en(ch, used)
+    return dict(sorted(out.items(), key=lambda kv: len(kv[0]), reverse=True))
+
+
+def _outside_quotes(line, fn):
+    """따옴표 **밖**만 바꾼다 (대사는 한국어 그대로 둬야 한다)."""
+    bits = line.split('"')
+    return '"'.join(b if i % 2 else fn(b) for i, b in enumerate(bits))
+
+
+def fix_names(doc):
+    """컷 프롬프트의 한글 배역말을 영어 관계말로 바꾼다."""
+    mp = name_map(doc)
+    if not mp:
+        return 0
+    # 인물표에도 적어 둔다 — 인물 설명 칸(flow_desc)이 이것을 쓴다
+    for ch in doc.get("characters") or []:
+        en = mp.get((ch.get("name") or "").strip())
+        if en and ch.get("role_en") != en:
+            ch["role_en"] = en
+            ch["flow_desc"] = ""          # 다음 fill 에서 영어로 다시 만든다
+    def sub(t):
+        for ko, en in mp.items():
+            t = t.replace(ko, en)
+        return t
+    n = 0
+    for e in doc.get("episodes") or []:
+        for c in e.get("cuts") or []:
+            lines = (c.get("prompt") or "").split("\n")
+            for i, l in enumerate(lines):
+                new = _outside_quotes(l, sub)
+                if new != l:
+                    lines[i], n = new, n + 1
+            c["prompt"] = "\n".join(lines)
+    doc["_name_map"] = mp
+    return n
+
+
 def fix_subject_dup(doc):
     """SUBJECT 줄에서 **같은 사람이 두 번** 나오는 것을 지운다.
 
@@ -306,8 +401,11 @@ def fix_outfits(doc):
             fixed[nm] = c["outfit"].strip()
         if (c.get("face_tag") or "").strip():
             face[nm] = c["face_tag"].strip()
-    names = [(c.get("name") or "").strip()
-             for c in (doc.get("characters") or []) if (c.get("name") or "").strip()]
+    names = all_names(doc)
+    # 인물표는 한글 이름으로 적혀 있으므로, 영어 관계말에도 같은 옷을 물려준다
+    for ko, en in (doc.get("_name_map") or {}).items():
+        if ko in fixed and en not in fixed:
+            fixed[en] = fixed[ko]
     if not names:
         return 0
 
@@ -431,7 +529,7 @@ ADV = r"(?:\s+(?:very|so)?\s*\w+ly)?"
 
 def _person_re(doc):
     """이 대본에 나오는 사람을 가리키는 말 하나로 묶는다(긴 것부터)."""
-    names = [c.get("name") or "" for c in (doc.get("characters") or [])]
+    names = all_names(doc)
     words = sorted([w for w in names + PERSON_WORDS if w],
                    key=len, reverse=True)
     # ⚠️ 인물표에 없는 사람이 ACTION 에 나오기도 한다(시동생 등). ACTION 줄은
@@ -575,7 +673,22 @@ def normalize(doc):
     k = fix_outfits(doc)
     if k:
         print(f"  (옷차림 {k}줄을 인물표대로 맞췄다 — 컷마다 옷이 바뀌면 딴사람으로 보인다)")
+    # ⭐ 배역말 바꾸기는 **맨 마지막**이다. 위의 고치개들이 모두 한글 이름으로
+    #    찾기 때문에, 먼저 바꿔 버리면 하나도 안 걸린다.
+    nm = fix_names(doc)
+    if nm:
+        print(f"  (컷 프롬프트의 한글 배역말 {nm}줄을 영어 관계말로 바꿨다 "
+              f"— 기계가 사람 이름으로 읽어 유명인 검사에 걸린다)")
+        charsheet.fill(doc)        # 인물 설명 칸도 영어 관계말로 다시 만든다
     return doc
+
+
+def all_names(doc):
+    """검사에 쓸 이름 — 한글 배역말 + 바꿔 넣은 영어 관계말."""
+    ko = [(c.get("name") or "").strip()
+          for c in (doc.get("characters") or []) if (c.get("name") or "").strip()]
+    en = list((doc.get("_name_map") or name_map(doc)).values())
+    return sorted(set(ko + en), key=len, reverse=True)
 
 
 # 사람이 입으로 하지 않는 '딱지'. 판결문·기사에나 쓰는 제3자 호칭이라
@@ -700,8 +813,7 @@ def soft(doc):
     """버릴 것까진 아니지만 사람이 한 번 봐야 할 곳."""
     out = (list(doc.get("_soft_extra") or []) + list(doc.get("_facing_fixed") or [])
            + list(doc.get("_touch_fixed") or []) + hook_warn(doc))
-    names = [(c.get("name") or "").strip() for c in (doc.get("characters") or [])
-             if (c.get("name") or "").strip()]
+    names = all_names(doc)          # 한글 배역말 + 바꿔 넣은 영어 관계말
     for e in doc.get("episodes") or []:
         for c in e.get("cuts") or []:
             act = next((l for l in (c.get("prompt") or "").split("\n")
@@ -794,7 +906,7 @@ def check(doc):
     if len(doc.get("characters") or []) > 3:
         bad.append("등장인물이 3명을 넘는다")
     bad += policy_check(doc)
-    names = [(ch.get("name") or "").strip() for ch in (doc.get("characters") or [])]
+    names = all_names(doc)          # 한글 배역말 + 바꿔 넣은 영어 관계말
 
     for e in eps:
         no = e.get("no", "?")
