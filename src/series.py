@@ -47,6 +47,13 @@ ROLES = ["후킹", "상황", "맞섬", "뒤집기", "끊기"]
 #    화면 아래 한 줄 자막으로 읽히는 길이는 30자까지가 무난하다.
 RECAP_MAX = 30
 
+# ⚠️ 2026-08-20 — 대사 18자도 recap 18자와 **똑같이 재보지 않고 적은 숫자**였다.
+#    실제 드라마 한 줄을 재보니 "재판장님, 저는 그 돈을 만진 적이 없습니다." = 24자,
+#    말하면 약 3.5초다. 6초 클립에 넉넉히 들어간다. 18자는 한국어 한 문장을
+#    끝맺지도 못하는 길이라 억지 대사가 나온다.
+DIA_MAX = 24
+SUB_MAX = 30           # 자막은 대사를 담아야 하므로 대사보다 짧으면 안 된다
+
 # 프롬프트 6줄 규격 — 이 순서, 이 이름이 아니면 반려한다
 LINES = ["SHOT:", "SUBJECT:", "ACTION:", "DIALOGUE:", "SETTING:", "STYLE:", "Avoid:"]
 STYLE_FIX = ("STYLE: Korean TV drama realism, muted desaturated palette, soft "
@@ -54,13 +61,36 @@ STYLE_FIX = ("STYLE: Korean TV drama realism, muted desaturated palette, soft "
              "natural skin texture, no stylization.")
 
 # ⚠️ 영상에 글자가 나오는 가장 큰 원인은 '글자가 있는 물건'을 부른 것이다.
-#    "글자 넣지 마" 라고 적는 것보다 이것들을 안 부르는 쪽이 확실하다.
-#    ⚠️ 2026-08-19 — 여기 'phone' 이 있어서 **전화를 받는 장면**이 막혔다.
-#       전화기 자체에는 글자가 없다. 글자가 나오는 것은 '화면' 이다.
-#       phone 은 빼고 phone screen 만 잡는다 — 드라마에 전화 장면은 필수다.
-TEXT_BAIT = ["document", "paper", "letter", "sign", "signage", "banner", "screen",
-             "monitor", "newspaper", "book", "label", "nameplate",
-             "certificate", "contract", "poster", "subtitle", "caption", "text"]
+#    그런데 **두 번 연속으로 지나치게 넓은 낱말이 멀쩡한 대본을 막았다.**
+#      1차 'phone'  — 전화기에는 글자가 없다. 전화 받는 장면이 모두 막혔다.
+#      2차 'paper' — 종이 한 장에도 글자는 없다. 6화 1컷이 이것 하나로 반려됐다.
+#    반려는 돈을 다시 쓰게 만들고, 글자가 조금 새는 것은 delogo 로 지우면 된다.
+#    손해가 훨씬 큰 쪽으로 기울인다 — **그 자체가 글자인 것**만 무조건 막는다.
+TEXT_HARD = ["signage", "banner", "billboard", "poster", "newspaper", "magazine",
+             "headline", "subtitle", "caption", "nameplate", "plaque",
+             "certificate", "whiteboard", "blackboard", "receipt", "text"]
+
+# 글자가 나올 수도 있는 물건 — '읽는다 / 쓰여 있다' 와 같이 나올 때만 막는다.
+#    봉투를 건네는 것은 되고, 봉투를 읽는 것은 안 된다.
+TEXT_SOFT = ["paper", "document", "letter", "book", "screen", "monitor",
+             "contract", "label", "file", "folder", "envelope", "sign"]
+
+# 위 물건을 '글자가 보이게' 만드는 말
+READING = ["read", "reads", "reading", "written", "writing", "printed", "print",
+           "legible", "handwriting", "inscription", "title", "words", "letters",
+           "signature"]
+
+
+def word(w, s):
+    return re.search(rf"\b{w}s?\b", s) is not None
+
+
+def text_bait(head):
+    """글자가 나올 물건을 불렀는가."""
+    hit = [w for w in TEXT_HARD if word(w, head)]
+    if any(word(r, head) for r in READING):
+        hit += [w for w in TEXT_SOFT if word(w, head)]
+    return hit
 
 
 def load(p, dflt):
@@ -120,6 +150,13 @@ def normalize(doc):
                 elif l.startswith("Avoid:") and l != AVOID_FIX:
                     l, n = AVOID_FIX, n + 1
                 out.append(l)
+            # 아예 빠뜨린 경우에도 우리가 붙인다 — 고정 문구라 받을 이유가 없다
+            if not any(l.startswith("STYLE:") for l in out):
+                out.append(STYLE_FIX)
+                n += 1
+            if not any(l.startswith("Avoid:") for l in out):
+                out.append(AVOID_FIX)
+                n += 1
             c["prompt"] = "\n".join(out)
     if n:
         print(f"  (고정 문구 {n}줄을 우리가 채워 넣었다 — 이것 때문에 버리지 않는다)")
@@ -135,6 +172,7 @@ def check(doc):
         bad.append(f"화 수가 {len(eps)}개다 (있어야 할 것 {EPISODES}개)")
     if len(doc.get("characters") or []) > 3:
         bad.append("등장인물이 3명을 넘는다")
+    names = [(ch.get("name") or "").strip() for ch in (doc.get("characters") or [])]
 
     for e in eps:
         no = e.get("no", "?")
@@ -166,7 +204,7 @@ def check(doc):
 
             # ⭐ 글자가 나올 물건을 불렀는가 (영상에 글자 금지 — 운영자 지시)
             head = p.split("STYLE:")[0].lower()
-            hit = [w for w in TEXT_BAIT if re.search(rf"\b{w}s?\b", head)]
+            hit = text_bait(head)
             if hit:
                 bad.append(f"{tag}: 글자가 나올 물건을 불렀다 — {', '.join(hit)}")
 
@@ -174,13 +212,22 @@ def check(doc):
             for line in p.split("\n"):
                 if line.startswith("DIALOGUE:"):
                     for say in re.findall(r'"([^"]*)"', line):
-                        if len(say) > 18:
-                            bad.append(f"{tag}: 대사가 {len(say)}자다 (18자 이내) — {say}")
-            if len(c.get("subtitle") or "") > 24:
-                bad.append(f"{tag}: 자막이 24자를 넘는다")
-            # 지시대명사 — 컷은 하나씩 따로 만들어져 모델이 못 알아듣는다
-            if re.search(r"\bthe same\b|\bshe\b|\bhe\b", head):
-                bad.append(f"{tag}: 지시대명사(the same/she/he)를 썼다 — 이름으로 쓴다")
+                        if len(say) > DIA_MAX:
+                            bad.append(f"{tag}: 대사가 {len(say)}자다 "
+                                       f"({DIA_MAX}자 이내) — {say}")
+            if len(c.get("subtitle") or "") > SUB_MAX:
+                bad.append(f"{tag}: 자막이 {SUB_MAX}자를 넘는다")
+            # 지시대명사 — 컷은 하나씩 따로 만들어져 모델이 못 알아듣는다.
+            # ⚠️ 2026-08-20 — 이 검사가 **우리 예시 대본까지 걸러냈다.**
+            #    "시동생 holds out a folder; she does not take it." 처럼 앞에 이름이
+            #    있으면 모델은 알아듣는다. 정말 위험한 것은 화면에 누가 있는지
+            #    적는 SUBJECT 줄에 이름 없이 'the same woman' 만 적는 경우다.
+            #    그래서 SUBJECT 줄만, 그것도 이름이 하나도 없을 때만 잡는다.
+            subj = next((l for l in p.split("\n") if l.startswith("SUBJECT:")), "")
+            if re.search(r"\bthe same\b|\bshe\b|\bhe\b", subj.lower()) and \
+                    not any(nm and nm in subj for nm in names):
+                bad.append(f"{tag}: SUBJECT 에 이름 없이 지시대명사를 썼다 "
+                           f"— 누가 화면에 있는지 이름으로 적는다")
     return bad
 
 

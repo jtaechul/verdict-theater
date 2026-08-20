@@ -62,6 +62,11 @@ jobs:
       - name: 시리즈 대본 검사기가 진짜로 잡는가
         run: python3 tools/series_test.py
 
+      # ⭐ 2026-08-20: 돈 주고 받은 대본이 두 번 사라졌다. 두 번째 원인은 저장
+      #    단계의 `git add A B` 였다 — B 가 없으면 A 까지 안 올라간다.
+      - name: 반려된 대본을 진짜로 살려 두는가
+        run: python3 tools/save_step_test.py
+
       - name: 관리자 페이지가 안 깨지는가
         run: |
           node tools/check_admin.mjs

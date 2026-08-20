@@ -1,6 +1,6 @@
 # series_gen.md — 시리즈 대본 프롬프트 (구글 영상 제작용)
 
-> **버전** v1.0 · 2026-08-18
+> **버전** v1.1 · 2026-08-20
 > **용도** 판례 1건 → 30초짜리 16화 시리즈 (매일 1화 발행, 16일 뒤 8분 롱폼)
 > **호출 위치** `src/series.py` (관리자 페이지 [시리즈 만들기])
 > **모델** Gemini (운영자 지시, 2026-08-18)
@@ -76,10 +76,25 @@ Avoid: on-screen text, signage, documents with visible writing, screens, extra p
 - `ACTION` 은 **동작 하나**. 6초에 두 가지 이상을 넣으면 다 뭉개진다.
 - 대사가 있는 컷은 **말하는 사람이 화면 안에** 있어야 한다. 화면 밖 목소리는
   입이 안 보여 소리가 붕 뜬다.
-- 한국어 대사는 **12~18자.** 6초에 그 이상은 안 들어간다.
+- 한국어 대사는 **12~24자.** 6초에 그 이상은 안 들어간다.
 - 화면비·해상도를 쓰지 않는다. 그건 설정에서 정한다.
-- `the same woman`, `she`, `그 사람` 같은 지시대명사를 쓰지 않는다. 컷은 하나씩
-  따로 만들어지므로 모델이 무엇을 가리키는지 모른다.
+- `SUBJECT` 줄에는 **반드시 등장인물 이름**을 적는다. `the same woman` 처럼 이름
+  없이 가리키면 컷마다 다른 사람이 나온다 (컷은 하나씩 따로 만들어진다).
+
+**아래 영어 낱말은 프롬프트에 쓰지 않는다** (그 자체가 글자인 물건이라, 부르는
+순간 화면에 글자가 찍힌다):
+
+`signage` `banner` `billboard` `poster` `newspaper` `magazine` `headline`
+`subtitle` `caption` `nameplate` `plaque` `certificate` `whiteboard`
+`blackboard` `receipt` `text`
+
+아래 것들은 **써도 되지만, 읽는 장면으로 만들지 않는다.** 건네주고 받는 것은
+되고, 펼쳐서 읽거나 글씨가 보이게 하는 것은 안 된다:
+
+`paper` `document` `letter` `book` `screen` `monitor` `contract` `label`
+`file` `folder` `envelope` `sign`
+→ `reads` `written` `printed` `legible` `handwriting` `title` `words` 같은
+말과 **같이 쓰지 않는다.** (○ `hands over a closed envelope` / ✗ `reads the letter`)
 
 ---
 
@@ -137,7 +152,7 @@ skin texture, Korean TV drama realism.` 로 끝).
           "n": 1,
           "role": "후킹",
           "subtitle": "\"이 집, 이제 저희 겁니다.\"",
-          "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.\nACTION: 시동생 holds out a closed folder toward her; she does not take it.\nDIALOGUE: 시동생 says in Korean, calm and cold: \"이 집, 이제 저희 겁니다.\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+          "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.\nACTION: 시동생 holds out a closed folder toward 며느리, who does not take it.\nDIALOGUE: 시동생 says in Korean, calm and cold: \"이 집, 이제 저희 겁니다.\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
         }
       ]
     }
@@ -152,9 +167,9 @@ skin texture, Korean TV drama realism.` 로 끝).
 | `episodes` | **정확히 16개**, `no` 는 1~16 |
 | `cuts` | 각 화 **정확히 5개**, `n` 은 1~5 |
 | `role` | 1~5 순서대로 `후킹` `상황` `맞섬` `뒤집기` `끊기` |
-| `subtitle` | 화면에 우리가 얹을 자막. **24자 이내.** 대사면 따옴표로 감싼다 |
+| `subtitle` | 화면에 우리가 얹을 자막. **30자 이내.** 대사면 따옴표로 감싼다 |
 | `prompt` | 위 6줄 규격 그대로. 줄바꿈은 `\n` |
-| `recap` | 2화부터 채운다. 지난 줄거리 한 줄, **18자 이내** (1화는 빈 문자열) |
+| `recap` | 2화부터 채운다. 지난 줄거리 한 줄, **30자 이내** (1화는 빈 문자열) |
 | `characters` | 3명 이하 |
 
 ---
@@ -167,7 +182,7 @@ skin texture, Korean TV drama realism.` 로 끝).
 - [ ] 모든 `prompt` 에 `STYLE:` 줄이 **글자 그대로 똑같이** 들어갔는가
 - [ ] 문서·간판·화면처럼 **글자가 나올 물건**을 부른 컷이 하나도 없는가
 - [ ] 대사가 있는 컷은 말하는 사람이 화면 안에 있는가
-- [ ] 한국어 대사가 전부 18자 이내인가
+- [ ] 한국어 대사가 전부 24자 이내인가
 - [ ] 실명·지명·법원명·사건번호·절대 연도가 없는가
 - [ ] 16화를 순서대로 읽으면 하나의 이야기로 이어지는가
 

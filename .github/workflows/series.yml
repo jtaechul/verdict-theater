@@ -74,6 +74,12 @@ jobs:
         run: |
           git config user.name  "verdict-theater-bot"
           git config user.email "actions@github.com"
-          git add data/series state/series.json 2>/dev/null || true
+          # ⚠️ 2026-08-20 — 여기서 **또 대본을 잃었다.**
+          #    `git add A B` 는 B 가 없으면 A 까지 통째로 안 올린다.
+          #    state/series.json 은 '통과했을 때만' 생기는 파일이라, 반려된
+          #    바로 그 순간에는 항상 없다. 그래서 살려 두려던 대본이 매번
+          #    사라졌다. 경로를 **하나씩 따로** 올린다.
+          git add data/series 2>/dev/null || true
+          git add state/series.json 2>/dev/null || true
           git diff --cached --quiet && exit 0
           bash tools/push.sh "시리즈: 대본 추가 [skip ci]" data/series state

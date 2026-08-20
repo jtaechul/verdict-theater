@@ -60,9 +60,22 @@ ck("첫 컷이 후킹이 아니면 잡는다", any("후킹" in b for b in S.chec
 
 d = good_doc()
 d["episodes"][2]["cuts"][1]["prompt"] = good_prompt().replace(
-    "a closed folder", "a document with names written on it")
-hit = S.check(d)
-ck("글자 나올 물건(document)을 부르면 잡는다", any("글자가 나올 물건" in b for b in hit))
+    "a closed folder", "a newspaper")
+ck("그 자체가 글자인 것(newspaper)은 무조건 잡는다",
+   any("글자가 나올 물건" in b for b in S.check(d)))
+
+d = good_doc()
+d["episodes"][2]["cuts"][1]["prompt"] = good_prompt().replace(
+    "holds out a closed folder toward 며느리", "reads a letter aloud")
+ck("종이라도 '읽는' 장면이면 잡는다", any("글자가 나올 물건" in b for b in S.check(d)))
+
+# ⚠️ 두 번 연속으로 이것 때문에 멀쩡한 대본을 잃었다 (phone → paper).
+#    건네주기만 하는 것은 **반드시 통과해야 한다.**
+for w in ["paper", "phone", "document", "envelope", "book"]:
+    d = good_doc()
+    d["episodes"][2]["cuts"][1]["prompt"] = good_prompt().replace(
+        "a closed folder", f"a closed {w}")
+    ck(f"그냥 건네는 {w} 은 통과시킨다", S.check(d) == [], str(S.check(d))[:60])
 
 d = good_doc()
 d["episodes"][0]["cuts"][2]["prompt"] = "SHOT: close-up.\nACTION: nothing.\n"
@@ -85,7 +98,7 @@ ck("5컷이 아니면 잡는다", any("컷이 3개" in b for b in S.check(d)))
 d = good_doc()
 d["episodes"][0]["cuts"][0]["prompt"] = good_prompt(
     '시동생 says in Korean: "이 집은 이제 저희 것이니 나가 주셔야 하겠습니다."')
-ck("대사가 18자를 넘으면 잡는다", any("대사가" in b for b in S.check(d)))
+ck(f"대사가 {S.DIA_MAX}자를 넘으면 잡는다", any("대사가" in b for b in S.check(d)))
 
 d = good_doc()
 d["episodes"][4]["recap"] = ""
@@ -93,8 +106,32 @@ ck("2화부터 지난 줄거리가 비면 잡는다", any("지난 줄거리" in 
 
 d = good_doc()
 d["episodes"][7]["cuts"][2]["prompt"] = good_prompt("None.").replace(
-    "시동생 holds out a closed folder toward 며느리", "she holds out the same folder")
-ck("지시대명사(she/the same)를 쓰면 잡는다", any("지시대명사" in b for b in S.check(d)))
+    "SUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.",
+    "SUBJECT: the same woman in a black coat.")
+ck("SUBJECT 에 이름 없이 가리키면 잡는다", any("지시대명사" in b for b in S.check(d)))
+
+# ⚠️ 우리 예시 대본이 바로 이 검사에 걸렸다. 앞에 이름이 있으면 통과해야 한다.
+d = good_doc()
+d["episodes"][7]["cuts"][2]["prompt"] = good_prompt("None.").replace(
+    "toward 며느리.", "toward 며느리; she does not take it.")
+ck("앞에 이름이 있는 she 는 통과시킨다", S.check(d) == [], str(S.check(d))[:60])
+
+print("\n⑤ 우리가 모델에게 준 예시가 우리 검사를 통과하는가")
+import json, re
+raw = (ROOT / "prompts" / "series_gen.md").read_text(encoding="utf-8")
+ex = json.loads('"' + raw.split('"prompt": "')[1].split('"\n')[0] + '"')
+d = good_doc()
+for n in range(S.CUTS):
+    d["episodes"][0]["cuts"][n]["prompt"] = ex
+ck("프롬프트 파일의 예시 컷이 통과한다", S.check(d) == [], str(S.check(d))[:80])
+
+# 고정 문구를 아예 빠뜨려도 우리가 채워 넣는다 (버리지 않는다)
+d = good_doc()
+d["episodes"][3]["cuts"][1]["prompt"] = "\n".join(
+    l for l in good_prompt("None.").split("\n")
+    if not l.startswith(("STYLE:", "Avoid:")))
+ck("STYLE·Avoid 줄이 없으면 우리가 채운다", S.check(S.normalize(d)) == [],
+   str(S.check(S.normalize(d)))[:60])
 
 print("\n④ 규격 숫자가 실제 운영 조건과 맞는가")
 ck("6초 × 5컷 = 30초", S.SEC * S.CUTS == 30, f"{S.SEC}×{S.CUTS}")
