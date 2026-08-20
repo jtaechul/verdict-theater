@@ -204,31 +204,70 @@ AVOID_FIX = ("Avoid: on-screen text, signage, documents with visible writing, "
 
 
 def fix_outfits(doc):
-    """모든 컷에서 같은 인물은 **똑같은 옷**을 입게 만든다.
+    """모든 컷에서 같은 인물은 **그 화 안에서 똑같은 옷**을 입게 만든다.
 
     ⚠️ 2026-08-20 — 1화 완성본을 보니 본처의 카디건이 1컷 초록 → 3컷 베이지 →
        5컷 초록으로 튀었다. SUBJECT 에 `본처 in a simple cardigan` 이라고만 써
        색을 안 정해 줬기 때문이다. 영상 만드는 쪽은 매번 새로 고른다.
 
-    인물마다 `outfit` 을 정해 두고 SUBJECT 를 그것으로 갈아 끼운다.
-    **버리지 않고 우리가 고친다** — 옷 색이 달라졌다고 16화를 다시 살 수는 없다.
+    ⚠️ 그리고 이걸 고치면서 한 번 더 틀렸다. **16화 전체에서** 가장 흔한 옷을
+       골랐더니 1화 거실 장면에 법정 정장을 입혔다. 사람은 날마다 옷을 갈아입는다 —
+       맞춰야 할 범위는 **한 화 안**이다.
+
+    · 인물표에 `outfit` 이 있으면 그것으로 (글쓴이가 정한 것)
+    · 없으면 **그 화에서 가장 많이 쓴 옷차림**으로 나머지를 맞춘다 (0원 수리)
+    · `face_tag` 는 있으면 이름 뒤에 똑같이 붙인다 — 플로우 캐릭터를 안 붙여도
+      얼굴이 잡히게 (첫 화에서 남편이 컷마다 다른 배우로 나왔다)
     """
-    outfit = {(c.get("name") or "").strip(): (c.get("outfit") or "").strip()
-              for c in (doc.get("characters") or [])}
-    outfit = {k: v for k, v in outfit.items() if k and v}
-    if not outfit:
+    fixed, face = {}, {}
+    for c in doc.get("characters") or []:
+        nm = (c.get("name") or "").strip()
+        if not nm:
+            continue
+        if (c.get("outfit") or "").strip():
+            fixed[nm] = c["outfit"].strip()
+        if (c.get("face_tag") or "").strip():
+            face[nm] = c["face_tag"].strip()
+    names = [(c.get("name") or "").strip()
+             for c in (doc.get("characters") or []) if (c.get("name") or "").strip()]
+    if not names:
         return 0
+
+    def subj_of(c):
+        return next((l for l in (c.get("prompt") or "").split("\n")
+                     if l.startswith("SUBJECT:")), "")
+
     n = 0
     for e in doc.get("episodes") or []:
-        for c in e.get("cuts") or []:
+        cuts = e.get("cuts") or []
+        # 이 화에서 각 인물이 무엇을 입었나 → 가장 많은 것으로 통일
+        wear = dict(fixed)
+        for nm in names:
+            if nm in wear:
+                continue
+            v = []
+            for c in cuts:
+                m = re.search(rf"{re.escape(nm)}(?:\([^)]*\))?\s+in\s+([^,.]*)",
+                              subj_of(c))
+                if m:
+                    v.append(m.group(1).strip())
+            if v:
+                wear[nm] = max(set(v), key=v.count)
+        if not wear and not face:
+            continue
+        for c in cuts:
             lines = (c.get("prompt") or "").split("\n")
             for i, l in enumerate(lines):
                 if not l.startswith("SUBJECT:"):
                     continue
                 new = l
-                for nm, of in outfit.items():
-                    new = re.sub(rf"({re.escape(nm)})\s+in\s+[^,.]*?(?=\s+facing\s|[,.]|$)",
+                for nm, of in wear.items():
+                    new = re.sub(rf"({re.escape(nm)})(?:\([^)]*\))?\s+in\s+"
+                                 rf"[^,.]*?(?=\s+facing\s|[,.]|$)",
                                  rf"\1 in {of}", new)
+                for nm, ft in face.items():
+                    new = re.sub(rf"(?<![\w가-힣]){re.escape(nm)}(?!\()",
+                                 f"{nm}({ft})", new)
                 if new != l:
                     lines[i] = new
                     n += 1
@@ -307,7 +346,7 @@ STIFF_MAX = 5          # 이보다 많으면 대본 전체가 법률 설명이�
 
 def soft(doc):
     """버릴 것까진 아니지만 사람이 한 번 봐야 할 곳."""
-    out = []
+    out = list(doc.get("_soft_extra") or [])
     for e in doc.get("episodes") or []:
         for c in e.get("cuts") or []:
             act = next((l for l in (c.get("prompt") or "").split("\n")
@@ -333,6 +372,7 @@ def soft(doc):
 def check(doc):
     """규격을 어긴 곳을 전부 찾아 돌려준다. 하나라도 있으면 저장하지 않는다."""
     bad = []
+    soft_extra = []            # 버릴 것까진 아니지만 알려 줄 것 (샷·장소)
     stiff_lines = 0            # 법률·서류 말투가 들어간 대사 줄 수
     stiff_hits = set()
     eps = doc.get("episodes") or []
@@ -418,9 +458,48 @@ def check(doc):
             bad.append(f"{no}화: 두 사람이 주고받는 컷이 {talk}컷뿐이다 "
                        f"({TALK_MIN}컷 이상 — 혼잣말만 이으면 이야기가 안 굴러간다)")
 
+    # ⭐ 아래 셋은 첫 화 완성본을 보고 찾은 것들 (2026-08-20).
+    #    ⚠️ 전부 **손볼 곳**이 아니라 검사다 — 얼굴·장소가 튀면 영상이 못 쓰게 된다.
+    #       다만 자동으로 고쳐지는 옷·얼굴표는 normalize 가 먼저 맞춰 준다.
+    for e in eps:
+        no = e.get("no", "?")
+        cuts = e.get("cuts") or []
+        shots, sets, subj = set(), set(), {}
+        for c in cuts:
+            lines = (c.get("prompt") or "").split("\n")
+            sh = next((l for l in lines if l.startswith("SHOT:")), "")[5:].strip().lower()
+            st = next((l for l in lines if l.startswith("SETTING:")), "")[8:].strip().lower()
+            sj = next((l for l in lines if l.startswith("SUBJECT:")), "")[8:].strip()
+            if sh:
+                shots.add(re.split(r"[,.]", sh)[0].strip())
+            if st:
+                sets.add(re.split(r"[,.]", st)[0].strip())
+            for nm in names:
+                # ⚠️ `facing` 앞에서 끊지 않으면 두 사람이 나오는 줄에서
+                #    상대방 옷까지 삼켜 **같은 옷을 다르다고** 읽는다.
+                m = re.search(rf"{re.escape(nm)}(\([^)]*\))?\s+in\s+"
+                              rf"([^,.]*?)(?=\s+facing\s|[,.]|$)", sj)
+                if m and nm:
+                    subj.setdefault(nm, set()).add(
+                        ((m.group(1) or "") + "|" + m.group(2)).strip())
+        # ⚠️ 샷·장소는 **버리지 않는다** — 이야기는 멀쩡한데 그림이 밋밋한 것뿐이라
+        #    16화를 다시 사면서까지 막을 일이 아니다. 프롬프트가 시키고, 여기선 알린다.
+        if len(cuts) >= CUTS:
+            if len(shots) < 3:
+                soft_extra.append(f"{no}화: 샷 크기가 {len(shots)}가지뿐이다 "
+                                  f"(3가지 이상이면 덜 밋밋하다) — {sorted(shots)}")
+            if len(sets) > 2:
+                soft_extra.append(f"{no}화: 장소가 {len(sets)}곳이다 "
+                                  f"(두 곳까지가 안 튄다) — {sorted(sets)}")
+        for nm, v in subj.items():
+            if len(v) > 1:
+                bad.append(f"{no}화: '{nm}' 의 생김새·옷차림이 컷마다 다르다 "
+                           f"({len(v)}가지) — 딴사람으로 나온다")
+
     # ⭐ 대사가 법률 설명을 대신 지고 있으면 말이 통째로 가짜가 된다
     #    (2026-08-20 손님: "말도 어색해. 구어체가 아닌 것 같고 실제 같지 않아.")
     #    법정 장면 한두 줄은 봐준다 — 대본 전체가 설명이 되는 것만 막는다.
+    doc["_soft_extra"] = soft_extra
     if stiff_lines > STIFF_MAX:
         bad.append(f"대사 {stiff_lines}줄이 서류·판결문 말투다 "
                    f"({STIFF_MAX}줄까지만) — {', '.join(sorted(stiff_hits))} · "

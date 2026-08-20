@@ -1,6 +1,6 @@
 # series_gen.md — 시리즈 대본 프롬프트 (구글 영상 제작용)
 
-> **버전** v1.8 · 2026-08-20
+> **버전** v1.9 · 2026-08-20
 > **용도** 판례 1건 → 30초짜리 16화 시리즈 (매일 1화 발행, 16일 뒤 8분 롱폼)
 > **호출 위치** `src/series.py` (관리자 페이지 [시리즈 만들기])
 > **모델** Gemini (운영자 지시, 2026-08-18)
@@ -71,9 +71,32 @@ Avoid: on-screen text, signage, documents with visible writing, screens, backgro
 
 - `STYLE` 과 `Avoid` 줄은 **모든 컷에서 글자 그대로 똑같이** 쓴다. 톤이 흔들리면
   이어붙였을 때 색이 튄다.
-- `SUBJECT` 에 얼굴을 묘사하지 않는다. "52세, 갸름한 얼굴…" 을 쓰면 미리 정해 둔
-  캐릭터와 싸워 얼굴이 흔들린다. **이름과 옷차림만** 쓴다.
+- ⭐ `SUBJECT` 는 **모든 컷에서 한 글자도 다르지 않게** 쓴다 (2026-08-20 · 실제 영상).
+  첫 화 완성본에서 **남편이 1·2·4컷 모두 다른 배우**로 나왔다. 본처도 얼굴이 튀었다.
+  플로우 캐릭터를 안 붙이면 컷마다 새 얼굴을 만들기 때문이다.
+
+  꼴을 고정한다 — `{이름}({face_tag}) in {outfit}`
+
+  ```
+  SUBJECT: 남편(55, square face, deep forehead lines) in a charcoal jacket over a black tee.
+  ```
+
+  `face_tag` 는 **짧게(대여섯 낱말)**. 길게 묘사하면 미리 정해 둔 캐릭터와 싸워
+  오히려 얼굴이 흔들린다. 짧고 **매번 똑같은 것**이 핵심이다 — 플로우 캐릭터를
+  붙였으면 거들어 주고, 안 붙였으면 그것만으로도 얼굴이 잡힌다.
 - `ACTION` 은 **동작 하나**. 6초에 두 가지 이상을 넣으면 다 뭉개진다.
+- ⭐ **`SHOT` 을 컷마다 다르게** 잡는다 (2026-08-20 · 실제 영상).
+  첫 화에서 2·4·5컷이 전부 비슷한 미디엄 샷 한 명이라 리듬이 밋밋했다.
+  한 화 5컷에 **적어도 세 가지 크기**를 섞는다.
+    · 주고받는 컷 → `Medium two-shot, both faces visible`
+    · 감정이 터지는 컷 → `Close-up on {이름}`
+    · 장면을 여는 컷 → `Wide shot` 또는 `Over-the-shoulder`
+  마지막 5컷(끊기)은 **클로즈업**으로 얼굴에 붙여 끝낸다.
+- ⭐ **`SETTING` 은 한 화에 두 곳까지** (2026-08-20 · 실제 영상).
+  첫 화가 거실 → 복도로 넘어갔는데 아무 설명이 없어 갑자기 튀어 보였다.
+    · 같은 장소인 컷은 SETTING 을 **한 글자도 다르지 않게** 쓴다
+    · 장소가 바뀌는 **첫 컷의 `caption`** 에 어디인지 한 줄 적는다
+      (예: `현관 밖, 그 여자가 기다리고 있었다`)
 - ⭐ **서로 몸이 닿는 동작을 쓰지 않는다** (2026-08-20 · 실제 영상에서 확인).
   첫 클립에서 여자가 남자 팔을 잡았는데 **손가락이 옷 속으로 녹아들어 갔다.**
   영상 만드는 쪽이 두 사람이 닿는 자리를 아직 제대로 못 그린다. 닿는 곳이
@@ -267,6 +290,7 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 
 ```json
 { "name": "본처",
+  "face_tag": "52, oval face, tired eyes, low bun",
   "outfit": "a moss-green knit cardigan over a grey striped tee",
   "flow_prompt": "Korean woman, 52 years old, …" }
 ```
@@ -324,7 +348,7 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
   "title": "이십 년 며느리, 상속은 0원",
   "case_id": "230761",
   "characters": [
-    { "name": "며느리", "outfit": "a black mourning hanbok", "flow_prompt": "Korean woman, 52 years old, oval face, tired eyes with fine lines, dark brown hair in a low bun, worn calm expression. Photorealistic, natural skin texture, Korean TV drama realism." }
+    { "name": "며느리", "face_tag": "50s, oval face, low bun", "outfit": "a black mourning hanbok", "flow_prompt": "Korean woman, 52 years old, oval face, tired eyes with fine lines, dark brown hair in a low bun, worn calm expression. Photorealistic, natural skin texture, Korean TV drama realism." }
   ],
   "episodes": [
     {
@@ -374,7 +398,10 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 - [ ] 주고받는 컷이 **세 번**(A→B→A) 오가는가 (두 번이면 6초가 빈다)
 - [ ] **서로 몸이 닿는 동작**이 한 컷도 없는가 (손이 옷 속으로 녹아든다)
 - [ ] 모든 화에 `hook` 이 있는가 (화면 맨 위에 붙는 한 줄 · 20자 이내)
-- [ ] 인물마다 `outfit` 을 **색까지** 정했는가 (컷마다 옷이 바뀌면 딴사람으로 보인다)
+- [ ] 인물마다 `outfit`(색까지) 과 `face_tag`(짧게) 를 정했는가
+- [ ] 같은 인물의 `SUBJECT` 가 **모든 컷에서 한 글자도 같은가** (다르면 딴사람이 나온다)
+- [ ] 한 화에 `SHOT` 크기가 **세 가지 이상** 섞였는가 (5컷은 클로즈업)
+- [ ] `SETTING` 이 한 화에 **두 곳 이내**이고, 바뀌는 컷에 `caption` 을 달았는가
 - [ ] 대사에 `유류분` `한정승인` `시효` 같은 **서류 말투**가 없는가
 - [ ] 숫자·법률·경위는 `caption` 이 지고 있는가 (입은 감정만 말하는가)
 - [ ] 소리 내어 읽었을 때 **사람이 실제로 하는 말**로 들리는가

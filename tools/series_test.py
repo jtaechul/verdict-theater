@@ -183,6 +183,56 @@ S.fix_outfits(d2)
 ck("옷차림을 안 정한 옛 대본은 그대로 둔다",
    d2["episodes"][0]["cuts"][0]["prompt"] == before)
 
+print("\n⑪ 첫 영상에서 본 것들이 프롬프트·검사에 실제로 들어갔는가")
+pr = (ROOT / "prompts" / "series_gen.md").read_text(encoding="utf-8")
+for k, why in [("face_tag", "얼굴이 컷마다 다른 배우로 나왔다"),
+               ("outfit", "옷 색이 컷마다 바뀌었다"),
+               ("hook", "맨 위 문구가 제목이라 밋밋했다"),
+               ("몸이 닿는", "손가락이 옷 속으로 녹아들었다"),
+               ("SHOT` 을 컷마다 다르게", "샷이 다 비슷해 밋밋했다"),
+               ("SETTING` 은 한 화에 두 곳까지", "장소가 갑자기 튀었다")]:
+    ck(f"프롬프트에 들어갔다 — {why}", k in pr, k)
+
+# 같은 인물이 컷마다 다른 옷이면 잡는다
+d = good_doc()
+d["episodes"][0]["cuts"][1]["prompt"] = good_prompt("None.").replace(
+    "SUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.",
+    "SUBJECT: 며느리 in a beige coat.")
+ck("한 화 안에서 옷이 다르면 잡는다",
+   any("컷마다 다르다" in b for b in S.check(d)),
+   next((b[:44] for b in S.check(d) if "컷마다" in b), "안 잡음"))
+ck("normalize 가 먼저 맞춰 주면 통과한다", S.check(S.normalize(good_doc())) == [],
+   str(S.check(S.normalize(good_doc())))[:60])
+
+# 옷은 **화마다** 맞춘다 (16화 전체가 아니라)
+d = good_doc()
+for c in d["episodes"][0]["cuts"]:
+    c["prompt"] = c["prompt"].replace("in a black suit", "in a casual jacket")
+S.fix_outfits(d)
+ck("1화 옷을 뒷화 옷으로 덮어쓰지 않는다",
+   "casual jacket" in d["episodes"][0]["cuts"][0]["prompt"]
+   and "black suit" in d["episodes"][1]["cuts"][0]["prompt"])
+
+# face_tag 는 이름 뒤에 똑같이 붙는다
+d = good_doc()
+d["characters"] = [{"name": "시동생", "face_tag": "50s, square face"},
+                   {"name": "며느리", "face_tag": "50s, oval face"}]
+S.fix_outfits(d)
+subj = [l for l in d["episodes"][0]["cuts"][0]["prompt"].split("\n")
+        if l.startswith("SUBJECT:")][0]
+ck("얼굴표가 이름 뒤에 붙는다", "시동생(50s, square face)" in subj, subj[:60])
+ck("두 번 붙지 않는다", subj.count("(50s, square face)") == 1)
+
+# 샷·장소는 알려만 준다 (버리지 않는다)
+d = good_doc()
+for e in d["episodes"]:
+    for c in e["cuts"]:
+        c["prompt"] = c["prompt"].replace("SHOT: Medium two-shot, static camera.",
+                                          "SHOT: Medium shot, static camera.")
+S.check(d)
+ck("샷이 단조로우면 알려 준다", any("샷 크기" in w for w in S.soft(d)))
+ck("그렇다고 16화를 버리지는 않는다 (샷)", S.check(d) == [], str(S.check(d))[:60])
+
 print("\n⑧ 사람이 실제로 하는 말인가 (2026-08-20 손님: '말도 어색해')")
 d = good_doc()
 STIFF_SAY = ['"대법원 판례상 사망보험금은 전부 내 거라고 나왔어. 더 할 말 있으면 해 봐."',
