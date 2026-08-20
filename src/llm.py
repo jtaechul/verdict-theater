@@ -38,6 +38,14 @@ class LLMError(RuntimeError):
     pass
 
 
+class TooLong(LLMError):
+    """출력이 길이 상한에서 잘렸다.
+
+    ⚠️ 2026-08-20 — 이것을 **같은 상한으로 3번 더** 불렀다. 잘릴 것이 뻔한데
+       15분 동안 3회분 값만 나갔다. 되풀이해도 소용없는 오류이므로 갈래를
+       나눠 바로 멈춘다. 부르는 쪽이 max_output_tokens 를 올려야 한다."""
+
+
 class BudgetExceeded(RuntimeError):
     """한 실행에서 허용한 호출 수를 넘었다. 과금 폭발 방지 장치."""
 
@@ -243,7 +251,8 @@ class Gemini:
                     raise LLMError(f"응답이 비었다. 차단 사유: {fb.get('blockReason', '알 수 없음')}")
                 c = cands[0]
                 if c.get("finishReason") == "MAX_TOKENS":
-                    raise LLMError("출력이 길이 상한에서 잘렸다. max_output_tokens 를 늘려야 한다.")
+                    raise TooLong("출력이 길이 상한에서 잘렸다. "
+                                  f"max_output_tokens({max_output_tokens:,}) 를 늘려야 한다.")
                 parts = c.get("content", {}).get("parts") or []
                 text = "".join(p.get("text", "") for p in parts)
                 if not text.strip():
@@ -265,6 +274,9 @@ class Gemini:
                     time.sleep(w)
             except LLMError as e:
                 last = e
+                # 잘린 것은 같은 상한으로 다시 불러도 똑같이 잘린다 — 값만 곱절
+                if isinstance(e, TooLong):
+                    raise
                 if attempt < RETRIES - 1:
                     w = BACKOFF[attempt]
                     print(f"    (재시도 {attempt + 1}/{RETRIES - 1} — {e}, {w}초 대기)")

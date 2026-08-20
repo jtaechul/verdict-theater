@@ -73,6 +73,11 @@ jobs:
       - name: 시리즈 대본이 관리자 페이지에 실제로 그려지는가
         run: python3 tools/series_screen_test.py
 
+      # ⭐ 2026-08-20 — 길이 상한에 걸린 것을 같은 상한으로 3번 더 불러
+      #    15분 동안 3회분 값만 나갔다. 소용없는 재시도를 막는다.
+      - name: 길이 상한에서 돈을 되풀이해 쓰지 않는가
+        run: python3 tools/truncate_test.py
+
       - name: 관리자 페이지가 안 깨지는가
         run: |
           node tools/check_admin.mjs

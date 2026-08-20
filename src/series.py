@@ -397,7 +397,10 @@ def main():
     # ⭐ 글은 제미나이가 쓴다 (2026-08-18 운영자 지시)
     llm, who = writer(max_calls=6, prefer=(args.writer or "gemini"))
     body = prompts.fill(prompts.load("series_gen"), CASE_JSON=case_json(row))
-    doc = llm.json(body, tier="pro", max_output_tokens=32768, temperature=0.85,
+    # ⚠️ 2026-08-20 — 대사가 길어지고 caption 칸이 생기면서 16화 JSON 이
+    #    32,768 토큰을 넘어 잘렸다. 16화 × 5컷 × (프롬프트 7줄 + 자막 2종)
+    #    이면 5만 토큰쯤 된다. 넉넉히 잡는다 — 안 쓰면 값도 안 나간다.
+    doc = llm.json(body, tier="pro", max_output_tokens=65536, temperature=0.85,
                    label="시리즈", effort="high")
 
     doc = normalize(doc)
