@@ -49,7 +49,7 @@ W, H = 1080, 1920                # 쇼츠 화면
 VIDEO_Y, VIDEO_H = 520, 810      # 4:3 영상이 앉는 자리
 MARK_Y, MARK_SIZE = 40, 38       # 우측 상단 채널 이름
 HOOK_TOP, HOOK_BOT, HOOK_SIZE = 150, 470, 76
-SUB_TOP, SUB_BOT, SUB_SIZE = 1360, 1610, 58
+SUB_TOP, SUB_BOT, SUB_SIZE = 1360, 1610, 68
 SIDE = 64                        # 좌우 여백
 GOLD = (198, 160, 74)
 DIM = (118, 122, 136, 255)   # 아직/이미 말한 줄
@@ -193,15 +193,73 @@ def block(d, lines, font, top, bottom, fill, gap=1.28, live=None, dim=None):
         y += lh
 
 
+def _runs(w):
+    """[9, 11, 8] → [(0,9), (9,20), (20,28)] — 이어지는 몫으로 바꾼다."""
+    out, t = [], 0
+    for x in w:
+        out.append((t, t + x))
+        t += x
+    return out
+
+
 def sub_lines(sub):
     """자막을 말한 사람마다 한 줄로 나눈다."""
     return [x.strip() for x in str(sub or "").split(" / ") if x.strip()]
 
 
-def overlay_png(hook, sub, out, live=None):
+SPLIT_OVER = 16          # 이보다 길면 한 사람 말도 반으로 끊어 띄운다 (음절)
+
+
+def halve(t):
+    """긴 대사를 읽기 좋은 토막으로 끊는다.
+
+    ⚠️ 처음엔 '가운데에서 반으로' 잘랐는데 9음절 + 19음절 처럼 치우쳤다.
+       한 문장을 억지로 자르는 것보다 **문장 단위로 끊는 쪽**이 자연스럽고
+       토막마다 말이 온전하다. 문장이 하나뿐이고 길면 그때만 반으로 가른다.
+    """
+    t = t.strip()
+    if syl(t) <= SPLIT_OVER:
+        return [t]
+
+    # ① 문장 단위 (마침표·물음표·느낌표 뒤)
+    sent = [x.strip() for x in re.split(r"(?<=[.!?…])\s+", t) if x.strip()]
+    if len(sent) >= 2:
+        return sent[:3] if len(sent) <= 3 else [
+            " ".join(sent[:len(sent) // 2]), " ".join(sent[len(sent) // 2:])]
+
+    # ② 문장이 하나뿐 → 소리 나는 양이 고르게 갈리는 띄어쓰기에서
+    total = syl(t)
+    spots = [m.end() for m in re.finditer(r"\s+", t)]
+    spots = [i for i in spots if 1 < i < len(t) - 1]
+    if not spots:
+        return [t]
+    bp = min(spots, key=lambda i: abs(syl(t[:i]) - (total - syl(t[:i]))))
+    return [t[:bp].strip(), t[bp:].strip()]
+
+
+def sub_chunks(sub):
+    """화면에 **한 번에 하나씩** 띄울 토막들.
+
+    ⚠️ 2026-08-20 운영자: "가라오케 자막은 저렇게 모든 대사가 한 번에 다 뜨지
+       않아. 해당 인물만 뜨게 하거나 반 문장씩 뜨게 하거나."
+       맞다. 세 줄을 다 띄워 놓고 밝기만 바꾸면 화면이 글자로 꽉 차고,
+       아직 안 한 말까지 미리 보여 김이 샌다.
+
+    · 여러 사람이 주고받는 컷 → **말하는 사람 것만** 한 줄씩
+    · 한 사람이 길게 말하는 컷 → **반 문장씩** 두 토막으로
+    """
+    parts = sub_lines(sub)
+    if len(parts) == 1 and syl(parts[0]) > SPLIT_OVER:
+        return halve(parts[0]), True
+    return parts, False
+
+
+def overlay_png(hook, chunk, out):
     """글자만 있는 투명 그림 한 장 (영상 위에 얹는다).
 
-    live — 지금 말하는 사람의 줄 번호 (None 이면 전부 밝게)."""
+    chunk — 지금 화면에 띄울 자막 **한 토막**. 나머지는 안 그린다
+            (2026-08-20 운영자: "모든 대사가 한 번에 다 뜨지 않아").
+    """
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
@@ -213,18 +271,10 @@ def overlay_png(hook, sub, out, live=None):
         f, ls = fit(d, hook, FONT_B, HOOK_SIZE, W - SIDE * 2, 3)
         block(d, ls, f, HOOK_TOP, HOOK_BOT, (255, 255, 255, 255))
 
-    parts = sub_lines(sub)
-    if parts:
-        # 한 사람이 두 줄로 접히면 그 두 줄이 같이 켜져야 한다 → 줄마다 임자를 적어 둔다
-        f, ls, owner = fit_owned(d, parts, FONT_M, SUB_SIZE, W - SIDE * 2, 4)
-        y_live = None if live is None else live
-        lh = int(f.size * 1.28)
-        y = SUB_TOP + max(0, (SUB_BOT - SUB_TOP - lh * len(ls)) // 2)
-        for i, l in enumerate(ls):
-            on = (y_live is None) or (owner[i] == y_live)
-            x = (W - d.textlength(l, font=f)) / 2
-            d.text((x, y), l, font=f, fill=(233, 233, 239, 255) if on else DIM)
-            y += lh
+    if str(chunk or "").strip():
+        # 한 토막만 있으니 크게 쓸 수 있다 — 폰에서 읽기 훨씬 낫다
+        f, ls = fit(d, chunk, FONT_M, SUB_SIZE, W - SIDE * 2, 2)
+        block(d, ls, f, SUB_TOP, SUB_BOT, (245, 245, 250, 255))
 
     img.save(out)
     return out
@@ -254,7 +304,7 @@ def gain_for(src):
         return 0.0
     mean, peak = float(m.group(1)), float(x.group(1)) if x else 0.0
     g = LOUD_TARGET - mean
-    if peak + g > PEAK_LIMIT:                 # 깨지지 않는 만큼만
+    if peak + g > PEAK_LIMIT:
         g = PEAK_LIMIT - peak
     return round(g, 2)
 
@@ -267,14 +317,23 @@ def compose(src, hook, sub, out, tmp):
     mx, my, mw, mh = C.mark_box(vw, vh)
     cx, cy, cw, ch = C.crop_box(vw, vh)
 
-    # ⭐ 사람마다 자기 말할 때만 밝아진다 (가라오케). 말하는 시각은 소리에서 찾는다.
-    parts = sub_lines(sub)
-    spans = speech_spans(src, len(parts), sec) if len(parts) > 1 else [(0.0, sec)]
-    if len(spans) != len(parts):
-        spans = by_syllable(len(parts), sec, parts)
-    pngs = [overlay_png(hook, sub, tmp / f"{src.stem}_txt{i}.png",
-                        live=(i if len(parts) > 1 else None))
-            for i in range(max(1, len(parts)))]
+    # ⭐ 자막은 **한 토막씩** 뜬다 (말하는 사람 것만 / 긴 대사는 반 문장씩).
+    #    말하는 시각은 소리에서 찾는다.
+    chunks, halved = sub_chunks(sub)
+    people = len(sub_lines(sub))
+    if halved:
+        # 한 사람이 길게 말하는 컷 — 그 사람이 말하는 동안을 음절 수로 나눈다
+        base = speech_spans(src, 1, sec)[0]
+        spans = [(base[0] + (base[1] - base[0]) * a / max(1, sum(map(syl, chunks))),
+                  base[0] + (base[1] - base[0]) * b / max(1, sum(map(syl, chunks))))
+                 for a, b in _runs([syl(c) for c in chunks])]
+    else:
+        spans = speech_spans(src, people, sec)
+        if len(spans) != len(chunks):
+            spans = by_syllable(len(chunks), sec, chunks)
+    spans[-1] = (spans[-1][0], sec)          # 마지막은 끝까지 남긴다
+    pngs = [overlay_png(hook, c, tmp / f"{src.stem}_txt{i}.png")
+            for i, c in enumerate(chunks or [""])]
 
     vf = [f"[1:v]delogo=x={mx}:y={my}:w={mw}:h={mh},"
           f"crop={cw}:{ch}:{cx}:{cy},scale={W}:{VIDEO_H}[v]",

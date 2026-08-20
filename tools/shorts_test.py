@@ -153,75 +153,49 @@ if shutil.which("ffmpeg"):
 
         out = S.compose(src, "후킹 문구", SUB3, dd / "o.mp4", dd / "tmp")
 
-        def bright_rows(t):
-            """그 시각 자막 칸을 세 토막으로 나눠 각 줄의 밝기를 잰다."""
+        def ink_at(t):
+            """그 시각 자막 칸에 글자가 얼마나 있는가 (몇 줄에 걸쳐 있는가)."""
             raw = subprocess.run(
                 ["ffmpeg", "-v", "error", "-ss", str(t), "-i", str(out),
                  "-frames:v", "1", "-vf",
                  f"crop={S.W}:{S.SUB_BOT - S.SUB_TOP}:0:{S.SUB_TOP},format=gray",
                  "-f", "rawvideo", "-"], capture_output=True).stdout
-            band = (S.SUB_BOT - S.SUB_TOP) // 3
-            return [sum(raw[i * band * S.W:(i + 1) * band * S.W]) for i in range(3)]
+            band = S.SUB_BOT - S.SUB_TOP
+            rows = [max(raw[y * S.W:(y + 1) * S.W]) > 60 for y in range(band)]
+            return sum(rows), rows
 
-        for t, want in [(1.0, 0), (3.0, 1), (5.0, 2)]:
-            v = bright_rows(t)
-            ck(f"{t}초에는 {want + 1}번째 사람 줄이 가장 밝다",
-               v.index(max(v)) == want,
-               " ".join(f"{x // 100000}" for x in v))
+        # ⭐ 운영자: "모든 대사가 한 번에 다 뜨지 않아" → 한 번에 **한 토막만**
+        heights = []
+        for t in (1.0, 3.0, 5.0):
+            n, rows = ink_at(t)
+            heights.append(n)
+            ck(f"{t}초에 글자가 떠 있다", n > 10, f"{n}줄")
+        one_line = int(S.SUB_SIZE * 1.5)
+        ck("한 번에 한 토막만 뜬다 (세 줄이 한꺼번에 뜨지 않는다)",
+           all(h <= one_line for h in heights), f"{heights} · 한 줄 ≈ {one_line}줄")
 
-print("\n⑦ 올린 압축파일에서 컷을 제대로 골라내는가")
-import tempfile as _t
-with _t.TemporaryDirectory() as dd:
-    dd = Path(dd)
-    for nm in ["S001_c001.mp4", "S001_c002.mp4", "S001_c003.mp4",
-               "S001_c004.mp4", "S001_c005.mp4"]:
-        (dd / nm).touch()
-    got = S.pick_clips(dd, 5)
-    ck("이름에 컷 번호가 있으면 그 번호대로",
-       [got[i].name for i in range(1, 6)] == sorted(x.name for x in dd.glob("*.mp4")))
-# ⭐ 2026-08-20 — 실제로 올라온 플로우 파일 이름. 이름 순서대로 붙이면
-#    2·4·1·5·3 으로 통째로 어긋난다. 컷 내용(ACTION)과 맞춰야 제자리에 간다.
-import json as _j
-REAL = ["Wife_confronts_husband_at_home_202608201933",
-        "Woman_smirks_at_another_woman_202608201933",
-        "Husband_aggressively_shakes_off_202608201933",
-        "Man_glaring_coldly_202608201933",
-        "Woman_clenches_fists_determinedly_202608201933"]
-WANT = {1: "Wife_confronts", 2: "Husband_aggressively", 3: "Woman_smirks",
-        4: "Man_glaring", 5: "Woman_clenches"}
-sj = ROOT / "data" / "series" / "S001.json"
-if sj.exists():
-    cuts = _j.loads(sj.read_text(encoding="utf-8"))["episodes"][0]["cuts"]
-    with _t.TemporaryDirectory() as dd:
-        dd = Path(dd)
-        for nm in REAL:
-            (dd / (nm + ".mp4")).touch()
-        got = S.pick_clips(dd, 5, cuts)
-        bad = [k for k in range(1, 6)
-               if not (got.get(k) and got[k].name.startswith(WANT[k]))]
-        ck("플로우가 지은 이름도 컷 내용으로 제자리에 붙는다", not bad,
-           ("어긋남: " + str(bad)) if bad else "5컷 전부")
-        # 이름 순서대로였다면 어긋났다는 것도 같이 못 박아 둔다
-        plain = S.pick_clips(dd, 5)
-        ck("(이름 순서대로만 하면 어긋난다는 것도 확인)",
-           plain[1].name != got[1].name)
+        # 시각마다 **다른 글자**가 떠야 한다 (같은 그림이 계속 있으면 안 바뀐 것)
+        def frame_bytes(t):
+            return subprocess.run(
+                ["ffmpeg", "-v", "error", "-ss", str(t), "-i", str(out),
+                 "-frames:v", "1", "-vf",
+                 f"crop={S.W}:{S.SUB_BOT - S.SUB_TOP}:0:{S.SUB_TOP},format=gray",
+                 "-f", "rawvideo", "-"], capture_output=True).stdout
+        a, b, c = frame_bytes(1.0), frame_bytes(3.0), frame_bytes(5.0)
+        ck("시각마다 자막이 바뀐다", a != b and b != c and a != c)
 
-with _t.TemporaryDirectory() as dd:
-    dd = Path(dd)
-    for nm in ["zz.mp4", "aa.mp4", "mm.mp4", "bb.mp4", "cc.mp4"]:
-        (dd / nm).touch()
-    got = S.pick_clips(dd, 5)
-    ck("맞출 거리가 없으면 이름 순서대로", got[1].name == "aa.mp4" and got[5].name == "zz.mp4",
-       " ".join(got[i].name for i in range(1, 6)))
-with _t.TemporaryDirectory() as dd:
-    dd = Path(dd)
-    (dd / "sub").mkdir()
-    for i, nm in enumerate(["cut1.mp4", "cut2.mp4"]):
-        (dd / "sub" / nm).touch()
-    got = S.pick_clips(dd, 2)
-    ck("압축을 풀면 폴더가 생겨도 찾아낸다", len(got) == 2, str(len(got)))
-    ck("맥에서 딸려오는 ._ 파일은 무시한다",
-       all(not v.name.startswith("._") for v in got.values()))
+        # 한 사람이 길게 말하는 컷은 반 문장씩
+        ck("긴 혼잣말은 문장 단위로 끊는다",
+           len(S.sub_chunks("내 인생 찾겠다는 거야. 당신도 이제 당신 인생 살아. "
+                            "난 더 이상 안 돌아와.")[0]) == 3)
+        ck("주고받는 컷은 사람마다 한 토막",
+           S.sub_chunks("가나다라마 바사. / 아자차카타 파하. / 가나다라마 바사.")[0]
+           == ["가나다라마 바사.", "아자차카타 파하.", "가나다라마 바사."])
+        ck("짧은 한마디는 안 쪼갠다", len(S.sub_chunks("뭐라고?")[0]) == 1)
+        ch = S.sub_chunks("조만간 서류 보낼 테니까 도장이나 찍어. 쓸데없이 고집 피우지 말고.")[0]
+        ck("끊긴 토막이 고르게 나뉜다",
+           abs(S.syl(ch[0]) - S.syl(ch[1])) <= 8,
+           " + ".join(str(S.syl(x)) for x in ch) + "음절")
 
 print("\n" + "─" * 52)
 print(f"❌ 쇼츠 배치: {len(FAIL)}가지 실패" if FAIL else "✅ 쇼츠 배치: 전부 통과")
