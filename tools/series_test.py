@@ -348,6 +348,24 @@ ck("AUDIO 고정 문구가 정책 검사에 안 걸린다", not S.policy_hits(S.
 ck("목소리가 사람마다 다르게 나온다",
    S.voice_of({"flow_prompt": "Korean man, 55 years old, agitated expression."})
    != S.voice_of({"flow_prompt": "Korean woman, 42 years old, confident eyes."}))
+# ⭐ 2026-08-20 운영자: "외국인이 한국말하는 것처럼 들린다."
+#    지시가 전부 영어라 영어 목소리로 한글을 더듬더듬 읽었다.
+ck("대사 바로 옆에 한국어라고 못 박는다", S.DIA_LANG in c1, S.DIA_LANG)
+ck("AUDIO 에 서울 억양을 못 박는다",
+   "standard Seoul pronunciation" in c1 and "correct Korean intonation" in c1)
+ck("외국 억양을 막는다",
+   "no foreign accent" in c1 and "no English accent" in c1)
+ck("목소리에도 한국어가 모국어라고 적는다",
+   "native Korean speaker" in S.voice_of({"flow_prompt": "Korean man, 55 years old."}))
+ck("두 번 돌려도 한국어 못이 겹치지 않는다",
+   S.normalize(d)["episodes"][0]["cuts"][0]["prompt"].count(S.DIA_LANG) == 1)
+ck("대사 없는 컷에는 한국어 못을 안 붙인다",
+   all(S.DIA_LANG not in c["prompt"] for e in d["episodes"] for c in e["cuts"]
+       if "DIALOGUE: None." in c["prompt"]))
+ck("한국어 못이 다른 검사에 안 걸린다",
+   not [w for w in S.TEXT_HARD if re.search(rf"\b{w}\b", S.DIA_LANG.lower())]
+   and not S.policy_hits(S.DIA_LANG))
+
 ck("인물표에 적어 둔 목소리를 그대로 쓴다",
    S.voice_of({"voice": "a whispery voice"}) == "a whispery voice")
 ck("프롬프트 규칙에도 voice 가 적혀 있다",

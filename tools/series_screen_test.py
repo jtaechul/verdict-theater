@@ -296,8 +296,11 @@ ck("16화 1컷 대사가 뜬다",
    (e16["cuts"][0].get("subtitle") or "").replace('"', "&quot;") in ep16)
 # ⚠️ 예전엔 `split("\n")[1]` 로 두 번째 줄을 봤는데, 머리말이 생기면서 그 자리가
 #    `SHOT:` (16화에도 똑같이 있는 줄) 로 밀렸다. 줄 이름으로 집는다.
+# ⚠️ DIALOGUE 줄 **앞머리**는 모든 화가 똑같다(한국어로 말하라는 고정 문구).
+#    그 화에만 있는 것은 **따옴표 안 대사**다. 그것으로 견준다.
 _d1 = next(l for l in e1["cuts"][0]["prompt"].split("\n") if l.startswith("DIALOGUE:"))
-ck("1화 내용은 더 이상 안 보인다", _d1[:40] not in ep16, _d1[:40])
+_say1 = re.findall(r'"([^"]+)"', _d1)[0]
+ck("1화 내용은 더 이상 안 보인다", _say1 not in ep16, _say1[:30])
 
 print("\n" + "─" * 52)
 print(f"❌ 시리즈 화면: {len(FAIL)}가지 실패" if FAIL else "✅ 시리즈 화면: 전부 통과")

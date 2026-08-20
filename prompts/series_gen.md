@@ -419,9 +419,11 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 
 | ✗ 이러면 로봇이 읽는다 | ○ 이렇게 적는다 |
 |---|---|
-| (아무것도 없음) | a low, slightly gravelly man's voice in his fifties, clipped and impatient, drops in volume at the end |
-| angry voice | a warm mid-range woman's voice in her fifties, weary and a little breathy, trails off at the end of a sentence |
-| young female voice | a clear woman's voice in her forties, cool and unhurried, with a small lilt at the end |
+| (아무것도 없음) | a low, slightly gravelly man's voice in his fifties, native Korean speaker, clipped and impatient, drops in volume at the end |
+| angry voice | a warm mid-range woman's voice in her fifties, native Korean speaker, weary and a little breathy, trails off at the end of a sentence |
+| young female voice | a clear woman's voice in her forties, native Korean speaker, cool and unhurried, with a small lilt at the end |
+
+**`native Korean speaker` 는 반드시 넣는다** — 안 넣으면 외국인이 읽는 소리가 난다.
 
 **같은 화에 나오는 두 사람의 목소리는 확실히 달라야 한다.**
 높낮이(low/mid/clear)와 말버릇(clipped / trails off / unhurried)을 서로 다르게 준다.
@@ -433,6 +435,21 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 | `(furious)` | `(voice rising, almost shouting)` |
 | `(annoyed)` | `(flat, not looking at her)` |
 | `(sad)` | `(quiet, swallowing before she speaks)` |
+
+### 한국말처럼 들리게 — 어느 나라 말인지 알려 줘야 한다
+
+운영자: **"나레이션이 외국인이 한국말하는 것처럼 들린다."**
+
+당연했다. 프롬프트가 **무슨 말로 하는지 한 번도 안 알려 줬다.**
+지시는 전부 영어인데 대사만 한글이니, 영상 만드는 쪽은 영어 목소리로
+한글을 더듬더듬 읽는다. 외국인이 읽는 것처럼 들리는 이유다.
+
+그래서 **대사 바로 옆**과 `AUDIO` 줄 두 곳에 못을 박는다 (시스템이 붙인다).
+
+- `DIALOGUE:` 맨 앞 — `(all lines spoken in fluent everyday Korean by native speakers)`
+- `AUDIO:` — `standard Seoul pronunciation`, `correct Korean intonation`,
+  `no foreign accent`, `no English accent`
+- `voice` 칸에도 **native Korean speaker** 를 넣는다
 
 ### `VOICE` · `AUDIO` 두 줄은 **우리가 붙인다**
 
@@ -631,6 +648,7 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 - [ ] `hook` 에 숫자나 배신·상실·뒤집기가 드러나는가 (밋밋하면 아무도 안 본다)
 - [ ] `hook` 이 판결문에 **실제로 있는 일**인가 (과장은 되나 거짓은 안 된다)
 - [ ] 인물마다 `voice` 를 정했는가 (높낮이·나이대·말버릇 — 없으면 로봇이 읽는다)
+- [ ] `voice` 에 **native Korean speaker** 가 들어갔는가 (없으면 외국인이 읽는 소리가 난다)
 - [ ] 같은 화에 나오는 두 사람의 `voice` 가 **서로 확실히 다른가**
 - [ ] `DIALOGUE` 의 톤이 한 낱말이 아니라 **어떻게 말하는지**를 적었는가
 - [ ] 인물마다 `outfit`(색까지) 과 `face_tag`(짧게) 를 정했는가

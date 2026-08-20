@@ -141,8 +141,16 @@ LINES_OPT = ["VOICE:"]      # 대사가 있는 컷에만 붙는다
 #       걸려 80컷이 통째로 반려됐다. `between words` 의 **words** 도 '읽는 말'
 #       로 걸려 봉투가 나오는 컷을 막았다. 고정 문구는 다른 검사에 걸리는
 #       낱말을 피해서 쓴다 — 한 낱말이 80컷을 통째로 막는다.
+#    ⭐ 2026-08-20 운영자: "나레이션이 외국인이 한국말하는 것처럼 들린다."
+#       프롬프트가 **무슨 말로 하는지 한 번도 안 알려 줬다.** 지시는 전부 영어고
+#       대사만 한글이라, 영상 만드는 쪽은 영어 목소리로 한글을 더듬더듬 읽는다.
+#       → 어느 나라 말인지 · 어느 억양인지를 **대사 바로 옆에** 못 박는다.
+DIA_LANG = "(all lines spoken in fluent everyday Korean by native speakers) "
 AUDIO_FIX = ("AUDIO: the two people in the shot say the lines themselves with their "
-             "lips moving in sync, real spontaneous speech rather than "
+             "lips moving in sync, every line spoken in natural everyday "
+             "Korean by native speakers with standard Seoul pronunciation and "
+             "correct Korean intonation, no foreign accent, no English accent, "
+             "real spontaneous speech rather than "
              "narration, uneven rhythm with short breaths between phrases and "
              "voices slightly overlapping when they argue, quiet room tone of "
              "the location, no voice-over, no narrator, no background music, "
@@ -183,7 +191,7 @@ def voice_of(ch):
             " sixties" if 60 <= age < 70 else
             " thirties" if 30 <= age < 40 else " middle years")
     tone = next((t for w, t in VOICE_TONE if w in low), "plain and everyday")
-    return f"{pitch} {band}, {tone}"
+    return f"{pitch} {band}, native Korean speaker, {tone}"
 
 
 def fix_voice(doc):
@@ -211,6 +219,9 @@ def fix_voice(doc):
             outside = " ".join(b for i, b in enumerate(said.split('"')) if i % 2 == 0)
             add = []
             if said and said.lower() not in ("none.", "none"):
+                if not said.startswith(DIA_LANG):
+                    said = DIA_LANG + said
+                lines[di] = "DIALOGUE: " + said
                 # 이 컷에서 실제로 말하는 사람만 골라 넣는다 (긴 이름부터)
                 who = sorted([k for k in vs if k in outside],
                              key=lambda k: outside.index(k))
