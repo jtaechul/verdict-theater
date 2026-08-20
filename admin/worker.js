@@ -196,11 +196,6 @@ border:1px solid var(--line);background:#161822;color:var(--ink);min-height:48px
 label{display:block;margin:10px 0 0;font-size:13px;color:var(--dim)}
 .wf{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;background:#191b25}
 .wf b{display:block;font-size:16px}.wf small{color:var(--dim);display:block;margin:3px 0 10px}
-/* 버튼 복사가 안 될 때 글자를 그대로 띄우는 상자 — 길게 눌러 [복사] 한다 */
-.copyta{width:100%;min-height:190px;margin-top:10px;padding:10px;border-radius:9px;
-border:1px solid #5a3a3a;background:#1a1216;color:#e9e9ef;
-font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;
-white-space:pre;-webkit-user-select:text;user-select:text}
 /* 시리즈 — 클립 프롬프트를 눌러서 복사하는 상자 (2026-08-20) */
 .pbox{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;
 background:#161822}
@@ -371,58 +366,71 @@ let COPY = {};
 
 function copyRaw(key, label) {
   const t = COPY[key];
-  if (typeof t !== 'string' || !t) { showCopySheet('', label); return; }
-  const ok = () => verifyCopy(t, label);
-  if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard.writeText(t).then(ok, () => legacyCopy(t, label));
-  } else legacyCopy(t, label);
+  if (typeof t !== 'string' || !t) { copyFailed(label, '복사할 글이 없습니다'); return; }
+  const done = () => toast((label || '프롬프트') + ' 복사했습니다');
+
+  // ⭐ 아이폰 사파리·크롬(둘 다 WebKit)에서 가장 확실한 길:
+  //    **text/plain 이라고 못 박은 덩어리**를 클립보드에 넣는다.
+  //    writeText 만 쓰면 브라우저가 알아서 다른 꼴(HTML·URL)을 같이 얹는 일이
+  //    있고, 받는 쪽이 그 꼴을 집으면 %20 · %EB 같은 글자가 끼어든다.
+  //    write([ClipboardItem]) 은 우리가 넣은 꼴 하나만 들어간다.
+  //    ⚠️ 반드시 손가락이 누른 그 순간(onclick) 안에서 불러야 한다.
+  //       기다렸다 부르면 아이폰이 '사용자가 시킨 일' 로 안 보고 막는다.
+  try {
+    // ⚠️ window.ClipboardItem 으로 보면 안 된다 — window 가 없는 자리도 있고,
+    //    시험에서도 이 길을 못 타고 옛 길로 새는 것을 잡았다. 이름 그대로 본다.
+    if (navigator.clipboard && navigator.clipboard.write
+        && typeof ClipboardItem !== 'undefined') {
+      const item = new ClipboardItem({
+        'text/plain': new Blob([t], { type: 'text/plain' }),
+      });
+      navigator.clipboard.write([item]).then(done, () => plainCopy(t, label, done));
+      return;
+    }
+  } catch (e) { /* 이 기기에 ClipboardItem 이 없다 — 아래로 */ }
+  plainCopy(t, label, done);
 }
 
-// 붙여넣기 전에 우리가 먼저 확인한다. 못 읽으면(권한 없음) 그냥 알린다.
-function verifyCopy(t, label) {
-  const say = () => toast((label || '프롬프트') + ' 복사했습니다');
-  if (!(navigator.clipboard && navigator.clipboard.readText)) { say(); return; }
-  navigator.clipboard.readText().then(
-    (got) => {
-      if (got === t) say();
-      else showCopySheet(t, label, '복사된 글자가 원본과 다릅니다');
-    },
-    say);      // 읽기 권한이 없는 것은 실패가 아니다
+// 두 번째 길 — 글자만 넣기
+function plainCopy(t, label, done) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(t).then(done, () => legacyCopy(t, label, done));
+  } else legacyCopy(t, label, done);
 }
 
-function legacyCopy(t, label) {
+// 세 번째 길 — 옛 방식. 아이폰은 글상자가 **보이는 상태**여야 잡힌다.
+//   화면 밖(top:-9999px)이나 opacity:0 으로 두면 iOS 가 선택을 지워 버려
+//   execCommand 가 조용히 실패한다. 그래서 화면 안에 두되 1px 로 만든다.
+function legacyCopy(t, label, done) {
   const a = document.createElement('textarea');
   a.value = t;
-  a.readOnly = true;                       // 아이폰에서 키보드가 튀어오르는 것을 막는다
-  a.style.position = 'fixed'; a.style.top = '0'; a.style.opacity = '0';
+  a.contentEditable = 'true';
+  a.readOnly = false;
+  a.style.position = 'fixed';
+  a.style.left = '0'; a.style.top = '50%';
+  a.style.width = '1px'; a.style.height = '1px';
+  a.style.padding = '0'; a.style.border = '0';
+  a.style.fontSize = '16px';          // 16px 미만이면 아이폰이 화면을 확대해 버린다
   document.body.appendChild(a);
-  a.focus(); a.select();
-  if (a.setSelectionRange) a.setSelectionRange(0, t.length);   // 아이폰은 이것이 있어야 잡힌다
+
+  const r = document.createRange();
+  r.selectNodeContents(a);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(r);
+  a.setSelectionRange(0, t.length);   // 아이폰은 이것까지 있어야 확실히 잡힌다
+
   let ok = false;
   try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+  sel.removeAllRanges();
   document.body.removeChild(a);
-  if (ok) toast((label || '프롬프트') + ' 복사했습니다');
-  else showCopySheet(t, label, '이 기기에서는 버튼으로 복사가 안 됩니다');
+  if (ok) done();
+  else copyFailed(label, '이 브라우저가 복사를 막았습니다. 주소가 https 인지 확인해 주십시오.');
 }
 
-// 마지막 길 — 글자를 그대로 띄우고 전부 선택해 둔다. 길게 눌러 [복사] 하면 된다.
-function showCopySheet(t, label, why) {
-  const b = document.getElementById('errbox');
-  b.textContent = '';
-  b.style.position = 'fixed';
-  const x = document.createElement('button');
-  x.className = 'eclose'; x.textContent = '닫기';
-  x.onclick = () => { b.style.display = 'none'; };
-  const h = document.createElement('b');
-  h.textContent = (why || '직접 복사') + ' — 아래 글자를 길게 눌러 [복사]';
-  const ta = document.createElement('textarea');
-  ta.className = 'copyta';
-  ta.value = t; ta.readOnly = true;
-  b.appendChild(x); b.appendChild(h); b.appendChild(ta);
-  b.style.display = 'block';
-  ta.focus(); ta.select();
-  if (ta.setSelectionRange) ta.setSelectionRange(0, (t || '').length);
-  document.getElementById('toast').style.display = 'none';
+//  운영자가 그런 우회로 말고 복사가 그냥 되게 하라고 했다 — 2026-08-20)
+function copyFailed(label, why) {
+  showErr((label || '프롬프트') + ' 복사 실패', why);
 }
 
 let SDOC = null, SID = '', SEP = 1;
@@ -500,7 +508,6 @@ function seriesRender() {
                       + '설명 자막: ' + esc(c.caption) + '</div>';
     h += '<div class="ptext">' + esc(c.prompt || '') + '</div>'
        + mini('이 컷 프롬프트 복사', 'copyRaw(\\'' + pid + '\\',\\'' + c.n + '컷\\')', 'gold')
-       + mini('안 되면 여기서', 'showCopySheet(COPY[\\'' + pid + '\\'],\\'' + c.n + '컷\\')')
        + '</div>';
   });
   h += '</div>';

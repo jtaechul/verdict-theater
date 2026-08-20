@@ -73,7 +73,8 @@ const doc = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 const clip = { last: null };
 
 // 화면 코드 전체를 들여와 시리즈 그리기만 직접 부른다
-const run = new Function('DOC', 'SIDIN', 'CLIP', js + `
+const run = new Function('DOC', 'SIDIN', 'CLIP', 'navigator', 'Blob', 'ClipboardItemIn',
+  'let ClipboardItem = ClipboardItemIn;' + js + `
   S = { series: { [SIDIN]: { title: DOC.title, episodes: 16, made: 0 } } };
   SDOC = DOC; SDOC._sid = SIDIN; SID = SIDIN; SEP = 1;
   const out = { card: seriesCard(), ep1: '' };
@@ -84,9 +85,41 @@ const run = new Function('DOC', 'SIDIN', 'CLIP', js + `
   Object.keys(COPY).forEach(k => { out.copied[k] = COPY[k]; });
   SEP = 16; seriesRender();
   out.ep16 = document.getElementById('app').innerHTML;
+
+  // ⭐ 진짜로 단추를 눌러 본다 — 클립보드에 무엇이 들어가는지 붙잡는다
+  SEP = 1; seriesRender();
+  copyRaw('p1_1', '1컷');
+  out.clip = JSON.parse(JSON.stringify(CLIP));
+  // ClipboardItem 이 없는 기기에서도 두 번째 길로 제대로 넘어가는가
+  CLIP.last = null; CLIP.how = null;
+  ClipboardItem = undefined;
+  copyRaw('p1_1', '1컷');
+  out.clip2 = JSON.parse(JSON.stringify(CLIP));
   return out;
 `);
-console.log(JSON.stringify(run(doc, process.argv[3], clip)));
+
+// 아이폰이 쓰는 길(write + ClipboardItem)을 흉내 낸다
+class FakeBlob {
+  constructor(parts, opts) { this.text = parts.join(''); this.type = (opts || {}).type || ''; }
+}
+class FakeItem {
+  constructor(map) { this.map = map; }
+}
+const fakeNav = {
+  clipboard: {
+    write: (items) => {
+      const it = items[0];
+      clip.kinds = Object.keys(it.map);
+      const b = it.map['text/plain'];
+      clip.last = b ? b.text : null;
+      clip.blobType = b ? b.type : null;
+      clip.how = 'write';
+      return Promise.resolve();
+    },
+    writeText: (t) => { clip.last = t; clip.how = 'writeText'; return Promise.resolve(); },
+  },
+};
+console.log(JSON.stringify(run(doc, process.argv[3], clip, fakeNav, FakeBlob, FakeItem)));
 """
 with tempfile.TemporaryDirectory() as d:
     r = Path(d) / "run.mjs"
@@ -140,7 +173,25 @@ ck("%20 같은 URL 인코딩이 섞이지 않는다", not bad_enc, ", ".join(bad
 ck("줄바꿈이 진짜 줄바꿈으로 남아 있다",
    all(copied.get(f"p1_{i}", "").count("\n") == 6 for i in range(1, len(e1["cuts"]) + 1)),
    "각 프롬프트 7줄")
-ck("버튼으로 안 될 때 직접 복사할 길이 있다", "showCopySheet(" in ep1)
+cl = out.get("clip") or {}
+ck("단추를 누르면 클립보드에 실제로 들어간다", bool(cl.get("last")), cl.get("how") or "안 들어감")
+ck("아이폰이 쓰는 길(write + ClipboardItem)로 넣는다", cl.get("how") == "write",
+   cl.get("how") or "")
+ck("글자 꼴을 text/plain 하나로만 못 박는다",
+   cl.get("kinds") == ["text/plain"] and cl.get("blobType") == "text/plain",
+   f"{cl.get('kinds')} · {cl.get('blobType')}")
+ck("클립보드에 들어간 글이 원본과 한 글자도 다르지 않다",
+   cl.get("last") == (e1["cuts"][0].get("prompt") or ""),
+   "다름" if cl.get("last") != (e1["cuts"][0].get("prompt") or "") else "")
+ck("클립보드 글에 %20 같은 인코딩이 없다",
+   not re.search(r"%[0-9A-Fa-f]{2}", cl.get("last") or ""))
+ck("[안 되면 여기서] 같은 우회 단추가 없다", "showCopySheet(" not in ep1)
+
+c2 = out.get("clip2") or {}
+ck("ClipboardItem 이 없는 기기에서는 두 번째 길로 넘어간다", c2.get("how") == "writeText",
+   c2.get("how") or "안 넘어감")
+ck("두 번째 길로 가도 글자는 그대로다",
+   c2.get("last") == (e1["cuts"][0].get("prompt") or ""))
 nepn = ep1.count('class="epn')
 ck("1~16화 번호판이 다 있다", nepn == len(doc["episodes"]), f"{nepn}개")
 
