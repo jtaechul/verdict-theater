@@ -256,9 +256,14 @@ sheet, desc = CS.build({"name": "본처",
                         "outfit": "a moss-green cardigan",
                         "face_tag": "52, oval face"})
 ck("짧은 옛 설명도 풀세트로 늘어난다", len(sheet.split()) >= 90, f"{len(sheet.split())}낱말")
-for k in ("POSE:", "FRAMING:", "BACKGROUND:", "LIGHT:", "LOOK:", "Avoid:"):
-    ck(f"{k} 가 들어간다", k in sheet)
-ck("빈 배경을 못 박는다", "completely empty" in sheet)
+# ⚠️ 줄 이름을 글자로 베껴 두면 이름을 손보는 순간 시험이 깨진다
+#    (FRAMING → FRAME 으로 바꿨을 때 실제로 깨졌다). **코드에서 가져온다.**
+import charsheet as _CS                                     # noqa: E402
+for label, txt in [("자세", _CS.POSE), ("화면 잡기", _CS.FRAME),
+                   ("배경", _CS.BACKDROP), ("빛", _CS.LIGHT),
+                   ("화풍", _CS.LOOK), ("하지 말 것", _CS.AVOID)]:
+    ck(f"{label} 를 못 박는다", txt in sheet, txt[:34])
+ck("빈 배경을 못 박는다", "no furniture, no props" in sheet)
 ck("옷차림이 들어간다", "moss-green cardigan" in sheet)
 ck("옛 화풍 문구는 지운다", "Photorealistic, natural skin texture, Korean TV" not in sheet)
 ck("캐릭터 설명은 짧게 따로", 0 < len(desc.split()) <= 40 and desc.startswith("본처 —"), desc[:52])

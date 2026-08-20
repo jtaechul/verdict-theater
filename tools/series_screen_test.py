@@ -22,6 +22,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 import series as S                                          # noqa: E402
+import charsheet as CS                                      # noqa: E402
 
 FAIL = []
 
@@ -181,12 +182,13 @@ for i, ch in enumerate(doc.get("characters", [])):
     sheet = copied.get(f"chs{i}", "")
     ck(f"{ch['name']} 기준 사진 프롬프트가 충분히 길다", len(sheet.split()) >= 90,
        f"{len(sheet.split())}낱말")
-    for need, why in [("BACKGROUND", "배경을 안 정하면 아무거나 뜬다"),
-                      ("POSE", "자세를 안 정하면 매번 다르게 선다"),
-                      ("FRAMING", "어디까지 보일지 안 정하면 잘린다"),
-                      ("LIGHT", "빛을 안 정하면 색이 튄다"),
-                      ("Avoid:", "소품·글자·다른 사람이 끼어든다")]:
-        ck(f"{ch['name']} — {need} ({why})", need in sheet)
+    # ⚠️ 줄 이름을 글자로 베끼지 않는다 — 코드에서 가져온다 (FRAMING → FRAME)
+    for need, why in [(CS.BACKDROP, "배경을 안 정하면 아무거나 뜬다"),
+                      (CS.POSE, "자세를 안 정하면 매번 다르게 선다"),
+                      (CS.FRAME, "어디까지 보일지 안 정하면 잘린다"),
+                      (CS.LIGHT, "빛을 안 정하면 색이 튄다"),
+                      (CS.AVOID, "소품·글자·다른 사람이 끼어든다")]:
+        ck(f"{ch['name']} — {need[:22]}… ({why})", need in sheet)
     ck(f"{ch['name']} 캐릭터 설명도 따로 있다",
        bool(copied.get(f"chd{i}", "").strip())
        and copied.get(f"chd{i}") != sheet)

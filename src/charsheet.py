@@ -30,26 +30,66 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SERIES = ROOT / "data" / "series"
 
-# 모든 인물에 똑같이 들어가는 것 — 이게 없어서 배경이 제멋대로 나왔다
-POSE = ("standing upright, facing the camera straight on, arms relaxed at the "
-        "sides, neutral calm expression, mouth closed")
-FRAME = ("full body from head to feet, centered in frame, nothing cropped, "
+# ⭐⭐ 2026-08-20 세 번째 — 플로우가 인물 만들기를 계속 막았다.
+#    "이 프롬프트는 유명인의 동영상 생성에 관한 정책을 위반할 가능성이…"
+#    예전 프롬프트를 다시 읽어 보면 **실존 인물 증명사진 주문서**였다 —
+#      · Character reference **sheet** for a Korean man, **55 years old**
+#      · standing upright, **facing the camera straight on**   (증명사진 구도)
+#      · photorealistic studio **photograph**, **50mm lens, eye level**
+#      · natural skin texture with **visible pores**, **no beauty filter**
+#    합치면 "55세 한국 남자의 보정 없는 실제 전신사진을 찍어 달라" 가 된다.
+#    유명인 검사가 잡으라고 만들어진 바로 그 모양이다.
+#
+#    → **사진 주문**이 아니라 **지어낸 인물 그림**으로 바꿔 쓴다.
+#      · '사진' 을 가리키는 말(photograph · photo · reference sheet · lens ·
+#        eye level · pores · beauty filter)을 전부 뺀다
+#      · 맨 앞에서 **지어낸 사람, 실존 인물 아님**을 못 박는다
+#      · '평범하고 눈에 안 띄는 얼굴' 이라고 적는다 — 유명인 닮은 얼굴이
+#        뽑히는 것 자체를 막는다 (닮게 뽑히면 그 뒤로 계속 막힌다)
+#      · 나이는 숫자 대신 **또래말**로 ("55 years old" → "in his mid-fifties")
+#    ⚠️ "not based on any real person" 처럼 **'실존 인물' 이라는 말 자체**를
+#       쓰지 않는다. 부인하는 말이라도 그 낱말이 들어가면 검사에 걸린다.
+HEAD = ("An invented, fictional character for a short story. "
+        "Completely made up")
+POSE = ("standing upright and still, arms relaxed at the sides, "
+        "mouth closed, calm everyday expression")
+FRAME = ("full body from head to feet, centred, nothing cropped, "
          "vertical 9:16")
-BACKDROP = ("plain flat light-grey studio backdrop, completely empty, "
-            "no furniture, no props, no scenery")
-LIGHT = ("soft even studio lighting from the front, no harsh shadow, "
-         "no coloured light")
-# ⚠️ 2026-08-20 — 플로우가 "유명인 동영상 생성 정책" 으로 막았다.
-#    `live-action` + `Korean TV drama` + `photo of a Korean woman` 이 겹치면
-#    **실존 배우 사진을 만들어 달라**는 말로 읽힌다. 사진 느낌은 그대로 두고
-#    방송·배우를 가리키는 말만 뺀다.
-LOOK = ("photorealistic studio photograph, 50mm lens, eye level, "
-        "natural skin texture with visible pores, "
-        "no beauty filter, no smoothing, no stylization")
-AVOID = ("Avoid: text, letters, watermark, logo, props, furniture, background "
-         "scenery, other people, hands doing anything, dramatic or coloured "
-         "lighting, tilted camera, close-up crop, cartoon, illustration, "
-         "3D render, painting, anime")
+BACKDROP = ("plain flat light-grey empty wall, no furniture, no props, "
+            "no scenery")
+LIGHT = "soft even light from the front, no hard shadow, no coloured light"
+LOOK = ("natural and realistic, ordinary everyday appearance, "
+        "plain unremarkable features, no glamour, no retouching, "
+        "no stylisation")
+AVOID = ("Avoid: text, letters, watermark, logo, props, furniture, "
+         "background scenery, other people, harsh or coloured lighting, "
+         "tilted camera, close-up crop, cartoon, illustration, 3D render, "
+         "painting, anime")
+
+# 사진을 가리키는 말 — 인물 설명에 남아 있으면 떼어 낸다
+PHOTO_WORDS = ["photorealistic", "photograph", "photo", "portrait", "headshot",
+               "reference sheet", "50mm", "35mm", "lens", "eye level",
+               "visible pores", "beauty filter", "studio shot", "dslr",
+               "8k", "4k", "hyperrealistic", "raw photo"]
+
+# 나이 숫자 → 또래말. 숫자는 '이 사람이 누구인가' 를 가리키는 신호라 뺀다.
+BAND = [(0, 3, "early"), (4, 6, "mid"), (7, 9, "late")]
+TENS = {2: "twenties", 3: "thirties", 4: "forties", 5: "fifties",
+        6: "sixties", 7: "seventies", 8: "eighties"}
+
+
+def age_band(n, male):
+    """55 → 'in his mid-fifties' (숫자를 안 쓴다)."""
+    try:
+        n = int(n)
+    except (TypeError, ValueError):
+        return ""
+    tens, ones = n // 10, n % 10
+    word = TENS.get(tens)
+    if not word:
+        return "young" if n < 20 else "elderly"
+    part = next((w for a, b, w in BAND if a <= ones <= b), "mid")
+    return f"in {'his' if male else 'her'} {part} {word}"
 
 
 def split_who(t):
@@ -79,7 +119,9 @@ def face_of(ch):
     age = re.search(r"(\d+)\s*years?\s*old", who or "")
     face = next((p for p in parts if "face" in p.lower()), "")
     hair = next((p for p in parts if "hair" in p.lower()), "")
-    bits = ([age.group(1)] if age else []) + [x for x in (face, hair) if x]
+    # ⚠️ 나이 숫자는 넣지 않는다 — 이름·얼굴과 함께 있으면 '실존 인물 신상' 이
+    #    되어 유명인 검사에 걸린다 (2026-08-20). 또래말은 who_line 이 따로 넣는다.
+    bits = [x for x in (face, hair) if x]
     if not bits:
         bits = parts[:2]
     out = ", ".join(bits)
@@ -89,39 +131,71 @@ def face_of(ch):
     return out[:FACE_MAX].strip(" ,")
 
 
-def build(ch):
-    """인물 하나 → (기준 사진 프롬프트, 캐릭터 설명 한 줄)."""
-    name = (ch.get("name") or "").strip()
-    who, look = split_who(ch.get("flow_prompt"))
-    outfit = (ch.get("outfit") or "").strip()
-    face = (ch.get("face_tag") or "").strip()
+def strip_photo(t):
+    """설명에서 '사진 주문' 을 가리키는 말과 표정 말을 떼어 낸다."""
+    parts = [p.strip(" .") for p in str(t or "").split(",")]
+    keep = []
+    for p in parts:
+        low = p.lower()
+        if not low:
+            continue
+        if any(w in low for w in PHOTO_WORDS):
+            continue
+        # 나이 숫자는 '이 사람이 누구인가' 를 가리키는 신호라 뺀다 (또래말로 쓴다)
+        if re.fullmatch(r"\d{1,3}s?", low) or re.fullmatch(r"\d{1,3}\s*years?\s*old", low):
+            continue
+        # 기준 그림은 **평온한 얼굴**이어야 한다. 화난 표정은 컷에서 준다.
+        if "expression" in low or "gaze" in low or "smile" in low:
+            continue
+        keep.append(p)
+    return ", ".join(keep)
 
-    # ⭐ 맨 앞에서 **지어낸 인물**임을 밝힌다 — 이 한 마디가 없으면
-    #    "실제 사람 사진을 만들어 달라" 로 읽혀 정책에 막힌다 (2026-08-20).
-    sheet = [f"Character reference sheet for a fictional, invented {who}."]
+
+def who_line(ch):
+    """'an ordinary Korean man in his mid-fifties' — 숫자 없이."""
+    who, _ = split_who(ch.get("flow_prompt"))
+    # ⚠️ `"man" in who` 로 보면 **woman 안에도 man 이 들어 있어** 여자가
+    #    전부 남자가 된다 (실제로 본처·내연녀가 'Korean man' 으로 나왔다).
+    #    낱말 경계로 본다.
+    male = bool(re.search(r"\bman\b|\bmale\b|\bboy\b", (who or "").lower()))
+    m = re.search(r"(\d+)\s*years?\s*old", who or "")
+    nat = "Korean"
+    kind = "man" if male else "woman"
+    band = age_band(m.group(1), male) if m else ""
+    return " ".join(x for x in (f"an ordinary {nat} {kind}", band) if x)
+
+
+def build(ch):
+    """인물 하나 → (기준 그림 프롬프트, 캐릭터 설명 한 줄).
+
+    ⚠️ '사진을 찍어 달라' 가 아니라 '지어낸 인물을 그려 달라' 로 쓴다.
+       예전 것은 증명사진 주문서라 유명인 검사에 걸렸다 (위 설명 참고).
+    """
+    _, look = split_who(ch.get("flow_prompt"))
+    look = strip_photo(look)
+    outfit = strip_photo(ch.get("outfit"))
+    label = (ch.get("role_en") or "").strip() or (ch.get("name") or "").strip()
+
+    sheet = [f"{HEAD} — {who_line(ch)}."]
     if look:
-        sheet.append(f"APPEARANCE: {look}.")
+        sheet.append(f"FACE AND HAIR: {look}.")
     if outfit:
         sheet.append(f"WEARING: {outfit}.")
     sheet += [
         f"POSE: {POSE}.",
-        f"FRAMING: {FRAME}.",
+        f"FRAME: {FRAME}.",
         f"BACKGROUND: {BACKDROP}.",
         f"LIGHT: {LIGHT}.",
         f"LOOK: {LOOK}.",
         AVOID,
     ]
 
-    bits = [who]
+    bits = [who_line(ch)]
+    face = strip_photo(ch.get("face_tag")) or look
     if face:
         bits.append(face)
-    elif look:
-        bits.append(look)
     if outfit:
         bits.append(f"always wears {outfit}")
-    # ⚠️ 한글 배역말을 그대로 두면 기계가 **사람 이름**으로 읽어 유명인 검사에
-    #    걸린다 (2026-08-20). 플로우에 보내는 글에서는 영어 관계말을 쓴다.
-    label = (ch.get("role_en") or "").strip() or name
     desc = f"{label} — " + ". ".join(x.strip(" .") for x in bits if x) + "."
     return "\n".join(sheet), desc
 
