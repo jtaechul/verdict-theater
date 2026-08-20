@@ -448,6 +448,13 @@ def main():
 
     (SERIES_DIR / f"{sid}.json").write_text(
         json.dumps(doc, ensure_ascii=False, indent=1), encoding="utf-8")
+    # ⚠️ 2026-08-20 — 통과한 뒤에도 지난번 반려본이 그대로 남아 있어서, 내가
+    #    **새 대본 대신 옛 반려본을 읽고** 결과가 안 바뀌었다고 잘못 읽었다.
+    #    통과했으면 짝이 되는 반려본은 지운다(더 볼 이유가 없다).
+    old = SERIES_DIR / f"{sid}.broken.json"
+    if old.exists():
+        old.unlink()
+        print(f"  (지난 반려본 {old.name} 은 지웠다)")
     state[sid] = {"case_id": row["case_id"], "title": doc.get("title", ""),
                   "episodes": EPISODES, "made": 0, "writer": who}
     STATE.write_text(json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")

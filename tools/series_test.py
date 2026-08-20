@@ -223,6 +223,12 @@ ck("그렇다고 16화를 버리지는 않는다", S.check(d) == [], str(S.check
 d = good_doc()
 ck("멀쩡한 대본에는 손볼 곳이 없다", S.soft(d) == [], str(S.soft(d))[:60])
 
+print("\n⑨ 통과하면 지난 반려본을 치우는가 (2026-08-20 — 옛 파일을 새 것으로 잘못 읽었다)")
+import inspect
+src = inspect.getsource(S.main)
+ck("통과 자리에서 .broken.json 을 지운다",
+   "broken.json" in src and ".unlink()" in src)
+
 print("\n④ 규격 숫자가 실제 운영 조건과 맞는가")
 ck("6초 × 5컷 = 30초", S.SEC * S.CUTS == 30, f"{S.SEC}×{S.CUTS}")
 ck("16화 × 30초 = 8분 (롱폼 한 편)", S.EPISODES * S.SEC * S.CUTS == 480)
