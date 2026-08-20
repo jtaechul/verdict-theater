@@ -13,6 +13,7 @@
     안 깨지고 나와야 한다 — 그걸 그대로 구글 플로우에 붙여 넣기 때문이다.
 """
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -65,18 +66,27 @@ globalThis.scrollTo = () => {};
 // navigator 는 노드에 이미 있어 덮어쓸 수 없다 — 복사는 화면 시험 대상이 아니다
 
 const doc = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+
+// ⚠️ 2026-08-20 — 복사 단추를 눌러 플로우에 붙였더니 URL 인코딩된 글자가
+//    붙었다("%20%22%EB%8D%94..."). 그래서 **실제로 복사되는 문자열을 붙잡아**
+//    원본과 한 글자도 다르지 않은지 본다. 화면이 그려지는 것만 봐서는 모른다.
+const clip = { last: null };
+
 // 화면 코드 전체를 들여와 시리즈 그리기만 직접 부른다
-const run = new Function('DOC', 'SIDIN', js + `
+const run = new Function('DOC', 'SIDIN', 'CLIP', js + `
   S = { series: { [SIDIN]: { title: DOC.title, episodes: 16, made: 0 } } };
   SDOC = DOC; SDOC._sid = SIDIN; SID = SIDIN; SEP = 1;
   const out = { card: seriesCard(), ep1: '' };
   seriesRender();
   out.ep1 = document.getElementById('app').innerHTML;
+  // 실제로 복사되는 글자를 붙잡는다
+  out.copied = {};
+  Object.keys(COPY).forEach(k => { out.copied[k] = COPY[k]; });
   SEP = 16; seriesRender();
   out.ep16 = document.getElementById('app').innerHTML;
   return out;
 `);
-console.log(JSON.stringify(run(doc, process.argv[3])));
+console.log(JSON.stringify(run(doc, process.argv[3], clip)));
 """
 with tempfile.TemporaryDirectory() as d:
     r = Path(d) / "run.mjs"
@@ -108,7 +118,29 @@ for c in e1["cuts"]:
             if l.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
                .replace('"', "&quot;") not in ep1]
     ck(f"{c['n']}컷 프롬프트 {len(lines)}줄이 전부 있다", not miss, ("빠짐: " + str(miss)) if miss else "")
-ck("컷마다 복사 버튼이 있다", ep1.count("copyText(") >= len(e1["cuts"]), f"{ep1.count('copyText(')}개")
+ck("컷마다 복사 버튼이 있다", ep1.count("copyRaw(") >= len(e1["cuts"]),
+   f"{ep1.count('copyRaw(')}개")
+
+print("\n③-2 실제로 복사되는 글자가 원본과 같은가 (URL 인코딩 사고 재발 방지)")
+copied = out.get("copied", {})
+ck("복사할 원본이 화면마다 담긴다", len(copied) >= len(e1["cuts"]), f"{len(copied)}개")
+bad_enc, bad_eq = [], []
+for i, c in enumerate(e1["cuts"], 1):
+    got = copied.get(f"p1_{i}")
+    if got != (c.get("prompt") or ""):
+        bad_eq.append(f"{i}컷")
+    if got and re.search(r"%[0-9A-Fa-f]{2}", got):
+        bad_enc.append(f"{i}컷")
+for i, ch in enumerate(doc.get("characters", [])):
+    got = copied.get(f"ch{i}")
+    if got != (ch.get("flow_prompt") or ""):
+        bad_eq.append(f"인물{i + 1}")
+ck("복사되는 글자가 원본과 **한 글자도** 다르지 않다", not bad_eq, ", ".join(bad_eq))
+ck("%20 같은 URL 인코딩이 섞이지 않는다", not bad_enc, ", ".join(bad_enc))
+ck("줄바꿈이 진짜 줄바꿈으로 남아 있다",
+   all(copied.get(f"p1_{i}", "").count("\n") == 6 for i in range(1, len(e1["cuts"]) + 1)),
+   "각 프롬프트 7줄")
+ck("버튼으로 안 될 때 직접 복사할 길이 있다", "showCopySheet(" in ep1)
 nepn = ep1.count('class="epn')
 ck("1~16화 번호판이 다 있다", nepn == len(doc["episodes"]), f"{nepn}개")
 

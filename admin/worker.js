@@ -196,6 +196,11 @@ border:1px solid var(--line);background:#161822;color:var(--ink);min-height:48px
 label{display:block;margin:10px 0 0;font-size:13px;color:var(--dim)}
 .wf{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;background:#191b25}
 .wf b{display:block;font-size:16px}.wf small{color:var(--dim);display:block;margin:3px 0 10px}
+/* 버튼 복사가 안 될 때 글자를 그대로 띄우는 상자 — 길게 눌러 [복사] 한다 */
+.copyta{width:100%;min-height:190px;margin-top:10px;padding:10px;border-radius:9px;
+border:1px solid #5a3a3a;background:#1a1216;color:#e9e9ef;
+font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;
+white-space:pre;-webkit-user-select:text;user-select:text}
 /* 시리즈 — 클립 프롬프트를 눌러서 복사하는 상자 (2026-08-20) */
 .pbox{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;
 background:#161822}
@@ -349,23 +354,75 @@ function seriesCard() {
   return h + '</div>';
 }
 
-// 눌러서 복사. 아이폰 사파리는 https 에서 clipboard 가 되지만, 안 될 때를 대비해
-// 옛 방식(execCommand)도 남겨 둔다 — 복사가 안 되면 이 화면은 쓸모가 없다.
-function copyText(id, label) {
-  const el = document.getElementById(id);
-  const t = el ? el.textContent : '';
-  const done = () => toast((label || '프롬프트') + ' 복사했습니다');
+// ⚠️ 2026-08-20 손님: 복사해서 플로우에 붙이니 이런 것이 붙었다 —
+//      "...%20%22%EB%8D%94%EB%8A%94%20%EC%88%A8%20..."
+//    공백이 %20, 줄바꿈이 %0A, 한글이 %EB.. 로 바뀐 **URL 인코딩**이다.
+//    (빗금은 그대로인 것으로 보아 encodeURI 규칙)
+//    우리 코드에는 그런 호출이 없다. 그래서 원인을 더 캐는 대신 **그런 일이
+//    끼어들 자리 자체를 없앤다** — 화면에 그린 글자를 다시 읽어오지 않고
+//    (HTML 을 거치면 실체 문자·엔티티·브라우저 처리가 낄 틈이 생긴다)
+//    받아 둔 원본 문자열(SDOC)에서 곧바로 복사한다.
+//
+//    그리고 **복사한 것을 되읽어 확인한다.** 예전에는 실패해도 "복사했습니다"
+//    라고 띄웠다 — 손님은 엉뚱한 것이 붙어도 알 길이 없었다.
+
+// 지금 화면에서 복사할 수 있는 원본들. 화면을 그릴 때 여기에 담는다.
+let COPY = {};
+
+function copyRaw(key, label) {
+  const t = COPY[key];
+  if (typeof t !== 'string' || !t) { showCopySheet('', label); return; }
+  const ok = () => verifyCopy(t, label);
   if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard.writeText(t).then(done, () => fallbackCopy(t, done));
-  } else fallbackCopy(t, done);
+    navigator.clipboard.writeText(t).then(ok, () => legacyCopy(t, label));
+  } else legacyCopy(t, label);
 }
-function fallbackCopy(t, done) {
+
+// 붙여넣기 전에 우리가 먼저 확인한다. 못 읽으면(권한 없음) 그냥 알린다.
+function verifyCopy(t, label) {
+  const say = () => toast((label || '프롬프트') + ' 복사했습니다');
+  if (!(navigator.clipboard && navigator.clipboard.readText)) { say(); return; }
+  navigator.clipboard.readText().then(
+    (got) => {
+      if (got === t) say();
+      else showCopySheet(t, label, '복사된 글자가 원본과 다릅니다');
+    },
+    say);      // 읽기 권한이 없는 것은 실패가 아니다
+}
+
+function legacyCopy(t, label) {
   const a = document.createElement('textarea');
-  a.value = t; a.style.position = 'fixed'; a.style.opacity = '0';
-  document.body.appendChild(a); a.select();
-  try { document.execCommand('copy'); done(); }
-  catch (e) { toast('복사가 안 됩니다. 글자를 길게 눌러 직접 복사하십시오.'); }
+  a.value = t;
+  a.readOnly = true;                       // 아이폰에서 키보드가 튀어오르는 것을 막는다
+  a.style.position = 'fixed'; a.style.top = '0'; a.style.opacity = '0';
+  document.body.appendChild(a);
+  a.focus(); a.select();
+  if (a.setSelectionRange) a.setSelectionRange(0, t.length);   // 아이폰은 이것이 있어야 잡힌다
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
   document.body.removeChild(a);
+  if (ok) toast((label || '프롬프트') + ' 복사했습니다');
+  else showCopySheet(t, label, '이 기기에서는 버튼으로 복사가 안 됩니다');
+}
+
+// 마지막 길 — 글자를 그대로 띄우고 전부 선택해 둔다. 길게 눌러 [복사] 하면 된다.
+function showCopySheet(t, label, why) {
+  const b = document.getElementById('errbox');
+  b.textContent = '';
+  b.style.position = 'fixed';
+  const x = document.createElement('button');
+  x.className = 'eclose'; x.textContent = '닫기';
+  x.onclick = () => { b.style.display = 'none'; };
+  const h = document.createElement('b');
+  h.textContent = (why || '직접 복사') + ' — 아래 글자를 길게 눌러 [복사]';
+  const ta = document.createElement('textarea');
+  ta.className = 'copyta';
+  ta.value = t; ta.readOnly = true;
+  b.appendChild(x); b.appendChild(h); b.appendChild(ta);
+  b.style.display = 'block';
+  ta.focus(); ta.select();
+  if (ta.setSelectionRange) ta.setSelectionRange(0, (t || '').length);
+  document.getElementById('toast').style.display = 'none';
 }
 
 let SDOC = null, SID = '', SEP = 1;
@@ -401,14 +458,18 @@ function seriesRender() {
   h += row('하루 크레딧', (sp.cuts * sp.sec * 1.5) + ' / 무료 50');
   h += '</div>';
 
+  // 복사할 원본은 **화면에 그린 글자를 다시 읽지 않고** 여기 담아 둔다
+  COPY = {};
+
   // ① 캐릭터 — 플로우에서 얼굴을 먼저 만들어 두어야 화마다 같은 사람이 나온다
   h += '<div class="card"><h2>① 먼저 구글 플로우에서 인물 3명을 만듭니다 '
      + '<small style="font-weight:400;color:#9599ab">— 한 번만 하면 됩니다</small></h2>';
   (d.characters || []).forEach((c, i) => {
     const cid = 'ch' + i;
+    COPY[cid] = String(c.flow_prompt || '');
     h += '<div class="pbox"><div class="pname">' + esc(c.name) + '</div>'
-       + '<div class="ptext" id="' + cid + '">' + esc(c.flow_prompt || '') + '</div>'
-       + mini('이 인물 프롬프트 복사', 'copyText(\\'' + cid + '\\',\\'' + esc(c.name) + '\\')') + '</div>';
+       + '<div class="ptext">' + esc(c.flow_prompt || '') + '</div>'
+       + mini('이 인물 프롬프트 복사', 'copyRaw(\\'' + cid + '\\',\\'' + esc(c.name) + '\\')') + '</div>';
   });
   h += '</div>';
 
@@ -426,6 +487,7 @@ function seriesRender() {
                   + '지난 줄거리: ' + esc(e.recap) + '</div>';
   (e.cuts || []).forEach((c, i) => {
     const pid = 'p' + SEP + '_' + (i + 1);
+    COPY[pid] = String(c.prompt || '');
     const say = (String(c.prompt || '').split(String.fromCharCode(10))
       .find(l => l.indexOf('DIALOGUE:') === 0) || '').replace('DIALOGUE:', '').trim();
     h += '<div class="pbox"><div class="pname">' + c.n + '컷 · ' + esc(c.role || '')
@@ -436,8 +498,9 @@ function seriesRender() {
     // 설명 자막 — 숫자·법률처럼 입으로 하면 어색한 사실을 우리가 화면에 얹는다
     if (c.caption) h += '<div style="color:#8fb0f0;font-size:13px;margin-bottom:6px">'
                       + '설명 자막: ' + esc(c.caption) + '</div>';
-    h += '<div class="ptext" id="' + pid + '">' + esc(c.prompt || '') + '</div>'
-       + mini('이 컷 프롬프트 복사', 'copyText(\\'' + pid + '\\',\\'' + c.n + '컷\\')', 'gold')
+    h += '<div class="ptext">' + esc(c.prompt || '') + '</div>'
+       + mini('이 컷 프롬프트 복사', 'copyRaw(\\'' + pid + '\\',\\'' + c.n + '컷\\')', 'gold')
+       + mini('안 되면 여기서', 'showCopySheet(COPY[\\'' + pid + '\\'],\\'' + c.n + '컷\\')')
        + '</div>';
   });
   h += '</div>';
