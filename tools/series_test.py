@@ -25,12 +25,12 @@ def ck(label, cond, extra=""):
         FAIL.append(label)
 
 
-TALK = ('시동생 (cold): "이 집, 오늘 안에 비워 주세요." / '
-        '며느리 (trembling): "그이 장례가 어제였어요. 지금 그 말이 나와요?"')
+TALK = ('시동생 (cold): "이 집, 오늘 안에 비워 주세요. 더 드릴 말씀 없습니다." / '
+        '며느리 (trembling): "그이 장례가 어제였어요."')
 
 
-SOLO = ('시동생 says in Korean, calm: '
-        '"이 집, 오늘 안에 비워 주세요. 더 드릴 말씀도 없습니다."')
+SOLO = ('시동생 says in Korean, calm: "이 집, 오늘 안에 비워 주세요. '
+        '더 드릴 말씀도 기다려 드릴 생각도 없습니다."')
 
 
 def good_prompt(dialogue=SOLO):
@@ -107,8 +107,7 @@ ck("5컷이 아니면 잡는다", any("컷이 3개" in b for b in S.check(d)))
 
 d = good_doc()
 d["episodes"][0]["cuts"][0]["prompt"] = good_prompt(
-    '시동생 says in Korean: "이 집은 이제 전부 저희 것이니 오늘 안에 짐을 싸서 '
-    '지금 당장 나가 주셔야 하겠습니다."')
+    '시동생 says in Korean: "이 집은 이제 전부 저희 것이니 오늘 안에 짐을 싸서 지금 당장 나가 주셔야 하겠습니다. 더는 드릴 말씀이 없습니다."')
 ck(f"대사가 {S.DIA_SYL_MAX}음절을 넘으면 잡는다", any("음절이다" in b for b in S.check(d)))
 
 # ⚠️ 한 글자 차이로 멀쩡한 대사 둘을 막았다. 실제로 나왔던 그 대사를 넣어 둔다.
@@ -200,7 +199,8 @@ ck("한 화에 주고받는 컷이 모자라면 잡는다",
 d = good_doc()
 d["episodes"][2]["cuts"][2]["prompt"] = good_prompt(
     '시동생 (cold): "이 집은 이제 전부 저희 것이니 오늘 안에 나가 주십시오." / '
-    '며느리 (trembling): "그이 관 앞에서 무슨 소리를 하시는 겁니까, 지금."')
+    '며느리 (trembling): "그이 관 앞에서 무슨 소리를 하시는 겁니까, 지금. '
+    '부끄럽지도 않으세요?"')
 ck(f"한 컷 대사 총합이 {S.DIA_SYL_MAX}음절을 넘으면 잡는다",
    any("음절이다" in b for b in S.check(d)))
 
@@ -230,9 +230,14 @@ ck("하루 크레딧 45 ≤ 무료 50", S.CUTS * S.SEC * 1.5 <= 50, f"{S.CUTS * 
 # 한국어는 초당 약 5자. 6초 클립에서 앞뒤 숨 쉴 틈을 빼면 약 5.5초를 말한다.
 # 한국어 드라마 대사는 초당 5~6음절. 6초 중 5.5초를 말한다.
 ck(f"대사 {S.DIA_SYL_MAX}음절이 {S.SEC}초에 들어가는가",
-   S.DIA_SYL_MAX <= (S.SEC - 0.5) * 5.5, f"{S.DIA_SYL_MAX/5.5:.1f}초")
-ck("6초를 8할 넘게 채우는가 (예전엔 절반이 비었다)",
-   S.DIA_SYL_MAX / 5.5 >= S.SEC * 0.8, f"{S.DIA_SYL_MAX/5.5/S.SEC*100:.0f}%")
+   S.DIA_SYL_MAX <= S.SPEAK_SEC * S.SYL_PER_SEC,
+   f"{S.DIA_SYL_MAX / S.SYL_PER_SEC:.1f}초 · 초당 {S.SYL_PER_SEC}음절")
+ck(f"{S.SEC}초를 8할 넘게 채우는가 (예전엔 절반이 비었다)",
+   S.DIA_SYL_MAX / S.SYL_PER_SEC >= S.SEC * 0.8,
+   f"{S.DIA_SYL_MAX / S.SYL_PER_SEC / S.SEC * 100:.0f}%")
+# ⚠️ 말하기 속도는 눈대중으로 정하면 안 된다 (5.5 로 잡았다가 6초 중 1.3초를 버렸다)
+ck("말하기 속도가 실측 범위 안인가", 6.0 <= S.SYL_PER_SEC <= 7.0,
+   f"초당 {S.SYL_PER_SEC}음절")
 ck("음절 세기가 공백·쉼표를 빼는가", S.syl("여기가 어디라고 뻔뻔하게 와?") == 12,
    f"{S.syl('여기가 어디라고 뻔뻔하게 와?')}음절 (글자로는 16자)")
 
