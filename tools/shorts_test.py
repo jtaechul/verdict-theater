@@ -179,12 +179,39 @@ with _t.TemporaryDirectory() as dd:
     got = S.pick_clips(dd, 5)
     ck("이름에 컷 번호가 있으면 그 번호대로",
        [got[i].name for i in range(1, 6)] == sorted(x.name for x in dd.glob("*.mp4")))
+# ⭐ 2026-08-20 — 실제로 올라온 플로우 파일 이름. 이름 순서대로 붙이면
+#    2·4·1·5·3 으로 통째로 어긋난다. 컷 내용(ACTION)과 맞춰야 제자리에 간다.
+import json as _j
+REAL = ["Wife_confronts_husband_at_home_202608201933",
+        "Woman_smirks_at_another_woman_202608201933",
+        "Husband_aggressively_shakes_off_202608201933",
+        "Man_glaring_coldly_202608201933",
+        "Woman_clenches_fists_determinedly_202608201933"]
+WANT = {1: "Wife_confronts", 2: "Husband_aggressively", 3: "Woman_smirks",
+        4: "Man_glaring", 5: "Woman_clenches"}
+sj = ROOT / "data" / "series" / "S001.json"
+if sj.exists():
+    cuts = _j.loads(sj.read_text(encoding="utf-8"))["episodes"][0]["cuts"]
+    with _t.TemporaryDirectory() as dd:
+        dd = Path(dd)
+        for nm in REAL:
+            (dd / (nm + ".mp4")).touch()
+        got = S.pick_clips(dd, 5, cuts)
+        bad = [k for k in range(1, 6)
+               if not (got.get(k) and got[k].name.startswith(WANT[k]))]
+        ck("플로우가 지은 이름도 컷 내용으로 제자리에 붙는다", not bad,
+           ("어긋남: " + str(bad)) if bad else "5컷 전부")
+        # 이름 순서대로였다면 어긋났다는 것도 같이 못 박아 둔다
+        plain = S.pick_clips(dd, 5)
+        ck("(이름 순서대로만 하면 어긋난다는 것도 확인)",
+           plain[1].name != got[1].name)
+
 with _t.TemporaryDirectory() as dd:
     dd = Path(dd)
     for nm in ["zz.mp4", "aa.mp4", "mm.mp4", "bb.mp4", "cc.mp4"]:
         (dd / nm).touch()
     got = S.pick_clips(dd, 5)
-    ck("번호가 없으면 이름 순서대로", got[1].name == "aa.mp4" and got[5].name == "zz.mp4",
+    ck("맞출 거리가 없으면 이름 순서대로", got[1].name == "aa.mp4" and got[5].name == "zz.mp4",
        " ".join(got[i].name for i in range(1, 6)))
 with _t.TemporaryDirectory() as dd:
     dd = Path(dd)

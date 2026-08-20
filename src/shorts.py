@@ -278,13 +278,42 @@ def hook_of(ep, doc):
             or str(doc.get("title") or "").strip())
 
 
-def pick_clips(d, n):
+STOP = {"the", "a", "an", "at", "in", "on", "of", "to", "her", "his", "and",
+        "with", "by", "from", "into", "over", "as", "is", "it", "for"}
+
+
+def words(t):
+    """영어 낱말만 뽑고 꼬리를 떼어 맞춰 본다 (glaring↔glares, shakes↔shake)."""
+    out = set()
+    for w in re.findall(r"[A-Za-z]+", str(t or "").lower()):
+        if len(w) < 3 or w in STOP:
+            continue
+        for suf in ("ingly", "ing", "edly", "ed", "ly", "es", "s"):
+            if len(w) > len(suf) + 2 and w.endswith(suf):
+                w = w[: -len(suf)]
+                break
+        out.add(w)
+    return out
+
+
+def pick_clips(d, n, cuts=None):
     """받은 파일들을 컷 번호에 맞춘다.
 
     플로우에서 내려받은 이름은 제각각이라 한 가지 규칙만 믿으면 안 된다.
-      ① 이름 안에 c001 · c1 같은 컷 번호가 있으면 그것으로
-      ② 없으면 **이름 순서대로** 1컷·2컷·… (내려받은 순서가 만든 순서다)
-    무엇을 몇 컷으로 봤는지 화면에 찍어 준다 — 엉뚱하게 붙으면 바로 보이게.
+      ① 이름 안에 c001 · c1 같은 컷 번호가 있으면 그것으로 (가장 확실)
+      ② 없으면 **파일 이름과 컷 내용을 맞춰** 짝짓는다.
+      ③ 그래도 못 정한 것은 남은 것끼리 순서대로
+
+    ⚠️ 2026-08-20 — 처음엔 ②가 없이 '이름 순서대로' 였는데, 실제로 올라온
+       플로우 파일 이름이 이랬다:
+         Husband_aggressively_shakes_off…   ← 2컷
+         Man_glaring_coldly…                ← 4컷
+         Wife_confronts_husband_at_home…    ← 1컷
+         Woman_clenches_fists_determinedly… ← 5컷
+         Woman_smirks_at_another_woman…     ← 3컷
+       이름 순서대로 붙이면 2·4·1·5·3 — **통째로 어긋난다.**
+       다행히 플로우는 우리가 쓴 ACTION 을 보고 이름을 짓는다
+       (shakes off · glaring coldly · clenches fists · smirks). 그 낱말을 맞춘다.
     """
     d = Path(d)
     vids = sorted([p for p in d.rglob("*") if p.suffix.lower() in
@@ -296,11 +325,34 @@ def pick_clips(d, n):
             k = int(m.group(1))
             if 1 <= k <= n and k not in out:
                 out[k] = p
-    if len(out) < n:                       # 번호를 못 찾았다 → 이름 순서대로
-        rest = [p for p in vids if p not in out.values()]
-        for k in range(1, n + 1):
-            if k not in out and rest:
-                out[k] = rest.pop(0)
+
+    left_f = [p for p in vids if p not in out.values()]
+    left_k = [k for k in range(1, n + 1) if k not in out]
+
+    # ② 이름과 컷 내용을 맞춘다
+    if cuts and left_f and left_k:
+        key = {}
+        for c in cuts:
+            k = int(c.get("n", 0))
+            lines = str(c.get("prompt") or "").split("\n")
+            act = next((l for l in lines if l.startswith("ACTION:")), "")
+            shot = next((l for l in lines if l.startswith("SHOT:")), "")
+            key[k] = words(act) | words(shot)
+        pairs = sorted(
+            ((len(key.get(k, set()) & words(f.stem)), k, f)
+             for k in left_k for f in left_f), reverse=True,
+            key=lambda x: (x[0], -x[1]))
+        for sc, k, f in pairs:
+            if sc <= 0 or k not in left_k or f not in left_f:
+                continue
+            out[k] = f
+            left_k.remove(k)
+            left_f.remove(f)
+
+    # ③ 남은 것끼리 순서대로
+    for k in list(left_k):
+        if left_f:
+            out[k] = left_f.pop(0)
     return out
 
 
@@ -317,7 +369,7 @@ def episode(sid, no, clips_dir, out_dir):
     print(f"{sid} {no}화 「{ep.get('title','')}」")
     print(f"  후킹 문구: {hook}")
 
-    files = pick_clips(clips_dir, len(ep["cuts"]))
+    files = pick_clips(clips_dir, len(ep["cuts"]), ep["cuts"])
     parts = []
     for c in ep["cuts"]:
         n = int(c["n"])
