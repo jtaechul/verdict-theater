@@ -113,6 +113,62 @@ else:
                             str(out)], capture_output=True, text=True).stdout.strip()
         ck("소리가 붙어 있다", a != "", a or "없음")
 
+print("\n⑥ 자막이 사람마다 가라오케로 켜지는가 (2026-08-20 운영자 지시)")
+SUB3 = "당신 진짜 제정신이야? / 더는 숨 막혀서 못 살아. / 누구 맘대로 집을 나가!"
+
+# 한 사람 대사가 두 줄로 접혀도 그 두 줄은 **같이** 켜져야 한다
+f, ls, owner = S.fit_owned(d0, ["짧은 말.", "아주 길어서 한 줄에 안 들어가는 대사가 여기 있고 이것은 접힌다."],
+                           S.FONT_M, S.SUB_SIZE, 420, 6)
+ck("접힌 줄도 같은 사람 것으로 묶인다", len(set(owner)) == 2 and owner.count(1) >= 2,
+   f"임자 {owner}")
+
+# 소리를 못 읽으면 음절 수에 비례해 나눈다 (똑같이 나누는 것보다 가깝다)
+sp = S.by_syllable(3, 6.0, ["짧아.", "이건 조금 더 긴 대사입니다.", "중간."])
+ck("음절 수 비례로 나눈다 (긴 대사가 긴 시간)",
+   (sp[1][1] - sp[1][0]) > (sp[0][1] - sp[0][0]),
+   " ".join(f"{b - a:.1f}초" for a, b in sp))
+ck("나눈 시간이 빈틈없이 이어진다",
+   abs(sp[0][1] - sp[1][0]) < 1e-6 and abs(sp[-1][1] - 6.0) < 1e-6)
+ck("한 사람만 말하면 통째로 한 구간", S.speech_spans("없는파일.mp4", 1, 6.0) == [(0.0, 6.0)])
+
+if shutil.which("ffmpeg"):
+    with tempfile.TemporaryDirectory() as dd:
+        dd = Path(dd)
+        # 말 1.5 / 쉼 0.5 / 말 1.8 / 쉼 0.4 / 말 1.8 = 세 사람이 번갈아 말하는 6초
+        a = ("sine=f=300:d=6,volume='if(between(t,0,1.5)+between(t,2.0,3.8)"
+             "+between(t,4.2,6.0),1,0)':eval=frame")
+        src = dd / "cut.mp4"
+        subprocess.run(["ffmpeg", "-v", "error", "-y",
+                        "-f", "lavfi", "-i", "testsrc2=s=1280x720:r=24:d=6",
+                        "-f", "lavfi", "-i", a, "-t", "6",
+                        "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                        "-c:a", "aac", str(src)], check=True, capture_output=True)
+
+        sp = S.speech_spans(src, 3, 6.0)
+        ck("소리에서 사람 수만큼 토막을 찾는다", len(sp) == 3,
+           " ".join(f"{x:.1f}~{y:.1f}" for x, y in sp))
+        ck("찾은 자리가 실제 말한 자리와 맞는다",
+           abs(sp[1][0] - 2.0) < 0.3 and abs(sp[2][0] - 4.2) < 0.3,
+           f"두 번째 {sp[1][0]:.2f}초 · 세 번째 {sp[2][0]:.2f}초")
+
+        out = S.compose(src, "후킹 문구", SUB3, dd / "o.mp4", dd / "tmp")
+
+        def bright_rows(t):
+            """그 시각 자막 칸을 세 토막으로 나눠 각 줄의 밝기를 잰다."""
+            raw = subprocess.run(
+                ["ffmpeg", "-v", "error", "-ss", str(t), "-i", str(out),
+                 "-frames:v", "1", "-vf",
+                 f"crop={S.W}:{S.SUB_BOT - S.SUB_TOP}:0:{S.SUB_TOP},format=gray",
+                 "-f", "rawvideo", "-"], capture_output=True).stdout
+            band = (S.SUB_BOT - S.SUB_TOP) // 3
+            return [sum(raw[i * band * S.W:(i + 1) * band * S.W]) for i in range(3)]
+
+        for t, want in [(1.0, 0), (3.0, 1), (5.0, 2)]:
+            v = bright_rows(t)
+            ck(f"{t}초에는 {want + 1}번째 사람 줄이 가장 밝다",
+               v.index(max(v)) == want,
+               " ".join(f"{x // 100000}" for x in v))
+
 print("\n" + "─" * 52)
 print(f"❌ 쇼츠 배치: {len(FAIL)}가지 실패" if FAIL else "✅ 쇼츠 배치: 전부 통과")
 sys.exit(1 if FAIL else 0)

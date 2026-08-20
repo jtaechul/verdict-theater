@@ -31,6 +31,7 @@
 """
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -51,7 +52,75 @@ HOOK_TOP, HOOK_BOT, HOOK_SIZE = 150, 470, 76
 SUB_TOP, SUB_BOT, SUB_SIZE = 1360, 1610, 58
 SIDE = 64                        # 좌우 여백
 GOLD = (198, 160, 74)
+DIM = (118, 122, 136, 255)   # 아직/이미 말한 줄
 CHANNEL = "판결극장"
+
+
+def syl(t):
+    """실제로 소리 나는 글자만 (공백·쉼표는 시간을 안 잡아먹는다)."""
+    return len(re.findall(r"[가-힣]", str(t or "")))
+
+
+def speech_spans(src, n, dur):
+    """누가 언제 말하는지 — 소리에서 직접 찾는다 (2026-08-20 운영자 지시).
+
+    "자막은 사람마다 가라오케 식으로 하는 게 낫지 않냐?"
+
+    말하는 시각을 우리는 모른다. 플로우가 알려주지 않는다. 그래서 **소리에서
+    말이 끊기는 자리를 찾아** 사람 수만큼 토막을 낸다(만든 소리로 재보니
+    0.02초 오차로 맞았다). 못 찾으면 **음절 수 비례**로 나눈다 — 긴 대사가
+    긴 시간을 갖는 것이 그냥 똑같이 나누는 것보다 훨씬 가깝다.
+    """
+    if n <= 1:
+        return [(0.0, dur)]
+    spans = []
+    try:
+        log = subprocess.run(
+            ["ffmpeg", "-i", str(src), "-af", "silencedetect=n=-35dB:d=0.22",
+             "-f", "null", "-"], capture_output=True, text=True).stderr
+        cur = 0.0
+        for m in re.finditer(r"silence_(start|end): ([\d.]+)", log):
+            v = float(m.group(2))
+            if m.group(1) == "start":
+                if v - cur > 0.2:
+                    spans.append([cur, v])
+                cur = v
+            else:
+                cur = v
+        if dur - cur > 0.2:
+            spans.append([cur, dur])
+    except Exception:                                        # noqa: BLE001
+        spans = []
+
+    # 토막이 사람 수보다 많으면, 사이가 가장 좁은 것부터 붙인다
+    while len(spans) > n:
+        gaps = [(spans[i + 1][0] - spans[i][1], i) for i in range(len(spans) - 1)]
+        _, i = min(gaps)
+        spans[i][1] = spans[i + 1][1]
+        del spans[i + 1]
+
+    if len(spans) != n:                                      # 못 찾았다 → 음절 수 비례
+        return by_syllable(n, dur, spans_hint=None)
+
+    # 다음 사람이 말하기 직전까지 그 사람 줄을 켜 둔다 (빈 순간이 없게)
+    out = []
+    for i, (a, b) in enumerate(spans):
+        end = spans[i + 1][0] if i + 1 < len(spans) else dur
+        out.append((0.0 if i == 0 else a, end))
+    return out
+
+
+def by_syllable(n, dur, lines=None, spans_hint=None):
+    """음절 수에 비례해 시간을 나눈다 (소리에서 못 찾았을 때)."""
+    w = [max(1, syl(x)) for x in (lines or [])] or [1] * n
+    w = (w + [1] * n)[:n]
+    tot = sum(w)
+    out, t = [], 0.0
+    for i, x in enumerate(w):
+        end = dur if i == n - 1 else t + dur * x / tot
+        out.append((t, end))
+        t = end
+    return out
 
 
 def wrap(draw, text, font, max_w):
@@ -89,19 +158,50 @@ def fit(draw, text, path, size, max_w, max_lines, split_slash=False):
     return f, ls[:max_lines]
 
 
-def block(d, lines, font, top, bottom, fill, gap=1.28):
-    """정해진 칸 안에서 가운데 맞춰 그린다."""
+def fit_owned(draw, parts, path, size, max_w, max_lines):
+    """사람별 대사 목록 → (글꼴, 화면에 그릴 줄들, 줄마다 누구 말인지).
+
+    한 사람 대사가 길어 두 줄로 접히면 **그 두 줄이 같이 켜져야** 한다.
+    그래서 줄마다 임자 번호를 함께 돌려준다."""
+    while size >= 26:
+        f = ImageFont.truetype(str(path), size)
+        ls, owner = [], []
+        for i, x in enumerate(parts):
+            for l in wrap(draw, x, f, max_w):
+                ls.append(l)
+                owner.append(i)
+        if len(ls) <= max_lines:
+            return f, ls, owner
+        size -= 4
+    return f, ls[:max_lines], owner[:max_lines]
+
+
+def block(d, lines, font, top, bottom, fill, gap=1.28, live=None, dim=None):
+    """정해진 칸 안에서 가운데 맞춰 그린다.
+
+    live — 지금 말하는 사람의 줄 번호. 그 줄만 밝게, 나머지는 흐리게 그린다
+           (2026-08-20 운영자: "자막은 사람마다 가라오케 식으로").
+           줄 전체를 미리 보여주되 **읽을 자리를 눈이 놓치지 않게** 한다.
+    """
     lh = int(font.size * gap)
     total = lh * len(lines)
     y = top + max(0, (bottom - top - total) // 2)
-    for l in lines:
+    for i, l in enumerate(lines):
+        c = fill if (live is None or i == live) else (dim or DIM)
         x = (W - d.textlength(l, font=font)) / 2
-        d.text((x, y), l, font=font, fill=fill)
+        d.text((x, y), l, font=font, fill=c)
         y += lh
 
 
-def overlay_png(hook, sub, out):
-    """글자만 있는 투명 그림 한 장 (영상 위에 얹는다)."""
+def sub_lines(sub):
+    """자막을 말한 사람마다 한 줄로 나눈다."""
+    return [x.strip() for x in str(sub or "").split(" / ") if x.strip()]
+
+
+def overlay_png(hook, sub, out, live=None):
+    """글자만 있는 투명 그림 한 장 (영상 위에 얹는다).
+
+    live — 지금 말하는 사람의 줄 번호 (None 이면 전부 밝게)."""
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
@@ -113,9 +213,18 @@ def overlay_png(hook, sub, out):
         f, ls = fit(d, hook, FONT_B, HOOK_SIZE, W - SIDE * 2, 3)
         block(d, ls, f, HOOK_TOP, HOOK_BOT, (255, 255, 255, 255))
 
-    if str(sub or "").strip():
-        f, ls = fit(d, sub, FONT_M, SUB_SIZE, W - SIDE * 2, 4, split_slash=True)
-        block(d, ls, f, SUB_TOP, SUB_BOT, (233, 233, 239, 255))
+    parts = sub_lines(sub)
+    if parts:
+        # 한 사람이 두 줄로 접히면 그 두 줄이 같이 켜져야 한다 → 줄마다 임자를 적어 둔다
+        f, ls, owner = fit_owned(d, parts, FONT_M, SUB_SIZE, W - SIDE * 2, 4)
+        y_live = None if live is None else live
+        lh = int(f.size * 1.28)
+        y = SUB_TOP + max(0, (SUB_BOT - SUB_TOP - lh * len(ls)) // 2)
+        for i, l in enumerate(ls):
+            on = (y_live is None) or (owner[i] == y_live)
+            x = (W - d.textlength(l, font=f)) / 2
+            d.text((x, y), l, font=f, fill=(233, 233, 239, 255) if on else DIM)
+            y += lh
 
     img.save(out)
     return out
@@ -128,16 +237,31 @@ def compose(src, hook, sub, out, tmp):
     vw, vh, sec = C.probe(src)
     mx, my, mw, mh = C.mark_box(vw, vh)
     cx, cy, cw, ch = C.crop_box(vw, vh)
-    png = overlay_png(hook, sub, tmp / f"{src.stem}_txt.png")
 
-    vf = (f"[1:v]delogo=x={mx}:y={my}:w={mw}:h={mh},"
-          f"crop={cw}:{ch}:{cx}:{cy},scale={W}:{VIDEO_H}[v];"
-          f"[0:v][v]overlay=0:{VIDEO_Y}[bg];"
-          f"[bg][2:v]overlay=0:0[o]")
+    # ⭐ 사람마다 자기 말할 때만 밝아진다 (가라오케). 말하는 시각은 소리에서 찾는다.
+    parts = sub_lines(sub)
+    spans = speech_spans(src, len(parts), sec) if len(parts) > 1 else [(0.0, sec)]
+    if len(spans) != len(parts):
+        spans = by_syllable(len(parts), sec, parts)
+    pngs = [overlay_png(hook, sub, tmp / f"{src.stem}_txt{i}.png",
+                        live=(i if len(parts) > 1 else None))
+            for i in range(max(1, len(parts)))]
+
+    vf = [f"[1:v]delogo=x={mx}:y={my}:w={mw}:h={mh},"
+          f"crop={cw}:{ch}:{cx}:{cy},scale={W}:{VIDEO_H}[v]",
+          f"[0:v][v]overlay=0:{VIDEO_Y}[s0]"]
+    for i in range(len(pngs)):
+        a, b = spans[i] if i < len(spans) else (0.0, sec)
+        last = (i == len(pngs) - 1)
+        tag = "[o]" if last else f"[s{i + 1}]"
+        en = "" if len(pngs) == 1 else f":enable='between(t,{a:.3f},{b:.3f})'"
+        vf.append(f"[s{i}][{i + 2}:v]overlay=0:0{en}{tag}")
     cmd = ["ffmpeg", "-v", "error", "-y",
            "-f", "lavfi", "-i", f"color=c=black:s={W}x{H}:r=24:d={sec:.3f}",
-           "-i", str(src), "-i", str(png),
-           "-filter_complex", vf, "-map", "[o]", "-map", "1:a?",
+           "-i", str(src)]
+    for q in pngs:
+        cmd += ["-i", str(q)]
+    cmd += ["-filter_complex", ";".join(vf), "-map", "[o]", "-map", "1:a?",
            "-c:v", "libx264", "-preset", "medium", "-crf", "19",
            "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
            "-shortest", "-movflags", "+faststart", str(out)]
