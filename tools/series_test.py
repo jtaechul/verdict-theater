@@ -30,7 +30,7 @@ TALK = ('시동생 (cold): "이 집, 오늘 안에 비워 주세요." / '
 
 
 SOLO = ('시동생 says in Korean, calm: '
-        '"이 집, 오늘 안에 비워 주세요. 더 드릴 말씀 없습니다."')
+        '"이 집, 오늘 안에 비워 주세요. 더 드릴 말씀도 없습니다."')
 
 
 def good_prompt(dialogue=SOLO):
@@ -114,8 +114,9 @@ ck(f"대사가 {S.DIA_SYL_MAX}음절을 넘으면 잡는다", any("음절이다"
 # ⚠️ 한 글자 차이로 멀쩡한 대사 둘을 막았다. 실제로 나왔던 그 대사를 넣어 둔다.
 d = good_doc()
 d["episodes"][0]["cuts"][0]["prompt"] = good_prompt(
-    '본처 says in Korean, firm: "몰래 빼돌린 건 몇 년이 지나도 안 없어져."')
-ck("25음절짜리 실제 드라마 대사는 통과시킨다", S.check(d) == [], str(S.check(d))[:70])
+    '본처 says in Korean, firm: "몰래 빼돌린 건 몇 년이 지나도 안 없어져. '
+    '끝까지 받아낼 거야."')
+ck("실제 드라마 대사 길이는 통과시킨다", S.check(d) == [], str(S.check(d))[:70])
 
 d = good_doc()
 d["episodes"][4]["recap"] = ""
@@ -166,12 +167,12 @@ ck("Avoid 가 맨 끝이 아니면 우리가 옮긴다", S.check(S.normalize(d))
 
 print("\n⑧ 사람이 실제로 하는 말인가 (2026-08-20 손님: '말도 어색해')")
 d = good_doc()
-STIFF_SAY = ['"대법원 판례상 사망보험금은 내 거야."',
-             '"악의적 증여는 시효랑 상관없어."',
-             '"한정승인 하면 상속재산은 남아."',
-             '"유류분 반환청구 할 거야, 나도."',
-             '"그건 고유재산이라 상속액이 아냐."',
-             '"물가상승률 반영해서 다시 계산해."']
+STIFF_SAY = ['"대법원 판례상 사망보험금은 전부 내 거라고 나왔어."',
+             '"악의적 증여는 시효랑 상관없이 다 돌려받는 거야."',
+             '"한정승인 하면 상속재산은 그대로 남는다고 하더라."',
+             '"유류분 반환청구 할 거야, 나도 받을 몫이 있으니까."',
+             '"그건 고유재산이라 상속액에 안 들어간다고 했어."',
+             '"물가상승률 반영해서 다시 계산하면 액수가 달라져."']
 for i, say in enumerate(STIFF_SAY):
     d["episodes"][i]["cuts"][0]["prompt"] = good_prompt('본처 says: ' + say)
 hit = S.check(d)
@@ -186,7 +187,7 @@ ck("한두 줄 섞인 것은 봐준다", S.check(d) == [], str(S.check(d))[:70])
 
 print("\n⑦ 대사 — 6초를 꽉 채우고 주고받는가 (2026-08-20 손님 지적)")
 d = good_doc()
-d["episodes"][3]["cuts"][0]["prompt"] = good_prompt('본처 says: "너지? 네가 그랬지?"')
+d["episodes"][3]["cuts"][0]["prompt"] = good_prompt('본처 says: "너지?"')
 ck(f"대사가 {S.DIA_SYL_MIN}음절에 못 미치면 잡는다 (6초가 빈다)",
    any("거의 빈다" in b for b in S.check(d)))
 
@@ -215,7 +216,7 @@ ck("두 사람이 주고받는 멀쩡한 컷은 통과시킨다", S.check(good_d
 print("\n⑥ 손볼 곳은 알려 주되, 그것 때문에 버리지는 않는가")
 d = good_doc()
 d["episodes"][2]["cuts"][0]["prompt"] = good_prompt(
-    '본처 says in Korean: "내연녀 집에서 떨어져 죽었다고요? 그게 말이 됩니까?"')
+    '본처 says in Korean: "내연녀 집에서 떨어져 죽었다고요? 그게 말이 되는 소립니까?"')
 ck("대사에 배역 딱지가 있으면 알려 준다", any("내연녀" in w for w in S.soft(d)))
 ck("그렇다고 16화를 버리지는 않는다", S.check(d) == [], str(S.check(d))[:60])
 
