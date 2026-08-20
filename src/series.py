@@ -143,21 +143,29 @@ LINES_OPT = ["VOICE:"]      # 대사가 있는 컷에만 붙는다
 #       낱말을 피해서 쓴다 — 한 낱말이 80컷을 통째로 막는다.
 #    ⭐ 2026-08-20 운영자: "나레이션이 외국인이 한국말하는 것처럼 들린다."
 #       프롬프트가 **무슨 말로 하는지 한 번도 안 알려 줬다.** 지시는 전부 영어고
-#       대사만 한글이라, 영상 만드는 쪽은 영어 목소리로 한글을 더듬더듬 읽는다.
-#       → 어느 나라 말인지 · 어느 억양인지를 **대사 바로 옆에** 못 박는다.
-DIA_LANG = "(all lines spoken in fluent everyday Korean by native speakers) "
-AUDIO_FIX = ("AUDIO: the two people in the shot say the lines themselves with their "
-             "lips moving in sync, every line spoken in natural everyday "
-             "Korean by native speakers with standard Seoul pronunciation and "
-             "correct Korean intonation, no foreign accent, no English accent, "
-             "real spontaneous speech rather than "
-             "narration, uneven rhythm with short breaths between phrases and "
-             "voices slightly overlapping when they argue, quiet room tone of "
-             "the location, no voice-over, no narrator, no background music, "
-             "no sound effects.")
-AUDIO_SILENT = ("AUDIO: nobody speaks in this shot, only the quiet room tone "
-                "of the location, no voice-over, no narrator, no background "
-                "music, no sound effects.")
+#       대사만 한글이라, 영상 만드는 쪽은 영어 억양·리듬을 한글에 그대로 씌운다.
+#
+#    ⭐⭐ 그런데 한국어라고 알려 줘도 계속 외국인 소리가 났다. 운영자가 제미나이
+#       자문을 받아 왔고, 그 지적이 맞았다 —
+#       **"no foreign accent, no English accent" 가 오히려 역효과였다.**
+#       영상 만드는 쪽은 `no` 보다 뒤에 붙은 `foreign` `English` 라는 낱말
+#       자체에 끌린다. 없애라고 부른 것을 불러들인 셈이다.
+#       → 부정 명령을 전부 걷어내고 **바라는 것만 적는다.**
+#         (`no narrator` `no music` 도 같은 이유로 걷어내고,
+#          "이 소리만 들린다" 는 **긍정문**으로 바꿨다)
+#
+#       그리고 대사가 한국어라는 것을 **대문자 표시**로 못 박고,
+#       말투 괄호마다 `in Korean` 을 붙인다 (제미나이 자문 3·4번).
+DIA_LANG = "[LANGUAGE: KOREAN] "
+AUDIO_FIX = ("AUDIO: the two people in the shot say the lines themselves with "
+             "their lips moving in sync, every line spoken in natural, fluent "
+             "and highly authentic everyday Korean by native speakers with "
+             "standard Seoul intonation, real spontaneous speech with uneven "
+             "rhythm, short breaths between phrases and voices slightly "
+             "overlapping when they argue, with only the quiet room tone of "
+             "the location underneath.")
+AUDIO_SILENT = ("AUDIO: the shot is quiet, with only the room tone of the "
+                "location and the small everyday sounds of the place.")
 
 # 인물 설명에서 성격을 읽어 목소리를 짓는다 (인물표에 voice 가 없을 때)
 VOICE_TONE = [
@@ -171,6 +179,74 @@ VOICE_TONE = [
     ("gentle", "soft and slow, warm"),
     ("cold", "flat and quiet, almost bored"),
 ]
+
+
+# ⭐ 제미나이 자문 3번 — 대사에 쉼표를 넣어 주면 억양이 한 번 **리셋**되어
+#    외국어 특유의 늘어지는 억양이 줄어든다. 부르는 말 뒤가 가장 자연스럽다.
+#      "당신 진짜 제정신이야?"  →  "당신, 진짜 제정신이야?"
+#    ⚠️ 사람이 쓴 대사를 우리가 손대는 것이라 **아주 조심스럽게** 한다 —
+#       맨 앞의 부르는 말 뒤에만, 그것도 문장이 길 때만 넣는다.
+#    ⚠️ 처음에는 `당신` `너` `자기` `왜` 까지 넣었다가 **말뜻을 망가뜨렸다** —
+#         "당신 명의로 다 해놨어" → "당신, 명의로…"  (당신은 부르는 말이 아니다)
+#         "자기 혼자 떨어졌다고요" → "자기, 혼자…"    (자기 혼자 = 저 혼자)
+#       꾸미는 말로도 쓰이는 낱말은 기계가 가릴 수 없다. **감탄사만** 남긴다.
+LEAD = ["야", "여보", "이봐", "저기", "얘", "아이고", "그래", "아니", "그럼",
+        "그러니까"]
+LEAD_MIN_SYL = 8            # 이보다 짧으면 쉼표가 오히려 어색하다
+# 소리 지르는 말투. 물음표를 `?!` 로 만들어 힘을 더 준다.
+LOUD = ["shout", "yell", "scream", "furious", "rage", "angry", "roar"]
+
+
+def add_breath(say, tone):
+    """대사 한 마디에 숨 쉴 자리를 만든다 (쉼표·느낌표)."""
+    t = say.strip()
+    if not t:
+        return say
+    for w in LEAD:
+        if t.startswith(w + " ") and syl(t) >= LEAD_MIN_SYL:
+            t = w + ", " + t[len(w) + 1:]
+            break
+    if any(k in (tone or "").lower() for k in LOUD) and t.endswith("?"):
+        t = t[:-1] + "?!"
+    return t
+
+
+def fix_dialogue_lang(doc):
+    """대사 줄에 한국어 표시·말투 맥락·숨 쉴 자리를 넣는다 (제미나이 자문 3·4번)."""
+    n = 0
+    for e in doc.get("episodes") or []:
+        for c in e.get("cuts") or []:
+            lines = (c.get("prompt") or "").split("\n")
+            for i, l in enumerate(lines):
+                if not l.startswith("DIALOGUE:"):
+                    continue
+                body = l[len("DIALOGUE:"):].strip()
+                # 예전에 쓰던 긴 안내문을 걷어낸다. 지금은 대문자 표시 하나로
+                # 못 박고, 말투 괄호마다 `in Korean` 을 붙인다.
+                body = re.sub(r"\(all lines spoken[^)]*\)\s*", "", body)
+                body = body.replace(DIA_LANG, "").strip()
+                if not body or body.lower() in ("none.", "none"):
+                    continue
+                bits, tone = body.split('"'), ""
+                for j, b in enumerate(bits):
+                    if j % 2 == 0:
+                        # 따옴표 밖 — 말투 괄호에 'in Korean' 을 붙인다
+                        m = re.findall(r"\(([^)]+)\)", b)
+                        tone = m[-1] if m else tone
+                        bits[j] = re.sub(
+                            r"\(([^)]+)\)",
+                            lambda x: x.group(0) if "korean" in x.group(1).lower()
+                            else f"({x.group(1)}, in Korean)", b)
+                    else:
+                        bits[j] = add_breath(b, tone)
+                body = '"'.join(bits)
+                if not body.startswith(DIA_LANG):
+                    body = DIA_LANG + body
+                new = "DIALOGUE: " + body
+                if new != l:
+                    lines[i], n = new, n + 1
+            c["prompt"] = "\n".join(lines)
+    return n
 
 
 def voice_of(ch):
@@ -219,9 +295,6 @@ def fix_voice(doc):
             outside = " ".join(b for i, b in enumerate(said.split('"')) if i % 2 == 0)
             add = []
             if said and said.lower() not in ("none.", "none"):
-                if not said.startswith(DIA_LANG):
-                    said = DIA_LANG + said
-                lines[di] = "DIALOGUE: " + said
                 # 이 컷에서 실제로 말하는 사람만 골라 넣는다 (긴 이름부터)
                 who = sorted([k for k in vs if k in outside],
                              key=lambda k: outside.index(k))
@@ -796,6 +869,10 @@ def normalize(doc):
         charsheet.fill(doc)        # 인물 설명 칸도 영어 관계말로 다시 만든다
     # ⭐ 목소리·소리 줄은 **맨 마지막**. 배역말이 영어로 바뀐 뒤라야
     #    VOICE 줄의 이름이 DIALOGUE 줄의 이름과 맞는다.
+    g = fix_dialogue_lang(doc)
+    if g:
+        print(f"  (대사 {g}줄에 한국어 표시·숨 쉴 자리를 넣었다 — 영어 억양이 "
+              f"한글에 씌워지는 것을 막는다)")
     v = fix_voice(doc)
     if v:
         print(f"  (목소리·소리 지시 {v}줄을 붙였다 — 이게 없으면 또박또박 "

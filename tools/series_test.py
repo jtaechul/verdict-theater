@@ -323,15 +323,17 @@ print("\n⑬-4 목소리 지시가 붙는가 (2026-08-20 운영자: '나레이�
 d = S.normalize(good_doc())
 c1 = d["episodes"][0]["cuts"][0]["prompt"]
 ck("AUDIO 줄이 붙는다", "AUDIO:" in c1)
-ck("해설자를 못 박아 막는다", "no narrator" in c1 and "no voice-over" in c1)
+# ⭐ 제미나이 자문 2번 뒤로는 **바라는 것만** 적는다 (no ~ 는 역효과).
+ck("화면 속 사람이 직접 말한다고 적는다", "say the lines themselves" in c1)
 ck("입모양을 맞추라고 한다", "lips moving in sync" in c1)
-ck("낭독이 아니라고 한다", "rather than narration" in c1)
+ck("그 자리에서 하는 말이라고 적는다", "real spontaneous speech" in c1)
+ck("들리는 소리를 짚어 준다", "only the quiet room tone" in c1)
 ck("대사 있는 컷에 VOICE 줄이 붙는다",
    any("VOICE:" in c["prompt"] for e in d["episodes"] for c in e["cuts"]))
 sil = [c["prompt"] for e in d["episodes"] for c in e["cuts"]
        if "DIALOGUE: None." in c["prompt"]]
 if sil:
-    ck("대사 없는 컷은 조용한 AUDIO 를 쓴다", "nobody speaks" in sil[0])
+    ck("대사 없는 컷은 조용한 AUDIO 를 쓴다", S.AUDIO_SILENT in sil[0])
     ck("대사 없는 컷엔 VOICE 를 안 붙인다", "VOICE:" not in sil[0])
 ck("두 번 돌려도 줄이 안 늘어난다",
    S.normalize(d)["episodes"][0]["cuts"][0]["prompt"].count("AUDIO:") == 1)
@@ -350,11 +352,40 @@ ck("목소리가 사람마다 다르게 나온다",
    != S.voice_of({"flow_prompt": "Korean woman, 42 years old, confident eyes."}))
 # ⭐ 2026-08-20 운영자: "외국인이 한국말하는 것처럼 들린다."
 #    지시가 전부 영어라 영어 목소리로 한글을 더듬더듬 읽었다.
-ck("대사 바로 옆에 한국어라고 못 박는다", S.DIA_LANG in c1, S.DIA_LANG)
-ck("AUDIO 에 서울 억양을 못 박는다",
-   "standard Seoul pronunciation" in c1 and "correct Korean intonation" in c1)
-ck("외국 억양을 막는다",
-   "no foreign accent" in c1 and "no English accent" in c1)
+ck("대사 바로 옆에 대문자 한국어 표시를 붙인다", S.DIA_LANG in c1, S.DIA_LANG)
+_dl = S.normalize(good_doc())
+_dl["episodes"][0]["cuts"][0]["prompt"] = good_prompt(
+    '본처 (furious): "당신 진짜 제정신이야?" / 남편 (annoyed): "더는 숨 막혀서 못 살아."')
+S.fix_dialogue_lang(_dl)
+_d1 = next(l for l in _dl["episodes"][0]["cuts"][0]["prompt"].split("\n")
+           if l.startswith("DIALOGUE:"))
+ck("말투 괄호마다 in Korean 을 붙인다", _d1.count("in Korean)") == 2, _d1[:90])
+ck("두 번 붙여도 안 겹친다",
+   (S.fix_dialogue_lang(_dl),
+    next(l for l in _dl["episodes"][0]["cuts"][0]["prompt"].split("\n")
+         if l.startswith("DIALOGUE:")).count("in Korean)"))[1] == 2)
+ck("AUDIO 에 서울 억양을 못 박는다", "standard Seoul intonation" in c1)
+# ⭐ 제미나이 자문 2번 — `no foreign accent` 는 오히려 foreign 을 불러들인다.
+#    소리에 관한 것은 **바라는 것만** 적는다.
+for w in ("no foreign", "no english", "no narrator", "no voice-over",
+          "no background music", "no sound effects"):
+    ck(f"하지 말라는 말이 없다 — {w}", w not in (S.AUDIO_FIX + S.AUDIO_SILENT).lower())
+ck("바라는 것만 적어 같은 뜻을 담는다",
+   "only the quiet room tone" in S.AUDIO_FIX
+   and "say the lines themselves" in S.AUDIO_FIX)
+ck("소리 지르는 말은 ?! 로 끝난다",
+   S.add_breath("진짜 해보자는 거지?", "shouting") == "진짜 해보자는 거지?!")
+ck("보통 말투는 그대로 둔다",
+   S.add_breath("진짜 해보자는 거지?", "calm") == "진짜 해보자는 거지?")
+ck("감탄사 뒤에 쉼표를 넣는다",
+   S.add_breath("그럼 어떻게 할 건데?", "calm") == "그럼, 어떻게 할 건데?")
+# ⚠️ 꾸미는 말에 쉼표를 넣으면 뜻이 망가진다 — 실제로 두 곳을 망쳤었다
+ck("'당신 명의로' 에는 쉼표를 안 넣는다",
+   S.add_breath("당신 명의로 다 해놨어.", "calm") == "당신 명의로 다 해놨어.")
+ck("'자기 혼자' 에도 쉼표를 안 넣는다",
+   S.add_breath("자기 혼자 떨어졌다고요.", "calm") == "자기 혼자 떨어졌다고요.")
+ck("짧은 말에는 쉼표를 안 넣는다",
+   S.add_breath("그래 알았어.", "calm") == "그래 알았어.")
 ck("목소리에도 한국어가 모국어라고 적는다",
    "native Korean speaker" in S.voice_of({"flow_prompt": "Korean man, 55 years old."}))
 ck("두 번 돌려도 한국어 못이 겹치지 않는다",

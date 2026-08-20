@@ -446,10 +446,40 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 
 그래서 **대사 바로 옆**과 `AUDIO` 줄 두 곳에 못을 박는다 (시스템이 붙인다).
 
-- `DIALOGUE:` 맨 앞 — `(all lines spoken in fluent everyday Korean by native speakers)`
-- `AUDIO:` — `standard Seoul pronunciation`, `correct Korean intonation`,
-  `no foreign accent`, `no English accent`
+- `DIALOGUE:` 맨 앞 — `[LANGUAGE: KOREAN]` (대문자 표시가 가장 강하게 먹는다)
+- 말투 괄호마다 — `(furious, in Korean)` 처럼 **in Korean** 을 붙인다
+- `AUDIO:` — `natural, fluent and highly authentic everyday Korean` ·
+  `standard Seoul intonation`
 - `voice` 칸에도 **native Korean speaker** 를 넣는다
+
+### ⛔ 하지 말라는 말로 적지 않는다 (아주 중요)
+
+처음에는 `no foreign accent, no English accent` 라고 적었다. **역효과였다.**
+영상 만드는 쪽은 `no` 보다 뒤에 붙은 `foreign` `English` 라는 낱말 자체에
+끌린다 — 없애라고 부른 것을 오히려 불러들인다.
+
+| ✗ 하지 말라고 적기 | ○ 바라는 것만 적기 |
+|---|---|
+| no foreign accent, no English accent | natural, fluent and highly authentic everyday Korean with standard Seoul intonation |
+| no background music, no sound effects | with only the quiet room tone of the location underneath |
+| no narrator, no voice-over | the two people in the shot say the lines themselves |
+
+소리에 관한 것은 **바라는 것만** 적는다.
+
+### 대사에 숨 쉴 자리를 만든다
+
+한 문장을 끝까지 밀어붙이면 외국어처럼 늘어진다. 쉼표를 넣으면 억양이 한 번
+**리셋**되어 한국말처럼 들린다. **대사를 쓸 때부터** 이렇게 쓴다.
+
+| ✗ | ○ |
+|---|---|
+| "당신 진짜 제정신이야?" | "당신, 진짜 제정신이야?!" |
+| "더는 숨 막혀서 못 살아." | "더는 숨 막혀서, 못 살아." |
+| "그럼 어떻게 할 건데?" | "그럼, 어떻게 할 건데?" |
+
+소리 지르는 말은 `?!` 로 끝내도 좋다. 다만 **쉼표를 아무 데나 넣지 않는다** —
+부르는 말·감탄사 뒤, 또는 문장이 꺾이는 자리에만 넣는다.
+(`"당신 명의로"` 처럼 꾸미는 말에 쉼표를 넣으면 뜻이 망가진다)
 
 ### `VOICE` · `AUDIO` 두 줄은 **우리가 붙인다**
 
@@ -649,6 +679,8 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 - [ ] `hook` 이 판결문에 **실제로 있는 일**인가 (과장은 되나 거짓은 안 된다)
 - [ ] 인물마다 `voice` 를 정했는가 (높낮이·나이대·말버릇 — 없으면 로봇이 읽는다)
 - [ ] `voice` 에 **native Korean speaker** 가 들어갔는가 (없으면 외국인이 읽는 소리가 난다)
+- [ ] 대사에 **숨 쉴 쉼표**가 들어갔는가 (한 문장을 끝까지 밀면 외국어처럼 늘어진다)
+- [ ] 소리에 관한 것을 `no ~` 로 적지 않고 **바라는 것만** 적었는가
 - [ ] 같은 화에 나오는 두 사람의 `voice` 가 **서로 확실히 다른가**
 - [ ] `DIALOGUE` 의 톤이 한 낱말이 아니라 **어떻게 말하는지**를 적었는가
 - [ ] 인물마다 `outfit`(색까지) 과 `face_tag`(짧게) 를 정했는가
