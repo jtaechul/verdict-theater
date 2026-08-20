@@ -9,6 +9,15 @@ name: 2. 시리즈 대본 만들기
 # 값: 글만 쓴다 — 시리즈 하나(16화 전부)에 수백 원. 영상값은 여기서 안 나간다.
 
 on:
+  # ⭐ 표식 파일(.trigger/series)이 바뀌면 자동으로 돈다.
+  #    까닭: 고친 사람이 **직접 돌려서 확인**할 수 있어야 한다. 여태 손님이
+  #    버튼을 눌러 주기 전에는 진짜로 되는지 아무도 못 봤고, 그래서 실패가
+  #    손님 화면에서만 드러났다. 이 저장소가 이미 쓰던 방식과 같다
+  #    (.trigger/produce · .trigger/sfx).
+  #    표식 파일 첫 줄에 판례 번호를 적는다. 비우면 자동으로 고른다.
+  push:
+    paths:
+      - '.trigger/series'
   workflow_dispatch:
     inputs:
       case:
@@ -49,8 +58,18 @@ jobs:
           VT_WRITER: ${{ inputs.writer }}
         run: |
           set -o pipefail
+          CASE="${{ inputs.case }}"
           W=$(echo "${{ inputs.writer }}" | tr 'A-Z' 'a-z')
-          python3 src/series.py --case "${{ inputs.case }}" --writer "$W" 2>&1 | tee series.log
+          # 표식 파일로 돌 때는 버튼 값이 비어 있으므로 파일에서 읽는다
+          if [ "${{ github.event_name }}" = "push" ]; then
+            CASE=$(head -1 .trigger/series 2>/dev/null | tr -d '\r' | xargs || true)
+            case "$CASE" in
+              ''|*[!0-9]*) echo "표식에 판례 번호가 없습니다 — 자동으로 고릅니다"; CASE="" ;;
+              *) echo "표식에 적힌 판례: $CASE" ;;
+            esac
+            W=gemini
+          fi
+          python3 src/series.py --case "$CASE" --writer "$W" 2>&1 | tee series.log
 
       - name: 결과 화면
         if: always()
