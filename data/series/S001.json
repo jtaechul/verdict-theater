@@ -1,0 +1,618 @@
+{
+ "title": "빼돌린 18억, 이자까지 갚아라",
+ "case_id": "230761",
+ "characters": [
+  {
+   "name": "본처",
+   "flow_prompt": "Korean woman, 50s, elegant but weary, neat short hair, neutral expression. Photorealistic, natural skin texture, Korean TV drama realism."
+  },
+  {
+   "name": "내연녀",
+   "flow_prompt": "Korean woman, 40s, sharp features, glamorous styling, long wavy hair, confident expression. Photorealistic, natural skin texture, Korean TV drama realism."
+  },
+  {
+   "name": "남편",
+   "flow_prompt": "Korean man, 50s, slicked-back hair, expensive suit, arrogant expression. Photorealistic, natural skin texture, Korean TV drama realism."
+  }
+ ],
+ "episodes": [
+  {
+   "no": 1,
+   "title": "장례식 다음 날",
+   "recap": "",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"남편분 재산, 이제 다 제 겁니다.\"",
+     "prompt": "SHOT: Medium two-shot, static camera.\nSUBJECT: 내연녀 in a black suit facing 본처 in black mourning hanbok.\nACTION: 내연녀 smirks and crosses her arms.\nDIALOGUE: 내연녀 says in Korean, mocking: \"남편분 재산, 이제 다 제 겁니다.\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "\"사망보험금만 17억이거든요.\"",
+     "prompt": "SHOT: Close-up on 내연녀.\nSUBJECT: 내연녀 in a black suit.\nACTION: 내연녀 tilts her head with a proud smile.\nDIALOGUE: 내연녀 says in Korean, confident: \"사망보험금만 17억이거든요.\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"뭐라고요?\"",
+     "prompt": "SHOT: Close-up on 본처.\nSUBJECT: 본처 in black mourning hanbok.\nACTION: 본처 stares blankly, her eyes widening.\nDIALOGUE: 본처 says in Korean, shocked: \"뭐라고요?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"전부 제 이름으로 해두셨더라고요.\"",
+     "prompt": "SHOT: Over-the-shoulder shot from 본처 to 내연녀.\nSUBJECT: 내연녀 in a black suit.\nACTION: 내연녀 takes a step closer.\nDIALOGUE: 내연녀 says in Korean, whispering: \"전부 제 이름으로 해두셨더라고요.\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"그걸 당신이 왜 받아?\"",
+     "prompt": "SHOT: Close-up on 본처.\nSUBJECT: 본처 in black mourning hanbok.\nACTION: 본처 clenches her fists tightly.\nDIALOGUE: 본처 says in Korean, cold: \"그걸 당신이 왜 받아?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    }
+   ]
+  },
+  {
+   "no": 2,
+   "title": "텅 빈 통장",
+   "recap": "남편의 재산을 가로챈 내연녀",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"통장에 돈이 하나도 없다고요?\"",
+     "prompt": "SHOT: Medium shot, slight push in.\nSUBJECT: 본처 in a beige trench coat.\nACTION: 본처 drops her hands, looking devastated.\nDIALOGUE: 본처 says in Korean, trembling: \"통장에 돈이 하나도 없다고요?\"\nSETTING: Bank lobby, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "",
+     "prompt": "SHOT: Close-up on 내연녀.\nSUBJECT: 내연녀 in a red silk dress.\nACTION: 내연녀 puts on a shiny necklace.\nDIALOGUE: None.\nSETTING: Luxury jewelry boutique, daytime, bright warm lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"일시불로 할게요.\"",
+     "prompt": "SHOT: Medium shot, low angle.\nSUBJECT: 내연녀 in a red silk dress.\nACTION: 내연녀 smiles and gestures to the jewelry.\nDIALOGUE: 내연녀 says in Korean, cheerful: \"일시불로 할게요.\"\nSETTING: Luxury jewelry boutique, daytime, bright warm lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"다 그 여자한테 빼돌렸어...\"",
+     "prompt": "SHOT: Close-up on 본처.\nSUBJECT: 본처 in a beige trench coat.\nACTION: 본처 covers her mouth in disbelief.\nDIALOGUE: 본처 says in Korean, whispering: \"다 그 여자한테 빼돌렸어...\"\nSETTING: Bank lobby, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"이대로 안 뺏겨.\"",
+     "prompt": "SHOT: Medium shot, static.\nSUBJECT: 본처 in a beige trench coat.\nACTION: 본처 raises her head with a sharp gaze.\nDIALOGUE: 본처 says in Korean, resolute: \"이대로 안 뺏겨.\"\nSETTING: Bank lobby, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    }
+   ]
+  },
+  {
+   "no": 3,
+   "title": "추락사",
+   "recap": "빈털터리가 된 본처의 분노",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"내연녀 집에서 떨어져 죽었다고요?\"",
+     "prompt": "SHOT: Close-up, shaky cam.\nSUBJECT: 본처 in a simple grey sweater.\nACTION: 본처 holds a phone to her ear, eyes wide.\nDIALOGUE: 본처 says in Korean, panicked: \"내연녀 집에서 떨어져 죽었다고요?\"\nSETTING: Dimly lit living room, night, cool moonlight.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "",
+     "prompt": "SHOT: Medium shot, static.\nSUBJECT: 내연녀 in a black dress.\nACTION: 내연녀 wipes a fake tear from her cheek.\nDIALOGUE: None.\nSETTING: Police station corridor, night, harsh fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"당신 집에서 왜 죽어!\"",
+     "prompt": "SHOT: Medium two-shot.\nSUBJECT: 본처 in a grey sweater facing 내연녀 in a black dress.\nACTION: 본처 grabs 내연녀 by the shoulders.\nDIALOGUE: 본처 says in Korean, furious: \"당신 집에서 왜 죽어!\"\nSETTING: Police station corridor, night, harsh fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"발을 헛디뎠나 보죠.\"",
+     "prompt": "SHOT: Close-up on 내연녀.\nSUBJECT: 내연녀 in a black dress.\nACTION: 내연녀 shakes off the hands and shrugs.\nDIALOGUE: 내연녀 says in Korean, calm: \"발을 헛디뎠나 보죠.\"\nSETTING: Police station corridor, night, harsh fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"정말 그게 다일까?\"",
+     "prompt": "SHOT: Close-up on 본처.\nSUBJECT: 본처 in a grey sweater.\nACTION: 본처 glares menacingly.\nDIALOGUE: 본처 says in Korean, suspicious: \"정말 그게 다일까?\"\nSETTING: Police station corridor, night, harsh fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    }
+   ]
+  },
+  {
+   "no": 4,
+   "title": "뻔뻔한 이혼 요구",
+   "recap": "남편의 의문스러운 죽음",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"이혼해. 더는 못 살아.\"",
+     "prompt": "SHOT: Medium shot, quick pan.\nSUBJECT: 남편 in a dark grey suit.\nACTION: 남편 throws his jacket onto the sofa.\nDIALOGUE: 남편 says in Korean, annoyed: \"이혼해. 더는 못 살아.\"\nSETTING: Luxurious living room, evening, warm lamp light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "\"여자가 생겼군요.\"",
+     "prompt": "SHOT: Medium shot, static.\nSUBJECT: 본처 in a white blouse.\nACTION: 본처 sits calmly on the sofa.\nDIALOGUE: 본처 says in Korean, cold: \"여자가 생겼군요.\"\nSETTING: Luxurious living room, evening, warm lamp light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"그래, 나 그 사람 사랑해.\"",
+     "prompt": "SHOT: Close-up on 남편.\nSUBJECT: 남편 in a dark grey suit.\nACTION: 남편 crosses his arms defiantly.\nDIALOGUE: 남편 says in Korean, shameless: \"그래, 나 그 사람 사랑해.\"\nSETTING: Luxurious living room, evening, warm lamp light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"절대 이혼 안 해줘.\"",
+     "prompt": "SHOT: Close-up on 본처.\nSUBJECT: 본처 in a white blouse.\nACTION: 본처 stands up slowly.\nDIALOGUE: 본처 says in Korean, firm: \"절대 이혼 안 해줘.\"\nSETTING: Luxurious living room, evening, warm lamp light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"끝까지 가보자 이거지?\"",
+     "prompt": "SHOT: Over-the-shoulder from 본처 to 남편.\nSUBJECT: 남편 in a dark grey suit.\nACTION: 남편 glares with a twisted expression.\nDIALOGUE: 남편 says in Korean, threatening: \"끝까지 가보자 이거지?\"\nSETTING: Luxurious living room, evening, warm lamp light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    }
+   ]
+  },
+  {
+   "no": 5,
+   "title": "법정의 승리?",
+   "recap": "이혼을 거부한 본처",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"당신이 졌어.\"",
+     "prompt": "SHOT: Close-up on 본처.\nSUBJECT: 본처 in a neat navy suit.\nACTION: 본처 smiles faintly.\nDIALOGUE: 본처 says in Korean, relieved: \"당신이 졌어.\"\nSETTING: Courthouse hallway, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "\"바람피운 주제에 이혼이라니.\"",
+     "prompt": "SHOT: Medium shot, static.\nSUBJECT: 본처 in a neat navy suit.\nACTION: 본처 turns her back and walks away.\nDIALOGUE: 본처 says in Korean, sharp: \"바람피운 주제에 이혼이라니.\"\nSETTING: Courthouse hallway, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"이대로 안 뺏겨.\"",
+     "prompt": "SHOT: Close-up on 남편.\nSUBJECT: 남편 in a black pinstripe suit.\nACTION: 남편 clenches his jaw in anger.\nDIALOGUE: 남편 says in Korean, furious: \"이대로 안 뺏겨.\"\nSETTING: Courthouse hallway, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "",
+     "prompt": "SHOT: Medium shot, tracking back.\nSUBJECT: 남편 in a black pinstripe suit.\nACTION: 남편 quickly pulls out his phone.\nDIALOGUE: None.\nSETTING: Courthouse hallway, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"내 재산, 다 돌려놓을 거야.\"",
+     "prompt": "SHOT: Close-up on 남편.\nSUBJECT: 남편 in a black pinstripe suit.\nACTION: 남편 presses the phone to his ear.\nDIALOGUE: 남편 says in Korean, sinister: \"내 재산, 다 돌려놓을 거야.\"\nSETTING: Courthouse hallway, daytime, bright natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    }
+   ]
+  },
+  {
+   "no": 6,
+   "title": "소름 돋는 반전",
+   "recap": "이혼 소송에서 패소한 남편",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"수익자, 전부 그 사람으로 바꿔.\"",
+     "prompt": "SHOT: Close-up, static.\nSUBJECT: 남편 in a black pinstripe suit.\nACTION: 남편 speaks into his phone with a smirk.\nDIALOGUE: 남편 says in Korean, urgent: \"수익자, 전부 그 사람으로 바꿔.\"\nSETTING: Inside a luxury car, daytime, soft diffused light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "\"정말 나한테 다 주는 거야?\"",
+     "prompt": "SHOT: Medium two-shot.\nSUBJECT: 내연녀 in a silk robe hugging 남편 in a dress shirt.\nACTION: 내연녀 rests her chin on his shoulder.\nDIALOGUE: 내연녀 says in Korean, sweet: \"정말 나한테 다 주는 거야?\"\nSETTING: High-end apartment bedroom, night, warm moody light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"소송 진 날, 다 바꿨어.\"",
+     "prompt": "SHOT: Close-up on 남편.\nSUBJECT: 남편 in a dress shirt.\nACTION: 남편 turns his head to kiss her cheek.\nDIALOGUE: 남편 says in Korean, proud: \"소송 진 날, 다 바꿨어.\"\nSETTING: High-end apartment bedroom, night, warm moody light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"진짜 완벽한 타이밍이네.\"",
+     "prompt": "SHOT: Close-up on 내연녀.\nSUBJECT: 내연녀 in a silk robe.\nACTION: 내연녀 smiles brightly, eyes gleaming.\nDIALOGUE: 내연녀 says in Korean, thrilled: \"진짜 완벽한 타이밍이네.\"\nSETTING: High-end apartment bedroom, night, warm moody light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"그날 전부 계획한 거였어.\"",
+     "prompt": "SHOT: Medium shot of 본처 (flash forward).\nSUBJECT: 본처 in a grey sweater.\nACTION: 본처 stares into the void, gripping a cup.\nDIALOGUE: 본처 says in Korean, devastated: \"그날 전부 계획한 거였어.\"\nSETTING: Dimly lit living room, night, cool moonlight.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    }
+   ]
+  },
+  {
+   "no": 7,
+   "title": "매월 3천만 원",
+   "recap": "패소 당일 벌어진 무서운 계획",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"보험료만 한 달에 3천만 원이요?\"",
+     "prompt": "SHOT: Medium shot, slight push in.\nSUBJECT: 본처 in a black turtleneck.\nACTION: 본처 leans forward, eyes wide in shock.\nDIALOGUE: 본처 says in Korean, disbelief: \"보험료만 한 달에 3천만 원이요?\"\nSETTING: Lawyer's office, daytime, bright window light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "",
+     "prompt": "SHOT: Over-the-shoulder from 본처 to an empty chair (implying listening).\nSUBJECT: 본처 in a black turtleneck.\nACTION: 본처 slowly covers her face with her hands.\nDIALOGUE: None.\nSETTING: Lawyer's office, daytime, bright window light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"이걸로 다 결제해.\"",
+     "prompt": "SHOT: Medium two-shot.\nSUBJECT: 남편 in a casual sweater handing a closed envelope to 내연녀 in a casual dress.\nACTION: 남편 hands over the envelope with a smile.\nDIALOGUE: 남편 says in Korean, generous: \"이걸로 다 결제해.\"\nSETTING: Upscale cafe, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"고마워, 자기야.\"",
+     "prompt": "SHOT: Close-up on 내연녀.\nSUBJECT: 내연녀 in a casual dress.\nACTION: 내연녀 puts the envelope in her purse.\nDIALOGUE: 내연녀 says in Korean, delighted: \"고마워, 자기야.\"\nSETTING: Upscale cafe, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"내 상속을 막으려고 작정했네.\"",
+     "prompt": "SHOT: Close-up on 본처.\nSUBJECT: 본처 in a black turtleneck.\nACTION: 본처 bites her lip tightly.\nDIALOGUE: 본처 says in Korean, furious: \"내 상속을 막으려고 작정했네.\"\nSETTING: Lawyer's office, daytime, bright window light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    }
+   ]
+  },
+  {
+   "no": 8,
+   "title": "병원 지분마저",
+   "recap": "재산을 빼돌리기 위한 남편의 꼼수",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"병원 지분 13억도 제 겁니다.\"",
+     "prompt": "SHOT: Medium shot, static.\nSUBJECT: 내연녀 in a white tailored suit.\nACTION: 내연녀 crosses her legs confidently.\nDIALOGUE: 내연녀 says in Korean, arrogant: \"병원 지분 13억도 제 겁니다.\"\nSETTING: Upscale cafe, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "",
+     "prompt": "SHOT: Over-the-shoulder from 내연녀 to 본처.\nSUBJECT: 본처 in a beige trench coat.\nACTION: 본처 stares in utter disbelief.\nDIALOGUE: None.\nSETTING: Upscale cafe, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"동업 조건에 명시되어 있거든요.\"",
+     "prompt": "SHOT: Close-up on 내연녀.\nSUBJECT: 내연녀 in a white tailored suit.\nACTION: 내연녀 takes a sip of coffee.\nDIALOGUE: 내연녀 says in Korean, calm: \"동업 조건에 명시되어 있거든요.\"\nSETTING: Upscale cafe, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"사망하면 당신이 갖는다고?\"",
+     "prompt": "SHOT: Close-up on 본처.\nSUBJECT: 본처 in a beige trench coat.\nACTION: 본처 leans in, slamming her hand on the table.\nDIALOGUE: 본처 says in Korean, sharp: \"사망하면 당신이 갖는다고?\"\nSETTING: Upscale cafe, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"네, 저한테 다 주셨네요.\"",
+     "prompt": "SHOT: Close-up on 내연녀.\nSUBJECT: 내연녀 in a white tailored suit.\nACTION: 내연녀 smiles brightly and nods.\nDIALOGUE: 내연녀 says in Korean, mocking: \"네, 저한테 다 주셨네요.\"\nSETTING: Upscale cafe, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    }
+   ]
+  },
+  {
+   "no": 9,
+   "title": "반격의 시작",
+   "recap": "남편의 모든 재산을 차지한 내연녀",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"유류분 반환 청구할 겁니다.\"",
+     "prompt": "SHOT: Medium shot, low angle.\nSUBJECT: 본처 in a dark navy coat.\nACTION: 본처 stands tall and glares intensely.\nDIALOGUE: 본처 says in Korean, resolute: \"유류분 반환 청구할 겁니다.\"\nSETTING: Courthouse steps, daytime, overcast sky.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "\"이미 내 통장에 들어온 돈이야.\"",
+     "prompt": "SHOT: Medium shot, static.\nSUBJECT: 내연녀 in a red wool coat.\nACTION: 내연녀 rolls her eyes and scoffs.\nDIALOGUE: 내연녀 says in Korean, annoyed: \"이미 내 통장에 들어온 돈이야.\"\nSETTING: Courthouse steps, daytime, overcast sky.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"불법으로 빼돌린 거잖아.\"",
+     "prompt": "SHOT: Over-the-shoulder from 내연녀 to 본처.\nSUBJECT: 본처 in a dark navy coat.\nACTION: 본처 takes a step closer.\nDIALOGUE: 본처 says in Korean, cold: \"불법으로 빼돌린 거잖아.\"\nSETTING: Courthouse steps, daytime, overcast sky.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"법대로 한 건데 무슨 불법?\"",
+     "prompt": "SHOT: Close-up on 내연녀.\nSUBJECT: 내연녀 in a red wool coat.\nACTION: 내연녀 crosses her arms dismissively.\nDIALOGUE: 내연녀 says in Korean, confident: \"법대로 한 건데 무슨 불법?\"\nSETTING: Courthouse steps, daytime, overcast sky.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"그 법, 내가 다시 가르쳐주지.\"",
+     "prompt": "SHOT: Close-up on 본처.\nSUBJECT: 본처 in a dark navy coat.\nACTION: 본처 smirks slightly.\nDIALOGUE: 본처 says in Korean, fierce: \"그 법, 내가 다시 가르쳐주지.\"\nSETTING: Courthouse steps, daytime, overcast sky.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    }
+   ]
+  },
+  {
+   "no": 10,
+   "title": "뻔뻔한 변명",
+   "recap": "본격적인 법정 싸움의 시작",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"그건 내 고유 재산이라고!\"",
+     "prompt": "SHOT: Medium shot, quick zoom.\nSUBJECT: 내연녀 in a grey blazer.\nACTION: 내연녀 slams her fist on the table.\nDIALOGUE: 내연녀 says in Korean, angry: \"그건 내 고유 재산이라고!\"\nSETTING: Courtroom interior, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "",
+     "prompt": "SHOT: Close-up on 본처.\nSUBJECT: 본처 in a black suit.\nACTION: 본처 watches calmly without blinking.\nDIALOGUE: None.\nSETTING: Courtroom interior, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"보험금은 상속재산 아니야.\"",
+     "prompt": "SHOT: Medium shot of 내연녀.\nSUBJECT: 내연녀 in a grey blazer.\nACTION: 내연녀 points a finger aggressively.\nDIALOGUE: 내연녀 says in Korean, desperate: \"보험금은 상속재산 아니야.\"\nSETTING: Courtroom interior, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"보험료는 남편 돈으로 냈잖아.\"",
+     "prompt": "SHOT: Close-up on 본처.\nSUBJECT: 본처 in a black suit.\nACTION: 본처 raises her chin slightly.\nDIALOGUE: 본처 says in Korean, sharp: \"보험료는 남편 돈으로 냈잖아.\"\nSETTING: Courtroom interior, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"그게 무슨 상관인데?\"",
+     "prompt": "SHOT: Close-up on 내연녀.\nSUBJECT: 내연녀 in a grey blazer.\nACTION: 내연녀 flinches and lowers her hand.\nDIALOGUE: 내연녀 says in Korean, defensive: \"그게 무슨 상관인데?\"\nSETTING: Courtroom interior, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    }
+   ]
+  },
+  {
+   "no": 11,
+   "title": "꼬리 밟힌 거짓말",
+   "recap": "보험료 출처를 짚고 넘어가는 본처",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"수익자 변경, 난 몰랐어요.\"",
+     "prompt": "SHOT: Medium shot, static.\nSUBJECT: 내연녀 in a grey blazer.\nACTION: 내연녀 shakes her head innocently.\nDIALOGUE: 내연녀 says in Korean, pleading: \"수익자 변경, 난 몰랐어요.\"\nSETTING: Courtroom interior, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "",
+     "prompt": "SHOT: Close-up on 본처.\nSUBJECT: 본처 in a black suit.\nACTION: 본처 crosses her arms and smirks.\nDIALOGUE: None.\nSETTING: Courtroom interior, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"당신이 직접 확인했잖아.\"",
+     "prompt": "SHOT: Medium shot of 본처.\nSUBJECT: 본처 in a black suit.\nACTION: 본처 leans forward confidently.\nDIALOGUE: 본처 says in Korean, mocking: \"당신이 직접 확인했잖아.\"\nSETTING: Courtroom interior, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"그, 그냥 시키는 대로 한 거야.\"",
+     "prompt": "SHOT: Close-up on 내연녀.\nSUBJECT: 내연녀 in a grey blazer.\nACTION: 내연녀 looks around nervously, sweating.\nDIALOGUE: 내연녀 says in Korean, stuttering: \"그, 그냥 시키는 대로 한 거야.\"\nSETTING: Courtroom interior, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"사실혼이라고 주장했으면서?\"",
+     "prompt": "SHOT: Close-up on 본처.\nSUBJECT: 본처 in a black suit.\nACTION: 본처 tilts her head with a cold stare.\nDIALOGUE: 본처 says in Korean, piercing: \"사실혼이라고 주장했으면서?\"\nSETTING: Courtroom interior, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    }
+   ]
+  },
+  {
+   "no": 12,
+   "title": "숨겨진 빚",
+   "recap": "거짓말이 들통난 내연녀",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"빚도 당신이 다 떠안았잖아.\"",
+     "prompt": "SHOT: Medium shot, tracking right.\nSUBJECT: 내연녀 in a beige trench coat.\nACTION: 내연녀 laughs mockingly.\nDIALOGUE: 내연녀 says in Korean, sarcastic: \"빚도 당신이 다 떠안았잖아.\"\nSETTING: Courtroom hallway, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "",
+     "prompt": "SHOT: Close-up on 본처.\nSUBJECT: 본처 in a dark navy coat.\nACTION: 본처 stands still, expressionless.\nDIALOGUE: None.\nSETTING: Courtroom hallway, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"세금이랑 대출금 갚느라 수고해.\"",
+     "prompt": "SHOT: Over-the-shoulder from 본처 to 내연녀.\nSUBJECT: 내연녀 in a beige trench coat.\nACTION: 내연녀 smirks and waves her hand.\nDIALOGUE: 내연녀 says in Korean, gloating: \"세금이랑 대출금 갚느라 수고해.\"\nSETTING: Courtroom hallway, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"한정승인 한 거 모르나 봐?\"",
+     "prompt": "SHOT: Close-up on 본처.\nSUBJECT: 본처 in a dark navy coat.\nACTION: 본처 smiles coldly.\nDIALOGUE: 본처 says in Korean, calm: \"한정승인 한 거 모르나 봐?\"\nSETTING: Courtroom hallway, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"그게 무슨 소리야?\"",
+     "prompt": "SHOT: Close-up on 내연녀.\nSUBJECT: 내연녀 in a beige trench coat.\nACTION: 내연녀's smile vanishes instantly.\nDIALOGUE: 내연녀 says in Korean, confused: \"그게 무슨 소리야?\"\nSETTING: Courtroom hallway, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    }
+   ]
+  },
+  {
+   "no": 13,
+   "title": "법정 공방",
+   "recap": "빚까지 계산에 넣은 본처의 치밀함",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"혼인 관계는 이미 파탄났어요!\"",
+     "prompt": "SHOT: Medium shot, static.\nSUBJECT: 내연녀 in a black blouse.\nACTION: 내연녀 shouts, gripping the edge of the desk.\nDIALOGUE: 내연녀 says in Korean, desperate: \"혼인 관계는 이미 파탄났어요!\"\nSETTING: Courtroom interior, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "",
+     "prompt": "SHOT: Close-up on 본처.\nSUBJECT: 본처 in a grey suit.\nACTION: 본처 stares coldly, unmoving.\nDIALOGUE: None.\nSETTING: Courtroom interior, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"사랑 없는 껍데기 부부였다고요.\"",
+     "prompt": "SHOT: Medium shot of 내연녀.\nSUBJECT: 내연녀 in a black blouse.\nACTION: 내연녀 glares with tearful eyes.\nDIALOGUE: 내연녀 says in Korean, angry: \"사랑 없는 껍데기 부부였다고요.\"\nSETTING: Courtroom interior, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"파탄의 원인은 당신들이지.\"",
+     "prompt": "SHOT: Medium shot of 본처.\nSUBJECT: 본처 in a grey suit.\nACTION: 본처 raises her chin proudly.\nDIALOGUE: 본처 says in Korean, firm: \"파탄의 원인은 당신들이지.\"\nSETTING: Courtroom interior, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"바람피운 자들의 핑계일 뿐.\"",
+     "prompt": "SHOT: Close-up on 본처.\nSUBJECT: 본처 in a grey suit.\nACTION: 본처 narrows her eyes sharply.\nDIALOGUE: 본처 says in Korean, piercing: \"바람피운 자들의 핑계일 뿐.\"\nSETTING: Courtroom interior, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    }
+   ]
+  },
+  {
+   "no": 14,
+   "title": "지분금의 진실",
+   "recap": "귀책사유를 명확히 찌른 본처",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"지분금은 증여가 아닙니다.\"",
+     "prompt": "SHOT: Medium shot, slight push in.\nSUBJECT: 내연녀 in a black blouse.\nACTION: 내연녀 crosses her arms confidently.\nDIALOGUE: 내연녀 says in Korean, arrogant: \"지분금은 증여가 아닙니다.\"\nSETTING: Courtroom interior, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "",
+     "prompt": "SHOT: Close-up on 본처.\nSUBJECT: 본처 in a grey suit.\nACTION: 본처 listens quietly, tilting her head.\nDIALOGUE: None.\nSETTING: Courtroom interior, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"사망 후에 효력이 생기니까요.\"",
+     "prompt": "SHOT: Medium shot of 내연녀.\nSUBJECT: 내연녀 in a black blouse.\nACTION: 내연녀 smirks triumphantly.\nDIALOGUE: 내연녀 says in Korean, smug: \"사망 후에 효력이 생기니까요.\"\nSETTING: Courtroom interior, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"죽기 전엔 남편 재산이었지.\"",
+     "prompt": "SHOT: Close-up on 본처.\nSUBJECT: 본처 in a grey suit.\nACTION: 본처 shakes her head slowly.\nDIALOGUE: 본처 says in Korean, sharp: \"죽기 전엔 남편 재산이었지.\"\nSETTING: Courtroom interior, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"당연히 유류분에 포함돼.\"",
+     "prompt": "SHOT: Medium shot of 본처.\nSUBJECT: 본처 in a grey suit.\nACTION: 본처 smiles with absolute certainty.\nDIALOGUE: 본처 says in Korean, victorious: \"당연히 유류분에 포함돼.\"\nSETTING: Courtroom interior, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    }
+   ]
+  },
+  {
+   "no": 15,
+   "title": "판결의 순간",
+   "recap": "모든 논리를 박살낸 본처",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"18억, 다 토해내.\"",
+     "prompt": "SHOT: Close-up on 본처.\nSUBJECT: 본처 in a dark navy suit.\nACTION: 본처 glares down with authority.\nDIALOGUE: 본처 says in Korean, commanding: \"18억, 다 토해내.\"\nSETTING: Courthouse hallway, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "\"내가 왜! 그건 내 돈이야!\"",
+     "prompt": "SHOT: Medium shot of 내연녀.\nSUBJECT: 내연녀 in a beige coat.\nACTION: 내연녀 steps back, trembling.\nDIALOGUE: 내연녀 says in Korean, panicked: \"내가 왜! 그건 내 돈이야!\"\nSETTING: Courthouse hallway, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"법원이 내 손을 들어줬거든.\"",
+     "prompt": "SHOT: Over-the-shoulder from 내연녀 to 본처.\nSUBJECT: 본처 in a dark navy suit.\nACTION: 본처 takes a slow step forward.\nDIALOGUE: 본처 says in Korean, cold: \"법원이 내 손을 들어줬거든.\"\nSETTING: Courthouse hallway, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"말도 안 돼, 이럴 순 없어.\"",
+     "prompt": "SHOT: Close-up on 내연녀.\nSUBJECT: 내연녀 in a beige coat.\nACTION: 내연녀 grips her hair in despair.\nDIALOGUE: 내연녀 says in Korean, devastated: \"말도 안 돼, 이럴 순 없어.\"\nSETTING: Courthouse hallway, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"이자까지 쳐서 갚아야 할 거야.\"",
+     "prompt": "SHOT: Close-up on 본처.\nSUBJECT: 본처 in a dark navy suit.\nACTION: 본처 turns her back to leave.\nDIALOGUE: 본처 says in Korean, ruthless: \"이자까지 쳐서 갚아야 할 거야.\"\nSETTING: Courthouse hallway, daytime, soft natural light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    }
+   ]
+  },
+  {
+   "no": 16,
+   "title": "진짜 끝",
+   "recap": "18억 반환 판결을 받아낸 본처",
+   "cuts": [
+    {
+     "n": 1,
+     "role": "후킹",
+     "subtitle": "\"어떻게든 도망가야 해.\"",
+     "prompt": "SHOT: Medium shot, shaky cam.\nSUBJECT: 내연녀 in a messy sweater.\nACTION: 내연녀 frantically throws clothes into a bag.\nDIALOGUE: 내연녀 says in Korean, desperate: \"어떻게든 도망가야 해.\"\nSETTING: Messy apartment living room, night, dim lamp light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 2,
+     "role": "상황",
+     "subtitle": "",
+     "prompt": "SHOT: Wide shot, static.\nSUBJECT: 본처 in a black trench coat.\nACTION: 본처 steps into the room slowly.\nDIALOGUE: None.\nSETTING: Messy apartment living room, night, dim lamp light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 3,
+     "role": "맞섬",
+     "subtitle": "\"통장 가압류 끝났어.\"",
+     "prompt": "SHOT: Medium shot of 본처.\nSUBJECT: 본처 in a black trench coat.\nACTION: 본처 crosses her arms, looking down.\nDIALOGUE: 본처 says in Korean, calm: \"통장 가압류 끝났어.\"\nSETTING: Messy apartment living room, night, dim lamp light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 4,
+     "role": "뒤집기",
+     "subtitle": "\"너 진짜 독하다...\"",
+     "prompt": "SHOT: Close-up on 내연녀.\nSUBJECT: 내연녀 in a messy sweater.\nACTION: 내연녀 drops the clothes, falling to her knees.\nDIALOGUE: 내연녀 says in Korean, defeated: \"너 진짜 독하다...\"\nSETTING: Messy apartment living room, night, dim lamp light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    },
+    {
+     "n": 5,
+     "role": "끊기",
+     "subtitle": "\"당연한 내 몫을 찾았을 뿐.\"",
+     "prompt": "SHOT: Close-up on 본처.\nSUBJECT: 본처 in a black trench coat.\nACTION: 본처 looks out the window, expression peaceful.\nDIALOGUE: 본처 says in Korean, serene: \"당연한 내 몫을 찾았을 뿐.\"\nSETTING: Messy apartment living room, night, dim lamp light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+    }
+   ]
+  }
+ ],
+ "series_id": "S001",
+ "spec": {
+  "episodes": 16,
+  "cuts": 5,
+  "sec": 6
+ }
+}
