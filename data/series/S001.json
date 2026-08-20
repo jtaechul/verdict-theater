@@ -98,8 +98,8 @@
     {
      "n": 1,
      "role": "후킹",
-     "subtitle": "\"내연녀 집에서 떨어져 죽었다고요?\"",
-     "prompt": "SHOT: Close-up, shaky cam.\nSUBJECT: 본처 in a simple grey sweater.\nACTION: 본처 holds a phone to her ear, eyes wide.\nDIALOGUE: 본처 says in Korean, panicked: \"내연녀 집에서 떨어져 죽었다고요?\"\nSETTING: Dimly lit living room, night, cool moonlight.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
+     "subtitle": "\"그 여자 집에서 떨어져 죽었다고요?\"",
+     "prompt": "SHOT: Close-up, shaky cam.\nSUBJECT: 본처 in a simple grey sweater.\nACTION: 본처 holds a phone to her ear, eyes wide.\nDIALOGUE: 본처 says in Korean, panicked: \"그 여자 집에서 떨어져 죽었다고요?\"\nSETTING: Dimly lit living room, night, cool moonlight.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, extra people in focus."
     },
     {
      "n": 2,

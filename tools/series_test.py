@@ -147,6 +147,16 @@ d["episodes"][6]["cuts"][0]["prompt"] = good_prompt("None.").replace(
 ck("Avoid 가 맨 끝이 아니면 우리가 옮긴다", S.check(S.normalize(d)) == [],
    str(S.check(S.normalize(d)))[:60])
 
+print("\n⑥ 손볼 곳은 알려 주되, 그것 때문에 버리지는 않는가")
+d = good_doc()
+d["episodes"][2]["cuts"][0]["prompt"] = good_prompt(
+    '본처 says in Korean: "내연녀 집에서 죽었다고요?"')
+ck("대사에 배역 딱지가 있으면 알려 준다", any("내연녀" in w for w in S.soft(d)))
+ck("그렇다고 16화를 버리지는 않는다", S.check(d) == [], str(S.check(d))[:60])
+
+d = good_doc()
+ck("멀쩡한 대본에는 손볼 곳이 없다", S.soft(d) == [], str(S.soft(d))[:60])
+
 print("\n④ 규격 숫자가 실제 운영 조건과 맞는가")
 ck("6초 × 5컷 = 30초", S.SEC * S.CUTS == 30, f"{S.SEC}×{S.CUTS}")
 ck("16화 × 30초 = 8분 (롱폼 한 편)", S.EPISODES * S.SEC * S.CUTS == 480)

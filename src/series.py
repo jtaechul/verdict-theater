@@ -171,6 +171,30 @@ def normalize(doc):
     return doc
 
 
+# 사람이 입으로 하지 않는 '딱지'. 판결문·기사에나 쓰는 제3자 호칭이라
+# 대사에 들어가면 즉시 어색해진다 ("내연녀 집에서 떨어져 죽었다고요?").
+# ⚠️ 이것 때문에 16화를 버리지는 않는다 — 한 줄만 손보면 되는 일이다.
+#    반려가 아니라 **손볼 곳**으로 알려 준다.
+SPOKEN_BAN = ["내연녀", "내연남", "상간녀", "상간남", "피상속인"]
+
+
+def soft(doc):
+    """버릴 것까진 아니지만 사람이 한 번 봐야 할 곳."""
+    out = []
+    for e in doc.get("episodes") or []:
+        for c in e.get("cuts") or []:
+            for l in (c.get("prompt") or "").split("\n"):
+                if not l.startswith("DIALOGUE:"):
+                    continue
+                for say in re.findall(r'"([^"]*)"', l):
+                    for w in SPOKEN_BAN:
+                        if w in say:
+                            out.append(f"{e.get('no')}화 {c.get('n')}컷: 대사에 "
+                                       f"'{w}' — 사람은 그렇게 말하지 않는다 "
+                                       f'("{say}")')
+    return out
+
+
 # ── 검사 ────────────────────────────────────────────────
 def check(doc):
     """규격을 어긴 곳을 전부 찾아 돌려준다. 하나라도 있으면 저장하지 않는다."""
@@ -269,6 +293,8 @@ def main():
         for b in bad:
             print(f"  ❌ {b}")
         print("\n" + ("❌ 규격에 안 맞는 곳 %d군데" % len(bad) if bad else "✅ 규격 통과"))
+        for w in soft(doc):
+            print(f"  ⚠️ 손볼 곳 — {w}")
         return 1 if bad else 0
 
     queue = load(QUEUE, [])
@@ -312,6 +338,8 @@ def main():
                   "episodes": EPISODES, "made": 0, "writer": who}
     STATE.write_text(json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"\n✅ {sid}.json 저장 — 매일 한 화씩 30초 영상을 만들면 된다")
+    for w in soft(doc):
+        print(f"  ⚠️ 손볼 곳 — {w}")
     return 0
 
 
