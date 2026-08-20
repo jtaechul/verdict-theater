@@ -276,6 +276,9 @@ border:1px solid var(--line);background:#101219;color:var(--ink);font-size:15px}
 .pbox{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;
 background:#161822}
 .pname{font-weight:700;font-size:15px;margin-bottom:4px}
+.plabel{color:var(--dim);font-size:13px;margin:10px 0 5px;font-weight:600}
+.plabel small{font-weight:400;color:#6d7182}
+.ptext.short{max-height:none}
 /* 프롬프트 본문. 길어도 화면을 밀지 않게 가로는 접고 세로로만 늘린다. */
 .ptext{font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;color:#aeb3c4;
 background:#101219;border:1px solid var(--line);border-radius:9px;padding:10px;
@@ -681,14 +684,32 @@ function seriesRender() {
   COPY = {};
 
   // ① 캐릭터 — 플로우에서 얼굴을 먼저 만들어 두어야 화마다 같은 사람이 나온다
-  h += '<div class="card"><h2>① 먼저 구글 플로우에서 인물 3명을 만듭니다 '
-     + '<small style="font-weight:400;color:#9599ab">— 한 번만 하면 됩니다</small></h2>';
+  h += '<div class="card"><h2>① 먼저 구글 플로우에서 인물을 만듭니다 '
+     + '<small style="font-weight:400;color:#9599ab">— 한 번만 하면 됩니다'
+     + '</small></h2>'
+     + '<div class="uphint" style="margin:-4px 0 12px">플로우 [캐릭터 만들기] 에서 '
+     + '인물마다 두 칸을 채웁니다. 아래 ①을 설명 칸에, ②를 사진 만드는 칸에 '
+     + '붙여 넣으십시오.</div>';
   (d.characters || []).forEach((c, i) => {
-    const cid = 'ch' + i;
-    COPY[cid] = String(c.flow_prompt || '');
+    // ⭐ 2026-08-20 운영자: "인물 프롬프트가 너무 짧아 배경이 이상하게 뜬다.
+    //    캐릭터 설명 넣을 내용도 같이 복사할 수 있게 해 줘."
+    //    플로우 캐릭터 만들기 화면에는 **두 칸**이 있다 —
+    //      ① 캐릭터 설명   ② 기준 사진을 뽑는 프롬프트
+    //    각각 따로 복사할 수 있어야 한다.
+    const csid = 'chs' + i, cdid = 'chd' + i;
+    const sheet = String(c.flow_sheet || c.flow_prompt || '');
+    const desc = String(c.flow_desc || c.flow_prompt || '');
+    COPY[csid] = sheet;
+    COPY[cdid] = desc;
     h += '<div class="pbox"><div class="pname">' + esc(c.name) + '</div>'
-       + '<div class="ptext">' + esc(c.flow_prompt || '') + '</div>'
-       + mini('이 인물 프롬프트 복사', 'copyRaw(\\'' + cid + '\\',\\'' + esc(c.name) + '\\')') + '</div>';
+       + '<div class="plabel">① 캐릭터 설명 칸에 넣을 것</div>'
+       + '<div class="ptext short">' + esc(desc) + '</div>'
+       + mini('설명 복사', 'copyRaw(\\'' + cdid + '\\',\\'' + esc(c.name) + ' 설명\\')')
+       + '<div class="plabel">② 기준 사진 만들 때 넣을 것 <small>'
+       + sheet.split(/\s+/).length + '낱말</small></div>'
+       + '<div class="ptext">' + esc(sheet) + '</div>'
+       + mini('사진 프롬프트 복사', 'copyRaw(\\'' + csid + '\\',\\'' + esc(c.name) + ' 사진\\')', 'gold')
+       + '</div>';
   });
   h += '</div>';
 

@@ -30,6 +30,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 import prompts                                              # noqa: E402
 from claude import writer                                   # noqa: E402
+import charsheet                                            # noqa: E402
 
 SERIES_DIR = ROOT / "data" / "series"
 CASES = ROOT / "data" / "cases"
@@ -376,6 +377,12 @@ def normalize(doc):
     j = fix_facing(doc)
     if j:
         print(f"  (맞은편 사람을 3인칭으로 부른 대사 {j}곳을 고쳤다)")
+    # ⭐ 인물 기준 사진 프롬프트를 제대로 된 것으로 채운다 (2026-08-20 운영자
+    #    지시: "인물 생성 프롬프트가 너무 짧아 배경이 이상하게 뜬다").
+    #    25낱말짜리로는 배경·자세·화면잡기가 매번 새로 뽑힌다.
+    c2 = charsheet.fill(doc)
+    if c2:
+        print(f"  (인물 {c2}명의 기준 사진 프롬프트를 풀세트로 채웠다)")
     k = fix_outfits(doc)
     if k:
         print(f"  (옷차림 {k}줄을 인물표대로 맞췄다 — 컷마다 옷이 바뀌면 딴사람으로 보인다)")

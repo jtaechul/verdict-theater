@@ -23,6 +23,12 @@ ROOT = Path(__file__).resolve().parent.parent
 FAIL = []
 
 
+def esc(t):
+    """화면은 & < > \" 를 바꿔 넣는다 — 견줄 때도 같이 바꾼다."""
+    return (str(t).replace("&", "&amp;").replace("<", "&lt;")
+            .replace(">", "&gt;").replace('"', "&quot;"))
+
+
 def ck(label, cond, extra=""):
     print(("   ✅ " if cond else "   ❌ ") + label + (f"  ({extra})" if extra else ""))
     if not cond:
@@ -139,8 +145,11 @@ ck("[대본 보기] 버튼이 있다", "seriesView(" in card)
 print("\n② 인물 — 플로우에서 얼굴을 먼저 만들 때 쓴다")
 for c in doc.get("characters", []):
     ck(f"{c['name']} 이름이 뜬다", c["name"] in ep1)
-    ck(f"{c['name']} 프롬프트가 통째로 들어 있다",
-       c["flow_prompt"][:60] in ep1, c["flow_prompt"][:38] + "…")
+    # 이제 화면에는 원문이 아니라 **풀세트로 늘린 것**이 뜬다
+    want = (c.get("flow_sheet") or c.get("flow_prompt") or "")
+    ck(f"{c['name']} 기준 사진 프롬프트가 통째로 들어 있다",
+       all(esc(x) in ep1 for x in want.split("\n") if x.strip()),
+       f"{len(want.split())}낱말")
 
 print("\n③ 1화 5컷 — 이걸 그대로 플로우에 붙여 넣는다")
 e1 = doc["episodes"][0]
@@ -157,6 +166,23 @@ ck("컷마다 복사 버튼이 있다", ep1.count("copyRaw(") >= len(e1["cuts"])
 print("\n③-2 실제로 복사되는 글자가 원본과 같은가 (URL 인코딩 사고 재발 방지)")
 copied = out.get("copied", {})
 ck("복사할 원본이 화면마다 담긴다", len(copied) >= len(e1["cuts"]), f"{len(copied)}개")
+
+print("\n②-2 인물 프롬프트가 풀세트인가 (2026-08-20 운영자 지시)")
+for i, ch in enumerate(doc.get("characters", [])):
+    sheet = copied.get(f"chs{i}", "")
+    ck(f"{ch['name']} 기준 사진 프롬프트가 충분히 길다", len(sheet.split()) >= 90,
+       f"{len(sheet.split())}낱말")
+    for need, why in [("BACKGROUND", "배경을 안 정하면 아무거나 뜬다"),
+                      ("POSE", "자세를 안 정하면 매번 다르게 선다"),
+                      ("FRAMING", "어디까지 보일지 안 정하면 잘린다"),
+                      ("LIGHT", "빛을 안 정하면 색이 튄다"),
+                      ("Avoid:", "소품·글자·다른 사람이 끼어든다")]:
+        ck(f"{ch['name']} — {need} ({why})", need in sheet)
+    ck(f"{ch['name']} 캐릭터 설명도 따로 있다",
+       bool(copied.get(f"chd{i}", "").strip())
+       and copied.get(f"chd{i}") != sheet)
+ck("설명 복사 단추가 있다", "설명 복사" in ep1)
+ck("사진 프롬프트 복사 단추가 있다", "사진 프롬프트 복사" in ep1)
 bad_enc, bad_eq = [], []
 for i, c in enumerate(e1["cuts"], 1):
     got = copied.get(f"p1_{i}")
@@ -165,9 +191,11 @@ for i, c in enumerate(e1["cuts"], 1):
     if got and re.search(r"%[0-9A-Fa-f]{2}", got):
         bad_enc.append(f"{i}컷")
 for i, ch in enumerate(doc.get("characters", [])):
-    got = copied.get(f"ch{i}")
-    if got != (ch.get("flow_prompt") or ""):
-        bad_eq.append(f"인물{i + 1}")
+    # 인물은 두 가지를 복사한다 — ① 캐릭터 설명 ② 기준 사진 프롬프트
+    if copied.get(f"chd{i}") != (ch.get("flow_desc") or ch.get("flow_prompt") or ""):
+        bad_eq.append(f"인물{i + 1} 설명")
+    if copied.get(f"chs{i}") != (ch.get("flow_sheet") or ch.get("flow_prompt") or ""):
+        bad_eq.append(f"인물{i + 1} 사진")
 ck("복사되는 글자가 원본과 **한 글자도** 다르지 않다", not bad_eq, ", ".join(bad_eq))
 ck("%20 같은 URL 인코딩이 섞이지 않는다", not bad_enc, ", ".join(bad_enc))
 ck("줄바꿈이 진짜 줄바꿈으로 남아 있다",

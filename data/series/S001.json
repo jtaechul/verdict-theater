@@ -4,15 +4,21 @@
  "characters": [
   {
    "name": "본처",
-   "flow_prompt": "Korean woman, 52 years old, oval face, tired eyes with fine lines, dark brown hair in a low bun, worn calm expression. Photorealistic, natural skin texture, Korean TV drama realism."
+   "flow_prompt": "Korean woman, 52 years old, oval face, tired eyes with fine lines, dark brown hair in a low bun, worn calm expression. Photorealistic, natural skin texture, Korean TV drama realism.",
+   "flow_sheet": "Character reference photo of a Korean woman, 52 years old.\nAPPEARANCE: oval face, tired eyes with fine lines, dark brown hair in a low bun, worn calm expression.\nPOSE: standing upright, facing the camera straight on, arms relaxed at the sides, neutral calm expression, mouth closed.\nFRAMING: full body from head to feet, centered in frame, nothing cropped, vertical 9:16.\nBACKGROUND: plain flat light-grey studio backdrop, completely empty, no furniture, no props, no scenery.\nLIGHT: soft even studio lighting from the front, no harsh shadow, no coloured light.\nLOOK: photorealistic live-action photograph, 50mm lens, eye level, Korean TV drama realism, natural skin texture with visible pores, no beauty filter, no smoothing, no stylization.\nAvoid: text, letters, watermark, logo, props, furniture, background scenery, other people, hands doing anything, dramatic or coloured lighting, tilted camera, close-up crop, cartoon, illustration, 3D render, painting, anime",
+   "flow_desc": "본처 — Korean woman, 52 years old. oval face, tired eyes with fine lines, dark brown hair in a low bun, worn calm expression."
   },
   {
    "name": "내연녀",
-   "flow_prompt": "Korean woman, 42 years old, sharp V-line face, confident eyes, long wavy dyed brown hair, arrogant expression. Photorealistic, natural skin texture, Korean TV drama realism."
+   "flow_prompt": "Korean woman, 42 years old, sharp V-line face, confident eyes, long wavy dyed brown hair, arrogant expression. Photorealistic, natural skin texture, Korean TV drama realism.",
+   "flow_sheet": "Character reference photo of a Korean woman, 42 years old.\nAPPEARANCE: sharp V-line face, confident eyes, long wavy dyed brown hair, arrogant expression.\nPOSE: standing upright, facing the camera straight on, arms relaxed at the sides, neutral calm expression, mouth closed.\nFRAMING: full body from head to feet, centered in frame, nothing cropped, vertical 9:16.\nBACKGROUND: plain flat light-grey studio backdrop, completely empty, no furniture, no props, no scenery.\nLIGHT: soft even studio lighting from the front, no harsh shadow, no coloured light.\nLOOK: photorealistic live-action photograph, 50mm lens, eye level, Korean TV drama realism, natural skin texture with visible pores, no beauty filter, no smoothing, no stylization.\nAvoid: text, letters, watermark, logo, props, furniture, background scenery, other people, hands doing anything, dramatic or coloured lighting, tilted camera, close-up crop, cartoon, illustration, 3D render, painting, anime",
+   "flow_desc": "내연녀 — Korean woman, 42 years old. sharp V-line face, confident eyes, long wavy dyed brown hair, arrogant expression."
   },
   {
    "name": "남편",
-   "flow_prompt": "Korean man, 55 years old, square face, deep forehead wrinkles, short neatly parted black hair, agitated expression. Photorealistic, natural skin texture, Korean TV drama realism."
+   "flow_prompt": "Korean man, 55 years old, square face, deep forehead wrinkles, short neatly parted black hair, agitated expression. Photorealistic, natural skin texture, Korean TV drama realism.",
+   "flow_sheet": "Character reference photo of a Korean man, 55 years old.\nAPPEARANCE: square face, deep forehead wrinkles, short neatly parted black hair, agitated expression.\nPOSE: standing upright, facing the camera straight on, arms relaxed at the sides, neutral calm expression, mouth closed.\nFRAMING: full body from head to feet, centered in frame, nothing cropped, vertical 9:16.\nBACKGROUND: plain flat light-grey studio backdrop, completely empty, no furniture, no props, no scenery.\nLIGHT: soft even studio lighting from the front, no harsh shadow, no coloured light.\nLOOK: photorealistic live-action photograph, 50mm lens, eye level, Korean TV drama realism, natural skin texture with visible pores, no beauty filter, no smoothing, no stylization.\nAvoid: text, letters, watermark, logo, props, furniture, background scenery, other people, hands doing anything, dramatic or coloured lighting, tilted camera, close-up crop, cartoon, illustration, 3D render, painting, anime",
+   "flow_desc": "남편 — Korean man, 55 years old. square face, deep forehead wrinkles, short neatly parted black hair, agitated expression."
   }
  ],
  "episodes": [
@@ -26,35 +32,35 @@
      "role": "후킹",
      "subtitle": "당신 진짜 제정신이야? / 더는 숨 막혀서 못 살아. / 누구 맘대로 집을 나가!",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 남편 in a casual jacket facing 본처 in a simple cardigan.\nACTION: 본처 grabs 남편 by the arm firmly.\nDIALOGUE: 본처 (furious): \"당신 진짜 제정신이야?\" / 남편 (annoyed): \"더는 숨 막혀서 못 살아.\" / 본처 (shouting): \"누구 맘대로 집을 나가!\"\nSETTING: Korean apartment living room, evening, soft practical lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 남편 in a casual jacket facing 본처 in a simple cardigan.\nACTION: 본처 grabs 남편 by the arm firmly.\nDIALOGUE: 본처 (furious): \"당신 진짜 제정신이야?\" / 남편 (annoyed): \"더는 숨 막혀서 못 살아.\" / 본처 (shouting): \"누구 맘대로 집을 나가!\"\nSETTING: Korean apartment living room, evening, soft practical lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 2,
      "role": "상황",
      "subtitle": "내 인생 찾겠다는 거야. 당신도 이제 당신 인생 살아. 난 더 이상 안 돌아와.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 남편 in a casual jacket.\nACTION: 남편 shakes off her hand aggressively.\nDIALOGUE: 남편 (cold): \"내 인생 찾겠다는 거야. 당신도 이제 당신 인생 살아. 난 더 이상 안 돌아와.\"\nSETTING: Korean apartment living room, evening, soft practical lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 남편 in a casual jacket.\nACTION: 남편 shakes off her hand aggressively.\nDIALOGUE: 남편 (cold): \"내 인생 찾겠다는 거야. 당신도 이제 당신 인생 살아. 난 더 이상 안 돌아와.\"\nSETTING: Korean apartment living room, evening, soft practical lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 3,
      "role": "맞섬",
-     "subtitle": "저 여자가 이유였어? / 빨리 나와요. 늦겠어요. / 당신들 진짜 미쳤구나.",
+     "subtitle": "당신이 이유였어? / 빨리 나와요. 늦겠어요. / 당신들 진짜 미쳤구나.",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a simple cardigan facing 내연녀 in a flashy red dress.\nACTION: 내연녀 smirks crossing her arms.\nDIALOGUE: 본처 (shocked): \"저 여자가 이유였어?\" / 내연녀 (calm): \"빨리 나와요. 늦겠어요.\" / 본처 (trembling): \"당신들 진짜 미쳤구나.\"\nSETTING: Outside the apartment door, evening, dim hallway light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a simple cardigan facing 내연녀 in a flashy red dress.\nACTION: 내연녀 smirks crossing her arms.\nDIALOGUE: 본처 (shocked): \"당신이 이유였어?\" / 내연녀 (calm): \"빨리 나와요. 늦겠어요.\" / 본처 (trembling): \"당신들 진짜 미쳤구나.\"\nSETTING: Outside the apartment door, evening, dim hallway light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 4,
      "role": "뒤집기",
      "subtitle": "조만간 서류 보낼 테니까 도장이나 찍어. 쓸데없이 고집 피우지 말고.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 남편 in a casual jacket.\nACTION: 남편 glares coldly at her.\nDIALOGUE: 남편 (arrogant): \"조만간 서류 보낼 테니까 도장이나 찍어. 쓸데없이 고집 피우지 말고.\"\nSETTING: Outside the apartment door, evening, dim hallway light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 남편 in a casual jacket.\nACTION: 남편 glares coldly at her.\nDIALOGUE: 남편 (arrogant): \"조만간 서류 보낼 테니까 도장이나 찍어. 쓸데없이 고집 피우지 말고.\"\nSETTING: Outside the apartment door, evening, dim hallway light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 5,
      "role": "끊기",
      "subtitle": "내 눈에 흙이 들어가기 전엔 절대 못 해. 어디 한 번 끝까지 가보자고.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a simple cardigan.\nACTION: 본처 clenches her fists tightly.\nDIALOGUE: 본처 (determined): \"내 눈에 흙이 들어가기 전엔 절대 못 해. 어디 한 번 끝까지 가보자고.\"\nSETTING: Outside the apartment door, evening, dim hallway light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a simple cardigan.\nACTION: 본처 clenches her fists tightly.\nDIALOGUE: 본처 (determined): \"내 눈에 흙이 들어가기 전엔 절대 못 해. 어디 한 번 끝까지 가보자고.\"\nSETTING: Outside the apartment door, evening, dim hallway light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     }
    ]
   },
@@ -68,35 +74,35 @@
      "role": "후킹",
      "subtitle": "왜 도장을 안 찍냐고! / 바람난 주제에 참 당당하네. / 진짜 해보자는 거지?",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 남편 in a black suit facing 본처 in a grey blouse.\nACTION: 남편 points a finger angrily at her.\nDIALOGUE: 남편 (furious): \"왜 도장을 안 찍냐고!\" / 본처 (calm): \"바람난 주제에 참 당당하네.\" / 남편 (shouting): \"진짜 해보자는 거지?\"\nSETTING: Court hallway, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 남편 in a black suit facing 본처 in a grey blouse facing 남편 in a black suit.\nACTION: 남편 points a finger angrily at her.\nDIALOGUE: 남편 (furious): \"왜 도장을 안 찍냐고!\" / 본처 (calm): \"바람난 주제에 참 당당하네.\" / 남편 (shouting): \"진짜 해보자는 거지?\"\nSETTING: Court hallway, daytime, bright fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 2,
      "role": "상황",
      "subtitle": "껍데기만 남은 부부가 무슨 소용이라고 그래. 당신만 안 놔주면 다일 줄 알아?",
      "caption": "잘못을 저지른 남편의 이혼 청구는 기각되었다",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 남편 in a black suit.\nACTION: 남편 rubs his temples in frustration.\nDIALOGUE: 남편 (angry): \"껍데기만 남은 부부가 무슨 소용이라고 그래. 당신만 안 놔주면 다일 줄 알아?\"\nSETTING: Court hallway, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 남편 in a black suit.\nACTION: 남편 rubs his temples in frustration.\nDIALOGUE: 남편 (angry): \"껍데기만 남은 부부가 무슨 소용이라고 그래. 당신만 안 놔주면 다일 줄 알아?\"\nSETTING: Court hallway, daytime, bright fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 3,
      "role": "맞섬",
      "subtitle": "당신이 잘못했잖아. / 그래서 뭐 어쩌라고. / 평생 그 여자랑 떳떳하게 살지 마.",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a grey blouse facing 남편 in a black suit.\nACTION: 본처 stares him down firmly.\nDIALOGUE: 본처 (cold): \"당신이 잘못했잖아.\" / 남편 (annoyed): \"그래서 뭐 어쩌라고.\" / 본처 (determined): \"평생 그 여자랑 떳떳하게 살지 마.\"\nSETTING: Court hallway, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a grey blouse facing 남편 in a black suit facing 남편 in a black suit.\nACTION: 본처 stares him down firmly.\nDIALOGUE: 본처 (cold): \"당신이 잘못했잖아.\" / 남편 (annoyed): \"그래서 뭐 어쩌라고.\" / 본처 (determined): \"평생 그 여자랑 떳떳하게 살지 마.\"\nSETTING: Court hallway, daytime, bright fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 4,
      "role": "뒤집기",
      "subtitle": "재산 때문에 이래? 내가 죽기라도 바라는 거야? 아주 돈에 환장을 했지.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 남편 in a black suit.\nACTION: 남편 scoffs in disbelief.\nDIALOGUE: 남편 (mocking): \"재산 때문에 이래? 내가 죽기라도 바라는 거야? 아주 돈에 환장을 했지.\"\nSETTING: Court hallway, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 남편 in a black suit.\nACTION: 남편 scoffs in disbelief.\nDIALOGUE: 남편 (mocking): \"재산 때문에 이래? 내가 죽기라도 바라는 거야? 아주 돈에 환장을 했지.\"\nSETTING: Court hallway, daytime, bright fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 5,
      "role": "끊기",
      "subtitle": "그냥 가요. 말 안 통하는 사람이랑 무슨 말을 더 해요. 우리가 알아서 해.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a flashy red dress.\nACTION: 내연녀 links her arm with his.\nDIALOGUE: 내연녀 (arrogant): \"그냥 가요. 말 안 통하는 사람이랑 무슨 말을 더 해요. 우리가 알아서 해.\"\nSETTING: Court hallway, daytime, bright fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a flashy red dress.\nACTION: 내연녀 links her arm with his.\nDIALOGUE: 내연녀 (arrogant): \"그냥 가요. 말 안 통하는 사람이랑 무슨 말을 더 해요. 우리가 알아서 해.\"\nSETTING: Court hallway, daytime, bright fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     }
    ]
   },
@@ -110,35 +116,35 @@
      "role": "후킹",
      "subtitle": "내 돈 한 푼도 못 줘. / 그럼 어떻게 할 건데? / 전부 다 당신 이름으로 돌릴 거야.",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 남편 in a black suit facing 내연녀 in a white silk blouse.\nACTION: 남편 slams his hand on the table.\nDIALOGUE: 남편 (furious): \"내 돈 한 푼도 못 줘.\" / 내연녀 (curious): \"그럼 어떻게 할 건데?\" / 남편 (determined): \"전부 다 당신 이름으로 돌릴 거야.\"\nSETTING: Upscale cafe, daytime, soft natural lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 남편 in a black suit facing 내연녀 in a white silk blouse facing 남편 in a black suit.\nACTION: 남편 slams his hand on the table.\nDIALOGUE: 남편 (furious): \"내 돈 한 푼도 못 줘.\" / 내연녀 (curious): \"그럼 어떻게 할 건데?\" / 남편 (determined): \"전부 다 당신 이름으로 돌릴 거야.\"\nSETTING: Upscale cafe, daytime, soft natural lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 2,
      "role": "상황",
      "subtitle": "내가 번 돈 그 여자한테 절대 안 뺏겨. 차라리 다 없애버리고 말지.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 남편 in a black suit.\nACTION: 남편 holds a pen firmly while staring ahead.\nDIALOGUE: 남편 (cold): \"내가 번 돈 그 여자한테 절대 안 뺏겨. 차라리 다 없애버리고 말지.\"\nSETTING: Upscale cafe, daytime, soft natural lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 남편 in a black suit.\nACTION: 남편 holds a pen firmly while staring ahead.\nDIALOGUE: 남편 (cold): \"내가 번 돈 그 여자한테 절대 안 뺏겨. 차라리 다 없애버리고 말지.\"\nSETTING: Upscale cafe, daytime, soft natural lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 3,
      "role": "맞섬",
      "subtitle": "정말 나한테 다 줄 거야? / 그럼. 당신밖에 없잖아. / 자기 빈말하면 정말 안 돼.",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 내연녀 in a white silk blouse facing 남편 in a black suit.\nACTION: 내연녀 smiles seductively.\nDIALOGUE: 내연녀 (sweet): \"정말 나한테 다 줄 거야?\" / 남편 (soft): \"그럼. 당신밖에 없잖아.\" / 내연녀 (playful): \"자기 빈말하면 정말 안 돼.\"\nSETTING: Upscale cafe, daytime, soft natural lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 내연녀 in a white silk blouse facing 남편 in a black suit facing 남편 in a black suit.\nACTION: 내연녀 smiles seductively.\nDIALOGUE: 내연녀 (sweet): \"정말 나한테 다 줄 거야?\" / 남편 (soft): \"그럼. 당신밖에 없잖아.\" / 내연녀 (playful): \"자기 빈말하면 정말 안 돼.\"\nSETTING: Upscale cafe, daytime, soft natural lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 4,
      "role": "뒤집기",
      "subtitle": "내가 죽으면 나오는 돈 있잖아. 그거 받을 사람 지금 당장 바꿀 수 있지?",
      "caption": "이혼 패소 당일, 사망보험금 전부를 내연녀 앞으로 돌렸다",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 남편 in a black suit.\nACTION: 남편 holds a phone to his ear.\nDIALOGUE: 남편 (calm): \"내가 죽으면 나오는 돈 있잖아. 그거 받을 사람 지금 당장 바꿀 수 있지?\"\nSETTING: Upscale cafe, daytime, soft natural lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 남편 in a black suit.\nACTION: 남편 holds a phone to his ear.\nDIALOGUE: 남편 (calm): \"내가 죽으면 나오는 돈 있잖아. 그거 받을 사람 지금 당장 바꿀 수 있지?\"\nSETTING: Upscale cafe, daytime, soft natural lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 5,
      "role": "끊기",
      "subtitle": "내가 죽어도 그 여자는 십 원 한 장 못 가져가. 두고 보라고 해.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 남편 in a black suit.\nACTION: 남편 smirks coldly.\nDIALOGUE: 남편 (mocking): \"내가 죽어도 그 여자는 십 원 한 장 못 가져가. 두고 보라고 해.\"\nSETTING: Upscale cafe, daytime, soft natural lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 남편 in a black suit.\nACTION: 남편 smirks coldly.\nDIALOGUE: 남편 (mocking): \"내가 죽어도 그 여자는 십 원 한 장 못 가져가. 두고 보라고 해.\"\nSETTING: Upscale cafe, daytime, soft natural lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     }
    ]
   },
@@ -152,35 +158,35 @@
      "role": "후킹",
      "subtitle": "이거 받아. 이사 준비해. / 이게 뭐야? 진짜 집 샀어? / 당신 명의로 다 해놨어.",
      "caption": "내연녀에게 약 3억 원짜리 아파트를 사주었다",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 남편 in a beige sweater facing 내연녀 in a casual dress.\nACTION: 남편 hands over a bunch of keys to her.\nDIALOGUE: 남편 (smiling): \"이거 받아. 이사 준비해.\" / 내연녀 (surprised): \"이게 뭐야? 진짜 집 샀어?\" / 남편 (proud): \"당신 명의로 다 해놨어.\"\nSETTING: Modern apartment living room, daytime, bright sunlight.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 남편 in a beige sweater facing 내연녀 in a casual dress.\nACTION: 남편 hands over a bunch of keys to her.\nDIALOGUE: 남편 (smiling): \"이거 받아. 이사 준비해.\" / 내연녀 (surprised): \"이게 뭐야? 진짜 집 샀어?\" / 남편 (proud): \"당신 명의로 다 해놨어.\"\nSETTING: Modern apartment living room, daytime, bright sunlight.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 2,
      "role": "상황",
      "subtitle": "진짜 고마워. 내가 평생 자기 옆에서 정말 잘할게. 나만 믿어.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a casual dress.\nACTION: 내연녀 hugs the keys tightly to her chest.\nDIALOGUE: 내연녀 (joyful): \"진짜 고마워. 내가 평생 자기 옆에서 정말 잘할게. 나만 믿어.\"\nSETTING: Modern apartment living room, daytime, bright sunlight.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a casual dress.\nACTION: 내연녀 hugs the keys tightly to her chest.\nDIALOGUE: 내연녀 (joyful): \"진짜 고마워. 내가 평생 자기 옆에서 정말 잘할게. 나만 믿어.\"\nSETTING: Modern apartment living room, daytime, bright sunlight.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 3,
      "role": "맞섬",
      "subtitle": "이천만 원 어디 가냐고! / 내 돈 내가 쓰는데 왜. / 그거 다 우리 애들 돈이야!",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a grey blouse facing 남편 in a beige sweater.\nACTION: 본처 glares angrily at him.\nDIALOGUE: 본처 (furious): \"이천만 원 어디 가냐고!\" / 남편 (annoyed): \"내 돈 내가 쓰는데 왜.\" / 본처 (shouting): \"그거 다 우리 애들 돈이야!\"\nSETTING: Darkened living room, evening, dim lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a grey blouse facing 남편 in a beige sweater facing 남편 in a beige sweater.\nACTION: 본처 glares angrily at him.\nDIALOGUE: 본처 (furious): \"이천만 원 어디 가냐고!\" / 남편 (annoyed): \"내 돈 내가 쓰는데 왜.\" / 본처 (shouting): \"그거 다 우리 애들 돈이야!\"\nSETTING: Darkened living room, evening, dim lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 4,
      "role": "뒤집기",
      "subtitle": "만약 내가 잘못되면 내 몫은 무조건 그 사람한테 줘. 집사람은 절대 안 돼.",
      "caption": "자신의 병원 지분 12억 원도 내연녀 몫으로 적어뒀다",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 남편 in a beige sweater.\nACTION: 남편 speaks firmly to someone off-camera.\nDIALOGUE: 남편 (serious): \"만약 내가 잘못되면 내 몫은 무조건 그 사람한테 줘. 집사람은 절대 안 돼.\"\nSETTING: Office room, daytime, bright fluorescent lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 남편 in a beige sweater.\nACTION: 남편 speaks firmly to someone off-camera.\nDIALOGUE: 남편 (serious): \"만약 내가 잘못되면 내 몫은 무조건 그 사람한테 줘. 집사람은 절대 안 돼.\"\nSETTING: Office room, daytime, bright fluorescent lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 5,
      "role": "끊기",
      "subtitle": "이제 자기 재산은 다 내 거네? 아무도 우리 사이 절대 못 방해해.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a casual dress.\nACTION: 내연녀 smiles triumphantly.\nDIALOGUE: 내연녀 (arrogant): \"이제 자기 재산은 다 내 거네? 아무도 우리 사이 절대 못 방해해.\"\nSETTING: Modern apartment living room, daytime, bright sunlight.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a casual dress.\nACTION: 내연녀 smiles triumphantly.\nDIALOGUE: 내연녀 (arrogant): \"이제 자기 재산은 다 내 거네? 아무도 우리 사이 절대 못 방해해.\"\nSETTING: Modern apartment living room, daytime, bright sunlight.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     }
    ]
   },
@@ -194,35 +200,35 @@
      "role": "후킹",
      "subtitle": "뭐라고요? 그이가 죽어? / 자기 혼자 떨어졌다고요. / 그게 지금 말이 되는 소리야!",
      "caption": "4년 뒤, 남편은 내연녀의 아파트에서 떨어져 죽었다",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a black coat facing 내연녀 in a white sweater.\nACTION: 본처 grabs her shoulders in shock.\nDIALOGUE: 본처 (panicked): \"뭐라고요? 그이가 죽어?\" / 내연녀 (defensive): \"자기 혼자 떨어졌다고요.\" / 본처 (shouting): \"그게 지금 말이 되는 소리야!\"\nSETTING: Hospital hallway, night, harsh fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a black coat facing 내연녀 in a white sweater.\nACTION: 본처 grabs her shoulders in shock.\nDIALOGUE: 본처 (panicked): \"뭐라고요? 그이가 죽어?\" / 내연녀 (defensive): \"자기 혼자 떨어졌다고요.\" / 본처 (shouting): \"그게 지금 말이 되는 소리야!\"\nSETTING: Hospital hallway, night, harsh fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 2,
      "role": "상황",
      "subtitle": "어떻게 이런 일이 생겨. 거기서 대체 무슨 일이 있었길래 갑자기 떨어져.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a black coat.\nACTION: 본처 stumbles back, covering her mouth.\nDIALOGUE: 본처 (crying): \"어떻게 이런 일이 생겨. 거기서 대체 무슨 일이 있었길래 갑자기 떨어져.\"\nSETTING: Hospital hallway, night, harsh fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a black coat.\nACTION: 본처 stumbles back, covering her mouth.\nDIALOGUE: 본처 (crying): \"어떻게 이런 일이 생겨. 거기서 대체 무슨 일이 있었길래 갑자기 떨어져.\"\nSETTING: Hospital hallway, night, harsh fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 3,
      "role": "맞섬",
      "subtitle": "나도 놀랐다니까요. / 네가 죽인 거 아니야? / 사람 함부로 의심하지 마.",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 내연녀 in a white sweater facing 본처 in a black coat.\nACTION: 내연녀 steps back crossing her arms.\nDIALOGUE: 내연녀 (annoyed): \"나도 놀랐다니까요.\" / 본처 (furious): \"네가 죽인 거 아니야?\" / 내연녀 (cold): \"사람 함부로 의심하지 마.\"\nSETTING: Hospital hallway, night, harsh fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 내연녀 in a white sweater facing 본처 in a black coat.\nACTION: 내연녀 steps back crossing her arms.\nDIALOGUE: 내연녀 (annoyed): \"나도 놀랐다니까요.\" / 본처 (furious): \"네가 죽인 거 아니야?\" / 내연녀 (cold): \"사람 함부로 의심하지 마.\"\nSETTING: Hospital hallway, night, harsh fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 4,
      "role": "뒤집기",
      "subtitle": "죽은 건 죽은 거고, 나도 피해자라고요. 내 집에서 이게 무슨 꼴이람.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a white sweater.\nACTION: 내연녀 sighs brushing her hair back.\nDIALOGUE: 내연녀 (irritated): \"죽은 건 죽은 거고, 나도 피해자라고요. 내 집에서 이게 무슨 꼴이람.\"\nSETTING: Hospital hallway, night, harsh fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a white sweater.\nACTION: 내연녀 sighs brushing her hair back.\nDIALOGUE: 내연녀 (irritated): \"죽은 건 죽은 거고, 나도 피해자라고요. 내 집에서 이게 무슨 꼴이람.\"\nSETTING: Hospital hallway, night, harsh fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 5,
      "role": "끊기",
      "subtitle": "내 남편이 왜 거기서 죽어. 너 내가 가만 안 둬. 끝까지 밝혀낼 거야.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a black coat.\nACTION: 본처 glares with intense hatred.\nDIALOGUE: 본처 (determined): \"내 남편이 왜 거기서 죽어. 너 내가 가만 안 둬. 끝까지 밝혀낼 거야.\"\nSETTING: Hospital hallway, night, harsh fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a black coat.\nACTION: 본처 glares with intense hatred.\nDIALOGUE: 본처 (determined): \"내 남편이 왜 거기서 죽어. 너 내가 가만 안 둬. 끝까지 밝혀낼 거야.\"\nSETTING: Hospital hallway, night, harsh fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     }
    ]
   },
@@ -236,35 +242,35 @@
      "role": "후킹",
      "subtitle": "여기가 어디라고 와! / 마지막 인사하러 왔어요. / 당장 내 눈앞에서 꺼져!",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in black mourning hanbok facing 내연녀 in a black suit.\nACTION: 본처 points fiercely toward the exit.\nDIALOGUE: 본처 (furious): \"여기가 어디라고 와!\" / 내연녀 (calm): \"마지막 인사하러 왔어요.\" / 본처 (shouting): \"당장 내 눈앞에서 꺼져!\"\nSETTING: Funeral hall reception, daytime, dim overhead light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in black mourning hanbok facing 내연녀 in a black suit facing 내연녀 in a black suit.\nACTION: 본처 points fiercely toward the exit.\nDIALOGUE: 본처 (furious): \"여기가 어디라고 와!\" / 내연녀 (calm): \"마지막 인사하러 왔어요.\" / 본처 (shouting): \"당장 내 눈앞에서 꺼져!\"\nSETTING: Funeral hall reception, daytime, dim overhead light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 2,
      "role": "상황",
      "subtitle": "어차피 서류만 부부였잖아요. 마지막까지 그 사람 곁에 있던 건 나라고요.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a black suit.\nACTION: 내연녀 crosses her arms arrogantly.\nDIALOGUE: 내연녀 (mocking): \"어차피 서류만 부부였잖아요. 마지막까지 그 사람 곁에 있던 건 나라고요.\"\nSETTING: Funeral hall reception, daytime, dim overhead light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a black suit.\nACTION: 내연녀 crosses her arms arrogantly.\nDIALOGUE: 내연녀 (mocking): \"어차피 서류만 부부였잖아요. 마지막까지 그 사람 곁에 있던 건 나라고요.\"\nSETTING: Funeral hall reception, daytime, dim overhead light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 3,
      "role": "맞섬",
      "subtitle": "네가 죽인 거잖아. / 말조심해. 경찰 부를 거야. / 내가 부르기 전에 당장 나가.",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in black mourning hanbok facing 내연녀 in a black suit.\nACTION: 본처 steps closer aggressively.\nDIALOGUE: 본처 (cold): \"네가 죽인 거잖아.\" / 내연녀 (defensive): \"말조심해. 경찰 부를 거야.\" / 본처 (determined): \"내가 부르기 전에 당장 나가.\"\nSETTING: Funeral hall reception, daytime, dim overhead light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in black mourning hanbok facing 내연녀 in a black suit facing 내연녀 in a black suit.\nACTION: 본처 steps closer aggressively.\nDIALOGUE: 본처 (cold): \"네가 죽인 거잖아.\" / 내연녀 (defensive): \"말조심해. 경찰 부를 거야.\" / 본처 (determined): \"내가 부르기 전에 당장 나가.\"\nSETTING: Funeral hall reception, daytime, dim overhead light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 4,
      "role": "뒤집기",
      "subtitle": "그래요, 갈게요. 어차피 그 사람 남긴 거 다 내 거니까 맘대로 해봐요.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a black suit.\nACTION: 내연녀 smirks and turns away slightly.\nDIALOGUE: 내연녀 (arrogant): \"그래요, 갈게요. 어차피 그 사람 남긴 거 다 내 거니까 맘대로 해봐요.\"\nSETTING: Funeral hall reception, daytime, dim overhead light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a black suit.\nACTION: 내연녀 smirks and turns away slightly.\nDIALOGUE: 내연녀 (arrogant): \"그래요, 갈게요. 어차피 그 사람 남긴 거 다 내 거니까 맘대로 해봐요.\"\nSETTING: Funeral hall reception, daytime, dim overhead light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 5,
      "role": "끊기",
      "subtitle": "뭐라고? 그게 무슨 소리야. 내 남편 재산에 네가 대체 왜 손을 대!",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in black mourning hanbok.\nACTION: 본처 stares in utter shock.\nDIALOGUE: 본처 (shouting): \"뭐라고? 그게 무슨 소리야. 내 남편 재산에 네가 대체 왜 손을 대!\"\nSETTING: Funeral hall reception, daytime, dim overhead light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in black mourning hanbok facing 내연녀 in a black suit.\nACTION: 본처 stares in utter shock.\nDIALOGUE: 본처 (shouting): \"뭐라고? 그게 무슨 소리야. 내 남편 재산에 네가 대체 왜 손을 대!\"\nSETTING: Funeral hall reception, daytime, dim overhead light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     }
    ]
   },
@@ -278,35 +284,35 @@
      "role": "후킹",
      "subtitle": "나한테 빚만 남겨놨어? / 그걸 왜 나한테 따져요? / 네가 돈 다 빼돌린 거잖아!",
      "caption": "남편이 남긴 재산은 없고 빚만 약 6억 원이었다",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a simple cardigan facing 내연녀 in a luxury coat.\nACTION: 본처 clenches her fists furiously.\nDIALOGUE: 본처 (desperate): \"나한테 빚만 남겨놨어?\" / 내연녀 (annoyed): \"그걸 왜 나한테 따져요?\" / 본처 (shouting): \"네가 돈 다 빼돌린 거잖아!\"\nSETTING: Street outside a bank, daytime, overcast.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a simple cardigan facing 내연녀 in a luxury coat.\nACTION: 본처 clenches her fists furiously.\nDIALOGUE: 본처 (desperate): \"나한테 빚만 남겨놨어?\" / 내연녀 (annoyed): \"그걸 왜 나한테 따져요?\" / 본처 (shouting): \"네가 돈 다 빼돌린 거잖아!\"\nSETTING: Street outside a bank, daytime, overcast.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 2,
      "role": "상황",
      "subtitle": "돈을 그렇게 빼돌리더니 나한텐 빚만 갚으란 거야? 절대 그렇게는 못 해.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a simple cardigan.\nACTION: 본처 beats her chest in anger.\nDIALOGUE: 본처 (crying): \"돈을 그렇게 빼돌리더니 나한텐 빚만 갚으란 거야? 절대 그렇게는 못 해.\"\nSETTING: Street outside a bank, daytime, overcast.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a simple cardigan.\nACTION: 본처 beats her chest in anger.\nDIALOGUE: 본처 (crying): \"돈을 그렇게 빼돌리더니 나한텐 빚만 갚으란 거야? 절대 그렇게는 못 해.\"\nSETTING: Street outside a bank, daytime, overcast.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 3,
      "role": "맞섬",
      "subtitle": "숨긴 돈 전부 다 내놔. / 난 모르는 일이라니까. / 내가 모를 줄 알아? 다 뱉어내.",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a simple cardigan facing 내연녀 in a luxury coat.\nACTION: 본처 steps forward aggressively.\nDIALOGUE: 본처 (cold): \"숨긴 돈 전부 다 내놔.\" / 내연녀 (defensive): \"난 모르는 일이라니까.\" / 본처 (furious): \"내가 모를 줄 알아? 다 뱉어내.\"\nSETTING: Street outside a bank, daytime, overcast.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a simple cardigan facing 내연녀 in a luxury coat.\nACTION: 본처 steps forward aggressively.\nDIALOGUE: 본처 (cold): \"숨긴 돈 전부 다 내놔.\" / 내연녀 (defensive): \"난 모르는 일이라니까.\" / 본처 (furious): \"내가 모를 줄 알아? 다 뱉어내.\"\nSETTING: Street outside a bank, daytime, overcast.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 4,
      "role": "뒤집기",
      "subtitle": "빚 갚기 싫으면 포기하시든가요. 어차피 나한테 올 돈은 다 정해져 있어.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a luxury coat.\nACTION: 내연녀 laughs mockingly.\nDIALOGUE: 내연녀 (arrogant): \"빚 갚기 싫으면 포기하시든가요. 어차피 나한테 올 돈은 다 정해져 있어.\"\nSETTING: Street outside a bank, daytime, overcast.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a luxury coat.\nACTION: 내연녀 laughs mockingly.\nDIALOGUE: 내연녀 (arrogant): \"빚 갚기 싫으면 포기하시든가요. 어차피 나한테 올 돈은 다 정해져 있어.\"\nSETTING: Street outside a bank, daytime, overcast.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 5,
      "role": "끊기",
      "subtitle": "빚? 그건 내가 알아서 해. 네가 훔쳐 간 내 남편 돈 전부 다 찾아올 거야.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a simple cardigan.\nACTION: 본처 stares coldly with determination.\nDIALOGUE: 본처 (determined): \"빚? 그건 내가 알아서 해. 네가 훔쳐 간 내 남편 돈 전부 다 찾아올 거야.\"\nSETTING: Street outside a bank, daytime, overcast.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a simple cardigan.\nACTION: 본처 stares coldly with determination.\nDIALOGUE: 본처 (determined): \"빚? 그건 내가 알아서 해. 네가 훔쳐 간 내 남편 돈 전부 다 찾아올 거야.\"\nSETTING: Street outside a bank, daytime, overcast.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     }
    ]
   },
@@ -320,35 +326,35 @@
      "role": "후킹",
      "subtitle": "여기서 당장 나가. / 내 병원인데 왜 나가요? / 이게 언제부터 네 병원이야!",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a grey coat facing 내연녀 in an elegant dress.\nACTION: 본처 points toward the exit.\nDIALOGUE: 본처 (angry): \"여기서 당장 나가.\" / 내연녀 (calm): \"내 병원인데 왜 나가요?\" / 본처 (shouting): \"이게 언제부터 네 병원이야!\"\nSETTING: Hospital corridor, daytime, bright fluorescent lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a grey coat facing 내연녀 in an elegant dress facing 내연녀 in an elegant dress.\nACTION: 본처 points toward the exit.\nDIALOGUE: 본처 (angry): \"여기서 당장 나가.\" / 내연녀 (calm): \"내 병원인데 왜 나가요?\" / 본처 (shouting): \"이게 언제부터 네 병원이야!\"\nSETTING: Hospital corridor, daytime, bright fluorescent lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 2,
      "role": "상황",
      "subtitle": "그이가 자기 몫은 다 나 주기로 했거든요. 서류에도 다 적혀 있다고요.",
      "caption": "동업 계약에 따라 병원 지분 12억 원은 내연녀가 청구했다",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in an elegant dress.\nACTION: 내연녀 crosses her arms confidently.\nDIALOGUE: 내연녀 (arrogant): \"그이가 자기 몫은 다 나 주기로 했거든요. 서류에도 다 적혀 있다고요.\"\nSETTING: Hospital corridor, daytime, bright fluorescent lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in an elegant dress.\nACTION: 내연녀 crosses her arms confidently.\nDIALOGUE: 내연녀 (arrogant): \"그이가 자기 몫은 다 나 주기로 했거든요. 서류에도 다 적혀 있다고요.\"\nSETTING: Hospital corridor, daytime, bright fluorescent lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 3,
      "role": "맞섬",
      "subtitle": "그건 죽기 전 얘기지. / 죽어서도 내 거 맞거든요. / 내가 가만히 놔둘 줄 알아?",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a grey coat facing 내연녀 in an elegant dress.\nACTION: 본처 glares menacingly.\nDIALOGUE: 본처 (cold): \"그건 죽기 전 얘기지.\" / 내연녀 (mocking): \"죽어서도 내 거 맞거든요.\" / 본처 (determined): \"내가 가만히 놔둘 줄 알아?\"\nSETTING: Hospital corridor, daytime, bright fluorescent lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a grey coat facing 내연녀 in an elegant dress facing 내연녀 in an elegant dress.\nACTION: 본처 glares menacingly.\nDIALOGUE: 본처 (cold): \"그건 죽기 전 얘기지.\" / 내연녀 (mocking): \"죽어서도 내 거 맞거든요.\" / 본처 (determined): \"내가 가만히 놔둘 줄 알아?\"\nSETTING: Hospital corridor, daytime, bright fluorescent lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 4,
      "role": "뒤집기",
      "subtitle": "이미 법원에서도 내 돈이라고 인정했거든요? 억울하면 소송이라도 하든가.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in an elegant dress.\nACTION: 내연녀 smirks mockingly.\nDIALOGUE: 내연녀 (confident): \"이미 법원에서도 내 돈이라고 인정했거든요? 억울하면 소송이라도 하든가.\"\nSETTING: Hospital corridor, daytime, bright fluorescent lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in an elegant dress.\nACTION: 내연녀 smirks mockingly.\nDIALOGUE: 내연녀 (confident): \"이미 법원에서도 내 돈이라고 인정했거든요? 억울하면 소송이라도 하든가.\"\nSETTING: Hospital corridor, daytime, bright fluorescent lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 5,
      "role": "끊기",
      "subtitle": "그래, 소송해. 네가 그 돈 다 쓸 때까지 내가 끝까지 물고 늘어질 테니까.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a grey coat.\nACTION: 본처 tightens her jaw in resolve.\nDIALOGUE: 본처 (determined): \"그래, 소송해. 네가 그 돈 다 쓸 때까지 내가 끝까지 물고 늘어질 테니까.\"\nSETTING: Hospital corridor, daytime, bright fluorescent lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a grey coat facing 내연녀 in an elegant dress.\nACTION: 본처 tightens her jaw in resolve.\nDIALOGUE: 본처 (determined): \"그래, 소송해. 네가 그 돈 다 쓸 때까지 내가 끝까지 물고 늘어질 테니까.\"\nSETTING: Hospital corridor, daytime, bright fluorescent lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     }
    ]
   },
@@ -362,35 +368,35 @@
      "role": "후킹",
      "subtitle": "십오억도 네가 챙겼어? / 그이가 나 주려고 든 건데. / 진짜 끝까지 가는구나.",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a beige trench coat facing 내연녀 in a red silk blouse.\nACTION: 본처 clenches her teeth in anger.\nDIALOGUE: 본처 (furious): \"십오억도 네가 챙겼어?\" / 내연녀 (calm): \"그이가 나 주려고 든 건데.\" / 본처 (cold): \"진짜 끝까지 가는구나.\"\nSETTING: Outside an insurance company, daytime, overcast.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a beige trench coat facing 내연녀 in a red silk blouse facing 내연녀 in a red silk blouse.\nACTION: 본처 clenches her teeth in anger.\nDIALOGUE: 본처 (furious): \"십오억도 네가 챙겼어?\" / 내연녀 (calm): \"그이가 나 주려고 든 건데.\" / 본처 (cold): \"진짜 끝까지 가는구나.\"\nSETTING: Outside an insurance company, daytime, overcast.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 2,
      "role": "상황",
      "subtitle": "내 이름으로 되어 있는데 무슨 상관이야. 법대로 하면 전부 다 내 돈이라고.",
      "caption": "사망보험금 약 15억 원의 수익자는 내연녀였다",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a red silk blouse.\nACTION: 내연녀 crosses her arms haughtily.\nDIALOGUE: 내연녀 (arrogant): \"내 이름으로 되어 있는데 무슨 상관이야. 법대로 하면 전부 다 내 돈이라고.\"\nSETTING: Outside an insurance company, daytime, overcast.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a red silk blouse.\nACTION: 내연녀 crosses her arms haughtily.\nDIALOGUE: 내연녀 (arrogant): \"내 이름으로 되어 있는데 무슨 상관이야. 법대로 하면 전부 다 내 돈이라고.\"\nSETTING: Outside an insurance company, daytime, overcast.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 3,
      "role": "맞섬",
      "subtitle": "그 돈이 어디서 난 건데? / 그이가 벌어서 낸 거지. / 그건 다 우리 가족 돈이야.",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a beige trench coat facing 내연녀 in a red silk blouse.\nACTION: 본처 steps aggressively closer.\nDIALOGUE: 본처 (angry): \"그 돈이 어디서 난 건데?\" / 내연녀 (mocking): \"그이가 벌어서 낸 거지.\" / 본처 (furious): \"그건 다 우리 가족 돈이야.\"\nSETTING: Outside an insurance company, daytime, overcast.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a beige trench coat facing 내연녀 in a red silk blouse facing 내연녀 in a red silk blouse.\nACTION: 본처 steps aggressively closer.\nDIALOGUE: 본처 (angry): \"그 돈이 어디서 난 건데?\" / 내연녀 (mocking): \"그이가 벌어서 낸 거지.\" / 본처 (furious): \"그건 다 우리 가족 돈이야.\"\nSETTING: Outside an insurance company, daytime, overcast.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 4,
      "role": "뒤집기",
      "subtitle": "매달 이천만 원씩 부었더라? 애들한테는 단돈 십 원도 안 줬으면서.",
      "caption": "남편은 매달 2천만 원씩 보험료를 납부했다",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a beige trench coat.\nACTION: 본처 points an accusatory finger.\nDIALOGUE: 본처 (cold): \"매달 이천만 원씩 부었더라? 애들한테는 단돈 십 원도 안 줬으면서.\"\nSETTING: Outside an insurance company, daytime, overcast.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a beige trench coat facing 내연녀 in a red silk blouse.\nACTION: 본처 points an accusatory finger.\nDIALOGUE: 본처 (cold): \"매달 이천만 원씩 부었더라? 애들한테는 단돈 십 원도 안 줬으면서.\"\nSETTING: Outside an insurance company, daytime, overcast.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 5,
      "role": "끊기",
      "subtitle": "능력 없는 걸 왜 내 탓을 해. 그 사람이 당신 주기 싫어서 나 준 거잖아.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a red silk blouse.\nACTION: 내연녀 smirks rolling her eyes.\nDIALOGUE: 내연녀 (mocking): \"능력 없는 걸 왜 내 탓을 해. 그 사람이 당신 주기 싫어서 나 준 거잖아.\"\nSETTING: Outside an insurance company, daytime, overcast.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a red silk blouse.\nACTION: 내연녀 smirks rolling her eyes.\nDIALOGUE: 내연녀 (mocking): \"능력 없는 걸 왜 내 탓을 해. 그 사람이 당신 주기 싫어서 나 준 거잖아.\"\nSETTING: Outside an insurance company, daytime, overcast.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     }
    ]
   },
@@ -404,35 +410,35 @@
      "role": "후킹",
      "subtitle": "다 토해내게 해줄게. / 할 테면 해봐. 겁 안 나. / 이제부터 진짜 시작이야.",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a black suit facing 내연녀 in a stylish coat.\nACTION: 본처 stares with burning intensity.\nDIALOGUE: 본처 (determined): \"다 토해내게 해줄게.\" / 내연녀 (arrogant): \"할 테면 해봐. 겁 안 나.\" / 본처 (cold): \"이제부터 진짜 시작이야.\"\nSETTING: Street outside a law firm, daytime, clear sky.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a black suit facing 내연녀 in a stylish coat.\nACTION: 본처 stares with burning intensity.\nDIALOGUE: 본처 (determined): \"다 토해내게 해줄게.\" / 내연녀 (arrogant): \"할 테면 해봐. 겁 안 나.\" / 본처 (cold): \"이제부터 진짜 시작이야.\"\nSETTING: Street outside a law firm, daytime, clear sky.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 2,
      "role": "상황",
      "subtitle": "숨겨둔 아파트까지 다 찾아냈어. 네가 뺏어간 우리 가족 돈 전부 다 내놔.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a black suit.\nACTION: 본처 holds her bag tightly, looking resolute.\nDIALOGUE: 본처 (determined): \"숨겨둔 아파트까지 다 찾아냈어. 네가 뺏어간 우리 가족 돈 전부 다 내놔.\"\nSETTING: Street outside a law firm, daytime, clear sky.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a black suit.\nACTION: 본처 holds her bag tightly, looking resolute.\nDIALOGUE: 본처 (determined): \"숨겨둔 아파트까지 다 찾아냈어. 네가 뺏어간 우리 가족 돈 전부 다 내놔.\"\nSETTING: Street outside a law firm, daytime, clear sky.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 3,
      "role": "맞섬",
      "subtitle": "빼돌린 돈은 다 내놔. / 그게 벌써 몇 년 전 일인데. / 시간 지나도 안 없어져.",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a black suit facing 내연녀 in a stylish coat.\nACTION: 내연녀 sighs acting bored.\nDIALOGUE: 본처 (cold): \"빼돌린 돈은 다 내놔.\" / 내연녀 (annoyed): \"그게 벌써 몇 년 전 일인데.\" / 본처 (firm): \"시간 지나도 안 없어져.\"\nSETTING: Street outside a law firm, daytime, clear sky.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a black suit facing 내연녀 in a stylish coat.\nACTION: 내연녀 sighs acting bored.\nDIALOGUE: 본처 (cold): \"빼돌린 돈은 다 내놔.\" / 내연녀 (annoyed): \"그게 벌써 몇 년 전 일인데.\" / 본처 (firm): \"시간 지나도 안 없어져.\"\nSETTING: Street outside a law firm, daytime, clear sky.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 4,
      "role": "뒤집기",
      "subtitle": "난 아무것도 모르는 일이에요. 그냥 그 사람이 주길래 받은 것뿐이라고요.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a stylish coat.\nACTION: 내연녀 shrugs her shoulders innocently.\nDIALOGUE: 내연녀 (defensive): \"난 아무것도 모르는 일이에요. 그냥 그 사람이 주길래 받은 것뿐이라고요.\"\nSETTING: Street outside a law firm, daytime, clear sky.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a stylish coat.\nACTION: 내연녀 shrugs her shoulders innocently.\nDIALOGUE: 내연녀 (defensive): \"난 아무것도 모르는 일이에요. 그냥 그 사람이 주길래 받은 것뿐이라고요.\"\nSETTING: Street outside a law firm, daytime, clear sky.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 5,
      "role": "끊기",
      "subtitle": "그 거짓말이 재판에서도 통할까? 아주 바닥까지 털어줄 테니까 기다려.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a black suit.\nACTION: 본처 smirks coldly.\nDIALOGUE: 본처 (confident): \"그 거짓말이 재판에서도 통할까? 아주 바닥까지 털어줄 테니까 기다려.\"\nSETTING: Street outside a law firm, daytime, clear sky.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a black suit.\nACTION: 본처 smirks coldly.\nDIALOGUE: 본처 (confident): \"그 거짓말이 재판에서도 통할까? 아주 바닥까지 털어줄 테니까 기다려.\"\nSETTING: Street outside a law firm, daytime, clear sky.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     }
    ]
   },
@@ -446,35 +452,35 @@
      "role": "후킹",
      "subtitle": "아직도 포기 안 했어요? / 포기는 네가 해야지. / 오늘 아주 망신당할 텐데.",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 내연녀 in a luxurious fur coat facing 본처 in a simple grey suit.\nACTION: 내연녀 smirks looking her up and down.\nDIALOGUE: 내연녀 (arrogant): \"아직도 포기 안 했어요?\" / 본처 (calm): \"포기는 네가 해야지.\" / 내연녀 (mocking): \"오늘 아주 망신당할 텐데.\"\nSETTING: Outside the courthouse, daytime, bright sunlight.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 내연녀 in a luxurious fur coat facing 본처 in a simple grey suit.\nACTION: 내연녀 smirks looking her up and down.\nDIALOGUE: 내연녀 (arrogant): \"아직도 포기 안 했어요?\" / 본처 (calm): \"포기는 네가 해야지.\" / 내연녀 (mocking): \"오늘 아주 망신당할 텐데.\"\nSETTING: Outside the courthouse, daytime, bright sunlight.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 2,
      "role": "상황",
      "subtitle": "빚은 당신이 다 떠안았다면서요? 참 불쌍해. 빚 갚느라 인생 다 끝나겠어.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a luxurious fur coat.\nACTION: 내연녀 laughs condescendingly.\nDIALOGUE: 내연녀 (mocking): \"빚은 당신이 다 떠안았다면서요? 참 불쌍해. 빚 갚느라 인생 다 끝나겠어.\"\nSETTING: Outside the courthouse, daytime, bright sunlight.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a luxurious fur coat.\nACTION: 내연녀 laughs condescendingly.\nDIALOGUE: 내연녀 (mocking): \"빚은 당신이 다 떠안았다면서요? 참 불쌍해. 빚 갚느라 인생 다 끝나겠어.\"\nSETTING: Outside the courthouse, daytime, bright sunlight.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 3,
      "role": "맞섬",
      "subtitle": "남 걱정할 때가 아니지. / 난 잃을 게 하나도 없어. / 들어가 보면 다 알게 될걸.",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a simple grey suit facing 내연녀 in a luxurious fur coat.\nACTION: 본처 steps confidently forward.\nDIALOGUE: 본처 (cold): \"남 걱정할 때가 아니지.\" / 내연녀 (arrogant): \"난 잃을 게 하나도 없어.\" / 본처 (smirking): \"들어가 보면 다 알게 될걸.\"\nSETTING: Outside the courthouse, daytime, bright sunlight.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a simple grey suit facing 내연녀 in a luxurious fur coat.\nACTION: 본처 steps confidently forward.\nDIALOGUE: 본처 (cold): \"남 걱정할 때가 아니지.\" / 내연녀 (arrogant): \"난 잃을 게 하나도 없어.\" / 본처 (smirking): \"들어가 보면 다 알게 될걸.\"\nSETTING: Outside the courthouse, daytime, bright sunlight.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 4,
      "role": "뒤집기",
      "subtitle": "증거라도 있어요? 말로만 우긴다고 법원이 당신 편 들어줄 것 같아요?",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a luxurious fur coat.\nACTION: 내연녀 crosses her arms defensively.\nDIALOGUE: 내연녀 (anxious): \"증거라도 있어요? 말로만 우긴다고 법원이 당신 편 들어줄 것 같아요?\"\nSETTING: Outside the courthouse, daytime, bright sunlight.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a luxurious fur coat.\nACTION: 내연녀 crosses her arms defensively.\nDIALOGUE: 내연녀 (anxious): \"증거라도 있어요? 말로만 우긴다고 법원이 당신 편 들어줄 것 같아요?\"\nSETTING: Outside the courthouse, daytime, bright sunlight.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 5,
      "role": "끊기",
      "subtitle": "내가 빈손으로 왔겠어? 네가 한 짓 판사님 앞에서 전부 다 까발려줄게.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a simple grey suit.\nACTION: 본처 glares with unwavering resolve.\nDIALOGUE: 본처 (confident): \"내가 빈손으로 왔겠어? 네가 한 짓 판사님 앞에서 전부 다 까발려줄게.\"\nSETTING: Outside the courthouse, daytime, bright sunlight.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a simple grey suit.\nACTION: 본처 glares with unwavering resolve.\nDIALOGUE: 본처 (confident): \"내가 빈손으로 왔겠어? 네가 한 짓 판사님 앞에서 전부 다 까발려줄게.\"\nSETTING: Outside the courthouse, daytime, bright sunlight.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     }
    ]
   },
@@ -488,35 +494,35 @@
      "role": "후킹",
      "subtitle": "그건 내 고유한 돈이야! / 남편 돈으로 낸 거잖아! / 법적으로 문제 하나도 없어.",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 내연녀 in a black dress facing 본처 in a grey suit.\nACTION: 내연녀 shouts defensively.\nDIALOGUE: 내연녀 (angry): \"그건 내 고유한 돈이야!\" / 본처 (furious): \"남편 돈으로 낸 거잖아!\" / 내연녀 (stubborn): \"법적으로 문제 하나도 없어.\"\nSETTING: Courtroom interior, daytime, formal lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 내연녀 in a black dress facing 본처 in a grey suit.\nACTION: 내연녀 shouts defensively.\nDIALOGUE: 내연녀 (angry): \"그건 내 고유한 돈이야!\" / 본처 (furious): \"남편 돈으로 낸 거잖아!\" / 내연녀 (stubborn): \"법적으로 문제 하나도 없어.\"\nSETTING: Courtroom interior, daytime, formal lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 2,
      "role": "상황",
      "subtitle": "그건 내가 수익자니까 내 돈이죠. 사망보험금은 상속되는 게 아니잖아요.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a black dress.\nACTION: 내연녀 looks toward the judge off-camera.\nDIALOGUE: 내연녀 (confident): \"그건 내가 수익자니까 내 돈이죠. 사망보험금은 상속되는 게 아니잖아요.\"\nSETTING: Courtroom interior, daytime, formal lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a black dress.\nACTION: 내연녀 looks toward the judge off-camera.\nDIALOGUE: 내연녀 (confident): \"그건 내가 수익자니까 내 돈이죠. 사망보험금은 상속되는 게 아니잖아요.\"\nSETTING: Courtroom interior, daytime, formal lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 3,
      "role": "맞섬",
      "subtitle": "보험료는 누가 냈는데? / 그이가 자발적으로 낸 거지. / 그게 바로 빼돌린 증거야.",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a grey suit facing 내연녀 in a black dress.\nACTION: 본처 points accusingly.\nDIALOGUE: 본처 (cold): \"보험료는 누가 냈는데?\" / 내연녀 (defensive): \"그이가 자발적으로 낸 거지.\" / 본처 (determined): \"그게 바로 빼돌린 증거야.\"\nSETTING: Courtroom interior, daytime, formal lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a grey suit facing 내연녀 in a black dress.\nACTION: 본처 points accusingly.\nDIALOGUE: 본처 (cold): \"보험료는 누가 냈는데?\" / 내연녀 (defensive): \"그이가 자발적으로 낸 거지.\" / 본처 (determined): \"그게 바로 빼돌린 증거야.\"\nSETTING: Courtroom interior, daytime, formal lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 4,
      "role": "뒤집기",
      "subtitle": "매달 이천만 원씩 쏟아부었어. 그게 네 돈이야? 우리 가족 밥줄 끊은 거지.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a grey suit.\nACTION: 본처 speaks with deep emotion.\nDIALOGUE: 본처 (angry): \"매달 이천만 원씩 쏟아부었어. 그게 네 돈이야? 우리 가족 밥줄 끊은 거지.\"\nSETTING: Courtroom interior, daytime, formal lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a grey suit.\nACTION: 본처 speaks with deep emotion.\nDIALOGUE: 본처 (angry): \"매달 이천만 원씩 쏟아부었어. 그게 네 돈이야? 우리 가족 밥줄 끊은 거지.\"\nSETTING: Courtroom interior, daytime, formal lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 5,
      "role": "끊기",
      "subtitle": "나는 그 사람이 서류에 사인하라고 해서 한 죄밖에 없어요. 진짜 몰랐어.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a black dress.\nACTION: 내연녀 steps back looking flustered.\nDIALOGUE: 내연녀 (anxious): \"나는 그 사람이 서류에 사인하라고 해서 한 죄밖에 없어요. 진짜 몰랐어.\"\nSETTING: Courtroom interior, daytime, formal lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a black dress.\nACTION: 내연녀 steps back looking flustered.\nDIALOGUE: 내연녀 (anxious): \"나는 그 사람이 서류에 사인하라고 해서 한 죄밖에 없어요. 진짜 몰랐어.\"\nSETTING: Courtroom interior, daytime, formal lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     }
    ]
   },
@@ -530,35 +536,35 @@
      "role": "후킹",
      "subtitle": "진짜 몰랐다고 할 셈이야? / 난 정말 몰랐다니까. / 네가 직접 서명까지 했잖아.",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a grey suit facing 내연녀 in a black dress.\nACTION: 본처 glares piercingly at her.\nDIALOGUE: 본처 (cold): \"진짜 몰랐다고 할 셈이야?\" / 내연녀 (nervous): \"난 정말 몰랐다니까.\" / 본처 (angry): \"네가 직접 서명까지 했잖아.\"\nSETTING: Court hallway, daytime, bright fluorescent lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a grey suit facing 내연녀 in a black dress facing 내연녀 in a black dress.\nACTION: 본처 glares piercingly at her.\nDIALOGUE: 본처 (cold): \"진짜 몰랐다고 할 셈이야?\" / 내연녀 (nervous): \"난 정말 몰랐다니까.\" / 본처 (angry): \"네가 직접 서명까지 했잖아.\"\nSETTING: Court hallway, daytime, bright fluorescent lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 2,
      "role": "상황",
      "subtitle": "그냥 하라는 대로 했을 뿐이야. 그게 내 이름으로 바뀌는 건 줄은 몰랐어.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a black dress.\nACTION: 내연녀 avoids eye contact, looking pale.\nDIALOGUE: 내연녀 (defensive): \"그냥 하라는 대로 했을 뿐이야. 그게 내 이름으로 바뀌는 건 줄은 몰랐어.\"\nSETTING: Court hallway, daytime, bright fluorescent lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a black dress.\nACTION: 내연녀 avoids eye contact, looking pale.\nDIALOGUE: 내연녀 (defensive): \"그냥 하라는 대로 했을 뿐이야. 그게 내 이름으로 바뀌는 건 줄은 몰랐어.\"\nSETTING: Court hallway, daytime, bright fluorescent lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 3,
      "role": "맞섬",
      "subtitle": "네 신분증도 냈던데? / 그건 그냥 심부름한 거야. / 거짓말 좀 적당히 해.",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a grey suit facing 내연녀 in a black dress.\nACTION: 본처 shakes a closed envelope at her.\nDIALOGUE: 본처 (mocking): \"네 신분증도 냈던데?\" / 내연녀 (panicked): \"그건 그냥 심부름한 거야.\" / 본처 (cold): \"거짓말 좀 적당히 해.\"\nSETTING: Court hallway, daytime, bright fluorescent lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a grey suit facing 내연녀 in a black dress facing 내연녀 in a black dress.\nACTION: 본처 shakes a closed envelope at her.\nDIALOGUE: 본처 (mocking): \"네 신분증도 냈던데?\" / 내연녀 (panicked): \"그건 그냥 심부름한 거야.\" / 본처 (cold): \"거짓말 좀 적당히 해.\"\nSETTING: Court hallway, daytime, bright fluorescent lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 4,
      "role": "뒤집기",
      "subtitle": "이혼 재판 진 바로 그날이었지. 앙심 품고 다 넘긴 거 둘 다 알았잖아.",
      "caption": "수익자 변경 서류에는 내연녀의 자필 서명과 신분증이 첨부돼 있었다",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a grey suit.\nACTION: 본처 steps closer, cornering her.\nDIALOGUE: 본처 (determined): \"이혼 재판 진 바로 그날이었지. 앙심 품고 다 넘긴 거 둘 다 알았잖아.\"\nSETTING: Court hallway, daytime, bright fluorescent lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a grey suit facing 내연녀 in a black dress.\nACTION: 본처 steps closer, cornering her.\nDIALOGUE: 본처 (determined): \"이혼 재판 진 바로 그날이었지. 앙심 품고 다 넘긴 거 둘 다 알았잖아.\"\nSETTING: Court hallway, daytime, bright fluorescent lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 5,
      "role": "끊기",
      "subtitle": "그건... 아니, 그게 아니라. 그이가 갑자기 하자고 해서 한 것뿐이라고요.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a black dress.\nACTION: 내연녀 stammers, looking extremely anxious.\nDIALOGUE: 내연녀 (panicked): \"그건... 아니, 그게 아니라. 그이가 갑자기 하자고 해서 한 것뿐이라고요.\"\nSETTING: Court hallway, daytime, bright fluorescent lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a black dress.\nACTION: 내연녀 stammers, looking extremely anxious.\nDIALOGUE: 내연녀 (panicked): \"그건... 아니, 그게 아니라. 그이가 갑자기 하자고 해서 한 것뿐이라고요.\"\nSETTING: Court hallway, daytime, bright fluorescent lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     }
    ]
   },
@@ -572,35 +578,35 @@
      "role": "후킹",
      "subtitle": "병원 지분도 다 내 거야. / 죽던 날까지 그 사람 거였어. / 계약서 못 봤어?",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 내연녀 in a black dress facing 본처 in a grey suit.\nACTION: 내연녀 glares stubbornly.\nDIALOGUE: 내연녀 (arrogant): \"병원 지분도 다 내 거야.\" / 본처 (cold): \"죽던 날까지 그 사람 거였어.\" / 내연녀 (mocking): \"계약서 못 봤어?\"\nSETTING: Courtroom interior, daytime, formal lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 내연녀 in a black dress facing 본처 in a grey suit.\nACTION: 내연녀 glares stubbornly.\nDIALOGUE: 내연녀 (arrogant): \"병원 지분도 다 내 거야.\" / 본처 (cold): \"죽던 날까지 그 사람 거였어.\" / 내연녀 (mocking): \"계약서 못 봤어?\"\nSETTING: Courtroom interior, daytime, formal lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 2,
      "role": "상황",
      "subtitle": "죽으면 나한테 주기로 약속했거든요. 그러니까 그 돈은 나한테 권리가 있죠.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a black dress.\nACTION: 내연녀 speaks confidently to the judge off-camera.\nDIALOGUE: 내연녀 (proud): \"죽으면 나한테 주기로 약속했거든요. 그러니까 그 돈은 나한테 권리가 있죠.\"\nSETTING: Courtroom interior, daytime, formal lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a black dress.\nACTION: 내연녀 speaks confidently to the judge off-camera.\nDIALOGUE: 내연녀 (proud): \"죽으면 나한테 주기로 약속했거든요. 그러니까 그 돈은 나한테 권리가 있죠.\"\nSETTING: Courtroom interior, daytime, formal lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 3,
      "role": "맞섬",
      "subtitle": "소유권 안 넘어갔어. / 이미 내 돈이나 마찬가지야. / 그건 빼돌린 재산일 뿐이야.",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a grey suit facing 내연녀 in a black dress.\nACTION: 본처 shakes her head firmly.\nDIALOGUE: 본처 (calm): \"소유권 안 넘어갔어.\" / 내연녀 (stubborn): \"이미 내 돈이나 마찬가지야.\" / 본처 (angry): \"그건 빼돌린 재산일 뿐이야.\"\nSETTING: Courtroom interior, daytime, formal lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a grey suit facing 내연녀 in a black dress.\nACTION: 본처 shakes her head firmly.\nDIALOGUE: 본처 (calm): \"소유권 안 넘어갔어.\" / 내연녀 (stubborn): \"이미 내 돈이나 마찬가지야.\" / 본처 (angry): \"그건 빼돌린 재산일 뿐이야.\"\nSETTING: Courtroom interior, daytime, formal lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 4,
      "role": "뒤집기",
      "subtitle": "죽기 전까진 네 거 아니었잖아. 우리 가족 돈을 네가 훔쳐 간 거라고.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a grey suit.\nACTION: 본처 points fiercely at her.\nDIALOGUE: 본처 (determined): \"죽기 전까진 네 거 아니었잖아. 우리 가족 돈을 네가 훔쳐 간 거라고.\"\nSETTING: Courtroom interior, daytime, formal lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a grey suit.\nACTION: 본처 points fiercely at her.\nDIALOGUE: 본처 (determined): \"죽기 전까진 네 거 아니었잖아. 우리 가족 돈을 네가 훔쳐 간 거라고.\"\nSETTING: Courtroom interior, daytime, formal lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 5,
      "role": "끊기",
      "subtitle": "아니야. 그이가 나 잘 살라고 남겨준 거야. 당신은 한 푼도 절대 못 건드려.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a black dress.\nACTION: 내연녀 clenches her fists defensively.\nDIALOGUE: 내연녀 (desperate): \"아니야. 그이가 나 잘 살라고 남겨준 거야. 당신은 한 푼도 절대 못 건드려.\"\nSETTING: Courtroom interior, daytime, formal lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a black dress.\nACTION: 내연녀 clenches her fists defensively.\nDIALOGUE: 내연녀 (desperate): \"아니야. 그이가 나 잘 살라고 남겨준 거야. 당신은 한 푼도 절대 못 건드려.\"\nSETTING: Courtroom interior, daytime, formal lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     }
    ]
   },
@@ -614,35 +620,35 @@
      "role": "후킹",
      "subtitle": "빚 많아서 다 뺏길걸? / 내 빚은 내가 알아서 해. / 돈 받아도 다 날아갈 텐데.",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 내연녀 in a stylish coat facing 본처 in a grey suit.\nACTION: 내연녀 smirks crossing her arms.\nDIALOGUE: 내연녀 (mocking): \"빚 많아서 다 뺏길걸?\" / 본처 (cold): \"내 빚은 내가 알아서 해.\" / 내연녀 (laughing): \"돈 받아도 다 날아갈 텐데.\"\nSETTING: Court hallway, daytime, bright fluorescent lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 내연녀 in a stylish coat facing 본처 in a grey suit.\nACTION: 내연녀 smirks crossing her arms.\nDIALOGUE: 내연녀 (mocking): \"빚 많아서 다 뺏길걸?\" / 본처 (cold): \"내 빚은 내가 알아서 해.\" / 내연녀 (laughing): \"돈 받아도 다 날아갈 텐데.\"\nSETTING: Court hallway, daytime, bright fluorescent lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 2,
      "role": "상황",
      "subtitle": "빚 갚느라 허덕이면서 무슨 소송이야. 차라리 다 포기하고 그냥 편하게 살지.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a stylish coat.\nACTION: 내연녀 shakes her head mockingly.\nDIALOGUE: 내연녀 (arrogant): \"빚 갚느라 허덕이면서 무슨 소송이야. 차라리 다 포기하고 그냥 편하게 살지.\"\nSETTING: Court hallway, daytime, bright fluorescent lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a stylish coat.\nACTION: 내연녀 shakes her head mockingly.\nDIALOGUE: 내연녀 (arrogant): \"빚 갚느라 허덕이면서 무슨 소송이야. 차라리 다 포기하고 그냥 편하게 살지.\"\nSETTING: Court hallway, daytime, bright fluorescent lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 3,
      "role": "맞섬",
      "subtitle": "포기할 줄 알았어? / 다 뺏기고 울지나 마. / 울게 되는 건 네가 될 거야.",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a grey suit facing 내연녀 in a stylish coat.\nACTION: 본처 glares unflinchingly.\nDIALOGUE: 본처 (calm): \"포기할 줄 알았어?\" / 내연녀 (mocking): \"다 뺏기고 울지나 마.\" / 본처 (determined): \"울게 되는 건 네가 될 거야.\"\nSETTING: Court hallway, daytime, bright fluorescent lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a grey suit facing 내연녀 in a stylish coat.\nACTION: 본처 glares unflinchingly.\nDIALOGUE: 본처 (calm): \"포기할 줄 알았어?\" / 내연녀 (mocking): \"다 뺏기고 울지나 마.\" / 본처 (determined): \"울게 되는 건 네가 될 거야.\"\nSETTING: Court hallway, daytime, bright fluorescent lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 4,
      "role": "뒤집기",
      "subtitle": "내가 빚더미에 앉아도 네가 훔친 돈은 다 뺏어. 넌 십 원도 못 가져가.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a grey suit.\nACTION: 본처 speaks with absolute certainty.\nDIALOGUE: 본처 (cold): \"내가 빚더미에 앉아도 네가 훔친 돈은 다 뺏어. 넌 십 원도 못 가져가.\"\nSETTING: Court hallway, daytime, bright fluorescent lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a grey suit.\nACTION: 본처 speaks with absolute certainty.\nDIALOGUE: 본처 (cold): \"내가 빚더미에 앉아도 네가 훔친 돈은 다 뺏어. 넌 십 원도 못 가져가.\"\nSETTING: Court hallway, daytime, bright fluorescent lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 5,
      "role": "끊기",
      "subtitle": "혼자 잘 살 줄 알았어? 이제 판사님이 전부 다 원래대로 돌려놓으실 거야.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a grey suit.\nACTION: 본처 turns around to leave.\nDIALOGUE: 본처 (confident): \"혼자 잘 살 줄 알았어? 이제 판사님이 전부 다 원래대로 돌려놓으실 거야.\"\nSETTING: Court hallway, daytime, bright fluorescent lighting.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a grey suit.\nACTION: 본처 turns around to leave.\nDIALOGUE: 본처 (confident): \"혼자 잘 살 줄 알았어? 이제 판사님이 전부 다 원래대로 돌려놓으실 거야.\"\nSETTING: Court hallway, daytime, bright fluorescent lighting.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     }
    ]
   },
@@ -656,35 +662,35 @@
      "role": "후킹",
      "subtitle": "십오억을 다 토해내라고? / 네가 도둑질한 대가야. / 이건 말도 안 되는 재판이야!",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 내연녀 in a crumpled coat facing 본처 in a neat grey suit.\nACTION: 내연녀 pulls her hair in frustration.\nDIALOGUE: 내연녀 (panicked): \"십오억을 다 토해내라고?\" / 본처 (calm): \"네가 도둑질한 대가야.\" / 내연녀 (shouting): \"이건 말도 안 되는 재판이야!\"\nSETTING: Outside the courthouse, daytime, bright sunlight.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 내연녀 in a crumpled coat facing 본처 in a neat grey suit.\nACTION: 내연녀 pulls her hair in frustration.\nDIALOGUE: 내연녀 (panicked): \"십오억을 다 토해내라고?\" / 본처 (calm): \"네가 도둑질한 대가야.\" / 내연녀 (shouting): \"이건 말도 안 되는 재판이야!\"\nSETTING: Outside the courthouse, daytime, bright sunlight.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 2,
      "role": "상황",
      "subtitle": "내가 옆에서 얼마나 고생했는데. 다 뺏어가면 나는 대체 어떻게 살라고!",
      "caption": "법원은 악의적 증여를 인정해 약 15억 원을 반환하라고 판결했다",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a crumpled coat.\nACTION: 내연녀 stomps her feet crying.\nDIALOGUE: 내연녀 (crying): \"내가 옆에서 얼마나 고생했는데. 다 뺏어가면 나는 대체 어떻게 살라고!\"\nSETTING: Outside the courthouse, daytime, bright sunlight.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 내연녀 in a crumpled coat.\nACTION: 내연녀 stomps her feet crying.\nDIALOGUE: 내연녀 (crying): \"내가 옆에서 얼마나 고생했는데. 다 뺏어가면 나는 대체 어떻게 살라고!\"\nSETTING: Outside the courthouse, daytime, bright sunlight.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 3,
      "role": "맞섬",
      "subtitle": "네가 알 바 아니지. / 절대 못 줘. 한 푼도 못 줘. / 압류 들어가면 알게 될걸.",
      "caption": "",
-     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a neat grey suit facing 내연녀 in a crumpled coat.\nACTION: 본처 looks at her with pity.\nDIALOGUE: 본처 (cold): \"네가 알 바 아니지.\" / 내연녀 (desperate): \"절대 못 줘. 한 푼도 못 줘.\" / 본처 (calm): \"압류 들어가면 알게 될걸.\"\nSETTING: Outside the courthouse, daytime, bright sunlight.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 본처 in a neat grey suit facing 내연녀 in a crumpled coat.\nACTION: 본처 looks at her with pity.\nDIALOGUE: 본처 (cold): \"네가 알 바 아니지.\" / 내연녀 (desperate): \"절대 못 줘. 한 푼도 못 줘.\" / 본처 (calm): \"압류 들어가면 알게 될걸.\"\nSETTING: Outside the courthouse, daytime, bright sunlight.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 4,
      "role": "뒤집기",
      "subtitle": "우리 가족 피눈물 흘리게 한 벌이야. 평생 그 죗값 치르면서 살라고.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a neat grey suit.\nACTION: 본처 speaks firmly, looking down on her.\nDIALOGUE: 본처 (determined): \"우리 가족 피눈물 흘리게 한 벌이야. 평생 그 죗값 치르면서 살라고.\"\nSETTING: Outside the courthouse, daytime, bright sunlight.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a neat grey suit.\nACTION: 본처 speaks firmly, looking down on her.\nDIALOGUE: 본처 (determined): \"우리 가족 피눈물 흘리게 한 벌이야. 평생 그 죗값 치르면서 살라고.\"\nSETTING: Outside the courthouse, daytime, bright sunlight.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     },
     {
      "n": 5,
      "role": "끊기",
      "subtitle": "이제야 모든 게 제자리로 돌아왔어. 남긴 빚 다 갚고 나 당당하게 살 거야.",
      "caption": "",
-     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a neat grey suit.\nACTION: 본처 smiles faintly, walking away.\nDIALOGUE: 본처 (relieved): \"이제야 모든 게 제자리로 돌아왔어. 남긴 빚 다 갚고 나 당당하게 살 거야.\"\nSETTING: Outside the courthouse, daytime, bright sunlight.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+     "prompt": "SHOT: Medium close-up, static camera, focusing on the character.\nSUBJECT: 본처 in a neat grey suit.\nACTION: 본처 smiles faintly, walking away.\nDIALOGUE: 본처 (relieved): \"이제야 모든 게 제자리로 돌아왔어. 남긴 빚 다 갚고 나 당당하게 살 거야.\"\nSETTING: Outside the courthouse, daytime, bright sunlight.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different actor."
     }
    ]
   }
@@ -694,5 +700,27 @@
   "episodes": 16,
   "cuts": 5,
   "sec": 6
- }
+ },
+ "_facing_fixed": [
+  "1화 3컷: '저 여자' → '당신' 으로 고쳤다 (맞은편 사람을 남 부르듯 했다) — 읽어 보십시오"
+ ],
+ "_soft_extra": [
+  "1화: 샷 크기가 2가지뿐이다 (3가지 이상이면 덜 밋밋하다) — ['medium close-up', 'medium two-shot']",
+  "2화: 샷 크기가 2가지뿐이다 (3가지 이상이면 덜 밋밋하다) — ['medium close-up', 'medium two-shot']",
+  "3화: 샷 크기가 2가지뿐이다 (3가지 이상이면 덜 밋밋하다) — ['medium close-up', 'medium two-shot']",
+  "4화: 샷 크기가 2가지뿐이다 (3가지 이상이면 덜 밋밋하다) — ['medium close-up', 'medium two-shot']",
+  "4화: 장소가 3곳이다 (두 곳까지가 안 튄다) — ['darkened living room', 'modern apartment living room', 'office room']",
+  "5화: 샷 크기가 2가지뿐이다 (3가지 이상이면 덜 밋밋하다) — ['medium close-up', 'medium two-shot']",
+  "6화: 샷 크기가 2가지뿐이다 (3가지 이상이면 덜 밋밋하다) — ['medium close-up', 'medium two-shot']",
+  "7화: 샷 크기가 2가지뿐이다 (3가지 이상이면 덜 밋밋하다) — ['medium close-up', 'medium two-shot']",
+  "8화: 샷 크기가 2가지뿐이다 (3가지 이상이면 덜 밋밋하다) — ['medium close-up', 'medium two-shot']",
+  "9화: 샷 크기가 2가지뿐이다 (3가지 이상이면 덜 밋밋하다) — ['medium close-up', 'medium two-shot']",
+  "10화: 샷 크기가 2가지뿐이다 (3가지 이상이면 덜 밋밋하다) — ['medium close-up', 'medium two-shot']",
+  "11화: 샷 크기가 2가지뿐이다 (3가지 이상이면 덜 밋밋하다) — ['medium close-up', 'medium two-shot']",
+  "12화: 샷 크기가 2가지뿐이다 (3가지 이상이면 덜 밋밋하다) — ['medium close-up', 'medium two-shot']",
+  "13화: 샷 크기가 2가지뿐이다 (3가지 이상이면 덜 밋밋하다) — ['medium close-up', 'medium two-shot']",
+  "14화: 샷 크기가 2가지뿐이다 (3가지 이상이면 덜 밋밋하다) — ['medium close-up', 'medium two-shot']",
+  "15화: 샷 크기가 2가지뿐이다 (3가지 이상이면 덜 밋밋하다) — ['medium close-up', 'medium two-shot']",
+  "16화: 샷 크기가 2가지뿐이다 (3가지 이상이면 덜 밋밋하다) — ['medium close-up', 'medium two-shot']"
+ ]
 }

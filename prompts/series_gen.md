@@ -1,6 +1,6 @@
 # series_gen.md — 시리즈 대본 프롬프트 (구글 영상 제작용)
 
-> **버전** v2.0 · 2026-08-20
+> **버전** v2.1 · 2026-08-20
 > **용도** 판례 1건 → 30초짜리 16화 시리즈 (매일 1화 발행, 16일 뒤 8분 롱폼)
 > **호출 위치** `src/series.py` (관리자 페이지 [시리즈 만들기])
 > **모델** Gemini (운영자 지시, 2026-08-18)
@@ -296,9 +296,35 @@ caption: 사망 두 달 전, 병원 지분 12억이 동거녀 앞으로 넘어�
 
 # 등장인물
 
-`characters` 에 **3명 이하**로 적는다. 각자 `flow_prompt` 는 얼굴을 만들 때 한 번만
-쓰는 설명이다(한 문장~두 문장, 나이·얼굴 특징·머리·표정·`Photorealistic, natural
-skin texture, Korean TV drama realism.` 로 끝).
+`characters` 에 **3명 이하**로 적는다.
+
+### `flow_prompt` — 이 사람이 어떻게 생겼는가
+
+⚠️ 2026-08-20 — 여기가 **25낱말짜리**여서 캐릭터를 만들 때마다 배경도 자세도
+제멋대로 나왔다. 우리 프로그램이 배경·자세·화면잡기·빛·금지사항을 자동으로
+붙여 주므로, 여기에는 **생김새만** 적되 **빠짐없이** 적는다.
+
+다음을 **전부** 넣는다 (영어, 쉼표로 이어서):
+
+```
+Korean woman, 52 years old,
+얼굴형 (oval / square / round / sharp V-line),
+눈 (tired eyes with fine lines / sharp confident eyes / small deep-set eyes),
+코·입 (modest nose, thin lips / straight nose, full lips),
+피부 (dull skin with visible pores, faint age spots / clear but tired skin),
+머리 (dark brown hair in a low bun, greying at the temples / long wavy dyed brown hair),
+몸 (slight build, slightly stooped shoulders / average build, straight posture),
+표정 (worn calm expression / arrogant expression)
+```
+
+**나이와 얼굴형·눈·머리는 반드시** 넣는다 — 이 넷이 없으면 매번 딴사람이 나온다.
+`Photorealistic…` 같은 화풍 문구는 **적지 않는다** (우리가 붙인다).
+
+### `face_tag` · `outfit` — 컷마다 똑같이 붙일 것
+
+`face_tag` 는 위 설명에서 **가장 눈에 띄는 대여섯 낱말**만 뽑은 것이다
+(예: `52, oval face, tired eyes, low bun`). 컷마다 이름 뒤에 붙는다.
+`outfit` 은 **색까지** 정한 옷차림이다.
 
 이름은 **관계**로 짓는다 (며느리 · 시동생 · 시어머니). 실명은 쓰지 않는다.
 
@@ -421,6 +447,7 @@ SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 
 - [ ] **서로 몸이 닿는 동작**이 한 컷도 없는가 (손이 옷 속으로 녹아든다)
 - [ ] 모든 화에 `hook` 이 있는가 (화면 맨 위에 붙는 한 줄 · 20자 이내)
 - [ ] 인물마다 `outfit`(색까지) 과 `face_tag`(짧게) 를 정했는가
+- [ ] `flow_prompt` 에 **나이·얼굴형·눈·코입·피부·머리·몸·표정**이 다 들어갔는가
 - [ ] 같은 인물의 `SUBJECT` 가 **모든 컷에서 한 글자도 같은가** (다르면 딴사람이 나온다)
 - [ ] 한 화에 `SHOT` 크기가 **세 가지 이상** 섞였는가 (5컷은 클로즈업)
 - [ ] `SETTING` 이 한 화에 **두 곳 이내**이고, 바뀌는 컷에 `caption` 을 달았는가

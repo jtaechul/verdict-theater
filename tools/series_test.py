@@ -231,6 +231,35 @@ S.check(d)
 ck("샷이 단조로우면 알려 준다", any("샷 크기" in w for w in S.soft(d)))
 ck("그렇다고 16화를 버리지는 않는다 (샷)", S.check(d) == [], str(S.check(d))[:60])
 
+print("\n⑭ 인물 기준 사진 프롬프트를 풀세트로 채우는가 (2026-08-20 운영자 지시)")
+import charsheet as CS
+sheet, desc = CS.build({"name": "본처",
+                        "flow_prompt": "Korean woman, 52 years old, oval face, "
+                                       "tired eyes. Photorealistic, natural skin "
+                                       "texture, Korean TV drama realism.",
+                        "outfit": "a moss-green cardigan",
+                        "face_tag": "52, oval face"})
+ck("짧은 옛 설명도 풀세트로 늘어난다", len(sheet.split()) >= 90, f"{len(sheet.split())}낱말")
+for k in ("POSE:", "FRAMING:", "BACKGROUND:", "LIGHT:", "LOOK:", "Avoid:"):
+    ck(f"{k} 가 들어간다", k in sheet)
+ck("빈 배경을 못 박는다", "completely empty" in sheet)
+ck("옷차림이 들어간다", "moss-green cardigan" in sheet)
+ck("옛 화풍 문구는 지운다", "Photorealistic, natural skin texture, Korean TV" not in sheet)
+ck("캐릭터 설명은 짧게 따로", 0 < len(desc.split()) <= 40 and desc.startswith("본처 —"), desc[:52])
+
+d = good_doc()
+d["characters"] = [{"name": "며느리", "flow_prompt": "Korean woman, 50 years old, oval face."}]
+S.normalize(d)
+ck("대본에 자동으로 채워진다", bool(d["characters"][0].get("flow_sheet")))
+ck("설명도 함께 채워진다", bool(d["characters"][0].get("flow_desc")))
+before = d["characters"][0]["flow_sheet"]
+S.normalize(d)
+ck("이미 있으면 덮어쓰지 않는다", d["characters"][0]["flow_sheet"] == before)
+
+_pr = (ROOT / "prompts" / "series_gen.md").read_text(encoding="utf-8")
+ck("프롬프트가 생김새를 빠짐없이 적으라고 한다",
+   "얼굴형" in _pr and "머리" in _pr and "표정" in _pr)
+
 print("\n⑬ 고정 문구를 글자로 베껴 두지 않았는가")
 # ⚠️ 2026-08-20 — STYLE·Avoid 를 손봤더니 시험과 프롬프트 예시가 옛 글자를
 #    베껴 두고 있어 80컷이 통째로 걸렸다. 코드에서 가져오는지 확인한다.
