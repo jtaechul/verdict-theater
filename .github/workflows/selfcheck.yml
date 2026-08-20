@@ -86,6 +86,13 @@ jobs:
           sudo apt-get install -y ffmpeg >/dev/null 2>&1 || true
           python3 tools/clip_test.py
 
+      # ⭐ 2026-08-20 운영자: "상단 검은 빈 프레임에는 후킹 문구, 아래쪽
+      #    검은 빈 프레임에는 자막" — 글자가 제자리에만 있는지 픽셀로 잰다.
+      - name: 쇼츠 배치(후킹·영상·자막)가 제자리인가
+        run: |
+          python3 -m pip install --quiet pillow 2>/dev/null || true
+          python3 tools/shorts_test.py
+
       - name: 관리자 페이지가 안 깨지는가
         run: |
           node tools/check_admin.mjs
