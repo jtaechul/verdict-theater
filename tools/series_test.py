@@ -103,8 +103,14 @@ ck("5컷이 아니면 잡는다", any("컷이 3개" in b for b in S.check(d)))
 
 d = good_doc()
 d["episodes"][0]["cuts"][0]["prompt"] = good_prompt(
-    '시동생 says in Korean: "이 집은 이제 저희 것이니 나가 주셔야 하겠습니다."')
-ck(f"대사가 {S.DIA_MAX}자를 넘으면 잡는다", any("대사가" in b for b in S.check(d)))
+    '시동생 says in Korean: "이 집은 이제 저희 것이니 지금 당장 나가 주셔야 하겠습니다."')
+ck(f"대사가 {S.DIA_TOTAL}자를 넘으면 잡는다", any("다 합치면" in b for b in S.check(d)))
+
+# ⚠️ 한 글자 차이로 멀쩡한 대사 둘을 막았다. 실제로 나왔던 그 대사를 넣어 둔다.
+d = good_doc()
+d["episodes"][0]["cuts"][0]["prompt"] = good_prompt(
+    '본처 says in Korean, firm: "악의적 증여는 시효 상관없이 다 토해내야 해."')
+ck("25자짜리 실제 드라마 대사는 통과시킨다", S.check(d) == [], str(S.check(d))[:70])
 
 d = good_doc()
 d["episodes"][4]["recap"] = ""
