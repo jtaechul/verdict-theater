@@ -431,8 +431,11 @@ function seriesRender() {
     h += '<div class="pbox"><div class="pname">' + c.n + '컷 · ' + esc(c.role || '')
        + ' <span style="color:#9599ab;font-weight:400">(' + sp.sec + '초)</span></div>';
     h += '<div style="color:#c8cbd6;font-size:14px;margin:6px 0">' + esc(say) + '</div>';
-    if (c.subtitle) h += '<div style="color:#c6a04a;font-size:13px;margin-bottom:6px">'
-                       + '얹을 자막: ' + esc(c.subtitle) + '</div>';
+    if (c.subtitle) h += '<div style="color:#c6a04a;font-size:13px;margin-bottom:4px">'
+                       + '대사 자막: ' + esc(c.subtitle) + '</div>';
+    // 설명 자막 — 숫자·법률처럼 입으로 하면 어색한 사실을 우리가 화면에 얹는다
+    if (c.caption) h += '<div style="color:#8fb0f0;font-size:13px;margin-bottom:6px">'
+                      + '설명 자막: ' + esc(c.caption) + '</div>';
     h += '<div class="ptext" id="' + pid + '">' + esc(c.prompt || '') + '</div>'
        + mini('이 컷 프롬프트 복사', 'copyText(\\'' + pid + '\\',\\'' + c.n + '컷\\')', 'gold')
        + '</div>';

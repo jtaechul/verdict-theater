@@ -68,10 +68,31 @@ RECAP_MAX = 30
 #    한국어는 초당 약 5자. 6초 클립에서 앞뒤 숨 쉴 틈을 빼면 약 5.5초를 말하니
 #    **한 컷에 28자**까지 들어간다. 두 사람이면 각 14자씩 — 실제 드라마 한
 #    합이 딱 그 길이다("이 집, 이제 저희 겁니다." 14자).
-DIA_TOTAL = 28         # 한 컷 대사를 다 합친 길이 (혼자 말하면 이걸 다 써도 된다)
-TALKERS_MAX = 2        # 한 컷에 말하는 사람 (6초에 세 명은 뭉갠다)
+# ⚠️ 2026-08-20 (세 번째) 손님: "대사가 너무 적어. 말도 어색해. 구어체가
+#    아닌 것 같고 실제 같지 않아."  — 재봤더니 또 맞았다.
+#      · 대사 112줄 / 80컷 = 컷당 1.4줄 (거의 한 마디씩만 하고 끝난다)
+#      · 대사 20줄(18%)에 법률·서류 용어가 들어 있다
+#        ("대법원 판례상 사망보험금은 내 거야." — 싸우면서 이렇게 말하는 사람은 없다)
+#    까닭: 사실을 전할 통로가 대사밖에 없어서 입에 다 밀어 넣었다.
+#    그래서 ① 주고받는 횟수를 늘리고 ② 사실은 '설명 자막(caption)' 이 지게 한다.
+# ⚠️ 여기서 **재는 단위 자체가 틀렸다**는 것을 찾았다.
+#    나는 '글자 수'로 재고 있었는데, 공백·쉼표·물음표는 **소리가 나지 않는다.**
+#      "여기가 어디라고 뻔뻔하게 와?"  = 16자지만 실제 소리는 12음절
+#    실제 대본 112줄을 재보니 글자 수가 소리보다 1.44배 많았다.
+#    그래서 28자로 막았던 것은 실제로는 19음절 = 약 3.5초뿐 — 6초 클립이
+#    늘 반쯤 비어 있었다. 손님이 "대사가 너무 적어" 라고 한 것이 이것이다.
+#    이제 **음절로 센다.** 한국어 드라마 대사는 초당 5~6음절이고, 6초 중
+#    5.5초를 말하니 약 30음절이 들어간다.
+def syl(t):
+    """실제로 소리 나는 것만 센다 — 공백·쉼표·물음표는 시간을 안 잡아먹는다."""
+    return len(re.findall(r"[가-힣]", t or ""))
+
+
+DIA_SYL_MAX = 30       # 한 컷 대사 총합 (30음절 ≈ 5.5초 — 6초에 들어간다)
+DIA_SYL_MIN = 12       # 이보다 적으면 6초가 대부분 빈다 (12음절 ≈ 2.2초)
+TALKERS_MAX = 3        # 한 컷에 말을 주고받는 횟수 ("뭐?" "들었잖아." "야!")
 TALK_MIN = 2           # 한 화 5컷 중 **주고받는 컷**이 최소 몇 컷이어야 하는가
-SUB_MAX = 40           # 자막은 두 사람 대사를 다 담아야 한다 (' / ' 로 나눈다)
+SUB_MAX = 60           # 자막은 주고받은 대사를 다 담아야 한다 (' / ' 로 나눈다)
 
 # 프롬프트 6줄 규격 — 이 순서, 이 이름이 아니면 반려한다
 LINES = ["SHOT:", "SUBJECT:", "ACTION:", "DIALOGUE:", "SETTING:", "STYLE:", "Avoid:"]
@@ -199,6 +220,14 @@ def normalize(doc):
 #    반려가 아니라 **손볼 곳**으로 알려 준다.
 SPOKEN_BAN = ["내연녀", "내연남", "상간녀", "상간남", "피상속인"]
 
+# 서류·판결문에나 쓰는 말. 싸우는 사람 입에서 나오면 즉시 가짜가 된다.
+# ⚠️ 한두 줄은 봐준다(법정 장면에서는 실제로 나온다). 대사 전체가 법률
+#    설명이 되어 버리는 것을 막는 것이 목적이므로 **줄 수로** 센다.
+STIFF = ["유류분", "한정승인", "상속재산", "상속액", "판례", "시효", "증여",
+         "물가상승률", "반환청구", "귀책", "고유재산", "사망보험금", "악의적",
+         "청구권", "소명", "입증", "채권자", "피고", "원고"]
+STIFF_MAX = 5          # 이보다 많으면 대본 전체가 법률 설명이라는 뜻
+
 
 def soft(doc):
     """버릴 것까진 아니지만 사람이 한 번 봐야 할 곳."""
@@ -221,6 +250,8 @@ def soft(doc):
 def check(doc):
     """규격을 어긴 곳을 전부 찾아 돌려준다. 하나라도 있으면 저장하지 않는다."""
     bad = []
+    stiff_lines = 0            # 법률·서류 말투가 들어간 대사 줄 수
+    stiff_hits = set()
     eps = doc.get("episodes") or []
     if len(eps) != EPISODES:
         bad.append(f"화 수가 {len(eps)}개다 (있어야 할 것 {EPISODES}개)")
@@ -268,13 +299,20 @@ def check(doc):
             for line in p.split("\n"):
                 if line.startswith("DIALOGUE:"):
                     says += re.findall(r'"([^"]*)"', line)
-            total = sum(len(x) for x in says)
-            if total > DIA_TOTAL:
-                bad.append(f"{tag}: 대사를 다 합치면 {total}자다 "
-                           f"({DIA_TOTAL}자 이내 — 6초에 안 들어간다)")
+            total = sum(syl(x) for x in says)
+            if total > DIA_SYL_MAX:
+                bad.append(f"{tag}: 대사가 다 합쳐 {total}음절이다 "
+                           f"({DIA_SYL_MAX}음절 이내 — {total / 5.5:.1f}초라 6초에 "
+                           f"안 들어간다)")
             if len(says) > TALKERS_MAX:
                 bad.append(f"{tag}: 한 컷에서 {len(says)}번 말한다 "
                            f"({TALKERS_MAX}번 이내 — 6초에 그 이상은 뭉개진다)")
+            if says and total < DIA_SYL_MIN:
+                bad.append(f"{tag}: 대사가 다 합쳐 {total}음절뿐이다 "
+                           f"({DIA_SYL_MIN}음절 이상 — {total / 5.5:.1f}초라 6초가 "
+                           f"거의 빈다) — {' / '.join(says)}")
+            stiff_hits.update(w for x in says for w in STIFF if w in x)
+            stiff_lines += sum(1 for x in says if any(w in x for w in STIFF))
             if len(says) >= 2:
                 talk += 1
             if len(c.get("subtitle") or "") > SUB_MAX:
@@ -296,6 +334,14 @@ def check(doc):
         if cuts and talk < TALK_MIN:
             bad.append(f"{no}화: 두 사람이 주고받는 컷이 {talk}컷뿐이다 "
                        f"({TALK_MIN}컷 이상 — 혼잣말만 이으면 이야기가 안 굴러간다)")
+
+    # ⭐ 대사가 법률 설명을 대신 지고 있으면 말이 통째로 가짜가 된다
+    #    (2026-08-20 손님: "말도 어색해. 구어체가 아닌 것 같고 실제 같지 않아.")
+    #    법정 장면 한두 줄은 봐준다 — 대본 전체가 설명이 되는 것만 막는다.
+    if stiff_lines > STIFF_MAX:
+        bad.append(f"대사 {stiff_lines}줄이 서류·판결문 말투다 "
+                   f"({STIFF_MAX}줄까지만) — {', '.join(sorted(stiff_hits))} · "
+                   f"사실은 설명 자막(caption)이 지고, 입은 감정만 말한다")
     return bad
 
 

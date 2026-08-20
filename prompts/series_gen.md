@@ -1,6 +1,6 @@
 # series_gen.md — 시리즈 대본 프롬프트 (구글 영상 제작용)
 
-> **버전** v1.3 · 2026-08-20
+> **버전** v1.4 · 2026-08-20
 > **용도** 판례 1건 → 30초짜리 16화 시리즈 (매일 1화 발행, 16일 뒤 8분 롱폼)
 > **호출 위치** `src/series.py` (관리자 페이지 [시리즈 만들기])
 > **모델** Gemini (운영자 지시, 2026-08-18)
@@ -87,8 +87,12 @@ Avoid: on-screen text, signage, documents with visible writing, screens, backgro
 **한 컷에 28자**가 들어간다. 두 사람이면 각 14자씩 — 실제 드라마 한 합이
 딱 그 길이다.
 
-- **한 컷 대사 총합 28자 이내** (혼자 말하는 컷이면 한 사람이 28자를 다 써도 된다)
-- 한 컷에 말하는 횟수는 **최대 2번** (6초에 세 번은 뭉개진다)
+- **한 컷 대사 총합 12~30음절.** 공백·쉼표는 소리가 안 나므로 **음절로 센다.**
+  (`"여기가 어디라고 뻔뻔하게 와?"` = 12음절 · 약 2.2초)
+  한국어 드라마 대사는 초당 5~6음절이고 6초 중 5.5초를 말하니 **30음절**이
+  들어간다. **20음절 아래면 화면이 빈다** — 한 마디 던지고 끝내지 않는다.
+- 한 컷에 주고받는 횟수는 **최대 3번** (`"뭐?"` `"들었잖아."` `"야, 너!"` 처럼
+  짧게 세 번 오가는 것이 가장 실제 같다)
 - **한 화 5컷 중 최소 2컷은 두 사람이 주고받는다.** 특히 `맞섬`·`뒤집기` 는
   받아치는 말이 있어야 장면이 뒤집힌다.
 - 5자짜리 반응만 던지지 않는다 (`"뭐라고요?"` 같은 것 하나로 6초를 채우지 않는다).
@@ -98,16 +102,71 @@ Avoid: on-screen text, signage, documents with visible writing, screens, backgro
 
 ```
 SHOT: Medium two-shot, static camera, both faces visible.
-DIALOGUE: 시동생 (cold): "이 집, 이제 저희 겁니다." / 며느리 (trembling): "무슨 소리예요, 그게."
+DIALOGUE: 시동생 (cold): "이 집, 오늘 안에 비워 주세요." / 며느리 (trembling): "그이 장례가 어제였어요. 지금 그 말이 나와요?"
 ```
 
 혼자 말하는 컷은 이렇게 쓴다 (한 화에 세 컷까지):
 
 ```
-DIALOGUE: 며느리 (barely holding back): "그이 관 앞에서 할 소리는 아니잖아요."
+DIALOGUE: 며느리 (barely holding back): "그이 관 앞에서 할 소리는 아니잖아요. 부끄럽지도 않으세요?"
 ```
 
-`subtitle` 에는 두 사람 대사를 ` / ` 로 이어 그대로 적는다 (40자 이내).
+`subtitle` 에는 주고받은 대사를 ` / ` 로 이어 그대로 적는다 (60자 이내).
+
+## ⭐⭐ 사람이 실제로 하는 말로 쓴다 (2026-08-20 · 가장 중요)
+
+앞서 만든 대본을 손님이 이렇게 물렀다 — **"말도 어색해. 구어체가 아닌 것 같고
+실제 같지 않아."** 재보니 대사 112줄 중 20줄(18%)이 서류·판결문 말투였다.
+
+까닭은 분명하다. **사실을 전할 통로가 대사밖에 없어서 입에 다 밀어 넣었다.**
+
+### 대사에 절대 넣지 않는 말
+
+`유류분` `한정승인` `상속재산` `상속액` `판례` `시효` `증여` `물가상승률`
+`반환청구` `귀책` `고유재산` `사망보험금` `악의적` `청구권` `입증` `채권자`
+
+싸우는 사람은 이렇게 말하지 않는다. 이 사실들은 **`caption`(설명 자막)** 이
+대신 진다. 입은 **감정만** 말한다.
+
+### 실제로 이렇게 바꾼다
+
+| ✗ 서류 말투 (앞서 나온 것) | ○ 사람 말 |
+|---|---|
+| "대법원 판례상 사망보험금은 내 거야." | "그 돈은 내 거야. 법이 그래." |
+| "난 한정승인으로 당당하게 맞설 거야." | "빚? 그건 내가 알아서 해." |
+| "악의적 증여는 시효 상관없이 다 토해내야 해." | "몰래 빼돌린 건 몇 년이 지나도 안 없어져." |
+| "사망 당시 재산이니까, 당연히 상속재산이야." | "그이 죽던 날까지 그이 거였잖아." |
+| "병원 지분 십이억도 네가 챙겼더라?" | "병원까지 손댔어? 진짜 끝까지 가네." |
+| "매월 이천만 원씩 보험료를 냈더라?" | "그 돈이 매달 어디로 빠져나갔는지 알아?" |
+
+### 구어체로 만드는 것들
+
+- **조사를 뺀다** — ○ `"그 돈 어디 있어."` / ✗ `"그 돈이 어디에 있습니까."`
+- **말끝을 살린다** — `-잖아` `-거든` `-는데` `-더라고` `-란 말이야` `-냐고`
+- **군말을 넣는다** — `야,` `아니,` `됐고,` `그러니까,` `무슨 소리야,`
+- **되묻고 끊는다** — `"뭐?"` `"뭐라고 했어?"` `"그러니까 네 말은—"`
+- **말을 끝까지 안 맺어도 된다** — `"그건... 아니, 그게 아니라."`
+- **숫자는 되도록 입에 담지 않는다.** 꼭 필요하면 `"십오억"` 처럼 뭉뚱그린다.
+  자릿수까지 또박또박 말하면 사람이 아니라 서류가 말하는 것처럼 들린다.
+
+### `caption` — 사실은 여기에 적는다
+
+컷마다 `caption` 을 **비워 두거나 한 줄** 적는다. 숫자·법률·경위처럼 시청자가
+알아야 하지만 **입으로 하면 어색한 것**을 여기 적는다. 우리 프로그램이 화면
+아래에 자막으로 얹는다(영상 안에 글자를 넣는 것이 아니다).
+
+```
+DIALOGUE: 아내 (furious): "병원까지 손댔어? 진짜 끝까지 가네." / 동거녀 (flat): "그이가 준 거야. 내가 뺏은 게 아니라."
+caption: 사망 두 달 전, 병원 지분 12억이 동거녀 앞으로 넘어갔다
+```
+
+위 `DIALOGUE` 는 28음절 — 6초를 꽉 채운다. 아래처럼 짧게 끝내면 화면이 빈다:
+
+```
+✗ DIALOGUE: 아내 (furious): "병원까지 손댔어?"        ← 9음절 · 1.6초뿐
+```
+
+대사가 감정을 지고, 자막이 사실을 진다. **둘을 한 입에 넣지 않는다.**
 
 - 화면비·해상도를 쓰지 않는다. 그건 설정에서 정한다.
 - **대사에 배역 딱지를 쓰지 않는다.** `내연녀` `상간녀` `피상속인` 같은 말은
@@ -203,8 +262,9 @@ skin texture, Korean TV drama realism.` 로 끝).
         {
           "n": 1,
           "role": "후킹",
-          "subtitle": "\"이 집, 이제 저희 겁니다.\"",
-          "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.\nACTION: 시동생 holds out a closed folder toward 며느리, who does not take it.\nDIALOGUE: 시동생 (calm and cold): \"이 집, 이제 저희 겁니다.\" / 며느리 (trembling): \"무슨 소리예요, 그게.\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
+          "subtitle": "\"이 집, 오늘 안에 비워 주세요.\" / \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"",
+          "caption": "장례를 치른 다음 날, 시동생이 집을 요구했다",
+          "prompt": "SHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.\nACTION: 시동생 holds out a closed folder toward 며느리, who does not take it.\nDIALOGUE: 시동생 (calm and cold): \"이 집, 오늘 안에 비워 주세요.\" / 며느리 (trembling): \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: Korean TV drama realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: on-screen text, signage, documents with visible writing, screens, background extras in focus."
         }
       ]
     }
@@ -219,7 +279,8 @@ skin texture, Korean TV drama realism.` 로 끝).
 | `episodes` | **정확히 16개**, `no` 는 1~16 |
 | `cuts` | 각 화 **정확히 5개**, `n` 은 1~5 |
 | `role` | 1~5 순서대로 `후킹` `상황` `맞섬` `뒤집기` `끊기` |
-| `subtitle` | 화면에 우리가 얹을 자막. **30자 이내.** 대사면 따옴표로 감싼다 |
+| `subtitle` | 화면에 우리가 얹을 **대사 자막**. **60자 이내.** 주고받으면 ` / ` 로 잇는다 |
+| `caption` | 화면에 우리가 얹을 **설명 자막** (없으면 빈 문자열). 숫자·법률·경위처럼 입으로 하면 어색한 사실을 여기 적는다. 40자 이내 |
 | `prompt` | 위 6줄 규격 그대로. 줄바꿈은 `\n` |
 | `recap` | 2화부터 채운다. 지난 줄거리 한 줄, **30자 이내** (1화는 빈 문자열) |
 | `characters` | 3명 이하 |
@@ -234,7 +295,10 @@ skin texture, Korean TV drama realism.` 로 끝).
 - [ ] 모든 `prompt` 에 `STYLE:` 줄이 **글자 그대로 똑같이** 들어갔는가
 - [ ] 문서·간판·화면처럼 **글자가 나올 물건**을 부른 컷이 하나도 없는가
 - [ ] 대사가 있는 컷은 말하는 사람이 화면 안에 있는가
-- [ ] 한 컷 대사 총합이 **28자 이내**인가
+- [ ] 한 컷 대사 총합이 **12~30음절**인가 (한 마디 던지고 끝내지 않았는가)
+- [ ] 대사에 `유류분` `한정승인` `시효` 같은 **서류 말투**가 없는가
+- [ ] 숫자·법률·경위는 `caption` 이 지고 있는가 (입은 감정만 말하는가)
+- [ ] 소리 내어 읽었을 때 **사람이 실제로 하는 말**로 들리는가
 - [ ] **모든 화에 주고받는 컷이 2컷 이상** 있는가 (혼잣말만 이어 붙이지 않았는가)
 - [ ] 주고받는 컷의 `SHOT` 이 two-shot 인가
 - [ ] 대사에 `내연녀` 같은 **배역 딱지**가 들어간 곳이 없는가
