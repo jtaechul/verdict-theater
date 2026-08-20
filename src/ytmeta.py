@@ -83,8 +83,11 @@ def make(doc, no):
     # 대본이 정해 준 것이 있으면 그것으로 (다음 대본부터 들어온다)
     title = clean(ep.get("yt_title"))
     if not title:
-        head = hook or line or series
-        title = f"{head} ({no}/{total})"
+        title = hook or line or series
+    # ⭐ 몇 화인지는 **우리가** 붙인다. 대본에 적지 말라고 일러 두었으므로
+    #    yt_title 을 그대로 쓰는 경우에도 여기서 붙어야 한다.
+    if f"({no}/" not in title:
+        title = f"{title} ({no}/{total})"
     if "#shorts" not in title.lower():
         if len(title) + 8 <= TITLE_MAX:
             title += " #shorts"

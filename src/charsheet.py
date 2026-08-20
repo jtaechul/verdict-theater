@@ -60,6 +60,31 @@ def split_who(t):
     return t, ""
 
 
+# ⭐ 컷마다 붙일 **얼굴 못** (2026-08-20)
+#    첫 영상에서 남편이 컷마다 다른 배우 얼굴로 나왔다. 컷 프롬프트의
+#    SUBJECT 줄에 이름만 있으면 영상 만드는 쪽이 매번 새 얼굴을 뽑는다.
+#    그래서 이름 뒤에 **짧은 얼굴 설명**을 괄호로 붙인다 — 나이 + 얼굴 + 머리.
+#    길면 컷 프롬프트가 무거워지므로 60글자 안쪽으로 자른다.
+FACE_MAX = 60
+
+
+def face_of(ch):
+    """인물 하나 → 이름 뒤에 붙일 짧은 얼굴 설명 ('52, oval face, low bun')."""
+    who, look = split_who(ch.get("flow_prompt"))
+    parts = [p.strip(" .") for p in look.split(",") if p.strip(" .")]
+    age = re.search(r"(\d+)\s*years?\s*old", who or "")
+    face = next((p for p in parts if "face" in p.lower()), "")
+    hair = next((p for p in parts if "hair" in p.lower()), "")
+    bits = ([age.group(1)] if age else []) + [x for x in (face, hair) if x]
+    if not bits:
+        bits = parts[:2]
+    out = ", ".join(bits)
+    while len(out) > FACE_MAX and len(bits) > 1:
+        bits.pop()
+        out = ", ".join(bits)
+    return out[:FACE_MAX].strip(" ,")
+
+
 def build(ch):
     """인물 하나 → (기준 사진 프롬프트, 캐릭터 설명 한 줄)."""
     name = (ch.get("name") or "").strip()
@@ -93,9 +118,14 @@ def build(ch):
 
 
 def fill(doc):
-    """대본의 인물표에 flow_sheet · flow_desc 를 채워 넣는다 (이미 있으면 둔다)."""
+    """인물표에 face_tag · flow_sheet · flow_desc 를 채워 넣는다 (있으면 둔다)."""
     n = 0
     for ch in doc.get("characters") or []:
+        if not (ch.get("face_tag") or "").strip():
+            f = face_of(ch)
+            if f:
+                ch["face_tag"] = f
+                n += 1
         if not (ch.get("flow_sheet") or "").strip():
             ch["flow_sheet"], d = build(ch)
             if not (ch.get("flow_desc") or "").strip():

@@ -46,6 +46,9 @@ def good_doc():
     for i in range(1, S.EPISODES + 1):
         eps.append({
             "no": i, "title": f"{i}화", "recap": "" if i == 1 else "지난 이야기 한 줄",
+            # 후킹·유튜브 제목은 모델이 반드시 내야 하는 칸이다 (2026-08-20)
+            "hook": f"{i}화에서 통장이 비어 있었다",
+            "yt_title": f"{i}화 — 남편이 통장을 비우고 집을 나갔습니다",
             "cuts": [{"n": n, "role": S.ROLES[n - 1], "subtitle": '"짧은 자막"',
                       # 3·4컷은 주고받는다 — 혼잣말만 이으면 이야기가 안 굴러간다
                       "prompt": good_prompt(TALK) if n in (3, 4)

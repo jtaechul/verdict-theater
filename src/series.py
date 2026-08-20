@@ -216,6 +216,42 @@ AVOID_FIX = ("Avoid: on-screen text, signage, documents with visible writing, "
              "swapping in a different actor.")
 
 
+def fix_subject_dup(doc):
+    """SUBJECT 줄에서 **같은 사람이 두 번** 나오는 것을 지운다.
+
+    ⚠️ 모델이 실제로 이렇게 썼다 (S001 13줄) —
+         `남편 in a black suit facing 본처 in a grey blouse facing 남편 in a black suit.`
+       A가 B를 보는데 다시 A를 본다는 말이다. 영상 만드는 쪽이 이걸 보면
+       사람이 셋인 줄 알고 **한 명을 더 그려 넣는다.** 앞의 것만 남긴다.
+    """
+    names = sorted([(c.get("name") or "").strip()
+                    for c in (doc.get("characters") or []) if (c.get("name") or "").strip()],
+                   key=len, reverse=True)
+    n = 0
+    for e in doc.get("episodes") or []:
+        for c in e.get("cuts") or []:
+            lines = (c.get("prompt") or "").split("\n")
+            for i, l in enumerate(lines):
+                if not l.startswith("SUBJECT:"):
+                    continue
+                body = l[len("SUBJECT:"):].strip()
+                dot = "." if body.endswith(".") else ""
+                parts = re.split(r"\s+facing\s+", body.rstrip("."))
+                seen, keep = set(), []
+                for pt in parts:
+                    who = next((nm for nm in names if pt.strip().startswith(nm)),
+                               pt.strip()[:12])
+                    if who in seen:
+                        continue
+                    seen.add(who)
+                    keep.append(pt.strip())
+                new = "SUBJECT: " + " facing ".join(keep) + dot
+                if new != l:
+                    lines[i], n = new, n + 1
+            c["prompt"] = "\n".join(lines)
+    return n
+
+
 def fix_outfits(doc):
     """모든 컷에서 같은 인물은 **그 화 안에서 똑같은 옷**을 입게 만든다.
 
@@ -260,8 +296,13 @@ def fix_outfits(doc):
                 continue
             v = []
             for c in cuts:
-                m = re.search(rf"{re.escape(nm)}(?:\([^)]*\))?\s+in\s+([^,.]*)",
-                              subj_of(c))
+                # ⚠️ 여기서 `([^,.]*)` 로 끝까지 먹으면
+                #    "본처 in a cardigan facing 남편 in a jacket" 에서
+                #    본처의 옷이 **"a cardigan facing 남편 in a jacket"** 이 된다.
+                #    그대로 되돌려 넣으면 `facing …` 이 한 줄에 네 번 겹친다
+                #    (실제로 S001 17줄이 이렇게 망가졌다). `facing` 에서 끊는다.
+                m = re.search(rf"{re.escape(nm)}(?:\([^)]*\))?\s+in\s+"
+                              rf"([^,.]*?)(?=\s+facing\s|[,.]|$)", subj_of(c))
                 if m:
                     v.append(m.group(1).strip())
             if v:
@@ -299,6 +340,95 @@ def to_you(text, word):
     def rep(m):
         return "당신" + JOSA.get(m.group(1) or "", m.group(1) or "")
     return re.sub(re.escape(word) + r"(랑|라|가|는|를|와|야|로)?", rep, text)
+
+
+# 닿는 동작 → 안 닿고도 같은 뜻이 되는 동작 (2026-08-20)
+#   첫 영상에서 "grabs 남편 by the arm" 때문에 손가락이 옷 속으로 녹아들었다.
+#   반려하면 16화를 다시 사야 하므로 **우리가 바꿔 준다.**
+# 사람을 가리키는 말. **사람에게** 닿는 것만 바꾼다.
+# ⚠️ 물건에 닿는 것은 오히려 권장한다(책상을 내리치는 것은 잘 그려진다).
+#    처음에는 상대를 안 가려서 `slams his hand on the table`(책상을 내리침)과
+#    `hugs the keys`(열쇠를 껴안음)까지 바꿔 문장이 망가졌다. 그래서
+#    **상대가 사람일 때만** 바꾸도록 사람 이름·사람 낱말을 넣어 맞춘다.
+PERSON_WORDS = ["her", "him", "his wife", "her husband", "the wife",
+                "the husband", "the woman", "the man", "the other woman",
+                "the other man", "the daughter", "the son", "the mother",
+                "the father", "the girl", "the boy"]
+
+# 왼쪽이 찾을 말, 오른쪽이 바꿔 넣을 말. `{P}` 자리에 사람이 와야만 바뀐다.
+TOUCH_FIX = [
+    (r"\bgrabs?\s+{P}\s+by the (?:arm|wrist|shoulder|collar)s?",
+     r"steps in front of \1, blocking the way"),
+    (r"\bgrabs?\s+{P}(?:'s)?\s+(?:arm|wrist|hand|shoulder)s?",
+     r"reaches toward \1 but stops short"),
+    (r"\bgrabs?\s+{P}", r"steps in front of \1, blocking the way"),
+    (r"\bshakes?\s+off\s+(?:her|his)\s+hands?", "pulls away sharply"),
+    (r"\bshakes?\s+{P}\s+by the shoulders?", r"leans toward \1, shouting"),
+    (r"\b(?:pushes|shoves)\s+{P}", r"steps hard toward \1"),
+    (r"\bpulls?\s+{P}\s+(?:closer|back|toward|away)", r"turns sharply to \1"),
+    (r"\b(?:hugs?|embraces?)\s+{P}",
+     r"stands close to \1, arms at the sides"),
+    (r"\bhands?\s+(?:over\s+)?(?:a|an|the|his|her)?\s*(.+?)\s+to\s+{P}",
+     r"sets the \1 down on the table and steps back"),
+    (r"\bhands?\s+{P}\s+(?:a|an|the|his|her)\s+(\S+)",
+     r"sets the \2 down on the table and steps back"),
+    (r"\btakes?\s+(?:her|his)\s+hands?", "reaches out but stops short"),
+    (r"\bclutches?\s+(?:her|his)\s+(?:arm|sleeve|collar)s?",
+     "grips her own sleeve"),
+    (r"\bsnatch(?:es)?\s+(.+?)\s+from\s+{P}",
+     r"stares at the \1 in \2's hand"),
+    (r"\btouch(?:es)?\s+{P}", r"stops just short of \1"),
+    (r"\bslaps?\s+{P}", r"raises a hand at \1 and freezes"),
+    (r"\bholds?\s+{P}(?:'s)?\s+(?:arm|hand|wrist|shoulder)s?",
+     r"stays a step away from \1"),
+]
+
+# 바꿔 넣는 말에 이미 태도가 들어 있다("blocking the way"). 원래 문장 끝에
+# 붙어 있던 태도말(firmly, aggressively …)을 같이 지우지 않으면
+# "pulls away sharply aggressively" 처럼 겹쳐서 어색해진다.
+ADV = r"(?:\s+(?:very|so)?\s*\w+ly)?"
+
+
+def _person_re(doc):
+    """이 대본에 나오는 사람을 가리키는 말 하나로 묶는다(긴 것부터)."""
+    names = [c.get("name") or "" for c in (doc.get("characters") or [])]
+    words = sorted([w for w in names + PERSON_WORDS if w],
+                   key=len, reverse=True)
+    # ⚠️ 인물표에 없는 사람이 ACTION 에 나오기도 한다(시동생 등). ACTION 줄은
+    #    이름 말고는 전부 영어이므로 **한글 덩어리는 곧 사람 이름**이다.
+    return "(" + "|".join([re.escape(w) for w in words] + [r"[가-힣]+"]) + ")"
+
+
+def fix_touch(doc):
+    """서로 닿는 동작을 **안 닿는 동작**으로 바꾼다.
+
+    ⚠️ 첫 영상 1화 1컷이 `grabs 남편 by the arm` 이었고, 실제로 여자 손가락이
+       남자 옷 속으로 녹아들었다. 영상 만드는 쪽이 닿는 자리를 못 그린다.
+       알리기만 해서는 16화가 그대로 나가므로 **우리가 바꿔 준다.**
+       바꾼 곳은 손볼 곳으로 알린다.
+    ⚠️ 물건은 건드리지 않는다 — 책상을 내리치는 동작은 화를 보여 주는
+       가장 좋은 방법이고 오류도 안 난다.
+    """
+    P = _person_re(doc)
+    rules = [(re.compile(pat.replace("{P}", P) + ADV, re.I), rep)
+             for pat, rep in TOUCH_FIX]
+    out = []
+    for e in doc.get("episodes") or []:
+        for c in e.get("cuts") or []:
+            lines = (c.get("prompt") or "").split("\n")
+            for i, l in enumerate(lines):
+                if not l.startswith("ACTION:"):
+                    continue
+                new = l
+                for rx, rep in rules:
+                    new = rx.sub(rep, new)
+                if new != l:
+                    lines[i] = new
+                    out.append(f"{e.get('no')}화 {c.get('n')}컷: 닿는 동작을 바꿨다 "
+                               f"— {l[8:52].strip()} → {new[8:52].strip()}")
+            c["prompt"] = "\n".join(lines)
+    doc["_touch_fixed"] = out
+    return len(out)
 
 
 def fix_facing(doc):
@@ -374,12 +504,19 @@ def normalize(doc):
             c["prompt"] = "\n".join(out)
     if n:
         print(f"  (고정 문구 {n}줄을 우리가 채워 넣었다 — 이것 때문에 버리지 않는다)")
+    tf = fix_touch(doc)
+    if tf:
+        print(f"  (서로 닿는 동작 {tf}곳을 안 닿는 동작으로 바꿨다)")
     j = fix_facing(doc)
     if j:
         print(f"  (맞은편 사람을 3인칭으로 부른 대사 {j}곳을 고쳤다)")
     # ⭐ 인물 기준 사진 프롬프트를 제대로 된 것으로 채운다 (2026-08-20 운영자
     #    지시: "인물 생성 프롬프트가 너무 짧아 배경이 이상하게 뜬다").
     #    25낱말짜리로는 배경·자세·화면잡기가 매번 새로 뽑힌다.
+    q = fix_subject_dup(doc)
+    if q:
+        print(f"  (한 줄에 같은 사람을 두 번 적은 SUBJECT {q}줄을 정리했다 "
+              f"— 그대로 두면 사람이 한 명 더 그려진다)")
     c2 = charsheet.fill(doc)
     if c2:
         print(f"  (인물 {c2}명의 기준 사진 프롬프트를 풀세트로 채웠다)")
@@ -400,11 +537,30 @@ SPOKEN_BAN = ["내연녀", "내연남", "상간녀", "상간남", "피상속인"
 #    닿는 동작을 안 부르면 그 오류가 아예 안 생긴다.
 #    ⚠️ 반려까지 하지는 않는다 — 이야기를 바꾸는 일이라 사람이 볼 몫이고,
 #       무엇보다 이런 것으로 16화를 다시 사면 안 된다. **손볼 곳**으로 알린다.
-TOUCH = ["grab", "grabs", "grabbing", "grip", "grips", "holds her", "holds his",
-         "takes her hand", "takes his hand", "push", "pushes", "shove", "shoves",
-         "shakes her", "shakes his", "hug", "hugs", "embrace", "embraces",
-         "slaps", "snatches", "clutches his", "clutches her", "pulls her",
-         "pulls his", "touches", "hands over", "hands her", "hands him"]
+# ⚠️ 처음에는 낱말만 보고 알렸더니 **닿지도 않은 컷 다섯 개**를 잘못 잡았다 —
+#    `hugs the keys`(열쇠를 껴안음) `holds her bag`(제 가방을 듦)
+#    `shakes her head`(제 고개를 저음) `pulls her hair`(제 머리를 쥠).
+#    그래서 **상대가 사람일 때만** 알린다.
+TOUCH_VERB = (r"(?:grabs?|grabbing|grips?|holds?|takes?|pushe?s?|shoves?|"
+              r"shakes?|hugs?|embraces?|slaps?|snatch(?:es)?|clutch(?:es)?|"
+              r"pulls?|touch(?:es)?|hands?|pats?|kiss(?:es)?|drags?)"
+              r"(?:\s+off)?")
+# 싸울 때 **남의** 몸에서 잡는 자리. 머리·머리카락은 제 것을 만지는 쪽이라 뺀다.
+OTHER_PART = ("arms?", "wrists?", "shoulders?", "collar", "sleeve", "hands?",
+              "neck", "throat", "face", "chest", "waist", "back")
+
+
+def touch_hits(act, names):
+    """이 ACTION 줄에서 **사람에게** 닿는 곳만 골라 낸다."""
+    who = "|".join(re.escape(n) for n in names) if names else r"(?!x)x"
+    part = "|".join(OTHER_PART)
+    pats = [rf"\b{TOUCH_VERB}\s+(?:{who}|[가-힣]+)\b",             # grabs 남편
+            rf"\b{TOUCH_VERB}\s+(?:her|his|the)\s+(?:{part})\b",  # grabs her arm
+            rf"\b{TOUCH_VERB}\s+(?:her|him)\b(?!\s+[a-z])"]       # pushes her.
+    out = []
+    for pt in pats:
+        out += [m.group(0).strip() for m in re.finditer(pt, act, re.I)]
+    return sorted(set(out))
 
 # 서류·판결문에나 쓰는 말. 싸우는 사람 입에서 나오면 즉시 가짜가 된다.
 # ⚠️ 한두 줄은 봐준다(법정 장면에서는 실제로 나온다). 대사 전체가 법률
@@ -415,14 +571,59 @@ STIFF = ["유류분", "한정승인", "상속재산", "상속액", "판례", "�
 STIFF_MAX = 5          # 이보다 많으면 대본 전체가 법률 설명이라는 뜻
 
 
+# ⭐⭐ 후킹·제목 (2026-08-20 운영자 지시)
+#    "제목이랑 후킹 좀 더 자극적으로 뽑아. 자꾸 점잔 빼지 말고 선비처럼."
+#    S001 은 hook 이 아예 비어서 화 제목이 그대로 화면 맨 위에 올라갔다 —
+#    `집을 나가는 남편` `이혼 소송 기각`. 이건 목차지 후킹이 아니다.
+#    ⚠️ 이것으로 16화를 버리지는 않는다(한 줄이면 고친다). **손볼 곳**으로 알린다.
+HOOK_MAX = 22           # 화면 맨 위 한 줄. 넘으면 두 줄로 접혀 영상을 가린다
+YT_TITLE_MAX = 40       # (n/16) 과 #shorts 는 우리가 붙인다
+# 사건으로 끝나면 이 중 하나로 끝난다. 명사로 끝나면 '상태' 라 밋밋하다.
+HOOK_END = ("다", "요", "까", "나", "지", "네", "군", "라", "어", "아",
+            '"', "?", "!", ".", "”")
+# 흔해 빠져서 오히려 안 눌리는 말
+HOOK_FLAT = ["에 대하여", "의 진실", "하는 이유", " 이야기", "의 전말",
+             "충격", "경악", "소름"]
+
+
+def hook_warn(doc):
+    """후킹이 비었거나 밋밋하면 알린다."""
+    out = []
+    for e in doc.get("episodes") or []:
+        no = e.get("no")
+        h = re.sub(r"\s+", " ", str(e.get("hook") or "")).strip()
+        t = re.sub(r"\s+", " ", str(e.get("yt_title") or "")).strip()
+        if not h:
+            out.append(f"{no}화: 후킹(hook)이 비었다 — 화면 맨 위에 화 제목이 "
+                       f"그대로 올라간다 ('{e.get('title')}')")
+        else:
+            if len(h) > HOOK_MAX:
+                out.append(f"{no}화: 후킹이 {len(h)}자다 ({HOOK_MAX}자 넘음) — "
+                           f"두 줄로 접혀 영상을 가린다")
+            if not h.endswith(HOOK_END):
+                out.append(f"{no}화: 후킹이 사건이 아니라 상태로 끝났다 "
+                           f"('{h}') — 동사로 끝내야 세다")
+            for w in HOOK_FLAT:
+                if w in h:
+                    out.append(f"{no}화: 후킹에 밋밋한 말 '{w.strip()}' 이 있다")
+        if not t:
+            out.append(f"{no}화: 유튜브 제목(yt_title)이 비었다")
+        elif len(t) > YT_TITLE_MAX:
+            out.append(f"{no}화: 유튜브 제목이 {len(t)}자다 ({YT_TITLE_MAX}자 넘음)")
+    return out
+
+
 def soft(doc):
     """버릴 것까진 아니지만 사람이 한 번 봐야 할 곳."""
-    out = list(doc.get("_soft_extra") or []) + list(doc.get("_facing_fixed") or [])
+    out = (list(doc.get("_soft_extra") or []) + list(doc.get("_facing_fixed") or [])
+           + list(doc.get("_touch_fixed") or []) + hook_warn(doc))
+    names = [(c.get("name") or "").strip() for c in (doc.get("characters") or [])
+             if (c.get("name") or "").strip()]
     for e in doc.get("episodes") or []:
         for c in e.get("cuts") or []:
             act = next((l for l in (c.get("prompt") or "").split("\n")
-                        if l.startswith("ACTION:")), "").lower()
-            hit = [w for w in TOUCH if re.search(rf"\b{w}\b", act)]
+                        if l.startswith("ACTION:")), "")
+            hit = touch_hits(act, names)
             if hit:
                 out.append(f"{e.get('no')}화 {c.get('n')}컷: 서로 몸이 닿는 동작 "
                            f"— {', '.join(sorted(set(hit)))} "
@@ -658,6 +859,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--case", default="", help="판례 번호 (비우면 자동)")
     ap.add_argument("--check", default="", help="이미 만든 시리즈만 다시 검사 (0원)")
+    ap.add_argument("--repair", action="store_true",
+                    help="--check 와 함께 — 고친 결과를 파일에 **저장**한다 (0원)")
     ap.add_argument("--writer", default="", help="claude / gemini (기본: gemini)")
     args = ap.parse_args()
 
@@ -670,6 +873,13 @@ def main():
             print(f"❌ {args.check} 가 없다", file=sys.stderr)
             return 2
         bad = check(normalize(doc))
+        # ⭐ 고친 것을 저장하지 않으면 관리자 페이지는 **옛 프롬프트**를 그대로
+        #    내보낸다. 1화를 이미 만든 뒤에 고친 것들(닿는 동작·얼굴 못·옷차림)이
+        #    다음 화에 안 먹는 이유가 이것이었다.
+        if args.repair:
+            (SERIES_DIR / f"{args.check}.json").write_text(
+                json.dumps(doc, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(f"  💾 고친 결과를 {args.check}.json 에 저장했다")
         summary(doc, args.check, doc.get("case_id", ""))
         for b in bad:
             print(f"  ❌ {b}")

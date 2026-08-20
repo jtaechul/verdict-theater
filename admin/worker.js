@@ -114,7 +114,9 @@ function ytMeta(doc, no) {
   const line = ytClean(String(cut1.subtitle || '').split(' / ')[0]).replace(/^"|"$/g, '');
 
   let title = ytClean(ep.yt_title);
-  if (!title) title = (hook || line || series) + ' (' + no + '/' + total + ')';
+  if (!title) title = hook || line || series;
+  // ⭐ 몇 화인지는 우리가 붙인다 (대본에는 적지 말라고 일러 두었다)
+  if (title.indexOf('(' + no + '/') < 0) title = title + ' (' + no + '/' + total + ')';
   if (title.toLowerCase().indexOf('#shorts') < 0 && title.length + 8 <= 100)
     title += ' #shorts';
   title = title.slice(0, 100);
@@ -739,6 +741,14 @@ function seriesRender() {
   h += '<div class="card"><h2>④ ' + SEP + '화 — ' + esc(e.title || '') + '</h2>';
   if (e.recap) h += '<div style="color:#9599ab;font-size:14px;margin-bottom:10px">'
                   + '지난 줄거리: ' + esc(e.recap) + '</div>';
+  // ⭐ 후킹은 30초 내내 화면 맨 위에 붙는 한 줄이다. 이걸 보고 남느냐 떠나느냐가
+  //    갈리므로 영상 만들기 전에 운영자가 반드시 눈으로 본다 (2026-08-20).
+  if (e.hook) h += '<div style="background:#2a2416;border:1px solid #6b5a24;'
+                 + 'border-radius:8px;padding:10px 12px;margin-bottom:10px">'
+                 + '<div style="color:#9599ab;font-size:12px">화면 맨 위 후킹 ('
+                 + String(e.hook).length + '자)</div>'
+                 + '<div style="color:#f0d68a;font-size:17px;font-weight:700">'
+                 + esc(e.hook) + '</div></div>';
   (e.cuts || []).forEach((c, i) => {
     const pid = 'p' + SEP + '_' + (i + 1);
     COPY[pid] = String(c.prompt || '');
