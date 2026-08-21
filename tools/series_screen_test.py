@@ -251,6 +251,11 @@ nepn = ep1.count('class="epn')
 ck("1~16화 번호판이 다 있다", nepn == len(doc["episodes"]), f"{nepn}개")
 
 print("\n③-3 만든 영상을 올리는 칸이 있는가 (2026-08-20 운영자 지시)")
+# ⭐ 2026-08-21 — 목소리는 클립 5개를 다 만들기 전에 들어 봐야 한다
+ck("목소리 들어보기 단추가 있다", "makeVoice()" in ep1)
+ck("들을 자리가 있다", 'id="voicebox"' in ep1)
+ck("값이 0원이라고 알려 준다", "값 0원" in ep1)
+
 ck("압축파일 고르는 칸이 있다", 'id="clipzip"' in ep1 and 'accept=".zip' in ep1)
 ck("올리기 단추가 있다", "upClips()" in ep1)
 ck("완성된 쇼츠가 나올 자리가 있다", 'id="shortbox"' in ep1)
@@ -258,6 +263,9 @@ ck("고른 화 번호가 단추에 찍힌다", "1화 올리고 쇼츠 만들기"
 
 wk = (ROOT / "admin" / "worker.js").read_text(encoding="utf-8")
 ck("서버에 올리는 길이 있다", "'/api/upload-clips'" in wk)
+ck("목소리 견본을 만드는 길이 있다", "'/api/voice'" in wk)
+ck("목소리 워크플로를 부른다", "voice-sample.yml/dispatches" in wk)
+ck("목소리를 소리 파일로 흘려보낸다", "audio/mpeg" in wk)
 ck("완성본을 보는 길이 있다", "'/api/short'" in wk)
 ck("압축파일을 **릴리스**에 올린다 (저장소 커밋 금지)",
    "uploads.github.com" in wk and "releases" in wk)

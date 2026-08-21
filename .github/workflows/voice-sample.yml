@@ -1,0 +1,85 @@
+name: 4. 한국어 목소리 들어보기 (값 0원)
+
+# 대본의 대사 몇 마디를 **구글 한국어 목소리**로 만들어 들려준다.
+#
+# 왜 (2026-08-21)
+#   쇼츠는 클립 5개가 다 있어야 만들어진다. 그래서 목소리가 어떤지 확인하려면
+#   영상 다섯 개를 먼저 뽑아야 했다 — 되돌아오는 길이 너무 길다.
+#   이 워크플로는 **영상 없이 소리만** 만든다. 버튼 한 번, 1분이면 끝난다.
+#
+# 어떻게 오나
+#   관리자 페이지 [목소리 들어보기] → 워커가 이 워크플로를 부른다
+#   → 결과는 릴리스 `voice-S001-ep01` 에 남고, 화면에서 바로 들린다.
+#
+# 값
+#   대사 넉 줄이면 60자쯤이다. 구글 무료 한도(월 100만 자) 안이라 0원이다.
+
+on:
+  workflow_dispatch:
+    inputs:
+      sid:
+        description: '시리즈 번호'
+        required: true
+        default: 'S001'
+      ep:
+        description: '몇 화'
+        required: true
+        default: '1'
+
+permissions:
+  contents: write
+
+jobs:
+  voice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GOOGLE_TTS_KEY: ${{ secrets.GOOGLE_TTS_KEY }}
+      SID: ${{ inputs.sid }}
+      EP: ${{ inputs.ep }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 열쇠 확인
+        run: |
+          if [ -z "${GOOGLE_TTS_KEY:-}" ]; then
+            echo "❌ GOOGLE_TTS_KEY 가 없습니다."
+            echo "   깃허브 Settings → Secrets → Actions 에 넣어 주십시오."
+            exit 1
+          fi
+          echo "✅ 열쇠가 있습니다"
+
+      - name: 견본 소리 만들기
+        run: |
+          set -euo pipefail
+          EPN=$(printf '%02d' "$EP")
+          mkdir -p build
+          python3 src/tts.py --sample "$SID" --ep "$EP" --out "build/voice.mp3"
+          ls -la build/voice.mp3
+
+      - name: 릴리스에 올리기 (저장소에는 안 넣는다)
+        run: |
+          set -euo pipefail
+          EPN=$(printf '%02d' "$EP")
+          python3 tools/release_file.py put "voice-${SID}-ep${EPN}" voice.mp3 build/voice.mp3
+
+      - name: 결과 화면
+        if: always()
+        run: |
+          {
+            if [ "${{ job.status }}" = "success" ]; then
+              echo "## 목소리 견본이 만들어졌습니다 (값 0원)"
+              echo ""
+              echo "관리자 페이지에서 바로 들으실 수 있습니다."
+            else
+              echo "## 목소리 견본을 못 만들었습니다"
+              echo ""
+              echo "위의 빨간 칸을 열어 까닭을 보십시오."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

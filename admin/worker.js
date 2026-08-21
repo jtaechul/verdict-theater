@@ -520,6 +520,43 @@ let SDOC = null, SID = '', SEP = 1;
 
 // ⭐ 압축파일을 그대로 서버로 보낸다. 서버가 깃허브 릴리스에 올리고
 //    [3. 올린 영상으로 쇼츠 만들기] 를 부른다.
+// ⭐ 2026-08-21 — 목소리 견본. 클립 5개를 다 만들기 전에 목소리부터 듣는다.
+async function makeVoice() {
+  const msg = document.getElementById('voicemsg');
+  const box = document.getElementById('voicebox');
+  msg.textContent = '만드는 중입니다… (1분쯤 걸립니다)';
+  box.innerHTML = '';
+  try {
+    const r = await fetch('/api/voice?sid=' + encodeURIComponent(SID)
+      + '&ep=' + SEP, { method: 'POST' });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.detail || j.error || '실패');
+  } catch (e) {
+    msg.textContent = '부르지 못했습니다: ' + (e && e.message ? e.message : e);
+    return;
+  }
+  let n = 0;
+  const tick = async () => {
+    n++;
+    try {
+      const q = await fetch('/api/voice?sid=' + encodeURIComponent(SID)
+        + '&ep=' + SEP + '&t=' + Date.now());
+      const j = await q.json();
+      if (j.ready) {
+        msg.textContent = '다 됐습니다. 눌러서 들어보십시오.';
+        box.innerHTML = '<audio controls style="width:100%;margin-top:8px" src="'
+          + '/api/voice?play=1&sid=' + encodeURIComponent(SID) + '&ep=' + SEP
+          + '&t=' + Date.now() + '"></audio>';
+        return;
+      }
+    } catch (e) { /* 아직 안 됐다 */ }
+    if (n > 40) { msg.textContent = '오래 걸립니다. 잠시 뒤 다시 눌러 보십시오.'; return; }
+    msg.textContent = '만드는 중입니다… (' + (n * 5) + '초)';
+    setTimeout(tick, 5000);
+  };
+  setTimeout(tick, 8000);
+}
+
 async function upClips() {
   const el = document.getElementById('clipzip');
   const msg = document.getElementById('upmsg');
@@ -737,6 +774,15 @@ function seriesRender() {
      + '<div id="upmsg" class="uphint"></div>'
      + '</div>';
   h += '<div id="shortbox"></div>';
+  // ⭐ 2026-08-21 — 목소리는 5컷을 다 만들기 전에 들어 봐야 한다.
+  //    영상 없이 소리만 만들어 여기서 바로 들려준다.
+  h += '<div class="upbox" style="margin-top:12px">'
+     + '<div class="uphint">영상 만들기 전에 <b>한국어 목소리</b>부터 들어보십시오. '
+     + '대본의 대사 넉 줄을 구글 목소리로 읽어 줍니다 (값 0원, 1분쯤 걸립니다).</div>'
+     + '<button class="ghost" onclick="makeVoice()">목소리 들어보기</button>'
+     + '<div id="voicemsg" class="uphint"></div>'
+     + '<div id="voicebox"></div>'
+     + '</div>';
   h += '</div>';
 
   // ④ 이 화의 5컷
@@ -2114,6 +2160,46 @@ export default {
           return Response.json({ ok: false, error: '올리지 못했습니다',
             detail: String(e && e.message ? e.message : e).slice(0, 220) }, { status: 502 });
         }
+      }
+
+      // ⭐ 2026-08-21 — 목소리 견본. 쇼츠는 클립 5개가 다 있어야 만들어지는데,
+      //    목소리가 어떤지는 **지금 당장** 알아야 한다. 영상 없이 소리만 만든다.
+      if (url.pathname === '/api/voice' && req.method === 'POST') {
+        const sid = url.searchParams.get('sid') || '';
+        const ep = String(parseInt(url.searchParams.get('ep') || '1', 10) || 1);
+        if (!/^S\d{3}$/.test(sid))
+          return Response.json({ ok: false, error: 'bad sid' }, { status: 400 });
+        try {
+          await gh(env, `/repos/${REPO}/actions/workflows/voice-sample.yml/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({ ref: BRANCH, inputs: { sid, ep } }),
+          });
+          return Response.json({ ok: true });
+        } catch (e) {
+          return Response.json({ ok: false, error: '부르지 못했습니다',
+            detail: String(e && e.message ? e.message : e).slice(0, 220) }, { status: 502 });
+        }
+      }
+
+      if (url.pathname === '/api/voice') {
+        const sid = url.searchParams.get('sid') || '';
+        const ep = String(parseInt(url.searchParams.get('ep') || '1', 10) || 1);
+        if (!/^S\d{3}$/.test(sid)) return new Response('bad', { status: 400 });
+        const tag = `voice-${sid}-ep${String(ep).padStart(2, '0')}`;
+        let rel = null;
+        try { rel = await gh(env, `/repos/${REPO}/releases/tags/${tag}`); } catch { rel = null; }
+        const a = (rel && (rel.assets || []).find((x) => x.name === 'voice.mp3')) || null;
+        if (!a) return Response.json({ ready: false });
+        if (url.searchParams.get('play') !== '1')
+          return Response.json({ ready: true, size: a.size, at: a.updated_at });
+        const r0 = await fetch(`${GH}/repos/${REPO}/releases/assets/${a.id}`, {
+          headers: {
+            'Authorization': `Bearer ${env.GH_TOKEN}`,
+            'Accept': 'application/octet-stream',
+            'User-Agent': 'verdict-theater-admin',
+          } });
+        return new Response(r0.body, { headers: {
+          'Content-Type': 'audio/mpeg', 'Cache-Control': 'no-store' } });
       }
 
       // 만들어진 쇼츠를 화면에서 바로 본다 (릴리스에서 그대로 흘려보낸다)

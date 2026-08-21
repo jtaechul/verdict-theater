@@ -50,8 +50,20 @@ if not T.key():
     sys.exit(0)
 
 tmp = Path(tempfile.mkdtemp())
+
+# ⭐ 2026-08-21 — 어떤 목소리를 쓰게 되는지 **눈으로 보이게** 남긴다.
+#    Neural2 는 원어민이지만 아나운서처럼 밋밋하고, Chirp3-HD 는 훨씬
+#    사람처럼 말한다. 무엇이 잡혔는지 모르면 품질 이야기를 할 수가 없다.
+_all = T.list_voices()
+print(f"   구글이 가진 한국어 목소리 {len(_all)}개")
+_f, _m = T.best_voices("FEMALE"), T.best_voices("MALE")
+print(f"   여자 → {_f[0]}")
+print(f"   남자 → {_m[0]}")
+note(f"- 쓰는 목소리: 여자 {_f[0]} · 남자 {_m[0]}")
+print()
+
 ok = True
-for voice in (T.VOICE_F[0], T.VOICE_M[0]):
+for voice in (_f[0], _m[0]):
     out = tmp / f"{voice}.wav"
     try:
         p = T.say("확인", voice, 1.0, 0.0, out)
