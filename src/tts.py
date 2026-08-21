@@ -85,8 +85,36 @@ def tone_of(text):
     return 0.0
 
 
+def explain(code, msg):
+    """구글이 거절한 까닭을 쉬운 말로."""
+    m = str(msg or "").lower()
+    if "has not been used" in m or "disabled" in m or "service_disabled" in m:
+        return ("❌ Text-to-Speech API 를 아직 **켜지 않았다.**\n"
+                "   구글 클라우드 콘솔에서 'Cloud Text-to-Speech API' 를 찾아 "
+                "[사용] 을 누르면 된다")
+    if "api key not valid" in m or "api_key_invalid" in m or code == 400:
+        return ("❌ 열쇠가 잘못됐다. 깃허브 시크릿 GOOGLE_TTS_KEY 에 "
+                "붙여 넣은 값을 다시 확인한다 (AIza… 로 시작한다)")
+    if "billing" in m:
+        return ("❌ 결제 계정을 연결해야 한다. 무료 한도(월 100만 자) 안에서는 "
+                "청구되지 않지만 계정 연결 자체는 필요하다")
+    if "referer" in m or "restrict" in m or "blocked" in m:
+        return ("❌ 열쇠에 사용 제한(웹사이트·IP)이 걸려 있다. "
+                "제한을 '없음' 으로 두거나 API 제한만 걸어야 한다")
+    if code == 429:
+        return "❌ 잠깐 너무 많이 불렀다. 조금 뒤에 다시 하면 된다"
+    return f"❌ 구글이 거절했다 (HTTP {code})"
+
+
 def say(text, voice="ko-KR-Neural2-A", rate=1.0, pitch=0.0, out=None):
-    """한 마디를 소리로 만든다. 만들어진 wav 파일 경로를 돌려준다."""
+    """한 마디를 소리로 만든다. 만들어진 wav 파일 경로를 돌려준다.
+
+    ⚠️ 2026-08-21 — 여기에 explain() 을 **함수 한가운데 끼워 넣었다가**
+       소리를 만들고 돌려주는 마지막 세 줄이 explain 안으로 딸려 들어가
+       say() 가 None 을 돌려줬다. 깃허브 검사가 바로 잡아 줬다
+       ('NoneType' object has no attribute 'stat').
+       → 도우미 함수는 **쓰는 함수보다 위**에 둔다.
+    """
     k = key()
     if not k:
         raise RuntimeError("GOOGLE_TTS_KEY 가 없다")
@@ -115,28 +143,10 @@ def say(text, voice="ko-KR-Neural2-A", rate=1.0, pitch=0.0, out=None):
             msg = json.loads(raw)["error"]["message"]
         except Exception:                                    # noqa: BLE001
             pass
-        raise RuntimeError(f"{explain(e.code, msg)}\n   (구글이 보낸 말: {msg[:200]})")
-
-
-def explain(code, msg):
-    """구글이 거절한 까닭을 쉬운 말로."""
-    m = str(msg or "").lower()
-    if "has not been used" in m or "disabled" in m or "service_disabled" in m:
-        return ("❌ Text-to-Speech API 를 아직 **켜지 않았다.**\n"
-                "   구글 클라우드 콘솔에서 'Cloud Text-to-Speech API' 를 찾아 "
-                "[사용] 을 누르면 된다")
-    if "api key not valid" in m or "api_key_invalid" in m or code == 400:
-        return ("❌ 열쇠가 잘못됐다. 깃허브 시크릿 GOOGLE_TTS_KEY 에 "
-                "붙여 넣은 값을 다시 확인한다 (AIza… 로 시작한다)")
-    if "billing" in m:
-        return ("❌ 결제 계정을 연결해야 한다. 무료 한도(월 100만 자) 안에서는 "
-                "청구되지 않지만 계정 연결 자체는 필요하다")
-    if "referer" in m or "restrict" in m:
-        return ("❌ 열쇠에 사용 제한(웹사이트·IP)이 걸려 있다. "
-                "제한을 '없음' 으로 두거나 API 제한만 걸어야 한다")
-    if code == 429:
-        return "❌ 잠깐 너무 많이 불렀다. 조금 뒤에 다시 하면 된다"
-    return f"❌ 구글이 거절했다 (HTTP {code})"
+        raise RuntimeError(f"{explain(e.code, msg)}\n"
+                           f"   (구글이 보낸 말: {msg[:200]})")
+    if "audioContent" not in got:
+        raise RuntimeError(f"❌ 구글이 소리를 안 보냈다: {str(got)[:200]}")
     wav = base64.b64decode(got["audioContent"])
     p = Path(out or "tts.wav")
     p.parent.mkdir(parents=True, exist_ok=True)

@@ -338,8 +338,14 @@ TAIL_PAD = 0.45        # 끝말 뒤에 남겨 둘 여운
 def trim_dead(src, out):
     """앞뒤로 말이 없는 시간을 잘라 낸다. 자를 것이 없으면 원본을 그대로."""
     src, out = Path(src), Path(out)
-    dur = C.probe(src)[2]
-    spans = voiced_spans(src, 0, dur)      # 있는 대로 다 찾는다
+    # ⚠️ 자르기는 **있으면 좋은 것**이지 없으면 안 되는 것이 아니다.
+    #    클립을 못 읽는다고 여기서 죽으면 30초짜리 하나가 통째로 날아간다.
+    #    못 하면 조용히 원본을 그대로 쓴다.
+    try:
+        dur = C.probe(src)[2]
+        spans = voiced_spans(src, 0, dur)  # 있는 대로 다 찾는다
+    except Exception:                                        # noqa: BLE001
+        return src
     if not spans:
         return src
     a = max(0.0, spans[0][0] - HEAD_PAD)
@@ -384,7 +390,10 @@ def dub(src, turns, voices, out, tmp):
     """클립의 소리를 한국어 목소리로 갈아 끼운다. 못 하면 False."""
     if not turns or not tts.key():
         return False
-    dur = C.probe(src)[2]
+    try:
+        dur = C.probe(src)[2]
+    except Exception:                                        # noqa: BLE001
+        return False                       # 못 읽으면 원래 소리를 그대로 쓴다
     # ⚠️ 자막용(speech_spans)이 아니라 **실제로 말한 자리**를 써야 한다.
     #    자막용은 첫 토막이 0초부터로 늘어나 있어서, 그걸 쓰면 목소리가
     #    말하지도 않는 앞머리에서 시작한다 (실제로 그렇게 나왔다).

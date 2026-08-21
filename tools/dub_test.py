@@ -165,12 +165,68 @@ _ld = float(run("ffprobe", "-v", "error", "-show_entries", "format=duration",
                 "-of", "csv=p=0", str(_lt)).stdout.strip() or 0)
 ck("10초짜리 뒤 무음도 잘린다", _ld < 7.0, f"10.00초 → {_ld:.2f}초")
 
+print("\n③-3 못 읽는 클립이 와도 30초짜리가 통째로 날아가지 않는가")
+bad = tmp / "not_a_video.mp4"
+bad.write_bytes("이건 영상이 아니다".encode("utf-8"))
+ck("자르기가 죽지 않고 원본을 그대로 준다", S.trim_dead(bad, tmp / "b.mp4") == bad)
+_r = real
+T.say, T.key = fake_say, (lambda: "TEST")
+ck("목소리 갈아 끼우기도 죽지 않고 False 를 준다",
+   S.dub(bad, [("Wife", "가나다")], {}, tmp / "b2.mp4", tmp) is False)
+T.say, T.key = _r
+
 print("\n④ 시간에 맞춰 말 속도를 고치는가")
 ck("속도가 사람 소리 범위 안에서만 움직인다",
    T.RATE_MIN >= 0.7 and T.RATE_MAX <= 1.5,
    f"{T.RATE_MIN}~{T.RATE_MAX}")
 ck("느낌표가 있으면 조금 높게 읽는다", T.tone_of("나가!") > 0)
 ck("보통 말은 그대로", T.tone_of("알았어.") == 0.0)
+
+print("\n④-2 say() 가 **진짜로 소리 파일을 돌려주는가** (가짜 구글 응답으로)")
+# ⚠️ 2026-08-21 — say() 한가운데에 도우미 함수를 끼워 넣었다가 마지막 세 줄이
+#    딸려 들어가 **None 을 돌려줬다.** 깃허브가 잡아 주기 전까지 몰랐다.
+#    이제 구글 응답을 흉내 내서 say() 를 **진짜로 불러** 본다.
+import base64 as _b64                                       # noqa: E402
+import io as _io                                            # noqa: E402
+import urllib.request as _ur                                # noqa: E402
+
+
+class _Resp(_io.BytesIO):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+_wav = tmp / "canned.wav"
+run("ffmpeg", "-v", "error", "-y", "-f", "lavfi",
+    "-i", "sine=frequency=440:duration=0.5:sample_rate=48000", "-ac", "2",
+    str(_wav))
+_body = ('{"audioContent":"'
+         + _b64.b64encode(_wav.read_bytes()).decode("ascii") + '"}')
+_real_open, _real_key = _ur.urlopen, T.key
+_ur.urlopen = lambda *a, **k: _Resp(_body.encode("utf-8"))
+T.key = lambda: "TEST"
+try:
+    _got = T.say("확인", "ko-KR-Neural2-A", 1.0, 0.0, tmp / "said.wav")
+    ck("say() 가 None 이 아니라 파일 경로를 돌려준다", _got is not None, str(_got))
+    ck("그 파일이 진짜로 있다", _got is not None and Path(_got).exists())
+    ck("빈 파일이 아니다", _got is not None and Path(_got).stat().st_size > 2000,
+       f"{Path(_got).stat().st_size:,}바이트" if _got else "없음")
+    ck("길이를 잴 수 있다", _got is not None and T.dur_of(_got) > 0.1,
+       f"{T.dur_of(_got):.2f}초" if _got else "")
+finally:
+    _ur.urlopen, T.key = _real_open, _real_key
+
+print("\n④-3 구글이 거절하면 **까닭을 쉬운 말로** 알려 주는가")
+for code, msg, want in [
+        (403, "Cloud Text-to-Speech API has not been used in project", "켜지 않았다"),
+        (400, "API key not valid. Please pass a valid API key.", "열쇠가 잘못됐다"),
+        (403, "This API method requires billing to be enabled", "결제 계정"),
+        (403, "Requests from referer are blocked", "사용 제한"),
+        (429, "Quota exceeded", "너무 많이")]:
+    ck(f"{want} 를 알려 준다", want in T.explain(code, msg), T.explain(code, msg)[:40])
 
 print("\n⑤ 사람마다 다른 목소리를 주는가")
 chs = [{"name": "본처", "role_en": "the wife",

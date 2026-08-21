@@ -38,8 +38,12 @@ for voice in (T.VOICE_F[0], T.VOICE_M[0]):
         print(f"   ❌ {voice} 실패\n   {e}")
         ok = False
         break
+    if p is None or not Path(p).exists():
+        print(f"   ❌ {voice} — 소리 파일이 안 만들어졌다 (say 가 빈손을 줬다)")
+        ok = False
+        break
     d = T.dur_of(p)
-    size = p.stat().st_size
+    size = Path(p).stat().st_size
     good = d > 0.15 and size > 2000
     print(f"   {'✅' if good else '❌'} {voice} — {d:.2f}초 · {size:,}바이트")
     ok = ok and good
