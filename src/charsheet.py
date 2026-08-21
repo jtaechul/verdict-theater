@@ -58,15 +58,25 @@ FRAME = ("full body from head to feet, centred, nothing cropped, "
 BACKDROP = ("plain flat light-grey empty wall, no furniture, no props, "
             "no scenery")
 LIGHT = "soft even light from the front, no hard shadow, no coloured light"
-LOOK = ("natural and realistic, ordinary everyday appearance, "
-        "plain unremarkable features, no glamour, no retouching, "
-        "no stylisation")
+# ⭐⭐ 2026-08-21 — 화풍을 **반실사 그림체**로 바꿨다(운영자 지시).
+#    인물 기준 그림도 **같은 화풍**이어야 한다. 여기만 사진처럼 두면
+#    컷과 인물이 따로 놀아 얼굴이 안 잡힌다.
+#    ⚠️ 만화가 아니다. 판결극장은 실제 판결이 밑천이라 무게가 빠지면 안 된다.
+LOOK = ("semi-realistic hand-drawn character illustration with clean confident "
+        "linework and soft cel shading, grounded adult proportions, restrained "
+        "everyday face rather than cartoon exaggeration, muted desaturated "
+        "colours, plain unremarkable features")
+# ⚠️ 예전 Avoid 에는 cartoon · illustration · anime 가 들어 있었다.
+#    그림체로 가기로 한 지금 그 말이 남아 있으면 **바라는 것을 막는다.**
+#    고정 문구를 바꿀 때는 **반대편(하지 마라) 목록도 같이** 봐야 한다.
 AVOID = ("Avoid: text, letters, watermark, logo, props, furniture, "
          "background scenery, other people, harsh or coloured lighting, "
-         "tilted camera, close-up crop, cartoon, illustration, 3D render, "
-         "painting, anime")
+         "tilted camera, close-up crop, chibi or super-deformed proportions, "
+         "big sparkling eyes, 3D render, oil painting")
 
 # 사진을 가리키는 말 — 인물 설명에 남아 있으면 떼어 낸다
+# ⚠️ 화풍이 그림체가 된 뒤에도 **사진을 부르는 말**은 그대로 떼어 낸다 —
+#    남아 있으면 그림체와 싸워 어중간한 것이 나온다.
 PHOTO_WORDS = ["photorealistic", "photograph", "photo", "portrait", "headshot",
                "reference sheet", "50mm", "35mm", "lens", "eye level",
                "visible pores", "beauty filter", "studio shot", "dslr",
@@ -176,7 +186,8 @@ def build(ch):
     outfit = strip_photo(ch.get("outfit"))
     label = (ch.get("role_en") or "").strip() or (ch.get("name") or "").strip()
 
-    sheet = [f"{HEAD} — {who_line(ch)}."]
+    sheet = [f"{HEAD} — {who_line(ch)}, drawn in the same "
+             f"semi-realistic illustration style as the scenes."]
     if look:
         sheet.append(f"FACE AND HAIR: {look}.")
     if outfit:

@@ -160,7 +160,7 @@ COLOR_FIX = ("COLOR: the same colour grade in every shot of the series — "
              "warm neutral base, slightly lifted blacks, gentle amber "
              "highlights from the practical lamps, muted greens and cyans, "
              "natural unsaturated skin tones, low overall contrast, "
-             "a calm evening television look that stays identical from the "
+             "a calm evening illustrated look that stays identical from the "
              "first shot to the last.")
 
 # ⭐⭐ 2026-08-20 운영자: "나레이션이 너무 로봇 같은데?"
@@ -455,8 +455,8 @@ def fix_voice(doc):
 #       → 방송·배우를 가리키는 말을 모두 빼고, **지어낸 인물**임을 먼저 밝힌다.
 #    ⚠️ `realistic live footage` 도 뺐다 — "실제로 찍은 영상" 으로 읽혀
 #       실존 인물 쪽으로 기운다. 사실적인 느낌은 STYLE 줄이 이미 지고 있다.
-HEAD_FIX = (f"Fictional scene, invented characters, cinematic realism. "
-            f"{SEC}-second single continuous take.")
+HEAD_FIX = (f"Fictional scene, invented characters, semi-realistic "
+            f"illustrated drama. {SEC}-second single continuous take.")
 
 
 def looks_like_url(t):
@@ -468,12 +468,25 @@ def looks_like_url(t):
 #    가만 두면 중간에 컷을 바꾸거나 다른 사람을 넣는다.
 #    → 모든 컷에 **한 번에 찍은 것처럼** 이라고 못 박는다. 이 줄은 고정 문구라
 #      normalize 가 80컷에 자동으로 갈아 끼운다 — **지금 대본도 그대로 고쳐진다.**
+# ⭐⭐ 2026-08-21 운영자: "이럴 거면 절반 정도는 애니메이션풍으로 만드는 게
+#    낫지 않아?" — 직감이 맞았다. **그림체로 가면 이번에 싸운 문제 넷이
+#    한꺼번에 풀린다.**
+#      ① 입 모양 — 더빙의 유일한 약점. 그림 입은 단순해서 어긋나도 안 걸린다
+#      ② 유명인 정책 — 다섯 번 막혔다. 그림은 실존 인물로 안 읽힌다
+#      ③ 얼굴이 컷마다 바뀜 — 단순한 얼굴이 훨씬 잘 고정된다
+#      ④ 손가락 녹아듦 — 단순한 손은 원래 그런 것이라 티가 안 난다
+#    ⚠️ 다만 **반반은 안 한다.** 한 영상 안에서 화풍이 바뀌면 싸구려로 보인다.
+#       전부 하나로 통일한다.
+#    ⚠️ 그리고 **만화가 아니라 그림체**다. 판결극장은 실제 판결이 밑천이라
+#       무게가 빠지면 안 된다. 채도를 낮추고 선을 살린 반실사로 간다.
 STYLE_FIX = ("STYLE: one single continuous take, no cut, no scene change, "
              "same location and same person from first frame to last, "
              "identical clothing throughout, "
-             "grounded everyday Korean realism, muted desaturated palette, soft "
-             "practical lighting, 35mm lens look, shallow depth of field, "
-             "natural skin texture, no stylization.")
+             "semi-realistic hand-drawn illustration style with clean confident "
+             "linework and soft cel shading, grounded adult proportions and "
+             "restrained faces rather than cartoon exaggeration, muted "
+             "desaturated palette, soft practical lighting, shallow depth of "
+             "field, consistent line weight in every shot.")
 
 # ⚠️ 영상에 글자가 나오는 가장 큰 원인은 '글자가 있는 물건'을 부른 것이다.
 #    그런데 **두 번 연속으로 지나치게 넓은 낱말이 멀쩡한 대본을 막았다.**

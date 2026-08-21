@@ -301,6 +301,23 @@ ck("고정 문구에 '한 번에 찍기' 가 들어 있다",
 ck("고정 문구에 '중간에 옷·얼굴 바뀜 금지' 가 들어 있다",
    "changing clothes or face mid-shot" in S.AVOID_FIX)
 
+# ⭐ 2026-08-21 — 화풍을 반실사 그림체로 바꿨다 (운영자 지시)
+import charsheet as _CS2                                    # noqa: E402
+ck("컷 화풍이 그림체다", "illustration" in S.STYLE_FIX.lower(), S.STYLE_FIX[60:110])
+ck("만화가 아니라 반실사다",
+   "semi-realistic" in S.STYLE_FIX.lower()
+   and "rather than cartoon exaggeration" in S.STYLE_FIX.lower())
+ck("인물 그림도 **같은 화풍**이다 (따로 놀면 얼굴이 안 잡힌다)",
+   "illustration" in _CS2.LOOK.lower() and "semi-realistic" in _CS2.LOOK.lower(),
+   _CS2.LOOK[:50])
+# ⚠️ 반대편 목록에 그림체를 막는 말이 남아 있으면 바라는 것을 스스로 막는다
+for _w in ("cartoon", "illustration", "anime", "drawing"):
+    ck(f"하지 마라 목록에 '{_w}' 가 없다", _w not in _CS2.AVOID.lower(),
+       _CS2.AVOID[-70:])
+ck("과장된 비례는 여전히 막는다", "chibi" in _CS2.AVOID.lower())
+ck("사진을 부르는 말은 그대로 떼어 낸다",
+   "photorealistic" in _CS2.PHOTO_WORDS and "photograph" in _CS2.PHOTO_WORDS)
+
 print("\n⑬-2 붙여 넣을 때 주소로 읽히지 않는가 (2026-08-20 · 두 번째 사고)")
 # ⚠️ `SHOT:` 으로 시작하면 붙여 넣는 쪽이 `shot:` 을 주소 이름으로 읽어
 #    글자가 통째로 %20 · %EB.. 로 깨진다. 실제로 운영자가 두 번 겪었다.

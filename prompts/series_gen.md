@@ -64,7 +64,7 @@
 > 머리말은 콜론 없이 쓴다 — 그래야 주소로 안 읽힌다.
 
 ```
-Fictional scene, invented characters, cinematic realism. 6-second single continuous take.
+Fictional scene, invented characters, semi-realistic illustrated drama. 6-second single continuous take.
 SHOT: 샷 크기 + 카메라 움직임 (하나만) — 뒤에 '허리 위로·얼굴 크게' 를 우리가 붙인다
 SUBJECT: 등장인물을 가리키는 **영어 관계말** + 옷차림 (얼굴 묘사 절대 금지 — 아래 ⚠️ 참고)
 ACTION: 동작 하나
@@ -75,7 +75,7 @@ AUDIO: (우리가 붙인다) 낭독이 아니라 그 자리에서 하는 말이�
 SETTING: 장소 + 조명
 CONTINUITY: (우리가 붙인다) 앞 컷에서 이어지는 장면이라는 못
 COLOR: (우리가 붙인다) 모든 컷에 똑같은 색
-STYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, grounded everyday Korean realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.
+STYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, grounded adult proportions and restrained faces rather than cartoon exaggeration, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.
 Avoid: overlapping voices, on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different person.
 ```
 
@@ -164,7 +164,7 @@ Avoid: overlapping voices, on-screen text, signage, documents with visible writi
 `맞섬`·`뒤집기` 는 받아치는 말이 있어야 장면이 뒤집힌다. 이렇게 쓴다:
 
 ```
-Fictional scene, invented characters, cinematic realism. 6-second single continuous take.
+Fictional scene, invented characters, semi-realistic illustrated drama. 6-second single continuous take.
 SHOT: Medium two-shot, static camera, both faces visible.
 DIALOGUE: 아내 (furious): "여기가 어디라고 와? 당장 안 나가면 경찰 부른다." / 동거녀 (calm): "마지막 가는 길인데 인사도 못 해요?"
 ```
@@ -548,6 +548,28 @@ DIALOGUE: [LANGUAGE: KOREAN] each person speaks one after another, never overlap
 **너는 `SETTING` 만 정확히 쓰면 된다** — 장소가 같은지 다른지를 보고
 시스템이 알맞은 문장을 고른다. 그래서 같은 장소는 **글자 그대로 같게** 쓴다.
 
+### 화풍 — **반실사 그림체** (2026-08-21 확정)
+
+운영자: *"이럴 거면 절반 정도는 애니메이션풍으로 만드는 게 낫지 않아?"*
+
+맞는 직감이었다. 그림체로 가면 그동안 싸운 문제 **넷이 한꺼번에** 풀린다.
+
+| 겪은 문제 | 실사 | 그림체 |
+|---|---|---|
+| 입 모양이 안 맞음 (더빙의 약점) | 얼굴이 진짜라 바로 티난다 | 입이 단순해 안 걸린다 |
+| 유명인 정책 차단 (다섯 번) | 실존 인물 사진으로 읽힌다 | 그림은 거의 안 걸린다 |
+| 얼굴이 컷마다 바뀜 | 사진 같은 얼굴은 고정이 어렵다 | 단순한 얼굴은 잘 고정된다 |
+| 손가락이 녹아듦 | 진짜 손이라 오류가 보인다 | 단순한 손은 원래 그렇다 |
+
+**다만 만화가 아니다.** 판결극장은 실제 판결이 밑천이라 무게가 빠지면 안 된다.
+채도를 낮추고 선을 살린 **반실사**로 간다 — 어른 비례, 과장 없는 얼굴.
+
+**한 영상 안에서 화풍을 섞지 않는다.** 컷마다 그림체가 달라지면 싸구려로 보인다.
+`STYLE` 줄은 시스템이 모든 컷에 똑같이 넣으니 너는 신경 쓰지 않아도 된다.
+
+`Avoid` 에 `cartoon` `illustration` `anime` 같은 말을 **넣지 마라** —
+지금은 그림체가 바라는 것이다. (막을 것은 `chibi` 같은 과장된 비례다)
+
 ### `SHOT` — 세로 쇼츠에서는 **얼굴이 커야 한다**
 
 ⭐ 2026-08-21 — 실제로 만든 쇼츠를 눈으로 보고 알았다.
@@ -738,7 +760,7 @@ shot` 은 세로 쇼츠에서 쓸모가 없다. `medium close-up` · `close-up` 
           "role": "후킹",
           "subtitle": "\"이 집, 오늘 안에 비워 주세요.\" / \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"",
           "caption": "장례를 치른 다음 날, 시동생이 집을 요구했다",
-          "prompt": "Fictional scene, invented characters, cinematic realism. 6-second single continuous take.\nSHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: the brother-in-law in a black suit facing the daughter-in-law in black mourning hanbok.\nACTION: the brother-in-law sets a closed folder on the table and steps back.\nDIALOGUE: the brother-in-law (calm and cold): \"이 집, 오늘 안에 비워 주세요.\" / the daughter-in-law (trembling): \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, grounded everyday Korean realism, muted desaturated palette, soft practical lighting, 35mm lens look, shallow depth of field, natural skin texture, no stylization.\nAvoid: overlapping voices, on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different person."
+          "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 6-second single continuous take.\nSHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: the brother-in-law in a black suit facing the daughter-in-law in black mourning hanbok.\nACTION: the brother-in-law sets a closed folder on the table and steps back.\nDIALOGUE: the brother-in-law (calm and cold): \"이 집, 오늘 안에 비워 주세요.\" / the daughter-in-law (trembling): \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, grounded adult proportions and restrained faces rather than cartoon exaggeration, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nAvoid: overlapping voices, on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different person."
         }
       ]
     }
@@ -768,7 +790,7 @@ shot` 은 세로 쇼츠에서 쓸모가 없다. `medium close-up` · `close-up` 
 
 - [ ] 16화 × 5컷 = 80컷이 다 있는가
 - [ ] 모든 화의 컷1이 **대사 또는 충격 장면**으로 시작하는가 (설명 금지)
-- [ ] 모든 `prompt` 가 **머리말 줄**(`Fictional scene, invented characters, cinematic realism. 6-second single continuous take.`) 로 시작하는가
+- [ ] 모든 `prompt` 가 **머리말 줄**(`Fictional scene, invented characters, semi-realistic illustrated drama. 6-second single continuous take.`) 로 시작하는가
       (`SHOT:` 으로 시작하면 붙여 넣을 때 주소로 읽혀 글자가 통째로 깨진다)
 - [ ] 머리말 다음이 `SHOT:` 이고 `Avoid:` 로 끝나는가
 - [ ] 모든 `prompt` 에 `STYLE:` 줄이 **글자 그대로 똑같이** 들어갔는가
