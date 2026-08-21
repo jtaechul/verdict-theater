@@ -154,6 +154,31 @@ jobs:
           sys.exit(1 if bad else 0)
           PY
 
+      # ⭐ 2026-08-21 — **맨 끝에 둔다.** 두 길은 소리는 같은데 한도가 하늘과
+      #    땅 차이라(하루 10번 / 제한 없음), 지금 어느 쪽인지가 가장 중요한
+      #    한 줄이다. 맨 끝에 있어야 화면에서 바로 눈에 든다.
+      - name: 지금 어느 길로 목소리를 부르는가
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_TTS_KEY: ${{ secrets.GOOGLE_TTS_KEY }}
+        run: |
+          python3 - <<'PY' | tee build_route.txt
+          import sys
+          sys.path.insert(0, "src")
+          import tts as T
+          print("길:", T.route_note())
+          print("결:", T.style_of()["name"])
+          print("목소리: 여자", T.best_voices("FEMALE")[0],
+                "· 남자", T.best_voices("MALE")[0])
+          PY
+          {
+            echo "### 지금 목소리를 부르는 길"
+            echo ""
+            echo '```'
+            cat build_route.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: 결과 적기
         if: always()
         run: |
