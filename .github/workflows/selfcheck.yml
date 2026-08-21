@@ -108,6 +108,13 @@ jobs:
           python3 -m pip install --quiet pillow 2>/dev/null || true
           python3 tools/shorts_test.py
 
+      # ⭐ 2026-08-21 — 영상 만드는 쪽의 한국어 발음을 프롬프트로 못 고쳐,
+      #    목소리를 한국어 전용으로 **갈아 끼우기로** 했다. 그 일이
+      #    원래 소리를 완전히 지우고 말하던 자리에 정확히 놓는지 잰다.
+      #    (열쇠 없이도 도는 시험이다 — 가짜 목소리를 쓴다)
+      - name: 목소리 갈아 끼우기가 제대로 되는가
+        run: python3 tools/dub_test.py
+
       - name: 관리자 페이지가 안 깨지는가
         run: |
           node tools/check_admin.mjs

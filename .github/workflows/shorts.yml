@@ -33,6 +33,9 @@ jobs:
     timeout-minutes: 30
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # ⭐ 한국어 목소리 (2026-08-21). 없으면 원래 소리를 그대로 쓴다 —
+      #    영상은 계속 나오되 발음이 어눌한 채로 나간다.
+      GOOGLE_TTS_KEY: ${{ secrets.GOOGLE_TTS_KEY }}
       SID: ${{ inputs.sid }}
       EPNO: ${{ inputs.ep }}
 

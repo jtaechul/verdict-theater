@@ -41,6 +41,7 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 import clip as C                                            # noqa: E402
+import tts                                                  # noqa: E402
 
 FONT_B = ROOT / "assets" / "fonts" / "KoPub_Dotum_Pro_Bold.otf"
 FONT_M = ROOT / "assets" / "fonts" / "KoPub_Dotum_Pro_Medium.otf"
@@ -61,8 +62,8 @@ def syl(t):
     return len(re.findall(r"[가-힣]", str(t or "")))
 
 
-def speech_spans(src, n, dur):
-    """누가 언제 말하는지 — 소리에서 직접 찾는다 (2026-08-20 운영자 지시).
+def voiced_spans(src, n, dur, lines=None):
+    """**실제로 목소리가 난 자리** — 소리에서 직접 찾는다 (2026-08-20 운영자 지시).
 
     "자막은 사람마다 가라오케 식으로 하는 게 낫지 않냐?"
 
@@ -101,8 +102,17 @@ def speech_spans(src, n, dur):
 
     if len(spans) != n:                                      # 못 찾았다 → 음절 수 비례
         return by_syllable(n, dur, spans_hint=None)
+    return [(a, b) for a, b in spans]
 
-    # 다음 사람이 말하기 직전까지 그 사람 줄을 켜 둔다 (빈 순간이 없게)
+
+def speech_spans(src, n, dur, lines=None):
+    """자막을 켜 둘 시간. **말이 끊긴 사이에도 자막은 켜 둔다.**
+
+    ⚠️ 소리를 놓을 때 이걸 쓰면 안 된다 — 첫 토막이 0초부터로 늘어나 있어서
+       목소리가 **말하지도 않는 자리**에서 시작한다(실제로 그렇게 나왔다).
+       소리를 놓을 때는 위의 `voiced_spans` 를 쓴다.
+    """
+    spans = voiced_spans(src, n, dur, lines)
     out = []
     for i, (a, b) in enumerate(spans):
         end = spans[i + 1][0] if i + 1 < len(spans) else dur
@@ -309,6 +319,74 @@ def gain_for(src):
     return round(g, 2)
 
 
+# ⭐⭐ 2026-08-21 — 목소리를 **한국어 전용**으로 갈아 끼운다.
+#    운영자: "외국인 노동자가 어설픈 한국말 하는 것 같아 ㅠㅠ"
+#    영상 만드는 쪽의 한국어 발음은 프롬프트로 못 고친다(다 해 봤다).
+#    다행히 실제 영상을 재 보니 **말하는 자리가 정확히 잡힌다** —
+#      0.98~2.55 / 2.79~4.20 / 4.57~6.02
+#    그 자리에 같은 대사를 한국어 목소리로 만들어 그대로 끼워 넣는다.
+#    입은 이미 같은 한국어 대사로 움직이므로 입모양도 거의 맞는다.
+#    ⚠️ 열쇠가 없으면 **아무것도 안 하고 원래 소리를 그대로 쓴다.**
+#       (영상이 안 나오는 것보다 낫다)
+def dia_turns(prompt):
+    """컷 프롬프트에서 (말하는 사람, 대사) 를 말한 차례대로 뽑는다."""
+    out = []
+    for l in str(prompt or "").split("\n"):
+        if not l.startswith("  "):
+            continue
+        m = re.match(r'\s*([^:(]+?)\s*(?:\([^)]*\))?\s*:\s*"(.+)"\s*$', l)
+        if m:
+            out.append((m.group(1).strip(), m.group(2).strip()))
+    return out
+
+
+def dub(src, turns, voices, out, tmp):
+    """클립의 소리를 한국어 목소리로 갈아 끼운다. 못 하면 False."""
+    if not turns or not tts.key():
+        return False
+    dur = C.probe(src)[2]
+    # ⚠️ 자막용(speech_spans)이 아니라 **실제로 말한 자리**를 써야 한다.
+    #    자막용은 첫 토막이 0초부터로 늘어나 있어서, 그걸 쓰면 목소리가
+    #    말하지도 않는 앞머리에서 시작한다 (실제로 그렇게 나왔다).
+    spans = voiced_spans(src, len(turns), dur, [t for _, t in turns])
+    if len(spans) != len(turns):
+        spans = by_syllable(len(turns), dur, [t for _, t in turns])
+    tmp.mkdir(parents=True, exist_ok=True)
+    made = []
+    for i, ((who, text), (a, b)) in enumerate(zip(turns, spans)):
+        v = voices.get(who) or voices.get(who.lower()) or tts.VOICE_F[0]
+        try:
+            p, d = tts.say_to_fit(text, v, max(0.6, b - a),
+                                  tmp / f"{src.stem}_v{i}.wav",
+                                  tts.tone_of(text))
+        except Exception as e:                               # noqa: BLE001
+            print(f"    ⚠️ 목소리 만들기 실패 ({e}) — 원래 소리를 쓴다")
+            return False
+        made.append((a, p, d))
+        print(f"    🎙 {who}: {text[:18]}…  {a:.2f}초부터 {d:.2f}초")
+
+    # 원래 소리는 **완전히 지우고**, 만든 목소리를 제자리에 얹는다
+    args = ["ffmpeg", "-v", "error", "-y", "-i", str(src)]
+    for _, p, _ in made:
+        args += ["-i", str(p)]
+    fil = [f"[0:a]volume=0,apad[bed]"]
+    mix = "[bed]"
+    for i, (a, _, _) in enumerate(made):
+        fil.append(f"[{i + 1}:a]adelay={int(a * 1000)}|{int(a * 1000)}[d{i}]")
+        mix += f"[d{i}]"
+    fil.append(f"{mix}amix=inputs={len(made) + 1}:normalize=0:"
+               f"duration=first[mixed]")
+    args += ["-filter_complex", ";".join(fil),
+             "-map", "0:v", "-map", "[mixed]",
+             "-c:v", "copy", "-c:a", "aac", "-b:a", "160k",
+             "-t", f"{dur:.3f}", str(out)]
+    r = subprocess.run(args, capture_output=True, text=True)
+    if r.returncode != 0:
+        print(f"    ⚠️ 소리 갈아 끼우기 실패 — 원래 소리를 쓴다\n{r.stderr[:200]}")
+        return False
+    return True
+
+
 def compose(src, hook, sub, out, tmp):
     """받은 클립 한 개 → 쇼츠 한 컷 (워터마크 지우고 4:3 자르고 글자 얹기)."""
     src, out, tmp = Path(src), Path(out), Path(tmp)
@@ -463,15 +541,25 @@ def episode(sid, no, clips_dir, out_dir):
     print(f"  후킹 문구: {hook}")
 
     files = pick_clips(clips_dir, len(ep["cuts"]), ep["cuts"])
+    voices = tts.pick_voices(doc.get("characters"))
+    if tts.key():
+        print("  🎙 목소리를 한국어 전용으로 갈아 끼운다")
+    else:
+        print("  (GOOGLE_TTS_KEY 가 없어 원래 소리를 그대로 쓴다)")
     parts = []
     for c in ep["cuts"]:
         n = int(c["n"])
         src = files.get(n)
         if not src:
             raise SystemExit(f"❌ {n}컷 클립이 없다 ({clips_dir})")
+        # ⭐ 소리를 먼저 갈아 끼우고, 그 다음에 자막·크롭을 얹는다.
+        #    (자막이 **말하는 자리**를 소리에서 찾으므로 순서가 중요하다)
+        dubbed = tmp / f"cut{n}_ko.mp4"
+        if dub(src, dia_turns(c.get("prompt")), voices, dubbed, tmp):
+            src = dubbed
         d = compose(src, hook, c.get("subtitle"), tmp / f"cut{n}.mp4", tmp)
         parts.append(d)
-        print(f"  ✅ {n}컷 ← {src.name}  (소리 {gain_for(src):+.1f}dB)")
+        print(f"  ✅ {n}컷 ← {files[n].name}  (소리 {gain_for(src):+.1f}dB)")
 
     lst = tmp / "list.txt"
     lst.write_text("".join(f"file '{p.resolve()}'\n" for p in parts), encoding="utf-8")
