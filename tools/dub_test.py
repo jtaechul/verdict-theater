@@ -282,6 +282,18 @@ ck("소리 쪽이 그림 모듈을 안 끌어온다", "False" in _r.stdout, _r.s
 _src = (ROOT / "src" / "tts.py").read_text(encoding="utf-8")
 ck("tts.py 가 shorts 를 안 들여온다", "import shorts" not in _src)
 
+print("\n④-5 소리·영상을 다루는 워크플로가 ffmpeg 를 깔아 두는가")
+# ⚠️ 2026-08-21 — 목소리 견본이 **세 번째로** 죽었다. 이번 까닭은 ffmpeg 였다.
+#    깃허브 실행기에는 기본으로 안 깔려 있는데, 소리 토막을 이어 붙이려면 필요하다.
+#    (첫 번째는 PIL, 세 번째는 ffmpeg — 둘 다 "준비물을 안 깔았다" 는 같은 실수다)
+NEEDS = ["src/shorts.py", "src/clip.py", "src/tts.py"]
+for wf in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
+    txt = wf.read_text(encoding="utf-8")
+    if not any(n in txt for n in NEEDS):
+        continue
+    ck(f"{wf.name} 이 ffmpeg 를 깔아 둔다", "ffmpeg" in txt,
+       "소리·영상을 다루는데 준비물이 없다")
+
 print("\n⑤ 사람마다 다른 목소리를 주는가")
 chs = [{"name": "본처", "role_en": "the wife",
         "flow_prompt": "Korean woman, 52 years old."},

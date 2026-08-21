@@ -184,10 +184,26 @@ ck("제대로 된 후킹은 조용하다", not S.hook_warn(ok), str(S.hook_warn(
 bad = doc_with(["본처 stands still."])
 bad["episodes"][0]["hook"] = ""
 ck("후킹이 비면 알린다", any("비었다" in w for w in S.hook_warn(bad)))
-bad2 = doc_with(["본처 stands still."])
-bad2["episodes"][0]["hook"] = "집을 나가는 남편"
-ck("상태로 끝나면 알린다", any("상태로 끝났다" in w for w in S.hook_warn(bad2)),
-   str(S.hook_warn(bad2)))
+# ⭐ 2026-08-21 운영자: "전혀 유인이 안 돼. 차라리 '불륜녀를 집에 데리고 온
+#    쓰레기 남편' 이 더 낫지 않아?" → 맞다. 사실 보고가 아니라 **판정**이다.
+#    ⚠️ 예전 규칙("명사로 끝나면 밋밋하다")은 **틀렸다.** 한국어 후킹은
+#       체언으로 끝날 때 오히려 세다(`쓰레기 남편` `빚 6억`).
+for _flat in ("집을 나가는 남편", "이혼 소송 기각", "앙심을 품다",
+              "갑작스러운 죽음", "끝없는 빼돌리기", "장례식장의 불청객"):
+    _b = doc_with(["본처 stands still."])
+    _b["episodes"][0]["hook"] = _flat
+    ck(f"밋밋한 것을 잡는다 — {_flat}", bool(S.hook_warn(_b)),
+       str(S.hook_warn(_b))[:44])
+for _good in ("불륜녀를 집에 데려온 쓰레기 남편", "보험금 15억, 받는 사람은 불륜녀",
+              "아내가 받은 유산은 빚 6억", "병원도 아파트도 불륜녀 이름으로",
+              '불륜녀 "보험금은 내 돈이잖아요"'):
+    _g = doc_with(["본처 stands still."])
+    _g["episodes"][0]["hook"] = _good
+    ck(f"센 것은 통과시킨다 — {_good[:15]}", not S.hook_warn(_g),
+       str(S.hook_warn(_g))[:44])
+ck("너무 짧으면 잡는다",
+   any("자뿐이다" in w for w in S.hook_warn(
+       {"episodes": [{"no": 1, "hook": "앙심을 품다", "yt_title": "x"}]})))
 bad3 = doc_with(["본처 stands still."])
 bad3["episodes"][0]["hook"] = "남편이 집을 나간 충격 진실 이야기다"
 ck("밋밋한 말을 알린다", any("밋밋한" in w for w in S.hook_warn(bad3)))

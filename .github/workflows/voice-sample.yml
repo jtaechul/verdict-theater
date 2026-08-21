@@ -46,6 +46,13 @@ jobs:
         with:
           python-version: '3.12'
 
+      # ⚠️ 소리 토막을 이어 붙이는 데 ffmpeg 가 필요하다. 깃허브 실행기에는
+      #    기본으로 안 깔려 있다 — 이것을 빠뜨려 세 번째 시도가 죽었다.
+      - name: 준비물 (ffmpeg)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+
       - name: 열쇠 확인
         run: |
           if [ -z "${GOOGLE_TTS_KEY:-}" ]; then
@@ -60,7 +67,13 @@ jobs:
           set -euo pipefail
           EPN=$(printf '%02d' "$EP")
           mkdir -p build
-          python3 src/tts.py --sample "$SID" --ep "$EP" --out "build/voice.mp3"
+          # 까닭을 파일로도 남긴다 — 실패하면 화면에 그대로 보여 준다
+          set +e
+          python3 src/tts.py --sample "$SID" --ep "$EP" --out "build/voice.mp3" \
+            2>&1 | tee build/why.txt
+          rc=${PIPESTATUS[0]}
+          set -e
+          test "$rc" = "0" || { echo "❌ 만들지 못했습니다"; exit 1; }
           ls -la build/voice.mp3
 
       - name: 릴리스에 올리기 (저장소에는 안 넣는다)
@@ -80,6 +93,12 @@ jobs:
             else
               echo "## 목소리 견본을 못 만들었습니다"
               echo ""
-              echo "위의 빨간 칸을 열어 까닭을 보십시오."
+              if [ -f build/why.txt ]; then
+                echo '```'
+                tail -n 12 build/why.txt
+                echo '```'
+              else
+                echo "위의 빨간 칸을 열어 까닭을 보십시오."
+              fi
             fi
           } >> "$GITHUB_STEP_SUMMARY"
