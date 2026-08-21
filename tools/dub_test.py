@@ -143,6 +143,28 @@ if ok:
     ck("원본 소리가 남아 있지 않다 (사이가 진짜 조용하다)",
        bool(_q) and len(_q) >= 2, f"{len(_q)}군데 조용함")
 
+print("\n③-2 앞뒤 죽은 시간을 잘라 내는가 (제미나이 10초짜리도 쓸 수 있게)")
+tight = S.trim_dead(src, tmp / "tight.mp4")
+_td = float(run("ffprobe", "-v", "error", "-show_entries", "format=duration",
+                "-of", "csv=p=0", str(tight)).stdout.strip() or 0)
+ck("앞 무음이 잘린다", _td < 6.0 - 0.4, f"6.00초 → {_td:.2f}초")
+ck("말은 하나도 안 잘린다",
+   _td >= (REAL[-1][1] - REAL[0][0]), f"말한 구간 {REAL[-1][1] - REAL[0][0]:.2f}초 이상")
+ck("첫 말 앞에 숨 쉴 자리를 남긴다", S.HEAD_PAD > 0)
+ck("끝말 뒤에 여운을 남긴다", S.TAIL_PAD > S.HEAD_PAD)
+_sil2 = [v for k, v in silences(tight) if k == "end"]
+ck("자른 뒤에도 말 토막이 세 개다", len(_sil2) == 3,
+   f"{[round(x, 2) for x in _sil2]}")
+# 뒤에 긴 무음이 붙은 것(제미나이 10초짜리 흉내)도 잘리는가
+long_src = tmp / "long.mp4"
+run("ffmpeg", "-v", "error", "-y", "-i", str(src),
+    "-af", "apad=whole_dur=10", "-t", "10",
+    "-c:v", "copy", "-c:a", "aac", str(long_src))
+_lt = S.trim_dead(long_src, tmp / "long_tight.mp4")
+_ld = float(run("ffprobe", "-v", "error", "-show_entries", "format=duration",
+                "-of", "csv=p=0", str(_lt)).stdout.strip() or 0)
+ck("10초짜리 뒤 무음도 잘린다", _ld < 7.0, f"10.00초 → {_ld:.2f}초")
+
 print("\n④ 시간에 맞춰 말 속도를 고치는가")
 ck("속도가 사람 소리 범위 안에서만 움직인다",
    T.RATE_MIN >= 0.7 and T.RATE_MAX <= 1.5,

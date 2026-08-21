@@ -72,7 +72,7 @@ def voiced_spans(src, n, dur, lines=None):
     0.02초 오차로 맞았다). 못 찾으면 **음절 수 비례**로 나눈다 — 긴 대사가
     긴 시간을 갖는 것이 그냥 똑같이 나누는 것보다 훨씬 가깝다.
     """
-    if n <= 1:
+    if n == 1:
         return [(0.0, dur)]
     spans = []
     try:
@@ -93,6 +93,8 @@ def voiced_spans(src, n, dur, lines=None):
     except Exception:                                        # noqa: BLE001
         spans = []
 
+    if n <= 0:                    # 몇 토막인지 안 정했으면 **찾은 대로** 준다
+        return [(a, b) for a, b in spans]
     # 토막이 사람 수보다 많으면, 사이가 가장 좁은 것부터 붙인다
     while len(spans) > n:
         gaps = [(spans[i + 1][0] - spans[i][1], i) for i in range(len(spans) - 1)]
@@ -317,6 +319,44 @@ def gain_for(src):
     if peak + g > PEAK_LIMIT:
         g = PEAK_LIMIT - peak
     return round(g, 2)
+
+
+# ⭐⭐ 2026-08-21 — **죽은 시간을 잘라 낸다.**
+#    운영자가 같은 프롬프트를 제미나이에 넣어 받은 영상을 재 봤다 (10.005초):
+#      0.00~1.13 무음 / 1.13~2.50 / 2.83~4.29 / 4.66~6.20 / **6.20~10.00 무음**
+#    말한 시간은 4.37초 — 플로우 6초짜리(4.43초)와 **거의 같다.**
+#    10초라서 천천히 말한 것이 아니라 **뒤에 3.8초를 그냥 비워 둔 것**이다.
+#    (그러니 컷을 10초로 늘리는 것은 소용이 없다. 자연스러움의 차이는
+#     길이가 아니라 목소리 모델 쪽에서 온다.)
+#
+#    → 앞뒤 죽은 시간을 잘라 내면 **10초짜리도 그대로 쓸 수 있고**,
+#      플로우 6초짜리도 앞 1초가 사라져 훨씬 촘촘해진다.
+HEAD_PAD = 0.25        # 첫 말 앞에 남겨 둘 숨
+TAIL_PAD = 0.45        # 끝말 뒤에 남겨 둘 여운
+
+
+def trim_dead(src, out):
+    """앞뒤로 말이 없는 시간을 잘라 낸다. 자를 것이 없으면 원본을 그대로."""
+    src, out = Path(src), Path(out)
+    dur = C.probe(src)[2]
+    spans = voiced_spans(src, 0, dur)      # 있는 대로 다 찾는다
+    if not spans:
+        return src
+    a = max(0.0, spans[0][0] - HEAD_PAD)
+    b = min(dur, spans[-1][1] + TAIL_PAD)
+    if b - a < 1.0 or (a < 0.15 and dur - b < 0.15):
+        return src                          # 자를 것이 없다
+    out.parent.mkdir(parents=True, exist_ok=True)
+    r = subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-ss", f"{a:.3f}", "-i", str(src),
+         "-t", f"{b - a:.3f}", "-c:v", "libx264", "-preset", "veryfast",
+         "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
+         str(out)], capture_output=True, text=True)
+    if r.returncode != 0 or not out.exists():
+        return src
+    print(f"    ✂️ 죽은 시간을 잘랐다 — {dur:.2f}초 → {b - a:.2f}초 "
+          f"(앞 {a:.2f}초 · 뒤 {dur - b:.2f}초)")
+    return out
 
 
 # ⭐⭐ 2026-08-21 — 목소리를 **한국어 전용**으로 갈아 끼운다.
@@ -552,7 +592,10 @@ def episode(sid, no, clips_dir, out_dir):
         src = files.get(n)
         if not src:
             raise SystemExit(f"❌ {n}컷 클립이 없다 ({clips_dir})")
-        # ⭐ 소리를 먼저 갈아 끼우고, 그 다음에 자막·크롭을 얹는다.
+        # ⭐ ① 앞뒤 죽은 시간을 먼저 잘라 낸다 (플로우 6초짜리의 앞 1초 무음,
+        #      제미나이 10초짜리의 뒤 3.8초 무음이 그대로 나가면 안 된다)
+        src = trim_dead(src, tmp / f"cut{n}_tight.mp4")
+        # ⭐ ② 소리를 갈아 끼우고, ③ 그 다음에 자막·크롭을 얹는다.
         #    (자막이 **말하는 자리**를 소리에서 찾으므로 순서가 중요하다)
         dubbed = tmp / f"cut{n}_ko.mp4"
         if dub(src, dia_turns(c.get("prompt")), voices, dubbed, tmp):
@@ -569,7 +612,8 @@ def episode(sid, no, clips_dir, out_dir):
                         str(final)], capture_output=True, text=True)
     if p.returncode != 0:
         raise RuntimeError(f"이어 붙이기 실패:\n{p.stderr[:400]}")
-    print(f"\n✅ {final.name} — {len(parts)}컷 · {len(parts) * 6}초")
+    total = sum(C.probe(p)[2] for p in parts)
+    print(f"\n✅ {final.name} — {len(parts)}컷 · {total:.1f}초")
     return final
 
 
