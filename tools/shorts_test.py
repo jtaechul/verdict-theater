@@ -86,9 +86,29 @@ ck("한 사람만 말하면 한 줄", len(ls) == 1, f"{ls}")
 
 print("\n④ 긴 글도 칸을 안 넘는가 (글자를 줄여서라도 넣는다)")
 long_hook = "이십 년을 함께 산 아내에게 남긴 것은 빚 칠억과 이혼 서류 한 장뿐이었다"
-f, ls = S.fit(d0, long_hook, S.FONT_B, S.HOOK_SIZE, S.W - S.SIDE * 2, 3)
+BOXH = S.HOOK_BOT - S.HOOK_TOP
+f, ls = S.fit_box(d0, long_hook, S.FONT_H, S.W - S.SIDE * 2, BOXH,
+                  S.HOOK_MAX, S.HOOK_MIN, S.HOOK_GAP, 3)
 ck("긴 후킹 문구도 3줄 안에 들어간다", len(ls) <= 3, f"{len(ls)}줄 · {f.size}px")
+ck("긴 것도 상자 높이를 안 넘는다",
+   len(ls) * int(f.size * S.HOOK_GAP) <= BOXH,
+   f"{len(ls) * int(f.size * S.HOOK_GAP)}px ≤ {BOXH}px")
 ck("그래도 너무 작아지지는 않는다", f.size >= 40, f"{f.size}px")
+
+# ⭐ 2026-08-21 운영자: "후킹 글꼴도 바뀌어야 하고 크기도 더 커져야 한다"
+short_hook = "그 여자를 데려와 이혼을 요구했다"
+f2, ls2 = S.fit_box(d0, short_hook, S.FONT_H, S.W - S.SIDE * 2, BOXH,
+                    S.HOOK_MAX, S.HOOK_MIN, S.HOOK_GAP, 3)
+ck("짧은 후킹은 **상자에 꽉 차게** 커진다", f2.size >= 110,
+   f"{f2.size}px · {len(ls2)}줄")
+ck("짧은 것도 상자 높이를 안 넘는다",
+   len(ls2) * int(f2.size * S.HOOK_GAP) <= BOXH)
+ck("긴 후킹은 알아서 작아진다", f2.size > f.size, f"{f2.size}px vs {f.size}px")
+ck("후킹이 자막보다 확실히 크다", f2.size >= S.SUB_SIZE * 1.5,
+   f"후킹 {f2.size}px · 자막 {S.SUB_SIZE}px")
+ck("후킹 글꼴이 저장소에 들어 있다 (깃허브엔 한글 글꼴이 없다)",
+   S.FONT_H.exists(), str(S.FONT_H.name))
+ck("후킹 글꼴이 자막 글꼴보다 굵다", S.FONT_H != S.FONT_M)
 
 print("\n⑤ 진짜 영상으로 한 번 만들어 본다")
 if not shutil.which("ffmpeg"):

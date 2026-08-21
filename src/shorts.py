@@ -45,11 +45,20 @@ import tts                                                  # noqa: E402
 
 FONT_B = ROOT / "assets" / "fonts" / "KoPub_Dotum_Pro_Bold.otf"
 FONT_M = ROOT / "assets" / "fonts" / "KoPub_Dotum_Pro_Medium.otf"
+# ⭐⭐ 2026-08-21 운영자: "위쪽 후킹 문구는 글꼴도 바뀌어야 되고 크기도 더
+#    커져야 될 것 같다."
+#    맞다. 실제로 만든 것을 보니 후킹이 76px 짜리 보통 굵기라 **자막보다도
+#    존재감이 없었다.** 후킹은 남느냐 떠나느냐를 가르는 한 줄인데 그랬다.
+#    ⚠️ 저장소에 글꼴 파일을 넣어 둔다 — 깃허브 실행기에는 한글 글꼴이
+#       아예 없어서, 시스템 글꼴에 기대면 네모(두부)로 나온다.
+FONT_H = ROOT / "assets" / "fonts" / "NanumGothic_ExtraBold.ttf"
 
 W, H = 1080, 1920                # 쇼츠 화면
 VIDEO_Y, VIDEO_H = 520, 810      # 4:3 영상이 앉는 자리
 MARK_Y, MARK_SIZE = 40, 38       # 우측 상단 채널 이름
-HOOK_TOP, HOOK_BOT, HOOK_SIZE = 150, 470, 76
+# 후킹은 **상자에 꽉 차게** 키운다 — 아래 HOOK_MAX 부터 줄여 가며 맞춘다
+HOOK_TOP, HOOK_BOT = 150, 470
+HOOK_MAX, HOOK_MIN, HOOK_GAP = 132, 60, 1.18
 SUB_TOP, SUB_BOT, SUB_SIZE = 1360, 1610, 68
 SIDE = 64                        # 좌우 여백
 GOLD = (198, 160, 74)
@@ -170,6 +179,26 @@ def fit(draw, text, path, size, max_w, max_lines, split_slash=False):
     return f, ls[:max_lines]
 
 
+def fit_box(draw, text, path, max_w, max_h, big, small, gap, max_lines):
+    """**상자에 꽉 차는 가장 큰 크기**를 찾는다 (후킹용).
+
+    ⚠️ fit() 은 정해진 크기에서 **줄이기만** 한다. 후킹은 반대로 키워야 한다 —
+       짧은 후킹은 크게, 긴 후킹은 알아서 작게. 너비·줄 수·**상자 높이**를
+       모두 보고 들어가는 가장 큰 크기를 고른다.
+    """
+    t = str(text or "")
+    f = ImageFont.truetype(str(path), small)
+    ls = wrap(draw, t, f, max_w)
+    for size in range(int(big), int(small) - 1, -2):
+        f2 = ImageFont.truetype(str(path), size)
+        got = wrap(draw, t, f2, max_w)
+        if len(got) > max_lines:
+            continue
+        if len(got) * int(size * gap) <= max_h:
+            return f2, got
+    return f, ls[:max_lines]
+
+
 def fit_owned(draw, parts, path, size, max_w, max_lines):
     """사람별 대사 목록 → (글꼴, 화면에 그릴 줄들, 줄마다 누구 말인지).
 
@@ -280,8 +309,10 @@ def overlay_png(hook, chunk, out):
            CHANNEL, font=mark, fill=GOLD + (255,))
 
     if str(hook or "").strip():
-        f, ls = fit(d, hook, FONT_B, HOOK_SIZE, W - SIDE * 2, 3)
-        block(d, ls, f, HOOK_TOP, HOOK_BOT, (255, 255, 255, 255))
+        f, ls = fit_box(d, hook, FONT_H, W - SIDE * 2, HOOK_BOT - HOOK_TOP,
+                        HOOK_MAX, HOOK_MIN, HOOK_GAP, 3)
+        block(d, ls, f, HOOK_TOP, HOOK_BOT, (255, 255, 255, 255),
+              gap=HOOK_GAP)
 
     if str(chunk or "").strip():
         # 한 토막만 있으니 크게 쓸 수 있다 — 폰에서 읽기 훨씬 낫다
