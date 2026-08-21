@@ -120,15 +120,21 @@ CASES = [
     ("지금 그걸 말이라고 해?", "되묻"),
     ("그 사람 이름은 내가 안다.", "차분"),
 ]
+# ⚠️ 줄마다 달라지는 결은 mood() 가 정한다. direct() 로 재면 안 된다 —
+#    작품 전체 결(STYLES)이 정해져 있으면 그것이 mood() 를 눌러 이기기
+#    때문이다. 층을 섞어 재면 결을 바꿀 때마다 시험이 헛돈다.
 seen = set()
 for line, want in CASES:
-    d = T.direct(line)
-    seen.add(T.mood(line))
-    ck(want in d, f"「{line[:12]}」 → 「{want}」 쪽으로 읽힌다", d[:80])
+    m = T.mood(line)
+    seen.add(m)
+    ck(want in m, f"「{line[:12]}」 → 「{want}」 쪽으로 읽힌다", m)
 
 ck(len(seen) == len(CASES), "다섯 가지 말투가 서로 다르게 나온다",
    f"나온 말투 {len(seen)}가지")
 
+# 아래 꼴 검사는 **결을 안 정한 상태(drama)** 에서 본다
+_style_keep = os.environ.get("VOICE_STYLE")
+os.environ["VOICE_STYLE"] = "drama"
 LINE = "당신 진짜 제정신이야?"
 d = T.direct(LINE)
 ck(d.count(LINE) == 1, "대사가 지시 안에 딱 한 번만 들어간다")
@@ -138,6 +144,15 @@ ck(len(d) < 200, f"지시가 너무 길지 않다 ({len(d)}자)")
 ck(T.direct('"' + LINE + '"') == d, "이미 따옴표가 붙어 있어도 겹치지 않는다")
 # ⚠️ 지시가 대사보다 지나치게 길면 모델이 지시를 본문으로 착각하기 쉽다
 ck(len(d) - len(LINE) < 140, "지시가 대사에 비해 지나치게 길지 않다")
+ck(T.mood(LINE) in d, "결을 안 정하면 줄마다 mood() 가 정한다")
+# 결을 정해 두면 그것이 mood() 를 눌러 이긴다
+os.environ["VOICE_STYLE"] = "fierce"
+ck(T.STYLES["fierce"]["how"][:10] in T.direct(LINE),
+   "결을 정해 두면 그것이 줄마다의 말투를 눌러 이긴다")
+if _style_keep is None:
+    os.environ.pop("VOICE_STYLE", None)
+else:
+    os.environ["VOICE_STYLE"] = _style_keep
 
 # ── ④-1 말투 결(스타일)을 갈아 끼울 수 있는가 ────────
 #    운영자: "한국사람 목소리 같긴해 근데 스타일은 좀 바꿔야할듯"

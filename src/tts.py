@@ -272,7 +272,9 @@ STYLES = {
         "voice_f": "Gacrux", "voice_m": "Algenib",
     },
 }
-STYLE_DEFAULT = "drama"
+# ⭐ 2026-08-21 — 운영자가 귀로 고른 결. "더 격하게 (막장 톤)".
+#    바꾸려면 이 한 줄만 고치면 된다 (또는 VOICE_STYLE 로 그때그때).
+STYLE_DEFAULT = "fierce"
 
 
 def style_now():
