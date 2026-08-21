@@ -125,7 +125,8 @@ def key():
 def engine_note():
     """운영자에게 보여 줄 한 줄 — 지금 어떤 목소리를 쓰고 있는가."""
     if engine() == "gemini":
-        return (f"제미나이 목소리 ({gem_pick()}) — 연기 지시를 함께 보낸다\n"
+        return (f"제미나이 목소리 — 연기 지시를 함께 보낸다\n"
+                f"   길: {route_note()}\n"
                 f"   말투 결: {style_of()['name']}\n"
                 f"   여자 {best_voices('FEMALE')[0]} · "
                 f"남자 {best_voices('MALE')[0]}")
@@ -415,6 +416,21 @@ def cloud_gem_say(text, voice, out, style=None):
             pass
         raise RuntimeError(msg[:300]) from None
     return _write(got, out)
+
+
+def route_note():
+    """지금 **어느 길로** 부르는가.
+
+    ⭐ 이걸 화면에 적는 까닭: 두 길은 소리는 같은데 **한도가 하늘과 땅 차이**다.
+       AI 스튜디오 길 — 무료 등급 하루 10번 (한 화도 못 만든다)
+       구글 클라우드 길 — 결제 계정 기준, 하루 횟수 제한 없음
+       어느 쪽으로 가고 있는지 모르면, 왜 갑자기 안 되는지 알 수가 없다.
+    """
+    if not gem_key() and not gkey():
+        return "열쇠가 없다"
+    if cloud_gem_ready():
+        return f"구글 클라우드 ({cloud_model()}) — 하루 횟수 제한 없음"
+    return "AI 스튜디오 — 무료 등급은 하루 10번뿐"
 
 
 def cloud_gem_ready():
