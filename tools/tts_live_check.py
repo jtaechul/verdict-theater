@@ -23,7 +23,28 @@ import tts as T                                             # noqa: E402
 
 print("⭐ 한국어 목소리 열쇠 확인\n")
 
+# ⚠️ 2026-08-21 — 열쇠가 없을 때 그냥 건너뛰었더니, 초록불이 **열쇠가 된다는
+#    뜻인지 그냥 넘어갔다는 뜻인지** 알 수 없었다. 깃허브 안에서는 열쇠가
+#    있어야 정상이므로, 없으면 **빨간불**을 낸다. 그래야 초록불이 곧 증거가 된다.
+#    (내 컴퓨터에서 그냥 돌릴 때는 예전처럼 건너뛴다)
+import os                                                   # noqa: E402
+IN_CI = os.environ.get("GITHUB_ACTIONS") == "true"
+
+
+def note(line):
+    """깃허브 실행 화면에도 한 줄 남긴다 (운영자가 눈으로 본다)."""
+    f = os.environ.get("GITHUB_STEP_SUMMARY")
+    if f:
+        with open(f, "a", encoding="utf-8") as h:
+            h.write(line + "\n")
+
+
 if not T.key():
+    if IN_CI:
+        print("   ❌ GOOGLE_TTS_KEY 가 깃허브에 없다")
+        print("      시크릿 이름이 정확히 GOOGLE_TTS_KEY 인지 확인한다")
+        note("- ❌ 한국어 목소리 열쇠가 없습니다")
+        sys.exit(1)
     print("   ⏭  GOOGLE_TTS_KEY 가 없다 — 건너뛴다")
     print("      (열쇠가 없으면 영상의 원래 소리를 그대로 쓴다. 영상은 나온다)")
     sys.exit(0)
@@ -51,5 +72,7 @@ for voice in (T.VOICE_F[0], T.VOICE_M[0]):
 print("\n" + "─" * 52)
 if not ok:
     print("❌ 한국어 목소리를 못 만든다. 위 까닭대로 고친 뒤 다시 밀어 넣어라")
+    note("- ❌ 한국어 목소리를 못 만듭니다 (위 빨간 칸을 열어 보십시오)")
     sys.exit(1)
 print("✅ 한국어 목소리 열쇠가 살아 있다 — 이제 쇼츠에 자동으로 얹힌다")
+note("- ✅ 한국어 목소리 열쇠가 살아 있습니다 (구글이 소리를 만들어 줬습니다)")

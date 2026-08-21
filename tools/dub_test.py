@@ -179,6 +179,30 @@ print("\n④ 시간에 맞춰 말 속도를 고치는가")
 ck("속도가 사람 소리 범위 안에서만 움직인다",
    T.RATE_MIN >= 0.7 and T.RATE_MAX <= 1.5,
    f"{T.RATE_MIN}~{T.RATE_MAX}")
+
+# ⭐ 2026-08-21 — 영상 쪽이 급하게 쏟아냈다고 우리 목소리까지 급해지면
+#    애써 바꾼 보람이 없다. 쓸 수 있는 시간(room) 안이면 **그대로 둔다.**
+_calls = []
+_rs, _rk = T.say, T.key
+T.key = lambda: "TEST"
+
+
+def _spy(text, voice="", rate=1.0, pitch=0.0, out=None):
+    _calls.append(round(float(rate), 3))
+    return fake_say(text, voice, rate, pitch, out)
+
+
+T.say = _spy
+_calls.clear()
+T.say_to_fit("가나다라마", "v", 0.5, tmp / "fit1.wav", room=3.0)
+ck("여유가 있으면 자연스러운 속도 그대로 (다시 안 만든다)",
+   _calls == [1.0], f"{_calls}")
+_calls.clear()
+T.say_to_fit("가나다라마바사아자차카타파하", "v", 0.4, tmp / "fit2.wav", room=0.6)
+ck("정말 넘칠 때만 빠르게 한다", len(_calls) == 2 and _calls[1] > 1.0, f"{_calls}")
+ck("빨라져도 사람 소리 범위를 안 넘는다 (2.3배 같은 값을 안 넘긴다)",
+   all(T.RATE_MIN <= r <= T.RATE_MAX for r in _calls), f"{_calls}")
+T.say, T.key = _rs, _rk
 ck("느낌표가 있으면 조금 높게 읽는다", T.tone_of("나가!") > 0)
 ck("보통 말은 그대로", T.tone_of("알았어.") == 0.0)
 

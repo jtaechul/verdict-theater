@@ -165,20 +165,35 @@ def dur_of(p):
         return 0.0
 
 
-def say_to_fit(text, voice, seconds, out, pitch=0.0):
-    """**정해진 시간에 딱 맞게** 한 마디를 만든다.
+def say_to_fit(text, voice, seconds, out, pitch=0.0, room=None):
+    """입이 움직인 시간에 맞춰 한 마디를 만들되, **급해지지 않게** 만든다.
 
-    한 번 만들어 길이를 재고, 남거나 모자란 만큼 말 속도를 고쳐 다시 만든다.
-    (속도를 억지로 늘이는 것보다 다시 만드는 쪽이 훨씬 자연스럽다)
+    · `seconds` — 영상 속 사람의 입이 움직인 시간
+    · `room`    — 다음 사람이 말하기 직전까지, **실제로 쓸 수 있는 시간**
+
+    ⚠️ 2026-08-21 — 처음에는 `seconds` 에 딱 맞췄다. 그런데 영상 만드는 쪽이
+       32음절을 4.4초에 쏟아내는 바람에(초당 7.3음절), 우리 목소리도 똑같이
+       급해져 **애써 바꾼 보람이 없었다.**
+       → 자연스럽게 읽은 길이가 `room` 안에 들어가면 **그대로 둔다.**
+         넘칠 때만, 그것도 `room` 에 맞춰 조금만 빠르게 한다.
     """
     p = say(text, voice, 1.0, pitch, out)
     d = dur_of(p)
     if d <= 0 or seconds <= 0:
         return p, d
-    rate = d / seconds
+    limit = max(float(seconds), float(room or seconds))
+    if d <= limit:
+        return p, d                 # 자연스러운 속도로 이미 들어간다 — 그대로
+    # ⚠️ 여기서 속도를 안 자르면 2.3배 같은 값을 그대로 넘긴다. say() 안에서
+    #    잘리기는 하지만, **자른 뒤 얼마나 넘치는지** 알 수 없게 된다.
+    #    사람 소리로 들리는 범위를 넘느니 조금 넘치게 두는 편이 낫다.
+    rate = min(RATE_MAX, max(RATE_MIN, d / limit))
     if abs(rate - 1.0) > 0.04:
         p = say(text, voice, rate, pitch, out)
         d = dur_of(p)
+    if d > limit + 0.1:
+        print(f"    ⚠️ 대사가 길어 {d - limit:.2f}초 넘친다 "
+              f"— 대사를 조금 줄이면 좋다 (\"{str(text)[:14]}…\")")
     return p, d
 
 

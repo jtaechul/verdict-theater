@@ -404,10 +404,16 @@ def dub(src, turns, voices, out, tmp):
     made = []
     for i, ((who, text), (a, b)) in enumerate(zip(turns, spans)):
         v = voices.get(who) or voices.get(who.lower()) or tts.VOICE_F[0]
+        # ⭐ 2026-08-21 — **입이 움직인 시간에 억지로 우겨넣지 않는다.**
+        #    영상 만드는 쪽은 32음절을 4.4초에 쏟아냈다(초당 7.3음절).
+        #    거기에 딱 맞추면 우리 한국어 목소리도 똑같이 급해져서, 애써
+        #    바꾼 보람이 없다. 다음 사람이 말하기 직전까지가 **쓸 수 있는 시간**
+        #    이므로, 말이 끊긴 사이까지 빌려 쓴다.
+        room = (spans[i + 1][0] if i + 1 < len(spans) else dur) - a - 0.05
         try:
             p, d = tts.say_to_fit(text, v, max(0.6, b - a),
                                   tmp / f"{src.stem}_v{i}.wav",
-                                  tts.tone_of(text))
+                                  tts.tone_of(text), room=max(0.6, room))
         except Exception as e:                               # noqa: BLE001
             print(f"    ⚠️ 목소리 만들기 실패 ({e}) — 원래 소리를 쓴다")
             return False
