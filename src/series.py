@@ -633,6 +633,35 @@ LIPSYNC = (" Both people keep their lips moving in exact sync with the "
            "Korean lines they say.")
 
 
+# ⭐⭐ 2026-08-21 — 실제로 만든 쇼츠를 눈으로 보고 고친다.
+#    플로우가 `Medium two-shot` 을 **전신이 다 나오는 넓은 그림**으로 그렸다.
+#    가로 영상에서는 괜찮지만, 세로 쇼츠로 잘라 놓으면 얼굴이 화면 높이의
+#    8% 밖에 안 된다 — 휴대전화로 보면 **표정이 하나도 안 읽힌다.**
+#    쇼츠에서 표정이 안 보이면 그냥 넘긴다.
+#    → 모든 컷에 "허리 위로, 얼굴이 크게" 를 못 박는다.
+#      (넓게 잡으라고 쓴 컷도 이 말이 있으면 훨씬 당겨서 그린다)
+#    ⚠️ 처음에 "close enough to **read** every expression" 이라고 썼다가
+#       **read** 가 '글자 읽는 물건' 검사에 걸려 봉투가 나오는 컷을 막았다.
+#       (screen · words 에 이어 세 번째다. 고정 문구는 다른 검사에 걸리는
+#        낱말을 피해서 쓴다 — 이제 시험이 **모든 고정 문구를 한꺼번에** 본다)
+FRAMING = (" Framed from the waist up so both faces fill much of the frame, "
+           "close enough that every expression is clear.")
+
+
+def fix_framing(doc):
+    """SHOT 줄에 '허리 위로, 얼굴 크게' 를 붙인다."""
+    n = 0
+    for e in doc.get("episodes") or []:
+        for c in e.get("cuts") or []:
+            lines = (c.get("prompt") or "").split("\n")
+            for i, l in enumerate(lines):
+                if not l.startswith("SHOT:") or FRAMING.strip() in l:
+                    continue
+                lines[i], n = l.rstrip() + FRAMING, n + 1
+            c["prompt"] = "\n".join(lines)
+    return n
+
+
 def fix_lipsync(doc):
     """ACTION 줄 끝에 입모양 맞추기를 붙인다."""
     n = 0
@@ -1081,6 +1110,10 @@ def normalize(doc):
         charsheet.fill(doc)        # 인물 설명 칸도 영어 관계말로 다시 만든다
     # ⭐ 목소리·소리 줄은 **맨 마지막**. 배역말이 영어로 바뀐 뒤라야
     #    VOICE 줄의 이름이 DIALOGUE 줄의 이름과 맞는다.
+    fr = fix_framing(doc)
+    if fr:
+        print(f"  (SHOT {fr}줄에 '허리 위로·얼굴 크게' 를 붙였다 — 세로 쇼츠에서 "
+              f"얼굴이 작으면 표정이 안 읽힌다)")
     fix_lipsync(doc)
     g = fix_dialogue_lang(doc)
     if g:

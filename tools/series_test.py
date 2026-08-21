@@ -344,11 +344,27 @@ ck("AUDIO 줄이 없으면 반려한다",
        {**d, "episodes": [{**d["episodes"][0], "cuts": [
            {**d["episodes"][0]["cuts"][0],
             "prompt": c1.replace(S.AUDIO_FIX + "\n", "")}]}]})))
-# 고정 문구가 다른 검사에 걸리면 80컷이 통째로 막힌다 (screen · words 로 실제로 겪었다)
-ck("AUDIO 고정 문구가 '글자 나올 물건' 검사에 안 걸린다",
-   not [w for w in S.TEXT_HARD if re.search(rf"\b{w}\b", S.AUDIO_FIX.lower())],
-   str([w for w in S.TEXT_HARD if re.search(rf"\b{w}\b", S.AUDIO_FIX.lower())]))
-ck("AUDIO 고정 문구가 정책 검사에 안 걸린다", not S.policy_hits(S.AUDIO_FIX))
+# ⭐ 고정 문구 한 낱말이 80컷을 통째로 막은 적이 **세 번** 있다 —
+#      `on screen` 의 screen · `between words` 의 words · `read every…` 의 read
+#    그래서 이제 **모든 고정 문구를 한꺼번에** 본다. 하나라도 늘면 여기서 잡힌다.
+FIXED = [("머리말", S.HEAD_FIX), ("STYLE", S.STYLE_FIX), ("Avoid", S.AVOID_FIX),
+         ("AUDIO", S.AUDIO_FIX), ("조용한 AUDIO", S.AUDIO_SILENT),
+         ("COLOR", S.COLOR_FIX), ("이어짐", S.CONT_FIRST),
+         ("입모양", S.LIPSYNC), ("화면 잡기", S.FRAMING),
+         ("한국어 표시", S.DIA_LANG), ("차례대로", S.DIA_ORDER)]
+for _nm, _tx in FIXED:
+    _low = str(_tx).lower()
+    _hard = [w for w in S.TEXT_HARD if re.search(rf"\b{w}\b", _low)]
+    # Avoid 줄은 '이런 것 넣지 마라' 는 목록이라, 그 낱말이 들어 있는 것이
+    # **정상이다** (documents with visible writing 처럼). 검사에서 뺀다.
+    if _nm == "Avoid":
+        _hard = []
+    ck(f"{_nm} 고정 문구가 '글자 나올 물건' 검사에 안 걸린다", not _hard, str(_hard))
+    _rd = ([] if _nm == "Avoid"
+           else [w for w in S.READING if re.search(rf"\b{w}\b", _low)])
+    ck(f"{_nm} 고정 문구에 '읽는 말' 이 없다", not _rd, str(_rd))
+    ck(f"{_nm} 고정 문구가 정책 검사에 안 걸린다", not S.policy_hits(_tx),
+       str(S.policy_hits(_tx)))
 ck("목소리가 사람마다 다르게 나온다",
    S.voice_of({"flow_prompt": "Korean man, 55 years old, agitated expression."})
    != S.voice_of({"flow_prompt": "Korean woman, 42 years old, confident eyes."}))

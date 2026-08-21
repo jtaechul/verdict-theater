@@ -65,7 +65,7 @@
 
 ```
 Fictional scene, invented characters, cinematic realism. 6-second single continuous take.
-SHOT: 샷 크기 + 카메라 움직임 (하나만)
+SHOT: 샷 크기 + 카메라 움직임 (하나만) — 뒤에 '허리 위로·얼굴 크게' 를 우리가 붙인다
 SUBJECT: 등장인물을 가리키는 **영어 관계말** + 옷차림 (얼굴 묘사 절대 금지 — 아래 ⚠️ 참고)
 ACTION: 동작 하나
 DIALOGUE: 말하는 사람과 톤 + 한국어 대사. 주고받으면 ` / ` 로 잇는다 (없으면 "None.")
@@ -548,6 +548,25 @@ DIALOGUE: [LANGUAGE: KOREAN] each person speaks one after another, never overlap
 **너는 `SETTING` 만 정확히 쓰면 된다** — 장소가 같은지 다른지를 보고
 시스템이 알맞은 문장을 고른다. 그래서 같은 장소는 **글자 그대로 같게** 쓴다.
 
+### `SHOT` — 세로 쇼츠에서는 **얼굴이 커야 한다**
+
+⭐ 2026-08-21 — 실제로 만든 쇼츠를 눈으로 보고 알았다.
+플로우가 `Medium two-shot` 을 **전신이 다 나오는 넓은 그림**으로 그렸다.
+가로 영상에서는 괜찮지만, 세로로 잘라 놓으면 얼굴이 화면 높이의 8% 밖에
+안 된다 — 휴대전화로 보면 **표정이 하나도 안 읽힌다.** 쇼츠에서 표정이
+안 보이면 그냥 넘긴다.
+
+그래서 모든 `SHOT` 줄 뒤에 시스템이 이렇게 붙인다 (너는 안 적어도 된다).
+
+```
+Framed from the waist up so both faces fill much of the frame,
+close enough that every expression is clear.
+```
+
+**샷 크기를 쓸 때도 넓게 잡지 마라.** `wide shot` `full body` `establishing
+shot` 은 세로 쇼츠에서 쓸모가 없다. `medium close-up` · `close-up` ·
+`over-the-shoulder` 쪽으로 쓴다.
+
 ### `COLOR` — 색 통일
 
 모든 컷에 **글자 하나 다르지 않은** 색 지시를 넣는다. 컷마다 색이 튀면
@@ -758,6 +777,8 @@ DIALOGUE: [LANGUAGE: KOREAN] each person speaks one after another, never overlap
 - [ ] 한 `SUBJECT` 줄에 **같은 사람을 두 번** 적지 않았는가
       (✗ `남편 in a suit facing 본처 in a blouse facing 남편 in a suit` — 사람이 셋인 줄 알고 한 명 더 그린다)
 - [ ] 한 화에 `SHOT` 크기가 **세 가지 이상** 섞였는가 (5컷은 클로즈업)
+- [ ] `wide shot` `full body` 처럼 **넓게 잡는 말**을 쓰지 않았는가
+      (세로 쇼츠에서 얼굴이 작으면 표정이 안 보여 그냥 넘긴다)
 - [ ] `SETTING` 이 한 화에 **두 곳 이내**이고, 바뀌는 컷에 `caption` 을 달았는가
 - [ ] 화면에 **있는** 사람을 `저 여자` `그 사람` 처럼 3인칭으로 부른 대사가 없는가
 - [ ] 대사에 `유류분` `한정승인` `시효` 같은 **서류 말투**가 없는가
