@@ -1125,6 +1125,9 @@ def normalize(doc):
     k3 = fix_continuity(doc)
     if k3:
         print(f"  (앞 장면에서 이어진다는 지시 {k3}컷에 붙였다 — 장면 연장)")
+    hm = fix_hook_mark(doc)
+    if hm:
+        print(f"  (후킹 {hm}개에 강조 표시를 넣었다 — 숫자에 색이 들어간다)")
     v = fix_voice(doc)
     if v:
         print(f"  (목소리·소리 지시 {v}줄을 붙였다 — 이게 없으면 또박또박 "
@@ -1219,12 +1222,59 @@ def policy_hits(t):
                    if re.search(r"(?<![a-z])" + re.escape(w) + r"(?![a-z])", low)})
 
 
+# ⭐⭐ 2026-08-21 운영자: "글자에 색을 조금 넣는 것도 좋을 것 같은데,
+#    포인트 줄 있는 부분에는 색을 좀 넣어 보자. 그렇게 넣게끔 프롬프트가
+#    작성되게 코드를 반영해 봐."
+#    → 후킹에서 **가장 센 한 토막**을 별표로 감싼다. 화면에서는 그 토막만
+#      금색으로 그린다. 유튜브 제목·설명·화면 목록에서는 별표를 떼어 낸다.
+#        `보험금 *15억*도 그 여자 앞으로였다`
+#    ⚠️ 두 토막 이상 칠하면 아무 데도 안 튄다. **한 토막만** 감싼다.
+HOOK_HL = re.compile(r"\*([^*]+)\*")
+
+
+def hook_plain(t):
+    """별표를 떼어 낸 맨글자 (길이 세기·유튜브 제목·화면 목록에 쓴다)."""
+    return HOOK_HL.sub(r"\1", str(t or ""))
+
+
+def hook_runs(t):
+    """`앞 *가운데* 뒤` → [("앞 ", False), ("가운데", True), (" 뒤", False)]."""
+    out, last = [], 0
+    for m in HOOK_HL.finditer(str(t or "")):
+        if m.start() > last:
+            out.append((t[last:m.start()], False))
+        out.append((m.group(1), True))
+        last = m.end()
+    if last < len(str(t or "")):
+        out.append((str(t)[last:], False))
+    return [(x, e) for x, e in out if x]
+
+
+# 숫자·돈은 그 자체로 세다. 표시가 없으면 여기서 자동으로 감싼다 (0원 수리).
+HOOK_NUM = re.compile(r"(\d+\s*(?:억|만|천|원)?(?:\s*원)?|[일이삼사오육칠팔구십백천만억]+\s*억)")
+
+
+def fix_hook_mark(doc):
+    """후킹에 강조 표시가 없으면 **숫자 있는 토막**을 자동으로 감싼다."""
+    n = 0
+    for e in doc.get("episodes") or []:
+        h = str(e.get("hook") or "")
+        if not h.strip() or "*" in h:
+            continue
+        m = HOOK_NUM.search(h)
+        if not m:
+            continue
+        e["hook"] = h[:m.start()] + "*" + m.group(1).strip() + "*" + h[m.end():]
+        n += 1
+    return n
+
+
 def hook_warn(doc):
     """후킹이 비었거나 밋밋하면 알린다."""
     out = []
     for e in doc.get("episodes") or []:
         no = e.get("no")
-        h = re.sub(r"\s+", " ", str(e.get("hook") or "")).strip()
+        h = re.sub(r"\s+", " ", hook_plain(e.get("hook"))).strip()
         t = re.sub(r"\s+", " ", str(e.get("yt_title") or "")).strip()
         if not h:
             out.append(f"{no}화: 후킹(hook)이 비었다 — 화면 맨 위에 화 제목이 "

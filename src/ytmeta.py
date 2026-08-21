@@ -75,7 +75,10 @@ def make(doc, no):
         raise SystemExit(f"❌ {no}화가 없다")
 
     total = len(doc.get("episodes") or [])
-    hook = clean(ep.get("hook")) or clean(ep.get("title"))
+    # ⚠️ 후킹에는 색 넣을 자리를 별표로 표시해 둔다 (`*15억*`).
+    #    그건 **화면에 그릴 때만** 쓰는 표시라 유튜브 제목·설명에서는 뗀다.
+    hook = clean(re.sub(r"\*([^*]+)\*", r"\1", str(ep.get("hook") or ""))) \
+        or clean(ep.get("title"))
     line = first_line(ep)
     series = clean(doc.get("title"))
 

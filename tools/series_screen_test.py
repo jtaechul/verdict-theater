@@ -166,8 +166,11 @@ for c in e1["cuts"]:
     ck(f"{c['n']}컷 프롬프트 {len(lines)}줄이 전부 있다", not miss, ("빠짐: " + str(miss)) if miss else "")
 # ⭐ 후킹은 30초 내내 화면 맨 위에 붙는 한 줄이다. 영상을 만들기 전에
 #    운영자가 반드시 눈으로 봐야 한다 (2026-08-20 운영자: "자극적으로 뽑아").
-ck("화면 맨 위 후킹이 보인다", (e1.get("hook") or "") in ep1,
-   (e1.get("hook") or "(비었다)")[:30])
+# ⚠️ 후킹의 별표는 **색 넣을 자리 표시**라 화면에는 안 나온다 (맨글자로 견준다)
+_hk = S.hook_plain(e1.get("hook"))
+ck("화면 맨 위 후킹이 보인다", _hk in ep1, _hk[:30] or "(비었다)")
+ck("별표는 화면에 안 나온다", "*" not in _hk and (
+    "*" not in ep1.split("화면 맨 위 후킹")[1][:200] if "화면 맨 위 후킹" in ep1 else True))
 ck("후킹이라는 이름표가 붙어 있다", "화면 맨 위 후킹" in ep1)
 
 ck("컷마다 복사 버튼이 있다", ep1.count("copyRaw(") >= len(e1["cuts"]),

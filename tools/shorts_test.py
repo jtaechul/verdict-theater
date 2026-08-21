@@ -110,6 +110,39 @@ ck("후킹 글꼴이 저장소에 들어 있다 (깃허브엔 한글 글꼴이 �
    S.FONT_H.exists(), str(S.FONT_H.name))
 ck("후킹 글꼴이 자막 글꼴보다 굵다", S.FONT_H != S.FONT_M)
 
+# ⭐ 2026-08-21 운영자: "포인트 줄 있는 부분에는 색을 좀 넣어 보자"
+print("\n④-2 후킹에서 별표로 감싼 토막만 색이 들어가는가")
+MK = "보험금 *15억*도 그 여자 앞으로였다"
+ck("토막을 강조/보통으로 가른다",
+   S.runs_of(MK) == [("보험금 ", False), ("15억", True), ("도 그 여자 앞으로였다", False)],
+   str(S.runs_of(MK)))
+ck("별표가 없으면 통째로 보통", S.runs_of("그냥 한 줄") == [("그냥 한 줄", False)])
+f3, ls3 = S.fit_box_runs(d0, MK, S.FONT_H, S.W - S.SIDE * 2, BOXH,
+                         S.HOOK_MAX, S.HOOK_MIN, S.HOOK_GAP, 3)
+# ⚠️ 줄이 바뀌는 자리의 띄어쓰기는 줄바꿈이 대신한다 — 이어 붙일 때 넣어 준다
+flat = " ".join("".join(x for x, _ in l) for l in ls3)
+ck("줄바꿈해도 글자가 안 사라진다",
+   flat.replace(" ", "") == MK.replace("*", "").replace(" ", ""), flat)
+ck("띄어쓰기가 살아 있다", flat == MK.replace("*", ""), flat)
+ck("강조 토막이 그대로 남는다", "15억" in [x for l in ls3 for x, e in l if e],
+   str([x for l in ls3 for x, e in l if e]))
+ck("강조는 한 군데만", len([x for l in ls3 for x, e in l if e]) == 1)
+# 낱말 한가운데가 갈리는 경우 (`*15억*도`) 도 견디는가
+ck("조사가 붙어도 안 깨진다", "도 그 여자 앞으로였다" in flat, flat)
+
+# 실제로 색이 다르게 칠해지는가 — 그림을 그려서 화소를 센다
+from PIL import Image as _I, ImageDraw as _D
+_img = _I.new("RGB", (S.W, S.H), (0, 0, 0))
+_d = _D.Draw(_img)
+S.block_runs(_d, ls3, f3, S.HOOK_TOP, S.HOOK_BOT, (255, 255, 255), S.HOOK_HI[:3],
+             S.HOOK_GAP)
+_raw = _img.crop((0, S.HOOK_TOP, S.W, S.HOOK_BOT)).tobytes()
+_px = [(_raw[i], _raw[i + 1], _raw[i + 2]) for i in range(0, len(_raw), 3)]
+_gold = sum(1 for r, g, b in _px if r > 200 and 150 < g < 235 and b < 140)
+_white = sum(1 for r, g, b in _px if r > 230 and g > 230 and b > 230)
+ck("금색 글자가 실제로 그려진다", _gold > 500, f"{_gold}화소")
+ck("흰 글자가 더 많다 (한 토막만 칠했다)", _white > _gold, f"흰 {_white} · 금 {_gold}")
+
 print("\n⑤ 진짜 영상으로 한 번 만들어 본다")
 if not shutil.which("ffmpeg"):
     print("   ⚠️ ffmpeg 가 없어 건너뛴다")

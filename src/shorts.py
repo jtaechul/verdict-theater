@@ -62,6 +62,10 @@ HOOK_MAX, HOOK_MIN, HOOK_GAP = 132, 60, 1.18
 SUB_TOP, SUB_BOT, SUB_SIZE = 1360, 1610, 68
 SIDE = 64                        # 좌우 여백
 GOLD = (198, 160, 74)
+# ⭐ 후킹에서 별표로 감싼 토막에 넣을 색 (2026-08-21 운영자 지시).
+#    채널 이름에 쓰는 GOLD 는 검은 바탕에서 132px 로 키우면 탁해 보인다.
+#    한 톤 밝은 금색으로 쓴다 — 흰 글자 사이에서 확실히 튄다.
+HOOK_HI = (255, 206, 84, 255)
 DIM = (118, 122, 136, 255)   # 아직/이미 말한 줄
 CHANNEL = "판결극장"
 
@@ -177,6 +181,92 @@ def fit(draw, text, path, size, max_w, max_lines, split_slash=False):
             return f, ls
         size -= 4
     return f, ls[:max_lines]
+
+
+def runs_of(t):
+    """`앞 *가운데* 뒤` → [("앞 ", False), ("가운데", True), (" 뒤", False)]."""
+    out, last, t = [], 0, str(t or "")
+    for m in re.finditer(r"\*([^*]+)\*", t):
+        if m.start() > last:
+            out.append((t[last:m.start()], False))
+        out.append((m.group(1), True))
+        last = m.end()
+    if last < len(t):
+        out.append((t[last:], False))
+    return [(x, e) for x, e in out if x] or [(t, False)]
+
+
+def wrap_runs(d, runs, f, max_w):
+    """토막(강조/보통)을 지킨 채 줄바꿈한다. 한 줄 = [(글자, 강조인가), …].
+
+    ⚠️ 처음에는 낱말 단위로 잘랐다가 **띄어쓰기가 사라지고** 줄이 엉뚱하게
+       갈렸다(`보험금15억도 그` / `여자 앞으로였다`). 강조 토막이 낱말
+       한가운데를 가르기 때문이다(`*15억*도`). 그래서 **글자 단위**로 재고
+       띄어쓰기에서만 줄을 바꾼다.
+    """
+    ch = [(c, e) for text, e in runs for c in str(text)]
+    out, i = [], 0
+    while i < len(ch):
+        j, last_sp = i, -1
+        while j < len(ch):
+            w = d.textlength("".join(c for c, _ in ch[i:j + 1]), font=f)
+            if w > max_w and j > i:
+                break
+            if ch[j][0] == " ":
+                last_sp = j
+            j += 1
+        if j >= len(ch):
+            out.append(ch[i:])
+            break
+        if last_sp > i:
+            out.append(ch[i:last_sp])
+            i = last_sp + 1
+        else:
+            out.append(ch[i:j])
+            i = j
+    lines = []
+    for seg in out:
+        while seg and seg[0][0] == " ":
+            seg = seg[1:]
+        while seg and seg[-1][0] == " ":
+            seg = seg[:-1]
+        merged = []
+        for c, e in seg:
+            if merged and merged[-1][1] == e:
+                merged[-1] = (merged[-1][0] + c, e)
+            else:
+                merged.append((c, e))
+        if merged:
+            lines.append(merged)
+    return lines or [[("", False)]]
+
+
+def block_runs(d, lines, font, top, bottom, fill, hi, gap):
+    """토막마다 색을 달리해 가운데 맞춰 그린다."""
+    lh = int(font.size * gap)
+    y = top + max(0, (bottom - top - lh * len(lines)) // 2)
+    for ln in lines:
+        wsum = sum(d.textlength(x, font=font) for x, _ in ln)
+        x = (W - wsum) / 2
+        for text, emph in ln:
+            d.text((x, y), text, font=font, fill=(hi if emph else fill))
+            x += d.textlength(text, font=font)
+        y += lh
+
+
+def fit_box_runs(d, text, path, max_w, max_h, big, small, gap, max_lines):
+    """강조 토막을 지킨 채 **상자에 꽉 차는 가장 큰 크기**를 찾는다."""
+    runs = runs_of(text)
+    f = ImageFont.truetype(str(path), small)
+    got = wrap_runs(d, runs, f, max_w)
+    for size in range(int(big), int(small) - 1, -2):
+        f2 = ImageFont.truetype(str(path), size)
+        ls = wrap_runs(d, runs, f2, max_w)
+        if len(ls) > max_lines:
+            continue
+        if len(ls) * int(size * gap) <= max_h:
+            return f2, ls
+    return f, got[:max_lines]
 
 
 def fit_box(draw, text, path, max_w, max_h, big, small, gap, max_lines):
@@ -309,10 +399,12 @@ def overlay_png(hook, chunk, out):
            CHANNEL, font=mark, fill=GOLD + (255,))
 
     if str(hook or "").strip():
-        f, ls = fit_box(d, hook, FONT_H, W - SIDE * 2, HOOK_BOT - HOOK_TOP,
-                        HOOK_MAX, HOOK_MIN, HOOK_GAP, 3)
-        block(d, ls, f, HOOK_TOP, HOOK_BOT, (255, 255, 255, 255),
-              gap=HOOK_GAP)
+        # ⭐ `*…*` 로 감싼 토막만 금색으로 (2026-08-21 운영자 지시)
+        f, ls = fit_box_runs(d, hook, FONT_H, W - SIDE * 2,
+                             HOOK_BOT - HOOK_TOP, HOOK_MAX, HOOK_MIN,
+                             HOOK_GAP, 3)
+        block_runs(d, ls, f, HOOK_TOP, HOOK_BOT, (255, 255, 255, 255),
+                   HOOK_HI, HOOK_GAP)
 
     if str(chunk or "").strip():
         # 한 토막만 있으니 크게 쓸 수 있다 — 폰에서 읽기 훨씬 낫다

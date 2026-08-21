@@ -109,7 +109,9 @@ function ytMeta(doc, no) {
   const ep = eps.find((e) => +e.no === +no) || {};
   const total = eps.length;
   const series = ytClean(doc.title);
-  const hook = ytClean(ep.hook) || ytClean(ep.title);
+  // ⚠️ 후킹의 `*…*` 는 색 넣을 자리 표시다 — 유튜브 글에서는 뗀다
+  const hook = ytClean(String(ep.hook || '').replace(/\*([^*]+)\*/g, '$1'))
+    || ytClean(ep.title);
   const cut1 = (ep.cuts || [])[0] || {};
   const line = ytClean(String(cut1.subtitle || '').split(' / ')[0]).replace(/^"|"$/g, '');
 
@@ -743,12 +745,18 @@ function seriesRender() {
                   + '지난 줄거리: ' + esc(e.recap) + '</div>';
   // ⭐ 후킹은 30초 내내 화면 맨 위에 붙는 한 줄이다. 이걸 보고 남느냐 떠나느냐가
   //    갈리므로 영상 만들기 전에 운영자가 반드시 눈으로 본다 (2026-08-20).
+  // ⚠️ 여기는 백틱 문자열 안이다 — 정규식 역슬래시를 두 번 써야 살아남는다.
+  //    한 번만 쓰면 브라우저에서 'g is not defined' 로 죽는다.
+  //    (주석에도 백틱을 쓰면 안 된다 — 문자열이 거기서 끊긴다)
+  //    후킹의 별표는 색 넣을 자리 표시라 화면 목록에서는 뗀다.
   if (e.hook) h += '<div style="background:#2a2416;border:1px solid #6b5a24;'
                  + 'border-radius:8px;padding:10px 12px;margin-bottom:10px">'
                  + '<div style="color:#9599ab;font-size:12px">화면 맨 위 후킹 ('
-                 + String(e.hook).length + '자)</div>'
+                 + String(e.hook).replace(/\\*([^*]+)\\*/g, '$1').length
+                 + '자)</div>'
                  + '<div style="color:#f0d68a;font-size:17px;font-weight:700">'
-                 + esc(e.hook) + '</div></div>';
+                 + esc(String(e.hook).replace(/\\*([^*]+)\\*/g, '$1'))
+                 + '</div></div>';
   (e.cuts || []).forEach((c, i) => {
     const pid = 'p' + SEP + '_' + (i + 1);
     COPY[pid] = String(c.prompt || '');
