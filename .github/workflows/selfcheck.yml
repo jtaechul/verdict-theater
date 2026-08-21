@@ -166,6 +166,17 @@ jobs:
         # heredoc 의 끝 표시는 맨 왼쪽 칸에 있어야 한다. 파일로 둔다.
         run: python3 tools/voice_route.py
 
+      # 이 단계만 따로 두는 까닭: **성공/실패 자체가 신호**다.
+      #   초록 = 하루 횟수 제한 없는 길 (16화를 통째로 만들 수 있다)
+      #   노랑 = 아직 무료 등급 길 (하루 10번, 한 화도 못 만든다)
+      # continue-on-error 라 점검을 막지는 않는다.
+      - name: 목소리가 '하루 제한 없는 길' 로 가는가
+        continue-on-error: true
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_TTS_KEY: ${{ secrets.GOOGLE_TTS_KEY }}
+        run: python3 tools/voice_route.py --strict
+
       - name: 결과 적기
         if: always()
         run: |

@@ -46,6 +46,14 @@ else:
     print("      구글 클라우드 콘솔에서 Vertex AI API"
           "(aiplatform.googleapis.com) 를 [사용] 하면 풀린다")
 
+# ⚠️ --strict 를 주면 **무제한 길이 아닐 때 1 을 돌려준다.**
+#    까닭: 실행 화면의 긴 글은 뒤쪽만 잘려 보일 때가 있어, 정작 이 한 줄을
+#    못 읽는 일이 있었다. 단계의 성공/실패 자체를 신호로 쓰면 언제나 읽힌다.
+#    (워크플로에서는 continue-on-error 로 달아 두므로 점검을 막지는 않는다)
+if "--strict" in sys.argv and not cloud:
+    note("- ⚠️ 아직 하루 10번짜리 길입니다 (Vertex AI API 를 켜면 풀립니다)")
+    sys.exit(1)
+
 note(f"- 목소리 길: {route}")
 note(f"- 말투 결: {T.style_of()['name']} "
      f"(여자 {T.best_voices('FEMALE')[0]} · 남자 {T.best_voices('MALE')[0]})")
