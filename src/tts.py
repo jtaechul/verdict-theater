@@ -126,7 +126,9 @@ def engine_note():
     """운영자에게 보여 줄 한 줄 — 지금 어떤 목소리를 쓰고 있는가."""
     if engine() == "gemini":
         return (f"제미나이 목소리 ({gem_pick()}) — 연기 지시를 함께 보낸다\n"
-                f"   여자 {GEM_F[0]} · 남자 {GEM_M[0]}")
+                f"   말투 결: {style_of()['name']}\n"
+                f"   여자 {best_voices('FEMALE')[0]} · "
+                f"남자 {best_voices('MALE')[0]}")
     f = best_voices("FEMALE")[0] if gkey() else VOICE_F[0]
     m = best_voices("MALE")[0] if gkey() else VOICE_M[0]
     return f"구글 클라우드 TTS — 여자 {f} · 남자 {m}"
@@ -166,7 +168,12 @@ def rank(name):
 def best_voices(gender):
     """그 성별에서 **가장 사람 같은** 목소리부터 차례로."""
     if engine() == "gemini":
-        return list(GEM_F if gender == "FEMALE" else GEM_M)
+        got = list(GEM_F if gender == "FEMALE" else GEM_M)
+        want = style_of()["voice_f" if gender == "FEMALE" else "voice_m"]
+        if want in got:                 # 스타일이 고른 것을 맨 앞으로
+            got.remove(want)
+            got.insert(0, want)
+        return got
     got = [n for n, g in list_voices() if g == gender]
     if not got:
         return list(VOICE_F if gender == "FEMALE" else VOICE_M)
@@ -230,6 +237,53 @@ MOOD = [
 ]
 MOOD_BASE = "감정을 눌러 담아, 차분하지만 무겁게"
 
+# ⭐⭐ 2026-08-21 — 운영자: "한국사람 목소리 같긴해 근데 스타일은 좀 바꿔야할듯"
+#    엔진 문제(외국인 소리)는 풀렸고, 남은 것은 **어떤 결로 연기하느냐**다.
+#    ⚠️ mood() 와 층이 다르다 —
+#       mood()  : 대사 **한 줄마다** 달라지는 결 (물음표면 되묻듯, 느낌표면 세게)
+#       STYLES  : **작품 전체**에 걸리는 결 (막장이냐 담백하냐)
+#    스타일이 결을 정해 주면 그것이 mood() 를 눌러 이긴다. 안 정해 주면
+#    (`how`가 None) 예전처럼 줄마다 mood() 가 고른다.
+STYLES = {
+    "drama": {
+        "name": "드라마 (기준)",
+        "how": None,                    # 줄마다 mood() 가 정한다
+        "rate": 1.0,
+        "voice_f": None, "voice_m": None,
+    },
+    "fierce": {
+        "name": "격하게 (막장 톤)",
+        "how": ("감정이 터져 나와 목소리를 높이고 말끝이 떨릴 만큼 격하게, "
+                "빠르고 날카롭게"),
+        "rate": 1.0,
+        "voice_f": "Kore", "voice_m": "Fenrir",
+    },
+    "dry": {
+        "name": "담백하게 (쇼츠 템포)",
+        "how": ("감정을 겉으로 터뜨리지 않고 낮게 눌러 담아 담담하게, "
+                "군더더기 없이 조금 빠른 호흡으로"),
+        "rate": 1.12,
+        "voice_f": "Kore", "voice_m": "Orus",
+    },
+    "deep": {
+        "name": "중후하게 (나이 든 목소리)",
+        "how": None,
+        "rate": 1.0,
+        "voice_f": "Gacrux", "voice_m": "Algenib",
+    },
+}
+STYLE_DEFAULT = "drama"
+
+
+def style_now():
+    """지금 쓰는 말투 결의 이름. 모르는 값이 오면 기준으로 돌아간다."""
+    k = (os.environ.get("VOICE_STYLE") or "").strip().lower()
+    return k if k in STYLES else STYLE_DEFAULT
+
+
+def style_of():
+    return STYLES[style_now()]
+
 
 def mood(text):
     """대사를 보고 **어떻게 읽어야 하는지** 정한다."""
@@ -249,7 +303,8 @@ def direct(text):
        **소리 길이를 재서** 확인한다 (지시까지 읽으면 길이가 두 배가 넘는다).
     """
     t = re.sub(r'^["“”]+|["“”]+$', "", str(text or "").strip())
-    return (f"한국 드라마의 한 장면이다. 서울 말씨로, {mood(t)} 말한다. "
+    how = style_of()["how"] or mood(t)
+    return (f"한국 드라마의 한 장면이다. 서울 말씨로, {how} 말한다. "
             f"또박또박, 다음 큰따옴표 안의 말만 그대로: \"{t}\"")
 
 
@@ -629,6 +684,10 @@ def say(text, voice=None, rate=1.0, pitch=0.0, out=None, style=None):
     out = Path(out or "tts.wav")
     if str(voice).startswith("ko-KR-"):
         return google_say(text, voice, rate, pitch, out)
+    # ⚠️ 말투 결이 정한 빠르기와, 자리를 맞추려고 say_to_fit() 이 보내는
+    #    빠르기는 **층이 다르다.** 더하지 말고 곱해야 한다. 다만 곱한 값도
+    #    사람 소리로 들리는 범위(RATE_MAX)를 넘기지 않는다.
+    eff = max(RATE_MIN, min(RATE_MAX, float(rate) * style_of()["rate"]))
     try:
         p = gem_say(text, voice, out, style)
     except Exception as e:                                   # noqa: BLE001
@@ -642,8 +701,8 @@ def say(text, voice=None, rate=1.0, pitch=0.0, out=None, style=None):
         print(f"    ⚠️ 제미나이 목소리 실패 → 구글 클라우드({alt})로 물러선다\n"
               f"       ({str(e).splitlines()[0]})")
         return google_say(text, alt, rate, pitch, out)
-    if abs(float(rate) - 1.0) > 0.04:
-        q = _tempo(p, rate, out.with_name(out.stem + "_t" + out.suffix))
+    if abs(eff - 1.0) > 0.04:
+        q = _tempo(p, eff, out.with_name(out.stem + "_t" + out.suffix))
         if q != p:
             return q
     return p

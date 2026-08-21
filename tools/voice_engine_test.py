@@ -139,6 +139,54 @@ ck(T.direct('"' + LINE + '"') == d, "이미 따옴표가 붙어 있어도 겹치
 # ⚠️ 지시가 대사보다 지나치게 길면 모델이 지시를 본문으로 착각하기 쉽다
 ck(len(d) - len(LINE) < 140, "지시가 대사에 비해 지나치게 길지 않다")
 
+# ── ④-1 말투 결(스타일)을 갈아 끼울 수 있는가 ────────
+#    운영자: "한국사람 목소리 같긴해 근데 스타일은 좀 바꿔야할듯"
+#    → 결을 말로 주고받는 대신 **골라 끼우게** 만들었다. 여기서 그 손잡이를 본다.
+print("\n④-1 말투 결(스타일)")
+with env(GEMINI_API_KEY="x", VOICE_STYLE=None):
+    ck(T.style_now() == T.STYLE_DEFAULT, "안 고르면 기준 결로 간다")
+with env(GEMINI_API_KEY="x", VOICE_STYLE="엉뚱한값"):
+    ck(T.style_now() == T.STYLE_DEFAULT, "모르는 값이 와도 안 죽고 기준으로 돌아간다")
+
+_seen = set()
+for _k in T.STYLES:
+    with env(GEMINI_API_KEY="x", VOICE_STYLE=_k):
+        _d = T.direct("당신 진짜 제정신이야?!")
+        _seen.add((_d, T.best_voices("FEMALE")[0], T.best_voices("MALE")[0]))
+        ck('"당신 진짜 제정신이야?!"' in _d, f"{_k}: 대사는 그대로 실린다")
+        _w = T.STYLES[_k]
+        if _w["how"]:
+            ck(_w["how"][:10] in _d, f"{_k}: 정해 준 결이 지시에 들어간다")
+        for _g, _f in (("FEMALE", "voice_f"), ("MALE", "voice_m")):
+            if _w[_f]:
+                ck(T.best_voices(_g)[0] == _w[_f],
+                   f"{_k}: 고른 목소리가 맨 앞에 온다 ({_w[_f]})")
+ck(len(_seen) == len(T.STYLES), "결마다 실제로 다른 결과가 나온다",
+   f"{len(T.STYLES)}가지 중 서로 다른 것 {len(_seen)}가지")
+
+# ⚠️ 결이 정한 빠르기와 자리 맞추기용 빠르기는 **층이 다르다.** 곱해야 하고,
+#    곱해도 사람 소리로 들리는 범위를 넘으면 안 된다.
+_asked = []
+_rt = T._tempo
+T._tempo = lambda src, f, out: _asked.append(round(f, 3)) or Path(src)
+_rg = T.gem_say
+T.gem_say = lambda *a, **k: Path(tempfile.mkstemp(suffix=".wav")[1])
+try:
+    with env(GEMINI_API_KEY="x", VOICE_STYLE="dry"):     # 결 빠르기 1.12
+        T.say("가", "Kore", 1.0, 0.0, tempfile.mktemp(suffix=".wav"))
+        ck(_asked and abs(_asked[-1] - 1.12) < 0.01,
+           "결이 정한 빠르기가 그대로 걸린다", str(_asked))
+        T.say("가", "Kore", 1.30, 0.0, tempfile.mktemp(suffix=".wav"))
+        ck(_asked and _asked[-1] <= T.RATE_MAX + 0.001,
+           "자리 맞추기와 겹쳐도 사람 소리 범위를 안 넘는다",
+           f"{_asked[-1]} (상한 {T.RATE_MAX})")
+    with env(GEMINI_API_KEY="x", VOICE_STYLE="drama"):   # 결 빠르기 1.0
+        _asked.clear()
+        T.say("가", "Kore", 1.0, 0.0, tempfile.mktemp(suffix=".wav"))
+        ck(not _asked, "기준 결에서는 쓸데없이 속도를 안 건드린다", str(_asked))
+finally:
+    T._tempo, T.gem_say = _rt, _rg
+
 # ── ④-2 막히거나 한도에 걸렸을 때 물러서는가 ─────────
 #    ⚠️ 이건 머리로 지어낸 시험이 아니다. 진짜로 걸어 보고 겪은 것만 담았다 —
 #       · 같은 대사가 어떤 때는 SAFETY 로 막혔다 (막장 드라마 대사라 그렇다)
