@@ -275,7 +275,9 @@ def sample(sid, no, out, gap=0.45):
     """대본에서 그 화 1컷 대사를 뽑아 견본 소리를 만든다."""
     import sys as _s
     _s.path.insert(0, str(Path(__file__).resolve().parent))
-    import shorts as SH                                      # noqa: E402
+    # ⚠️ shorts 를 들여오면 안 된다 — 그림 모듈(PIL)까지 딸려 와서, 소리만
+    #    만드는 자리에서 "No module named 'PIL'" 로 죽는다 (실제로 그랬다).
+    import series as SC                                      # noqa: E402
 
     doc = json.loads((Path(__file__).resolve().parent.parent / "data" /
                       "series" / f"{sid}.json").read_text(encoding="utf-8"))
@@ -286,7 +288,7 @@ def sample(sid, no, out, gap=0.45):
     voices = pick_voices(doc.get("characters"))
     turns = []
     for c in ep["cuts"]:
-        turns += SH.dia_turns(c.get("prompt"))
+        turns += SC.dia_turns(c.get("prompt"))
         if len(turns) >= 4:
             break
     if not turns:

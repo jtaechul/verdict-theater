@@ -279,6 +279,24 @@ def dia_text(prompt):
     return "\n".join(lines[i:j]) if i is not None else ""
 
 
+def dia_turns(prompt):
+    """대사 덩어리에서 (말하는 사람, 대사) 를 말한 차례대로 뽑는다.
+
+    ⚠️ 2026-08-21 — 이 함수가 shorts.py 에 있었는데, 목소리만 만드는 일
+       (tts.sample)에서 부르려고 shorts 를 들여왔다가 **PIL(그림 모듈)이
+       없다고 죽었다.** 소리 만드는 데 그림 모듈이 왜 필요한가.
+       대본을 읽는 일이므로 **대본 쪽(series.py)이 제 자리**다.
+    """
+    out = []
+    for l in str(prompt or "").split("\n"):
+        if not l.startswith(DIA_INDENT):
+            continue
+        m = re.match(r'\s*([^:(]+?)\s*(?:\([^)]*\))?\s*:\s*"(.+)"\s*$', l)
+        if m:
+            out.append((m.group(1).strip(), m.group(2).strip()))
+    return out
+
+
 def dia_says(prompt):
     """대사 덩어리에서 따옴표 안 말만 뽑는다."""
     return re.findall(r'"([^"]*)"', dia_text(prompt))

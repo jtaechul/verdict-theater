@@ -252,6 +252,36 @@ for code, msg, want in [
         (429, "Quota exceeded", "너무 많이")]:
     ck(f"{want} 를 알려 준다", want in T.explain(code, msg), T.explain(code, msg)[:40])
 
+print("\n④-4 그림 모듈(PIL) 없이도 소리를 만들 수 있는가")
+# ⚠️ 2026-08-21 — 목소리 견본 워크플로가 **첫 시도에 죽었다**:
+#      ModuleNotFoundError: No module named 'PIL'
+#    소리만 만드는 일인데 tts.sample() 이 shorts 를 들여왔고, shorts 가
+#    그림 모듈을 끌고 왔다. 그 일에는 pillow 를 안 깔아 두었으니 당연히 죽는다.
+#    → 대사 뽑기(dia_turns)를 대본 쪽으로 옮겼다. 다시 그러지 않게 **PIL 을
+#      못 들여오게 막아 놓고** 진짜로 돌려 본다.
+_blk = tmp / "noPIL"
+(_blk / "PIL").mkdir(parents=True, exist_ok=True)
+(_blk / "PIL" / "__init__.py").write_text(
+    'raise ImportError("PIL 없음 (시험용으로 막아 두었다)")', encoding="utf-8")
+_code = (
+    "import sys, json;"
+    "sys.path.insert(0, r'" + str(ROOT / 'src') + "');"
+    "import tts, series;"
+    "d=json.load(open(r'" + str(ROOT / 'data' / 'series' / 'S001.json') + "'));"
+    "t=series.dia_turns(d['episodes'][0]['cuts'][0]['prompt']);"
+    "print('OK', len(t), 'PIL' in sys.modules)"
+)
+_env = dict(**{k: v for k, v in __import__("os").environ.items()})
+_env["PYTHONPATH"] = str(_blk)
+_r = subprocess.run([sys.executable, "-c", _code], capture_output=True,
+                    text=True, env=_env)
+ck("PIL 을 막아 놔도 tts 가 열린다", _r.returncode == 0,
+   (_r.stderr.strip().splitlines() or [""])[-1][:80])
+ck("PIL 없이도 대사를 뽑는다", _r.stdout.startswith("OK 3"), _r.stdout.strip())
+ck("소리 쪽이 그림 모듈을 안 끌어온다", "False" in _r.stdout, _r.stdout.strip())
+_src = (ROOT / "src" / "tts.py").read_text(encoding="utf-8")
+ck("tts.py 가 shorts 를 안 들여온다", "import shorts" not in _src)
+
 print("\n⑤ 사람마다 다른 목소리를 주는가")
 chs = [{"name": "본처", "role_en": "the wife",
         "flow_prompt": "Korean woman, 52 years old."},

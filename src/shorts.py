@@ -497,17 +497,9 @@ def trim_dead(src, out):
 #    입은 이미 같은 한국어 대사로 움직이므로 입모양도 거의 맞는다.
 #    ⚠️ 열쇠가 없으면 **아무것도 안 하고 원래 소리를 그대로 쓴다.**
 #       (영상이 안 나오는 것보다 낫다)
-def dia_turns(prompt):
-    """컷 프롬프트에서 (말하는 사람, 대사) 를 말한 차례대로 뽑는다."""
-    out = []
-    for l in str(prompt or "").split("\n"):
-        if not l.startswith("  "):
-            continue
-        m = re.match(r'\s*([^:(]+?)\s*(?:\([^)]*\))?\s*:\s*"(.+)"\s*$', l)
-        if m:
-            out.append((m.group(1).strip(), m.group(2).strip()))
-    return out
-
+# ⚠️ dia_turns 는 **대본 쪽(series.py)** 에 있다. 여기 두었더니 소리만
+#    만드는 일에서 shorts 를 들여와야 했고, 그때 PIL 이 없다고 죽었다.
+from series import dia_turns                                # noqa: E402,F401
 
 def dub(src, turns, voices, out, tmp):
     """클립의 소리를 한국어 목소리로 갈아 끼운다. 못 하면 False."""
