@@ -103,8 +103,40 @@ def say(text, voice="ko-KR-Neural2-A", rate=1.0, pitch=0.0, out=None):
     req = urllib.request.Request(
         f"{API}?key={k}", data=body,
         headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        got = json.loads(r.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            got = json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        # ⚠️ 구글이 왜 거절했는지 그대로 알려 준다. 안 그러면 "실패" 세 글자만
+        #    남아 운영자가 무엇을 고쳐야 할지 알 수 없다.
+        raw = e.read().decode("utf-8", "replace")
+        msg = raw
+        try:
+            msg = json.loads(raw)["error"]["message"]
+        except Exception:                                    # noqa: BLE001
+            pass
+        raise RuntimeError(f"{explain(e.code, msg)}\n   (구글이 보낸 말: {msg[:200]})")
+
+
+def explain(code, msg):
+    """구글이 거절한 까닭을 쉬운 말로."""
+    m = str(msg or "").lower()
+    if "has not been used" in m or "disabled" in m or "service_disabled" in m:
+        return ("❌ Text-to-Speech API 를 아직 **켜지 않았다.**\n"
+                "   구글 클라우드 콘솔에서 'Cloud Text-to-Speech API' 를 찾아 "
+                "[사용] 을 누르면 된다")
+    if "api key not valid" in m or "api_key_invalid" in m or code == 400:
+        return ("❌ 열쇠가 잘못됐다. 깃허브 시크릿 GOOGLE_TTS_KEY 에 "
+                "붙여 넣은 값을 다시 확인한다 (AIza… 로 시작한다)")
+    if "billing" in m:
+        return ("❌ 결제 계정을 연결해야 한다. 무료 한도(월 100만 자) 안에서는 "
+                "청구되지 않지만 계정 연결 자체는 필요하다")
+    if "referer" in m or "restrict" in m:
+        return ("❌ 열쇠에 사용 제한(웹사이트·IP)이 걸려 있다. "
+                "제한을 '없음' 으로 두거나 API 제한만 걸어야 한다")
+    if code == 429:
+        return "❌ 잠깐 너무 많이 불렀다. 조금 뒤에 다시 하면 된다"
+    return f"❌ 구글이 거절했다 (HTTP {code})"
     wav = base64.b64decode(got["audioContent"])
     p = Path(out or "tts.wav")
     p.parent.mkdir(parents=True, exist_ok=True)

@@ -115,6 +115,14 @@ jobs:
       - name: 목소리 갈아 끼우기가 제대로 되는가
         run: python3 tools/dub_test.py
 
+      # ⭐ 2026-08-21 — 운영자가 GOOGLE_TTS_KEY 를 넣었다. 넣은 것과 **되는 것**은
+      #    다르다(API 미사용·열쇠 제한·결제 미연결). 영상 만들 때 알면 늦으므로
+      #    밀어 넣을 때마다 **석 자짜리** 소리를 한 번 만들어 본다. 값은 0원.
+      - name: 한국어 목소리 열쇠가 살아 있는가
+        env:
+          GOOGLE_TTS_KEY: ${{ secrets.GOOGLE_TTS_KEY }}
+        run: python3 tools/tts_live_check.py
+
       - name: 관리자 페이지가 안 깨지는가
         run: |
           node tools/check_admin.mjs
