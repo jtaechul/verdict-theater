@@ -518,7 +518,8 @@ def dub(src, turns, voices, out, tmp):
     tmp.mkdir(parents=True, exist_ok=True)
     made = []
     for i, ((who, text), (a, b)) in enumerate(zip(turns, spans)):
-        v = voices.get(who) or voices.get(who.lower()) or tts.VOICE_F[0]
+        v = (voices.get(who) or voices.get(who.lower())
+             or tts.best_voices("FEMALE")[0])
         # ⭐ 2026-08-21 — **입이 움직인 시간에 억지로 우겨넣지 않는다.**
         #    영상 만드는 쪽은 32음절을 4.4초에 쏟아냈다(초당 7.3음절).
         #    거기에 딱 맞추면 우리 한국어 목소리도 똑같이 급해져서, 애써
@@ -542,7 +543,9 @@ def dub(src, turns, voices, out, tmp):
     fil = [f"[0:a]volume=0,apad[bed]"]
     mix = "[bed]"
     for i, (a, _, _) in enumerate(made):
-        fil.append(f"[{i + 1}:a]adelay={int(a * 1000)}|{int(a * 1000)}[d{i}]")
+        fil.append(f"[{i + 1}:a]aresample=48000,"
+                   f"aformat=sample_fmts=fltp:channel_layouts=stereo,"
+                   f"adelay={int(a * 1000)}|{int(a * 1000)}[d{i}]")
         mix += f"[d{i}]"
     fil.append(f"{mix}amix=inputs={len(made) + 1}:normalize=0:"
                f"duration=first[mixed]")
@@ -713,9 +716,9 @@ def episode(sid, no, clips_dir, out_dir):
     files = pick_clips(clips_dir, len(ep["cuts"]), ep["cuts"])
     voices = tts.pick_voices(doc.get("characters"))
     if tts.key():
-        print("  🎙 목소리를 한국어 전용으로 갈아 끼운다")
+        print(f"  🎙 목소리를 갈아 끼운다 — {tts.engine_note()}")
     else:
-        print("  (GOOGLE_TTS_KEY 가 없어 원래 소리를 그대로 쓴다)")
+        print("  (목소리 열쇠가 없어 원래 소리를 그대로 쓴다 —\n           GEMINI_API_KEY 나 GOOGLE_TTS_KEY 가 있어야 한다)")
     parts = []
     for c in ep["cuts"]:
         n = int(c["n"])

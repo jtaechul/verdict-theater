@@ -32,9 +32,12 @@ permissions:
 jobs:
   voice:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # 무료 한도가 1분에 10번이라, 한도에 걸리면 구글이 알려 준 만큼 쉬었다
+    # 간다. 넉넉히 잡아 둔다 (보통은 1~2분이면 끝난다).
+    timeout-minutes: 20
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GOOGLE_TTS_KEY: ${{ secrets.GOOGLE_TTS_KEY }}
       SID: ${{ inputs.sid }}
       EP: ${{ inputs.ep }}
@@ -53,14 +56,21 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
 
+      # ⭐ 2026-08-21 — 목소리를 **제미나이**로 바꿨다. 이미 대본 만들 때 쓰는
+      #    GEMINI_API_KEY 를 그대로 쓰므로 새로 넣을 열쇠가 없다.
+      #    구글 클라우드 TTS(GOOGLE_TTS_KEY)는 되돌아갈 자리로 남겨 둔다.
       - name: 열쇠 확인
         run: |
-          if [ -z "${GOOGLE_TTS_KEY:-}" ]; then
-            echo "❌ GOOGLE_TTS_KEY 가 없습니다."
-            echo "   깃허브 Settings → Secrets → Actions 에 넣어 주십시오."
+          if [ -z "${GEMINI_API_KEY:-}" ] && [ -z "${GOOGLE_TTS_KEY:-}" ]; then
+            echo "❌ 목소리 열쇠가 하나도 없습니다."
+            echo "   GEMINI_API_KEY 나 GOOGLE_TTS_KEY 중 하나는 있어야 합니다."
             exit 1
           fi
-          echo "✅ 열쇠가 있습니다"
+          if [ -n "${GEMINI_API_KEY:-}" ]; then
+            echo "✅ 제미나이 목소리를 씁니다"
+          else
+            echo "✅ 구글 클라우드 목소리를 씁니다 (되돌아갈 자리)"
+          fi
 
       - name: 견본 소리 만들기
         run: |
@@ -81,6 +91,10 @@ jobs:
           set -euo pipefail
           EPN=$(printf '%02d' "$EP")
           python3 tools/release_file.py put "voice-${SID}-ep${EPN}" voice.mp3 build/voice.mp3
+          # 어떤 목소리로 만들었는지도 같이 올린다 — 관리자 페이지가 보여 준다
+          if [ -f build/voice.txt ]; then
+            python3 tools/release_file.py put "voice-${SID}-ep${EPN}" voice.txt build/voice.txt
+          fi
 
       - name: 결과 화면
         if: always()

@@ -115,11 +115,16 @@ jobs:
       - name: 목소리 갈아 끼우기가 제대로 되는가
         run: python3 tools/dub_test.py
 
-      # ⭐ 2026-08-21 — 운영자가 GOOGLE_TTS_KEY 를 넣었다. 넣은 것과 **되는 것**은
-      #    다르다(API 미사용·열쇠 제한·결제 미연결). 영상 만들 때 알면 늦으므로
-      #    밀어 넣을 때마다 **석 자짜리** 소리를 한 번 만들어 본다. 값은 0원.
-      - name: 한국어 목소리 열쇠가 살아 있는가
+      # ⭐ 2026-08-21 — 목소리를 제미나이로 갈아탔다. 갈아타면서 조용히 깨질 수
+      #    있는 자리(열쇠 보는 곳·목소리 이름·연기 지시)를 인터넷 없이 먼저 밟고,
+      #    그다음 진짜 열쇠로 한 마디를 만들어 본다.
+      #    ⚠️ 한도(1분에 10번)에 걸린 것은 **고장이 아니다** — 그때는 건너뛴다.
+      - name: 목소리 엔진이 제미나이로 갈렸는가 (인터넷 없이)
+        run: python3 tools/voice_engine_test.py
+
+      - name: 목소리 열쇠가 살아 있는가 (연기 지시까지 먹는지 함께 본다)
         env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GOOGLE_TTS_KEY: ${{ secrets.GOOGLE_TTS_KEY }}
         run: python3 tools/tts_live_check.py
 

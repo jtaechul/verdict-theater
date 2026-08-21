@@ -11,6 +11,7 @@
     ③ 길이가 안 늘어나는가
     를 **진짜 소리 파일로** 확인한다. 열쇠 없이 돌 수 있게 가짜 목소리를 쓴다.
 """
+import os
 import re
 import subprocess
 import sys
@@ -85,8 +86,16 @@ _got = [round(v, 2) for k, v in silences(src) if k == "end"]
 ck("원본이 실제 영상처럼 말 자리를 갖는다", len(_got) == 3, str(_got))
 
 print("\n① 열쇠가 없으면 아무것도 안 하고 원래 소리를 그대로 쓴다")
-ck("열쇠 없으면 False 를 준다 (영상은 계속 나온다)",
-   S.dub(src, [("Wife", "가나다")], {}, tmp / "x.mp4", tmp) is False)
+# ⚠️ 2026-08-21 — 열쇠가 둘(제미나이·구글)로 갈렸다. 하나만 지우면 다른
+#    하나가 남아 있어 이 시험이 헛돈다. **둘 다** 잠깐 치우고 본다.
+_keep = {k: os.environ.pop(k, None) for k in ("GEMINI_API_KEY", "GOOGLE_TTS_KEY")}
+try:
+    ck("열쇠 없으면 False 를 준다 (영상은 계속 나온다)",
+       S.dub(src, [("Wife", "가나다")], {}, tmp / "x.mp4", tmp) is False)
+finally:
+    for k, v in _keep.items():
+        if v is not None:
+            os.environ[k] = v
 
 print("\n② 대사 줄에서 말하는 사람과 대사를 뽑는가")
 pr = ('DIALOGUE: [LANGUAGE: KOREAN] each person speaks one after another\n'
@@ -212,6 +221,7 @@ print("\n④-2 say() 가 **진짜로 소리 파일을 돌려주는가** (가짜 
 #    이제 구글 응답을 흉내 내서 say() 를 **진짜로 불러** 본다.
 import base64 as _b64                                       # noqa: E402
 import io as _io                                            # noqa: E402
+import json as _json                                        # noqa: E402
 import urllib.request as _ur                                # noqa: E402
 
 
@@ -229,9 +239,11 @@ run("ffmpeg", "-v", "error", "-y", "-f", "lavfi",
     str(_wav))
 _body = ('{"audioContent":"'
          + _b64.b64encode(_wav.read_bytes()).decode("ascii") + '"}')
-_real_open, _real_key = _ur.urlopen, T.key
+# ⚠️ 2026-08-21 — google_say() 는 이제 key() 가 아니라 gkey() 를 본다
+#    (열쇠가 제미나이·구글 둘로 갈렸다). 여기도 같이 바꿔야 한다.
+_real_open, _real_key = _ur.urlopen, T.gkey
 _ur.urlopen = lambda *a, **k: _Resp(_body.encode("utf-8"))
-T.key = lambda: "TEST"
+T.gkey = lambda: "TEST"
 try:
     _got = T.say("확인", "ko-KR-Neural2-A", 1.0, 0.0, tmp / "said.wav")
     ck("say() 가 None 이 아니라 파일 경로를 돌려준다", _got is not None, str(_got))
@@ -241,7 +253,46 @@ try:
     ck("길이를 잴 수 있다", _got is not None and T.dur_of(_got) > 0.1,
        f"{T.dur_of(_got):.2f}초" if _got else "")
 finally:
-    _ur.urlopen, T.key = _real_open, _real_key
+    _ur.urlopen, T.gkey = _real_open, _real_key
+
+# ⭐⭐ 2026-08-21 — 목소리를 제미나이로 갈아탔다. 제미나이 쪽도 똑같이
+#    **가짜 응답으로 끝까지 걸어 본다.** 여기서 확인할 것 둘 —
+#      ① 날것 소리(PCM)를 wav 로 제대로 감싸는가
+#      ② **연기 지시를 진짜로 실어 보내는가** (이게 이번 바꿈의 전부다)
+print("\n④-2b 제미나이 목소리도 끝까지 걸어 보는가 (가짜 응답으로)")
+_pcm = _b64.b64encode(b"\x00\x01" * 12000).decode("ascii")
+_gbody = ('{"candidates":[{"content":{"parts":[{"inlineData":'
+          '{"mimeType":"audio/L16;codec=pcm;rate=24000","data":"' + _pcm + '"}}]}}]}')
+_sent = {}
+
+
+def _spy(req, *a, **k):
+    _sent["url"] = getattr(req, "full_url", "")
+    _sent["body"] = _json.loads(req.data.decode("utf-8"))
+    return _Resp(_gbody.encode("utf-8"))
+
+
+_real_open, _real_gk, _real_model = _ur.urlopen, T.gem_key, T._GEM_MODEL
+_ur.urlopen = _spy
+T.gem_key = lambda: "TEST"
+T._GEM_MODEL = "gemini-tts-test"
+try:
+    _p = T.say("당신 진짜 제정신이야?", "Kore", 1.0, 0.0, tmp / "gem.wav")
+    ck("제미나이가 준 날것 소리를 wav 로 남긴다",
+       _p is not None and Path(_p).exists() and Path(_p).stat().st_size > 2000,
+       f"{Path(_p).stat().st_size:,}바이트" if _p else "없음")
+    ck("길이를 잴 수 있다 (ffprobe 가 읽는다)",
+       _p is not None and T.dur_of(_p) > 0.4, f"{T.dur_of(_p):.2f}초" if _p else "")
+    _txt = _sent["body"]["contents"][0]["parts"][0]["text"]
+    ck("연기 지시를 진짜로 실어 보낸다", "말한다" in _txt and "서울 말씨" in _txt,
+       _txt[:60])
+    ck("대사도 그 안에 그대로 들어간다", "당신 진짜 제정신이야?" in _txt)
+    _vc = _sent["body"]["generationConfig"]["speechConfig"]["voiceConfig"]
+    ck("고른 목소리 이름을 보낸다", _vc["prebuiltVoiceConfig"]["voiceName"] == "Kore")
+    ck("소리로 답하라고 시킨다",
+       _sent["body"]["generationConfig"]["responseModalities"] == ["AUDIO"])
+finally:
+    _ur.urlopen, T.gem_key, T._GEM_MODEL = _real_open, _real_gk, _real_model
 
 print("\n④-3 구글이 거절하면 **까닭을 쉬운 말로** 알려 주는가")
 for code, msg, want in [
@@ -304,8 +355,12 @@ chs = [{"name": "본처", "role_en": "the wife",
 v = T.pick_voices(chs)
 ck("세 사람이 서로 다른 목소리", len({v["본처"], v["내연녀"], v["남편"]}) == 3,
    f'{v["본처"]} / {v["내연녀"]} / {v["남편"]}')
-ck("남자는 남자 목소리", v["남편"] in T.VOICE_M, v["남편"])
-ck("여자는 여자 목소리", v["본처"] in T.VOICE_F and v["내연녀"] in T.VOICE_F)
+# ⚠️ 엔진에 따라 목소리 이름이 다르다 (구글 ko-KR-… / 제미나이 Kore·Orus…).
+#    이름을 박아 두지 말고 **지금 엔진이 주는 목록**과 견준다.
+_vf, _vm = T.best_voices("FEMALE"), T.best_voices("MALE")
+ck("남자는 남자 목소리", v["남편"] in _vm, v["남편"])
+ck("여자는 여자 목소리", v["본처"] in _vf and v["내연녀"] in _vf,
+   f'{v["본처"]} / {v["내연녀"]}')
 ck("대사 줄 이름표(Wife)로도 찾아진다", v.get("Wife") == v["본처"])
 ck("'Other woman' 도 찾아진다 (Other Woman 아님)",
    v.get("Other woman") == v["내연녀"], str([k for k in v if " " in k]))

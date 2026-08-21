@@ -35,6 +35,9 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # ⭐ 한국어 목소리 (2026-08-21). 없으면 원래 소리를 그대로 쓴다 —
       #    영상은 계속 나오되 발음이 어눌한 채로 나간다.
+      # ⭐ 2026-08-21 — 목소리를 제미나이로 바꿨다. 이 열쇠를 안 넘기면
+      #    조용히 옛날(외국인 같은) 소리로 되돌아간다.
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GOOGLE_TTS_KEY: ${{ secrets.GOOGLE_TTS_KEY }}
       SID: ${{ inputs.sid }}
       EPNO: ${{ inputs.ep }}

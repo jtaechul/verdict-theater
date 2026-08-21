@@ -544,9 +544,19 @@ async function makeVoice() {
       const j = await q.json();
       if (j.ready) {
         msg.textContent = '다 됐습니다. 눌러서 들어보십시오.';
+        // ⭐ 2026-08-21 — 어떤 목소리로 만들었는지 **화면에 적는다.**
+        //    예전에는 조용히 옛날 목소리로 되돌아가도 알 방법이 없었다.
+        var note = '';
+        if (j.note) {
+          var one = String(j.note).split('\\n').map(function (x) {
+            return x.trim();
+          }).filter(Boolean).join(' · ');
+          note = '<div class="uphint" style="margin-top:6px">'
+            + esc(one) + '</div>';
+        }
         box.innerHTML = '<audio controls style="width:100%;margin-top:8px" src="'
           + '/api/voice?play=1&sid=' + encodeURIComponent(SID) + '&ep=' + SEP
-          + '&t=' + Date.now() + '"></audio>';
+          + '&t=' + Date.now() + '"></audio>' + note;
         return;
       }
     } catch (e) { /* 아직 안 됐다 */ }
@@ -2190,8 +2200,23 @@ export default {
         try { rel = await gh(env, `/repos/${REPO}/releases/tags/${tag}`); } catch { rel = null; }
         const a = (rel && (rel.assets || []).find((x) => x.name === 'voice.mp3')) || null;
         if (!a) return Response.json({ ready: false });
-        if (url.searchParams.get('play') !== '1')
-          return Response.json({ ready: true, size: a.size, at: a.updated_at });
+        if (url.searchParams.get('play') !== '1') {
+          // 어떤 목소리를 썼는지 같이 알려 준다 (voice.txt 는 없을 수도 있다)
+          let note = '';
+          const t = (rel.assets || []).find((x) => x.name === 'voice.txt');
+          if (t) {
+            try {
+              const rt = await fetch(`${GH}/repos/${REPO}/releases/assets/${t.id}`, {
+                headers: {
+                  'Authorization': `Bearer ${env.GH_TOKEN}`,
+                  'Accept': 'application/octet-stream',
+                  'User-Agent': 'verdict-theater-admin',
+                } });
+              note = (await rt.text()).slice(0, 300);
+            } catch { note = ''; }
+          }
+          return Response.json({ ready: true, size: a.size, at: a.updated_at, note });
+        }
         const r0 = await fetch(`${GH}/repos/${REPO}/releases/assets/${a.id}`, {
           headers: {
             'Authorization': `Bearer ${env.GH_TOKEN}`,
