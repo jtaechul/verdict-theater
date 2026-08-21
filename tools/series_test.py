@@ -618,11 +618,21 @@ ck("하루 크레딧 45 ≤ 무료 50", S.CUTS * S.SEC * 1.5 <= 50, f"{S.CUTS * 
 # 한국어는 초당 약 5자. 6초 클립에서 앞뒤 숨 쉴 틈을 빼면 약 5.5초를 말한다.
 # 한국어 드라마 대사는 초당 5~6음절. 6초 중 5.5초를 말한다.
 ck(f"대사 {S.DIA_SYL_MAX}음절이 {S.SEC}초에 들어가는가",
-   S.DIA_SYL_MAX <= S.SPEAK_SEC * S.SYL_PER_SEC,
-   f"{S.DIA_SYL_MAX / S.SYL_PER_SEC:.1f}초 · 초당 {S.SYL_PER_SEC}음절")
-ck(f"{S.SEC}초를 8할 넘게 채우는가 (예전엔 절반이 비었다)",
-   S.DIA_SYL_MAX / S.SYL_PER_SEC >= S.SEC * 0.8,
-   f"{S.DIA_SYL_MAX / S.SYL_PER_SEC / S.SEC * 100:.0f}%")
+   S.DIA_SYL_MAX <= S.SPEAK_SEC * S.EASY_SYL_PER_SEC,
+   f"{S.DIA_SYL_MAX / S.EASY_SYL_PER_SEC:.1f}초 · 초당 {S.EASY_SYL_PER_SEC}음절")
+# ⚠️ 예전에는 **6초 전체**를 얼마나 채우는지 쟀다. 그런데 실제 영상을 재 보니
+#    앞 1초는 소리가 안 난다(모델이 그냥 버린다). 그 1초까지 채우라고 밀어붙인
+#    결과가 초당 7.2음절 — 받침이 뭉개지는 속도였다.
+#    → **말할 수 있는 시간(SPEAK_SEC)** 을 얼마나 채우는지로 잰다.
+ck(f"말할 수 있는 {S.SPEAK_SEC}초를 8할 넘게 채우는가 (예전엔 절반이 비었다)",
+   S.DIA_SYL_MAX / S.EASY_SYL_PER_SEC >= S.SPEAK_SEC * 0.8,
+   f"{S.DIA_SYL_MAX / S.EASY_SYL_PER_SEC / S.SPEAK_SEC * 100:.0f}%")
+ck("급하게 쏟아내는 속도가 아닌가 (실측 초당 7.2는 너무 빨랐다)",
+   S.EASY_SYL_PER_SEC <= 6.2, f"초당 {S.EASY_SYL_PER_SEC}음절")
+ck("앞머리 버려지는 시간을 빼고 잡는가", S.SPEAK_SEC == S.SEC - S.DEAD_HEAD,
+   f"{S.SEC} - {S.DEAD_HEAD} = {S.SPEAK_SEC}초")
+ck("진짜 못 말할 길이만 반려한다", S.DIA_SYL_HARD > S.DIA_SYL_MAX,
+   f"알맞음 {S.DIA_SYL_MAX} · 반려 {S.DIA_SYL_HARD} 넘을 때")
 # ⚠️ 말하기 속도는 눈대중으로 정하면 안 된다 (5.5 로 잡았다가 6초 중 1.3초를 버렸다)
 ck("말하기 속도가 실측 범위 안인가", 6.0 <= S.SYL_PER_SEC <= 7.0,
    f"초당 {S.SYL_PER_SEC}음절")
