@@ -307,9 +307,22 @@ def direct(text):
        **소리 길이를 재서** 확인한다 (지시까지 읽으면 길이가 두 배가 넘는다).
     """
     t = re.sub(r'^["“”]+|["“”]+$', "", str(text or "").strip())
-    how = style_of()["how"] or mood(t)
-    return (f"한국 드라마의 한 장면이다. 서울 말씨로, {how} 말한다. "
+    return (f"{how_of(t)} "
             f"또박또박, 다음 큰따옴표 안의 말만 그대로: \"{t}\"")
+
+
+def how_of(text):
+    """**연기 지시만** (대사는 빼고).
+
+    ⚠️ 두 길이 규격이 다르다 —
+       AI 스튜디오 쪽은 지시와 대사를 **한 덩어리**로 받는다 → direct()
+       구글 클라우드 쪽은 지시(prompt)와 대사(text)를 **따로** 받는다 → how_of()
+       그래서 한 곳에서 만들어 둘이 나눠 쓴다. 안 그러면 결을 바꿀 때
+       한쪽만 바뀌어 어긋난다.
+    """
+    t = re.sub(r'^["“”]+|["“”]+$', "", str(text or "").strip())
+    return (f"한국 드라마의 한 장면이다. 서울 말씨로, "
+            f"{style_of()['how'] or mood(t)} 말한다.")
 
 
 # ── 제미나이 목소리 ────────────────────────────────────
@@ -357,6 +370,76 @@ def gem_pick():
     got.sort(key=lambda n: (ver(n), "flash" in n, -len(n)), reverse=True)
     _GEM_MODEL = got[0]
     return _GEM_MODEL
+
+
+# ⭐⭐ 2026-08-21 — 같은 제미나이 목소리를 **구글 클라우드 쪽으로도** 부를 수 있다.
+#    왜 이쪽이 중요한가: AI 스튜디오 무료 등급은 **하루 10번**이라 한 화도 못
+#    만든다. 클라우드 쪽(GOOGLE_TTS_KEY)은 이미 결제가 붙어 있어 그 벽이 없다.
+#    ⚠️ 추측이 아니라 깃허브 안에서 **직접 걸어 보고** 알아낸 규격이다
+#       (tools/tts_route_probe.py). 잘못 부르면 구글이 이렇게 답한다 —
+#         "Gemini models cannot be used with non-Gemini voices."
+#           → model_name 을 제미나이로 두면 목소리 이름도 제미나이 것이어야 한다
+#         "Prompt is only supported for Gemini TTS."
+#           → 연기 지시(prompt)는 model_name 이 제미나이일 때만 받는다
+CLOUD_GEM = "https://texttospeech.googleapis.com/v1beta1/text:synthesize"
+_CLOUD_GEM_OK = None          # 모름 / True 된다 / False 안 된다 (한 번만 알아본다)
+
+
+def cloud_model():
+    return (os.environ.get("CLOUD_TTS_MODEL") or "gemini-2.5-flash-tts").strip()
+
+
+def cloud_gem_say(text, voice, out, style=None):
+    """구글 클라우드로 제미나이 목소리 한 마디 (연기 지시를 함께 보낸다)."""
+    k = gkey()
+    if not k:
+        raise RuntimeError("GOOGLE_TTS_KEY 가 없다")
+    body = {
+        "input": {"text": bare(text), "prompt": style or how_of(text)},
+        "voice": {"languageCode": "ko-KR", "name": voice,
+                  "model_name": cloud_model()},
+        "audioConfig": {"audioEncoding": "LINEAR16", "sampleRateHertz": 48000},
+    }
+    req = urllib.request.Request(
+        f"{CLOUD_GEM}?key={k}", data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=90) as r:
+            got = json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        raw = e.read().decode("utf-8", "replace")
+        msg = raw
+        try:
+            msg = json.loads(raw)["error"]["message"]
+        except Exception:                                    # noqa: BLE001
+            pass
+        raise RuntimeError(msg[:300]) from None
+    return _write(got, out)
+
+
+def cloud_gem_ready():
+    """이 길이 열려 있는가. **한 번만** 알아보고 기억한다."""
+    global _CLOUD_GEM_OK
+    if _CLOUD_GEM_OK is not None or not gkey():
+        return bool(_CLOUD_GEM_OK)
+    import tempfile as _t
+    try:
+        cloud_gem_say("확인", best_voices("FEMALE")[0],
+                      Path(_t.mkdtemp()) / "probe.wav")
+        _CLOUD_GEM_OK = True
+    except Exception as e:                                   # noqa: BLE001
+        _CLOUD_GEM_OK = False
+        m = str(e)
+        if "aiplatform" in m or "Agent Platform" in m or "has not been used" in m:
+            # ⚠️ 딱 하나만 켜면 되는 문제다. 무엇을 켜야 하는지 정확히 알려 준다.
+            print("    ⚠️ 구글 클라우드 쪽 제미나이 목소리가 아직 안 열렸다.\n"
+                  "       구글 클라우드 콘솔에서 **Vertex AI API"
+                  "(aiplatform.googleapis.com)** 를 [사용] 하면 열린다.\n"
+                  "       그때까지는 AI 스튜디오 쪽으로 부른다 "
+                  "(무료 등급은 하루 10번이다)")
+        else:
+            print(f"    ⚠️ 구글 클라우드 쪽 제미나이 목소리를 못 쓴다 — {m[:120]}")
+    return bool(_CLOUD_GEM_OK)
 
 
 def gem_order():
@@ -704,6 +787,13 @@ def say(text, voice=None, rate=1.0, pitch=0.0, out=None, style=None):
     #    빠르기는 **층이 다르다.** 더하지 말고 곱해야 한다. 다만 곱한 값도
     #    사람 소리로 들리는 범위(RATE_MAX)를 넘기지 않는다.
     eff = max(RATE_MIN, min(RATE_MAX, float(rate) * style_of()["rate"]))
+    # ⭐ 클라우드 길이 열려 있으면 그쪽을 **먼저** 쓴다 — 하루 10번 벽이 없다.
+    if cloud_gem_ready():
+        try:
+            return _after(cloud_gem_say(text, voice, out, style), eff, out)
+        except Exception as e:                               # noqa: BLE001
+            print(f"    ⚠️ 클라우드 쪽 실패 → AI 스튜디오 쪽으로 간다 "
+                  f"({str(e).splitlines()[0][:90]})")
     try:
         p = gem_say(text, voice, out, style)
     except Exception as e:                                   # noqa: BLE001
@@ -717,6 +807,11 @@ def say(text, voice=None, rate=1.0, pitch=0.0, out=None, style=None):
         print(f"    ⚠️ 제미나이 목소리 실패 → 구글 클라우드({alt})로 물러선다\n"
               f"       ({str(e).splitlines()[0]})")
         return google_say(text, alt, rate, pitch, out)
+    return _after(p, eff, out)
+
+
+def _after(p, eff, out):
+    """만든 소리에 결이 정한 빠르기를 입힌다."""
     if abs(eff - 1.0) > 0.04:
         q = _tempo(p, eff, out.with_name(out.stem + "_t" + out.suffix))
         if q != p:

@@ -18,8 +18,11 @@
 import os
 import re
 import sys
+import base64
+import json
 import tempfile
 import time
+import urllib.request
 import wave
 from pathlib import Path
 
@@ -201,6 +204,75 @@ try:
         ck(not _asked, "기준 결에서는 쓸데없이 속도를 안 건드린다", str(_asked))
 finally:
     T._tempo, T.gem_say = _rt, _rg
+
+# ── ④-1b 구글 클라우드 쪽 제미나이 목소리 ─────────────
+#    왜 이 길이 필요한가: AI 스튜디오 무료 등급은 **하루 10번**이라 한 화도
+#    못 만든다. 클라우드 쪽은 결제가 붙어 있어 그 벽이 없다.
+#    ⚠️ 두 길은 규격이 다르다 — 클라우드는 지시(prompt)와 대사(text)를 **따로**
+#       받는다. 지시 안에 대사가 섞여 들어가면 **대사를 두 번 말한다.**
+print("\n④-1b 구글 클라우드 쪽 제미나이 목소리")
+LINE2 = "누구 맘대로 집을 나가!"
+with env(GEMINI_API_KEY="x", VOICE_STYLE="fierce"):
+    _h = T.how_of(LINE2)
+    ck(LINE2 not in _h, "지시 안에 대사가 섞여 들어가지 않는다",
+       "섞이면 대사를 두 번 말한다 — " + _h[:60])
+    ck('"' not in _h, "지시에 따옴표가 없다", _h[:60])
+    ck(T.STYLES["fierce"]["how"][:10] in _h, "지시에 결이 들어 있다")
+    ck(T.direct(LINE2).startswith(_h), "두 길이 같은 지시를 쓴다 (한 곳에서 만든다)")
+
+_sent2 = {}
+
+
+def _spy2(req, *a, **k):
+    _sent2["body"] = json.loads(req.data.decode("utf-8"))
+    _sent2["url"] = getattr(req, "full_url", "")
+
+    class R:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *x):
+            return False
+
+        def read(self):
+            return json.dumps({"audioContent": base64.b64encode(
+                b"RIFF0000WAVEfmt " + b"\x00" * 3000).decode()}).encode()
+    return R()
+
+
+_ru, _rk = urllib.request.urlopen, T.gkey
+urllib.request.urlopen, T.gkey = _spy2, (lambda: "TESTKEY")
+try:
+    with env(GEMINI_API_KEY="x", VOICE_STYLE="fierce"):
+        T.cloud_gem_say(LINE2, "Kore", tempfile.mktemp(suffix=".wav"))
+    b = _sent2["body"]
+    ck(b["input"]["text"] == LINE2, "대사는 text 칸에 그대로", str(b["input"])[:70])
+    ck("prompt" in b["input"] and LINE2 not in b["input"]["prompt"],
+       "연기 지시는 prompt 칸에 따로")
+    ck(b["voice"]["model_name"].startswith("gemini"),
+       "제미나이 모델을 지정한다 (안 하면 '지시는 제미나이에서만 된다' 며 거절)")
+    ck(not b["voice"]["name"].startswith("ko-KR-"),
+       "목소리 이름도 제미나이 것 (섞으면 '제미나이 모델은 다른 목소리와 못 쓴다')")
+    ck("v1beta1" in _sent2["url"], "지시를 받아 주는 v1beta1 로 간다", _sent2["url"][:60])
+finally:
+    urllib.request.urlopen, T.gkey = _ru, _rk
+
+# 안 열려 있으면 **한 번만** 알아보고 기억한다 (밀 때마다 헛되이 부르지 않는다)
+_tries = []
+_rc, _rk = T.cloud_gem_say, T.gkey
+T.gkey = lambda: "TESTKEY"
+T.cloud_gem_say = lambda *a, **k: _tries.append(1) or (_ for _ in ()).throw(
+    RuntimeError("Agent Platform API has not been used in project"))
+T._CLOUD_GEM_OK = None
+try:
+    with env(GEMINI_API_KEY="x"):
+        ck(T.cloud_gem_ready() is False, "안 열려 있으면 False")
+        T.cloud_gem_ready()
+        T.cloud_gem_ready()
+        ck(len(_tries) == 1, "안 되는 길을 되풀이해 두드리지 않는다",
+           f"{len(_tries)}번 두드렸다")
+finally:
+    T.cloud_gem_say, T.gkey, T._CLOUD_GEM_OK = _rc, _rk, None
 
 # ── ④-2 막히거나 한도에 걸렸을 때 물러서는가 ─────────
 #    ⚠️ 이건 머리로 지어낸 시험이 아니다. 진짜로 걸어 보고 겪은 것만 담았다 —
