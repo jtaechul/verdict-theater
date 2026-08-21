@@ -253,8 +253,10 @@ STYLES = {
     },
     "fierce": {
         "name": "격하게 (막장 톤)",
-        "how": ("감정이 터져 나와 목소리를 높이고 말끝이 떨릴 만큼 격하게, "
-                "빠르고 날카롭게"),
+        # ⚠️ 처음엔 "격하게·날카롭게" 라고 썼는데 안전 기준에 자주 막혔다
+        #    ('공격하라' 처럼 읽힌 듯하다). **무대 발성** 이야기로 바꿔 쓴다.
+        "how": ("무대에서처럼 목소리를 크게 내지르고, 숨이 가빠 말끝이 떨릴 "
+                "만큼 감정을 크게 실어 빠르게"),
         "rate": 1.0,
         "voice_f": "Kore", "voice_m": "Fenrir",
     },
@@ -488,8 +490,11 @@ def _gem_once(model, prompt, voice, safe=True):
         except Exception:                                    # noqa: BLE001
             pass
         if e.code == 429:
-            raise _Busy(gem_explain(429, msg), _wait_of(msg),
-                        "limit: 0" in msg) from None
+            # ⚠️ 하루치인지 분당인지는 message 가 아니라 details 의 quotaId 에만
+            #    적혀 있다. 가려내려면 받은 몸통 전체를 봐야 한다.
+            day = "PerDay" in raw
+            raise _Busy(gem_explain(429, raw if day else msg),
+                        _wait_of(msg), "limit: 0" in msg or day) from None
         # 안전 기준을 모르는 모델이면 그것만 빼고 딱 한 번 다시
         if e.code == 400 and safe and "safety" in raw.lower():
             return _gem_once(model, prompt, voice, safe=False)
@@ -561,6 +566,15 @@ def gem_explain(code, msg):
     if "api key not valid" in m or "api_key_invalid" in m:
         return ("❌ 열쇠가 잘못됐다. 깃허브 시크릿 GEMINI_API_KEY 를 "
                 "다시 확인한다 (AIza… 로 시작한다)")
+    if "perday" in m.replace(" ", "") or "per day" in m:
+        # ⚠️ 2026-08-21 실제로 확인했다 —
+        #    quotaId = GenerateRequestsPerDayPerProjectPerModel-FreeTier, 값 10.
+        #    **하루에 10번**이다. "조금 뒤에 다시" 는 거짓말이 된다.
+        #    한 화가 대사 15줄쯤이므로 무료 등급으로는 한 화도 못 만든다.
+        return ("❌ **오늘 몫을 다 썼다.** 무료 등급은 이 목소리 모델을 "
+                "하루 10번까지만 준다.\n"
+                "   한 화가 대사 15줄쯤이라 무료로는 한 화도 못 만든다 — "
+                "결제 계정을 연결해야 한다")
     if "quota" in m or "rate limit" in m or code == 429:
         return "❌ 잠깐 너무 많이 불렀다. 조금 뒤에 다시 하면 된다"
     if "billing" in m:
@@ -792,7 +806,9 @@ def sample(sid, no, out, gap=0.45):
         made.append(p)
         print(f"  🎙 {who} ({v}) — {text}")
         if engine() == "gemini":
-            print(f"      연기 지시: {mood(text)}")
+            # ⚠️ mood(text) 를 적으면 안 된다. 작품 전체 결이 정해져 있으면
+            #    실제로 보낸 것은 그쪽이라 화면과 실제가 어긋난다.
+            print(f"      연기 지시: {style_of()['how'] or mood(text)}")
 
     # 사이를 조금 띄워 이어 붙인다.
     # ⚠️ 예전에는 concat 목록 파일을 썼는데, 그건 **모든 조각의 소리 규격이
