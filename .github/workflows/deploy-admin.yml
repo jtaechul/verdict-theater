@@ -15,7 +15,9 @@ name: 6. 관리자 페이지 배포
 #   ADMIN_GH_TOKEN         GitHub 개인 토큰. 이 저장소만 접근하도록 좁게 만든다
 #                          github.com/settings/personal-access-tokens/new
 #                          → Repository access: verdict-theater 하나만
-#                          → Permissions: Contents = Read, Actions = Read and write
+#                          → Permissions: Contents = **Read and write**, Actions = Read and write
+#                          ⚠️ Contents 가 Read 뿐이면 영상 압축파일을
+#                             못 올린다 (403: Resource not accessible)
 
 on:
   workflow_dispatch:
@@ -62,7 +64,7 @@ jobs:
               echo "| \`CLOUDFLARE_API_TOKEN\` | Cloudflare → My Profile → API Tokens → **Edit Cloudflare Workers** 템플릿 |"
               echo "| \`CLOUDFLARE_ACCOUNT_ID\` | Cloudflare 대시보드 오른쪽 **Account ID** |"
               echo "| \`ADMIN_PASSWORD\` | 직접 정하십시오. 이 페이지에 들어갈 비밀번호 |"
-              echo "| \`ADMIN_GH_TOKEN\` | [토큰 만들기](https://github.com/settings/personal-access-tokens/new) — Repository access는 **verdict-theater 하나만**, Permissions는 **Contents=Read**, **Actions=Read and write** |"
+              echo "| \`ADMIN_GH_TOKEN\` | [토큰 만들기](https://github.com/settings/personal-access-tokens/new) — Repository access는 **verdict-theater 하나만**, Permissions는 **Contents = Read and write**, **Actions=Read and write** |"
               echo ""
               echo "> \`ADMIN_GH_TOKEN\` 은 이 저장소 하나에만 닿도록 좁게 만드십시오."
               echo "> 새어 나가도 피해가 이 저장소로 한정됩니다."

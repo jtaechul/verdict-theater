@@ -264,6 +264,22 @@ ck("말투 결을 고를 수 있다", 'id="vstyle"' in ep1)
 for _s in ("drama", "fierce", "dry", "deep"):
     ck(f"결 '{_s}' 를 고를 수 있다", f'value="{_s}"' in ep1)
 ck("클립 하나만 시험할 수 있다", 'id="cutone"' in ep1)
+# ⚠️⚠️ 2026-08-22 — 압축파일을 다 올린 **뒤에** 이 오류를 봤다:
+#    GitHub 403: "Resource not accessible by personal access token"
+#    토큰이 Contents=Read 로만 만들어져 있어 릴리스를 못 만든 것이다.
+#    권한은 코드로 못 만든다 → **미리 알아보고 미리 알려 준다.**
+_js = (ROOT / "admin" / "worker.js").read_text(encoding="utf-8")
+ck("올리기 전에 권한을 미리 알아본다", "permCheck" in _js and "api/can-write" in _js,
+   "몇십 MB 를 다 올린 뒤 영어 오류를 보게 하면 안 된다")
+ck("권한 안내가 들어갈 자리가 있다", 'id="permwarn"' in ep1)
+ck("권한이 없으면 올리기를 막는다", "CANWRITE === false" in _js)
+ck("403 을 사람 말로 바꿔 준다", "contents-write" in _js and "Read and write" in _js)
+# 설정 안내가 Contents=Read 라고 잘못 적혀 있던 것이 애초 원인이다
+for _f in (".github/workflows/deploy-admin.yml", "admin/wrangler.toml"):
+    _t = (ROOT / _f).read_text(encoding="utf-8")
+    ck(f"{_f}: 토큰 권한을 쓰기까지 적어 뒀다",
+       "Contents = Read and write" in _t or "read+write" in _t,
+       "여기가 Read 로만 적혀 있어서 처음부터 어긋났다")
 
 ck("압축파일 고르는 칸이 있다", 'id="clipzip"' in ep1 and 'accept=".zip' in ep1)
 ck("올리기 단추가 있다", "upClips()" in ep1)

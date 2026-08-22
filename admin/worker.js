@@ -647,6 +647,12 @@ async function upClips() {
   if (!f) { msg.textContent = '먼저 압축파일을 고르십시오.'; return; }
   const cs = document.getElementById('cutone');
   const cut = (cs && cs.value) || '';
+  if (CANWRITE === false) {
+    showErr('먼저 토큰 권한을 고쳐 주십시오',
+      '깃허브 토큰이 읽기 전용이라 영상을 올릴 수 없습니다. '
+      + '위 빨간 칸의 순서대로 Contents 를 Read and write 로 바꿔 주십시오.');
+    return;
+  }
   const mb = f.size / 1048576;
   if (mb > 90) { showErr('파일이 큽니다',
     Math.round(mb) + 'MB 입니다. 90MB 까지만 올릴 수 있습니다.'); return; }
@@ -786,6 +792,38 @@ async function watchShort(cut, passive) {
   if (!passive) SHORTW = setInterval(tick, 30000);
 }
 
+// ⭐⭐ 2026-08-22 — 압축파일을 다 올린 **뒤에야** 403 을 보는 일이 없게,
+//    화면을 열 때 토큰이 쓰기를 할 수 있는지 먼저 알아본다.
+//    (실제로 "GitHub 403: Resource not accessible by personal access token"
+//     을 몇십 MB 올린 뒤에 봤다)
+let CANWRITE = null;
+
+
+async function permCheck() {
+  const b = document.getElementById('permwarn');
+  if (!b) return true;
+  let j = null;
+  try { j = await (await fetch('/api/can-write?t=' + Date.now())).json(); }
+  catch (e) { return true; }            // 못 물어봤으면 막지는 않는다
+  CANWRITE = !!(j && j.ok);
+  if (CANWRITE) { b.innerHTML = ''; return true; }
+  b.innerHTML =
+    '<div style="border:1px solid #7a3b46;background:#2a1b1f;border-radius:10px;'
+    + 'padding:12px;margin-bottom:10px;color:#f0b8c0;font-size:14px">'
+    + '<b>영상을 올릴 수 없습니다 — 깃허브 토큰이 읽기 전용입니다.</b><br>'
+    + '고치는 법 (1분, 한 번만):<br>'
+    + '① <a href="https://github.com/settings/personal-access-tokens" '
+    + 'target="_blank" style="color:#8fb0f0">깃허브 토큰 목록</a> 을 엽니다<br>'
+    + '② verdict-theater 용 토큰을 누릅니다<br>'
+    + '③ Repository permissions → <b>Contents</b> 를 '
+    + '<b>Read and write</b> 로 바꿉니다<br>'
+    + '④ 맨 아래 [Update] 를 누릅니다<br>'
+    + '토큰 값은 그대로라 다시 등록하실 필요 없습니다. 이 화면을 새로고침하십시오.'
+    + '</div>';
+  return false;
+}
+
+
 // ⭐ 만들기가 어떻게 됐는지 한 줄로 알려 준다
 async function buildSay() {
   const b = document.getElementById('shortbox');
@@ -886,6 +924,7 @@ function seriesRender() {
      + '<small style="font-weight:400;color:#9599ab">— 5컷을 압축(zip)해서 한 번에'
      + '</small></h2>';
   h += '<div class="upbox">'
+     + '<div id="permwarn"></div>'
      + '<input type="file" id="clipzip" accept=".zip,application/zip">'
      + '<div class="uphint">플로우에서 받은 ' + SEP + '화 클립 5개를 압축해서 고르십시오. '
      + '파일 이름에 c001~c005 가 있으면 그 번호대로, 없으면 이름 순서대로 붙입니다.</div>'
@@ -1006,6 +1045,7 @@ function seriesRender() {
   //    ⚠️ 그리는 중에 부르면 안 된다 — 화면 검사기가 통째로 멈췄다.
   //       그리기는 그리기만 하고, 서버에 묻는 일은 뒤로 미룬다.
   setTimeout(function () {
+    try { permCheck(); } catch (e) { /* 나중에 다시 */ }
     try { ytLoad(); } catch (e) { /* 나중에 다시 */ }
     try { watchShort('', true); } catch (e) { /* 나중에 다시 */ }
   }, 0);
@@ -2338,8 +2378,20 @@ export default {
           });
           return Response.json({ ok: true, tag, size: body.byteLength });
         } catch (e) {
+          const m = String(e && e.message ? e.message : e);
+          // ⚠️ 영어 오류를 그대로 보여 주면 무엇을 해야 하는지 알 수가 없다.
+          if (m.includes('403') || m.includes('not accessible')) {
+            return Response.json({ ok: false, error: '깃허브 토큰에 쓰기 권한이 없습니다',
+              detail: '토큰이 읽기 전용으로 만들어져 있어 파일을 올릴 수 없습니다. '
+                    + '깃허브 → Settings → Developer settings → '
+                    + 'Personal access tokens → 이 저장소용 토큰 → '
+                    + 'Repository permissions → Contents 를 '
+                    + '[Read and write] 로 바꾸고 저장하십시오. '
+                    + '토큰 값은 그대로라 다시 등록하실 필요는 없습니다.',
+              fix: 'contents-write' }, { status: 403 });
+          }
           return Response.json({ ok: false, error: '올리지 못했습니다',
-            detail: String(e && e.message ? e.message : e).slice(0, 220) }, { status: 502 });
+            detail: m.slice(0, 220) }, { status: 502 });
         }
       }
 
@@ -2483,6 +2535,23 @@ export default {
       //    되어 있어서, 만들기가 실패하면 화면이 그냥 조용했다.
       //    (실제로 shorts.yml 은 한 번도 돈 적이 없었다)
       //    → 만들기가 어떻게 됐는지 화면이 말할 수 있게 한다.
+      // ⭐⭐ 2026-08-22 — 압축파일 올리기가 이렇게 실패했다:
+      //    GitHub 403: "Resource not accessible by personal access token"
+      //    토큰이 **Contents = Read** 로만 만들어져 있어서 릴리스를 못 만든다
+      //    (배포 안내에 그렇게 적혀 있다 — 처음부터 어긋난 설계였다).
+      //    ⚠️ 권한은 코드로 못 만든다. 대신 **미리 알아보고 미리 알려 준다** —
+      //       몇십 MB 를 다 올린 뒤에 영어 오류를 보는 일이 없게.
+      if (url.pathname === '/api/can-write') {
+        try {
+          const r = await gh(env, `/repos/${REPO}`);
+          const ok = !!(r.permissions && r.permissions.push);
+          return Response.json({ ok, who: r.full_name || '' });
+        } catch (e) {
+          return Response.json({ ok: false,
+            why: String(e && e.message ? e.message : e).slice(0, 200) });
+        }
+      }
+
       if (url.pathname === '/api/build-status') {
         try {
           const r = await gh(env,
