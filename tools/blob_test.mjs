@@ -271,6 +271,28 @@ const nag = src.match(
 ok(nag.length === 0, '깃허브에 가서 고치라는 안내가 화면에 없다'
    + (nag.length ? ' ← ' + nag[0].trim().slice(0, 80) : ''));
 
+// ⑭ ⭐⭐ 가장 중요한 못 — 관리자 페이지는 깃허브에 **아무것도 쓰지 않는다.**
+//    2026-08-22, 운영자가 같은 403 을 두 번 봤다:
+//      GitHub 403 … documentation_url: releases#create-a-release
+//    한 군데만 고치고 다른 데 남겨 두면 언젠가 또 그리로 샌다.
+//    길이 없으면 샐 수도 없다. 여기서 길이 다시 생기는 것을 막는다.
+const WRITES = [
+  ['uploads.github.com', '릴리스에 파일 얹기'],
+  ['/releases`, {', '릴리스 만들기 (create-a-release)'],
+  ["method: 'PUT'", '저장소 파일 쓰기'],
+];
+for (const [needle, what] of WRITES) {
+  const has = src.includes(needle);
+  if (has) { console.log(`   ❌ 깃허브에 쓰는 길이 남아 있다 — ${what} (${needle})`); bad = 1; }
+}
+ok(true, '관리자 페이지에 깃허브로 쓰는 길이 하나도 없다');
+// 지우는 것을 깜빡했는지 자기시험 — 일부러 넣은 판은 걸려야 한다
+{
+  const broken = src + "\nfetch('https://uploads.github.com/x');\n";
+  const caught = WRITES.some(([n]) => broken.includes(n));
+  ok(caught, '자기시험: 길이 다시 생기면 잡는다');
+}
+
 console.log('────────────────────────────────────────────────────');
 console.log(bad ? '❌ 보관함 검사: 걸린 것이 있다' : '✅ 보관함 검사: 넣은 그대로 꺼내진다');
 process.exit(bad);

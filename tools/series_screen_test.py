@@ -308,8 +308,13 @@ ck("목소리 견본을 만드는 길이 있다", "'/api/voice'" in wk)
 ck("목소리 워크플로를 부른다", "voice-sample.yml/dispatches" in wk)
 ck("목소리를 소리 파일로 흘려보낸다", "audio/mpeg" in wk)
 ck("완성본을 보는 길이 있다", "'/api/short'" in wk)
-ck("압축파일을 **릴리스**에 올린다 (저장소 커밋 금지)",
-   "uploads.github.com" in wk and "releases" in wk)
+# ⭐ 2026-08-22 — 압축파일을 깃허브에 직접 올리던 길은 **지웠다.**
+#    읽기 전용 열쇠로는 403 이 나고, 운영자는 깃허브에서 아무것도 하지 않는다.
+#    이제 보관함에 두고 주소만 넘기면 워크플로가 자기 열쇠로 받아 간다.
+ck("압축파일을 보관함에 둔다", "blobPutStream" in wk and "'/api/blob'" in wk)
+ck("깃허브에 쓰는 길이 하나도 없다",
+   "uploads.github.com" not in wk and "/releases`, {" not in wk,
+   "길이 남아 있으면 언젠가 또 그리로 새어 403 이 난다")
 ck("올린 뒤 쇼츠 만들기를 자동으로 부른다", "shorts.yml/dispatches" in wk)
 ck("너무 큰 파일은 막는다", "90 * 1024 * 1024" in wk)
 

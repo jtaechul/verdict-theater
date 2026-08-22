@@ -19,6 +19,11 @@
  *   로그인은 비밀번호 → 서명된 쿠키. 쿠키를 손으로 고쳐도 서명이 깨져 통과하지 못한다.
  */
 
+// ⭐ 2026-08-22 — 이 판이 몇 번째 것인지. 배포할 때 deploy-admin.yml 이
+//    깃 번호로 바꿔 넣는다.
+//    왜: 운영자가 "또 뜬다" 고 하셨을 때, 그 화면이 **고치기 전 것인지 후의
+//    것인지** 알 길이 없었다. 오류 글에 판 번호를 같이 찍어 두면 한눈에 안다.
+const BUILD = 'dev';
 const REPO = 'jtaechul/verdict-theater';
 const BRANCH = 'main';
 const GH = 'https://api.github.com';
@@ -2131,6 +2136,9 @@ export default {
     //    손님이 새로 등록할 것이 없다.
     //    열쇠(key)는 아무도 못 맞히는 무작위 글자이고, 하루가 지나면 저절로
     //    사라진다. 로그인해서 들어온 사람도 볼 수 있게 둔다(미리보기용).
+    if (url.pathname === '/api/version')
+      return Response.json({ build: BUILD }, { headers: { 'Cache-Control': 'no-store' } });
+
     if (url.pathname === '/api/blob') {
       const kv = bin(env);
       if (!kv) return new Response('보관함이 없습니다', { status: 503 });
@@ -2516,62 +2524,20 @@ export default {
                 '파일이 90MB 를 넘습니다. 클립을 나눠 올리거나 화질을 낮춰 주십시오.' },
                 { status: 400 });
             return Response.json({ ok: false, error: '올리지 못했습니다',
-              detail: m.slice(0, 220) }, { status: 502 });
+              detail: m.slice(0, 220) + ` [판 ${BUILD}]` }, { status: 502 });
           }
         }
 
-        // 옛 길 — 보관함이 아직 안 붙은 배포에서만 여기로 온다.
-        // ⚠️ 이 길은 깃허브 열쇠에 쓰기 권한이 있어야 한다. 없으면 403 이 난다.
-        const body = await req.arrayBuffer();
-        if (!body.byteLength)
-          return Response.json({ ok: false, error: '파일이 비었습니다' }, { status: 400 });
-        try {
-          let rel;
-          try {
-            rel = await gh(env, `/repos/${REPO}/releases/tags/${tag}`);
-          } catch (e) {
-            rel = await gh(env, `/repos/${REPO}/releases`, {
-              method: 'POST',
-              body: JSON.stringify({ tag_name: tag, name: tag, body: '올린 클립' }),
-            });
-          }
-          // 다시 올릴 수 있어야 하므로 같은 이름은 지우고 새로 올린다
-          for (const a of rel.assets || []) {
-            if (a.name === 'clips.zip')
-              await gh(env, `/repos/${REPO}/releases/assets/${a.id}`, { method: 'DELETE' });
-          }
-          const up = await fetch(
-            `https://uploads.github.com/repos/${REPO}/releases/${rel.id}/assets?name=clips.zip`,
-            { method: 'POST', body,
-              headers: {
-                'Authorization': `Bearer ${env.GH_TOKEN}`,
-                'Content-Type': 'application/zip',
-                'User-Agent': 'verdict-theater-admin',
-                'X-GitHub-Api-Version': '2022-11-28',
-              } });
-          if (!up.ok)
-            throw new Error(`올리기 실패 ${up.status}: ${(await up.text()).slice(0, 200)}`);
-
-          await gh(env, `/repos/${REPO}/actions/workflows/shorts.yml/dispatches`, {
-            method: 'POST',
-            body: JSON.stringify({ ref: BRANCH,
-              inputs: cut ? { sid, ep, cut } : { sid, ep } }),
-          });
-          return Response.json({ ok: true, tag, size: body.byteLength, via: 'release' });
-        } catch (e) {
-          const m = String(e && e.message ? e.message : e);
-          // ⚠️ 손님을 깃허브로 보내지 않는다 (그러지 말라고 하셨다).
-          //    보관함만 붙으면 이 길로 올 일이 없으므로, 여기서 할 말은
-          //    "관리자 페이지를 다시 배포하면 된다" 하나뿐이다.
-          if (m.includes('403') || m.includes('not accessible')) {
-            return Response.json({ ok: false, error: '영상 보관함이 아직 없습니다',
-              detail: '[영상 보관함 준비하기] 를 한 번 누르시면 1~2분 뒤 올릴 수 있습니다. '
-                    + '깃허브에서 하실 것은 없습니다.',
-              fix: 'setup-blob' }, { status: 503 });
-          }
-          return Response.json({ ok: false, error: '올리지 못했습니다',
-            detail: m.slice(0, 220) }, { status: 502 });
-        }
+        // ⚠️⚠️⚠️ 여기 있던 '옛 길'(브라우저 → 깃허브 릴리스 직접 올리기)을
+        //    **통째로 지웠다.** 2026-08-22, 운영자가 같은 403 을 또 봤다:
+        //      GitHub 403 … documentation_url: releases#create-a-release
+        //    남겨 두면 언젠가 또 그리로 새어 나간다. 길이 없으면 샐 수도 없다.
+        //    ⭐ 애초에 이 길은 예전에 없던 길이다 — 영상은 늘 깃허브 안에서
+        //       워크플로가 만들고 워크플로가 올렸다. 내가 새로 낸 길이 사고였다.
+        return Response.json({ ok: false, error: '영상 보관함이 아직 없습니다',
+          detail: '[영상 보관함 준비하기] 를 한 번 누르시면 1~2분 뒤 올릴 수 있습니다. '
+                + '깃허브에서 하실 것은 없습니다.',
+          fix: 'setup-blob' }, { status: 503 });
       }
 
       // ⭐ 2026-08-21 — 목소리 견본. 쇼츠는 클립 5개가 다 있어야 만들어지는데,
@@ -2661,24 +2627,10 @@ export default {
             return Response.json({ ok: true, via: 'blob' });
           } catch (e) { /* 아래 옛 길로 */ }
         }
-        try {
-          const rel = await gh(env, `/repos/${REPO}/releases/tags/voicepick`);
-          for (const a of rel.assets || []) {
-            if (a.name === 'chosen.json')
-              await gh(env, `/repos/${REPO}/releases/assets/${a.id}`, { method: 'DELETE' });
-          }
-          const up = await fetch(
-            `https://uploads.github.com/repos/${REPO}/releases/${rel.id}/assets?name=chosen.json`,
-            { method: 'POST', body,
-              headers: { 'Authorization': `Bearer ${env.GH_TOKEN}`,
-                         'Content-Type': 'application/json',
-                         'User-Agent': 'verdict-theater-admin' } });
-          if (!up.ok) throw new Error(`올리기 실패 ${up.status}`);
-          return Response.json({ ok: true });
-        } catch (e) {
-          return Response.json({ ok: false, error: '담아 두지 못했습니다',
-            detail: String(e && e.message ? e.message : e).slice(0, 220) }, { status: 502 });
-        }
+        // ⚠️ 여기 있던 깃허브 직접 쓰기도 지웠다 (세 번째 자리)
+        return Response.json({ ok: false, error: '영상 보관함이 아직 없습니다',
+          detail: '[영상 보관함 준비하기] 를 한 번 누르시면 1~2분 뒤 담깁니다.',
+          fix: 'setup-blob' }, { status: 503 });
       }
 
       if (url.pathname === '/api/voicepick') {
@@ -2849,24 +2801,10 @@ export default {
             return Response.json({ ok: true, via: 'blob' });
           } catch (e) { /* 아래 옛 길로 */ }
         }
-        try {
-          const rel = await gh(env, `/repos/${REPO}/releases/tags/${tag}`);
-          for (const a of rel.assets || []) {
-            if (a.name === 'meta.json')
-              await gh(env, `/repos/${REPO}/releases/assets/${a.id}`, { method: 'DELETE' });
-          }
-          const up = await fetch(
-            `https://uploads.github.com/repos/${REPO}/releases/${rel.id}/assets?name=meta.json`,
-            { method: 'POST', body: JSON.stringify(meta, null, 1),
-              headers: { 'Authorization': `Bearer ${env.GH_TOKEN}`,
-                         'Content-Type': 'application/json',
-                         'User-Agent': 'verdict-theater-admin' } });
-          if (!up.ok) throw new Error(`${up.status}: ${(await up.text()).slice(0, 160)}`);
-          return Response.json({ ok: true });
-        } catch (e) {
-          return Response.json({ ok: false, error: '저장하지 못했습니다',
-            detail: String(e && e.message ? e.message : e).slice(0, 200) }, { status: 502 });
-        }
+        // ⚠️ 여기 있던 깃허브 직접 쓰기도 지웠다 (같은 403 을 낼 두 번째 자리)
+        return Response.json({ ok: false, error: '영상 보관함이 아직 없습니다',
+          detail: '[영상 보관함 준비하기] 를 한 번 누르시면 1~2분 뒤 저장됩니다.',
+          fix: 'setup-blob' }, { status: 503 });
       }
 
       if (url.pathname === '/api/yt-up' && req.method === 'POST') {

@@ -276,7 +276,7 @@ ck("못 갈아 끼웠으면 크게 알린다", "원래 소리를 그대로 쓴�
 _wf = (ROOT / ".github" / "workflows" / "shorts.yml").read_text(encoding="utf-8")
 _ad = (ROOT / "admin" / "worker.js").read_text(encoding="utf-8")
 ck("워크플로가 'cut' 을 받는다", "\n      cut:" in _wf)
-ck("관리자 페이지가 'cut' 을 보낸다", "{ sid, ep, cut }" in _ad)
+ck("관리자 페이지가 'cut' 을 보낸다", "inputs.cut = cut" in _ad)
 ck("시험본이 완성본을 덮어쓰지 않는다 (딴 이름을 쓴다)",
       "-cut${cut}" in _ad and "-cut${CUT}" in _wf,
       "같은 이름이면 시험 한 번에 5컷짜리 완성본이 날아간다")
