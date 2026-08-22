@@ -116,6 +116,15 @@ jobs:
       - name: 유튜브에 올릴 글이 두 곳에서 같은가
         run: python3 tools/ytmeta_test.py
 
+      # ⚠️⚠️ 2026-08-22 — 쇼츠 만들기가 죽던 갈림길은 **워크플로 안 셸**에 있었다.
+      #    파이썬·자바스크립트 검사로는 아무것도 못 잡는 자리다.
+      #    워크플로에서 그 글을 그대로 뽑아 진짜로 돌려 본다.
+      - name: 쇼츠 워크플로가 갈림길을 제대로 타는가
+        run: |
+          python3 -m pip install --quiet PyYAML
+          sudo apt-get install -y -qq zip >/dev/null
+          bash tools/shorts_flow_test.sh
+
       - name: 쇼츠 배치(후킹·영상·자막)가 제자리인가
         run: |
           python3 -m pip install --quiet pillow 2>/dev/null || true

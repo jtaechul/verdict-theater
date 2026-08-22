@@ -15,7 +15,9 @@ w = yaml.safe_load(open(".github/workflows/selfcheck.yml", encoding="utf-8"))
 for st in w["jobs"]["check"]["steps"]:
     for line in str(st.get("run", "")).splitlines():
         line = line.strip()
-        if re.match(r"^(python3 tools/|node tools/)", line):
+        # ⚠️ bash 로 도는 검사(워크플로 셸 갈림길)도 여기서 같이 돌려야 한다.
+        #    빠뜨리면 "다 통과" 라고 밀어 넣고 깃허브에서 빨간불이 난다.
+        if re.match(r"^(python3 tools/|node tools/|bash tools/)", line):
             print(line)
 PY
 )
