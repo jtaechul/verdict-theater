@@ -213,6 +213,22 @@ async function streamAsset(env, req, id) {
   return new Response(up.body, { status: up.status, headers: h });
 }
 
+// ⚠️⚠️⚠️ 2026-08-22 — **쇼츠 만들기가 여기서 죽고 있었다.**
+//    원래 이렇게 적혀 있었다:
+//        const cut = String(parseInt(url.searchParams.get('cut') || '0', 10) || 0);
+//    컷을 안 고르시면 이 값은 숫자 0 이 아니라 **글자 "0"** 이 된다.
+//    자바스크립트는 글자 "0" 을 '있는 것'(참)으로 친다.
+//    → 컷을 안 골랐는데도 cut="0" 이 워크플로로 넘어갔고, 워크플로는 그걸 보고
+//      "한 컷만 시험" 길로 빠져 `❌ 1화에 0컷이 없다` 로 죽었다.
+//      5컷을 다 올려도 완성본이 **한 번도** 안 나온 까닭이 이것이다.
+//    → 완성된 쇼츠를 찾는 자리(/api/short)에도 똑같이 있었다. 그래서 어쩌다
+//      만들어졌더라도 화면은 'short-…-cut0' 을 찾아 "아직 없습니다" 라고 했다.
+//    두 군데가 같은 함수를 쓰게 해서, 한쪽만 고쳐지는 일을 없앤다.
+function cutOf(url) {
+  const n = parseInt(url.searchParams.get('cut') || '', 10);
+  return Number.isInteger(n) && n >= 1 && n <= 9 ? String(n) : '';
+}
+
 function b64utf8(b64) {
   const bin = atob(b64.replace(/\n/g, ''));
   const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
@@ -2582,7 +2598,7 @@ export default {
         // ⭐ 2026-08-22 — 클립 하나로 시험하는 길. 운영자가 컷 하나만 만들어
         //    소리까지 제대로 입혔는지 보고 싶어 한다. 이때는 **딴 이름**으로
         //    둔다 — 시험 한 번에 5컷짜리 완성본이 덮이면 안 된다.
-        const cut = String(parseInt(url.searchParams.get('cut') || '0', 10) || 0);
+        const cut = cutOf(url);
         const suf = cut ? `-cut${cut}` : '';
         const tag = `clips-${sid}-ep${String(ep).padStart(2, '0')}${suf}`;
         const told = +(req.headers.get('content-length') || 0);
@@ -2852,7 +2868,7 @@ export default {
         const sid = url.searchParams.get('sid') || '';
         const ep = String(parseInt(url.searchParams.get('ep') || '0', 10) || 0);
         if (!/^S\d{3}$/.test(sid)) return new Response('bad', { status: 400 });
-        const cut = String(parseInt(url.searchParams.get('cut') || '0', 10) || 0);
+        const cut = cutOf(url);
         const tag = `short-${sid}-ep${String(ep).padStart(2, '0')}`
                   + (cut ? `-cut${cut}` : '');
         let rel = null;

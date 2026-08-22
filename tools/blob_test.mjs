@@ -185,6 +185,16 @@ ok(back2.status === 200 && (await back2.arrayBuffer()).byteLength === zip.length
    '워크플로가 그 주소에서 압축파일을 그대로 받는다');
 ok(gotUrl.pathname === '/api/blob', '주소가 보관함 문을 가리킨다');
 
+// ⚠️⚠️ 2026-08-22 — **쇼츠 만들기가 여기서 죽었다.**
+//    컷을 안 골랐는데도 cut="0" 이 넘어가, 워크플로가 "한 컷만 시험" 길로
+//    빠져 `❌ 1화에 0컷이 없다` 로 끝났다. 5컷을 다 올려도 완성본이
+//    한 번도 안 나온 까닭이다. 글자 "0" 은 자바스크립트에서 '참'이다.
+ok(!!disp && !('cut' in disp.body.inputs),
+   '컷을 안 고르면 cut 을 아예 안 넘긴다'
+   + (disp && 'cut' in disp.body.inputs ? ' ← cut=' + disp.body.inputs.cut : ''));
+ok(!!disp && !disp.body.inputs.blob.includes('-cut'),
+   '이름에도 -cut0 이 안 붙는다');
+
 // 한 컷만 시험할 때는 cut 도 같이 넘어가야 한다
 called.length = 0;
 const up2 = await W._wk.fetch(new Request(
@@ -319,6 +329,28 @@ ok(vres.status === 206, '구간만 내려준다 (206)');
 ok(vres.headers.get('Accept-Ranges') === 'bytes', '구간을 받는다고 알려 준다');
 ok(vres.headers.get('Content-Range') === 'bytes 0-9/4200000', '어디부터 어디까지인지 알려 준다');
 ok(vres.headers.get('Content-Type') === 'video/mp4', '영상이라고 알려 준다');
+
+// ⚠️ 완성된 쇼츠를 찾는 자리에도 같은 실수가 있었다 —
+//    'short-S001-ep01-cut0' 을 찾으니 만들어져 있어도 "아직 없습니다" 였다.
+let askedTag = '';
+const oldFetch2 = globalThis.fetch;
+globalThis.fetch = async (u, init) => {
+  const s1 = String(u && u.url ? u.url : u);
+  const m1 = s1.match(/\/releases\/tags\/([^?]+)/);
+  if (m1) { askedTag = decodeURIComponent(m1[1]); return Response.json({ id: 1, assets: [] }); }
+  return oldFetch2(u, init);
+};
+await W._wk.fetch(new Request(
+  'https://admin.example.workers.dev/api/short?sid=S001&ep=1',
+  { headers: { Cookie: cookie } }), env2);
+ok(askedTag === 'short-S001-ep01',
+   '완성본을 찾을 때도 -cut0 을 안 붙인다 (찾은 이름: ' + askedTag + ')');
+askedTag = '';
+await W._wk.fetch(new Request(
+  'https://admin.example.workers.dev/api/short?sid=S001&ep=1&cut=3',
+  { headers: { Cookie: cookie } }), env2);
+ok(askedTag === 'short-S001-ep01-cut3', '진짜 시험본은 시험본 이름으로 찾는다');
+globalThis.fetch = oldFetch2;
 
 const lst = await (await W._wk.fetch(new Request(
   'https://admin.example.workers.dev/api/shorts', { headers: { Cookie: cookie } }),

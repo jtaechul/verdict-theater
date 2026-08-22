@@ -130,5 +130,11 @@
     "kind": "voice",
     "krw": 277,
     "note": "22컷 · voice"
+  },
+  {
+    "date": "2026-08-22",
+    "kind": "목소리",
+    "krw": 135,
+    "note": "305자(어림) · gemini-2.5-flash-preview-tts S001 1화"
   }
 ]

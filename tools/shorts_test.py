@@ -278,8 +278,24 @@ _ad = (ROOT / "admin" / "worker.js").read_text(encoding="utf-8")
 ck("워크플로가 'cut' 을 받는다", "\n      cut:" in _wf)
 ck("관리자 페이지가 'cut' 을 보낸다", "inputs.cut = cut" in _ad)
 ck("시험본이 완성본을 덮어쓰지 않는다 (딴 이름을 쓴다)",
-      "-cut${cut}" in _ad and "-cut${CUT}" in _wf,
+      "-cut${cut}" in _ad and "-cut${CUTN}" in _wf,
       "같은 이름이면 시험 한 번에 5컷짜리 완성본이 날아간다")
+# ⚠️⚠️ 2026-08-22 — 쇼츠 만들기가 두 번 죽은 자리다.
+#    관리자 페이지가 컷을 안 골랐는데도 cut="0" 을 보냈고
+#    (자바스크립트에서 글자 "0" 은 '참'이다), 워크플로는 그걸 보고
+#    "한 컷만 시험" 길로 빠져 `❌ 1화에 0컷이 없다` 로 끝났다.
+#    5컷을 다 올려도 완성본이 한 번도 안 나온 까닭이 이것이다.
+#    ⚠️ 주석에 적어 둔 '옛날 코드'까지 걸리면 헛경보가 난다. 주석은 빼고 본다.
+_ad_live = "\n".join(l for l in _ad.splitlines() if not l.lstrip().startswith("//"))
+ck("컷 번호를 0 으로 넘기지 않는다",
+      "String(parseInt(url.searchParams.get('cut')" not in _ad_live
+      and "function cutOf(url)" in _ad_live,
+      "글자 \"0\" 은 '참'이라 안 고른 것이 고른 것으로 둔갑한다")
+ck("워크플로도 0 을 '안 고름'으로 받아 준다",
+      'if [ "$CUTN" = "0" ]; then CUTN=""; fi' in _wf,
+      "한쪽만 고치면 다음에 또 같은 데서 죽는다")
+ck("5컷 전체 길과 한 컷 시험 길이 갈린다",
+      '[ -n "${CUTN:-}" ]' in _wf and "--clips build/in" in _wf)
 ck("고르는 칸이 화면에 있다", "cutone" in _ad)
 
 print("\n" + "─" * 52)
