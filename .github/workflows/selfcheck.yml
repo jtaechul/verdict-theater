@@ -47,8 +47,19 @@ jobs:
       #    중간 검사(돈 막는 장치)가 워크플로 글을 읽느라 yaml 을 쓰면서
       #    거기서 죽었다. 내 컴퓨터에는 이미 깔려 있어 안 드러났다.
       #    쓰는 것보다 **먼저** 깐다.
+      # ⚠️⚠️ 2026-08-22 — **또 같은 실수를 했다.**
+      #    새 검사(clip_order_test)를 131번째 줄에 넣었는데 그것이 읽는
+      #    pillow 는 135번째 줄에서 깔고 있었다. 내 컴퓨터에는 이미 깔려
+      #    있어 "전부 통과" 로 보였고, 깃허브에서만 빨간불이 났다.
+      #    → 준비물은 **여기 한 곳에서만** 깐다. 아래에 흩어 두지 않는다.
+      #      (tools/deps_order_check.py 가 이 규칙을 강제한다)
       - name: 준비물
-        run: python3 -m pip install --quiet PyYAML
+        run: python3 -m pip install --quiet PyYAML pillow
+
+      # ⚠️⚠️ 준비물 사고를 두 번 냈다. 로컬에는 깔려 있어 안 드러나고
+      #    깃허브에서만 빨간불이 난다. 검사보다 먼저 이것을 본다.
+      - name: 빠뜨린 준비물이 없는가
+        run: python3 tools/deps_order_check.py
 
       - name: 파이썬 문법
         run: python3 -m py_compile src/*.py tools/*.py
@@ -121,7 +132,6 @@ jobs:
       #    워크플로에서 그 글을 그대로 뽑아 진짜로 돌려 본다.
       - name: 쇼츠 워크플로가 갈림길을 제대로 타는가
         run: |
-          python3 -m pip install --quiet PyYAML
           bash tools/shorts_flow_test.sh
           # ⚠️ shorts-upload.yml 은 한 번도 돈 적이 없다(기록 0건).
           #    쇼츠가 만들어지면 손님이 바로 그 단추를 누르신다.
@@ -131,9 +141,7 @@ jobs:
           python3 tools/clip_order_test.py
 
       - name: 쇼츠 배치(후킹·영상·자막)가 제자리인가
-        run: |
-          python3 -m pip install --quiet pillow 2>/dev/null || true
-          python3 tools/shorts_test.py
+        run: python3 tools/shorts_test.py
 
       # ⭐ 2026-08-21 — 영상 만드는 쪽의 한국어 발음을 프롬프트로 못 고쳐,
       #    목소리를 한국어 전용으로 **갈아 끼우기로** 했다. 그 일이
@@ -166,7 +174,6 @@ jobs:
 
       - name: 워크플로에 넘기는 값 이름이 저쪽에 있는가
         run: |
-          python3 -m pip install --quiet PyYAML
           # ⚠️ 워크플로가 안 받겠다는 이름을 넘기면 깃허브가 422 로 통째로 거절한다.
           #    화면에는 그냥 "실패" 로만 보여 눈으로는 못 잡는다.
           python3 tools/dispatch_input_check.py
@@ -176,7 +183,6 @@ jobs:
 
       - name: 워크플로 문법 + 관리자 버튼이 실제로 눌리는가
         run: |
-          python3 -m pip install --quiet PyYAML
           # ⚠️ 2026-08-12 — 관리자 페이지가 보내는 글자와 워크플로의 목록이
           #    한 글자라도 다르면 깃허브가 거절한다. 눈으로는 못 잡는다.
           python3 tools/admin_choice_check.py
