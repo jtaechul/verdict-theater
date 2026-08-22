@@ -150,8 +150,14 @@ ck(len(d) - len(LINE) < 140, "지시가 대사에 비해 지나치게 길지 않
 ck(T.mood(LINE) in d, "결을 안 정하면 줄마다 mood() 가 정한다")
 # 결을 정해 두면 그것이 mood() 를 눌러 이긴다
 os.environ["VOICE_STYLE"] = "fierce"
-ck(T.STYLES["fierce"]["how"][:10] in T.direct(LINE),
-   "결을 정해 두면 그것이 줄마다의 말투를 눌러 이긴다")
+# fierce 는 이제 **얹기**다 — 줄마다의 결을 살리고 그 위에 세기만 더한다
+ck(T.STYLES["fierce"]["add"][:8] in T.direct(LINE)
+   and T.mood(LINE) in T.direct(LINE),
+   "얹는 결은 줄마다의 말투를 살린 채 세기만 더한다")
+os.environ["VOICE_STYLE"] = "dry"
+ck(T.STYLES["dry"]["how"][:10] in T.direct(LINE)
+   and T.mood(LINE) not in T.direct(LINE),
+   "덮어쓰는 결은 줄마다의 말투를 눌러 이긴다")
 if _style_keep is None:
     os.environ.pop("VOICE_STYLE", None)
 else:
@@ -173,8 +179,10 @@ for _k in T.STYLES:
         _seen.add((_d, T.best_voices("FEMALE")[0], T.best_voices("MALE")[0]))
         ck('"당신 진짜 제정신이야?!"' in _d, f"{_k}: 대사는 그대로 실린다")
         _w = T.STYLES[_k]
-        if _w["how"]:
+        if _w.get("how"):
             ck(_w["how"][:10] in _d, f"{_k}: 정해 준 결이 지시에 들어간다")
+        if _w.get("add"):
+            ck(_w["add"][:8] in _d, f"{_k}: 얹는 말이 지시에 들어간다")
         for _g, _f in (("FEMALE", "voice_f"), ("MALE", "voice_m")):
             if _w[_f]:
                 ck(T.best_voices(_g)[0] == _w[_f],
@@ -205,6 +213,30 @@ try:
 finally:
     T._tempo, T.gem_say = _rt, _rg
 
+# ⚠️⚠️ 2026-08-22 — 운영자: "여전히 음성은 외국인같네"
+#    까닭이 둘이었다.
+#      ① 격한 결을 안전 기준에 안 막히게 하려고 "**무대에서처럼** 크게
+#         내지르고" 라고 썼다. 무대 발성이 곧 더빙 목소리다.
+#      ② 줄마다 다르던 결을 **한 줄로 덮어썼다.** 세 마디가 다 같게 읽혔다.
+#    → 결은 줄마다의 mood() 를 살리고 그 위에 세기만 얹는다.
+print("\n④-1a 격한 결이 다시 더빙처럼 되지 않는가")
+_BAD_TONE = ["무대", "내지르", "외치", "연극", "낭독", "또렷하게 발음"]
+for _k, _w in T.STYLES.items():
+    _all = f"{_w.get('how') or ''} {_w.get('add') or ''}"
+    for _b in _BAD_TONE:
+        ck(_b not in _all, f"{_k}: 결에 '{_b}' 가 없다",
+           "무대·연극 투로 시키면 더빙 목소리가 된다")
+
+with env(GEMINI_API_KEY="x", VOICE_STYLE="fierce"):
+    _lines = ["여보, 미안해. 내가 잘못했어.", "당신 진짜 미쳤어!",
+              "그 사람 이름은 내가 안다."]
+    _got = {T.how_of(x) for x in _lines}
+    ck(len(_got) == len(_lines), "격한 결에서도 줄마다 다르게 읽힌다",
+       f"{len(_lines)}줄인데 지시는 {len(_got)}가지 — 같으면 세 마디가 한 소리로 들린다")
+    ck(T.best_voices("MALE")[0] == "Orus",
+       "운영자가 한국사람 같다고 한 그 남자 목소리를 쓴다",
+       "목소리와 말투를 한꺼번에 바꾸면 무엇이 범인인지 알 수 없다")
+
 # ── ④-1b 구글 클라우드 쪽 제미나이 목소리 ─────────────
 #    왜 이 길이 필요한가: AI 스튜디오 무료 등급은 **하루 10번**이라 한 화도
 #    못 만든다. 클라우드 쪽은 결제가 붙어 있어 그 벽이 없다.
@@ -217,7 +249,7 @@ with env(GEMINI_API_KEY="x", VOICE_STYLE="fierce"):
     ck(LINE2 not in _h, "지시 안에 대사가 섞여 들어가지 않는다",
        "섞이면 대사를 두 번 말한다 — " + _h[:60])
     ck('"' not in _h, "지시에 따옴표가 없다", _h[:60])
-    ck(T.STYLES["fierce"]["how"][:10] in _h, "지시에 결이 들어 있다")
+    ck(T.STYLES["fierce"]["add"][:8] in _h, "지시에 결이 들어 있다")
     ck(T.direct(LINE2).startswith(_h), "두 길이 같은 지시를 쓴다 (한 곳에서 만든다)")
 
 _sent2 = {}

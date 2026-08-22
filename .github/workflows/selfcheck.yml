@@ -131,6 +131,8 @@ jobs:
       - name: 관리자 페이지가 안 깨지는가
         run: |
           node tools/check_admin.mjs
+          # ⚠️ 문법은 멀쩡한데 **없는 것을 워크플로에 넘기는** 실수를 잡는다
+          node tools/check_scope.mjs
           node tools/check_fold.mjs
 
       - name: 워크플로 문법 + 관리자 버튼이 실제로 눌리는가

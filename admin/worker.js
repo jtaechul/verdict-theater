@@ -524,11 +524,13 @@ let SDOC = null, SID = '', SEP = 1;
 async function makeVoice() {
   const msg = document.getElementById('voicemsg');
   const box = document.getElementById('voicebox');
+  const ss = document.getElementById('vstyle');
+  const st = (ss && ss.value) ? '&style=' + ss.value : '';
   msg.textContent = '만드는 중입니다… (1분쯤 걸립니다)';
   box.innerHTML = '';
   try {
     const r = await fetch('/api/voice?sid=' + encodeURIComponent(SID)
-      + '&ep=' + SEP, { method: 'POST' });
+      + '&ep=' + SEP + st, { method: 'POST' });
     const j = await r.json();
     if (!j.ok) throw new Error(j.detail || j.error || '실패');
   } catch (e) {
@@ -540,7 +542,7 @@ async function makeVoice() {
     n++;
     try {
       const q = await fetch('/api/voice?sid=' + encodeURIComponent(SID)
-        + '&ep=' + SEP + '&t=' + Date.now());
+        + '&ep=' + SEP + st + '&t=' + Date.now());
       const j = await q.json();
       if (j.ready) {
         msg.textContent = '다 됐습니다. 눌러서 들어보십시오.';
@@ -556,7 +558,7 @@ async function makeVoice() {
         }
         box.innerHTML = '<audio controls style="width:100%;margin-top:8px" src="'
           + '/api/voice?play=1&sid=' + encodeURIComponent(SID) + '&ep=' + SEP
-          + '&t=' + Date.now() + '"></audio>' + note;
+          + st + '&t=' + Date.now() + '"></audio>' + note;
         return;
       }
     } catch (e) { /* 아직 안 됐다 */ }
@@ -804,7 +806,16 @@ function seriesRender() {
   //    영상 없이 소리만 만들어 여기서 바로 들려준다.
   h += '<div class="upbox" style="margin-top:12px">'
      + '<div class="uphint">영상 만들기 전에 <b>한국어 목소리</b>부터 들어보십시오. '
-     + '대본의 대사 넉 줄을 구글 목소리로 읽어 줍니다 (값 0원, 1분쯤 걸립니다).</div>'
+     + '대본의 대사 넉 줄을 읽어 줍니다 (1원 미만, 1분쯤 걸립니다).</div>'
+     + '<div class="uphint" style="margin-top:8px"><b>말투 결</b>을 바꿔 가며 '
+     + '들어보고 마음에 드는 것을 알려 주십시오. 결마다 따로 담아 두므로 '
+     + '앞엣것과 견줘 들을 수 있습니다.</div>'
+     + '<select id="vstyle" style="margin-top:8px">'
+     + '<option value="">정해 둔 것 (격하게)</option>'
+     + '<option value="drama">드라마 (기준) — 눌러 담아 무겁게</option>'
+     + '<option value="fierce">격하게 (막장 톤)</option>'
+     + '<option value="dry">담백하게 (쇼츠 템포)</option>'
+     + '<option value="deep">중후하게 (나이 든 목소리)</option></select>'
      + '<button class="ghost" onclick="makeVoice()">목소리 들어보기</button>'
      + '<div id="voicemsg" class="uphint"></div>'
      + '<div id="voicebox"></div>'
@@ -2199,13 +2210,16 @@ export default {
       if (url.pathname === '/api/voice' && req.method === 'POST') {
         const sid = url.searchParams.get('sid') || '';
         const ep = String(parseInt(url.searchParams.get('ep') || '1', 10) || 1);
+        // ⭐ 2026-08-22 — 말투 결을 **운영자가 귀로 고른다.** 내가 혼자 골랐다가
+        //    "여전히 외국인 같네" 를 들었다. 골라서 들어 보고 정하는 게 맞다.
+        const style = (url.searchParams.get('style') || '').trim();
         if (!/^S\d{3}$/.test(sid))
           return Response.json({ ok: false, error: 'bad sid' }, { status: 400 });
         try {
           await gh(env, `/repos/${REPO}/actions/workflows/voice-sample.yml/dispatches`, {
             method: 'POST',
             body: JSON.stringify({ ref: BRANCH,
-              inputs: cut ? { sid, ep, cut } : { sid, ep } }),
+              inputs: style ? { sid, ep, style } : { sid, ep } }),
           });
           return Response.json({ ok: true });
         } catch (e) {
@@ -2218,7 +2232,9 @@ export default {
         const sid = url.searchParams.get('sid') || '';
         const ep = String(parseInt(url.searchParams.get('ep') || '1', 10) || 1);
         if (!/^S\d{3}$/.test(sid)) return new Response('bad', { status: 400 });
-        const tag = `voice-${sid}-ep${String(ep).padStart(2, '0')}`;
+        const style = (url.searchParams.get('style') || '').trim();
+        const tag = `voice-${sid}-ep${String(ep).padStart(2, '0')}`
+                  + (style ? `-${style}` : '');
         let rel = null;
         try { rel = await gh(env, `/repos/${REPO}/releases/tags/${tag}`); } catch { rel = null; }
         const a = (rel && (rel.assets || []).find((x) => x.name === 'voice.mp3')) || null;

@@ -25,6 +25,10 @@ on:
         description: '몇 화'
         required: true
         default: '1'
+      style:
+        description: '말투 결 (비우면 정해 둔 것)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -41,6 +45,8 @@ jobs:
       GOOGLE_TTS_KEY: ${{ secrets.GOOGLE_TTS_KEY }}
       SID: ${{ inputs.sid }}
       EP: ${{ inputs.ep }}
+      # ⭐ 비어 있으면 tts.py 가 정해 둔 결로 간다
+      VOICE_STYLE: ${{ inputs.style }}
 
     steps:
       - uses: actions/checkout@v4

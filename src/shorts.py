@@ -419,6 +419,20 @@ LOUD_TARGET = -20.0     # 컷마다 맞출 평균 소리 크기(dB)
 PEAK_LIMIT = -1.0       # 이보다 커지면 소리가 깨진다
 
 
+def mean_db(path, ss=0.0, t=0.0):
+    """그 토막의 평균 소리 크기(dB). 못 재면 None."""
+    args = ["ffmpeg", "-hide_banner"]
+    if ss:
+        args += ["-ss", f"{float(ss):.3f}"]
+    if t:
+        args += ["-t", f"{float(t):.3f}"]
+    args += ["-i", str(path), "-map", "0:a", "-af", "volumedetect",
+             "-f", "null", "-"]
+    err = subprocess.run(args, capture_output=True, text=True).stderr
+    m = re.search(r"mean_volume: ([-\d.]+)", err)
+    return float(m.group(1)) if m else None
+
+
 def gain_for(src):
     """이 클립을 얼마나 키우거나 줄여야 다른 컷과 소리가 같아지는가.
 
@@ -536,14 +550,31 @@ def dub(src, turns, voices, out, tmp):
         made.append((a, p, d))
         print(f"    🎙 {who}: {text[:18]}…  {a:.2f}초부터 {d:.2f}초")
 
+    # ⭐⭐ 2026-08-22 — **원본이 말하던 크기에 맞춘다.**
+    #    맞추지 않으면 우리 목소리만 동떨어진 크기로 얹혀서, 장면에 안 앉고
+    #    나중에 덧붙인 소리처럼 들린다 (더빙처럼 들리는 까닭 중 하나다).
+    #    이 클립은 원본이 말할 때 -13~-16dB 였다.
+    tgt = None
+    _d = [mean_db(src, a, b - a) for a, b in spans]
+    _d = [x for x in _d if x is not None and x > -60]
+    if _d:
+        tgt = sum(_d) / len(_d)
+
     # 원래 소리는 **완전히 지우고**, 만든 목소리를 제자리에 얹는다
     args = ["ffmpeg", "-v", "error", "-y", "-i", str(src)]
     for _, p, _ in made:
         args += ["-i", str(p)]
     fil = [f"[0:a]volume=0,apad[bed]"]
     mix = "[bed]"
-    for i, (a, _, _) in enumerate(made):
-        fil.append(f"[{i + 1}:a]aresample=48000,"
+    for i, (a, _p, _) in enumerate(made):
+        # ⚠️ 크게 올리다 깨지면 더 나쁘다. 올리고 내리는 폭을 묶어 둔다.
+        g = 0.0
+        if tgt is not None:
+            own = mean_db(_p)
+            if own is not None and own > -60:
+                g = max(-10.0, min(10.0, tgt - own))
+        vol = f"volume={g:.1f}dB," if abs(g) > 0.3 else ""
+        fil.append(f"[{i + 1}:a]{vol}aresample=48000,"
                    f"aformat=sample_fmts=fltp:channel_layouts=stereo,"
                    f"adelay={int(a * 1000)}|{int(a * 1000)}[d{i}]")
         mix += f"[d{i}]"
