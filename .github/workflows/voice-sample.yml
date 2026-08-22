@@ -57,6 +57,15 @@ jobs:
 
       # ⚠️ 소리 토막을 이어 붙이는 데 ffmpeg 가 필요하다. 깃허브 실행기에는
       #    기본으로 안 깔려 있다 — 이것을 빠뜨려 세 번째 시도가 죽었다.
+      # ⭐ 2026-08-22 — 운영자가 귀로 고른 목소리가 있으면 그것을 쓴다.
+      #    없으면 (|| true) 정해 둔 것으로 간다.
+      - name: 골라 둔 목소리 가져오기
+        continue-on-error: true
+        run: |
+          mkdir -p state
+          python3 tools/release_file.py get voicepick chosen.json state/voice.json \
+            || echo "골라 둔 것이 없다 — 정해 둔 목소리로 간다"
+
       - name: 준비물 (ffmpeg)
         run: |
           sudo apt-get update -qq

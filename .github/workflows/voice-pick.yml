@@ -1,0 +1,74 @@
+name: 5. 목소리 고르기 (26개를 다 들어본다 · 15원)
+
+# 쓸 수 있는 목소리 **전부**로 같은 대사를 한 번씩 만들어 들려준다.
+#
+# 왜 (2026-08-22)
+#   운영자: "얘 안 돼요. 목소리네 그냥."
+#   말투를 아무리 손봐도 안 되면 남은 것은 목소리 그 자체다. 그런데 우리는
+#   26개 중 **두 개(Kore·Orus)만** 써 보고 "제미나이 목소리는 이렇다" 고
+#   단정하고 있었다. 나머지 24개를 한 번도 안 들어 봤다.
+#
+# 어떻게 오나
+#   관리자 페이지 [목소리 고르기] → 이 워크플로 → 릴리스 `voicepick`
+#   → 화면에 목소리마다 재생 단추가 하나씩 뜬다.
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: '이 목소리들만 (쉼표로, 비우면 전부)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: voicepick
+  cancel-in-progress: false
+
+jobs:
+  pick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GOOGLE_TTS_KEY: ${{ secrets.GOOGLE_TTS_KEY }}
+      ONLY: ${{ inputs.only }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 준비물 (ffmpeg)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+
+      - name: 목소리 전부 만들기
+        run: |
+          set -o pipefail
+          python3 src/tts.py --audition build/pick --only "$ONLY" 2>&1 | tee pick.log
+
+      - name: 릴리스에 올리기
+        run: |
+          set -euo pipefail
+          # ⚠️ 압축해서 올리면 화면에서 바로 못 튼다. **하나씩** 올린다.
+          for f in build/pick/*.mp3; do
+            python3 tools/release_file.py put voicepick "$(basename "$f")" "$f"
+          done
+          python3 tools/release_file.py put voicepick list.json build/pick/list.json
+
+      - name: 결과 화면
+        if: always()
+        run: |
+          {
+            echo "## 목소리 고르기"
+            echo ""
+            echo '```'
+            tail -n 40 pick.log 2>/dev/null || echo "기록 없음"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

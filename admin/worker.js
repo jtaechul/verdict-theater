@@ -569,6 +569,77 @@ async function makeVoice() {
   setTimeout(tick, 8000);
 }
 
+// ⭐ 2026-08-22 — 목소리 26개를 다 만들어 보고, 들어 보고, 고른다.
+async function pickVoice() {
+  const msg = document.getElementById('pickmsg');
+  msg.textContent = '만드는 중입니다… (26개라 3~5분 걸립니다)';
+  try {
+    const r = await fetch('/api/voicepick', { method: 'POST' });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.detail || j.error || '실패');
+  } catch (e) {
+    msg.textContent = '부르지 못했습니다: ' + (e && e.message ? e.message : e);
+    return;
+  }
+  let n = 0;
+  const tick = async () => {
+    n++;
+    if (await pickShow(true)) { msg.textContent = '다 됐습니다. 들어보십시오.'; return; }
+    if (n > 40) { msg.textContent = '오래 걸립니다. [이미 만든 것 보기] 를 눌러 보십시오.'; return; }
+    msg.textContent = '만드는 중입니다… (' + (n * 10) + '초)';
+    setTimeout(tick, 10000);
+  };
+  setTimeout(tick, 20000);
+}
+
+async function pickShow(quiet) {
+  const box = document.getElementById('pickbox');
+  const msg = document.getElementById('pickmsg');
+  let j = null;
+  try { j = await (await fetch('/api/voicepick?t=' + Date.now())).json(); }
+  catch (e) { return false; }
+  if (!j || !j.ready) {
+    if (!quiet) msg.textContent = '아직 만든 것이 없습니다. [26개 다 들어보기] 를 누르십시오.';
+    return false;
+  }
+  const now = j.now || {};
+  const row = (x) => '<div style="display:flex;align-items:center;gap:8px;'
+    + 'margin:4px 0"><b style="min-width:110px">' + esc(x.sex + ' ' + x.voice)
+    + (now[x.sex === '여' ? 'f' : 'm'] === x.voice ? ' ✅' : '') + '</b>'
+    + '<audio controls preload="none" style="flex:1;max-width:260px" src="'
+    + '/api/voicepick?name=' + encodeURIComponent(x.file) + '"></audio></div>';
+  const f = j.list.filter((x) => x.sex === '여');
+  const m = j.list.filter((x) => x.sex === '남');
+  const opt = (a, sel) => a.map((x) => '<option value="' + esc(x.voice) + '"'
+    + (sel === x.voice ? ' selected' : '') + '>' + esc(x.voice) + '</option>').join('');
+  box.innerHTML = '<div style="margin-top:10px"><b>여자 목소리</b>' + f.map(row).join('')
+    + '<b>남자 목소리</b>' + m.map(row).join('')
+    + '<div style="margin-top:10px"><b>정하기</b> — 여자 '
+    + '<select id="pf">' + opt(f, now.f) + '</select> · 남자 '
+    + '<select id="pm">' + opt(m, now.m) + '</select> '
+    + '<button class="gold" onclick="pickSet()">이 목소리로 정하기</button></div></div>';
+  return true;
+}
+
+async function pickSet() {
+  const f = document.getElementById('pf').value;
+  const m = document.getElementById('pm').value;
+  const msg = document.getElementById('pickmsg');
+  msg.textContent = '담아 두는 중…';
+  try {
+    const r = await fetch('/api/voicepick-set', { method: 'POST',
+      body: JSON.stringify({ f: f, m: m }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.detail || j.error || '실패');
+    msg.textContent = '✅ 정했습니다 — 여자 ' + f + ' · 남자 ' + m
+      + '. 다음부터 만드는 영상이 이 목소리를 씁니다.';
+    toast('목소리를 정했습니다');
+    pickShow(true);
+  } catch (e) {
+    msg.textContent = '담아 두지 못했습니다: ' + (e && e.message ? e.message : e);
+  }
+}
+
 async function upClips() {
   const el = document.getElementById('clipzip');
   const msg = document.getElementById('upmsg');
@@ -819,6 +890,18 @@ function seriesRender() {
      + '<button class="ghost" onclick="makeVoice()">목소리 들어보기</button>'
      + '<div id="voicemsg" class="uphint"></div>'
      + '<div id="voicebox"></div>'
+     + '</div>';
+  // ⭐ 2026-08-22 — 목소리 자체를 바꿔 본다. 쓸 수 있는 것이 26개인데
+  //    여태 두 개만 써 봤다. 전부 들어 보고 고른다.
+  h += '<div class="upbox" style="margin-top:12px">'
+     + '<div class="uphint">목소리가 계속 어색하면 <b>목소리 자체</b>를 바꿔 '
+     + '보십시오. 쓸 수 있는 것이 <b>26개</b>인데 지금은 그중 둘만 쓰고 '
+     + '있습니다. 같은 대사를 26개 목소리로 하나씩 만들어 들려드립니다 '
+     + '(15원, 3~5분).</div>'
+     + '<button class="ghost" onclick="pickVoice()">26개 다 들어보기</button>'
+     + '<button class="ghost" onclick="pickShow()">이미 만든 것 보기</button>'
+     + '<div id="pickmsg" class="uphint"></div>'
+     + '<div id="pickbox"></div>'
      + '</div>';
   h += '</div>';
 
@@ -2264,6 +2347,79 @@ export default {
           } });
         return new Response(r0.body, { headers: {
           'Content-Type': 'audio/mpeg', 'Cache-Control': 'no-store' } });
+      }
+
+      // ⭐⭐ 2026-08-22 운영자: "얘 안 돼요. 목소리네 그냥."
+      //    말투를 아무리 손봐도 안 되면 남은 것은 목소리 그 자체다. 그런데
+      //    26개 중 두 개만 써 보고 단정하고 있었다. 전부 들어 보고 고르게 한다.
+      if (url.pathname === '/api/voicepick' && req.method === 'POST') {
+        try {
+          await gh(env, `/repos/${REPO}/actions/workflows/voice-pick.yml/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({ ref: BRANCH, inputs: { only: '' } }),
+          });
+          return Response.json({ ok: true });
+        } catch (e) {
+          return Response.json({ ok: false, error: '부르지 못했습니다',
+            detail: String(e && e.message ? e.message : e).slice(0, 220) }, { status: 502 });
+        }
+      }
+
+      // 골라 둔 목소리를 담아 둔다 — 다음부터 만드는 영상이 이걸 쓴다
+      if (url.pathname === '/api/voicepick-set' && req.method === 'POST') {
+        const body = await req.text();
+        try {
+          const rel = await gh(env, `/repos/${REPO}/releases/tags/voicepick`);
+          for (const a of rel.assets || []) {
+            if (a.name === 'chosen.json')
+              await gh(env, `/repos/${REPO}/releases/assets/${a.id}`, { method: 'DELETE' });
+          }
+          const up = await fetch(
+            `https://uploads.github.com/repos/${REPO}/releases/${rel.id}/assets?name=chosen.json`,
+            { method: 'POST', body,
+              headers: { 'Authorization': `Bearer ${env.GH_TOKEN}`,
+                         'Content-Type': 'application/json',
+                         'User-Agent': 'verdict-theater-admin' } });
+          if (!up.ok) throw new Error(`올리기 실패 ${up.status}`);
+          return Response.json({ ok: true });
+        } catch (e) {
+          return Response.json({ ok: false, error: '담아 두지 못했습니다',
+            detail: String(e && e.message ? e.message : e).slice(0, 220) }, { status: 502 });
+        }
+      }
+
+      if (url.pathname === '/api/voicepick') {
+        let rel = null;
+        try { rel = await gh(env, `/repos/${REPO}/releases/tags/voicepick`); }
+        catch { rel = null; }
+        const want = url.searchParams.get('name') || '';
+        if (want) {
+          const a = (rel && (rel.assets || []).find((x) => x.name === want)) || null;
+          if (!a) return new Response('없습니다', { status: 404 });
+          const r0 = await fetch(`${GH}/repos/${REPO}/releases/assets/${a.id}`, {
+            headers: { 'Authorization': `Bearer ${env.GH_TOKEN}`,
+                       'Accept': 'application/octet-stream',
+                       'User-Agent': 'verdict-theater-admin' } });
+          return new Response(r0.body, { headers: {
+            'Content-Type': 'audio/mpeg', 'Cache-Control': 'no-store' } });
+        }
+        const a = (rel && (rel.assets || []).find((x) => x.name === 'list.json')) || null;
+        if (!a) return Response.json({ ready: false });
+        const r0 = await fetch(`${GH}/repos/${REPO}/releases/assets/${a.id}`, {
+          headers: { 'Authorization': `Bearer ${env.GH_TOKEN}`,
+                     'Accept': 'application/octet-stream',
+                     'User-Agent': 'verdict-theater-admin' } });
+        const list = await r0.json();
+        const ch = (rel.assets || []).find((x) => x.name === 'chosen.json');
+        let now = null;
+        if (ch) {
+          const r1 = await fetch(`${GH}/repos/${REPO}/releases/assets/${ch.id}`, {
+            headers: { 'Authorization': `Bearer ${env.GH_TOKEN}`,
+                       'Accept': 'application/octet-stream',
+                       'User-Agent': 'verdict-theater-admin' } });
+          try { now = await r1.json(); } catch (e) { now = null; }
+        }
+        return Response.json({ ready: true, list, now });
       }
 
       // 만들어진 쇼츠를 화면에서 바로 본다 (릴리스에서 그대로 흘려보낸다)

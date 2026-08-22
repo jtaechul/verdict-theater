@@ -45,7 +45,11 @@ at.forEach((p, k) => {
   const mine = declared(body);
   for (const m of body.matchAll(/\binputs:\s*([^\n]*)/g)) {
     seen++;
-    for (const t of m[1].matchAll(/[A-Za-z_$][\w$]*/g)) {
+    // ⚠️ `only: ''` 처럼 **이름표(key)** 는 값이 아니다. 이름표 뒤에 값이
+    //    따로 있으면 그 이름표는 빼고 본다. 다만 `{ sid, ep }` 처럼 이름표와
+    //    값이 같은 짧은 꼴은 값이기도 하므로 그대로 둔다.
+    const expr = m[1].replace(/\b[A-Za-z_$][\w$]*\s*:/g, ' ');
+    for (const t of expr.matchAll(/[A-Za-z_$][\w$]*/g)) {
       const n = t[0];
       if (mine.has(n) || OK_ANYWHERE.has(n)) continue;
       bad.push(`${name} 칸이 워크플로에 '${n}' 을(를) 넘기는데, `

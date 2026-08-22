@@ -166,14 +166,28 @@ def rank(name):
     return len(TIERS)
 
 
+# ⭐⭐ 2026-08-22 — 운영자가 **귀로 고른** 목소리가 있으면 그것이 맨 앞이다.
+#    말투 결이 고르는 것보다 위다 — 사람이 직접 들어 보고 정한 것이기 때문.
+def chosen():
+    """골라 둔 목소리. {"f": "Leda", "m": "Charon"} 꼴. 없으면 빈손."""
+    f = Path(__file__).resolve().parent.parent / "state" / "voice.json"
+    try:
+        d = json.loads(f.read_text(encoding="utf-8"))
+        return {k: str(v) for k, v in d.items() if k in ("f", "m") and v}
+    except Exception:                                        # noqa: BLE001
+        return {}
+
+
 def best_voices(gender):
     """그 성별에서 **가장 사람 같은** 목소리부터 차례로."""
     if engine() == "gemini":
         got = list(GEM_F if gender == "FEMALE" else GEM_M)
-        want = style_of()["voice_f" if gender == "FEMALE" else "voice_m"]
-        if want in got:                 # 스타일이 고른 것을 맨 앞으로
-            got.remove(want)
-            got.insert(0, want)
+        # 아래에 있는 것부터 앞으로 옮긴다 → 마지막에 옮긴 것이 맨 앞
+        for want in (style_of()["voice_f" if gender == "FEMALE" else "voice_m"],
+                     chosen().get("f" if gender == "FEMALE" else "m")):
+            if want and want in got:
+                got.remove(want)
+                got.insert(0, want)
         return got
     got = [n for n, g in list_voices() if g == gender]
     if not got:
@@ -935,6 +949,49 @@ def say_to_fit(text, voice, seconds, out, pitch=0.0, room=None):
 #    쇼츠는 5컷이 다 있어야 만들어지므로, 목소리를 확인하려면 영상 다섯 개를
 #    먼저 뽑아야 했다. 되돌아오는 길이 너무 길다.
 #    → 대본의 대사만으로 **견본 소리 한 개**를 만든다. 버튼 한 번, 1분이면 된다.
+# ⭐⭐ 2026-08-22 — 운영자: "얘 안 돼요. 목소리네 그냥."
+#    말투를 아무리 손봐도 안 되면, 남은 것은 **목소리 그 자체**다.
+#    그런데 우리는 26개 중 **두 개(Kore·Orus)만** 써 봤다. 나머지 24개를
+#    한 번도 안 들어 보고 "제미나이 목소리는 이렇다" 고 단정하고 있었다.
+#    → 같은 대사를 **모든 목소리로** 한 번씩 만들어, 귀로 고르게 한다.
+#    값: 26개 × 13자 = 340자쯤 → 15원 안팎.
+AUD_F = "당신 진짜 제정신이야?!"
+AUD_M = "더는 숨 막혀서 못 살아."
+
+
+def audition(out_dir, only=""):
+    """쓸 수 있는 목소리 전부로 같은 대사를 한 번씩 만든다.
+
+    돌려주는 것: [(목소리이름, 남/여, 파일), …]
+    """
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    want = [w.strip() for w in str(only or "").split(",") if w.strip()]
+    jobs = ([(v, "여", AUD_F) for v in GEM_F]
+            + [(v, "남", AUD_M) for v in GEM_M])
+    if want:
+        jobs = [j for j in jobs if j[0] in want]
+    made = []
+    print(f"⭐ 목소리 {len(jobs)}개를 같은 대사로 만들어 본다\n")
+    for i, (v, g, text) in enumerate(jobs, 1):
+        f = out_dir / f"{g}_{v}.mp3"
+        try:
+            w = say(text, v, 1.0, 0.0, out_dir / f"_{v}.wav")
+            subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(w),
+                            "-c:a", "libmp3lame", "-b:a", "160k", str(f)],
+                           check=True)
+            made.append((v, g, f))
+            print(f"  [{i:2d}/{len(jobs)}] ✅ {g} {v}")
+        except Exception as e:                               # noqa: BLE001
+            print(f"  [{i:2d}/{len(jobs)}] ❌ {g} {v} — {str(e).splitlines()[0][:70]}")
+    won = bill_flush("목소리 고르기")
+    print(f"\n✅ {len(made)}개를 만들었다" + (f" · 값 {won:.0f}원" if won else ""))
+    (out_dir / "list.json").write_text(
+        json.dumps([{"voice": v, "sex": g, "file": f.name} for v, g, f in made],
+                   ensure_ascii=False, indent=1), encoding="utf-8")
+    return made
+
+
 def sample(sid, no, out, gap=0.45):
     """대본에서 그 화 1컷 대사를 뽑아 견본 소리를 만든다."""
     import sys as _s
@@ -1013,12 +1070,17 @@ def main():
     a.add_argument("--voice", default="")
     a.add_argument("--sec", type=float, default=0.0)
     a.add_argument("--out", default="tts.wav")
+    a.add_argument("--audition", default="", help="목소리 전부를 들어볼 곳")
+    a.add_argument("--only", default="", help="이 목소리들만 (쉼표로)")
     g = a.parse_args()
     if not key():
         print("❌ 목소리 열쇠가 없다 — GEMINI_API_KEY 나 GOOGLE_TTS_KEY 중\n"
               "   하나는 깃허브 시크릿에 있어야 한다", file=sys.stderr)
         return 2
     print(f"목소리 — {engine_note()}\n")
+    if g.audition:
+        audition(g.audition, g.only)
+        return 0
     if g.sample:
         p = sample(g.sample, g.ep, g.out)
         print(f"\n✅ {p} — {dur_of(p):.1f}초")

@@ -237,6 +237,44 @@ with env(GEMINI_API_KEY="x", VOICE_STYLE="fierce"):
        "운영자가 한국사람 같다고 한 그 남자 목소리를 쓴다",
        "목소리와 말투를 한꺼번에 바꾸면 무엇이 범인인지 알 수 없다")
 
+# ── ④-1a2 목소리를 귀로 골라 바꿀 수 있는가 ──────────
+#    ⚠️ 2026-08-22 운영자: "얘 안 돼요. 목소리네 그냥."
+#       쓸 수 있는 목소리가 26개인데 여태 **두 개만** 써 보고
+#       "제미나이 목소리는 이렇다" 고 단정하고 있었다.
+print("\n④-1a2 목소리를 귀로 골라 바꿀 수 있는가")
+ck(len(T.GEM_F) >= 10 and len(T.GEM_M) >= 10,
+   "고를 목소리가 넉넉히 있다", f"여{len(T.GEM_F)} 남{len(T.GEM_M)}")
+ck(not (set(T.GEM_F) & set(T.GEM_M)), "여자·남자 목록이 안 겹친다")
+
+_vj = Path(T.__file__).resolve().parent.parent / "state" / "voice.json"
+_keep = _vj.read_text(encoding="utf-8") if _vj.exists() else None
+try:
+    with env(GEMINI_API_KEY="x", VOICE_STYLE="fierce"):
+        _vj.parent.mkdir(parents=True, exist_ok=True)
+        _vj.write_text(json.dumps({"f": "Leda", "m": "Charon"}), encoding="utf-8")
+        ck(T.chosen() == {"f": "Leda", "m": "Charon"}, "골라 둔 것을 읽는다")
+        ck(T.best_voices("FEMALE")[0] == "Leda"
+           and T.best_voices("MALE")[0] == "Charon",
+           "골라 둔 것이 **말투 결이 고른 것보다 위**다",
+           "사람이 직접 들어 보고 정한 것이므로 그것이 이긴다")
+        _vj.write_text("{망가진 글", encoding="utf-8")
+        ck(T.chosen() == {}, "글이 깨져 있어도 안 죽는다")
+        ck(T.best_voices("MALE")[0] == "Orus", "그때는 정해 둔 것으로 간다")
+        _vj.unlink()
+        ck(T.chosen() == {}, "고른 게 없으면 빈손")
+finally:
+    if _keep is None:
+        _vj.unlink(missing_ok=True)
+    else:
+        _vj.write_text(_keep, encoding="utf-8")
+
+# 값을 미리 알려 주는가 (26개를 만들면 얼마인가)
+import cost as _cost                                           # noqa: E402
+_n = len(T.GEM_F) * len(T.AUD_F) + len(T.GEM_M) * len(T.AUD_M)
+ck(_cost.voice_krw("gemini-2.5-flash-tts", _n) < 60,
+   "26개를 다 만들어도 몇십 원 안쪽이다",
+   f"{_cost.voice_krw('gemini-2.5-flash-tts', _n):.0f}원 ({_n}자)")
+
 # ── ④-1b 구글 클라우드 쪽 제미나이 목소리 ─────────────
 #    왜 이 길이 필요한가: AI 스튜디오 무료 등급은 **하루 10번**이라 한 화도
 #    못 만든다. 클라우드 쪽은 결제가 붙어 있어 그 벽이 없다.

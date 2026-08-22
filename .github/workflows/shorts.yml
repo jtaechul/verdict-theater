@@ -59,6 +59,15 @@ jobs:
           sudo apt-get install -y -qq ffmpeg unzip
           python3 -m pip install --quiet pillow
 
+      # ⭐ 2026-08-22 — 운영자가 귀로 고른 목소리가 있으면 그것을 쓴다.
+      #    없으면 (|| true) 정해 둔 것으로 간다.
+      - name: 골라 둔 목소리 가져오기
+        continue-on-error: true
+        run: |
+          mkdir -p state
+          python3 tools/release_file.py get voicepick chosen.json state/voice.json \
+            || echo "골라 둔 것이 없다 — 정해 둔 목소리로 간다"
+
       - name: 올린 압축파일 받기
         run: |
           set -euo pipefail
