@@ -352,6 +352,17 @@ def rank_many(items, text, rounds=ROUNDS):
 
 
 def main():
+    try:
+        return _run()
+    except Exception as e:                                   # noqa: BLE001
+        # ⚠️ 판정이 죽어도 **무슨 일이 있었는지는 남긴다.** 실행 화면의 긴 글은
+        #    뒤쪽만 잘려 보여서, 죽은 까닭을 못 읽은 적이 여러 번이다.
+        import traceback
+        print("\n❌ 판정이 죽었다:\n" + traceback.format_exc()[-1500:])
+        return 1
+
+
+def _run():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", default="build/pick")
     ap.add_argument("--out", default="state/voice_rank.json")
@@ -463,8 +474,10 @@ def main():
         got = [r for r in rows if r["sex"] == sex and r.get("pass", True)]
         if got:
             best[key] = got[0]["voice"]
+            _ag = got[0].get("agree")
             print(f"\n🏆 {sex}자 → **{got[0]['voice']}** ({got[0]['score']}점, "
-                  f"줄 세우기 일치도 {got[0].get('agree', 0):.2f})")
+                  + (f"줄 세우기 일치도 {_ag:.2f})" if _ag is not None
+                     else "줄 세우기는 못 받았다 — 빠르기·억양만으로 고른 것)"))
     # ⚠️ 무슨 일이 있었는지 **결과 파일에 같이 적는다.** 실행 화면의 긴 글은
     #    뒤쪽만 잘려 보여서, 정작 왜 실패했는지를 못 읽은 적이 여러 번이다.
     for f, data in ((a.out, {"rows": rows, "best": best, "debug": DEBUG,

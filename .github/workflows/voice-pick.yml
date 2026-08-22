@@ -61,6 +61,7 @@ jobs:
       # ⭐⭐ 2026-08-22 운영자: "니가 알아서 기준과 알고리즘을 만들어서 잘 골라봐."
       #    나는 귀가 없으니 **재서** 고른다. 무엇을 재는지는 voice_judge.py 머리에.
       - name: 재서 점수 매기고 고르기
+        continue-on-error: true
         run: |
           set -o pipefail
           python3 tools/voice_judge.py --dir build/pick \
@@ -101,6 +102,11 @@ jobs:
       - name: 결과 화면
         if: always()
         run: |
+          # ⚠️ 화면 요약만으로는 못 읽는다 (긴 글은 뒤쪽만 잘려 보인다).
+          #    **로그 맨 끝**에도 찍어야 밖에서 읽을 수 있다.
+          echo "──────── 판정 기록 (맨 끝) ────────"
+          tail -n 60 judge.log 2>/dev/null || echo "판정 기록 없음"
+          echo "──────────────────────────────────"
           {
             echo "## 목소리 고르기"
             echo ""
