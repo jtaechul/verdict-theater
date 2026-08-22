@@ -754,14 +754,19 @@ async function ytUp(dry) {
 }
 
 let SHORTW = null;
-async function watchShort(cut) {
+// passive=true 면 **한 번만** 보고 끝낸다 (타이머를 안 켠다).
+// ⚠️ 화면을 열 때마다 30초 타이머를 켜면 안 된다 — 화면 검사기가 끝나지
+//    않고 멈췄고, 실제 화면에서도 타이머가 쌓인다.
+async function watchShort(cut, passive) {
   clearInterval(SHORTW);
   const q = cut ? '&cut=' + cut : '';
   const tick = async () => {
     let j = null;
     try { j = await (await fetch('/api/short?sid=' + SID + '&ep=' + SEP + q
                                  + '&t=' + Date.now())).json(); } catch (e) { return; }
-    if (!j || !j.ready) return;
+    // ⚠️ 아직 안 됐으면 **왜 안 됐는지** 말해 준다. 예전에는 아무 말도 없이
+    //    조용해서, 만들기가 실패해도 "기능이 없다" 로 보였다.
+    if (!j || !j.ready) { await buildSay(); return; }
     clearInterval(SHORTW);
     const b = document.getElementById('shortbox');
     if (!b) return;
@@ -778,7 +783,30 @@ async function watchShort(cut) {
     if (!cut) ytLoad();
   };
   await tick();
-  SHORTW = setInterval(tick, 30000);
+  if (!passive) SHORTW = setInterval(tick, 30000);
+}
+
+// ⭐ 만들기가 어떻게 됐는지 한 줄로 알려 준다
+async function buildSay() {
+  const b = document.getElementById('shortbox');
+  if (!b) return;
+  let j = null;
+  try { j = await (await fetch('/api/build-status?t=' + Date.now())).json(); }
+  catch (e) { return; }
+  let msg = '';
+  if (!j.ever) {
+    msg = '아직 한 번도 안 만들었습니다. 위에서 압축파일을 올리고 '
+        + '[' + SEP + '화 올리고 쇼츠 만들기] 를 누르십시오.'
+        + (j.why ? ' (' + esc(j.why) + ')' : '');
+  } else if (j.status !== 'completed') {
+    msg = '만드는 중입니다… (2~4분)';
+  } else if (j.conclusion === 'success') {
+    msg = '만들기는 끝났는데 영상이 안 보입니다. 잠시 뒤 다시 열어 보십시오.';
+  } else {
+    msg = '❌ 만들기가 실패했습니다 (' + esc(j.conclusion || '') + '). '
+        + '압축파일에 영상이 5개 다 들어 있는지 확인하고 다시 올려 주십시오.';
+  }
+  b.innerHTML = '<div class="uphint" style="margin-top:10px">' + msg + '</div>';
 }
 
 async function seriesView(sid, ep) {
@@ -873,6 +901,9 @@ function seriesRender() {
      + '<div id="upmsg" class="uphint"></div>'
      + '</div>';
   h += '<div id="shortbox"></div>';
+  // ⭐ 영상이 아직 없어도 **올릴 글은 지금 확인·수정할 수 있다.**
+  //    대본에서 만들어지는 것이라 영상과 상관이 없다.
+  h += '<div id="ytbox"></div>';
   // ⭐ 2026-08-21 — 목소리는 5컷을 다 만들기 전에 들어 봐야 한다.
   //    영상 없이 소리만 만들어 여기서 바로 들려준다.
   h += '<div class="upbox" style="margin-top:12px">'
@@ -943,8 +974,23 @@ function seriesRender() {
     if (c.caption) h += '<div style="color:#8fb0f0;font-size:13px;margin-bottom:6px">'
                       + '설명 자막: ' + esc(c.caption) + '</div>';
     h += '<div class="ptext">' + esc(c.prompt || '') + '</div>'
-       + mini('이 컷 프롬프트 복사', 'copyRaw(\\'' + pid + '\\',\\'' + c.n + '컷\\')', 'gold')
-       + '</div>';
+       + mini('이 컷 프롬프트 복사', 'copyRaw(\\'' + pid + '\\',\\'' + c.n + '컷\\')', 'gold');
+    // ⭐ 2026-08-22 — 앞 컷과 **같은 장소**면 플로우의 [이 영상에서 이어서
+    //    만들기](장면 연장)를 쓰는 편이 훨씬 낫다. 앞 영상의 마지막 프레임을
+    //    실제로 물려받으므로 옷·배경이 튈 수가 없다.
+    //    그때는 방·옷을 다시 세우면 물려받은 화면과 싸우므로, **바뀌는 것만**
+    //    적은 짧은 프롬프트를 따로 준다.
+    if (c.ext) {
+      const eid = 'ext' + SEP + '_' + c.n;
+      h += '<div class="uphint" style="margin-top:10px">앞 컷과 같은 장소입니다. '
+         + '플로우에서 앞 영상의 <b>[이 영상에서 이어서 만들기]</b> 를 누르고 '
+         + '아래 것을 넣으면 옷·배경이 안 튑니다.</div>'
+         + '<div class="ptext" id="' + eid + '" style="display:none">'
+         + esc(c.ext) + '</div>'
+         + mini('이어서 만들기용 복사', 'copyRaw(\\'' + eid + '\\',\\''
+                + c.n + '컷 이어서\\')');
+    }
+    h += '</div>';
   });
   h += '</div>';
 
@@ -954,6 +1000,15 @@ function seriesRender() {
      + '</div></div>';
 
   document.getElementById('app').innerHTML = h;
+  // ⭐ 2026-08-22 — 화면을 그린 **뒤에** 올릴 글과 만들기 상태를 붙인다.
+  //    예전에는 영상이 다 만들어진 뒤에야 붙어서, 만들기가 실패하면
+  //    "제목·해시태그·업로드 기능이 아예 없다" 로 보였다.
+  //    ⚠️ 그리는 중에 부르면 안 된다 — 화면 검사기가 통째로 멈췄다.
+  //       그리기는 그리기만 하고, 서버에 묻는 일은 뒤로 미룬다.
+  setTimeout(function () {
+    try { ytLoad(); } catch (e) { /* 나중에 다시 */ }
+    try { watchShort('', true); } catch (e) { /* 나중에 다시 */ }
+  }, 0);
 }
 
 function home() {
@@ -2420,6 +2475,27 @@ export default {
           try { now = await r1.json(); } catch (e) { now = null; }
         }
         return Response.json({ ready: true, list, now });
+      }
+
+      // ⭐⭐ 2026-08-22 운영자: "미리보기도 없고, 제목·해시태그도 없고,
+      //    업로드 버튼도 없어."
+      //    셋 다 만들어져 있었다. 다만 **영상이 다 된 뒤에만** 화면에 붙게
+      //    되어 있어서, 만들기가 실패하면 화면이 그냥 조용했다.
+      //    (실제로 shorts.yml 은 한 번도 돈 적이 없었다)
+      //    → 만들기가 어떻게 됐는지 화면이 말할 수 있게 한다.
+      if (url.pathname === '/api/build-status') {
+        try {
+          const r = await gh(env,
+            `/repos/${REPO}/actions/workflows/shorts.yml/runs?per_page=1`);
+          const run = (r.workflow_runs || [])[0];
+          if (!run) return Response.json({ ever: false });
+          return Response.json({ ever: true, status: run.status,
+            conclusion: run.conclusion, at: run.created_at,
+            url: run.html_url });
+        } catch (e) {
+          return Response.json({ ever: false,
+            why: String(e && e.message ? e.message : e).slice(0, 200) });
+        }
       }
 
       // 만들어진 쇼츠를 화면에서 바로 본다 (릴리스에서 그대로 흘려보낸다)

@@ -510,6 +510,15 @@ def _run():
                      else "줄 세우기는 못 받았다 — 빠르기·억양만으로 고른 것)"))
     # ⚠️ 무슨 일이 있었는지 **결과 파일에 같이 적는다.** 실행 화면의 긴 글은
     #    뒤쪽만 잘려 보여서, 정작 왜 실패했는지를 못 읽은 적이 여러 번이다.
+    # ⚠️⚠️ 2026-08-22 — 운영자가 귀로 듣고 목소리를 확정했다. 자동 판정은
+    #    두 번 돌려 서로 다른 답을 냈다(일치도 0.52 — 동전던지기 수준).
+    #    **사람이 정한 것을 기계 판정으로 덮어쓰지 않는다.**
+    #    다시 고르고 싶으면 --repick 을 부러 붙여야 한다.
+    if Path(a.pick).exists() and "--repick" not in sys.argv:
+        print(f"\n🔒 이미 골라 둔 목소리가 있다 — 안 덮어쓴다 "
+              f"({json.loads(Path(a.pick).read_text(encoding='utf-8'))})")
+        print("   다시 고르려면 --repick 을 붙여라")
+        a.pick = str(Path(a.out).with_name("voice_suggest.json"))
     for f, data in ((a.out, {"rows": rows, "best": best, "debug": DEBUG,
                              "trust": all(
                                  (r.get("agree") or 0) >= 0.7 for r in rows)}),

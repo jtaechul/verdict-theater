@@ -911,6 +911,42 @@ def _pick(bank, k):
     return bank[k % len(bank)]
 
 
+# ⭐⭐ 2026-08-22 — 제미나이 제안: "이전 영상에 이어서 제작된다는 말을 넣어라."
+#
+#    그냥 컷 프롬프트에 넣는 것은 소용이 없다. 플로우는 새로 만들 때 앞 컷을
+#    기억하지 못하기 때문이다 (그래서 옷·배경을 색·가구까지 못 박았다).
+#    **그런데 플로우에는 [이 영상에서 이어서 만들기](장면 연장)가 있다.**
+#    그 기능을 쓰면 앞 영상의 **마지막 프레임을 실제로 물려받는다** — 그때는
+#    "이어서 만든다" 는 말이 진짜 뜻을 갖는다.
+#
+#    다만 그때는 프롬프트도 달라야 한다. 방·옷·빛을 다시 세우면 물려받은
+#    화면과 싸워서 오히려 튄다. **바뀌는 것만** 적어야 한다.
+#    → 같은 장소가 이어지는 컷에는 **이어서 만들기용 짧은 프롬프트**를 따로 붙인다.
+EXT_HEAD = ("Continue directly from the final frame of the previous clip. "
+            "Same room, same people, same clothes, same hair, same light — "
+            "do not re-establish anything, just carry straight on.")
+
+
+def fix_extend(doc):
+    """같은 장소가 이어지는 컷에 **이어서 만들기용** 프롬프트를 붙인다."""
+    n = 0
+    for e in doc.get("episodes") or []:
+        cuts = e.get("cuts") or []
+        for i, c in enumerate(cuts):
+            if i == 0 or _place(cuts[i - 1].get("prompt")) != _place(c.get("prompt")):
+                if c.pop("ext", None) is not None:
+                    n += 1
+                continue
+            keep = [l for l in (c.get("prompt") or "").split("\n")
+                    if l.startswith(("SHOT:", "ACTION:", "DIALOGUE:", "AUDIO:",
+                                     "VOICE:", "  "))]
+            ext = HEAD_FIX + "\n" + EXT_HEAD + "\n" + "\n".join(keep)
+            if c.get("ext") != ext:
+                c["ext"] = ext
+                n += 1
+    return n
+
+
 def fix_look(doc):
     """옷과 장소를 **색·가구까지 못 박는다.** 뭉뚱그린 말은 매번 다르게 나온다."""
     n = 0
@@ -1258,6 +1294,7 @@ def normalize(doc):
         print(f"  (인물 {c2}명의 기준 사진 프롬프트를 풀세트로 채웠다)")
     k = fix_outfits(doc)
     k += fix_look(doc)
+    k += fix_extend(doc)
     if k:
         print(f"  (옷차림 {k}줄을 인물표대로 맞췄다 — 컷마다 옷이 바뀌면 딴사람으로 보인다)")
     # ⭐ 배역말 바꾸기는 **맨 마지막**이다. 위의 고치개들이 모두 한글 이름으로

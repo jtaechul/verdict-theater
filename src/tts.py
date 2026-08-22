@@ -169,8 +169,12 @@ def rank(name):
 
 # ⭐⭐ 2026-08-22 — 운영자가 **귀로 고른** 목소리가 있으면 그것이 맨 앞이다.
 #    말투 결이 고르는 것보다 위다 — 사람이 직접 들어 보고 정한 것이기 때문.
+# ⭐ 2026-08-22 — 운영자가 귀로 듣고 **확정**했다: "목소리는 아주 마음에 들어."
+#    여자 Erinome · 남자 Iapetus. state/voice.json 에 담겨 있다.
+#    ⚠️ 자동 판정(voice_judge)은 두 번 돌려 서로 다른 답을 냈다(일치도 0.52).
+#       그러니 **이 파일을 자동 판정으로 덮어쓰지 않는다.** 사람이 정한 것이 위다.
 def chosen():
-    """골라 둔 목소리. {"f": "Leda", "m": "Charon"} 꼴. 없으면 빈손."""
+    """골라 둔 목소리. {"f": "Erinome", "m": "Iapetus"} 꼴. 없으면 빈손."""
     f = Path(__file__).resolve().parent.parent / "state" / "voice.json"
     try:
         d = json.loads(f.read_text(encoding="utf-8"))
