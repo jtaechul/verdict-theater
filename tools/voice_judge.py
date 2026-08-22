@@ -139,13 +139,34 @@ def f0_spread(path):
 
 
 # ── 받아쓰기·의견 물어보기 ──────────────────────────────
-def ask(parts, tries=4):
+# ⚠️⚠️ 2026-08-22 — 3차가 여기서 망했다. "JSON 하나로만: {"order":[…]}" 라고
+#    글로 부탁했더니 모델이 **제 마음대로 다른 모양**으로 답했다
+#    (직접 걸어 보니 {"answer": 2} 를 돌려줬다). 내 코드는 order 를 못 찾고
+#    빈손으로 물러섰고, 그러면 '들려준 차례 그대로' 가 답이 된다.
+#    차례를 섞어 세 번 물었으니 세 답이 서로 뒤집힌 꼴이 되어
+#    일치도가 0.00 으로 찍혔다 — 모델이 못 고른 게 아니라 **내가 못 받은 것**이다.
+#    → 부탁하지 말고 **모양을 못 박는다** (responseSchema).
+ORDER_SCHEMA = {"type": "OBJECT",
+                "properties": {"order": {"type": "ARRAY",
+                                         "items": {"type": "INTEGER"}}},
+                "required": ["order"]}
+HEARD_SCHEMA = {"type": "OBJECT",
+                "properties": {"rows": {"type": "ARRAY", "items": {
+                    "type": "OBJECT",
+                    "properties": {"i": {"type": "INTEGER"},
+                                   "heard": {"type": "STRING"}},
+                    "required": ["i", "heard"]}}},
+                "required": ["rows"]}
+
+
+def ask(parts, tries=4, schema=None):
     k = (os.environ.get("GEMINI_API_KEY") or "").strip()
     if not k:
         raise RuntimeError("GEMINI_API_KEY 가 없다")
-    body = {"contents": [{"parts": parts}],
-            "generationConfig": {"temperature": 0.0,
-                                 "responseMimeType": "application/json"}}
+    cfg = {"temperature": 0.0, "responseMimeType": "application/json"}
+    if schema:
+        cfg["responseSchema"] = schema
+    body = {"contents": [{"parts": parts}], "generationConfig": cfg}
     last = ""
     for m in JUDGE_MODELS:
         for t in range(tries):
@@ -211,7 +232,7 @@ def hear(items, text):
         parts.append({"inline_data": {
             "mime_type": "audio/mpeg",
             "data": base64.b64encode(Path(it["path"]).read_bytes()).decode()}})
-    got = ask(parts)
+    got = ask(parts, schema=HEARD_SCHEMA)
     out = {}
     for r in got.get("rows") or []:
         try:
@@ -244,7 +265,10 @@ def rank_once(items, order):
             "mime_type": "audio/mpeg",
             "data": base64.b64encode(
                 Path(items[k]["path"]).read_bytes()).decode()}})
-    got = ask(parts)
+    got = ask(parts, schema=ORDER_SCHEMA)
+    raw = list(got.get("order") or [])
+    if not raw:
+        raise RuntimeError("줄 세운 답을 못 받았다 (order 가 비어 있다)")
     seen, out = set(), []
     for v in got.get("order") or []:
         try:
@@ -254,9 +278,13 @@ def rank_once(items, order):
         if 1 <= pos <= n and pos not in seen:
             seen.add(pos)
             out.append(order[pos - 1])       # 들려준 자리 → 원래 자리
-    for k in order:                          # 빠뜨린 것은 뒤에 붙인다
-        if k not in out:
-            out.append(k)
+    miss = [k for k in order if k not in out]
+    if miss:
+        print(f"    ⚠️ {len(miss)}개를 빠뜨렸다 — 뒤에 붙인다")
+        out += miss
+    # ⚠️ 들려준 차례를 그대로 돌려주면 **고른 것이 아니다.** 그냥 받아 적은 것이다.
+    if out == list(order):
+        raise RuntimeError("들려준 차례를 그대로 돌려줬다 — 고른 것이 아니다")
     return out
 
 
@@ -289,7 +317,7 @@ def rank_many(items, text, rounds=ROUNDS):
     돌려주는 것: ({원래자리: 평균 등수}, 서로 얼마나 맞았나)
     """
     n = len(items)
-    runs = []
+    runs, why = [], []
     for t in range(rounds):
         # ⚠️ Math.random 같은 것을 안 쓴다 — 몇 번째냐에 따라 정해진 만큼
         #    돌려서 섞는다. 그래야 다시 돌려도 같은 결과가 나온다.
@@ -298,12 +326,19 @@ def rank_many(items, text, rounds=ROUNDS):
         if t % 2:
             order = order[::-1]
         try:
-            runs.append(rank_once(items, order))
-            print(f"    · {t + 1}번째 줄 세우기 끝")
+            r = rank_once(items, order)
+            runs.append(r)
+            why.append({"round": t + 1, "ok": True,
+                        "order": [items[k]["voice"] for k in r]})
+            print(f"    · {t + 1}번째 끝 — 앞자리: "
+                  + ", ".join(items[k]["voice"] for k in r[:4]))
         except Exception as e:                               # noqa: BLE001
-            print(f"    ⚠️ {t + 1}번째 실패 — {str(e)[:90]}")
+            why.append({"round": t + 1, "ok": False, "why": str(e)[:200]})
+            print(f"    ⚠️ {t + 1}번째 실패 — {str(e)[:120]}")
     if not runs:
-        return {}, 0.0
+        # ⚠️ 한 번도 못 받았으면 **줄 세우기는 없는 것**이다. 0점을 주면
+        #    "가장 나쁘다" 는 뜻이 되어 거짓말이 된다 → 없다고 알린다.
+        return {}, None, why
     pos = {k: [] for k in range(n)}
     for r in runs:
         for i, k in enumerate(r):
@@ -313,7 +348,7 @@ def rank_many(items, text, rounds=ROUNDS):
     for i in range(len(runs)):
         for j in range(i + 1, len(runs)):
             ag.append(agree(runs[i], runs[j]))
-    return mean, (sum(ag) / len(ag) if ag else 1.0)
+    return mean, (sum(ag) / len(ag) if ag else None), why
 
 
 def main():
@@ -328,6 +363,7 @@ def main():
         r["path"] = str(d / r["file"])
         r["text"] = T.AUD_F if r["sex"] == "여" else T.AUD_M
 
+    DEBUG = {}
     print(f"⭐ 목소리 {len(rows)}개를 재고 줄 세운다\n")
     print("① 잴 수 있는 것부터 (말한 시간·빠르기·억양)")
     tmp = d / "_wav"
@@ -375,17 +411,28 @@ def main():
         if not part:
             continue
         print(f"   {sex}자 {len(part)}개")
-        mean, ag = rank_many(part, text)
+        mean, ag, why = rank_many(part, text)
+        DEBUG[sex] = why
         for k, r in enumerate(part):
-            r["rank"] = mean.get(k, len(part) - 1)
-            r["rank_n"] = len(part)
+            if mean:
+                r["rank"] = mean.get(k, len(part) - 1)
+                r["rank_n"] = len(part)
         for r in [x for x in rows if x["sex"] == sex]:
-            r["agree"] = round(ag, 3)
-        print(f"   → 세 번의 답이 서로 맞는 정도: {ag:.2f}"
-              + ("  ✅ 구별하고 있다" if ag >= 0.7 else
-                 ("  ⚠️ 애매하다 — 반쯤은 잡음이다" if ag >= 0.6 else
-                  "  ❌ **거의 잡음이다.** 이 줄 세우기는 못 믿는다")))
+            r["agree"] = (round(ag, 3) if ag is not None else None)
+        if ag is None:
+            print("   → ❌ **한 번도 못 받았다.** 줄 세우기는 없는 셈 친다")
+        else:
+            print(f"   → 세 번의 답이 서로 맞는 정도: {ag:.2f}"
+                  + ("  ✅ 구별하고 있다" if ag >= 0.7 else
+                     ("  ⚠️ 애매하다 — 반쯤은 잡음이다" if ag >= 0.6 else
+                      "  ❌ **거의 잡음이다.** 이 줄 세우기는 못 믿는다")))
 
+    # ⚠️ 줄 세우기를 못 받았으면 그 60점은 **아무한테도 주지 않는다.**
+    #    누구는 0점 누구는 60점처럼 갈리면 잡음이 순위가 된다.
+    _no_rank = all(r.get("rank") is None for r in rows)
+    if _no_rank:
+        print("\n④ 점수 — ⚠️ 줄 세우기를 못 받아 **빠르기·억양만으로** 매긴다."
+              "\n   이 순위는 '한국사람 같은가' 를 못 본 것이다. 믿지 마라.")
     print("\n④ 점수 (줄 세우기 60 · 빠르기 20 · 억양 20)")
     for r in rows:
         if not r.get("pass", True):
@@ -393,7 +440,8 @@ def main():
                                            "억양": 0.0, "관문": "탈락"}
             continue
         n = max(2, r.get("rank_n", 2))
-        s1 = 60 * (1.0 - r.get("rank", n - 1) / (n - 1))
+        s1 = (0.0 if r.get("rank") is None
+              else 60 * (1.0 - r["rank"] / (n - 1)))
         s2 = 20 * band(r.get("sps"), *GOOD_SPS, wide=2.5)
         s3 = 20 * band(r.get("st"), *GOOD_ST, wide=3.0)
         r["score"] = round(s1 + s2 + s3, 1)
@@ -417,7 +465,12 @@ def main():
             best[key] = got[0]["voice"]
             print(f"\n🏆 {sex}자 → **{got[0]['voice']}** ({got[0]['score']}점, "
                   f"줄 세우기 일치도 {got[0].get('agree', 0):.2f})")
-    for f, data in ((a.out, {"rows": rows, "best": best}), (a.pick, best)):
+    # ⚠️ 무슨 일이 있었는지 **결과 파일에 같이 적는다.** 실행 화면의 긴 글은
+    #    뒤쪽만 잘려 보여서, 정작 왜 실패했는지를 못 읽은 적이 여러 번이다.
+    for f, data in ((a.out, {"rows": rows, "best": best, "debug": DEBUG,
+                             "trust": all(
+                                 (r.get("agree") or 0) >= 0.7 for r in rows)}),
+                    (a.pick, best)):
         q = Path(f)
         q.parent.mkdir(parents=True, exist_ok=True)
         q.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n",
