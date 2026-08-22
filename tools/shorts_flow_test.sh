@@ -87,9 +87,15 @@ run_case() {                      # run_case <이름> <CUT> <BLOB>
 }
 
 # 시험용 압축파일 (영상 5개인 척)
-mkdir -p "$WORK/clips"
-for i in 1 2 3 4 5; do : > "$WORK/clips/c00${i}.mp4"; done
-( cd "$WORK/clips" && zip -q -r "$WORK/clips.zip" . )
+# ⚠️ zip 명령에 기대지 않는다 — 깃허브 러너에 없으면 검사가 준비물 때문에
+#    죽는다. 파이썬은 어차피 있어야 하니 파이썬으로 만든다.
+WORK="$WORK" python3 - <<'PY'
+import os, zipfile
+w = os.environ["WORK"]
+with zipfile.ZipFile(os.path.join(w, "clips.zip"), "w") as z:
+    for i in range(1, 6):
+        z.writestr(f"c00{i}.mp4", b"")
+PY
 mkshims
 
 echo "⭐ 쇼츠 워크플로: 갈림길을 제대로 타는가"

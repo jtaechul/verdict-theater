@@ -122,7 +122,6 @@ jobs:
       - name: 쇼츠 워크플로가 갈림길을 제대로 타는가
         run: |
           python3 -m pip install --quiet PyYAML
-          sudo apt-get install -y -qq zip >/dev/null
           bash tools/shorts_flow_test.sh
 
       - name: 쇼츠 배치(후킹·영상·자막)가 제자리인가
