@@ -38,10 +38,37 @@ ck("띄어쓰기·문장부호는 안 센다",
 
 print("\n② 구간 점수 (좋은 구간 안이면 만점, 벗어난 만큼 깎는다)")
 ck("구간 안이면 만점", V.band(6.8, *V.GOOD_SPS, wide=2.5) == 1.0)
-ck("조금 벗어나면 조금 깎인다", 0.5 < V.band(5.5, *V.GOOD_SPS, wide=2.5) < 1.0)
-ck("많이 벗어나면 0점", V.band(3.0, *V.GOOD_SPS, wide=2.5) == 0.0)
+ck("양끝도 구간 안", V.band(V.GOOD_SPS[0], *V.GOOD_SPS, wide=2.5) == 1.0
+   and V.band(V.GOOD_SPS[1], *V.GOOD_SPS, wide=2.5) == 1.0)
+ck("조금 벗어나면 조금 깎인다",
+   0.5 < V.band(V.GOOD_SPS[0] - 0.8, *V.GOOD_SPS, wide=2.5) < 1.0)
+ck("많이 벗어나면 0점",
+   V.band(V.GOOD_SPS[0] - 3.0, *V.GOOD_SPS, wide=2.5) == 0.0)
 ck("못 쟀으면 가운데", V.band(None, *V.GOOD_SPS, wide=2.5) == 0.5,
    "못 쟀다고 0점을 주면 잴 수 없는 목소리가 무조건 탈락한다")
+
+print("\n②-2 앞뒤 무음을 빼고 말한 시간을 재는가")
+# ⚠️ 2026-08-22 — 이걸 안 해서 1차가 망했다. 파일 길이로 재면 앞뒤 무음까지
+#    들어가 말 빠르기가 절반으로 나오고, 26개 전부 '너무 느림' 으로 찍힌다.
+subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi",
+                "-i", "sine=frequency=200:duration=2:sample_rate=8000",
+                "-af", "adelay=1000|1000,apad=pad_dur=1",
+                "-ac", "1", "-ar", "8000", str(tmp / "pad.wav")], check=True)
+_talk = V.speech_sec(tmp / "pad.wav")
+ck("앞뒤 무음 1초씩을 뺀다", 1.8 < _talk < 2.3,
+   f"파일은 4초인데 말한 시간 {_talk:.2f}초 (2초여야 맞다)")
+ck("무음이 없으면 그대로",
+   abs(V.speech_sec(tone("sine=frequency=200:duration=2:sample_rate=8000",
+                         tmp / "plain.wav")) - 2.0) < 0.2)
+
+print("\n②-3 줄 세우기가 서로 맞는지 재는가")
+# ⚠️ 섞어서 여러 번 물었는데 답이 딴소리면 **모델이 구별을 못 하는 것**이다.
+#    그걸 알아채지 못하면 잡음을 순위라고 내놓게 된다.
+ck("똑같은 순서는 1.0", V.agree([0, 1, 2, 3], [0, 1, 2, 3]) == 1.0)
+ck("완전 거꾸로는 0.0", V.agree([0, 1, 2, 3], [3, 2, 1, 0]) == 0.0)
+ck("하나만 어긋나면 가운데보다 높다",
+   0.7 < V.agree([0, 1, 2, 3], [0, 2, 1, 3]) < 1.0)
+ck("뒤죽박죽이면 반쯤", 0.2 < V.agree([0, 1, 2, 3, 4], [2, 0, 4, 1, 3]) < 0.8)
 
 print("\n③ 억양 폭을 진짜로 재는가 (아는 소리로 맞춰 본다)")
 flat = V.f0_spread(tone("sine=frequency=200:duration=2:sample_rate=8000",
@@ -73,9 +100,14 @@ ck("26개 이름이 전부 다르고 전부 영문",
    f"{len(_all)}개")
 
 print("\n⑤ 점수 매기는 무게가 뜻대로인가")
-ck("잰 값(받아쓰기·빠르기·억양)이 의견(원어민)보다 무겁다",
-   40 + 15 + 15 > 30, "70 대 30")
-ck("네 가지를 더하면 100점", 40 + 30 + 15 + 15 == 100)
+ck("세 가지를 더하면 100점", 60 + 20 + 20 == 100)
+ck("받아쓰기는 점수가 아니라 관문이다",
+   "CER_GATE" in (ROOT / "tools" / "voice_judge.py").read_text(encoding="utf-8"),
+   "1차 때 26개 전부 만점이라 40점이 통째로 죽었다")
+ck("절대 점수 대신 줄을 세운다",
+   "def rank_many" in (ROOT / "tools" / "voice_judge.py").read_text(encoding="utf-8"),
+   "'몇 점이냐' 고 물으면 26개 전부 10점이라고 한다")
+ck("차례를 섞어 여러 번 묻는다", V.ROUNDS >= 3, f"{V.ROUNDS}번")
 
 print("\n" + "─" * 52)
 print(f"❌ 목소리 잣대: {len(FAIL)}가지 실패" if FAIL else "✅ 목소리 잣대: 전부 통과")

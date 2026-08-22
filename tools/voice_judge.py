@@ -8,24 +8,30 @@
     나는 귀가 없다. 그래서 **들어서** 고를 수 없다. 대신 **잴 수 있는 것**으로
     고른다. 무엇을 재는지, 왜 그것이 '한국사람 같음'과 이어지는지 아래에 적는다.
 
-기준 네 가지 (100점)
-    ① 받아쓰기 정확도 (40점)
-       그 소리를 다시 글로 받아쓰게 해서 원래 대사와 얼마나 같은가.
-       발음이 뭉개지거나 억양이 엉뚱하면 받아쓰기가 틀린다. **가장 속이기
-       어려운 잣대**라 제일 무겁게 둔다.
-    ② 원어민 같은가 (30점)
-       소리를 알아듣는 모델에게 **목소리 이름을 감추고** 물어본다.
-       "한국 사람이 말하는 것 같은가, 외국인이 한국어를 하는 것 같은가."
-       사람 판단에 가장 가깝지만 어디까지나 의견이라 ①보다 가볍게 둔다.
-    ③ 말 빠르기 (15점)
-       한국 드라마 대사는 초당 6~7.5음절쯤이다. 너무 느리면 또박또박 읽는
-       외국인처럼, 너무 빠르면 씹어삼킨 것처럼 들린다.
-    ④ 억양이 살아 있나 (15점)
-       목소리 높낮이가 얼마나 움직이는가(반음 단위). 밋밋하면 기계처럼,
-       지나치면 과장된 더빙처럼 들린다. 가운데를 좋게 본다.
+⚠️⚠️ 1차는 **실패했다.** 세 군데가 한꺼번에 망가졌다 (2026-08-22).
+    ① 받아쓰기 40점 → **26개 전부 만점.** 목소리가 다 알아들을 만해서
+       변별력이 0이었다. 40점이 통째로 죽었다.
+    ② 원어민 30점 → **26개 전부 10/10.** 절대 점수를 물으면 모델이 다 좋다고
+       한다. 30점도 죽었다.
+    ③ 빠르기 15점 → 앞뒤 **무음을 안 잘라서** 실제의 절반으로 쟀다
+       (2.4~4.0음절/초로 나왔는데 좋은 구간을 6.0~7.5로 잡아 뒀다).
+       26개 전부 구간 밖 → 사실상 전원 0점.
+    → 남은 것은 억양 15점뿐. **그 하나로 순위가 정해졌고**, 1등이 하필
+      운영자가 이미 "외국인 같다"고 물린 Fenrir 였다.
 
-⚠️ ②는 모델의 의견이다. ①③④는 실제로 잰 값이다. 그래서 점수를 매길 때
-   잰 값 쪽(①③④=70점)이 의견(②=30점)보다 무겁다.
+고친 기준 (100점)
+    ⓪ 관문 — 받아쓰기
+       점수로 주지 않는다. 알아들을 수 없으면(글자 15% 넘게 틀리면) **탈락**.
+       다 알아들을 만하면 이 잣대는 할 일이 없다. 점수가 아니라 문지기다.
+    ① 눈 가리고 줄 세우기 (60점)
+       "몇 점이냐" 고 물으면 다 10점이라 한다. 그러니 **줄을 세우게** 한다.
+       "한국에서 나고 자란 사람 말처럼 들리는 순서대로 나열하라."
+       ⚠️ **들려주는 차례를 섞어 세 번** 물어 평균 낸다. 한 번만 물으면
+          앞에 놓인 것이 유리해지는 자리 편향이 그대로 남는다.
+       ⚠️ 세 번의 답이 서로 얼마나 맞는지도 잰다. 서로 딴소리를 하면
+          **모델이 구별을 못 하는 것**이므로, 그 사실을 그대로 적는다.
+    ② 말 빠르기 (20점) — **앞뒤 무음을 잘라 내고** 잰다
+    ③ 억양이 살아 있나 (20점) — 높낮이 폭. 밋밋도 과장도 아닌 가운데
 """
 import argparse
 import base64
@@ -48,7 +54,9 @@ import tts as T                                              # noqa: E402
 API = ("https://generativelanguage.googleapis.com/v1beta/models/"
        "{m}:generateContent?key={k}")
 JUDGE_MODELS = ["gemini-2.5-flash", "gemini-3-flash-preview", "gemini-2.0-flash"]
-GOOD_SPS = (6.0, 7.5)          # 한국 드라마 대사의 자연스러운 초당 음절
+GOOD_SPS = (5.5, 7.5)          # 무음을 뺀 **실제 말하는** 속도 기준
+CER_GATE = 0.15                # 이보다 많이 틀리면 알아들을 수 없다 → 탈락
+ROUNDS = 3                     # 차례를 섞어 몇 번 줄 세우게 할까
 GOOD_ST = (2.0, 5.0)           # 억양 폭(반음). 밋밋도 과장도 아닌 구간
 
 
@@ -69,6 +77,28 @@ def frames(path):
         v = int.from_bytes(raw[i:i + 2], "little", signed=True)
         out.append(v / 32768.0)
     return hz, out
+
+
+def speech_sec(path):
+    """**실제로 말한** 시간(초). 앞뒤 무음은 뺀다.
+
+    ⚠️ 2026-08-22 — 이걸 안 해서 1차가 망했다. 소리 파일 길이로 재면
+       앞뒤 무음까지 들어가 말 빠르기가 **절반으로** 나온다.
+    """
+    hz, x = frames(path)
+    win = max(1, hz // 100)                   # 10ms
+    lv = []
+    for s0 in range(0, len(x) - win, win):
+        seg = x[s0:s0 + win]
+        lv.append(sum(v * v for v in seg) / win)
+    if not lv:
+        return 0.0
+    top = max(lv)
+    gate = max(top * 0.02, 1e-6)              # 가장 큰 곳의 2% 넘으면 말한 것
+    on = [i for i, v in enumerate(lv) if v > gate]
+    if len(on) < 2:
+        return len(x) / hz
+    return (on[-1] - on[0] + 1) * win / hz
 
 
 def f0_spread(path):
@@ -169,24 +199,13 @@ def band(v, lo, hi, wide):
     return max(0.0, 1.0 - off / float(wide))
 
 
-def judge(items, text):
-    """한쪽 성별을 통째로 들려주고 받아쓰기와 의견을 받는다.
-
-    ⚠️ **목소리 이름을 감춘다.** 이름을 보여 주면 모델이 이름값으로 판단할 수
-       있다. 번호만 준다.
-    """
+def hear(items, text):
+    """받아쓰기만 받는다 (관문용). {번호: 들린 글}"""
     parts = [{"text":
-              "다음은 같은 한국어 대사를 서로 다른 목소리로 읽은 소리다. "
-              f"원래 대사는 \"{text}\" 이다.\n"
-              "각 소리마다 두 가지를 답하라.\n"
-              "  heard  : 실제로 들리는 대로 받아쓴 한국어 (원래 대사를 "
-              "베끼지 말고 **들리는 대로**)\n"
-              "  native : 한국에서 나고 자란 사람의 말처럼 들리면 10, "
-              "외국인이 한국어를 하는 것처럼 들리면 0. 0~10 사이 정수.\n"
-              "           발음·억양·말끝 처리를 본다. 목소리가 좋은지 나쁜지가 "
-              "아니라 **한국어 원어민 같은지**만 본다.\n"
-              "JSON 하나로만 답하라: "
-              '{"rows":[{"i":1,"heard":"…","native":7}, …]}'}]
+              "다음은 같은 한국어 대사를 서로 다른 목소리로 읽은 소리다.\n"
+              "각 소리를 **들리는 대로** 한국어로 받아써라. "
+              "원래 대사를 짐작해서 베끼지 말고, 귀에 들린 그대로 적어라.\n"
+              'JSON 하나로만: {"rows":[{"i":1,"heard":"…"}, …]}'}]
     for i, it in enumerate(items, 1):
         parts.append({"text": f"[{i}번]"})
         parts.append({"inline_data": {
@@ -196,11 +215,105 @@ def judge(items, text):
     out = {}
     for r in got.get("rows") or []:
         try:
-            out[int(r["i"])] = (str(r.get("heard") or ""),
-                                max(0, min(10, int(r.get("native", 0)))))
+            out[int(r["i"])] = str(r.get("heard") or "")
         except Exception:                                    # noqa: BLE001
             pass
     return out
+
+
+def rank_once(items, order):
+    """한 번 줄 세우게 한다. 돌려주는 것: [원래자리…] 좋은 것부터.
+
+    ⚠️ **목소리 이름을 감춘다.** 이름을 보여 주면 이름값으로 판단할 수 있다.
+    ⚠️ 들려주는 차례(order)를 바깥에서 섞어 넣는다 — 앞에 놓인 것이
+       유리해지는 자리 편향을 없애려면 섞은 채로 여러 번 물어야 한다.
+    """
+    n = len(order)
+    parts = [{"text":
+              f"다음 {n}개는 **같은 한국어 대사**를 서로 다른 목소리로 읽은 "
+              f"것이다. 대사는 \"{text}\" 이다.\n"
+              "한국에서 나고 자란 사람이 실제로 말하는 것처럼 들리는 "
+              "**순서대로** 번호를 나열하라. 가장 한국사람 같은 것이 맨 앞.\n"
+              "보는 곳: 발음, 억양의 오르내림, 말끝 처리, 리듬. "
+              "목소리가 좋고 나쁨이 아니라 **한국어 원어민 같은지**만 본다.\n"
+              f"{n}개를 하나도 빠뜨리지 말고, 같은 자리에 둘을 놓지 마라.\n"
+              'JSON 하나로만: {"order":[3,7,1,…]}'}]
+    for pos, k in enumerate(order, 1):
+        parts.append({"text": f"[{pos}번]"})
+        parts.append({"inline_data": {
+            "mime_type": "audio/mpeg",
+            "data": base64.b64encode(
+                Path(items[k]["path"]).read_bytes()).decode()}})
+    got = ask(parts)
+    seen, out = set(), []
+    for v in got.get("order") or []:
+        try:
+            pos = int(v)
+        except Exception:                                    # noqa: BLE001
+            continue
+        if 1 <= pos <= n and pos not in seen:
+            seen.add(pos)
+            out.append(order[pos - 1])       # 들려준 자리 → 원래 자리
+    for k in order:                          # 빠뜨린 것은 뒤에 붙인다
+        if k not in out:
+            out.append(k)
+    return out
+
+
+def agree(a, b):
+    """두 줄 세우기가 얼마나 맞는가 (1=똑같다, 0=완전 거꾸로).
+
+    ⚠️ 이걸 재는 까닭: 섞어서 여러 번 물었는데 답이 서로 딴소리면
+       **모델이 구별을 못 하는 것**이다. 그러면 순위는 그냥 잡음이다.
+       그 사실을 감추지 않고 그대로 적어야 한다.
+    """
+    n = len(a)
+    if n < 2:
+        return 1.0
+    pa = {v: i for i, v in enumerate(a)}
+    pb = {v: i for i, v in enumerate(b)}
+    ok = bad = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            x, y = a[i], a[j]
+            if y not in pb or x not in pb:
+                continue
+            (ok := ok + 1) if pb[x] < pb[y] else (bad := bad + 1)
+    tot = ok + bad
+    return (ok / tot) if tot else 1.0
+
+
+def rank_many(items, text, rounds=ROUNDS):
+    """차례를 섞어 여러 번 줄 세우고 평균 자리를 낸다.
+
+    돌려주는 것: ({원래자리: 평균 등수}, 서로 얼마나 맞았나)
+    """
+    n = len(items)
+    runs = []
+    for t in range(rounds):
+        # ⚠️ Math.random 같은 것을 안 쓴다 — 몇 번째냐에 따라 정해진 만큼
+        #    돌려서 섞는다. 그래야 다시 돌려도 같은 결과가 나온다.
+        shift = (t * max(1, n // rounds)) % max(1, n)
+        order = list(range(shift, n)) + list(range(shift))
+        if t % 2:
+            order = order[::-1]
+        try:
+            runs.append(rank_once(items, order))
+            print(f"    · {t + 1}번째 줄 세우기 끝")
+        except Exception as e:                               # noqa: BLE001
+            print(f"    ⚠️ {t + 1}번째 실패 — {str(e)[:90]}")
+    if not runs:
+        return {}, 0.0
+    pos = {k: [] for k in range(n)}
+    for r in runs:
+        for i, k in enumerate(r):
+            pos[k].append(i)
+    mean = {k: (sum(v) / len(v) if v else n - 1) for k, v in pos.items()}
+    ag = []
+    for i in range(len(runs)):
+        for j in range(i + 1, len(runs)):
+            ag.append(agree(runs[i], runs[j]))
+    return mean, (sum(ag) / len(ag) if ag else 1.0)
 
 
 def main():
@@ -215,70 +328,99 @@ def main():
         r["path"] = str(d / r["file"])
         r["text"] = T.AUD_F if r["sex"] == "여" else T.AUD_M
 
-    print(f"⭐ 목소리 {len(rows)}개를 재고 점수를 매긴다\n")
-    print("① 잴 수 있는 것부터 (빠르기·억양)")
+    print(f"⭐ 목소리 {len(rows)}개를 재고 줄 세운다\n")
+    print("① 잴 수 있는 것부터 (말한 시간·빠르기·억양)")
     tmp = d / "_wav"
     tmp.mkdir(exist_ok=True)
     for r in rows:
         try:
             w8 = to_wav(r["path"], tmp / (r["voice"] + "_8k.wav"), 8000)
             r["sec"] = T.dur_of(r["path"])
-            r["sps"] = len(re.findall(r"[가-힣]", r["text"])) / max(0.01, r["sec"])
+            r["talk"] = speech_sec(w8)          # ⚠️ 무음 뺀 **실제** 말한 시간
+            r["sps"] = len(re.findall(r"[가-힣]", r["text"])) / max(0.01, r["talk"])
             r["st"] = f0_spread(w8)
         except Exception as e:                               # noqa: BLE001
             print(f"   ⚠️ {r['voice']} 못 쟀다 — {e}")
-            r["sec"], r["sps"], r["st"] = 0.0, 0.0, None
-        print(f"   {r['sex']} {r['voice']:14s} {r['sec']:.2f}초 · "
-              f"{r['sps']:.1f}음절/초 · 억양 "
+            r["sec"] = r["talk"] = r["sps"] = 0.0
+            r["st"] = None
+        print(f"   {r['sex']} {r['voice']:14s} 파일 {r['sec']:.2f}초 · "
+              f"말 {r['talk']:.2f}초 · {r['sps']:.1f}음절/초 · 억양 "
               + (f"{r['st']:.1f}반음" if r["st"] is not None else "못 쟀다"))
 
-    print("\n② 받아쓰기와 의견 (목소리 이름은 감추고 물어본다)")
+    print("\n② 관문 — 알아들을 수 있는가 (받아쓰기)")
     for sex, text in (("여", T.AUD_F), ("남", T.AUD_M)):
         part = [r for r in rows if r["sex"] == sex]
         if not part:
             continue
         try:
-            got = judge(part, text)
+            got = hear(part, text)
         except Exception as e:                               # noqa: BLE001
             print(f"   ⚠️ {sex}자 쪽을 못 물어봤다 — {e}")
             got = {}
         for i, r in enumerate(part, 1):
-            heard, nat = got.get(i, ("", None))
-            r["heard"], r["native"] = heard, nat
-            r["cer"] = cer(r["text"], heard) if heard else None
-            print(f"   {sex} {r['voice']:14s} 원어민 "
-                  + (f"{nat:2d}/10" if nat is not None else " ?/10")
-                  + " · 받아쓰기 「" + (heard or "못 받음")[:16] + "」"
-                  + (f" (틀린 정도 {r['cer']:.2f})" if r["cer"] is not None else ""))
+            h = got.get(i, "")
+            r["heard"] = h
+            r["cer"] = cer(r["text"], h) if h else None
+            r["pass"] = (r["cer"] is None) or (r["cer"] <= CER_GATE)
+            if not r["pass"]:
+                print(f"   ❌ {sex} {r['voice']:14s} 탈락 — 「{h[:18]}」 "
+                      f"({r['cer']:.2f} 틀림)")
+    _bad = [r for r in rows if not r.get("pass", True)]
+    print(f"   {len(rows) - len(_bad)}개 통과 · {len(_bad)}개 탈락"
+          + ("  (다 알아들을 만하면 이 관문은 할 일이 없다)" if not _bad else ""))
 
-    print("\n③ 점수 (받아쓰기 40 · 원어민 30 · 빠르기 15 · 억양 15)")
+    print("\n③ 눈 가리고 줄 세우기 (차례를 섞어 세 번)")
+    for sex, text in (("여", T.AUD_F), ("남", T.AUD_M)):
+        part = [r for r in rows if r["sex"] == sex and r.get("pass", True)]
+        if not part:
+            continue
+        print(f"   {sex}자 {len(part)}개")
+        mean, ag = rank_many(part, text)
+        for k, r in enumerate(part):
+            r["rank"] = mean.get(k, len(part) - 1)
+            r["rank_n"] = len(part)
+        for r in [x for x in rows if x["sex"] == sex]:
+            r["agree"] = round(ag, 3)
+        print(f"   → 세 번의 답이 서로 맞는 정도: {ag:.2f}"
+              + ("  ✅ 구별하고 있다" if ag >= 0.7 else
+                 ("  ⚠️ 애매하다 — 반쯤은 잡음이다" if ag >= 0.6 else
+                  "  ❌ **거의 잡음이다.** 이 줄 세우기는 못 믿는다")))
+
+    print("\n④ 점수 (줄 세우기 60 · 빠르기 20 · 억양 20)")
     for r in rows:
-        s1 = 40 * (1.0 - r["cer"]) if r.get("cer") is not None else 20.0
-        s2 = 30 * (r["native"] / 10.0) if r.get("native") is not None else 15.0
-        s3 = 15 * band(r.get("sps"), *GOOD_SPS, wide=2.5)
-        s4 = 15 * band(r.get("st"), *GOOD_ST, wide=3.0)
-        r["score"] = round(s1 + s2 + s3 + s4, 1)
-        r["parts"] = {"받아쓰기": round(s1, 1), "원어민": round(s2, 1),
-                      "빠르기": round(s3, 1), "억양": round(s4, 1)}
+        if not r.get("pass", True):
+            r["score"], r["parts"] = 0.0, {"줄세우기": 0.0, "빠르기": 0.0,
+                                           "억양": 0.0, "관문": "탈락"}
+            continue
+        n = max(2, r.get("rank_n", 2))
+        s1 = 60 * (1.0 - r.get("rank", n - 1) / (n - 1))
+        s2 = 20 * band(r.get("sps"), *GOOD_SPS, wide=2.5)
+        s3 = 20 * band(r.get("st"), *GOOD_ST, wide=3.0)
+        r["score"] = round(s1 + s2 + s3, 1)
+        r["parts"] = {"줄세우기": round(s1, 1), "빠르기": round(s2, 1),
+                      "억양": round(s3, 1), "관문": "통과"}
 
     rows.sort(key=lambda r: -r["score"])
-    print(f"\n{'':2s} {'목소리':16s} {'점수':>5s}  받아쓰기 원어민 빠르기 억양")
+    print(f"\n{'':3s}{'목소리':14s}{'점수':>6s}  {'줄세우기':>8s}{'빠르기':>7s}"
+          f"{'억양':>6s}   {'음절/초':>7s}{'반음':>6s}")
     for i, r in enumerate(rows, 1):
         p = r["parts"]
-        print(f"{i:2d} {r['sex']} {r['voice']:14s} {r['score']:5.1f}  "
-              f"{p['받아쓰기']:7.1f} {p['원어민']:6.1f} {p['빠르기']:6.1f} "
-              f"{p['억양']:5.1f}")
+        st = f"{r['st']:.1f}" if r.get("st") is not None else "-"
+        print(f"{i:2d} {r['sex']} {r['voice']:12s}{r['score']:6.1f}  "
+              f"{p['줄세우기']:8.1f}{p['빠르기']:7.1f}{p['억양']:6.1f}   "
+              f"{r.get('sps', 0):7.1f}{st:>6s}")
 
     best = {}
     for sex, key in (("여", "f"), ("남", "m")):
-        got = [r for r in rows if r["sex"] == sex]
+        got = [r for r in rows if r["sex"] == sex and r.get("pass", True)]
         if got:
             best[key] = got[0]["voice"]
-            print(f"\n🏆 {sex}자 → **{got[0]['voice']}** ({got[0]['score']}점)")
+            print(f"\n🏆 {sex}자 → **{got[0]['voice']}** ({got[0]['score']}점, "
+                  f"줄 세우기 일치도 {got[0].get('agree', 0):.2f})")
     for f, data in ((a.out, {"rows": rows, "best": best}), (a.pick, best)):
-        p = Path(f)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n",
+        q = Path(f)
+        q.parent.mkdir(parents=True, exist_ok=True)
+        q.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n",
                      encoding="utf-8")
     print(f"\n✅ {a.out} · {a.pick} 에 적었다")
     return 0
