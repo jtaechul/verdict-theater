@@ -2373,12 +2373,32 @@ export default {
           const bgHave = Array.isArray(files) ? files.filter((f) => f.name.endsWith('.jpg')).length : 0;
           assets = { have: bgHave, need: manifest.bg.codes.length, kind: '배경' };
         }
+        // ⭐⭐ 2026-08-22 — '만든 영상 0/16' 이 영원히 0 이었다.
+        //    state/series.json 의 made 를 **아무도 올리지 않는다.**
+        //    영상을 만들어도 첫 화면은 계속 0 이라 손님이 "만든 게 어디 있냐"
+        //    고 하시게 된다.
+        //    → 숫자를 어딘가에 적어 두고 맞추려 들지 않는다. 그러면 언젠가
+        //      또 어긋난다. **실제로 만들어져 있는 것을 세어** 쓴다.
+        //      (완성본만 센다 — 한 컷 시험본은 작품이 아니다)
+        const madeBy = {};
+        (Array.isArray(rels) ? rels : []).forEach((r) => {
+          const m = /^short-(S\d{3})-ep(\d{2})$/.exec(r.tag_name || '');
+          if (m && (r.assets || []).some((a) => a.name === 'short.mp4'))
+            (madeBy[m[1]] = madeBy[m[1]] || new Set()).add(m[2]);
+        });
+        const series2 = {};
+        for (const [sid, v] of Object.entries(series || {}))
+          series2[sid] = { ...v, made: (madeBy[sid] || new Set()).size };
+        // 대본은 없는데 영상만 있는 경우도 숨기지 않는다
+        for (const sid of Object.keys(madeBy))
+          if (!series2[sid]) series2[sid] = { made: madeBy[sid].size, episodes: 16 };
+
         return Response.json({
           episodes: episodes || {},
           queue: Array.isArray(queue) ? queue : [],
           assets,
           videos,
-          series: series || {},
+          series: series2,
           drafts,          // 만들다 만 대본의 회차들 (초벌 파일이 실제로 있는 것만)
           audition,
           cast,

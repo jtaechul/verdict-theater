@@ -369,6 +369,39 @@ ok(true, '첫 화면에 [만든 영상 보기] 가 있고 그리는 코드가 �
 
 globalThis.fetch = realFetch;
 
+// ⑯ 첫 화면의 '만든 영상 n/16' 이 **진짜 만들어진 것**을 세는가.
+//    2026-08-22 — state/series.json 의 made 를 아무도 올리지 않아서
+//    영원히 0 이었다. 영상을 만들어도 첫 화면은 계속 0 이라
+//    "만든 게 어디 있냐" 가 된다. 이제 릴리스를 직접 센다.
+console.log('⭐ 첫 화면이 만든 편수를 제대로 세는가');
+const b64 = (o) => Buffer.from(JSON.stringify(o), 'utf8').toString('base64');
+globalThis.fetch = async (u, init) => {
+  const s0 = String(u && u.url ? u.url : u);
+  if (s0.includes('/contents/state/series.json'))
+    return Response.json({ content: b64({ S001: { title: '바람난 남편이 빼돌린 15억',
+                                                  episodes: 16, made: 0 } }) });
+  if (s0.includes('/releases?per_page='))
+    return Response.json([
+      { tag_name: 'short-S001-ep01', assets: [{ name: 'short.mp4', id: 1, size: 9 }] },
+      { tag_name: 'short-S001-ep02', assets: [{ name: 'short.mp4', id: 2, size: 9 }] },
+      { tag_name: 'short-S001-ep03-cut2', assets: [{ name: 'short.mp4', id: 3, size: 9 }] },
+      { tag_name: 'short-S001-ep09', assets: [] },
+      { tag_name: 'clips-S001-ep01', assets: [{ name: 'clips.zip', id: 4, size: 9 }] },
+    ]);
+  if (s0.includes('/actions/runs')) return Response.json({ workflow_runs: [] });
+  if (s0.includes('github.com')) return new Response('nope', { status: 404 });
+  return realFetch(u, init);
+};
+const st = await (await W._wk.fetch(new Request(
+  'https://admin.example.workers.dev/api/state', { headers: { Cookie: cookie } }),
+  env2)).json();
+ok(st.series && st.series.S001, '시리즈가 화면에 온다');
+ok(st.series.S001.made === 2,
+   '완성본 2편을 셌다 (적어 둔 0 이 아니라) — 센 값: ' + st.series.S001.made);
+ok(st.series.S001.title === '바람난 남편이 빼돌린 15억', '제목은 그대로 온다');
+ok(st.series.S001.episodes === 16, '전체 화수도 그대로 온다');
+globalThis.fetch = realFetch;
+
 // ⑭ ⭐⭐ 가장 중요한 못 — 관리자 페이지는 깃허브에 **아무것도 쓰지 않는다.**
 //    2026-08-22, 운영자가 같은 403 을 두 번 봤다:
 //      GitHub 403 … documentation_url: releases#create-a-release
