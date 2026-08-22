@@ -13,11 +13,10 @@ name: 6. 관리자 페이지 배포
 #   CLOUDFLARE_ACCOUNT_ID  Cloudflare 대시보드 오른쪽에 있는 계정 ID
 #   ADMIN_PASSWORD         관리자 페이지에 들어갈 비밀번호 (직접 정한다)
 #   ADMIN_GH_TOKEN         GitHub 개인 토큰. 이 저장소만 접근하도록 좁게 만든다
-#                          github.com/settings/personal-access-tokens/new
-#                          → Repository access: verdict-theater 하나만
-#                          → Permissions: Contents = **Read and write**, Actions = Read and write
-#                          ⚠️ Contents 가 Read 뿐이면 영상 압축파일을
-#                             못 올린다 (403: Resource not accessible)
+#                          → Permissions: Contents = Read, Actions = Read and write
+#                          ⭐ 2026-08-22 — 쓰기 권한은 **필요 없다.**
+#                             영상 압축파일은 클라우드플레어 보관함(KV)에 두고
+#                             워크플로가 자기 열쇠로 받아 간다.
 
 on:
   workflow_dispatch:
@@ -64,7 +63,7 @@ jobs:
               echo "| \`CLOUDFLARE_API_TOKEN\` | Cloudflare → My Profile → API Tokens → **Edit Cloudflare Workers** 템플릿 |"
               echo "| \`CLOUDFLARE_ACCOUNT_ID\` | Cloudflare 대시보드 오른쪽 **Account ID** |"
               echo "| \`ADMIN_PASSWORD\` | 직접 정하십시오. 이 페이지에 들어갈 비밀번호 |"
-              echo "| \`ADMIN_GH_TOKEN\` | [토큰 만들기](https://github.com/settings/personal-access-tokens/new) — Repository access는 **verdict-theater 하나만**, Permissions는 **Contents = Read and write**, **Actions=Read and write** |"
+              echo "| \`ADMIN_GH_TOKEN\` | [토큰 만들기](https://github.com/settings/personal-access-tokens/new) — Repository access는 **verdict-theater 하나만**, Permissions는 **Contents = Read**, **Actions = Read and write** |"
               echo ""
               echo "> \`ADMIN_GH_TOKEN\` 은 이 저장소 하나에만 닿도록 좁게 만드십시오."
               echo "> 새어 나가도 피해가 이 저장소로 한정됩니다."
@@ -89,6 +88,36 @@ jobs:
           #    '불러오는 중…' 에서 영영 멈췄다. 이제 안쪽까지 뽑아 검사하고 돌려 본다.
           node tools/check_admin.mjs
           node tools/check_fold.mjs
+
+      # ⭐⭐ 2026-08-22 — 큰 파일 보관함(KV)
+      #    왜: 관리자 페이지의 깃허브 열쇠는 읽기 전용이라, 브라우저에서 올린
+      #        압축파일을 깃허브에 얹지 못한다(403). 예전에 되던 길은 원래
+      #        "만드는 것도 올리는 것도 깃허브 안에서 워크플로가 한다" 였다.
+      #        그 모양으로 되돌리려면 파일을 잠깐 둘 곳이 필요하다.
+      #    어떻게: 이미 등록해 둔 CLOUDFLARE_API_TOKEN (Edit Cloudflare Workers
+      #        템플릿) 안에 KV 권한이 들어 있다. 여기서 저절로 만들어 붙인다 —
+      #        손님이 어디에 들어가 만들 것은 없다.
+      - name: 큰 파일 보관함 준비 (KV)
+        working-directory: admin
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -o pipefail
+          npm i -g wrangler@4 --silent
+          ID=$(npx wrangler kv namespace list 2>/dev/null | python3 ../tools/kv_id.py || true)
+          if [ -z "$ID" ]; then
+            echo "보관함이 없다 — 만든다"
+            npx wrangler kv namespace create BLOB || true
+            ID=$(npx wrangler kv namespace list 2>/dev/null | python3 ../tools/kv_id.py || true)
+          fi
+          if [ -z "$ID" ]; then
+            echo "::warning::보관함을 만들지 못했습니다 — 옛 길(깃허브 릴리스)로 갑니다"
+          else
+            echo "보관함 준비됨"
+            printf '\n[[kv_namespaces]]\nbinding = "BLOB"\nid = "%s"\n' "$ID" >> wrangler.toml
+            tail -n 4 wrangler.toml
+          fi
 
       - name: 배포 + 비밀값 등록
         working-directory: admin

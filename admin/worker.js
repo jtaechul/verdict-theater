@@ -191,6 +191,96 @@ async function listDir(env, path) {
   catch { return []; }
 }
 
+// ── 큰 파일 임시 보관함 (클라우드플레어 KV) ──────────────────────────
+//
+// ⭐⭐ 2026-08-22 — 왜 이것이 생겼나 (읽고 나서 고치십시오)
+//    관리자 페이지가 쥔 깃허브 열쇠(GH_TOKEN)는 **읽기 전용**이다.
+//    그래서 브라우저에서 올린 압축파일을 깃허브 릴리스에 얹으려 하면
+//    깃허브가 403 으로 막는다.
+//
+//    ⚠️ 그런데 **예전에 되던 길은 애초에 이 길이 아니었다.**
+//       영상은 깃허브 **안(Actions)에서** 만들어졌고, 올리는 것도 워크플로
+//       자신의 열쇠(GITHUB_TOKEN, 쓰기 있음)가 했다. 관리자 페이지는
+//       "시작해" 하고 부르기만 했다 — 그건 actions:write 만 있으면 된다.
+//       내가 브라우저→깃허브 직접 올리기를 새로 넣으면서 없던 권한이
+//       필요해진 것이다. 손님 설정이 잘못된 게 아니라 내 설계가 어긋났다.
+//
+//    되돌리는 방법: 브라우저에서 올린 파일은 깃허브가 아니라 **여기(KV)** 에
+//    잠깐 두고, 워크플로에는 **주소만** 넘긴다. 워크플로가 자기 열쇠로
+//    받아 가서 예전과 똑같이 만들고 예전과 똑같이 릴리스에 올린다.
+//    → 손님이 깃허브에 들어가 손댈 것은 하나도 없다.
+//
+// 보관함은 배포할 때 자동으로 만들어져 붙는다 (deploy-admin.yml).
+const KV_CHUNK = 8 * 1024 * 1024;   // 조각 하나 8MB (KV 한 값 상한 25MB 안쪽)
+const KV_DAY = 60 * 60 * 24;
+const KV_MAX = 90 * 1024 * 1024;    // 한 번에 받는 최대 크기
+
+// 보관함이 붙어 있나. 배포가 오래됐으면 없을 수 있어 옛 길로 되돌아간다.
+function bin(env) { return env && env.BLOB ? env.BLOB : null; }
+
+// 흘러 들어오는 것을 조각내어 넣는다.
+// ⚠️ 통째로 메모리에 올리지 않는다 — 90MB 를 한 손에 들면 워커가 죽는다.
+async function blobPutStream(env, body, key, ttl) {
+  const kv = bin(env);
+  const rd = body.getReader();
+  let hold = [], held = 0, part = 0, total = 0;
+  const flush = async () => {
+    if (!held) return;
+    const buf = await new Blob(hold).arrayBuffer();
+    await kv.put(`${key}.${part}`, buf, { expirationTtl: ttl });
+    part += 1; total += held; hold = []; held = 0;
+  };
+  for (;;) {
+    const { value, done } = await rd.read();
+    if (done) break;
+    hold.push(value); held += value.length;
+    if (total + held > KV_MAX) throw new Error('TOO_BIG');
+    if (held >= KV_CHUNK) await flush();
+  }
+  await flush();
+  await kv.put(key, JSON.stringify({ parts: part, size: total,
+    type: 'application/zip' }), { expirationTtl: ttl });
+  return total;
+}
+
+// 짧은 글(올릴 제목·고른 목소리 따위)은 통째로 둔다
+async function blobPutText(env, key, text, ttl) {
+  const kv = bin(env);
+  const opt = ttl ? { expirationTtl: ttl } : {};
+  await kv.put(`${key}.0`, text, opt);
+  await kv.put(key, JSON.stringify({ parts: 1,
+    size: new TextEncoder().encode(text).length,
+    type: 'application/json' }), opt);
+}
+
+async function blobText(env, key) {
+  const kv = bin(env);
+  if (!kv) return null;
+  if (!(await kv.get(key))) return null;
+  return await kv.get(`${key}.0`);
+}
+
+// 워크플로가 받아 갈 주소. 워커는 자기 주소를 요청에서 알아낸다 —
+// 그래야 손님이 주소를 어디에도 등록할 필요가 없다.
+function blobUrl(req, key) {
+  return `${new URL(req.url).origin}/api/blob?key=${encodeURIComponent(key)}`;
+}
+
+// ⚠️⚠️ 여기 함정이 하나 있다 (모르면 "가끔 옛것이 올라간다" 로 나타난다)
+//    보관함은 **전 세계에 퍼지는 데 최대 1분**이 걸린다. 손님(한국)이 방금
+//    고친 것을, 깃허브 러너(미국)가 곧바로 읽으면 **고치기 전 것**이 나올 수 있다.
+//    → 늘 같은 이름을 쓰는 것(올릴 글·고른 목소리)은 부를 때마다 **새 이름으로
+//      한 벌 복사해** 그 주소를 넘긴다. 새 이름은 어디에도 캐시된 적이 없으므로
+//      옛것이 나올 자리가 없다.
+//    (압축파일은 애초에 올릴 때마다 새 이름이라 이 문제가 없다.)
+async function blobPin(env, req, key, prefix) {
+  const text = await blobText(env, key);
+  if (!text) return null;
+  const fresh = `${prefix}/${crypto.randomUUID()}`;
+  await blobPutText(env, fresh, text, KV_DAY);
+  return blobUrl(req, fresh);
+}
+
 // ── 로그인 (서명 쿠키) ───────────────────────────────────
 async function sign(env, value) {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.SESSION_SECRET || 'vt'),
@@ -648,9 +738,9 @@ async function upClips() {
   const cs = document.getElementById('cutone');
   const cut = (cs && cs.value) || '';
   if (CANWRITE === false) {
-    showErr('먼저 토큰 권한을 고쳐 주십시오',
-      '깃허브 토큰이 읽기 전용이라 영상을 올릴 수 없습니다. '
-      + '위 빨간 칸의 순서대로 Contents 를 Read and write 로 바꿔 주십시오.');
+    showErr('영상 보관함이 아직 없습니다',
+      '위 빨간 칸의 [영상 보관함 준비하기] 를 한 번 누르시고 1~2분 뒤에 '
+      + '다시 올려 주십시오. 깃허브에서 하실 것은 없습니다.');
     return;
   }
   const mb = f.size / 1048576;
@@ -807,20 +897,42 @@ async function permCheck() {
   catch (e) { return true; }            // 못 물어봤으면 막지는 않는다
   CANWRITE = !!(j && j.ok);
   if (CANWRITE) { b.innerHTML = ''; return true; }
+  // ⭐⭐ 2026-08-22 — 여기에 "깃허브 가서 토큰 권한을 바꾸십시오" 라고 적어
+  //    두었다가 크게 혼났다. 운영자는 깃허브에서 아무것도 하지 않는다.
+  //    이제 고칠 것은 이 화면에서 버튼 하나로 끝난다.
   b.innerHTML =
     '<div style="border:1px solid #7a3b46;background:#2a1b1f;border-radius:10px;'
     + 'padding:12px;margin-bottom:10px;color:#f0b8c0;font-size:14px">'
-    + '<b>영상을 올릴 수 없습니다 — 깃허브 토큰이 읽기 전용입니다.</b><br>'
-    + '고치는 법 (1분, 한 번만):<br>'
-    + '① <a href="https://github.com/settings/personal-access-tokens" '
-    + 'target="_blank" style="color:#8fb0f0">깃허브 토큰 목록</a> 을 엽니다<br>'
-    + '② verdict-theater 용 토큰을 누릅니다<br>'
-    + '③ Repository permissions → <b>Contents</b> 를 '
-    + '<b>Read and write</b> 로 바꿉니다<br>'
-    + '④ 맨 아래 [Update] 를 누릅니다<br>'
-    + '토큰 값은 그대로라 다시 등록하실 필요 없습니다. 이 화면을 새로고침하십시오.'
-    + '</div>';
+    + '<b>영상 보관함이 아직 준비되지 않았습니다.</b><br>'
+    + '아래를 한 번 누르시면 1~2분 뒤에 영상을 올릴 수 있습니다. '
+    + '한 번만 하면 됩니다.'
+    + '<div class="btns" style="margin-top:10px">'
+    + mini('영상 보관함 준비하기', 'setupBlob()', 'gold')
+    + '</div><div id="blobmsg" class="uphint"></div></div>';
   return false;
+}
+
+async function setupBlob() {
+  const m = document.getElementById('blobmsg');
+  if (m) m.textContent = '준비하는 중입니다…';
+  try {
+    const r = await fetch('/api/setup-blob', { method: 'POST' });
+    const j = await r.json();
+    if (!j.ok) { showErr('준비하지 못했습니다', (j.error || '') + ' ' + (j.detail || ''));
+                 if (m) m.textContent = ''; return; }
+  } catch (e) {
+    showErr('준비하지 못했습니다', String(e && e.message ? e.message : e));
+    if (m) m.textContent = ''; return;
+  }
+  if (m) m.textContent = '준비 중입니다. 1~2분 뒤 이 화면을 새로고침해 주십시오.';
+  toast('영상 보관함을 준비하고 있습니다');
+  // 스스로 다시 확인해 준다 — 새로고침을 잊어도 알아서 사라진다
+  let n = 0;
+  const t = setInterval(async () => {
+    n += 1;
+    const ok = await permCheck();
+    if (ok || n > 20) clearInterval(t);
+  }, 15000);
 }
 
 
@@ -2013,6 +2125,43 @@ export default {
       return new Response(null, { status: 302, headers: { Location: '/', 'Set-Cookie': cookie } });
     }
 
+    // ⭐ 워크플로(깃허브 안)가 보관함에서 파일을 받아 가는 문.
+    //    깃허브 러너에는 브라우저 로그인 쿠키가 없다. 대신 **관리자 비밀번호**를
+    //    머리글로 받는다 — 그 값은 이미 깃허브 Secrets 에 있는 것이라
+    //    손님이 새로 등록할 것이 없다.
+    //    열쇠(key)는 아무도 못 맞히는 무작위 글자이고, 하루가 지나면 저절로
+    //    사라진다. 로그인해서 들어온 사람도 볼 수 있게 둔다(미리보기용).
+    if (url.pathname === '/api/blob') {
+      const kv = bin(env);
+      if (!kv) return new Response('보관함이 없습니다', { status: 503 });
+      const key = url.searchParams.get('key') || '';
+      if (!/^[a-z]+\/[A-Za-z0-9._-]+$/.test(key))
+        return new Response('열쇠가 이상합니다', { status: 400 });
+      const pass = req.headers.get('x-vt-pass') || '';
+      const passOk = env.ADMIN_PASSWORD ? pass === env.ADMIN_PASSWORD : true;
+      if (!passOk && !ok)
+        return new Response('unauthorized', { status: 401 });
+      const head = await kv.get(key);
+      if (!head)
+        return new Response('없습니다 (하루가 지나 지워졌을 수 있습니다)', { status: 404 });
+      let m = null;
+      try { m = JSON.parse(head); } catch (e) { m = null; }
+      if (!m) return new Response('보관함이 깨졌습니다', { status: 500 });
+      let i = 0;
+      const rs = new ReadableStream({
+        async pull(c) {
+          if (i >= m.parts) { c.close(); return; }
+          const b = await kv.get(`${key}.${i}`, 'arrayBuffer');
+          i += 1;
+          if (b) c.enqueue(new Uint8Array(b));
+          else c.error(new Error('조각이 없습니다'));
+        },
+      });
+      return new Response(rs, { headers: {
+        'Content-Type': m.type || 'application/octet-stream',
+        'Cache-Control': 'no-store' } });
+    }
+
     if (!ok) {
       if (url.pathname.startsWith('/api/'))
         return Response.json({ error: 'unauthorized' }, { status: 401 });
@@ -2330,20 +2479,52 @@ export default {
         const ep = String(parseInt(url.searchParams.get('ep') || '0', 10) || 0);
         if (!/^S\d{3}$/.test(sid) || +ep < 1 || +ep > 99)
           return Response.json({ ok: false, error: '회차를 고르십시오' }, { status: 400 });
-        const body = await req.arrayBuffer();
-        if (!body.byteLength)
-          return Response.json({ ok: false, error: '파일이 비었습니다' }, { status: 400 });
-        if (body.byteLength > 90 * 1024 * 1024)
-          return Response.json({ ok: false, error:
-            '파일이 90MB 를 넘습니다. 클립을 나눠 올리거나 화질을 낮춰 주십시오.' },
-            { status: 400 });
-
         // ⭐ 2026-08-22 — 클립 하나로 시험하는 길. 운영자가 컷 하나만 만들어
         //    소리까지 제대로 입혔는지 보고 싶어 한다. 이때는 **딴 이름**으로
         //    둔다 — 시험 한 번에 5컷짜리 완성본이 덮이면 안 된다.
         const cut = String(parseInt(url.searchParams.get('cut') || '0', 10) || 0);
         const suf = cut ? `-cut${cut}` : '';
         const tag = `clips-${sid}-ep${String(ep).padStart(2, '0')}${suf}`;
+        const told = +(req.headers.get('content-length') || 0);
+        if (told > KV_MAX)
+          return Response.json({ ok: false, error:
+            '파일이 90MB 를 넘습니다. 클립을 나눠 올리거나 화질을 낮춰 주십시오.' },
+            { status: 400 });
+
+        // ⭐⭐ 새 길 (2026-08-22) — 깃허브에 직접 올리지 않는다.
+        //    보관함에 두고 **주소만** 워크플로에 넘긴다. 만드는 것도 릴리스에
+        //    올리는 것도 예전처럼 깃허브 안에서 워크플로가 한다.
+        if (bin(env) && req.body) {
+          try {
+            const key = `clips/${tag}-${crypto.randomUUID()}`;
+            const size = await blobPutStream(env, req.body, key, KV_DAY);
+            if (!size)
+              return Response.json({ ok: false, error: '파일이 비었습니다' }, { status: 400 });
+            const inputs = { sid, ep, blob: blobUrl(req, key) };
+            if (cut) inputs.cut = cut;
+            // 귀로 골라 둔 목소리가 보관함에 있으면 그것도 같이 알려 준다
+            const vurl = await blobPin(env, req, 'voice/chosen', 'voice');
+            if (vurl) inputs.voice = vurl;
+            await gh(env, `/repos/${REPO}/actions/workflows/shorts.yml/dispatches`, {
+              method: 'POST', body: JSON.stringify({ ref: BRANCH, inputs }),
+            });
+            return Response.json({ ok: true, tag, size, via: 'blob' });
+          } catch (e) {
+            const m = String(e && e.message ? e.message : e);
+            if (m.includes('TOO_BIG'))
+              return Response.json({ ok: false, error:
+                '파일이 90MB 를 넘습니다. 클립을 나눠 올리거나 화질을 낮춰 주십시오.' },
+                { status: 400 });
+            return Response.json({ ok: false, error: '올리지 못했습니다',
+              detail: m.slice(0, 220) }, { status: 502 });
+          }
+        }
+
+        // 옛 길 — 보관함이 아직 안 붙은 배포에서만 여기로 온다.
+        // ⚠️ 이 길은 깃허브 열쇠에 쓰기 권한이 있어야 한다. 없으면 403 이 난다.
+        const body = await req.arrayBuffer();
+        if (!body.byteLength)
+          return Response.json({ ok: false, error: '파일이 비었습니다' }, { status: 400 });
         try {
           let rel;
           try {
@@ -2376,19 +2557,17 @@ export default {
             body: JSON.stringify({ ref: BRANCH,
               inputs: cut ? { sid, ep, cut } : { sid, ep } }),
           });
-          return Response.json({ ok: true, tag, size: body.byteLength });
+          return Response.json({ ok: true, tag, size: body.byteLength, via: 'release' });
         } catch (e) {
           const m = String(e && e.message ? e.message : e);
-          // ⚠️ 영어 오류를 그대로 보여 주면 무엇을 해야 하는지 알 수가 없다.
+          // ⚠️ 손님을 깃허브로 보내지 않는다 (그러지 말라고 하셨다).
+          //    보관함만 붙으면 이 길로 올 일이 없으므로, 여기서 할 말은
+          //    "관리자 페이지를 다시 배포하면 된다" 하나뿐이다.
           if (m.includes('403') || m.includes('not accessible')) {
-            return Response.json({ ok: false, error: '깃허브 토큰에 쓰기 권한이 없습니다',
-              detail: '토큰이 읽기 전용으로 만들어져 있어 파일을 올릴 수 없습니다. '
-                    + '깃허브 → Settings → Developer settings → '
-                    + 'Personal access tokens → 이 저장소용 토큰 → '
-                    + 'Repository permissions → Contents 를 '
-                    + '[Read and write] 로 바꾸고 저장하십시오. '
-                    + '토큰 값은 그대로라 다시 등록하실 필요는 없습니다.',
-              fix: 'contents-write' }, { status: 403 });
+            return Response.json({ ok: false, error: '영상 보관함이 아직 없습니다',
+              detail: '[영상 보관함 준비하기] 를 한 번 누르시면 1~2분 뒤 올릴 수 있습니다. '
+                    + '깃허브에서 하실 것은 없습니다.',
+              fix: 'setup-blob' }, { status: 503 });
           }
           return Response.json({ ok: false, error: '올리지 못했습니다',
             detail: m.slice(0, 220) }, { status: 502 });
@@ -2475,6 +2654,13 @@ export default {
       // 골라 둔 목소리를 담아 둔다 — 다음부터 만드는 영상이 이걸 쓴다
       if (url.pathname === '/api/voicepick-set' && req.method === 'POST') {
         const body = await req.text();
+        // ⭐ 2026-08-22 — 여기도 깃허브에 쓰던 자리였다(403 의 세 번째 원인).
+        if (bin(env)) {
+          try {
+            await blobPutText(env, 'voice/chosen', body, 0);
+            return Response.json({ ok: true, via: 'blob' });
+          } catch (e) { /* 아래 옛 길로 */ }
+        }
         try {
           const rel = await gh(env, `/repos/${REPO}/releases/tags/voicepick`);
           for (const a of rel.assets || []) {
@@ -2519,7 +2705,9 @@ export default {
         const list = await r0.json();
         const ch = (rel.assets || []).find((x) => x.name === 'chosen.json');
         let now = null;
-        if (ch) {
+        const kept = await blobText(env, 'voice/chosen');
+        if (kept) { try { now = JSON.parse(kept); } catch (e) { now = null; } }
+        if (!now && ch) {
           const r1 = await fetch(`${GH}/repos/${REPO}/releases/assets/${ch.id}`, {
             headers: { 'Authorization': `Bearer ${env.GH_TOKEN}`,
                        'Accept': 'application/octet-stream',
@@ -2542,6 +2730,11 @@ export default {
       //    ⚠️ 권한은 코드로 못 만든다. 대신 **미리 알아보고 미리 알려 준다** —
       //       몇십 MB 를 다 올린 뒤에 영어 오류를 보는 일이 없게.
       if (url.pathname === '/api/can-write') {
+        // ⭐⭐ 2026-08-22 — 이제 영상은 깃허브가 아니라 보관함으로 올라간다.
+        //    보관함이 붙어 있으면 깃허브 쓰기 권한은 **아예 필요 없다.**
+        //    (예전에 되던 길이 원래 이랬다 — 만들고 올리는 것은 깃허브 안에서
+        //     워크플로가 자기 열쇠로 한다. 관리자 페이지는 부르기만 한다.)
+        if (bin(env)) return Response.json({ ok: true, via: 'blob' });
         try {
           const r = await gh(env, `/repos/${REPO}`);
           const ok = !!(r.permissions && r.permissions.push);
@@ -2549,6 +2742,21 @@ export default {
         } catch (e) {
           return Response.json({ ok: false,
             why: String(e && e.message ? e.message : e).slice(0, 200) });
+        }
+      }
+
+      // ⭐ 보관함이 아직 없을 때, 화면에서 바로 준비시킨다.
+      //    손님을 깃허브로 보내지 않기 위한 문이다 (그러지 말라고 하셨다).
+      //    관리자 페이지 배포를 다시 돌리면 보관함이 만들어져 붙는다.
+      if (url.pathname === '/api/setup-blob' && req.method === 'POST') {
+        try {
+          await gh(env, `/repos/${REPO}/actions/workflows/deploy-admin.yml/dispatches`, {
+            method: 'POST', body: JSON.stringify({ ref: BRANCH }),
+          });
+          return Response.json({ ok: true });
+        } catch (e) {
+          return Response.json({ ok: false, error: '준비를 시작하지 못했습니다',
+            detail: String(e && e.message ? e.message : e).slice(0, 220) }, { status: 502 });
         }
       }
 
@@ -2600,7 +2808,12 @@ export default {
         const ep = String(parseInt(url.searchParams.get('ep') || '0', 10) || 0);
         if (!/^S\d{3}$/.test(sid)) return Response.json({ error: 'bad sid' }, { status: 400 });
         const tag = `short-${sid}-ep${String(ep).padStart(2, '0')}`;
-        // 손님이 고쳐 둔 것이 있으면 그것을 먼저
+        // 손님이 고쳐 둔 것이 있으면 그것을 먼저 — 보관함(새 길)을 먼저 본다
+        const kept = await blobText(env, `meta/${tag}`);
+        if (kept) {
+          try { return Response.json({ ...JSON.parse(kept), saved: true }); }
+          catch (e) { /* 깨졌으면 아래에서 다시 만든다 */ }
+        }
         try {
           const rel = await gh(env, `/repos/${REPO}/releases/tags/${tag}`);
           const a = (rel.assets || []).find((x) => x.name === 'meta.json');
@@ -2628,6 +2841,14 @@ export default {
         const meta = { sid, ep: +ep, title: String(title).slice(0, 100),
                        description: String(description || '').slice(0, 4900),
                        tags: (tags || []).slice(0, 15), privacy: privacy || 'private' };
+        // ⭐ 2026-08-22 — 여기도 깃허브에 쓰던 자리였다(403 의 두 번째 원인).
+        //    보관함에 담고, 올릴 때 워크플로가 그 주소에서 받아 가게 한다.
+        if (bin(env)) {
+          try {
+            await blobPutText(env, `meta/${tag}`, JSON.stringify(meta, null, 1), KV_DAY * 90);
+            return Response.json({ ok: true, via: 'blob' });
+          } catch (e) { /* 아래 옛 길로 */ }
+        }
         try {
           const rel = await gh(env, `/repos/${REPO}/releases/tags/${tag}`);
           for (const a of rel.assets || []) {
@@ -2654,12 +2875,17 @@ export default {
           return Response.json({ ok: false, error: '회차가 이상합니다' }, { status: 400 });
         const P = { public: '전체 공개', unlisted: '일부 공개 (링크 있는 사람만)',
                     private: '비공개 (나만 보기)' }[privacy || 'private'];
+        const mtag = `short-${sid}-ep${String(ep).padStart(2, '0')}`;
         try {
+          const inputs = { sid, ep: String(ep), privacy: P,
+            mode: dry ? '연습 (올리지 않고 확인만)' : '진짜로 올리기' };
+          // 화면에서 확인한 글이 보관함에 있으면 그 주소를 넘긴다 —
+          // 보여드린 것과 올라가는 것이 반드시 같아야 한다.
+          // (그래서 더더욱 새 이름으로 복사해 넘긴다 — 위 함정 설명 참고)
+          const murl = await blobPin(env, req, `meta/${mtag}`, 'meta');
+          if (murl) inputs.meta = murl;
           await gh(env, `/repos/${REPO}/actions/workflows/shorts-upload.yml/dispatches`, {
-            method: 'POST',
-            body: JSON.stringify({ ref: BRANCH, inputs: {
-              sid, ep: String(ep), privacy: P,
-              mode: dry ? '연습 (올리지 않고 확인만)' : '진짜로 올리기' } }),
+            method: 'POST', body: JSON.stringify({ ref: BRANCH, inputs }),
           });
           return Response.json({ ok: true });
         } catch (e) {

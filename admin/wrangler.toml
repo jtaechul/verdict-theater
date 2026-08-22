@@ -4,8 +4,19 @@ compatibility_date = "2026-01-01"
 
 # 비밀값은 이 파일에 적지 않는다. 아래 세 개를 GitHub Secrets 로 넣으면
 # deploy-admin.yml 이 배포할 때 Cloudflare 에 등록한다.
-#   GH_TOKEN        저장소 접근 토큰
-#                   contents: **read+write** · actions: read+write
-#                   ⚠️ contents 가 read 뿐이면 영상 압축파일을 못 올린다
+#   GH_TOKEN        저장소 접근 토큰 — contents: read · actions: read+write
+#                   ⭐ 2026-08-22 부터 **쓰기 권한이 필요 없다.**
+#                      영상 압축파일은 깃허브가 아니라 아래 보관함(KV)에 두고,
+#                      워크플로가 자기 열쇠로 받아 가 릴리스에 올린다.
+#                      (예전에 되던 길이 원래 이랬다)
 #   ADMIN_PASSWORD  관리자 페이지 비밀번호
 #   SESSION_SECRET  로그인 위조 방지용 아무 긴 문자열
+
+# 큰 파일 임시 보관함(KV)은 배포할 때 자동으로 만들어져 여기에 붙는다.
+# deploy-admin.yml 의 [큰 파일 보관함 준비] 단계가 아래 세 줄을 덧붙인다.
+#
+#   [[kv_namespaces]]
+#   binding = "BLOB"
+#   id = "…"
+#
+# ⚠️ 손으로 적지 마십시오. 손으로 적으면 다른 계정에서 배포할 때 어긋납니다.

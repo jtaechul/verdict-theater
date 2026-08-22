@@ -266,20 +266,36 @@ for _s in ("drama", "fierce", "dry", "deep"):
 ck("클립 하나만 시험할 수 있다", 'id="cutone"' in ep1)
 # ⚠️⚠️ 2026-08-22 — 압축파일을 다 올린 **뒤에** 이 오류를 봤다:
 #    GitHub 403: "Resource not accessible by personal access token"
-#    토큰이 Contents=Read 로만 만들어져 있어 릴리스를 못 만든 것이다.
-#    권한은 코드로 못 만든다 → **미리 알아보고 미리 알려 준다.**
+#    처음엔 "토큰 권한을 쓰기로 바꾸십시오" 라고 화면에 적었다가 크게 혼났다.
+#    운영자는 깃허브에서 아무것도 하지 않는다 — 그게 이 시스템의 대전제다.
+#
+#    ⭐ 다시 보니 **예전에 되던 길에는 그 권한이 필요 없었다.**
+#       영상은 깃허브 안(Actions)에서 만들어졌고 올리는 것도 워크플로 자신의
+#       열쇠가 했다. 내가 브라우저→깃허브 직접 올리기를 새로 넣으면서 없던
+#       권한이 필요해진 것이다. → 그 설계를 되돌렸다.
+#       이제 파일은 클라우드플레어 보관함(KV)을 거치고, 깃허브 쓰기는 없다.
 _js = (ROOT / "admin" / "worker.js").read_text(encoding="utf-8")
-ck("올리기 전에 권한을 미리 알아본다", "permCheck" in _js and "api/can-write" in _js,
+ck("올릴 수 있는 상태인지 미리 알아본다", "permCheck" in _js and "api/can-write" in _js,
    "몇십 MB 를 다 올린 뒤 영어 오류를 보게 하면 안 된다")
-ck("권한 안내가 들어갈 자리가 있다", 'id="permwarn"' in ep1)
-ck("권한이 없으면 올리기를 막는다", "CANWRITE === false" in _js)
-ck("403 을 사람 말로 바꿔 준다", "contents-write" in _js and "Read and write" in _js)
-# 설정 안내가 Contents=Read 라고 잘못 적혀 있던 것이 애초 원인이다
-for _f in (".github/workflows/deploy-admin.yml", "admin/wrangler.toml"):
+ck("안내가 들어갈 자리가 있다", 'id="permwarn"' in ep1)
+ck("준비가 안 됐으면 올리기를 막는다", "CANWRITE === false" in _js)
+ck("올린 파일은 보관함으로 간다", "blobPutStream" in _js and "'/api/blob'" in _js,
+   "깃허브에 직접 얹으면 읽기 전용 토큰에서 403 이 난다")
+ck("보관함이 있으면 깃허브 쓰기를 안 묻는다", "if (bin(env)) return Response.json({ ok: true" in _js)
+ck("막혔을 때 화면에서 바로 고친다", "setupBlob" in _js and "'/api/setup-blob'" in _js,
+   "손님을 깃허브로 보내면 안 된다 (그러지 말라고 하셨다)")
+# ⭐ 어디에도 "깃허브 가서 Contents 권한을 쓰기로 바꾸라" 는 말이 남으면 안 된다.
+#    (actions 권한은 처음 한 번 만든 것이라 그대로 둔다 — 그건 이미 있다)
+# ⚠️ 그물이 너무 넓으면 "actions: read+write" (그건 원래 있어야 한다) 까지
+#    걸어 버린다. Contents **바로 뒤에** 쓰기가 붙은 것만 잡는다.
+_NAG = re.compile(r"[Cc]ontents\s*(?:=|:|을|를)?\s*[*\[]{0,2}\s*[Rr]ead\s*(?:and|\+)\s*write")
+for _f in ("admin/worker.js", ".github/workflows/deploy-admin.yml", "admin/wrangler.toml"):
     _t = (ROOT / _f).read_text(encoding="utf-8")
-    ck(f"{_f}: 토큰 권한을 쓰기까지 적어 뒀다",
-       "Contents = Read and write" in _t or "read+write" in _t,
-       "여기가 Read 로만 적혀 있어서 처음부터 어긋났다")
+    ck(f"{_f}: Contents 권한을 바꾸라고 시키지 않는다", not _NAG.search(_t),
+       "운영자는 깃허브에서 아무것도 하지 않는다")
+# 브라우저에 뜨는 글에 토큰 설정 링크가 있으면 안 된다
+ck("화면이 토큰 설정 페이지로 보내지 않는다", "personal-access-tokens" not in _js,
+   "관리자 페이지가 유일한 조작 화면이다")
 
 ck("압축파일 고르는 칸이 있다", 'id="clipzip"' in ep1 and 'accept=".zip' in ep1)
 ck("올리기 단추가 있다", "upClips()" in ep1)

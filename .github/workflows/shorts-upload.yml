@@ -26,6 +26,10 @@ on:
           - '비공개 (나만 보기)'
           - '일부 공개 (링크 있는 사람만)'
           - '전체 공개'
+      meta:
+        description: '올릴 글의 주소 (관리자 페이지가 채웁니다 · 비우면 릴리스/대본에서 찾습니다)'
+        required: false
+        default: ''
       mode:
         description: '연습이면 올리지 않고 되는지만 봅니다'
         required: true
@@ -53,6 +57,10 @@ jobs:
       YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
       SID: ${{ inputs.sid }}
       EPNO: ${{ inputs.ep }}
+      # ⭐ 2026-08-22 — 화면에서 확인·수정한 글은 이제 관리자 페이지 보관함에 있다.
+      #    주소만 넘어오고, 받아 갈 때 쓰는 암호는 이미 등록해 둔 ADMIN_PASSWORD 다.
+      META: ${{ inputs.meta }}
+      ADMIN_PASS: ${{ secrets.ADMIN_PASSWORD }}
 
     steps:
       - uses: actions/checkout@v4
@@ -68,7 +76,18 @@ jobs:
           mkdir -p build
           python3 tools/release_file.py get "short-${SID}-ep${EP}" short.mp4 build/short.mp4
           # 관리자 페이지에서 고친 글이 있으면 그것을, 없으면 대본에서 만든다
-          if python3 tools/release_file.py get "short-${SID}-ep${EP}" meta.json build/meta.json; then
+          GOT=""
+          if [ -n "${META:-}" ]; then
+            case "$META" in
+              https://*.workers.dev/*) : ;;
+              *) echo "❌ 모르는 주소입니다. 받지 않습니다."; exit 1 ;;
+            esac
+            curl -fsSL --retry 3 --retry-delay 2 \
+              -H "x-vt-pass: ${ADMIN_PASS}" "$META" -o build/meta.json && GOT=1
+          fi
+          if [ -n "$GOT" ]; then
+            echo "화면에서 확인한 글을 그대로 씁니다"
+          elif python3 tools/release_file.py get "short-${SID}-ep${EP}" meta.json build/meta.json; then
             echo "화면에서 확인한 글을 그대로 씁니다"
           else
             echo "올릴 글이 없어 대본에서 만듭니다"

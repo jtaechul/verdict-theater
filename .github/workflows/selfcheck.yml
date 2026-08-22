@@ -144,6 +144,16 @@ jobs:
           # ⚠️ 문법은 멀쩡한데 **없는 것을 워크플로에 넘기는** 실수를 잡는다
           node tools/check_scope.mjs
           node tools/check_fold.mjs
+          # ⭐ 2026-08-22 — 올린 영상이 보관함을 거쳐 한 바이트도 안 틀리고
+          #    워크플로까지 가는가. 깃허브에 쓰려 들면 여기서 걸린다.
+          node tools/blob_test.mjs
+
+      - name: 워크플로에 넘기는 값 이름이 저쪽에 있는가
+        run: |
+          python3 -m pip install --quiet PyYAML
+          # ⚠️ 워크플로가 안 받겠다는 이름을 넘기면 깃허브가 422 로 통째로 거절한다.
+          #    화면에는 그냥 "실패" 로만 보여 눈으로는 못 잡는다.
+          python3 tools/dispatch_input_check.py
 
       - name: 워크플로 문법 + 관리자 버튼이 실제로 눌리는가
         run: |

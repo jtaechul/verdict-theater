@@ -23,6 +23,14 @@ on:
         description: '몇 컷만 시험 (비우면 5컷 전체)'
         required: false
         default: ''
+      blob:
+        description: '올린 압축파일 주소 (관리자 페이지가 채웁니다 · 비우면 릴리스에서 찾습니다)'
+        required: false
+        default: ''
+      voice:
+        description: '골라 둔 목소리 주소 (관리자 페이지가 채웁니다)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -49,6 +57,12 @@ jobs:
       SID: ${{ inputs.sid }}
       EPNO: ${{ inputs.ep }}
       CUT: ${{ inputs.cut }}
+      # ⭐ 2026-08-22 — 관리자 페이지가 올린 압축파일은 이제 깃허브가 아니라
+      #    클라우드플레어 보관함에 있다. 주소만 여기로 넘어온다.
+      #    받아 갈 때 쓰는 암호는 이미 등록해 둔 ADMIN_PASSWORD 그대로다.
+      BLOB: ${{ inputs.blob }}
+      VOICE: ${{ inputs.voice }}
+      ADMIN_PASS: ${{ secrets.ADMIN_PASSWORD }}
 
     steps:
       - uses: actions/checkout@v4
@@ -71,6 +85,9 @@ jobs:
           # ⚠️ 저장소에 이미 있으면 그것이 최신이다. 릴리스 것으로 덮지 않는다.
           if [ -s state/voice.json ]; then
             echo "저장소에 골라 둔 것이 있다: $(cat state/voice.json)"
+          elif [ -n "${VOICE:-}" ]; then
+            curl -fsSL -H "x-vt-pass: ${ADMIN_PASS}" "$VOICE" -o state/voice.json \
+              && echo "관리자 페이지에서 골라 둔 것을 받았다: $(cat state/voice.json)"
           else
             python3 tools/release_file.py get voicepick chosen.json state/voice.json \
               || echo "골라 둔 것이 없다 — 정해 둔 목소리로 간다"
@@ -87,7 +104,19 @@ jobs:
           if [ -n "$CUT" ]; then SUF="-cut${CUT}"; fi
           echo "SUF=$SUF" >> "$GITHUB_ENV"
           mkdir -p build/in
-          python3 tools/release_file.py get "clips-${SID}-ep${EP}${SUF}" clips.zip build/clips.zip
+          # ⭐ 관리자 페이지에서 올렸으면 주소가 넘어온다. 거기서 받는다.
+          #    ⚠️ 아무 주소나 받지 않는다 — 우리 보관함(workers.dev)만 받는다.
+          if [ -n "${BLOB:-}" ]; then
+            case "$BLOB" in
+              https://*.workers.dev/*) : ;;
+              *) echo "❌ 모르는 주소입니다. 받지 않습니다."; exit 1 ;;
+            esac
+            echo "관리자 페이지 보관함에서 받는다"
+            curl -fsSL --retry 3 --retry-delay 2 \
+              -H "x-vt-pass: ${ADMIN_PASS}" "$BLOB" -o build/clips.zip
+          else
+            python3 tools/release_file.py get "clips-${SID}-ep${EP}${SUF}" clips.zip build/clips.zip
+          fi
           unzip -q -o build/clips.zip -d build/in
           echo "받은 영상:"
           find build/in -type f \( -iname '*.mp4' -o -iname '*.mov' -o -iname '*.m4v' \) \
