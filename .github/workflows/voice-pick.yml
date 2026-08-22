@@ -19,6 +19,11 @@ on:
         description: '이 목소리들만 (쉼표로, 비우면 전부)'
         required: false
         default: ''
+  # ⭐ 표식 파일(.trigger/voicepick)이 바뀌면 자동으로 돈다.
+  #    버튼을 못 누르는 자리(예: 클로드)에서도 이걸 건드려 돌릴 수 있다.
+  push:
+    paths:
+      - '.trigger/voicepick'
 
 permissions:
   contents: write
@@ -53,6 +58,14 @@ jobs:
           set -o pipefail
           python3 src/tts.py --audition build/pick --only "$ONLY" 2>&1 | tee pick.log
 
+      # ⭐⭐ 2026-08-22 운영자: "니가 알아서 기준과 알고리즘을 만들어서 잘 골라봐."
+      #    나는 귀가 없으니 **재서** 고른다. 무엇을 재는지는 voice_judge.py 머리에.
+      - name: 재서 점수 매기고 고르기
+        run: |
+          set -o pipefail
+          python3 tools/voice_judge.py --dir build/pick \
+            --out state/voice_rank.json --pick state/voice.json 2>&1 | tee judge.log
+
       - name: 릴리스에 올리기
         run: |
           set -euo pipefail
@@ -61,6 +74,27 @@ jobs:
             python3 tools/release_file.py put voicepick "$(basename "$f")" "$f"
           done
           python3 tools/release_file.py put voicepick list.json build/pick/list.json
+          # 고른 결과도 함께 — 관리자 페이지가 이걸 보고 ✅ 를 찍는다
+          cp state/voice.json build/chosen.json
+          python3 tools/release_file.py put voicepick chosen.json build/chosen.json
+          python3 tools/release_file.py put voicepick rank.json state/voice_rank.json
+
+      # ⚠️ 고른 결과는 **저장소에 남긴다.** 릴리스에만 두면 다음에 영상을 만들 때
+      #    내려받아야 하는데, 저장소에 있으면 그냥 읽힌다. 작은 글 파일이라
+      #    커밋해도 된다 (커밋 금지는 완성 영상 이야기다).
+      - name: 고른 결과를 저장소에 남기기
+        run: |
+          set -euo pipefail
+          git config user.name "verdict-theater-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add state/voice.json state/voice_rank.json
+          if git diff --cached --quiet; then
+            echo "바뀐 것이 없다"
+          else
+            git commit -m "목소리: 재서 고른 결과 [skip ci]"
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
 
       - name: 결과 화면
         if: always()
@@ -69,6 +103,7 @@ jobs:
             echo "## 목소리 고르기"
             echo ""
             echo '```'
-            tail -n 40 pick.log 2>/dev/null || echo "기록 없음"
+            tail -n 45 judge.log 2>/dev/null || tail -n 20 pick.log 2>/dev/null \
+              || echo "기록 없음"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
