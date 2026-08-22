@@ -150,6 +150,7 @@ def list_voices():
                f"?languageCode=ko-KR&key={k}")
         with urllib.request.urlopen(url, timeout=30) as r:
             got = json.loads(r.read().decode("utf-8"))
+            usage_add(model, got.get("usageMetadata"))
         _VOICES = [(v.get("name", ""), (v.get("ssmlGender") or "").upper())
                    for v in (got.get("voices") or [])
                    if str(v.get("name", "")).startswith("ko-KR")]
@@ -480,6 +481,30 @@ class CapReached(RuntimeError):
     """이번 실행에서 부를 수 있는 횟수를 다 썼다."""
 
 
+# ⭐⭐ 2026-08-22 — 운영자가 실제 청구서를 보여 줬다. 28일에 **38,200원**.
+#    나는 "16화 전체 210원" 이라고 말했다. **내 계산이 틀렸다.**
+#    글자 수로 값을 매겼는데(100만 자당 30달러), 제미나이는 **토큰**으로 센다.
+#    소리 1초에 토큰이 몇 개인지 나는 모른다 — 그래서 추정이 통째로 빗나갔다.
+#    → 이제 **추측하지 않는다.** 구글이 응답에 실어 주는 usageMetadata 를
+#      그대로 모아서, 실제 토큰 수로 값을 매긴다.
+_USAGE = {"in": 0, "out": 0, "model": ""}
+
+
+def usage_add(model, u):
+    """구글이 알려 준 토큰 수를 그대로 모은다."""
+    if not u:
+        return
+    _USAGE["in"] += int(u.get("promptTokenCount") or 0)
+    _USAGE["out"] += int(u.get("candidatesTokenCount")
+                         or u.get("responseTokenCount") or 0)
+    if model:
+        _USAGE["model"] = str(model)
+
+
+def usage_so_far():
+    return dict(_USAGE)
+
+
 def count_call():
     _CALLS["n"] += 1
     if _CALLS["n"] > call_cap():
@@ -502,15 +527,28 @@ def bill_add(model, text):
 
 
 def bill_flush(note=""):
-    """모아 둔 것을 장부에 한 줄로 적는다. 돌려주는 것은 원."""
+    """모아 둔 것을 장부에 한 줄로 적는다. 돌려주는 것은 원.
+
+    ⚠️ 2026-08-22 — 글자 수로 매기던 것을 버린다. 구글이 알려 준 **토큰 수**가
+       있으면 그것으로 매기고, 없을 때만 (글자 수로) 넉넉히 어림한다.
+       내 어림이 실제의 몇십 분의 일이었다.
+    """
     n, m = _USED["chars"], _USED["model"]
-    if not n:
+    u_in, u_out = _USAGE["in"], _USAGE["out"]
+    if not n and not u_out:
         return 0.0
     _USED["chars"] = 0
+    _USAGE["in"] = _USAGE["out"] = 0
     try:
         import cost as _c
-        won = _c.voice_krw(m, n)
-        _c.record("목소리", won, f"{n}자 · {m} {note}".strip())
+        if u_out:
+            won = _c.krw(m or _USAGE["model"], u_in, u_out)
+            _c.record("목소리", won,
+                      f"토큰 들어간 {u_in:,} · 나온 {u_out:,} · {m} {note}".strip())
+            print(f"    (구글이 센 토큰: 들어간 {u_in:,} · 나온 {u_out:,})")
+        else:
+            won = _c.voice_krw(m, n)
+            _c.record("목소리", won, f"{n}자(어림) · {m} {note}".strip())
         return won
     except Exception as e:                                   # noqa: BLE001
         print(f"    (목소리 값을 장부에 못 적었다: {e} — 제작은 계속한다)")

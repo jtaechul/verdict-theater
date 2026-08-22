@@ -284,9 +284,14 @@ finally:
 # 값을 미리 알려 주는가 (26개를 만들면 얼마인가)
 import cost as _cost                                           # noqa: E402
 _n = len(T.GEM_F) * len(T.AUD_F) + len(T.GEM_M) * len(T.AUD_M)
-ck(_cost.voice_krw("gemini-2.5-flash-tts", _n) < 60,
-   "26개를 다 만들어도 몇십 원 안쪽이다",
-   f"{_cost.voice_krw('gemini-2.5-flash-tts', _n):.0f}원 ({_n}자)")
+# ⚠️⚠️ 2026-08-22 — 예전엔 "몇십 원 안쪽이면 통과" 로 봤다. **내 틀린 믿음을
+#    시험에 박아 둔 것**이다. 실제 청구는 28일에 38,200원이었고, 나는
+#    "16화 210원" 이라고 말했다. 값싼 쪽으로 잡으면 한도가 안 걸린다.
+#    → 어림값은 **넉넉한 쪽**이어야 한다. 싸게 잡히면 그게 잘못이다.
+ck(_cost.voice_krw("gemini-2.5-flash-tts", _n) > 30,
+   "어림값이 너무 싸게 잡히지 않는다",
+   f"{_cost.voice_krw('gemini-2.5-flash-tts', _n):.0f}원 ({_n}자) — "
+   "싸게 잡으면 한도가 막는 시늉만 한다")
 
 # ── ④-1b 구글 클라우드 쪽 제미나이 목소리 ─────────────
 #    왜 이 길이 필요한가: AI 스튜디오 무료 등급은 **하루 10번**이라 한 화도
@@ -380,14 +385,14 @@ T.bill_add("gemini-2.5-flash-tts", "당신 진짜 제정신이야?!")     # 13�
 T.bill_add("gemini-2.5-flash-tts", "더는 숨 막혀서 못 살아.")    # 13자
 ck(T._USED["chars"] == 27, "글자를 모아 센다", str(T._USED["chars"]))
 _w = T.bill_flush("시험")
-ck(0 < _w < 5, "한 컷 값이 몇 원 안 된다", f"{_w:.2f}원")
+ck(_w > 0, "장부에 값이 적힌다", f"{_w:.2f}원")
 ck(T._USED["chars"] == 0, "적고 나면 비운다 (두 번 세지 않는다)")
 ck(T.bill_flush("시험") == 0.0, "곧바로 다시 적지 않는다")
 
 # ⚠️ 한 마디마다 적으면 반올림 때문에 한 화가 실제보다 훨씬 비싸게 적힌다.
 #    모아서 한 줄로 적는 까닭이 이것이다.
 _ep = _C.voice_krw("gemini-2.5-flash-tts", 300)              # 한 화 대사 300자쯤
-ck(5 < _ep < 40, "한 화 값이 몇십 원 안쪽이다", f"{_ep:.1f}원")
+ck(_ep > 20, "한 화 어림값이 너무 싸게 잡히지 않는다", f"{_ep:.1f}원")
 ck(_C.voice_krw("듣도보도 못한 목소리", 300) > _ep,
    "모르는 목소리는 더 비싸게 친다 (적게 잡으면 한도가 막는 시늉만 한다)")
 ck(not _led_keep.exists() or "시험" not in _led_keep.read_text(encoding="utf-8"),
