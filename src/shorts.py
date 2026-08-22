@@ -750,22 +750,77 @@ def episode(sid, no, clips_dir, out_dir):
     return final
 
 
+def one(clip, sid, no, cut, hook, sub, out_dir):
+    """클립 **하나**로 쇼츠를 만들어 본다 — 한 화 만들 때와 똑같은 차례로.
+
+    ⚠️⚠️ 2026-08-21 사고 — 예전에 여기서 compose() 만 불렀다. 그러면 소리를
+       **안 갈아 끼운다.** 그런데 화면은 멀쩡히 나오니 다 된 줄 알고 운영자에게
+       보냈고, 운영자는 한동안 플로우가 만든 외국인 같은 소리를 듣고 있었다.
+       미리보기가 진짜와 다른 길로 가면, 미리보기는 거짓말이 된다.
+       → 여기서도 episode() 와 **똑같이** ① 잘라내기 ② 소리 갈아 끼우기
+         ③ 자막·크롭 을 다 한다.
+    """
+    clip = Path(clip)
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    tmp = out_dir / "_tmp"
+    turns, voices = [], {}
+    if sid and no and cut:
+        # 대본에서 이 컷의 후킹·자막·대사를 그대로 가져온다
+        doc = json.loads((ROOT / "data" / "series" / f"{sid}.json")
+                         .read_text(encoding="utf-8"))
+        ep = next((e for e in doc["episodes"]
+                   if int(e.get("no", 0)) == int(no)), None)
+        if not ep:
+            raise SystemExit(f"❌ {sid} 에 {no}화가 없다")
+        c = next((x for x in ep["cuts"] if int(x["n"]) == int(cut)), None)
+        if not c:
+            raise SystemExit(f"❌ {no}화에 {cut}컷이 없다")
+        hook = hook or hook_of(ep, doc)
+        sub = sub or c.get("subtitle") or ""
+        turns = dia_turns(c.get("prompt"))
+        voices = tts.pick_voices(doc.get("characters"))
+        print(f"{sid} {no}화 {cut}컷 「{ep.get('title','')}」")
+    print(f"  후킹 문구: {hook}")
+    for who, text in turns:
+        print(f"    {who}: {text}")
+
+    # ⭐ ① 앞뒤 죽은 시간부터 잘라 낸다
+    src = trim_dead(clip, tmp / "tight.mp4")
+    # ⭐ ② 소리를 갈아 끼운다
+    if not turns:
+        print("  ⚠️ 대사를 못 찾아 **원래 소리를 그대로 쓴다.**\n"
+              "     --sid S001 --no 1 --cut 1 처럼 어느 컷인지 알려 주면 갈아 끼운다")
+    elif not tts.key():
+        print("  ⚠️ 목소리 열쇠가 없어 **원래 소리를 그대로 쓴다** —\n"
+              "     GEMINI_API_KEY 나 GOOGLE_TTS_KEY 가 있어야 한다")
+    else:
+        print(f"  🎙 목소리를 갈아 끼운다 — {tts.engine_note()}")
+        dubbed = tmp / "ko.mp4"
+        if dub(src, turns, voices, dubbed, tmp):
+            src = dubbed
+        else:
+            print("  ⚠️ 갈아 끼우기가 안 됐다 — 원래 소리가 그대로 나간다")
+    # ⭐ ③ 그 다음에 자막·크롭을 얹는다
+    out = out_dir / (clip.stem + "_short.mp4")
+    compose(src, hook, sub, out, tmp)
+    print(f"\n✅ {out} — {C.probe(out)[2]:.1f}초 · 소리 {gain_for(out):+.1f}dB")
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("sid", nargs="?", default="")
     ap.add_argument("no", nargs="?", default="")
     ap.add_argument("--clips", default="build/clips")
     ap.add_argument("--out", default="build/shorts")
-    ap.add_argument("--demo", default="", help="클립 하나로 배치만 미리 본다")
+    ap.add_argument("--demo", default="", help="클립 하나로 쇼츠를 만들어 본다")
+    ap.add_argument("--cut", default="", help="--demo 때 몇 컷인지 (대사를 가져온다)")
     ap.add_argument("--hook", default="")
     ap.add_argument("--sub", default="")
     a = ap.parse_args()
     if a.demo:
-        out = Path(a.out) / (Path(a.demo).stem + "_short.mp4")
-        out.parent.mkdir(parents=True, exist_ok=True)
-        compose(a.demo, a.hook, a.sub, out, Path(a.out) / "_tmp")
-        print(f"✅ {out}")
-        return 0
+        return one(a.demo, a.sid, a.no, a.cut, a.hook, a.sub, a.out)
     if not a.sid or not a.no:
         ap.error("시리즈 번호와 화 번호를 달라 (예: S001 1)")
     episode(a.sid, a.no, a.clips, a.out)
