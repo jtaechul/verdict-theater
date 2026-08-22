@@ -415,7 +415,40 @@ def cloud_gem_say(text, voice, out, style=None):
         except Exception:                                    # noqa: BLE001
             pass
         raise RuntimeError(msg[:300]) from None
+    bill_add(cloud_model(), text)
     return _write(got, out)
+
+
+# ⭐⭐ 2026-08-22 — 쓴 값을 장부에 남긴다.
+#    무료 등급(하루 10번)에서 결제 계정으로 옮긴 순간부터 쓴 만큼 값이 나가는데,
+#    장부에 한 줄도 안 남고 있었다. 그림값이 새어 나가던 것과 똑같은 자리다.
+#
+#    ⚠️ 한 마디마다 적지 않고 **모아서 한 줄로** 적는다. 한 마디는 1원도 안 되는데
+#       줄마다 반올림하면 15줄짜리 한 화가 실제보다 훨씬 비싸게 적힌다.
+_USED = {"chars": 0, "model": ""}
+
+
+def bill_add(model, text):
+    """만든 글자 수를 모아 둔다 (아직 장부에는 안 적는다)."""
+    _USED["chars"] += len(str(text or ""))
+    if model:
+        _USED["model"] = str(model)
+
+
+def bill_flush(note=""):
+    """모아 둔 것을 장부에 한 줄로 적는다. 돌려주는 것은 원."""
+    n, m = _USED["chars"], _USED["model"]
+    if not n:
+        return 0.0
+    _USED["chars"] = 0
+    try:
+        import cost as _c
+        won = _c.voice_krw(m, n)
+        _c.record("목소리", won, f"{n}자 · {m} {note}".strip())
+        return won
+    except Exception as e:                                   # noqa: BLE001
+        print(f"    (목소리 값을 장부에 못 적었다: {e} — 제작은 계속한다)")
+        return 0.0
 
 
 def route_note():
@@ -644,6 +677,7 @@ def gem_say(text, voice, out, style=None):
                     break
                 if lvl:
                     print(f"    ⚠️ {WAY_NOTE[lvl]}")
+                bill_add(model, text)
                 return _pcm_wav(pcm, out, rate)
             if dead:
                 break
@@ -753,6 +787,7 @@ def google_say(text, voice, rate, pitch, out):
             except urllib.error.HTTPError as e2:
                 e, raw0 = e2, e2.read().decode("utf-8", "replace")
             else:
+                bill_add(voice, text)
                 return _write(got, out)
         msg = raw0
         # ⚠️ 구글이 왜 거절했는지 그대로 알려 준다. 안 그러면 "실패" 세 글자만
@@ -763,6 +798,7 @@ def google_say(text, voice, rate, pitch, out):
             pass
         raise RuntimeError(f"{explain(e.code, msg)}\n"
                            f"   (구글이 보낸 말: {msg[:200]})")
+    bill_add(voice, text)
     return _write(got, out)
 
 
@@ -943,8 +979,12 @@ def sample(sid, no, out, gap=0.45):
 
     # 어떤 목소리로 만들었는지 옆에 적어 둔다 — 관리자 페이지가 이걸 보여 준다.
     who_v = ", ".join(f"{w}={voices.get(w) or '?'}" for w, _ in turns)
+    won = bill_flush(f"{sid} {no}화 견본")
+    if won:
+        print(f"  💰 목소리 값 {won:.1f}원")
     (out.parent / "voice.txt").write_text(
-        f"{engine_note()}\n{who_v}\n", encoding="utf-8")
+        f"{engine_note()}\n{who_v}\n"
+        + (f"이 견본에 든 값 {won:.1f}원\n" if won else ""), encoding="utf-8")
     return out
 
 

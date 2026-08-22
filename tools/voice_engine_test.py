@@ -274,6 +274,43 @@ try:
 finally:
     T.cloud_gem_say, T.gkey, T._CLOUD_GEM_OK = _rc, _rk, None
 
+# ── ④-1c 쓴 값이 장부에 남는가 ────────────────────────
+#    ⚠️ 2026-08-22 — 여기가 통째로 비어 있었다. 그림값이 새어 나가던 것과
+#       똑같은 자리다. 무료 등급일 때는 안 보이다가 결제를 걸면 새어 나간다.
+print("\n④-1c 쓴 값이 장부에 남는가")
+_src_t = (Path(T.__file__)).read_text(encoding="utf-8")
+for _fn in ("cloud_gem_say", "gem_say", "google_say"):
+    _i = _src_t.index(f"def {_fn}(")
+    _j = min((x for x in (_src_t.find("\ndef ", _i + 10),) if x > 0), default=len(_src_t))
+    ck("bill_add(" in _src_t[_i:_j], f"{_fn} 가 쓴 글자를 센다",
+       "안 세면 그 길로 나간 값이 장부에 안 남는다")
+
+# ⚠️ 시험이 **진짜 장부**를 건드리면 안 된다. 안 쓴 돈이 적히면 한도가
+#    엉뚱하게 차오른다 (처음에 실제로 그랬다). 딴 데다 적게 해 둔다.
+import cost as _C                                            # noqa: E402
+_led_keep = _C.LEDGER
+_C.LEDGER = Path(tempfile.mkdtemp()) / "spend.json"
+
+T._USED["chars"] = 0
+ck(T.bill_flush("빈손") == 0.0, "만든 게 없으면 장부에 안 적는다")
+T.bill_add("gemini-2.5-flash-tts", "당신 진짜 제정신이야?!")     # 13자
+T.bill_add("gemini-2.5-flash-tts", "더는 숨 막혀서 못 살아.")    # 13자
+ck(T._USED["chars"] == 27, "글자를 모아 센다", str(T._USED["chars"]))
+_w = T.bill_flush("시험")
+ck(0 < _w < 5, "한 컷 값이 몇 원 안 된다", f"{_w:.2f}원")
+ck(T._USED["chars"] == 0, "적고 나면 비운다 (두 번 세지 않는다)")
+ck(T.bill_flush("시험") == 0.0, "곧바로 다시 적지 않는다")
+
+# ⚠️ 한 마디마다 적으면 반올림 때문에 한 화가 실제보다 훨씬 비싸게 적힌다.
+#    모아서 한 줄로 적는 까닭이 이것이다.
+_ep = _C.voice_krw("gemini-2.5-flash-tts", 300)              # 한 화 대사 300자쯤
+ck(5 < _ep < 40, "한 화 값이 몇십 원 안쪽이다", f"{_ep:.1f}원")
+ck(_C.voice_krw("듣도보도 못한 목소리", 300) > _ep,
+   "모르는 목소리는 더 비싸게 친다 (적게 잡으면 한도가 막는 시늉만 한다)")
+ck(not _led_keep.exists() or "시험" not in _led_keep.read_text(encoding="utf-8"),
+   "시험이 진짜 장부를 안 건드린다")
+_C.LEDGER = _led_keep
+
 # ── ④-2 막히거나 한도에 걸렸을 때 물러서는가 ─────────
 #    ⚠️ 이건 머리로 지어낸 시험이 아니다. 진짜로 걸어 보고 겪은 것만 담았다 —
 #       · 같은 대사가 어떤 때는 SAFETY 로 막혔다 (막장 드라마 대사라 그렇다)

@@ -746,7 +746,9 @@ def episode(sid, no, clips_dir, out_dir):
     if p.returncode != 0:
         raise RuntimeError(f"이어 붙이기 실패:\n{p.stderr[:400]}")
     total = sum(C.probe(p)[2] for p in parts)
-    print(f"\n✅ {final.name} — {len(parts)}컷 · {total:.1f}초")
+    won = tts.bill_flush(f"{sid} {no}화")
+    print(f"\n✅ {final.name} — {len(parts)}컷 · {total:.1f}초"
+          + (f" · 목소리 값 {won:.0f}원" if won else ""))
     return final
 
 
@@ -804,7 +806,9 @@ def one(clip, sid, no, cut, hook, sub, out_dir):
     # ⭐ ③ 그 다음에 자막·크롭을 얹는다
     out = out_dir / (clip.stem + "_short.mp4")
     compose(src, hook, sub, out, tmp)
-    print(f"\n✅ {out} — {C.probe(out)[2]:.1f}초 · 소리 {gain_for(out):+.1f}dB")
+    won = tts.bill_flush(f"{sid or '?'} {no or '?'}화 {cut or '?'}컷 시험")
+    print(f"\n✅ {out} — {C.probe(out)[2]:.1f}초 · 소리 {gain_for(out):+.1f}dB"
+          + (f" · 목소리 값 {won:.0f}원" if won else ""))
     return 0
 
 
