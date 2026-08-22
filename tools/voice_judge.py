@@ -242,7 +242,7 @@ def hear(items, text):
     return out
 
 
-def rank_once(items, order):
+def rank_once(items, order, text):
     """한 번 줄 세우게 한다. 돌려주는 것: [원래자리…] 좋은 것부터.
 
     ⚠️ **목소리 이름을 감춘다.** 이름을 보여 주면 이름값으로 판단할 수 있다.
@@ -326,7 +326,7 @@ def rank_many(items, text, rounds=ROUNDS):
         if t % 2:
             order = order[::-1]
         try:
-            r = rank_once(items, order)
+            r = rank_once(items, order, text)
             runs.append(r)
             why.append({"round": t + 1, "ok": True,
                         "order": [items[k]["voice"] for k in r]})

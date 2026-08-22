@@ -70,6 +70,47 @@ ck("하나만 어긋나면 가운데보다 높다",
    0.7 < V.agree([0, 1, 2, 3], [0, 2, 1, 3]) < 1.0)
 ck("뒤죽박죽이면 반쯤", 0.2 < V.agree([0, 1, 2, 3, 4], [2, 0, 4, 1, 3]) < 0.8)
 
+print("\n②-4 줄 세우기 배선이 실제로 이어져 있는가 (제미나이는 안 부른다)")
+# ⚠️⚠️ 2026-08-22 — 5차가 여기서 죽었다. rank_once 안에서 대사(text)를 쓰는데
+#    **넘겨주는 것을 빠뜨렸다** (name 'text' is not defined). 문법은 멀쩡하고
+#    py_compile 도 통과한다 — 실제로 불러 봐야만 드러난다.
+#    → 가짜 답으로 한 바퀴 돌려 배선을 확인한다.
+tone("sine=frequency=200:duration=1:sample_rate=8000", tmp / "any.wav")
+_items = [{"path": str(tmp / "any.wav"), "voice": f"V{i}"} for i in range(4)]
+_asked = []
+
+
+def _fake_ask(parts, tries=4, schema=None):
+    _asked.append(schema)
+    n = sum(1 for p in parts if "inline_data" in p)
+    return {"order": list(range(n, 0, -1))}          # 늘 거꾸로 준다
+
+
+_real = V.ask
+V.ask = _fake_ask
+try:
+    _r = V.rank_once(_items, [0, 1, 2, 3], "당신 진짜 제정신이야?!")
+    ck("한 바퀴가 끝까지 돈다", _r == [3, 2, 1, 0], str(_r))
+    ck("답의 모양을 못 박아서 보낸다", _asked and _asked[-1] is V.ORDER_SCHEMA)
+    _m, _ag, _why = V.rank_many(_items, "당신 진짜 제정신이야?!", rounds=3)
+    ck("세 번 다 받아 온다", all(w.get("ok") for w in _why),
+       str([w.get("why", "") for w in _why if not w.get("ok")])[:120])
+    ck("평균 자리가 나온다", len(_m) == 4, str(_m))
+    ck("일치도가 숫자로 나온다", isinstance(_ag, float), str(_ag))
+finally:
+    V.ask = _real
+
+# 들려준 차례를 그대로 돌려주면 '고른 것이 아니다' 로 본다
+V.ask = lambda parts, tries=4, schema=None: {"order": [1, 2, 3, 4]}
+try:
+    try:
+        V.rank_once(_items, [0, 1, 2, 3], "가")
+        ck("받아 적기만 한 답을 걸러낸다", False, "그냥 통과시켰다")
+    except RuntimeError as e:
+        ck("받아 적기만 한 답을 걸러낸다", "그대로" in str(e), str(e)[:60])
+finally:
+    V.ask = _real
+
 print("\n③ 억양 폭을 진짜로 재는가 (아는 소리로 맞춰 본다)")
 flat = V.f0_spread(tone("sine=frequency=200:duration=2:sample_rate=8000",
                         tmp / "flat.wav"))
