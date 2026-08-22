@@ -138,7 +138,8 @@ d["episodes"][7]["cuts"][4]["prompt"] = good_prompt("None.").replace(
 ck("앞에 이름이 있는 she 는 통과시킨다", S.check(d) == [], str(S.check(d))[:60])
 
 print("\n⑤ 우리가 모델에게 준 예시가 우리 검사를 통과하는가")
-import json, re
+import json
+import re
 raw = (ROOT / "prompts" / "series_gen.md").read_text(encoding="utf-8")
 ex = json.loads('"' + raw.split('"prompt": "')[1].split('"\n')[0] + '"')
 d = good_doc()
@@ -671,6 +672,65 @@ ck("말하기 속도가 실측 범위 안인가", 6.0 <= S.SYL_PER_SEC <= 7.0,
    f"초당 {S.SYL_PER_SEC}음절")
 ck("음절 세기가 공백·쉼표를 빼는가", S.syl("여기가 어디라고 뻔뻔하게 와?") == 12,
    f"{S.syl('여기가 어디라고 뻔뻔하게 와?')}음절 (글자로는 16자)")
+
+# ⑩ 옷과 배경이 컷 사이에서 안 바뀌는가 (2026-08-22 운영자 지적)
+#
+# ⚠️ 운영자: "프롬프트에서 자꾸 옷이랑 뒤에 배경이 바뀌어."
+#    CONTINUITY 줄은 이미 "same clothes, same room" 이라고 말하고 있었다.
+#    **플로우는 앞 컷을 기억하지 못하므로 그 말은 아무 정보도 못 준다.**
+#    까닭은 말이 뭉뚱그려진 것이었다 — `a casual jacket` 은 아무 자켓이나 된다.
+#    → 색·소재·가구까지 못 박고, 그 글자가 컷 사이에 **똑같은지** 본다.
+print("\n⑩ 옷과 배경이 컷 사이에서 안 바뀌는가")
+_doc = json.loads((ROOT / "data" / "series" / "S001.json").read_text(encoding="utf-8"))
+
+
+def _line(cut, tag):
+    return next((l for l in (cut.get("prompt") or "").split("\n")
+                 if l.startswith(tag)), "")
+
+
+_vague = []
+_by_place, _by_who = {}, {}
+for _e in _doc.get("episodes") or []:
+    for _c in _e.get("cuts") or []:
+        _su, _st = _line(_c, "SUBJECT:"), _line(_c, "SETTING:")
+        if S.VAGUE.search(_su):
+            _vague.append(f"{_e.get('no')}화 {_c['n']}컷: {_su[:60]}")
+        # 같은 장소 → SETTING 이 글자 그대로 같아야 한다
+        _key = _st.split("—")[0].strip().lower()
+        _by_place.setdefault(_key, set()).add(_st)
+        # 같은 인물 → 그 화 안에서 옷 글자가 같아야 한다
+        # ⚠️ 여기서 ` facing ` 을 넘어가면 안 된다. 옷 설명이 **다음 사람까지**
+        #    삼켜서, 같은 옷인데도 다르다고 나온다 (fix_outfits 주석에 적혀 있던
+        #    바로 그 실수를 시험에서 되풀이했다).
+        for _m in re.finditer(
+                r"\b(?:the )?(\w[\w ]*?) wearing (.+?)(?=\s+facing\b|\.$|$)",
+                _su):
+            _by_who.setdefault((_e.get("no"), _m.group(1).strip()), set()).add(
+                _m.group(2).strip())
+
+ck("뭉뚱그린 옷차림이 안 남아 있다", not _vague,
+   "; ".join(_vague[:2]) + " — 'casual jacket' 은 매번 다른 자켓이 된다")
+_bad_p = {k: v for k, v in _by_place.items() if k and len(v) > 1}
+ck("같은 장소는 늘 똑같이 적혀 있다", not _bad_p,
+   f"{list(_bad_p)[:2]} — 글자가 다르면 다른 방이 나온다")
+_bad_w = {k: v for k, v in _by_who.items() if len(v) > 1}
+ck("한 화 안에서 같은 사람은 같은 옷", not _bad_w, str(list(_bad_w)[:2]))
+ck("옷을 정한 인물이 실제로 있다", len(_by_who) >= 3, f"{len(_by_who)}명")
+
+# ⚠️ 얼굴·나이는 절대 안 적는다 — 유명인 정책에 다섯 번 막혔던 자리다
+for _e in _doc.get("episodes") or []:
+    for _c in _e.get("cuts") or []:
+        _h = S.policy_hits(_c.get("prompt") or "")
+        if _h:
+            ck(f"{_e.get('no')}화 {_c['n']}컷: 정책에 걸릴 말이 없다", False, str(_h))
+            break
+    else:
+        continue
+    break
+else:
+    ck("옷·가구를 적어도 정책에 걸릴 말은 안 들어갔다", True)
+
 
 print("\n" + "─" * 52)
 print(f"❌ 시리즈 검사기: {len(FAIL)}가지 실패" if FAIL else "✅ 시리즈 검사기: 전부 통과")

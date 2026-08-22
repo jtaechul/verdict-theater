@@ -865,3 +865,37 @@ shot` 은 세로 쇼츠에서 쓸모가 없다. `medium close-up` · `close-up` 
 - [ ] 16화를 순서대로 읽으면 하나의 이야기로 이어지는가
 
 <!-- PROMPT:END -->
+
+## 옷과 배경 — 뭉뚱그리면 컷마다 바뀐다
+
+영상 만드는 쪽은 **앞 컷을 기억하지 못한다.** 컷마다 백지에서 새로 그린다.
+그래서 "앞이랑 똑같이" 라고 써 봐야 소용이 없다 — 앞이 무엇이었는지 모르니까.
+
+연속돼 보이게 하는 방법은 하나뿐이다: **무엇인지 못 박고, 컷마다 똑같이 쓴다.**
+
+  ✗ `SUBJECT: 남편 in a casual jacket`
+     → 세상의 온갖 자켓 중 아무거나. 다섯 컷에 다섯 벌이 나온다.
+  ○ `SUBJECT: 남편 wearing an olive-green cotton work jacket over a grey
+     crewneck, with dark charcoal trousers`
+     → 색·소재까지 하나. 기억이 없어도 매번 같은 것이 나온다.
+
+  ✗ `SETTING: Korean apartment living room, evening`
+     → 매번 다른 거실.
+  ○ `SETTING: Korean apartment living room, evening — a beige three-seat
+     fabric sofa along the left wall, a tall dark-wood bookshelf behind,
+     a wide balcony window with the night city beyond`
+     → 가구가 자리를 잡아 준다.
+
+규칙
+  · 옷은 **색 + 소재 + 겉옷/속옷**까지. `casual` `simple` `plain` 같은
+    뭉뚱그린 말은 쓰지 않는다 (아무 정보도 없다).
+  · 한 인물의 옷차림은 **그 화 안에서 글자 하나까지 똑같이** 반복한다.
+    (사람은 날마다 갈아입으므로, 맞출 범위는 한 화 안이다)
+  · 같은 장소는 **같은 가구 목록**을 글자 그대로 반복한다.
+  · ⚠️ **얼굴·나이는 절대 안 적는다.** `남편(55, square face…)` 로 적었다가
+    유명인 정책에 다섯 번 막혔다. 얼굴은 플로우 캐릭터(기준 그림)가 잡는다.
+    여기서는 **옷과 가구만** 적는다.
+
+> 플로우에서 같은 장소가 이어지는 컷은, 새로 만들지 말고
+> **[이 영상에서 이어서 만들기](장면 연장)** 를 쓰면 픽셀이 그대로 이어진다.
+> 프롬프트로 되는 것과는 차원이 다르다.

@@ -827,6 +827,133 @@ def fix_subject_dup(doc):
     return n
 
 
+# ⭐⭐ 2026-08-22 운영자: "프롬프트에서 자꾸 옷이랑 뒤에 배경이 바뀌어.
+#    이전에 생성된 이미지와 연속된다는 말이 추가될 필요가 있을 거 같다."
+#
+#    ⚠️ 그 말은 **이미 들어 있다.** CONTINUITY 줄이 컷마다
+#       "Same room, same people, same clothes, same hair, same light" 라고
+#       말하고 있는데도 바뀌었다.
+#    ⚠️ 까닭: **플로우는 앞 컷을 기억하지 못한다.** 컷마다 백지에서 새로 그린다.
+#       앞이 무엇이었는지 모르는데 "앞이랑 똑같이" 그릴 수가 없다.
+#       그러니 그 말을 더 세게 써 봐야 소용이 없다.
+#
+#    진짜 까닭은 **말이 뭉뚱그려져 있는 것**이다 —
+#       `a casual jacket`             → 세상의 온갖 자켓 중 아무거나
+#       `a simple cardigan`           → 매번 다른 색
+#       `Korean apartment living room` → 매번 다른 거실
+#    같은 글자를 다섯 컷에 똑같이 써 놔도, 그 글자가 가리키는 것이 하나가
+#    아니면 다섯 번 다르게 나온다.
+#
+#    → 고칠 것은 "같게 그려라" 가 아니라 **무엇인지 못 박는 것**이다.
+#      색·소재·가구까지 적어 두면 기억이 없어도 매번 같은 것이 나온다.
+#      이것이 기억 없는 모델에게 연속성을 주는 유일한 방법이다.
+#
+#    ⚠️ 얼굴·나이는 절대 안 적는다 — 유명인 정책에 다섯 번 막혔던 자리다.
+#      옷과 가구만 적는다.
+VAGUE = re.compile(r"\b(a |an |the )?(casual|simple|plain|ordinary|everyday|"
+                   r"nice|smart|basic|neat|regular|typical|comfortable)\s+", re.I)
+
+# 뭉뚱그린 옷 이름 → 색·소재까지 박은 말. 사람마다 다른 것이 가게 돌려 쓴다.
+WEAR_LOOK = {
+    "cardigan": ["a moss-green ribbed knit cardigan over a cream floral blouse",
+                 "a dusty-blue wool cardigan over a white round-neck top"],
+    "jacket":   ["an olive-green cotton work jacket over a grey crewneck, "
+                 "with dark charcoal trousers",
+                 "a faded navy canvas jacket over a black henley, "
+                 "with grey trousers"],
+    "dress":    ["a deep wine-red sleeveless dress with a thin gold necklace",
+                 "a black wrap dress with a narrow belt"],
+    "suit":     ["a charcoal single-breasted suit with a white shirt and "
+                 "a slate-grey tie",
+                 "a dark navy suit with a pale blue shirt, no tie"],
+    "coat":     ["a camel wool coat over a black turtleneck",
+                 "a dark grey trench coat over a white shirt"],
+    "shirt":    ["a pale blue oxford shirt with the sleeves rolled up",
+                 "a soft white linen shirt"],
+    "blouse":   ["a cream silk blouse with a small round collar",
+                 "a pale lilac blouse with pleated cuffs"],
+    "sweater":  ["a heather-grey lambswool sweater",
+                 "a burgundy cable-knit sweater"],
+}
+WEAR_ANY = ["a stone-grey cotton overshirt over a white tee, dark trousers",
+            "a deep-green knit top with a thin cardigan, black trousers"]
+
+# 뭉뚱그린 장소 → 가구·창·빛까지 박은 말. **같은 장소는 늘 같은 글자**로.
+ROOM_LOOK = {
+    "living room": ("a beige three-seat fabric sofa along the left wall, "
+                    "a tall dark-wood bookshelf behind, a wide balcony window "
+                    "with the night city beyond, a low walnut coffee table "
+                    "with a single white ceramic vase, warm floor lamp in the "
+                    "right corner"),
+    "kitchen": ("pale wood cabinets, a white countertop with a steel kettle, "
+                "a small round dining table with two chairs, a window over "
+                "the sink"),
+    "bedroom": ("a low bed with a grey linen duvet, a wooden nightstand with "
+                "a small lamp, a mirrored wardrobe along the right wall"),
+    "hallway": ("a narrow corridor with pale grey walls, a steel apartment "
+                "door with a keypad lock, a single ceiling light, a folded "
+                "cardboard box against the skirting"),
+    "courtroom": ("pale wood panelling, a raised bench with a folded flag "
+                  "to one side, rows of empty wooden benches, tall frosted "
+                  "windows on the left"),
+    "office": ("a plain desk with a closed laptop and a stack of paper files, "
+               "a grey filing cabinet behind, vertical blinds half drawn"),
+    "cafe": ("a small square table by a window, two mugs, a wooden counter "
+             "with a chalkboard menu behind"),
+    "car": ("the front seats of a small sedan, dark dashboard, rain-speckled "
+            "windscreen, city lights blurred outside"),
+    "restaurant": ("a booth table with a white cloth, a pendant lamp low over "
+                   "the table, dark panelled wall behind"),
+}
+
+
+def _pick(bank, k):
+    return bank[k % len(bank)]
+
+
+def fix_look(doc):
+    """옷과 장소를 **색·가구까지 못 박는다.** 뭉뚱그린 말은 매번 다르게 나온다."""
+    n = 0
+    # ① 옷 — 인물마다 하나를 정해 그 화 내내 똑같이
+    worn, k = {}, 0
+    for e in doc.get("episodes") or []:
+        for c in e.get("cuts") or []:
+            for i, l in enumerate((c.get("prompt") or "").split("\n")):
+                if not l.startswith("SUBJECT:"):
+                    continue
+                for m in re.finditer(r"\bin ([^,.]+?)(?=\s+facing\b|[,.]|$)", l):
+                    piece = m.group(1).strip()
+                    if piece in worn:
+                        continue
+                    if not VAGUE.search(piece) and len(piece.split()) > 4:
+                        continue                  # 이미 자세하다 — 그냥 둔다
+                    base = next((w for w in WEAR_LOOK if w in piece.lower()), "")
+                    worn[piece] = (_pick(WEAR_LOOK[base], k) if base
+                                   else _pick(WEAR_ANY, k))
+                    k += 1
+    # ② 장소 — 같은 장소는 늘 같은 글자로
+    for e in doc.get("episodes") or []:
+        for c in e.get("cuts") or []:
+            lines = (c.get("prompt") or "").split("\n")
+            for i, l in enumerate(lines):
+                if l.startswith("SUBJECT:"):
+                    new = l
+                    for old, good in worn.items():
+                        new = new.replace("in " + old, "wearing " + good)
+                    if new != l:
+                        lines[i] = new
+                        n += 1
+                elif l.startswith("SETTING:"):
+                    low = l.lower()
+                    room = next((r for r in ROOM_LOOK if r in low), "")
+                    if room and ROOM_LOOK[room][:24] not in l:
+                        body = l[len("SETTING:"):].strip().rstrip(".")
+                        lines[i] = f"SETTING: {body} — {ROOM_LOOK[room]}."
+                        n += 1
+            c["prompt"] = "\n".join(lines)
+    return n
+
+
 def fix_outfits(doc):
     """모든 컷에서 같은 인물은 **그 화 안에서 똑같은 옷**을 입게 만든다.
 
@@ -1130,6 +1257,7 @@ def normalize(doc):
     if c2:
         print(f"  (인물 {c2}명의 기준 사진 프롬프트를 풀세트로 채웠다)")
     k = fix_outfits(doc)
+    k += fix_look(doc)
     if k:
         print(f"  (옷차림 {k}줄을 인물표대로 맞췄다 — 컷마다 옷이 바뀌면 딴사람으로 보인다)")
     # ⭐ 배역말 바꾸기는 **맨 마지막**이다. 위의 고치개들이 모두 한글 이름으로
