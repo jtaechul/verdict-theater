@@ -178,6 +178,41 @@ async function gh(env, path, init = {}) {
   return r.status === 204 ? {} : r.json();
 }
 
+// ⭐⭐ 2026-08-22 — 영상을 폰으로 흘려보내기.
+//    ⚠️ 아이폰 사파리는 영상을 받을 때 "몇 번째 바이트부터 몇 번째까지" 를
+//       먼저 물어본다(Range). 그걸 무시하고 통째로 주면 **재생 자체가 안 된다.**
+//       /api/video 는 이걸 제대로 하고 있었는데 /api/short(완성된 쇼츠)는
+//       그냥 통째로 주고 있었다. 운영자가 만든 영상을 한 번도 못 본 까닭이다.
+//       같은 코드를 두 군데가 나눠 쓰게 해서 한쪽만 낡는 일을 없앤다.
+async function streamAsset(env, req, id) {
+  const r0 = await fetch(`${GH}/repos/${REPO}/releases/assets/${id}`, {
+    headers: {
+      'Authorization': `Bearer ${env.GH_TOKEN}`,
+      'Accept': 'application/octet-stream',
+      'User-Agent': 'verdict-theater-admin',
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+    redirect: 'manual',
+  });
+  const loc = r0.headers.get('Location');
+  const range = req.headers.get('Range');
+  // 리다이렉트 없이 본문을 바로 주는 경우도 있어 양쪽을 다 받는다.
+  const up = loc
+    ? await fetch(loc, range ? { headers: { Range: range } } : {})
+    : r0;
+  if (!up.ok && up.status !== 206)
+    return new Response('영상을 가져오지 못했습니다 (' + up.status + ')', { status: 502 });
+  const h = new Headers();
+  h.set('Content-Type', 'video/mp4');
+  h.set('Accept-Ranges', 'bytes');
+  h.set('Cache-Control', 'private, no-store');
+  for (const k of ['Content-Length', 'Content-Range', 'ETag', 'Last-Modified']) {
+    const v = up.headers.get(k);
+    if (v) h.set(k, v);
+  }
+  return new Response(up.body, { status: up.status, headers: h });
+}
+
 function b64utf8(b64) {
   const bin = atob(b64.replace(/\n/g, ''));
   const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
@@ -1180,6 +1215,7 @@ function home() {
 
   let h = '';
   h += nextCard(eps, ready, ungated);
+  h += madeCard();
   h += '<div class="card"><h2>지금 상태</h2>';
   h += row('모아 둔 재판 기록', (S.queue||[]).length + '건');
   h += row('대본 만들 수 있는 소재', ready.length + '건');
@@ -1693,6 +1729,83 @@ async function goNext(key) {
 const row = (k, v) => '<div class="row"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>';
 const mini = (t, fn, cls) => '<button class="mini ' + (cls||'') + '" onclick="' + fn + '">' + t + '</button>';
 const mb = (b) => (b >= 1048576 ? Math.round(b/1048576) + 'MB' : Math.round(b/1024) + 'KB');
+
+// ── 만든 영상 모아 보기 ─────────────────────────────────
+// ⭐⭐ 2026-08-22 운영자: "만든 영상은 어디서 볼 수 있는 건데?
+//    왜 볼 수 있는 메뉴가 없는데? 그것도 만들어야지"
+//    그때까지는 **회차 화면 안쪽에서, 방금 만든 것 하나**만 볼 수 있었다.
+//    첫 화면에서 한 번에 들어가 전부 볼 수 있게 한다.
+let SHORTS = [];
+let SHOWN = -1;
+
+function madeCard() {
+  return '<div class="card"><h2>만든 영상</h2>'
+    + '<div style="color:#9599ab;font-size:13px;line-height:1.7;margin-bottom:10px">'
+    + '완성된 쇼츠를 여기서 바로 보실 수 있습니다.<br>'
+    + '마음에 들면 그 자리에서 유튜브에 올리실 수 있습니다.</div>'
+    + '<div class="btns">' + mini('만든 영상 보기', 'madeList()', 'gold') + '</div></div>';
+}
+
+function madeName(x) {
+  return (x.title ? x.title + ' ' : '') + x.ep + '화'
+    + (x.cut ? ' (' + x.cut + '컷 시험본)' : '');
+}
+
+async function madeList() {
+  VIEW = 'made';
+  document.getElementById('app').innerHTML = '<div class="empty">만든 영상 찾는 중…</div>';
+  let j = {};
+  try {
+    j = await (await fetch('/api/shorts?t=' + Date.now(), { cache: 'no-store' })).json();
+  } catch (e) { j = {}; }
+  SHORTS = j.items || [];
+  SHOWN = -1;
+  madeDraw();
+  scrollTo(0, 0);
+}
+
+function madeDraw() {
+  if (VIEW !== 'made') return;
+  let h = '<button class="ghost" onclick="home()">← 처음으로</button>'
+        + '<div style="height:12px"></div>';
+  if (!SHORTS.length) {
+    h += '<div class="card"><h2>만든 영상</h2><div class="empty">'
+       + '아직 만든 영상이 없습니다.<br>'
+       + '<b>시리즈 대본</b>에서 회차를 열고 플로우에서 받은 '
+       + '<b>클립 압축파일</b>을 올리시면 여기에 쌓입니다.</div></div>';
+    document.getElementById('app').innerHTML = h;
+    return;
+  }
+  if (SHOWN >= 0 && SHORTS[SHOWN]) {
+    const v = SHORTS[SHOWN];
+    // playsinline 이 없으면 아이폰이 전체화면으로 낚아채 간다.
+    h += '<div class="card"><h2>' + esc(madeName(v)) + '</h2>'
+      + '<video id="pl" controls playsinline preload="metadata" '
+      + 'style="width:100%;max-height:70vh;border-radius:12px;background:#000;'
+      + 'display:block" src="/api/short?sid=' + encodeURIComponent(v.sid)
+      + '&ep=' + v.ep + (v.cut ? '&cut=' + v.cut : '') + '&play=1"></video>'
+      + '<div style="color:#9599ab;font-size:13px;margin:10px 0 4px">'
+      + esc(v.sid) + ' · ' + mb(v.size) + ' · '
+      + esc(String(v.at || '').slice(0, 10)) + ' 만듦</div>'
+      + '<div class="btns">'
+      + mini('이 회차 열기 (유튜브에 올리기)',
+             'seriesView(\\'' + v.sid + '\\',' + v.ep + ')', 'gold')
+      + '</div></div>';
+  }
+  h += '<div class="card"><h2>만든 영상 ' + SHORTS.length + '개</h2>';
+  SHORTS.forEach((x, k) => {
+    h += '<div class="row"><span class="k">' + esc(madeName(x))
+      + '<br><small style="color:#9599ab">' + mb(x.size) + ' · '
+      + esc(String(x.at || '').slice(0, 10)) + '</small></span>'
+      + (k === SHOWN ? '<span class="pill go">보는 중</span>'
+                     : mini('재생', 'madePlay(' + k + ')', 'gold'))
+      + '</div>';
+  });
+  h += '</div>';
+  document.getElementById('app').innerHTML = h;
+}
+
+function madePlay(k) { SHOWN = k; madeDraw(); scrollTo(0, 0); }
 
 // ── 영상 보기 ───────────────────────────────────────────
 // 영상은 저장소에 커밋하지 않는다. 제작 워크플로가 릴리스 자산으로 올려 두고,
@@ -2434,32 +2547,7 @@ export default {
       if (url.pathname === '/api/video') {
         const id = url.searchParams.get('id') || '';
         if (!/^\d+$/.test(id)) return new Response('bad id', { status: 400 });
-        const r0 = await fetch(`${GH}/repos/${REPO}/releases/assets/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${env.GH_TOKEN}`,
-            'Accept': 'application/octet-stream',
-            'User-Agent': 'verdict-theater-admin',
-            'X-GitHub-Api-Version': '2022-11-28',
-          },
-          redirect: 'manual',
-        });
-        const loc = r0.headers.get('Location');
-        const range = req.headers.get('Range');
-        // 리다이렉트 없이 본문을 바로 주는 경우도 있어 양쪽을 다 받는다.
-        const up = loc
-          ? await fetch(loc, range ? { headers: { Range: range } } : {})
-          : r0;
-        if (!up.ok && up.status !== 206)
-          return new Response('영상을 가져오지 못했습니다 (' + up.status + ')', { status: 502 });
-        const h = new Headers();
-        h.set('Content-Type', 'video/mp4');
-        h.set('Accept-Ranges', 'bytes');
-        h.set('Cache-Control', 'private, no-store');
-        for (const k of ['Content-Length', 'Content-Range', 'ETag', 'Last-Modified']) {
-          const v = up.headers.get(k);
-          if (v) h.set(k, v);
-        }
-        return new Response(up.body, { status: up.status, headers: h });
+        return streamAsset(env, req, id);
       }
 
       if (url.pathname === '/api/script') {
@@ -2732,6 +2820,34 @@ export default {
       }
 
       // 만들어진 쇼츠를 화면에서 바로 본다 (릴리스에서 그대로 흘려보낸다)
+      // ⭐⭐ 2026-08-22 운영자: "만든 영상은 어디서 볼 수 있는 건데?
+      //    왜 볼 수 있는 메뉴가 없는데? 그것도 만들어야지"
+      //    맞다. 완성된 쇼츠를 보는 곳이 **회차 화면 안쪽에만** 있었다.
+      //    그것도 방금 만든 것 하나뿐이었다. 만든 것을 모아 보는 곳을 만든다.
+      if (url.pathname === '/api/shorts') {
+        let rels = [];
+        try { rels = await gh(env, `/repos/${REPO}/releases?per_page=100`); }
+        catch (e) { rels = []; }
+        const items = [];
+        for (const r of rels || []) {
+          const m = String(r.tag_name || '').match(/^short-(S\d{3})-ep(\d{2})(?:-cut(\d+))?$/);
+          if (!m) continue;
+          const a = (r.assets || []).find((x) => x.name === 'short.mp4');
+          if (!a) continue;
+          items.push({ sid: m[1], ep: +m[2], cut: m[3] ? +m[3] : 0,
+                       size: a.size, at: a.updated_at || r.published_at || '' });
+        }
+        // 새로 만든 것이 위로
+        items.sort((x, y) => String(y.at).localeCompare(String(x.at)));
+        // 시리즈 제목을 붙여 준다 — 'S001 3화' 보다 '바람난 남편이…' 가 낫다
+        const ser = (await getJson(env, 'state/series.json')) || {};
+        for (const it of items) {
+          const v = ser[it.sid];
+          it.title = (v && (v.title || v.name)) || '';
+        }
+        return Response.json({ items });
+      }
+
       if (url.pathname === '/api/short') {
         const sid = url.searchParams.get('sid') || '';
         const ep = String(parseInt(url.searchParams.get('ep') || '0', 10) || 0);
@@ -2745,14 +2861,8 @@ export default {
         if (!a) return Response.json({ ready: false });
         if (url.searchParams.get('play') !== '1')
           return Response.json({ ready: true, size: a.size, at: a.updated_at });
-        const r0 = await fetch(`${GH}/repos/${REPO}/releases/assets/${a.id}`, {
-          headers: {
-            'Authorization': `Bearer ${env.GH_TOKEN}`,
-            'Accept': 'application/octet-stream',
-            'User-Agent': 'verdict-theater-admin',
-          } });
-        return new Response(r0.body, { headers: {
-          'Content-Type': 'video/mp4', 'Cache-Control': 'no-store' } });
+        // ⚠️ 예전엔 여기서 통째로 내려보냈다 → 아이폰이 재생을 못 했다.
+        return streamAsset(env, req, a.id);
       }
 
       // ⭐ 2026-08-20 운영자: "동영상 올릴 때 제목·설명·해시태그 아무것도 안 들어가

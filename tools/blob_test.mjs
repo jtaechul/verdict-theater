@@ -271,6 +271,72 @@ const nag = src.match(
 ok(nag.length === 0, '깃허브에 가서 고치라는 안내가 화면에 없다'
    + (nag.length ? ' ← ' + nag[0].trim().slice(0, 80) : ''));
 
+// ⑮ ⭐ 만든 영상을 **아이폰이 실제로 재생할 수 있는가.**
+//    2026-08-22 운영자: "만든 영상은 어디서 볼 수 있는 건데? 메뉴가 없는데?"
+//    보는 곳이 없기도 했고, 있었어도 못 봤을 것이다 — 아이폰 사파리는
+//    "몇 번째 바이트부터" 를 먼저 묻는데(Range) /api/short 는 그걸 무시하고
+//    통째로 내려보내고 있었다. 그러면 재생이 시작되지 않는다.
+console.log('⭐ 만든 영상: 목록이 보이고, 아이폰이 재생할 수 있는가');
+const ASSET = 999123;
+let sawRange = null;
+globalThis.fetch = async (u, init) => {
+  const s0 = String(u && u.url ? u.url : u);
+  const hdr = (init && init.headers) || {};
+  if (s0.includes('/releases/tags/short-S001-ep01'))
+    return Response.json({ id: 1, assets: [
+      { name: 'short.mp4', id: ASSET, size: 4_200_000, updated_at: '2026-08-22T15:00:00Z' }] });
+  if (s0.includes('/releases/assets/' + ASSET))
+    return new Response(null, { status: 302,
+      headers: { Location: 'https://objects.example.com/short.mp4' } });
+  if (s0.startsWith('https://objects.example.com/')) {
+    sawRange = hdr.Range || hdr.range || null;
+    return new Response('0123456789', { status: 206, headers: {
+      'Content-Range': 'bytes 0-9/4200000', 'Content-Length': '10' } });
+  }
+  if (s0.includes('/releases?per_page='))
+    return Response.json([
+      { tag_name: 'short-S001-ep01', published_at: '2026-08-22T15:00:00Z',
+        assets: [{ name: 'short.mp4', id: 1, size: 4_200_000,
+                   updated_at: '2026-08-22T15:00:00Z' }] },
+      { tag_name: 'short-S001-ep02-cut3', published_at: '2026-08-22T14:00:00Z',
+        assets: [{ name: 'short.mp4', id: 2, size: 900_000,
+                   updated_at: '2026-08-22T14:00:00Z' }] },
+      { tag_name: 'clips-S001-ep01', assets: [{ name: 'clips.zip', id: 3, size: 5 }] },
+      { tag_name: 'short-S001-ep09', assets: [] },
+    ]);
+  if (s0.includes('/contents/state/series.json'))
+    return Response.json({ content: Buffer.from(JSON.stringify(
+      { S001: { title: '바람난 남편이 빼돌린 15억' } }), 'utf8').toString('base64') });
+  if (s0.includes('github.com')) return new Response('{}', { status: 200 });
+  return realFetch(u, init);
+};
+
+const vres = await W._wk.fetch(new Request(
+  'https://admin.example.workers.dev/api/short?sid=S001&ep=1&play=1',
+  { headers: { Cookie: cookie, Range: 'bytes=0-9' } }), env2);
+ok(sawRange === 'bytes=0-9', '아이폰이 물어본 구간을 그대로 넘긴다 (' + sawRange + ')');
+ok(vres.status === 206, '구간만 내려준다 (206)');
+ok(vres.headers.get('Accept-Ranges') === 'bytes', '구간을 받는다고 알려 준다');
+ok(vres.headers.get('Content-Range') === 'bytes 0-9/4200000', '어디부터 어디까지인지 알려 준다');
+ok(vres.headers.get('Content-Type') === 'video/mp4', '영상이라고 알려 준다');
+
+const lst = await (await W._wk.fetch(new Request(
+  'https://admin.example.workers.dev/api/shorts', { headers: { Cookie: cookie } }),
+  env2)).json();
+ok(lst.items.length === 2, '만든 영상만 골라 낸다 (압축파일·빈 것 제외) — ' + lst.items.length + '개');
+ok(lst.items[0].ep === 1 && lst.items[0].cut === 0, '새로 만든 것이 위에 온다');
+ok(lst.items[1].ep === 2 && lst.items[1].cut === 3, '컷 시험본도 시험본이라고 알려 준다');
+ok(lst.items[0].title === '바람난 남편이 빼돌린 15억', 'S001 대신 제목으로 보여 준다');
+
+// 화면 쪽 — 첫 화면에서 들어가는 문이 있고, 그리는 함수가 다 있는가
+for (const need of ['function madeCard', 'function madeList', 'function madeDraw',
+                    'function madePlay', 'h += madeCard();', "'/api/shorts?t='"]) {
+  if (!src.includes(need)) { console.log(`   ❌ 화면에 '${need}' 가 없다`); bad = 1; }
+}
+ok(true, '첫 화면에 [만든 영상 보기] 가 있고 그리는 코드가 다 있다');
+
+globalThis.fetch = realFetch;
+
 // ⑭ ⭐⭐ 가장 중요한 못 — 관리자 페이지는 깃허브에 **아무것도 쓰지 않는다.**
 //    2026-08-22, 운영자가 같은 403 을 두 번 봤다:
 //      GitHub 403 … documentation_url: releases#create-a-release
