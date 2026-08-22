@@ -20,6 +20,7 @@ for st in w["jobs"]["check"]["steps"]:
 PY
 )
 bad=0
+FAILED=""
 while IFS= read -r c <&3; do
   [ -z "$c" ] && continue
   case "$c" in
@@ -29,10 +30,18 @@ while IFS= read -r c <&3; do
   if timeout 500 $c >/tmp/_chk.txt 2>&1 </dev/null; then
     echo "✅ $c"
   else
-    bad=1; echo "❌ $c"; tail -6 /tmp/_chk.txt | sed 's/^/      /'
+    bad=1; FAILED="$FAILED $c"; echo "❌ $c"
+    tail -6 /tmp/_chk.txt | sed 's/^/      /'
   fi
 done 3<<< "$LIST"
 echo "────────────────────────────────────────────────────"
-if [ "$bad" = 0 ]; then echo "✅ 전부 통과 — 밀어 넣어도 된다"; else
-  echo "❌ 걸린 것이 있다 — 고치고 다시"; fi
+if [ "$bad" = 0 ]; then
+  echo "✅ 전부 통과 — 밀어 넣어도 된다"
+else
+  # ⚠️ 맨 끝에 다시 적는다. `checkall.sh | tail` 로 볼 때 놓치지 않게.
+  #    (실제로 파이프가 실패 신호를 삼켜 그대로 밀어 넣은 적이 있다)
+  echo "❌ 걸린 것:"
+  for f in $FAILED; do echo "     $f"; done
+  echo "❌ 고치고 다시 — 밀어 넣지 마십시오"
+fi
 exit $bad

@@ -30,6 +30,19 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 import tts as T                                             # noqa: E402
 
+# ⚠️⚠️ 2026-08-22 — 운영자가 골라 둔 목소리(state/voice.json)가 있으면 그것이
+#    말투 결보다 **위**다. 그런데 이 시험은 '결이 고르는 것' 을 보는 자리라,
+#    골라 둔 파일이 있으면 통째로 빨간불이 된다 (실제로 그랬다).
+#    → 시험 도는 동안만 치워 두고, 끝나면 그대로 돌려놓는다.
+import atexit                                                # noqa: E402
+import shutil                                                # noqa: E402
+_VJ = Path(T.__file__).resolve().parent.parent / "state" / "voice.json"
+_VJ_BAK = None
+if _VJ.exists():
+    _VJ_BAK = _VJ.with_suffix(".json.testbak")
+    shutil.move(str(_VJ), str(_VJ_BAK))
+    atexit.register(lambda: shutil.move(str(_VJ_BAK), str(_VJ)))
+
 fail = []
 
 
