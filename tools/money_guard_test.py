@@ -220,6 +220,16 @@ def _ck(label, cond, why=""):
 from pathlib import Path as _P                               # noqa: E402
 
 print("\n⑨ 돈이 새는 자리를 막았는가")
+
+# ⚠️ 2026-08-22 — 이 검사가 yaml 을 쓰는데, 워크플로는 PyYAML 을 **맨 아래
+#    단계에서** 깔고 있었다. 그래서 깃허브에서 여기서 죽었다 (내 컴퓨터에는
+#    이미 깔려 있어 안 드러났다). 쓰는 것보다 먼저 까는지 확인한다.
+_sc_txt = (_P(__file__).resolve().parent.parent / ".github" / "workflows"
+           / "selfcheck.yml").read_text(encoding="utf-8")
+_i_install = _sc_txt.find("pip install --quiet PyYAML")
+_i_use = _sc_txt.find("money_guard_test.py")
+_ck("PyYAML 을 쓰기 전에 깐다", -1 < _i_install < _i_use,
+    "쓰는 단계보다 뒤에서 깔면 그 단계에서 죽는다")
 _WF = _P(__file__).resolve().parent.parent / ".github" / "workflows"
 
 # ① 밀 때마다 도는 워크플로에는 유료 열쇠가 없어야 한다
