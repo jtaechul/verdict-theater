@@ -105,19 +105,30 @@ jobs:
         run: |
           set -o pipefail
           npm i -g wrangler@4 --silent
+          # ⚠️ 뽑아내는 글이 판마다 다르다. 짐작하지 말고 자기시험부터 돌린다.
+          python3 ../tools/kv_id.py --selftest
           ID=$(npx wrangler kv namespace list 2>/dev/null | python3 ../tools/kv_id.py || true)
           if [ -z "$ID" ]; then
             echo "보관함이 없다 — 만든다"
-            npx wrangler kv namespace create BLOB || true
+            # ⚠️ 만든 **직후 글에서 바로** 번호를 읽는다. 목록을 다시 부르면
+            #    이름 규칙이 달라 못 찾는 일이 생긴다 (2026-08-22 실제로 그랬다:
+            #    wrangler 4.86 은 이름을 "BLOB" 으로 짓는데 나는 앞에 워커 이름이
+            #    붙는 줄 알았다 → 만들어 놓고도 못 찾아 보관함 없이 배포됐다).
+            ID=$(npx wrangler kv namespace create BLOB 2>&1 | tee /dev/stderr \
+                 | python3 ../tools/kv_id.py || true)
+          fi
+          if [ -z "$ID" ]; then
             ID=$(npx wrangler kv namespace list 2>/dev/null | python3 ../tools/kv_id.py || true)
           fi
           if [ -z "$ID" ]; then
-            echo "::warning::보관함을 만들지 못했습니다 — 옛 길(깃허브 릴리스)로 갑니다"
-          else
-            echo "보관함 준비됨"
-            printf '\n[[kv_namespaces]]\nbinding = "BLOB"\nid = "%s"\n' "$ID" >> wrangler.toml
-            tail -n 4 wrangler.toml
+            # ⚠️ 여기서 조용히 넘어가면 관리자 페이지가 **영상을 못 올리는 채로**
+            #    배포된다(403). 그건 지금 고치는 바로 그 사고다. 크게 멈춘다.
+            echo "::error::보관함을 만들지 못했습니다. 이대로 배포하면 영상을 못 올립니다."
+            exit 1
           fi
+          echo "보관함 준비됨"
+          printf '\n[[kv_namespaces]]\nbinding = "BLOB"\nid = "%s"\n' "$ID" >> wrangler.toml
+          tail -n 4 wrangler.toml
 
       - name: 배포 + 비밀값 등록
         working-directory: admin
@@ -139,6 +150,16 @@ jobs:
           # 섞으면 관리자 페이지를 고칠 때마다 로그인이 풀려 매번 다시 들어가야 한다.
           printf '%s' "${{ secrets.SESSION_SECRET || secrets.ADMIN_PASSWORD }}" \
             | npx wrangler secret put SESSION_SECRET
+
+          # ⚠️⚠️ 배포가 성공해도 보관함이 **안 붙은 채로** 지나갈 수 있다.
+          #    (2026-08-22 실제로 그랬다 — 번호를 못 찾아 그냥 배포됐다)
+          #    wrangler 는 붙은 것을 배포 기록에 적는다. 그것으로 확인한다.
+          if grep -qi 'kv namespace' deploy.log; then
+            echo "보관함이 워커에 붙었다"
+          else
+            echo "::error::보관함이 워커에 안 붙었습니다 — 영상을 못 올립니다"
+            exit 1
+          fi
 
       - name: 주소 안내
         if: always()

@@ -154,6 +154,9 @@ jobs:
           # ⚠️ 워크플로가 안 받겠다는 이름을 넘기면 깃허브가 422 로 통째로 거절한다.
           #    화면에는 그냥 "실패" 로만 보여 눈으로는 못 잡는다.
           python3 tools/dispatch_input_check.py
+          # ⚠️ 보관함 번호를 못 뽑으면 관리자 페이지가 영상을 못 올리는 채로
+          #    배포된다. wrangler 가 실제로 뱉은 글로 시험한다.
+          python3 tools/kv_id.py --selftest
 
       - name: 워크플로 문법 + 관리자 버튼이 실제로 눌리는가
         run: |
