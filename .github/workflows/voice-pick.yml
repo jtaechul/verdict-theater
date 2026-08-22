@@ -66,19 +66,6 @@ jobs:
           python3 tools/voice_judge.py --dir build/pick \
             --out state/voice_rank.json --pick state/voice.json 2>&1 | tee judge.log
 
-      - name: 릴리스에 올리기
-        run: |
-          set -euo pipefail
-          # ⚠️ 압축해서 올리면 화면에서 바로 못 튼다. **하나씩** 올린다.
-          for f in build/pick/*.mp3; do
-            python3 tools/release_file.py put voicepick "$(basename "$f")" "$f"
-          done
-          python3 tools/release_file.py put voicepick list.json build/pick/list.json
-          # 고른 결과도 함께 — 관리자 페이지가 이걸 보고 ✅ 를 찍는다
-          cp state/voice.json build/chosen.json
-          python3 tools/release_file.py put voicepick chosen.json build/chosen.json
-          python3 tools/release_file.py put voicepick rank.json state/voice_rank.json
-
       # ⚠️ 고른 결과는 **저장소에 남긴다.** 릴리스에만 두면 다음에 영상을 만들 때
       #    내려받아야 하는데, 저장소에 있으면 그냥 읽힌다. 작은 글 파일이라
       #    커밋해도 된다 (커밋 금지는 완성 영상 이야기다).
@@ -95,6 +82,21 @@ jobs:
             git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
             git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
+
+      # 올리기가 실패해도 위에서 이미 결과는 남았다
+      - name: 릴리스에 올리기
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          # ⚠️ 압축해서 올리면 화면에서 바로 못 튼다. **하나씩** 올린다.
+          for f in build/pick/*.mp3; do
+            python3 tools/release_file.py put voicepick "$(basename "$f")" "$f"
+          done
+          python3 tools/release_file.py put voicepick list.json build/pick/list.json
+          # 고른 결과도 함께 — 관리자 페이지가 이걸 보고 ✅ 를 찍는다
+          cp state/voice.json build/chosen.json
+          python3 tools/release_file.py put voicepick chosen.json build/chosen.json
+          python3 tools/release_file.py put voicepick rank.json state/voice_rank.json
 
       - name: 결과 화면
         if: always()

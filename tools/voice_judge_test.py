@@ -54,7 +54,25 @@ ck("흔들리는 소리는 넓게 나온다", wave_ is not None and wave_ > 2.0,
    f"{wave_}" if wave_ is not None else "못 쟀다")
 ck("둘을 갈라낸다", None not in (flat, wave_) and wave_ > flat + 2.0)
 
-print("\n④ 점수 매기는 무게가 뜻대로인가")
+print("\n④ 릴리스에 올릴 수 있는 이름인가")
+# ⚠️ 2026-08-22 — 「여_Kore.mp3」로 지었다가 릴리스에 올릴 때 죽었다.
+#    주소에 한글이 못 들어간다 (UnicodeEncodeError: ascii codec…).
+sys.path.insert(0, str(ROOT / "src"))
+import tts as _T                                             # noqa: E402
+for _g, _v in (("여", "Kore"), ("남", "Orus")):
+    _n = _T.aud_name(_g, _v)
+    ck(f"{_g} {_v} → {_n} (전부 영문)", _n.isascii(),
+       "한글 이름은 릴리스 주소에 못 들어간다")
+    ck(f"{_g} {_v}: 목소리 이름이 그대로 들어 있다", _v in _n)
+ck("여자·남자 이름이 안 겹친다",
+   _T.aud_name("여", "Kore") != _T.aud_name("남", "Kore"))
+_all = [_T.aud_name("여", v) for v in _T.GEM_F] + \
+       [_T.aud_name("남", v) for v in _T.GEM_M]
+ck("26개 이름이 전부 다르고 전부 영문",
+   len(set(_all)) == len(_all) and all(x.isascii() for x in _all),
+   f"{len(_all)}개")
+
+print("\n⑤ 점수 매기는 무게가 뜻대로인가")
 ck("잰 값(받아쓰기·빠르기·억양)이 의견(원어민)보다 무겁다",
    40 + 15 + 15 > 30, "70 대 30")
 ck("네 가지를 더하면 100점", 40 + 30 + 15 + 15 == 100)

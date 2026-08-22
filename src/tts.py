@@ -959,6 +959,16 @@ AUD_F = "당신 진짜 제정신이야?!"
 AUD_M = "더는 숨 막혀서 못 살아."
 
 
+def aud_name(sex, voice):
+    """들어볼 소리 파일 이름.
+
+    ⚠️ 2026-08-22 — 「여_Kore.mp3」로 지었다가 릴리스에 올릴 때 죽었다.
+       주소에 한글이 못 들어간다 (UnicodeEncodeError: ascii codec…).
+       → **파일 이름은 영문**으로. 한글은 화면에 보여 줄 때만 쓴다.
+    """
+    return f"{'f' if sex == '여' else 'm'}_{voice}.mp3"
+
+
 def audition(out_dir, only=""):
     """쓸 수 있는 목소리 전부로 같은 대사를 한 번씩 만든다.
 
@@ -974,7 +984,7 @@ def audition(out_dir, only=""):
     made = []
     print(f"⭐ 목소리 {len(jobs)}개를 같은 대사로 만들어 본다\n")
     for i, (v, g, text) in enumerate(jobs, 1):
-        f = out_dir / f"{g}_{v}.mp3"
+        f = out_dir / aud_name(g, v)
         try:
             w = say(text, v, 1.0, 0.0, out_dir / f"_{v}.wav")
             subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(w),

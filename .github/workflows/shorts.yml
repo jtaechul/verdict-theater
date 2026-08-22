@@ -65,8 +65,13 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p state
-          python3 tools/release_file.py get voicepick chosen.json state/voice.json \
-            || echo "골라 둔 것이 없다 — 정해 둔 목소리로 간다"
+          # ⚠️ 저장소에 이미 있으면 그것이 최신이다. 릴리스 것으로 덮지 않는다.
+          if [ -s state/voice.json ]; then
+            echo "저장소에 골라 둔 것이 있다: $(cat state/voice.json)"
+          else
+            python3 tools/release_file.py get voicepick chosen.json state/voice.json \
+              || echo "골라 둔 것이 없다 — 정해 둔 목소리로 간다"
+          fi
 
       - name: 올린 압축파일 받기
         run: |
