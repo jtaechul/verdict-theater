@@ -19,6 +19,10 @@ on:
         description: '몇 화'
         required: true
         default: '1'
+      cut:
+        description: '몇 컷만 시험 (비우면 5컷 전체)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -41,6 +45,7 @@ jobs:
       GOOGLE_TTS_KEY: ${{ secrets.GOOGLE_TTS_KEY }}
       SID: ${{ inputs.sid }}
       EPNO: ${{ inputs.ep }}
+      CUT: ${{ inputs.cut }}
 
     steps:
       - uses: actions/checkout@v4
@@ -59,8 +64,13 @@ jobs:
           set -euo pipefail
           EP=$(printf '%02d' "$EPNO")
           echo "EP=$EP" >> "$GITHUB_ENV"
+          # ⭐ 한 컷만 시험할 때는 딴 이름으로 두고 받는다. 그래야 힘들게 만든
+          #    5컷짜리 완성본을 시험 한 번으로 덮어쓰지 않는다.
+          SUF=""
+          if [ -n "$CUT" ]; then SUF="-cut${CUT}"; fi
+          echo "SUF=$SUF" >> "$GITHUB_ENV"
           mkdir -p build/in
-          python3 tools/release_file.py get "clips-${SID}-ep${EP}" clips.zip build/clips.zip
+          python3 tools/release_file.py get "clips-${SID}-ep${EP}${SUF}" clips.zip build/clips.zip
           unzip -q -o build/clips.zip -d build/in
           echo "받은 영상:"
           find build/in -type f \( -iname '*.mp4' -o -iname '*.mov' -o -iname '*.m4v' \) \
@@ -69,15 +79,29 @@ jobs:
       - name: 쇼츠 만들기
         run: |
           set -o pipefail
-          python3 src/shorts.py "$SID" "$EPNO" --clips build/in --out build/shorts \
-            2>&1 | tee shorts.log
+          if [ -n "$CUT" ]; then
+            # 클립 하나로 시험한다 — 만드는 차례는 5컷짜리와 똑같다
+            CLIP=$(find build/in -type f \( -iname '*.mp4' -o -iname '*.mov' \
+              -o -iname '*.m4v' \) | sort | head -1)
+            test -n "$CLIP" || { echo "❌ 압축파일 안에 영상이 없습니다"; exit 1; }
+            echo "시험할 클립: $CLIP (${CUT}컷)"
+            python3 src/shorts.py "$SID" "$EPNO" --demo "$CLIP" --cut "$CUT" \
+              --out build/shorts 2>&1 | tee shorts.log
+          else
+            python3 src/shorts.py "$SID" "$EPNO" --clips build/in --out build/shorts \
+              2>&1 | tee shorts.log
+          fi
 
       - name: 릴리스에 올리기 (저장소에는 안 넣는다)
         run: |
           set -euo pipefail
-          OUT="build/shorts/${SID}_ep${EP}_short.mp4"
-          test -f "$OUT" || { echo "❌ 만들어진 영상이 없습니다"; exit 1; }
-          python3 tools/release_file.py put "short-${SID}-ep${EP}" short.mp4 "$OUT"
+          if [ -n "$CUT" ]; then
+            OUT=$(find build/shorts -maxdepth 1 -name '*_short.mp4' | sort | head -1)
+          else
+            OUT="build/shorts/${SID}_ep${EP}_short.mp4"
+          fi
+          test -n "$OUT" && test -f "$OUT" || { echo "❌ 만들어진 영상이 없습니다"; exit 1; }
+          python3 tools/release_file.py put "short-${SID}-ep${EP}${SUF}" short.mp4 "$OUT"
 
       - name: 결과 화면
         if: always()

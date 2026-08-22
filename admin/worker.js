@@ -572,19 +572,23 @@ async function upClips() {
   const msg = document.getElementById('upmsg');
   const f = el && el.files && el.files[0];
   if (!f) { msg.textContent = '먼저 압축파일을 고르십시오.'; return; }
+  const cs = document.getElementById('cutone');
+  const cut = (cs && cs.value) || '';
   const mb = f.size / 1048576;
   if (mb > 90) { showErr('파일이 큽니다',
     Math.round(mb) + 'MB 입니다. 90MB 까지만 올릴 수 있습니다.'); return; }
   msg.textContent = f.name + ' (' + mb.toFixed(1) + 'MB) 올리는 중… 잠시 기다리십시오.';
   try {
     const r = await fetch('/api/upload-clips?sid=' + encodeURIComponent(SID)
-                          + '&ep=' + SEP, { method: 'POST', body: f });
+                          + '&ep=' + SEP + (cut ? '&cut=' + cut : ''),
+                          { method: 'POST', body: f });
     const j = await r.json();
     if (!j.ok) { showErr('올리지 못했습니다', (j.error || '') + ' ' + (j.detail || '')); 
                  msg.textContent = ''; return; }
-    msg.textContent = '✅ 올렸습니다. 쇼츠를 만드는 중입니다 (2~4분).';
+    msg.textContent = '✅ 올렸습니다. ' + (cut ? cut + '컷 시험본을' : '쇼츠를')
+      + ' 만드는 중입니다 (2~4분).';
     toast(SEP + '화 영상을 올렸습니다');
-    watchShort();
+    watchShort(cut);
   } catch (e) {
     showErr('올리지 못했습니다', String(e && e.message ? e.message : e));
     msg.textContent = '';
@@ -677,24 +681,28 @@ async function ytUp(dry) {
 }
 
 let SHORTW = null;
-async function watchShort() {
+async function watchShort(cut) {
   clearInterval(SHORTW);
+  const q = cut ? '&cut=' + cut : '';
   const tick = async () => {
     let j = null;
-    try { j = await (await fetch('/api/short?sid=' + SID + '&ep=' + SEP
+    try { j = await (await fetch('/api/short?sid=' + SID + '&ep=' + SEP + q
                                  + '&t=' + Date.now())).json(); } catch (e) { return; }
     if (!j || !j.ready) return;
     clearInterval(SHORTW);
     const b = document.getElementById('shortbox');
     if (!b) return;
-    b.innerHTML = '<div style="margin-top:12px"><b>완성된 쇼츠</b>'
+    b.innerHTML = '<div style="margin-top:12px"><b>'
+      + (cut ? cut + '컷 시험본' : '완성된 쇼츠') + '</b>'
       + '<video controls playsinline style="width:100%;border-radius:12px;margin-top:8px" '
-      + 'src="/api/short?sid=' + SID + '&ep=' + SEP + '&play=1&t=' + Date.now() + '"></video>'
+      + 'src="/api/short?sid=' + SID + '&ep=' + SEP + q + '&play=1&t=' + Date.now()
+      + '"></video>'
       + '<div class="uphint">' + Math.round((j.size || 0) / 1048576 * 10) / 10
-      + 'MB · 영상을 보신 뒤 아래에서 올리십시오.</div>'
-      + '<div id="ytbox"></div></div>';
-    toast('쇼츠가 만들어졌습니다');
-    ytLoad();
+      + 'MB' + (cut ? ' · 시험본입니다. 소리를 들어 보십시오.'
+                    : ' · 영상을 보신 뒤 아래에서 올리십시오.') + '</div>'
+      + (cut ? '' : '<div id="ytbox"></div>') + '</div>';
+    toast(cut ? cut + '컷 시험본이 만들어졌습니다' : '쇼츠가 만들어졌습니다');
+    if (!cut) ytLoad();
   };
   await tick();
   SHORTW = setInterval(tick, 30000);
@@ -780,6 +788,14 @@ function seriesRender() {
      + '<input type="file" id="clipzip" accept=".zip,application/zip">'
      + '<div class="uphint">플로우에서 받은 ' + SEP + '화 클립 5개를 압축해서 고르십시오. '
      + '파일 이름에 c001~c005 가 있으면 그 번호대로, 없으면 이름 순서대로 붙입니다.</div>'
+     + '<div class="uphint" style="margin-top:8px">클립 <b>하나만</b> 시험해 볼 수도 '
+     + '있습니다. 그 클립 하나만 압축해서 올리고, 아래에서 몇 컷인지 고르십시오. '
+     + '(만드는 차례는 5컷짜리와 똑같습니다 — 소리도 한국어로 갈아 끼웁니다)</div>'
+     + '<select id="cutone" style="margin-top:8px">'
+     + '<option value="">5컷 전체 (완성본)</option>'
+     + '<option value="1">1컷만 시험</option><option value="2">2컷만 시험</option>'
+     + '<option value="3">3컷만 시험</option><option value="4">4컷만 시험</option>'
+     + '<option value="5">5컷만 시험</option></select>'
      + '<button class="gold" onclick="upClips()">' + SEP + '화 올리고 쇼츠 만들기</button>'
      + '<div id="upmsg" class="uphint"></div>'
      + '</div>';
@@ -2133,7 +2149,12 @@ export default {
             '파일이 90MB 를 넘습니다. 클립을 나눠 올리거나 화질을 낮춰 주십시오.' },
             { status: 400 });
 
-        const tag = `clips-${sid}-ep${String(ep).padStart(2, '0')}`;
+        // ⭐ 2026-08-22 — 클립 하나로 시험하는 길. 운영자가 컷 하나만 만들어
+        //    소리까지 제대로 입혔는지 보고 싶어 한다. 이때는 **딴 이름**으로
+        //    둔다 — 시험 한 번에 5컷짜리 완성본이 덮이면 안 된다.
+        const cut = String(parseInt(url.searchParams.get('cut') || '0', 10) || 0);
+        const suf = cut ? `-cut${cut}` : '';
+        const tag = `clips-${sid}-ep${String(ep).padStart(2, '0')}${suf}`;
         try {
           let rel;
           try {
@@ -2163,7 +2184,8 @@ export default {
 
           await gh(env, `/repos/${REPO}/actions/workflows/shorts.yml/dispatches`, {
             method: 'POST',
-            body: JSON.stringify({ ref: BRANCH, inputs: { sid, ep } }),
+            body: JSON.stringify({ ref: BRANCH,
+              inputs: cut ? { sid, ep, cut } : { sid, ep } }),
           });
           return Response.json({ ok: true, tag, size: body.byteLength });
         } catch (e) {
@@ -2182,7 +2204,8 @@ export default {
         try {
           await gh(env, `/repos/${REPO}/actions/workflows/voice-sample.yml/dispatches`, {
             method: 'POST',
-            body: JSON.stringify({ ref: BRANCH, inputs: { sid, ep } }),
+            body: JSON.stringify({ ref: BRANCH,
+              inputs: cut ? { sid, ep, cut } : { sid, ep } }),
           });
           return Response.json({ ok: true });
         } catch (e) {
@@ -2232,7 +2255,9 @@ export default {
         const sid = url.searchParams.get('sid') || '';
         const ep = String(parseInt(url.searchParams.get('ep') || '0', 10) || 0);
         if (!/^S\d{3}$/.test(sid)) return new Response('bad', { status: 400 });
-        const tag = `short-${sid}-ep${String(ep).padStart(2, '0')}`;
+        const cut = String(parseInt(url.searchParams.get('cut') || '0', 10) || 0);
+        const tag = `short-${sid}-ep${String(ep).padStart(2, '0')}`
+                  + (cut ? `-cut${cut}` : '');
         let rel = null;
         try { rel = await gh(env, `/repos/${REPO}/releases/tags/${tag}`); } catch { rel = null; }
         const a = (rel && (rel.assets || []).find((x) => x.name === 'short.mp4')) || null;

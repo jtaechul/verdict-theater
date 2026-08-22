@@ -250,6 +250,38 @@ if shutil.which("ffmpeg"):
            abs(S.syl(ch[0]) - S.syl(ch[1])) <= 8,
            " + ".join(str(S.syl(x)) for x in ch) + "음절")
 
+# ⑦ 클립 하나로 시험할 때도 **소리를 갈아 끼우는가**
+#
+# ⚠️⚠️ 2026-08-21 사고 — 미리보기(--demo)가 compose() 만 불렀다. 소리를 안
+#    갈아 끼우는데 화면은 멀쩡히 나오니 다 된 줄 알고 운영자에게 보냈고,
+#    운영자는 한동안 플로우가 만든 외국인 같은 소리를 듣고 있었다.
+#    **미리보기가 진짜와 다른 길로 가면, 미리보기는 거짓말이 된다.**
+print("\n⑦ 클립 하나로 시험할 때도 소리를 갈아 끼우는가")
+_src = (ROOT / "src" / "shorts.py").read_text(encoding="utf-8")
+_one = _src[_src.index("def one("):_src.index("def main(")]
+# ⚠️ 설명글(docstring)에도 compose() 같은 말이 나온다. 자리를 재기 전에
+#    설명글을 걷어 낸다 — 안 그러면 설명글을 실제 부름으로 잘못 센다.
+_one = _one[_one.index('"""', _one.index('"""') + 3) + 3:]
+ck("미리보기에도 소리 갈아 끼우기가 들어 있다", "dub(" in _one,
+      "이게 빠지면 원본(외국인 같은) 소리가 완성본이라고 나간다")
+_i_trim, _i_dub, _i_comp = (_one.find("trim_dead("), _one.find("dub("),
+                            _one.find("compose("))
+ck("차례가 ① 잘라내기 ② 소리 ③ 자막·크롭 순이다",
+      -1 < _i_trim < _i_dub < _i_comp,
+      f"자리 {_i_trim}/{_i_dub}/{_i_comp} — 자막은 **소리에서** 말한 자리를 찾으므로 "
+      "소리를 먼저 갈아 끼워야 한다")
+ck("못 갈아 끼웠으면 크게 알린다", "원래 소리를 그대로 쓴다" in _one)
+
+# 관리자 페이지 ↔ 워크플로가 '몇 컷 시험' 을 같은 말로 주고받는가
+_wf = (ROOT / ".github" / "workflows" / "shorts.yml").read_text(encoding="utf-8")
+_ad = (ROOT / "admin" / "worker.js").read_text(encoding="utf-8")
+ck("워크플로가 'cut' 을 받는다", "\n      cut:" in _wf)
+ck("관리자 페이지가 'cut' 을 보낸다", "{ sid, ep, cut }" in _ad)
+ck("시험본이 완성본을 덮어쓰지 않는다 (딴 이름을 쓴다)",
+      "-cut${cut}" in _ad and "-cut${CUT}" in _wf,
+      "같은 이름이면 시험 한 번에 5컷짜리 완성본이 날아간다")
+ck("고르는 칸이 화면에 있다", "cutone" in _ad)
+
 print("\n" + "─" * 52)
 print(f"❌ 쇼츠 배치: {len(FAIL)}가지 실패" if FAIL else "✅ 쇼츠 배치: 전부 통과")
 sys.exit(1 if FAIL else 0)
