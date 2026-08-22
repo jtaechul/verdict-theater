@@ -53,7 +53,12 @@ import tts as T                                              # noqa: E402
 
 API = ("https://generativelanguage.googleapis.com/v1beta/models/"
        "{m}:generateContent?key={k}")
-JUDGE_MODELS = ["gemini-2.5-flash", "gemini-3-flash-preview", "gemini-2.0-flash"]
+# ⚠️⚠️ 2026-08-22 — 여기가 돈 새는 자리였다. 모델 3개 x 재시도 4번 =
+#    한 번 물을 때 최대 12번인데, **매번 소리 13개를 통째로 다시 보낸다.**
+#    실패가 겹치면 조용히 수십 번을 보낸다. 크게 줄인다.
+JUDGE_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"]
+JUDGE_TRIES = 2                # 모델당 재시도 (2 x 2 = 최대 4번)
+JUDGE_CAP = 14                 # 이 실행에서 물어볼 수 있는 총 횟수
 GOOD_SPS = (5.5, 7.5)          # 무음을 뺀 **실제 말하는** 속도 기준
 CER_GATE = 0.35                # 혼자만 이만큼 틀리면 알아들을 수 없다 → 탈락
 CER_OVER = 0.25                # 남들보다 이만큼 더 틀리면 탈락 (상대 비교)
@@ -160,7 +165,10 @@ HEARD_SCHEMA = {"type": "OBJECT",
                 "required": ["rows"]}
 
 
-def ask(parts, tries=4, schema=None):
+_ASK = {"n": 0, "tin": 0, "tout": 0}
+
+
+def ask(parts, tries=JUDGE_TRIES, schema=None):
     k = (os.environ.get("GEMINI_API_KEY") or "").strip()
     if not k:
         raise RuntimeError("GEMINI_API_KEY 가 없다")
@@ -169,14 +177,22 @@ def ask(parts, tries=4, schema=None):
         cfg["responseSchema"] = schema
     body = {"contents": [{"parts": parts}], "generationConfig": cfg}
     last = ""
+    if _ASK["n"] >= JUDGE_CAP:
+        raise RuntimeError(f"물어본 횟수 상한({JUDGE_CAP}번)에 걸렸다 — 멈춘다")
     for m in JUDGE_MODELS:
         for t in range(tries):
             req = urllib.request.Request(
                 API.format(m=m, k=k), data=json.dumps(body).encode("utf-8"),
                 headers={"Content-Type": "application/json"})
             try:
+                _ASK["n"] += 1
                 with urllib.request.urlopen(req, timeout=180) as r:
                     d = json.loads(r.read().decode("utf-8"))
+                # ⚠️ 쓴 만큼을 **구글이 알려 준 값 그대로** 모아 둔다.
+                #    지금까지 판정 쪽은 장부에 한 줄도 안 남고 있었다.
+                u = d.get("usageMetadata") or {}
+                _ASK["tin"] += int(u.get("promptTokenCount") or 0)
+                _ASK["tout"] += int(u.get("candidatesTokenCount") or 0)
                 return json.loads(
                     d["candidates"][0]["content"]["parts"][0]["text"])
             except urllib.error.HTTPError as e:
@@ -502,6 +518,18 @@ def _run():
         q.parent.mkdir(parents=True, exist_ok=True)
         q.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n",
                      encoding="utf-8")
+    # ⚠️ 판정에 쓴 값도 장부에 남긴다 (지금까지 한 줄도 안 남았다)
+    try:
+        import cost as _c
+        won = _c.krw(JUDGE_MODELS[0], _ASK["tin"], _ASK["tout"])
+        if won > 0:
+            _c.record("목소리 고르기", won,
+                      f"{_ASK['n']}번 물음 · 들어간 글 {_ASK['tin']:,} · "
+                      f"나온 글 {_ASK['tout']:,}")
+        print(f"\n💰 판정에 {_ASK['n']}번 물었다 — 약 {won:.0f}원")
+    except Exception as e:                                   # noqa: BLE001
+        print(f"    (판정 값을 장부에 못 적었다: {e})")
+    print(f"💰 소리 만들기: {T.calls_so_far()}번 불렀다")
     print(f"\n✅ {a.out} · {a.pick} 에 적었다")
     return 0
 

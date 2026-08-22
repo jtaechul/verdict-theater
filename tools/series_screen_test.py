@@ -287,8 +287,17 @@ if wf.exists():
     y = wf.read_text(encoding="utf-8")
     ck("워크플로가 압축파일을 받아 푼다", "release_file.py get" in y and "unzip" in y)
     ck("워크플로가 결과를 릴리스에 올린다", "release_file.py put" in y)
+    # ⚠️ 2026-08-22 — 예전에는 "git commit 이라는 글자가 아예 없어야 한다" 로
+    #    봤다. 그런데 **쓴 돈 장부(state/spend.json)** 는 커밋해서 남겨야 한다
+    #    (안 남기면 깃허브 컨테이너와 함께 버려진다 — 실제로 그랬다).
+    #    지켜야 할 규칙은 "커밋 금지" 가 아니라 **"영상 커밋 금지"** 다.
+    _adds = [ln.strip() for ln in y.splitlines() if "git add" in ln]
     ck("완성 영상을 저장소에 커밋하지 않는다",
-       "git commit" not in y and "push.sh" not in y)
+       all(("build" not in a) and (".mp4" not in a) for a in _adds),
+       str(_adds))
+    ck("장부처럼 작은 글 파일만 커밋한다",
+       all(("state/" in a) or ("|| true" in a) for a in _adds) if _adds else True,
+       str(_adds))
 
 print("\n③-4 유튜브 올리기 설정이 붙어 있는가 (2026-08-20 운영자 지시)")
 wk = (ROOT / "admin" / "worker.js").read_text(encoding="utf-8")

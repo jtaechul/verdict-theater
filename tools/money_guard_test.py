@@ -199,6 +199,85 @@ else:
 import shutil
 shutil.rmtree(tmp, ignore_errors=True)
 print()
+
+# ── 돈이 새는 자리를 막았는가 (2026-08-22) ────────────────
+#
+# ⚠️⚠️ 운영자: "왜 이렇게 돈을 많이 쓰는 거야? 계속 빠져나가."
+#    세어 보니 두 가지였다.
+#      ① **자체 점검** 안에 유료 검사가 두 개 있었다. 자체 점검은 밀어 넣을
+#         때마다 도는데, 하루 열네 번을 밀었더니 그때마다 두 번씩 나갔다.
+#      ② **상한이 없었다.** 한 마디에 최대 36번(모델3 x 말투3 x 재시도4),
+#         목소리 고르기 한 번에 최대 936번까지 부를 수 있었다.
+import yaml                                                  # noqa: E402
+
+
+def _ck(label, cond, why=""):
+    if cond:
+        print("   ✅ " + label)
+    else:
+        bad(label + (f"  ({why})" if why else ""))
+
+from pathlib import Path as _P                               # noqa: E402
+
+print("\n⑨ 돈이 새는 자리를 막았는가")
+_WF = _P(__file__).resolve().parent.parent / ".github" / "workflows"
+
+# ① 밀 때마다 도는 워크플로에는 유료 열쇠가 없어야 한다
+for f in sorted(_WF.glob("*.yml")):
+    w = yaml.safe_load(f.read_text(encoding="utf-8"))
+    on = w.get(True) or w.get("on") or {}
+    if not isinstance(on, dict) or "push" not in on:
+        continue
+    txt = f.read_text(encoding="utf-8")
+    paid = [k for k in ("GEMINI_API_KEY", "GOOGLE_TTS_KEY", "ANTHROPIC_API_KEY")
+            if k in txt]
+    # 표식(.trigger)으로만 도는 것은 부러 부른 것이므로 괜찮다
+    only_mark = all(str(p).startswith(".trigger/")
+                    for p in (on.get("push") or {}).get("paths") or ["x"])
+    _ck(f"{f.name}: 밀 때마다 도는데 유료 호출이 없다", (not paid) or only_mark,
+       f"{paid} — 밀어 넣을 때마다 돈이 나간다")
+
+# ② 돈 쓰는 워크플로에는 **상한**이 있어야 한다
+for f in sorted(_WF.glob("*.yml")):
+    txt = f.read_text(encoding="utf-8")
+    if "GEMINI_API_KEY" not in txt and "GOOGLE_TTS_KEY" not in txt:
+        continue
+    if "tts.py" not in txt and "shorts.py" not in txt and "voice_judge" not in txt:
+        continue
+    _ck(f"{f.name}: 부르는 횟수 상한이 있다", "TTS_CALL_CAP" in txt,
+       "상한이 없으면 실패가 겹칠 때 조용히 수백 번을 부른다")
+
+# ③ 상한이 진짜로 막는가
+import os as _os                                             # noqa: E402
+import sys as _sys                                           # noqa: E402
+_sys.path.insert(0, str(_P(__file__).resolve().parent.parent / "src"))
+import tts as _T                                             # noqa: E402
+_keep = _os.environ.get("TTS_CALL_CAP")
+_os.environ["TTS_CALL_CAP"] = "3"
+_T._CALLS["n"] = 0
+try:
+    _n = 0
+    try:
+        for _ in range(20):
+            _T.count_call()
+            _n += 1
+    except _T.CapReached:
+        pass
+    _ck("상한을 넘으면 진짜로 멈춘다", _n == 3, f"{_n}번 부르고 멈췄다")
+finally:
+    _T._CALLS["n"] = 0
+    if _keep is None:
+        _os.environ.pop("TTS_CALL_CAP", None)
+    else:
+        _os.environ["TTS_CALL_CAP"] = _keep
+
+# ④ 쓴 돈이 저장소에 남는가
+for f in ("voice-pick.yml", "shorts.yml", "voice-sample.yml"):
+    txt = (_WF / f).read_text(encoding="utf-8")
+    _ck(f"{f}: 쓴 돈 장부를 저장소에 남긴다", "state/spend.json" in txt,
+       "깃허브 안에서만 적히면 컨테이너와 함께 버려진다 (실제로 그랬다)")
+
+
 print("─" * 52)
 print("✅ 돈 막는 장치: 정상" if ok else "❌ 돈 막는 장치: 문제 있음")
 sys.exit(0 if ok else 1)

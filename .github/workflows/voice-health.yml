@@ -1,0 +1,35 @@
+name: 5-1. 목소리 상태 확인 (주 1회 · 1원 미만)
+
+# 목소리 열쇠가 살아 있는지, 어느 길로 가는지 확인한다.
+#
+# ⚠️⚠️ 2026-08-22 — 이 두 검사는 원래 **자체 점검** 안에 있었다. 자체 점검은
+#    밀어 넣을 때마다 도는데, 하루 열네 번을 밀었더니 그때마다 유료 호출이
+#    두 번씩 나갔다. 운영자가 "돈이 계속 빠져나간다" 고 했다.
+#    → 밀 때마다가 아니라 **주 1회 + 필요할 때 버튼**으로 옮긴다.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 22 * * 0'          # 일요일 밤 (한국 시간 월요일 아침)
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GOOGLE_TTS_KEY: ${{ secrets.GOOGLE_TTS_KEY }}
+      TTS_CALL_CAP: '6'           # ⚠️ 확인만 하는 자리다. 여섯 번이면 넉넉하다
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 열쇠가 살아 있는가 (연기 지시까지 먹는지)
+        run: python3 tools/tts_live_check.py
+      - name: 하루 제한 없는 길로 가는가
+        continue-on-error: true
+        run: python3 tools/voice_route.py --strict

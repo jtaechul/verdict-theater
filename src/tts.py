@@ -432,6 +432,7 @@ def cloud_gem_say(text, voice, out, style=None):
                   "model_name": cloud_model()},
         "audioConfig": {"audioEncoding": "LINEAR16", "sampleRateHertz": 48000},
     }
+    count_call()
     req = urllib.request.Request(
         f"{CLOUD_GEM}?key={k}", data=json.dumps(body).encode("utf-8"),
         headers={"Content-Type": "application/json"})
@@ -457,6 +458,40 @@ def cloud_gem_say(text, voice, out, style=None):
 #    ⚠️ 한 마디마다 적지 않고 **모아서 한 줄로** 적는다. 한 마디는 1원도 안 되는데
 #       줄마다 반올림하면 15줄짜리 한 화가 실제보다 훨씬 비싸게 적힌다.
 _USED = {"chars": 0, "model": ""}
+
+# ⭐⭐ 2026-08-22 운영자: "왜 이렇게 돈을 많이 쓰는 거야? 계속 빠져나가."
+#    세어 보니 **상한이 사실상 없었다.**
+#      한 마디 만들 때  : 모델 3개 x 말투 3가지 x 재시도 4번 = **최대 36번**
+#      목소리 고르기 1회 : 소리 26개 x 36 = **최대 936번**
+#    실패가 겹치면 조용히 수백 번을 부르고, 그게 다 돈이다.
+#    → 한 번 실행에서 부를 수 있는 **총 횟수**를 못 박는다. 넘으면 멈춘다.
+#      (많이 만드는 일은 CALL_CAP 을 올려서 부러 허락해야 한다)
+_CALLS = {"n": 0}
+
+
+def call_cap():
+    try:
+        return max(1, int(os.environ.get("TTS_CALL_CAP") or 80))
+    except Exception:                                        # noqa: BLE001
+        return 80
+
+
+class CapReached(RuntimeError):
+    """이번 실행에서 부를 수 있는 횟수를 다 썼다."""
+
+
+def count_call():
+    _CALLS["n"] += 1
+    if _CALLS["n"] > call_cap():
+        raise CapReached(
+            f"❌ 이번 실행에서 목소리를 {_CALLS['n'] - 1}번 불렀다 — "
+            f"상한({call_cap()}번)에 걸려 멈춘다.\n"
+            f"   부러 더 만들려면 TTS_CALL_CAP 을 올려라.")
+    return _CALLS["n"]
+
+
+def calls_so_far():
+    return _CALLS["n"]
 
 
 def bill_add(model, text):
@@ -562,7 +597,7 @@ def _rate_of(mime):
 GEM_SAFE = [{"category": c, "threshold": "BLOCK_NONE"} for c in (
     "HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH",
     "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT")]
-GEM_TRIES = 4
+GEM_TRIES = 2
 WAIT_MAX = 45.0        # 한 번에 이보다 오래 쉬지는 않는다
 WAIT_BUDGET = 150.0    # 한 마디에 쓰는 기다림을 다 합쳐 이만큼까지
 
@@ -625,6 +660,7 @@ def soft(text):
 
 
 def _gem_once(model, prompt, voice, safe=True):
+    count_call()
     """제미나이를 한 번 부른다. (날것 소리, 빠르기) 를 돌려준다."""
     body = {
         "contents": [{"parts": [{"text": prompt}]}],
@@ -772,6 +808,7 @@ def explain(code, msg):
 
 
 def _post(k, body):
+    count_call()
     req = urllib.request.Request(
         f"{API}?key={k}", data=json.dumps(body).encode("utf-8"),
         headers={"Content-Type": "application/json"})

@@ -511,11 +511,32 @@ ck(T._rate_of("audio/L16;codec=pcm;rate=24000") == 24000, "소리 빠르기를 �
 ck(T._rate_of("") == 24000, "안 적혀 있으면 24000 으로 본다")
 
 # ── ⑦ 워크플로가 열쇠를 넘겨 주는가 ─────────────────
+# ⚠️⚠️ 2026-08-22 — selfcheck.yml 은 여기서 **뺐다.** 자체 점검은 밀어 넣을
+#    때마다 도는데 유료 호출이 두 개 들어 있어서, 하루 열네 번을 밀었더니
+#    그때마다 돈이 나갔다. 그 두 검사는 voice-health.yml (주 1회 + 버튼)로
+#    옮겼다. 자체 점검은 이름 그대로 0원이어야 한다.
+_sc = (ROOT / ".github" / "workflows" / "selfcheck.yml").read_text(encoding="utf-8")
+for _k in ("GEMINI_API_KEY", "GOOGLE_TTS_KEY", "ANTHROPIC_API_KEY"):
+    ck(f"자체 점검이 {_k} 를 안 쓴다", _k not in _sc,
+       "밀어 넣을 때마다 돈이 나간다")
+_vh = ROOT / ".github" / "workflows" / "voice-health.yml"
+ck("옮겨 간 자리가 있다", _vh.exists())
+if _vh.exists():
+    _t = _vh.read_text(encoding="utf-8")
+    ck("거기서 열쇠를 넘긴다", "GEMINI_API_KEY" in _t and "GOOGLE_TTS_KEY" in _t)
+    ck("거기는 밀 때마다 안 돈다", "push:" not in _t)
+    ck("거기도 부르는 횟수 상한이 있다", "TTS_CALL_CAP" in _t)
+
 print("\n⑦ 워크플로가 열쇠를 넘겨 주는가")
 for wf in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
     txt = wf.read_text(encoding="utf-8")
-    uses = re.search(r"src/(tts|shorts)\.py", txt)
-    if not uses:
+    # ⚠️ 2026-08-22 — 예전엔 "src/tts.py 라는 글자가 있으면" 으로 봤다.
+    #    그랬더니 **문법만 검사하는 py_compile 줄**까지 "목소리를 만든다" 로
+    #    잡혔다. 실제로 **돌리는** 자리만 본다.
+    runs = [ln for ln in txt.splitlines()
+            if re.search(r"python3?\s+src/(tts|shorts)\.py", ln)
+            and "py_compile" not in ln]
+    if not runs:
         continue
     ck("GEMINI_API_KEY" in txt,
        f"{wf.name} 이 GEMINI_API_KEY 를 넘긴다",
