@@ -443,6 +443,10 @@ function appHtml() {
 <div class="wrap" id="app"><div class="empty">불러오는 중…</div></div>
 <div class="toast" id="toast"></div>
 <div class="errbox" id="errbox"></div>
+<!-- ⭐ 2026-08-22 — 지금 보고 계신 화면이 **어느 판**인지 여기에 적힌다.
+     운영자가 "또 뜬다" 고 하셨을 때 고치기 전 화면인지 알 길이 없었다.
+     화면을 캡처해 주시면 이 줄로 바로 알 수 있다. -->
+<div style="text-align:center;color:#4a4d5c;font-size:11px;padding:14px 0 24px">판 ${BUILD}</div>
 <script>
 const WF = ${JSON.stringify(WORKFLOWS)};
 const STAGE = ${JSON.stringify(STAGE_LABEL)};
