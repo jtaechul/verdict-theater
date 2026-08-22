@@ -55,7 +55,8 @@ API = ("https://generativelanguage.googleapis.com/v1beta/models/"
        "{m}:generateContent?key={k}")
 JUDGE_MODELS = ["gemini-2.5-flash", "gemini-3-flash-preview", "gemini-2.0-flash"]
 GOOD_SPS = (5.5, 7.5)          # 무음을 뺀 **실제 말하는** 속도 기준
-CER_GATE = 0.15                # 이보다 많이 틀리면 알아들을 수 없다 → 탈락
+CER_GATE = 0.35                # 혼자만 이만큼 틀리면 알아들을 수 없다 → 탈락
+CER_OVER = 0.25                # 남들보다 이만큼 더 틀리면 탈락 (상대 비교)
 ROUNDS = 3                     # 차례를 섞어 몇 번 줄 세우게 할까
 GOOD_ST = (2.0, 5.0)           # 억양 폭(반음). 밋밋도 과장도 아닌 구간
 
@@ -408,10 +409,23 @@ def _run():
             h = got.get(i, "")
             r["heard"] = h
             r["cer"] = cer(r["text"], h) if h else None
-            r["pass"] = (r["cer"] is None) or (r["cer"] <= CER_GATE)
+        # ⚠️⚠️ 2026-08-22 — 처음엔 "0.15 넘으면 탈락" 이라고 절대값으로 잘랐다.
+        #    그랬더니 **남자 13개가 전부 똑같이 0.222 로 탈락**했다.
+        #    "못 살아" 를 "못 사라" 로 들은 것인데, 아홉 글자짜리 대사에서
+        #    두 글자면 22%다. 모두가 똑같이 틀렸다면 그건 **목소리 탓이 아니라
+        #    대사 탓**이다. 그런데도 전원 탈락시켜 남자 쪽 줄 세우기를 통째로
+        #    건너뛰었다.
+        #    → 남들과 견줘서 **혼자 유난히** 못 알아들을 때만 떨어뜨린다.
+        _c = sorted(x["cer"] for x in part if x.get("cer") is not None)
+        mid = _c[len(_c) // 2] if _c else 0.0
+        for r in part:
+            v = r.get("cer")
+            r["pass"] = (v is None) or (v <= max(CER_GATE, mid + CER_OVER))
             if not r["pass"]:
-                print(f"   ❌ {sex} {r['voice']:14s} 탈락 — 「{h[:18]}」 "
-                      f"({r['cer']:.2f} 틀림)")
+                print(f"   ❌ {sex} {r['voice']:14s} 탈락 — 「{r['heard'][:18]}」 "
+                      f"({v:.2f} 틀림 · 다들 {mid:.2f})")
+        print(f"   (다들 {mid:.2f} 쯤 틀린다 — 여기서 "
+              f"{max(CER_GATE, mid + CER_OVER):.2f} 넘게 틀려야 탈락)")
     _bad = [r for r in rows if not r.get("pass", True)]
     print(f"   {len(rows) - len(_bad)}개 통과 · {len(_bad)}개 탈락"
           + ("  (다 알아들을 만하면 이 관문은 할 일이 없다)" if not _bad else ""))
