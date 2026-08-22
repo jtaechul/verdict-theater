@@ -123,6 +123,9 @@ jobs:
         run: |
           python3 -m pip install --quiet PyYAML
           bash tools/shorts_flow_test.sh
+          # ⚠️ shorts-upload.yml 은 한 번도 돈 적이 없다(기록 0건).
+          #    쇼츠가 만들어지면 손님이 바로 그 단추를 누르신다.
+          python3 tools/upload_dry_test.py
 
       - name: 쇼츠 배치(후킹·영상·자막)가 제자리인가
         run: |
