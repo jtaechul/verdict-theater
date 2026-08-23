@@ -21,6 +21,7 @@
 
 import argparse
 import base64
+import hashlib
 import json
 import os
 import sys
@@ -31,6 +32,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import cost                                                  # noqa: E402
+import vprompt                                               # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 BASE = "https://generativelanguage.googleapis.com/v1beta"
@@ -166,8 +168,13 @@ def make_clip(prompt, sec, out, ratio="16:9", seed=None, start=None):
         if st.get("done"):
             uri = _find_uri(st)
             if not uri:
-                raise VeoError(f"다 됐다는데 영상 주소가 없다: "
-                               f"{json.dumps(st, ensure_ascii=False)[:250]}")
+                # ⚠️ 안전필터에 걸리면 **오류가 아니라 성공**으로 온다 — done 은
+                #    true 인데 영상이 없다. 왜 없는지 알려 줘야 고칠 수 있다.
+                blob = json.dumps(st, ensure_ascii=False)
+                why = "안전필터에 걸린 듯하다" if any(
+                    k in blob for k in ("SAFETY", "raiFilteredReason", "blocked",
+                                        "filtered")) else "까닭을 모르겠다"
+                raise VeoError(f"다 됐다는데 영상이 없다 ({why}): {blob[:250]}")
             _download(uri, out)
             print(f"    ✅ {out.name}  ({out.stat().st_size / 1e6:.1f}MB)")
             return krw
@@ -176,7 +183,16 @@ def make_clip(prompt, sec, out, ratio="16:9", seed=None, start=None):
     raise VeoError(f"{POLL_MAX * POLL_SEC}초를 기다려도 안 끝났다.")
 
 
-def episode(sid, no, out_dir, only_cut=None):
+def _seed(*parts):
+    """같은 컷을 다시 만들면 같은 구도가 나오게 씨앗을 고정한다.
+
+    실측: seed 는 요청이 받아들여진다. 컷마다 **다른** 값이어야 하고, 실행할
+    때마다 달라지면 안 되므로 이름에서 만들어 낸다."""
+    h = hashlib.sha256("|".join(str(p) for p in parts).encode()).hexdigest()
+    return int(h[:8], 16) % 2_000_000_000
+
+
+def episode(sid, no, out_dir, only_cut=None, stills=None, auto_sec=True):
     doc = json.loads((ROOT / "data" / "series" / f"{sid}.json").read_text(encoding="utf-8"))
     eps = doc.get("episodes") or []
     ep = next((e for e in eps if int(e.get("no", 0)) == int(no)), None)
@@ -205,12 +221,22 @@ def episode(sid, no, out_dir, only_cut=None):
             print(f"    (이미 있다 — 건너뛴다: {out.name})")
             made += 1
             continue
-        prompt = (c.get("prompt") or "").strip()
-        if not prompt:
+        raw = (c.get("prompt") or "").strip()
+        if not raw:
             print("    ⚠️ 이 컷에 영상 지시문이 없다 — 건너뛴다")
             continue
+        # ⭐ 컷 길이는 **대사 길이에 맞춘다** (2026-08-23). 6초 컷에 9초짜리
+        #    대사를 얹으면 남는 3초 동안 마지막 장면이 얼어붙어 사고처럼 보인다.
+        csec = vprompt.seconds_for(c.get("subtitle") or "") if auto_sec else sec
+        prompt = vprompt.video_prompt(raw, csec)
+        start = None
+        if stills:
+            cand = Path(stills) / f"c{n:03d}.png"
+            if cand.exists() and cand.stat().st_size > 10_000:
+                start = cand
+                print(f"    시작 그림을 쓴다: {cand.name} (얼굴이 컷마다 같아진다)")
         try:
-            spent += make_clip(prompt, sec, out)
+            spent += make_clip(prompt, csec, out, seed=_seed(sid, no, n), start=start)
             made += 1
         except (cost.MonthlyCapReached, VeoError) as e:
             print(f"    ❌ {e}")
@@ -232,9 +258,14 @@ def main():
     ap.add_argument("no")
     ap.add_argument("--out", default="build/in")
     ap.add_argument("--cut", default="", help="한 컷만 만들어 본다")
+    ap.add_argument("--stills", default="",
+                    help="컷 첫 장면 그림 폴더 (있으면 시작 프레임으로 넣는다)")
+    ap.add_argument("--fixed-sec", action="store_true",
+                    help="대사 길이에 맞추지 않고 대본의 초를 그대로 쓴다")
     a = ap.parse_args()
     try:
-        return episode(a.sid, a.no, a.out, a.cut or None)
+        return episode(a.sid, a.no, a.out, a.cut or None,
+                       stills=a.stills or None, auto_sec=not a.fixed_sec)
     except (VeoError, cost.MonthlyCapReached) as e:
         print(f"❌ {e}")
         return 2

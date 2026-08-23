@@ -58,6 +58,14 @@ const WORKFLOWS = [
              { k: 'gate_limit', label: '살펴볼 소재 수', type: 'text', v: '10' },
              { k: 'budget', label: '값 상한(원)', type: 'text', v: '3000' }] },
 
+  // ⭐ 2026-08-23 — 그림·영상을 우리가 만든다. 구글 플로우에서 손으로 만들어
+  //    올릴 일이 없어졌다. 인물 카드 → 컷 그림 → Veo → 쇼츠까지 한 번에.
+  { file: 'video.yml', name: '3. 영상 만들기 (그림 → 영상 → 쇼츠)',
+    desc: '대본 한 회차를 영상까지 통째로 만듭니다 (1화 약 3,700원)',
+    inputs: [{ k: 'sid', label: '시리즈 번호', type: 'text', v: 'S001' },
+             { k: 'ep', label: '몇 화', type: 'text', v: '1' },
+             { k: 'cut', label: '한 컷만 시험 (비우면 전체)', type: 'text', v: '' }] },
+
   { file: 'stats.yml', name: '4. 성과 보기',
     desc: '올린 영상이 얼마나 보였는지 확인합니다 (0원)',
     inputs: [] },

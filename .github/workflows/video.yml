@@ -1,0 +1,205 @@
+name: 3. 영상 만들기 (그림 → Veo → 쇼츠)
+
+# 대본 한 회차를 **처음부터 끝까지** 영상으로 만든다. 구글 플로우에서 손으로
+# 만들어 올릴 일이 없어진다.
+#
+#   ① 인물 카드 (시리즈당 한 번 · 3장)
+#   ② 컷마다 첫 장면 그림 — 카드를 참조로 넣어 얼굴을 묶는다
+#   ③ 그 그림을 시작 프레임으로 Veo 가 컷 영상을 만든다
+#   ④ 타입캐스트 목소리를 얹고 쇼츠 한 편으로 조립한다
+#
+# 값: 1화 기준 그림 8장 약 1,060원 + 영상 약 30초 약 2,650원 = 약 3,700원.
+#     컷마다 부르기 전에 한도를 보고, 이미 만든 것은 다시 안 만든다.
+#
+# ⚠️ 완성 영상은 저장소에 커밋하지 않는다 (지침). 릴리스에만 올린다.
+
+on:
+  # ⭐ 표식 파일로도 돈다. 고친 사람이 직접 돌려 확인할 수 있어야 한다.
+  #    (.trigger/ 로만 도는 것은 부러 부른 것이라 돈 감시가 허용한다)
+  push:
+    paths:
+      - '.trigger/video'
+  workflow_dispatch:
+    inputs:
+      sid:
+        description: '시리즈 번호'
+        required: true
+        default: 'S001'
+      ep:
+        description: '몇 화'
+        required: true
+        default: '1'
+      cut:
+        description: '한 컷만 시험 (비우면 전체)'
+        required: false
+        default: ''
+      voice:
+        description: '골라 둔 목소리 주소 (관리자 페이지가 채웁니다)'
+        required: false
+        default: ''
+      tckey:
+        description: '타입캐스트 열쇠 주소 (관리자 페이지가 채웁니다)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: video
+  cancel-in-progress: false
+
+jobs:
+  video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GOOGLE_TTS_KEY: ${{ secrets.GOOGLE_TTS_KEY }}
+      # ⚠️ 상한이 없으면 실패가 겹칠 때 조용히 수백 번을 부른다.
+      TTS_CALL_CAP: '40'      # 한 화 대사 9줄 + 재시도 여유
+      VEO_CALL_CAP: '8'       # 컷 5개 + 재시도 여유 (한 컷 약 600원)
+      STILL_CALL_CAP: '16'    # 카드 3 + 컷 5 + 재시도 여유
+      SID: ${{ inputs.sid || 'S001' }}
+      EPNO: ${{ inputs.ep || '1' }}
+      CUT: ${{ inputs.cut }}
+      VOICE: ${{ inputs.voice }}
+      TCKEY_URL: ${{ inputs.tckey }}
+      ADMIN_PASS: ${{ secrets.ADMIN_PASSWORD }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 준비물 (ffmpeg · 글자 그리기)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          python3 -m pip install --quiet pillow
+
+      # 돈을 쓰기 전에 길이 성한지 먼저 본다 (값 0원 · 2초)
+      - name: 돈 쓰기 전 점검 (값 0원)
+        run: |
+          python3 tools/veo_test.py
+          python3 tools/no_claude_test.py
+
+      - name: 타입캐스트 열쇠 받기
+        continue-on-error: true
+        run: |
+          if [ -n "${TCKEY_URL:-}" ]; then
+            case "$TCKEY_URL" in https://*.workers.dev/*) : ;; *) exit 0 ;; esac
+            K=$(curl -fsSL -H "x-vt-pass: ${ADMIN_PASS}" "$TCKEY_URL" || true)
+            if [ -n "$K" ]; then
+              echo "::add-mask::$K"
+              echo "TYPECAST_API_KEY=$K" >> "$GITHUB_ENV"
+              echo "타입캐스트 열쇠를 받았다"
+            fi
+          fi
+
+      - name: 골라 둔 목소리 가져오기
+        continue-on-error: true
+        run: |
+          mkdir -p state
+          if [ -n "${VOICE:-}" ] \
+             && curl -fsSL -H "x-vt-pass: ${ADMIN_PASS}" "$VOICE" -o state/voice.json; then
+            echo "관리자 페이지에서 골라 둔 것을 받았다"
+          elif [ -s state/voice.json ]; then
+            echo "저장소에 골라 둔 것이 있다"
+          else
+            echo "골라 둔 것이 없다 — 정해 둔 목소리로 간다"
+          fi
+
+      - name: 표식으로 돌 때 무엇을 만들지 읽기
+        if: github.event_name == 'push'
+        run: |
+          L=$(head -1 .trigger/video 2>/dev/null | tr -d '\r' | xargs || true)
+          S=$(echo "$L" | awk '{print $1}'); E=$(echo "$L" | awk '{print $2}')
+          C=$(echo "$L" | awk '{print $3}')
+          echo "SID=${S:-S001}"  >> "$GITHUB_ENV"
+          echo "EPNO=${E:-1}"    >> "$GITHUB_ENV"
+          echo "CUT=${C}"        >> "$GITHUB_ENV"
+          echo "표식이 시킨 것: ${S:-S001} ${E:-1}화 ${C:+${C}컷만}"
+
+      - name: 1) 인물 카드 (시리즈당 한 번)
+        run: |
+          set -o pipefail
+          python3 tools/release_file.py get "cards-${SID}" cards.zip build/cards.zip \
+            && unzip -q -o build/cards.zip -d build/cards \
+            || echo "받아 둔 카드가 없다 — 새로 만든다"
+          python3 src/still.py cards "$SID" --out build/cards 2>&1 | tee -a make.log
+
+      - name: 2) 컷 첫 장면 그림
+        run: |
+          set -o pipefail
+          C=""; if [ -n "${CUT:-}" ] && [ "${CUT}" != "0" ]; then C="--cut ${CUT}"; fi
+          python3 src/still.py scenes "$SID" "$EPNO" --cards build/cards \
+            --out build/stills $C 2>&1 | tee -a make.log
+
+      - name: 3) Veo 로 컷 영상
+        run: |
+          set -o pipefail
+          C=""; if [ -n "${CUT:-}" ] && [ "${CUT}" != "0" ]; then C="--cut ${CUT}"; fi
+          python3 src/veo.py "$SID" "$EPNO" --out build/in --stills build/stills $C \
+            2>&1 | tee -a make.log
+
+      - name: 4) 쇼츠 한 편으로 조립
+        run: |
+          set -o pipefail
+          EP=$(printf '%02d' "$EPNO")
+          echo "EP=$EP" >> "$GITHUB_ENV"
+          SUF=""; if [ -n "${CUT:-}" ] && [ "${CUT}" != "0" ]; then SUF="-cut${CUT}"; fi
+          echo "SUF=$SUF" >> "$GITHUB_ENV"
+          if [ -n "$SUF" ]; then
+            CLIP=$(find build/in -name '*.mp4' | sort | head -1)
+            test -n "$CLIP" || { echo "❌ 만들어진 컷 영상이 없습니다"; exit 1; }
+            python3 src/shorts.py "$SID" "$EPNO" --demo "$CLIP" --cut "$CUT" \
+              --out build/shorts 2>&1 | tee -a make.log
+          else
+            python3 src/shorts.py "$SID" "$EPNO" --clips build/in --out build/shorts \
+              2>&1 | tee -a make.log
+          fi
+
+      - name: 릴리스에 올리기 (저장소에는 안 넣는다)
+        run: |
+          set -euo pipefail
+          if [ -n "${SUF:-}" ]; then
+            OUT=$(find build/shorts -maxdepth 1 -name '*_short.mp4' | sort | head -1)
+          else
+            OUT="build/shorts/${SID}_ep${EP}_short.mp4"
+          fi
+          test -n "$OUT" && test -f "$OUT" || { echo "❌ 만들어진 영상이 없습니다"; exit 1; }
+          python3 tools/release_file.py put "short-${SID}-ep${EP}${SUF}" short.mp4 "$OUT"
+          # 인물 카드는 다음 회차에도 그대로 쓴다 — 다시 만들면 얼굴이 달라진다
+          if [ -d build/cards ]; then
+            python3 -c "import shutil;shutil.make_archive('build/cards','zip','build/cards')"
+            python3 tools/release_file.py put "cards-${SID}" cards.zip build/cards.zip || true
+          fi
+
+      - name: 쓴 돈 장부 남기기
+        if: always()
+        continue-on-error: true
+        run: |
+          git config user.name "verdict-theater-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add state/spend.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "장부에 새로 적힌 것이 없다"
+          else
+            git commit -m "장부: 쓴 돈 [skip ci]"
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+            git push origin "HEAD:${GITHUB_REF_NAME}" || echo "못 밀었다"
+          fi
+
+      - name: 결과 화면
+        if: always()
+        run: |
+          {
+            echo "## 영상 만들기"
+            echo ""
+            echo '```'
+            tail -n 40 make.log 2>/dev/null || echo "기록 없음"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

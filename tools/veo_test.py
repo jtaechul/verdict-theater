@@ -31,6 +31,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 os.environ["GEMINI_API_KEY"] = "가짜-열쇠-검사용"
 import cost                                                  # noqa: E402
+import vprompt                                               # noqa: E402
 import veo                                                   # noqa: E402
 
 # 진짜 장부는 절대 안 건드린다
@@ -100,25 +101,43 @@ ck(f"영상 만들기를 {CUTS}번 부른다", len(posts) == CUTS, len(posts))
 if posts:
     u, b = posts[0]
     p = b.get("parameters", {})
+    C1 = DOC["episodes"][0]["cuts"][0]
+    WANT_SEC = vprompt.seconds_for(C1["subtitle"])
     ck("모델 이름이 주소에 들어간다", veo.MODEL in u, u)
-    ck(f"길이를 {SEC}초로 보낸다", p.get("durationSeconds") == SEC, p)
+    ck(f"컷 길이를 대사에 맞춰 {WANT_SEC}초로 보낸다 (4~8 안)",
+       p.get("durationSeconds") == WANT_SEC and 4 <= WANT_SEC <= 8, p)
     ck("비율을 16:9 로 보낸다 (shorts 가 4:3 으로 자른다)", p.get("aspectRatio") == "16:9", p)
-    ck("대본의 지시문을 그대로 보낸다",
-       b["instances"][0]["prompt"] == DOC["episodes"][0]["cuts"][0]["prompt"].strip())
-    # ⭐ 2026-08-23 실측 — 구글이 안 받는 필드를 보내면 400 이 나고 그 컷이 통째로
-    #    날아간다. 실측으로 확인한 것만 보내는지 매번 대조한다.
     ck("1080p 로 받는다 (최종 가로가 1080px)", p.get("resolution") == "1080p", p)
     ck('personGeneration 은 "ALLOW_ALL" (allow_adult 는 400)',
        p.get("personGeneration") == "ALLOW_ALL", p)
+    ck("씨앗(seed)을 보낸다", isinstance(p.get("seed"), int), p)
     BAD = ("negativePrompt", "numberOfVideos", "referenceImages", "lastFrame")
-    ck("구글이 안 받는 필드를 안 보낸다", not [k for k in BAD if k in p or k in b["instances"][0]],
-       [k for k in BAD if k in p or k in b["instances"][0]])
+    ck("구글이 안 받는 필드를 안 보낸다",
+       not [k for k in BAD if k in p or k in b["instances"][0]], p)
+
+    # ⭐ 여기가 이번 판의 핵심이다 — 지시문을 그대로 보내면 안 된다.
+    pr = b["instances"][0]["prompt"]
+    print("② 지시문을 제대로 고쳐 보내는가")
+    ck("대사(DIALOGUE) 토막이 빠졌다", "DIALOGUE" not in pr)
+    ck("목소리(VOICE)·소리(AUDIO) 토막이 빠졌다",
+       "VOICE:" not in pr and "AUDIO:" not in pr)
+    ck("한국어 대사가 한 글자도 안 남았다",
+       not [ch for ch in pr if "\uac00" <= ch <= "\ud7a3"],
+       "".join(ch for ch in pr if "\uac00" <= ch <= "\ud7a3")[:40])
+    ck("거친 낱말(furious·shouting)이 순화됐다",
+       "furious" not in pr.lower() and "shouting" not in pr.lower())
+    ck("화면 글자 막는 문구가 **맨 끝**에 있다",
+       pr.rstrip().endswith(vprompt.NO_TEXT), pr[-90:])
+    ck("가운데로 몰아 찍으라고 시킨다 (좌우가 잘린다)", vprompt.FRAME in pr)
+    ck("머리말의 초가 실제 길이와 같다", f"{WANT_SEC}-second" in pr,
+       pr.splitlines()[0][-40:])
 
 # ⑥ 장부
 print("② 쓴 돈이 장부에 남는가")
 rows = json.loads(cost.LEDGER.read_text(encoding="utf-8")) if cost.LEDGER.exists() else []
 ck(f"장부에 {CUTS}줄이 남았다", len(rows) == CUTS, len(rows))
-want = round(cost.video_krw(veo.MODEL, SEC))
+want = round(cost.video_krw(veo.MODEL, vprompt.seconds_for(
+    DOC["episodes"][0]["cuts"][0]["subtitle"])))
 ck(f"한 컷 값이 {want:,}원으로 적힌다", rows and rows[0]["krw"] == want, rows[:1])
 
 # ③ 이어 만들기
@@ -159,6 +178,39 @@ with redirect_stdout(io.StringIO()) as log:
 ck("한 번도 안 부르고 멈춘다 (값 0원)",
    not [u for u, _ in sent if ":predictLongRunning" in u], sent)
 ck("왜 멈췄는지 알려준다", "이번 달 한도" in log.getvalue(), log.getvalue()[-200:])
+
+# ⚠️ ⑤에서 장부에 한도를 넘는 가짜 줄을 넣었다. 그대로 두면 뒤 검사가 전부
+#    "한도 초과"로 막힌다. 깨끗한 장부로 갈아 끼운다.
+cost.LEDGER = pathlib.Path(tempfile.mkdtemp(prefix="veo-ledger2-")) / "spend.json"
+
+print("⑥ 시작 그림이 있으면 시작 프레임으로 넣는가")
+d4 = pathlib.Path(tempfile.mkdtemp(prefix="veo-start-"))
+st = pathlib.Path(tempfile.mkdtemp(prefix="veo-stills-"))
+(st / "c001.png").write_bytes(b"\x89PNG" + b"\0" * 20_000)
+sent.clear(); veo._calls["n"] = 0
+with redirect_stdout(io.StringIO()):
+    veo.episode("S001", 1, d4, only_cut=1, stills=st)
+b = [b for u, b in sent if ":predictLongRunning" in u][0]
+img = b["instances"][0].get("image") or {}
+ck("image 를 같이 보낸다", bool(img.get("bytesBase64Encoded")), list(img))
+ck("mimeType 도 같이 보낸다 (하나만 보내면 400)", img.get("mimeType") == "image/png", img.get("mimeType"))
+
+print("⑦ 안전필터에 걸린 것을 알아채는가")
+def blocked(req, timeout=None):
+    u = req.full_url
+    if ":predictLongRunning" in u:
+        return Fake(json.dumps({"name": "models/veo/operations/op9"}).encode())
+    return Fake(json.dumps({"done": True, "response": {
+        "raiFilteredReason": "blocked by safety"}}).encode())
+urllib.request.urlopen = blocked
+d5 = pathlib.Path(tempfile.mkdtemp(prefix="veo-safe-"))
+veo._calls["n"] = 0
+with redirect_stdout(io.StringIO()) as log:
+    veo.episode("S001", 1, d5, only_cut=1)
+out5 = log.getvalue()
+ck("영상이 없다는 것을 알아챈다", "영상이 없다" in out5, out5[-160:])
+ck("안전필터라고 알려 준다", "안전필터" in out5, out5[-160:])
+urllib.request.urlopen = fake_urlopen
 
 print("-" * 62)
 if fails:
