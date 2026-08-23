@@ -273,7 +273,13 @@ def pick_voices(chars):
     out, fi, mi, used = {}, 0, 0, set()
     for ch in chars or []:
         f = is_female(ch)
-        mature = [v for v in (MATURE_F if f else MATURE_M) if v not in used]
+        # ⚠️⚠️ 2026-08-23 — 처음엔 엔진을 안 보고 나이 든 목소리를 끼웠다.
+        #    깃허브(제미나이 열쇠 없음)는 구글 목소리(ko-KR-…)로 도는데,
+        #    거기에 제미나이 이름(Gacrux)을 건네니 못 알아듣는다.
+        #    내 컴퓨터엔 열쇠가 있어서 **로컬에선 또 안 드러났다.**
+        #    나이 든 전용 목소리는 제미나이에만 있다 — 구글이면 기본 순서로.
+        mature = ([v for v in (MATURE_F if f else MATURE_M) if v not in used]
+                  if engine() == "gemini" else [])
         if age_of(ch) >= 45 and mature:
             v = mature[0]
         elif f:

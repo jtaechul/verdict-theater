@@ -102,6 +102,12 @@ ck("대사는 큰따옴표 안에 딱 한 번", d1.count('"') == 2, d1)
 
 print()
 print("④ 45살 이상 배역은 나이 든 목소리를 받는가")
+# ⚠️⚠️ 2026-08-23 — 열쇠가 있냐 없냐로 엔진이 갈려서, 내 컴퓨터(제미나이)와
+#    깃허브(구글)가 **다른 길을 검사**하고 있었다. 그래서 로컬은 초록,
+#    깃허브는 빨강이 났다. 엔진을 **못 박고** 양쪽을 다 검사한다.
+import os
+os.environ["VOICE_ENGINE"] = "gemini"
+V = tts.pick_voices(chars)
 ck("본처(52) → 나이 든 여성 목소리", V.get("본처") in tts.MATURE_F, V.get("본처"))
 ck("남편(55) → 나이 든 남성 목소리", V.get("남편") in tts.MATURE_M, V.get("남편"))
 ck("내연녀(42)는 골라 둔 젊은 목소리 그대로", V.get("내연녀") not in tts.MATURE_F,
@@ -112,6 +118,16 @@ old = [{"name": "여자", "role_en": "Woman", "flow_prompt": "Korean woman"},
        {"name": "남자", "role_en": "Man", "flow_prompt": "Korean man"}]
 ck("나이 없는 옛 대본도 그대로 돈다",
    bool(tts.pick_voices(old)) and tts.pick_personas(old).get("여자") == "성인 여성")
+# ⚠️ 구글 엔진(깃허브에 제미나이 열쇠가 없을 때)에서는 나이 든 전용 목소리가
+#    없다 — 제미나이 이름(Gacrux)을 구글에 건네면 못 알아듣고 죽는다.
+os.environ["VOICE_ENGINE"] = "google"
+Vg = tts.pick_voices(chars)
+ck("구글 엔진이면 제미나이 이름을 안 끼워 넣는다",
+   Vg.get("본처") not in tts.MATURE_F and Vg.get("남편") not in tts.MATURE_M,
+   f"{Vg.get('본처')} / {Vg.get('남편')} — 구글은 Gacrux 를 못 알아듣는다")
+ck("구글 엔진에서도 남녀 목소리가 갈린다",
+   str(Vg.get("본처")).startswith("ko-KR") and Vg.get("본처") != Vg.get("남편"))
+os.environ["VOICE_ENGINE"] = "gemini"
 
 print()
 print("⑤ 실제 갈아 끼우는 자리(dub)까지 배역이 가는가")
@@ -131,6 +147,7 @@ ck("앞 토막을 반 프레임 일찍 끈다", "EN_EPS" in src and "b - EN_EPS"
 ck("머리말이 실제 배정을 배역별로 적는다", "배역: {nm}" in src,
    "머리말은 Erinome 라 적혔는데 실제는 Gacrux 가 말하고 있었다")
 
+os.environ.pop("VOICE_ENGINE", None)      # 다음 검사에 안 새게 되돌린다
 print("────────────────────────────────────────────────────")
 print("❌ 나이·발음·라벨: 걸린 것이 있다" if bad else "✅ 나이·발음·라벨: 전부 제자리다")
 sys.exit(bad)
