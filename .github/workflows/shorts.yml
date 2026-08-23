@@ -31,6 +31,10 @@ on:
         description: '골라 둔 목소리 주소 (관리자 페이지가 채웁니다)'
         required: false
         default: ''
+      tckey:
+        description: '타입캐스트 열쇠 주소 (관리자 페이지가 채웁니다)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -62,6 +66,7 @@ jobs:
       #    받아 갈 때 쓰는 암호는 이미 등록해 둔 ADMIN_PASSWORD 그대로다.
       BLOB: ${{ inputs.blob }}
       VOICE: ${{ inputs.voice }}
+      TCKEY_URL: ${{ inputs.tckey }}
       ADMIN_PASS: ${{ secrets.ADMIN_PASSWORD }}
 
     steps:
@@ -78,6 +83,22 @@ jobs:
 
       # ⭐ 2026-08-22 — 운영자가 귀로 고른 목소리가 있으면 그것을 쓴다.
       #    없으면 (|| true) 정해 둔 것으로 간다.
+      # ⭐ 2026-08-23 — 타입캐스트 열쇠 (관리자 페이지 보관함에서 받는다)
+      #    열쇠 값은 워크플로 입력에 싣지 않는다 — 입력은 실행 기록에 보인다.
+      #    주소만 받고, 여기서 암호(ADMIN_PASSWORD)를 대고 꺼낸 뒤 가린다.
+      - name: 타입캐스트 열쇠 받기
+        continue-on-error: true
+        run: |
+          if [ -n "${TCKEY_URL:-}" ]; then
+            case "$TCKEY_URL" in https://*.workers.dev/*) : ;; *) exit 0 ;; esac
+            K=$(curl -fsSL -H "x-vt-pass: ${ADMIN_PASS}" "$TCKEY_URL" || true)
+            if [ -n "$K" ]; then
+              echo "::add-mask::$K"
+              echo "TYPECAST_API_KEY=$K" >> "$GITHUB_ENV"
+              echo "타입캐스트 열쇠를 받았다 — 목소리가 타입캐스트로 나간다"
+            fi
+          fi
+
       - name: 골라 둔 목소리 가져오기
         continue-on-error: true
         run: |

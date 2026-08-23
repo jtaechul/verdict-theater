@@ -141,6 +141,8 @@ jobs:
           python3 tools/clip_order_test.py
           # ⭐ 2026-08-22 운영자 지적 — 제목·회차 표시, 발음 뭉개짐, 나이 목소리
           python3 tools/age_label_test.py
+          # ⭐ 2026-08-23 — 타입캐스트 갈아타기 배선 (가짜 서버로, 0원)
+          python3 tools/typecast_test.py
 
       - name: 쇼츠 배치(후킹·영상·자막)가 제자리인가
         run: python3 tools/shorts_test.py

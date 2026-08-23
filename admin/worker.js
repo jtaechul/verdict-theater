@@ -744,6 +744,40 @@ async function pickVoice() {
   setTimeout(tick, 20000);
 }
 
+// ⭐ 2026-08-23 — 타입캐스트 열쇠를 여기서 넣는다 (깃허브에 갈 일 없음)
+async function tcSave() {
+  const el = document.getElementById('tckey');
+  const msg = document.getElementById('tcmsg');
+  const key = (el && el.value || '').trim();
+  if (!key) { msg.textContent = '열쇠를 붙여넣어 주십시오.'; return; }
+  msg.textContent = '타입캐스트에 물어보는 중…';
+  try {
+    const r = await fetch('/api/tckey', { method: 'POST',
+      body: JSON.stringify({ key: key }) });
+    const j = await r.json();
+    if (!j.ok) { showErr('열쇠를 담지 못했습니다', (j.error || '') + ' ' + (j.detail || ''));
+                 msg.textContent = ''; return; }
+    el.value = '';
+    msg.textContent = '✅ 열쇠가 맞습니다 — 목소리 ' + j.n + '개 확인. '
+      + '이제 [목소리 들어보기]와 영상 만들기가 타입캐스트로 나갑니다.';
+    toast('타입캐스트 열쇠를 담았습니다');
+  } catch (e) {
+    showErr('열쇠를 담지 못했습니다', String(e && e.message ? e.message : e));
+    msg.textContent = '';
+  }
+}
+
+async function tcStat() {
+  const msg = document.getElementById('tcmsg');
+  if (!msg) return;
+  try {
+    const j = await (await fetch('/api/tckey?t=' + Date.now())).json();
+    if (j.have) msg.textContent = j.alive
+      ? '✅ 열쇠가 담겨 있습니다 (목소리 ' + j.n + '개) — 타입캐스트로 만듭니다.'
+      : '⚠️ 열쇠가 담겨 있는데 타입캐스트가 거절합니다 — 새 열쇠를 넣어 주십시오.';
+  } catch (e) { /* 조용히 */ }
+}
+
 async function pickShow(quiet) {
   const box = document.getElementById('pickbox');
   const msg = document.getElementById('pickmsg');
@@ -756,14 +790,15 @@ async function pickShow(quiet) {
   }
   const now = j.now || {};
   const row = (x) => '<div style="display:flex;align-items:center;gap:8px;'
-    + 'margin:4px 0"><b style="min-width:110px">' + esc(x.sex + ' ' + x.voice)
+    + 'margin:4px 0"><b style="min-width:110px">' + esc(x.sex + ' ' + (x.label || x.voice))
     + (now[x.sex === '여' ? 'f' : 'm'] === x.voice ? ' ✅' : '') + '</b>'
     + '<audio controls preload="none" style="flex:1;max-width:260px" src="'
     + '/api/voicepick?name=' + encodeURIComponent(x.file) + '"></audio></div>';
   const f = j.list.filter((x) => x.sex === '여');
   const m = j.list.filter((x) => x.sex === '남');
   const opt = (a, sel) => a.map((x) => '<option value="' + esc(x.voice) + '"'
-    + (sel === x.voice ? ' selected' : '') + '>' + esc(x.voice) + '</option>').join('');
+    + (sel === x.voice ? ' selected' : '') + '>' + esc(x.label || x.voice)
+    + '</option>').join('');
   box.innerHTML = '<div style="margin-top:10px"><b>여자 목소리</b>' + f.map(row).join('')
     + '<b>남자 목소리</b>' + m.map(row).join('')
     + '<div style="margin-top:10px"><b>정하기</b> — 여자 '
@@ -1157,10 +1192,20 @@ function seriesRender() {
      + '보십시오. 쓸 수 있는 것이 <b>26개</b>인데 지금은 그중 둘만 쓰고 '
      + '있습니다. 같은 대사를 26개 목소리로 하나씩 만들어 들려드립니다 '
      + '(15원, 3~5분).</div>'
-     + '<button class="ghost" onclick="pickVoice()">26개 다 들어보기</button>'
+     + '<button class="ghost" onclick="pickVoice()">전부 다 들어보기</button>'
      + '<button class="ghost" onclick="pickShow()">이미 만든 것 보기</button>'
      + '<div id="pickmsg" class="uphint"></div>'
      + '<div id="pickbox"></div>'
+     + '<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:10px">'
+     + '<b style="font-size:14px">타입캐스트 (한국어 전용 목소리)</b>'
+     + '<div class="uphint">발음이 계속 뭉개지면 <b>타입캐스트</b>로 갈아탈 수 '
+     + '있습니다. typecast.ai 에서 받은 API 열쇠를 여기에 붙여넣으십시오. '
+     + '열쇠가 담기면 다음부터 만드는 목소리가 타입캐스트로 나갑니다.</div>'
+     + '<input id="tckey" type="password" placeholder="타입캐스트 API 열쇠" '
+     + 'style="margin-top:8px">'
+     + '<div class="btns" style="margin-top:8px">'
+     + mini('열쇠 확인하고 담아 두기', 'tcSave()', 'gold')
+     + '</div><div id="tcmsg" class="uphint"></div></div>'
      + '</div>';
   h += '</div>';
 
@@ -1235,6 +1280,7 @@ function seriesRender() {
   //       그리기는 그리기만 하고, 서버에 묻는 일은 뒤로 미룬다.
   setTimeout(function () {
     try { permCheck(); } catch (e) { /* 나중에 다시 */ }
+    try { tcStat(); } catch (e) { /* 나중에 다시 */ }
     try { ytLoad(); } catch (e) { /* 나중에 다시 */ }
     try { watchShort('', true); } catch (e) { /* 나중에 다시 */ }
   }, 0);
@@ -2667,6 +2713,9 @@ export default {
             // 귀로 골라 둔 목소리가 보관함에 있으면 그것도 같이 알려 준다
             const vurl = await blobPin(env, req, 'voice/chosen', 'voice');
             if (vurl) inputs.voice = vurl;
+            // 타입캐스트 열쇠가 담겨 있으면 그 주소도 (열쇠 자체는 안 싣는다)
+            const tk = await blobPin(env, req, 'voice/tckey', 'voice');
+            if (tk) inputs.tckey = tk;
             await gh(env, `/repos/${REPO}/actions/workflows/shorts.yml/dispatches`, {
               method: 'POST', body: JSON.stringify({ ref: BRANCH, inputs }),
             });
@@ -2696,6 +2745,51 @@ export default {
 
       // ⭐ 2026-08-21 — 목소리 견본. 쇼츠는 클립 5개가 다 있어야 만들어지는데,
       //    목소리가 어떤지는 **지금 당장** 알아야 한다. 영상 없이 소리만 만든다.
+      // ⭐ 2026-08-23 운영자: "구글 TTS 말고 typecast 로 바꿔볼까? (API 있음)"
+      //    열쇠는 **여기(관리자 페이지)에서** 넣는다 — 깃허브에 갈 일 없음.
+      //    넣는 순간 타입캐스트에 목소리 목록을 물어봐 **열쇠가 진짜인지
+      //    바로 확인**하고, 맞으면 보관함에 담아 둔다. 워크플로가 받아 간다.
+      if (url.pathname === '/api/tckey' && req.method === 'POST') {
+        let key = '';
+        try { key = String((await req.json()).key || '').trim(); } catch (e) { key = ''; }
+        if (!key)
+          return Response.json({ ok: false, error: '열쇠를 붙여넣어 주십시오' }, { status: 400 });
+        if (!bin(env))
+          return Response.json({ ok: false, error: '영상 보관함이 아직 없습니다',
+            fix: 'setup-blob' }, { status: 503 });
+        try {
+          const r0 = await fetch('https://api.typecast.ai/v1/voices',
+                                 { headers: { 'X-API-KEY': key } });
+          if (!r0.ok)
+            return Response.json({ ok: false, error: '타입캐스트가 열쇠를 거절했습니다',
+              detail: '상태 ' + r0.status + ' — 열쇠를 다시 확인해 주십시오' },
+              { status: 400 });
+          const got = await r0.json();
+          const rows = Array.isArray(got) ? got : (got.result || got.voices || []);
+          await blobPutText(env, 'voice/tckey', key, 0);
+          return Response.json({ ok: true, n: rows.length });
+        } catch (e) {
+          return Response.json({ ok: false, error: '타입캐스트에 못 물어봤습니다',
+            detail: String(e && e.message ? e.message : e).slice(0, 200) },
+            { status: 502 });
+        }
+      }
+
+      if (url.pathname === '/api/tckey') {
+        // 열쇠 값은 절대 돌려주지 않는다 — 있는지와 목소리 수만
+        const k = await blobText(env, 'voice/tckey');
+        if (!k) return Response.json({ have: false });
+        try {
+          const r0 = await fetch('https://api.typecast.ai/v1/voices',
+                                 { headers: { 'X-API-KEY': k } });
+          const got = r0.ok ? await r0.json() : null;
+          const rows = got ? (Array.isArray(got) ? got : (got.result || got.voices || [])) : [];
+          return Response.json({ have: true, alive: r0.ok, n: rows.length });
+        } catch (e) {
+          return Response.json({ have: true, alive: false });
+        }
+      }
+
       if (url.pathname === '/api/voice' && req.method === 'POST') {
         const sid = url.searchParams.get('sid') || '';
         const ep = String(parseInt(url.searchParams.get('ep') || '1', 10) || 1);
@@ -2705,10 +2799,12 @@ export default {
         if (!/^S\d{3}$/.test(sid))
           return Response.json({ ok: false, error: 'bad sid' }, { status: 400 });
         try {
+          const inputs = style ? { sid, ep, style } : { sid, ep };
+          const tk = await blobPin(env, req, 'voice/tckey', 'voice');
+          if (tk) inputs.tckey = tk;
           await gh(env, `/repos/${REPO}/actions/workflows/voice-sample.yml/dispatches`, {
             method: 'POST',
-            body: JSON.stringify({ ref: BRANCH,
-              inputs: style ? { sid, ep, style } : { sid, ep } }),
+            body: JSON.stringify({ ref: BRANCH, inputs }),
           });
           return Response.json({ ok: true });
         } catch (e) {
@@ -2760,9 +2856,12 @@ export default {
       //    26개 중 두 개만 써 보고 단정하고 있었다. 전부 들어 보고 고르게 한다.
       if (url.pathname === '/api/voicepick' && req.method === 'POST') {
         try {
+          const inputs = { only: '' };
+          const tk = await blobPin(env, req, 'voice/tckey', 'voice');
+          if (tk) inputs.tckey = tk;
           await gh(env, `/repos/${REPO}/actions/workflows/voice-pick.yml/dispatches`, {
             method: 'POST',
-            body: JSON.stringify({ ref: BRANCH, inputs: { only: '' } }),
+            body: JSON.stringify({ ref: BRANCH, inputs }),
           });
           return Response.json({ ok: true });
         } catch (e) {

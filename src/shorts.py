@@ -614,10 +614,28 @@ def dub(src, turns, voices, out, tmp, personas=None):
         mix += f"[d{i}]"
     fil.append(f"{mix}amix=inputs={len(made) + 1}:normalize=0:"
                f"duration=first[mixed]")
-    args += ["-filter_complex", ";".join(fil),
-             "-map", "0:v", "-map", "[mixed]",
-             "-c:v", "copy", "-c:a", "aac", "-b:a", "160k",
-             "-t", f"{dur:.3f}", str(out)]
+    # ⚠️⚠️ 2026-08-23 운영자: "말이 동영상이 끊기니까 말도 중간에 끊겨버려."
+    #    여기서 `-t dur` 로 **클립 길이에서 뚝 잘랐다.** 대사가 자연스러운
+    #    속도로 클립보다 길어지는 것은 허용해 놓고(say_to_fit 의 '넘친다'),
+    #    잘라 버리면 마지막 말이 중간에서 끊긴다.
+    #    → 말이 끝날 때까지 **끝 화면을 붙잡아 둔다** (마지막 프레임 정지).
+    #      입은 잠깐 멈추지만 말이 잘리는 것보다 훨씬 낫다.
+    need = max(a + d for a, _p, d in made) + 0.12
+    if need > dur + 0.05:
+        hold = need - dur
+        print(f"    ⏸ 말이 길어 끝 화면을 {hold:.1f}초 잡아 둔다 — 말을 자르지 않는다")
+        fil.append(f"[0:v]tpad=stop_mode=clone:stop_duration={hold:.3f}[vx]")
+        args += ["-filter_complex", ";".join(fil),
+                 "-map", "[vx]", "-map", "[mixed]",
+                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "19",
+                 "-pix_fmt", "yuv420p",
+                 "-c:a", "aac", "-b:a", "160k",
+                 "-t", f"{need:.3f}", str(out)]
+    else:
+        args += ["-filter_complex", ";".join(fil),
+                 "-map", "0:v", "-map", "[mixed]",
+                 "-c:v", "copy", "-c:a", "aac", "-b:a", "160k",
+                 "-t", f"{dur:.3f}", str(out)]
     r = subprocess.run(args, capture_output=True, text=True)
     if r.returncode != 0:
         print(f"    ⚠️ 소리 갈아 끼우기 실패 — 원래 소리를 쓴다\n{r.stderr[:200]}")

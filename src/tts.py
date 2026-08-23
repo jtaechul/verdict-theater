@@ -106,11 +106,23 @@ def gem_key():
     return (os.environ.get("GEMINI_API_KEY") or "").strip()
 
 
+def tc_key():
+    """타입캐스트 열쇠 (2026-08-23 운영자: "typecast 로 바꿔볼까? API 있음")."""
+    return (os.environ.get("TYPECAST_API_KEY") or "").strip()
+
+
 def engine():
-    """지금 쓸 목소리 엔진. 제미나이가 되면 제미나이를 쓴다."""
+    """지금 쓸 목소리 엔진.
+
+    ⭐ 2026-08-23 — 발음 뭉개짐 때문에 **타입캐스트**를 맨 앞에 둔다.
+       한국어 전용이라 발음이 또렷하다. 열쇠가 있으면 그쪽이 먼저다.
+       (VOICE_ENGINE 으로 언제든 되돌릴 수 있다)
+    """
     want = (os.environ.get("VOICE_ENGINE") or "").strip().lower()
-    if want in ("gemini", "google"):
+    if want in ("typecast", "gemini", "google"):
         return want
+    if tc_key():
+        return "typecast"
     return "gemini" if gem_key() else "google"
 
 
@@ -121,11 +133,17 @@ def key():
        열쇠만 있는 경우에 shorts.dub() 이 '열쇠 없음' 으로 판단해 원래
        소리를 그냥 써 버린다.
     """
-    return gem_key() if engine() == "gemini" else gkey()
+    e = engine()
+    if e == "typecast":
+        return tc_key()
+    return gem_key() if e == "gemini" else gkey()
 
 
 def engine_note():
     """운영자에게 보여 줄 한 줄 — 지금 어떤 목소리를 쓰고 있는가."""
+    if engine() == "typecast":
+        return (f"타입캐스트 (한국어 전용 — 발음이 또렷하다)\n"
+                f"   말투 결: {style_of()['name']}")
     if engine() == "gemini":
         return (f"제미나이 목소리 — 연기 지시를 함께 보낸다\n"
                 f"   길: {route_note()}\n"
@@ -187,6 +205,21 @@ def chosen():
 
 def best_voices(gender):
     """그 성별에서 **가장 사람 같은** 목소리부터 차례로."""
+    if engine() == "typecast":
+        try:
+            rows = tc_voices()
+        except Exception:                                    # noqa: BLE001
+            rows = []
+        want = "f" if gender == "FEMALE" else "m"
+        # 성별 표시가 있으면 그 성별만, 없으면(모르면) 다 보여 준다
+        got = [v["id"] for v in rows if v["gender"] == want] or               [v["id"] for v in rows if not v["gender"]] or               [v["id"] for v in rows]
+        pick = chosen().get("f" if gender == "FEMALE" else "m")
+        if pick and pick in got:
+            got.remove(pick)
+            got.insert(0, pick)
+        elif pick and any(v["id"] == pick for v in rows):
+            got.insert(0, pick)
+        return got or ["-"]
     if engine() == "gemini":
         got = list(GEM_F if gender == "FEMALE" else GEM_M)
         # 아래에 있는 것부터 앞으로 옮긴다 → 마지막에 옮긴 것이 맨 앞
@@ -503,6 +536,121 @@ _CLOUD_GEM_OK = None          # 모름 / True 된다 / False 안 된다 (한 번
 
 def cloud_model():
     return (os.environ.get("CLOUD_TTS_MODEL") or "gemini-2.5-flash-tts").strip()
+
+
+# ── ⭐ 타입캐스트 (2026-08-23) ─────────────────────────
+#    운영자: "발음이 아직도 좀 뭉개져. 구글 TTS 말고 typecast 로 바꿔볼까?"
+#    한국어 전용 서비스라 발음이 또렷하다. 열쇠는 관리자 페이지에서 넣는다
+#    (깃허브에 갈 일 없음). 값은 글자 수로 매겨진다.
+TC_API = "https://api.typecast.ai"
+_TC_V = {"list": None}
+
+
+def tc_explain(code, body):
+    """타입캐스트가 거절한 까닭을 쉬운 말로."""
+    if code == 401:
+        return "❌ 타입캐스트 열쇠가 잘못됐다. 관리자 페이지에서 열쇠를 다시 넣어라"
+    if code == 402 or "credit" in body.lower():
+        return "❌ 타입캐스트 잔액(크레딧)이 다 떨어졌다. typecast.ai 에서 충전해야 한다"
+    if code == 429:
+        return "❌ 타입캐스트를 잠깐 너무 많이 불렀다. 조금 뒤에 다시 하면 된다"
+    return f"❌ 타입캐스트가 거절했다 ({code})"
+
+
+def tc_voices():
+    """쓸 수 있는 타입캐스트 목소리들. [{id, name, model, gender, emotions}]"""
+    if _TC_V["list"] is not None:
+        return _TC_V["list"]
+    k = tc_key()
+    if not k:
+        raise RuntimeError("TYPECAST_API_KEY 가 없다")
+    req = urllib.request.Request(f"{TC_API}/v1/voices",
+                                 headers={"X-API-KEY": k})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            got = json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(tc_explain(e.code, e.read().decode("utf-8", "replace")[:200])) from None
+    # 겉모양이 배열일 수도, {"result": [...]}일 수도 있다 — 둘 다 받는다
+    rows = got if isinstance(got, list) else (got.get("result") or got.get("voices") or [])
+    out = []
+    for v in rows:
+        if not isinstance(v, dict):
+            continue
+        g = str(v.get("gender") or "").lower()
+        out.append({
+            "id": str(v.get("voice_id") or v.get("id") or ""),
+            "name": str(v.get("voice_name") or v.get("name") or ""),
+            "model": str(v.get("model") or "ssfm-v21"),
+            "gender": ("f" if g.startswith(("f", "여")) else
+                       "m" if g.startswith(("m", "남")) else ""),
+            "emotions": [str(x) for x in (v.get("emotions") or [])],
+        })
+    _TC_V["list"] = [v for v in out if v["id"]]
+    return _TC_V["list"]
+
+
+def tc_voice_of(vid):
+    try:
+        return next((v for v in tc_voices() if v["id"] == vid), None)
+    except Exception:                                        # noqa: BLE001
+        return None
+
+
+def tc_emotion(text):
+    """대사를 보고 감정 preset 을 고른다 (타입캐스트는 글 지시 대신 preset)."""
+    t = str(text or "")
+    if re.search(r"미쳤|제정신|당장|꺼져|닥쳐|뻔뻔|쓰레기|어디서|감히|나가|못 살|화", t):
+        emo = "angry"
+    elif re.search(r"미안|잘못했|제발|용서|눈물|울|흑|힘들|아파|무서", t):
+        emo = "sad"
+    elif re.search(r"고마워|좋아|다행|하하|웃", t):
+        emo = "happy"
+    else:
+        emo = "normal"
+    inten = 2 if ("!" in t or "?!" in t) else 1
+    return emo, inten
+
+
+def typecast_say(text, voice, out):
+    """타입캐스트로 한 마디. 만들어진 wav 경로를 돌려준다."""
+    k = tc_key()
+    if not k:
+        raise RuntimeError("TYPECAST_API_KEY 가 없다")
+    info = tc_voice_of(voice) or {}
+    emo, inten = tc_emotion(text)
+    if info.get("emotions") and emo not in info["emotions"]:
+        emo = "normal" if "normal" in info["emotions"] else info["emotions"][0]
+    body = {
+        "voice_id": voice,
+        "text": bare(text),
+        "model": info.get("model") or "ssfm-v21",
+        "language": "kor",
+        "prompt": {"emotion_preset": emo, "emotion_intensity": inten},
+        "output": {"audio_format": "wav", "audio_tempo": 1.0, "volume": 100},
+    }
+    count_call()
+    bill_add("typecast", bare(text))
+    req = urllib.request.Request(
+        f"{TC_API}/v1/text-to-speech", data=json.dumps(body).encode("utf-8"),
+        headers={"X-API-KEY": k, "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=90) as r:
+            raw = r.read()
+    except urllib.error.HTTPError as e:
+        msg = e.read().decode("utf-8", "replace")[:200]
+        raise RuntimeError(f"{tc_explain(e.code, msg)}\n   (원문: {msg})") from None
+    out = Path(out)
+    tmpb = out.with_suffix(".bin")
+    tmpb.write_bytes(raw)
+    # 어떤 형식으로 오든 ffmpeg 가 읽어 48kHz wav 로 맞춘다
+    r2 = subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(tmpb),
+                         "-ar", "48000", "-ac", "1", str(out)],
+                        capture_output=True, text=True)
+    tmpb.unlink(missing_ok=True)
+    if r2.returncode != 0 or not out.exists():
+        raise RuntimeError(f"타입캐스트 소리를 못 읽었다: {r2.stderr[:150]}")
+    return out
 
 
 def cloud_gem_say(text, voice, out, style=None, who=None):
@@ -1025,6 +1173,21 @@ def say(text, voice=None, rate=1.0, pitch=0.0, out=None, style=None,
     out = Path(out or "tts.wav")
     if str(voice).startswith("ko-KR-"):
         return google_say(text, voice, rate, pitch, out)
+    # ⭐ 2026-08-23 — 타입캐스트가 먼저다 (발음 뭉개짐 때문에 갈아탔다)
+    if engine() == "typecast":
+        eff2 = max(RATE_MIN, min(RATE_MAX, float(rate) * style_of()["rate"]))
+        try:
+            return _after(typecast_say(text, voice, out), eff2, out)
+        except CapReached:
+            raise
+        except Exception as e:                               # noqa: BLE001
+            # ⚠️ 조용히 물러서지 않는다 — 왜 다른 소리가 나는지 알아야 한다
+            print(f"    ⚠️ 타입캐스트 실패 → 제미나이로 물러선다\n"
+                  f"       ({str(e).splitlines()[0][:100]})")
+            if not gem_key() and not gkey():
+                raise
+            voice = (best_voices("MALE") if voice in GEM_M
+                     else best_voices("FEMALE"))[0]
     # ⚠️ 말투 결이 정한 빠르기와, 자리를 맞추려고 say_to_fit() 이 보내는
     #    빠르기는 **층이 다르다.** 더하지 말고 곱해야 한다. 다만 곱한 값도
     #    사람 소리로 들리는 범위(RATE_MAX)를 넘기지 않는다.
@@ -1136,27 +1299,45 @@ def audition(out_dir, only=""):
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     want = [w.strip() for w in str(only or "").split(",") if w.strip()]
-    jobs = ([(v, "여", AUD_F) for v in GEM_F]
-            + [(v, "남", AUD_M) for v in GEM_M])
+    if engine() == "typecast":
+        # 성별 표시가 있으면 그 칸으로, 모르면 **양쪽에 다** 보여 준다
+        # (한 번만 만들고 목록에 두 줄로 얹는다 — 값이 두 배로 안 든다)
+        jobs = []
+        for v in tc_voices():
+            if v["gender"] == "f":
+                jobs.append((v["id"], "여", AUD_F, v["name"]))
+            elif v["gender"] == "m":
+                jobs.append((v["id"], "남", AUD_M, v["name"]))
+            else:
+                jobs.append((v["id"], "?", AUD_F, v["name"]))
+    else:
+        jobs = ([(v, "여", AUD_F, v) for v in GEM_F]
+                + [(v, "남", AUD_M, v) for v in GEM_M])
     if want:
         jobs = [j for j in jobs if j[0] in want]
     made = []
     print(f"⭐ 목소리 {len(jobs)}개를 같은 대사로 만들어 본다\n")
-    for i, (v, g, text) in enumerate(jobs, 1):
-        f = out_dir / aud_name(g, v)
+    for i, (v, g, text, label) in enumerate(jobs, 1):
+        gg = g if g in ("여", "남") else "여"
+        f = out_dir / aud_name(gg, v)
         try:
             w = say(text, v, 1.0, 0.0, out_dir / f"_{v}.wav")
             subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(w),
                             "-c:a", "libmp3lame", "-b:a", "160k", str(f)],
                            check=True)
-            made.append((v, g, f))
-            print(f"  [{i:2d}/{len(jobs)}] ✅ {g} {v}")
+            made.append((v, gg, f, label))
+            # 성별을 모르는 목소리는 **남자 칸에도** 같은 파일로 얹는다
+            if g == "?":
+                made.append((v, "남", f, label))
+            print(f"  [{i:2d}/{len(jobs)}] ✅ {g} {label or v}")
         except Exception as e:                               # noqa: BLE001
-            print(f"  [{i:2d}/{len(jobs)}] ❌ {g} {v} — {str(e).splitlines()[0][:70]}")
+            print(f"  [{i:2d}/{len(jobs)}] ❌ {g} {label or v} — {str(e).splitlines()[0][:70]}")
     won = bill_flush("목소리 고르기")
     print(f"\n✅ {len(made)}개를 만들었다" + (f" · 값 {won:.0f}원" if won else ""))
     (out_dir / "list.json").write_text(
-        json.dumps([{"voice": v, "sex": g, "file": f.name} for v, g, f in made],
+        json.dumps([{"voice": v, "sex": g, "file": f.name,
+                     "label": (label if label != v else "")}
+                    for v, g, f, label in made],
                    ensure_ascii=False, indent=1), encoding="utf-8")
     return made
 

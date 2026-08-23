@@ -154,6 +154,44 @@ if ok:
     ck("원본 소리가 남아 있지 않다 (사이가 진짜 조용하다)",
        bool(_q) and len(_q) >= 2, f"{len(_q)}군데 조용함")
 
+# ⚠️⚠️ 2026-08-23 운영자: "동영상이 끊기니까 말도 중간에 끊겨버려."
+#    dub 이 `-t 클립길이` 로 뚝 잘라서, 넘친 마지막 대사가 중간에 끊겼다.
+#    이제 말이 끝날 때까지 **마지막 프레임을 붙잡아 둔다.** 그것을 진짜로 잰다.
+print("\n③-1b 말이 클립보다 길면 끝 화면을 잡아 두는가")
+
+
+def fake_say_long(text, voice="", rate=1.0, pitch=0.0, out=None, style=None,
+                  who=None):
+    """마지막 대사("나가")만 일부러 3.5초 — 6초 클립 끝을 2초 넘긴다."""
+    sec = 3.5 if "나가" in str(text) else 1.0
+    q = Path(out or (tmp / "f.wav"))
+    run("ffmpeg", "-v", "error", "-y", "-f", "lavfi",
+        "-i", f"sine=frequency=440:duration={sec:.2f}:sample_rate=48000",
+        "-ac", "2", str(q))
+    return q
+
+
+import io as _io2
+from contextlib import redirect_stdout as _rs2
+T.say, T.key = fake_say_long, (lambda: "TEST")
+_out2 = tmp / "ko_long.mp4"
+_buf2 = _io2.StringIO()
+with _rs2(_buf2):
+    _ok2 = S.dub(src, t, {"Wife": "A", "Husband": "B"}, _out2, tmp)
+T.say, T.key = real
+_said2 = _buf2.getvalue()
+ck("넘쳐도 갈아 끼우기가 끝난다", _ok2 is True and _out2.exists())
+_d2 = float(run("ffprobe", "-v", "error", "-show_entries", "format=duration",
+                "-of", "csv=p=0", str(_out2)).stdout.strip() or 0)
+ck("영상이 말 끝까지 늘어난다 (뚝 안 자른다)", _d2 > 7.5,
+   f"{_d2:.2f}초 — 마지막 말이 4.57초+3.5초 = 8.07초까지 간다")
+ck("끝 화면을 잡아 둔다고 알린다", "끝 화면" in _said2, _said2[-120:])
+_tl = run("ffmpeg", "-v", "info", "-ss", f"{_d2 - 0.8:.2f}", "-t", "0.5",
+          "-i", str(_out2), "-af", "volumedetect", "-f", "null", "-")
+_tail = next((l for l in _tl.stderr.splitlines() if "mean_volume" in l), "")
+_db = float(_tail.split("mean_volume:")[1].split("dB")[0]) if "mean_volume" in _tail else -99
+ck("늘어난 구간에도 말이 실제로 들린다", _db > -45, f"{_db:.1f} dB")
+
 print("\n③-2 앞뒤 죽은 시간을 잘라 내는가 (제미나이 10초짜리도 쓸 수 있게)")
 tight = S.trim_dead(src, tmp / "tight.mp4")
 _td = float(run("ffprobe", "-v", "error", "-show_entries", "format=duration",
