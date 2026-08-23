@@ -262,5 +262,29 @@
     "kind": "목소리",
     "krw": 118,
     "note": "160자(어림) · typecast 인물별 목소리 추천"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 본처.png"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 내연녀.png"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 남편.png"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 16:9 c001.png"
   }
 ]
