@@ -1995,7 +1995,9 @@ function madeDraw() {
   if (SHOWN >= 0 && SHORTS[SHOWN]) {
     const v = SHORTS[SHOWN];
     // playsinline 이 없으면 아이폰이 전체화면으로 낚아채 간다.
-    h += '<div class="card"><h2>' + esc(madeName(v)) + '</h2>'
+    h += '<div class="card"><h2>' + esc(madeName(v))
+      + ((v.names || []).length > 2 ? ' — ' + esc(PICK_LABEL[PICK] || PICK) : '')
+      + '</h2>'
       + '<video id="pl" controls playsinline preload="metadata" '
       + 'style="width:100%;max-height:70vh;border-radius:12px;background:#000;'
       + 'display:block" src="/api/short?sid=' + encodeURIComponent(v.sid)
@@ -2034,7 +2036,19 @@ function madeDraw() {
   document.getElementById('app').innerHTML = h;
 }
 
-function madePlay(k) { SHOWN = k; madeDraw(); scrollTo(0, 0); }
+function madePlay(k) {
+  SHOWN = k;
+  // 소리가 다른 판이 있으면 **우리 한국어 목소리**부터 들려드린다.
+  const ns = (SHORTS[k] && SHORTS[k].names) || [];
+  PICK = ns.indexOf('ko.mp4') >= 0 ? 'ko.mp4' : 'short.mp4';
+  madeDraw(); scrollTo(0, 0);
+}
+
+// ⚠️⚠️ 2026-08-23 — 이 함수가 통째로 사라져 있었다. 단추는 그려지는데 눌러도
+//    아무 일이 안 일어났다("클릭도 안되고 한가지 버전밖에 선택이 안되잖아").
+//    화면만 봐서는 멀쩡해 보이는 고장이라, 아래 검사기가 **단추가 부르는 함수가
+//    실제로 있는지**를 매번 대조한다.
+function pickAudio(n) { PICK = n; madeDraw(); scrollTo(0, 0); }
 
 function madeDl(k) {
   const v = SHORTS[k];
@@ -2223,7 +2237,7 @@ function thumbCard(ep) {
   let h = '<div class="card"><h2>썸네일</h2>';
   if (!THUMB) {
     h += '<div class="empty">아직 썸네일이 없습니다.<br>'
-      + '아래 <b>다시 만들기</b>를 누르면 대본에서 만들어 드립니다.</div>';
+      + '영상을 만들면 여기에 함께 생깁니다.</div>';
   } else {
     // ⚠️ 주소 뒤에 시각을 붙인다 — 안 붙이면 폰이 **전에 받아 둔 그림**을 그대로
     //    다시 보여줘서, 새로 만들어도 "안 바뀐다" 로 보인다 (2026-08-09 손님 지적).
@@ -2241,13 +2255,12 @@ function thumbCard(ep) {
   }
   // ⭐ 고를 것은 메뉴로 보여준다. '다시 만들기'가 매번 같은 그림을 뱉으면
   //    버튼이 아무 소용이 없으므로, 어떤 문구로 만들지 여기서 고르게 한다.
-  h += '<label>문구 고르기 (바꿔 누르면 다른 그림이 나옵니다)'
-    + '<select id="tv"><option>문구 1</option><option>문구 2</option><option>문구 3</option></select></label>';
-  h += '<div style="height:10px"></div>'
-    + '<button class="ghost" onclick="remakeThumb(\\'' + ep + '\\')">다시 만들기</button>';
+  // ⚠️ 2026-08-23 — [다시 만들기] 단추를 뺐다. 부르는 함수(remakeThumb)가
+  //    2026-08-18 에 지워졌는데 단추만 남아 눌러도 아무 일이 안 났다.
+  //    새 방식에서 다시 붙일 때 함수와 **같이** 붙인다.
+  //    (tools/onclick_check.mjs 가 이런 먹통 단추를 이제 매번 잡는다)
   h += '<div style="color:#9599ab;font-size:13px;margin-top:9px">'
-    + '만드는 데 <b>1분쯤</b> 걸립니다. 값은 들지 않습니다(코드가 그립니다).<br>'
-    + '다 되면 아래 <b>새로 불러오기</b>를 눌러 확인하십시오.</div>';
+    + '새 썸네일이 안 보이면 아래 <b>새로 불러오기</b>를 눌러 확인하십시오.</div>';
   h += '<div style="height:8px"></div>'
     + '<button class="ghost" onclick="videos(\\'' + ep + '\\')">새로 불러오기</button>';
   h += '</div>';
