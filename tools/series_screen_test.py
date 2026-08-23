@@ -268,6 +268,8 @@ ck("클립 하나만 시험할 수 있다", 'id="cutone"' in ep1)
 #    제대로 바뀌어야지." — 화면이 엔진을 알고, 옛 견본을 안 틀고, 실패를 말한다.
 ck("지금 엔진이 화면에 적힐 자리가 있다", 'id="engbadge"' in ep1)
 ck("들어보기 안내가 엔진 따라 바뀔 자리가 있다", 'id="audhint"' in ep1)
+# ⭐ 2026-08-23 운영자: "열쇠가 담겨 있으면 여기는 감춰놔야 될 거 아니야."
+ck("열쇠 넣는 칸이 숨길 수 있는 상자 안에 있다", 'id="tcform"' in ep1)
 _wk2 = (ROOT / "admin" / "worker.js").read_text(encoding="utf-8")
 ck("들어보기가 누른 뒤 만든 것만 받아들인다",
    "new Date(j.at).getTime() < t0" in _wk2,
@@ -276,6 +278,10 @@ ck("들어보기가 실패하면 실패라고 말한다",
    "voice-sample.yml" in _wk2 and "만들기가 실패했습니다" in _wk2)
 ck("고르기 화면이 지금 엔진 것만 보여 준다",
    "(x.engine || 'gemini') === j.engine" in _wk2)
+ck("열쇠가 담기면 넣는 칸을 숨긴다",
+   "form.style.display = tc ? 'none' : ''" in _wk2,
+   "담긴 뒤에도 붙여넣는 칸이 보이면 안 된다")
+ck("[열쇠 바꾸기] 로 다시 열 수 있다", "function tcEdit" in _wk2)
 # ⚠️⚠️ 2026-08-22 — 압축파일을 다 올린 **뒤에** 이 오류를 봤다:
 #    GitHub 403: "Resource not accessible by personal access token"
 #    처음엔 "토큰 권한을 쓰기로 바꾸십시오" 라고 화면에 적었다가 크게 혼났다.

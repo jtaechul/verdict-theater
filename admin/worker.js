@@ -781,6 +781,7 @@ async function tcSave() {
     msg.textContent = '✅ 열쇠가 맞습니다 — 목소리 ' + j.n + '개 확인. '
       + '이제 [목소리 들어보기]와 영상 만들기가 타입캐스트로 나갑니다.';
     toast('타입캐스트 열쇠를 담았습니다');
+    tcStat();                    // 담겼으니 넣는 칸을 바로 숨긴다
   } catch (e) {
     showErr('열쇠를 담지 못했습니다', String(e && e.message ? e.message : e));
     msg.textContent = '';
@@ -800,10 +801,25 @@ async function tcStat() {
     if (hint) hint.textContent = tc
       ? '타입캐스트 목소리 전부를 같은 대사로 하나씩 만들어 들려드립니다 (글자 수만큼 크레딧, 3~5분).'
       : '쓸 수 있는 제미나이 목소리 26개를 같은 대사로 하나씩 만들어 들려드립니다 (15원, 3~5분).';
-    if (msg && j.have) msg.textContent = j.alive
-      ? '✅ 열쇠가 담겨 있습니다 (목소리 ' + j.n + '개) — 타입캐스트로 만듭니다.'
-      : '⚠️ 열쇠가 담겨 있는데 타입캐스트가 거절합니다 — 새 열쇠를 넣어 주십시오.';
+    // ⚠️⚠️ 2026-08-23 운영자: "열쇠가 담겨 있으면 여기는 감춰놔야 될 거 아니야."
+    //    맞다. 담긴 뒤에도 붙여넣는 칸이 그대로 보였다. 담기면 칸을 숨기고
+    //    상태 한 줄 + [열쇠 바꾸기] 만 남긴다.
+    const form = document.getElementById('tcform');
+    if (form) form.style.display = tc ? 'none' : '';
+    if (msg) {
+      if (tc) msg.innerHTML = '✅ 열쇠가 담겨 있습니다 (목소리 ' + j.n + '개) — '
+        + '타입캐스트로 만듭니다. ' + mini('열쇠 바꾸기', 'tcEdit()');
+      else if (j.have) msg.textContent =
+        '⚠️ 열쇠가 담겨 있는데 타입캐스트가 거절합니다 — 새 열쇠를 넣어 주십시오.';
+    }
   } catch (e) { /* 조용히 */ }
+}
+
+function tcEdit() {
+  const form = document.getElementById('tcform');
+  if (form) form.style.display = '';
+  const el = document.getElementById('tckey');
+  if (el) el.focus();
 }
 
 async function pickShow(quiet) {
@@ -1235,6 +1251,7 @@ function seriesRender() {
      + '<div id="pickbox"></div>'
      + '<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:10px">'
      + '<b style="font-size:14px">타입캐스트 (한국어 전용 목소리)</b>'
+     + '<div id="tcform">'
      + '<div class="uphint">발음이 계속 뭉개지면 <b>타입캐스트</b>로 갈아탈 수 '
      + '있습니다. typecast.ai 에서 받은 API 열쇠를 여기에 붙여넣으십시오. '
      + '열쇠가 담기면 다음부터 만드는 목소리가 타입캐스트로 나갑니다.</div>'
@@ -1242,7 +1259,7 @@ function seriesRender() {
      + 'style="margin-top:8px">'
      + '<div class="btns" style="margin-top:8px">'
      + mini('열쇠 확인하고 담아 두기', 'tcSave()', 'gold')
-     + '</div><div id="tcmsg" class="uphint"></div></div>'
+     + '</div></div><div id="tcmsg" class="uphint"></div></div>'
      + '</div>';
   h += '</div>';
 
