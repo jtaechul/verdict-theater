@@ -1441,22 +1441,10 @@ function home() {
 
   h += seriesCard();
 
-  h += '<div class="card"><h2>회차</h2>';
-  if (!eps.length) h += '<div class="empty">아직 만든 영상이 없습니다.<br>아래 <b>2. 대본 만들기</b>를 눌러 시작하십시오.</div>';
-  eps.forEach(([id, v]) => {
-    const st = STAGE[v.stage] || v.stage || '-';
-    const cls = v.stage === 'published' ? 'ok' : (v.stage === 'uploaded_private' ? 'wait' : 'go');
-    const nvid = (S.videos || {})[id] || 0;
-    let btns = mini('대본 읽기', 'script(\\'' + id + '\\')');
-    if (nvid) btns = mini('영상 보기', 'videos(\\'' + id + '\\')', 'gold') + btns;
-    if (v.longform_id) btns += '<a class="mini" target="_blank" rel="noopener" '
-      + 'href="https://youtu.be/' + esc(v.longform_id) + '">유튜브</a>';
-    h += '<div class="ep"><div class="ep-top"><div><b>' + id + '</b>'
-      + '<small>' + esc(v.case_type||'') + ' · 소재 점수 ' + (v.gate_score??'-') + '점 · 대본 점수 ' + (v.script_score??'-') + '점</small></div>'
-      + '<span class="pill ' + cls + '">' + st + '</span></div>'
-      + '<div class="btns">' + btns + '</div></div>';
-  });
-  h += '</div>';
+  // ⭐ 2026-08-23 운영자: "이건 지금 쓸데 없는거잖아 당장 메뉴에서 지워."
+  //    [회차] 칸(EP001·EP002·EP003)을 뺐다. 12분짜리 롱폼을 만들던 옛 방식의
+  //    목록이라 지금 하는 일(시리즈 S001 → 30초 쇼츠 16편)과 상관이 없다.
+  //    시리즈 쪽은 바로 위 seriesCard() 에 따로 있다.
 
   // ⭐ 2026-08-16 손님: "관리자 페이지가 너무 복잡해. 메뉴 구조조정이 필요해."
   //    화면 차례를 일하는 차례로 맞췄다 — [다음에 할 일] → [지금 상태] →
@@ -1756,7 +1744,7 @@ function seekAudition(el) {
 // 카드마다 코드를 고치지 않는다. **다 그린 뒤에 한 번 훑어서** 제목 아래를
 // 통째로 접을 수 있게 만든다. 카드를 새로 만들어도 저절로 접히게 된다.
 // 접은 상태는 이 기기에 기억되므로, 한 번 접어두면 다음에 열어도 접혀 있다.
-const FOLD_OPEN = ['다음에 할 일', '지금 상태', '회차'];   // 처음엔 펴 두는 것
+const FOLD_OPEN = ['다음에 할 일', '지금 상태'];   // 처음엔 펴 두는 것
 const foldKey = (t) => 'fold:' + t.slice(0, 24);
 
 function setFold(h, body, caret, open) {
