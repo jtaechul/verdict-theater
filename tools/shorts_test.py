@@ -67,7 +67,9 @@ ck("길어도 62px 아래로는 안 줄인다 (줄을 늘린다)", S.SUB_MIN >= 
    f"최소 {S.SUB_MIN}px · 최대 {S.SUB_LINES}줄")
 # ⭐ 컷 길이를 어림(6초)이 아니라 **실측**으로 재는가 (2026-08-23 운영자 지시)
 _src = (ROOT / "src" / "shorts.py").read_text(encoding="utf-8")
-ck("컷 길이를 실측(probe)으로 잰다", "vw, vh, sec = C.probe(src)" in _src)
+ck("컷 길이를 실측(probe)으로 잰다", "vw, vh, vsec = C.probe(src)" in _src)
+# ⭐ 2026-08-23 — 소리가 영상보다 긴 클립에서 나레이션이 잘렸다. 둘 중 긴 쪽을 쓴다.
+ck("영상·소리 중 **긴 쪽**에 맞춘다", "sec = max(vsec, asec)" in _src)
 ck("전체 길이 합계도 실측으로 잰다", "total = sum(C.probe(p)[2] for p in parts)" in _src)
 ck("60초(쇼츠 한도)를 넘으면 경고한다", "쇼츠로 안 태웁니다" in _src)
 ck("자막 최대 줄이 아래 띠 안에 들어간다",

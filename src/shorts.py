@@ -438,7 +438,7 @@ def draw_label(d, label, mark_w):
            font=f, fill=(206, 208, 216, 255))
 
 
-def overlay_png(hook, chunk, out, label=None):
+def overlay_png(hook, chunk, out, label=None, parts="all"):
     """글자만 있는 투명 그림 한 장 (영상 위에 얹는다).
 
     chunk — 지금 화면에 띄울 자막 **한 토막**. 나머지는 안 그린다
@@ -447,20 +447,29 @@ def overlay_png(hook, chunk, out, label=None):
     """
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
+    # ⚠️⚠️ 2026-08-23 — parts 로 나눠 그린다.
+    #    "frame" = 검은 띠·제목·채널명·후킹 → 영상 내내 **늘** 켜 둔다
+    #    "sub"   = 자막만              → 말하는 동안만 켠다
+    #    예전엔 한 장에 다 그려 자막 조각마다 새로 얹었다. 그런데 조각과 조각
+    #    사이에는 반 프레임(0.021초) 틈이 있어(자막 겹침 방지용) 그 순간
+    #    **띠까지 통째로 사라졌다.** 운영자: "검은 띠가 짧게 없어졌다
+    #    나타나기를 반복해. 깜빡거리는 느낌이야."
+    want_frame = parts in ("all", "frame")
+    want_sub = parts in ("all", "sub")
 
-    # ⭐ 2026-08-23 — 위아래 **검은 띠**. 여기에 제목·회차·채널명·자막이 들어가고,
-    #    위 띠는 루미나의 "AI" 표시(폭 1080 기준 y 61 까지)를 통째로 덮는다.
-    d.rectangle([0, 0, W, BAR_TOP], fill=(0, 0, 0, 255))
-    d.rectangle([0, H - BAR_BOT, W, H], fill=(0, 0, 0, 255))
+    if want_frame:
+        # 위아래 검은 띠. 위 띠는 루미나 "AI" 표시(폭 1080 기준 y 61)를 덮는다.
+        d.rectangle([0, 0, W, BAR_TOP], fill=(0, 0, 0, 255))
+        d.rectangle([0, H - BAR_BOT, W, H], fill=(0, 0, 0, 255))
 
-    mark = ImageFont.truetype(str(FONT_B), MARK_SIZE)
-    mark_w = d.textlength(CHANNEL, font=mark)
-    d.text((W - SIDE - mark_w, MARK_Y),
-           CHANNEL, font=mark, fill=GOLD + (255,))
-    if str(label or "").strip():
-        draw_label(d, str(label).strip(), mark_w)
+        mark = ImageFont.truetype(str(FONT_B), MARK_SIZE)
+        mark_w = d.textlength(CHANNEL, font=mark)
+        d.text((W - SIDE - mark_w, MARK_Y),
+               CHANNEL, font=mark, fill=GOLD + (255,))
+        if str(label or "").strip():
+            draw_label(d, str(label).strip(), mark_w)
 
-    if str(hook or "").strip():
+    if want_frame and str(hook or "").strip():
         # ⚠️ 후킹은 이제 **영상 위에** 얹힌다(예전엔 검은 바탕이었다). 밝은 장면에서
         #    흰 글자가 묻히므로 글자 뒤에 어두운 판을 깔아 준다.
         # ⚠️ 네모난 판을 그대로 깔면 아래쪽에 **선명한 경계선**이 생겨 촌스럽다.
@@ -480,7 +489,7 @@ def overlay_png(hook, chunk, out, label=None):
         block_runs(d, ls, f, HOOK_TOP, HOOK_BOT, (255, 255, 255, 255),
                    HOOK_HI, HOOK_GAP)
 
-    if str(chunk or "").strip():
+    if want_sub and str(chunk or "").strip():
         # 한 토막만 있으니 크게 쓸 수 있다 — 폰에서 읽기 훨씬 낫다
         # ⭐ 어르신용 — 글자를 작게 줄이는 대신 **줄을 늘린다**.
         f, ls = fit(d, chunk, FONT_M, SUB_SIZE, W - SIDE * 2, 2, min_size=SUB_MIN)
@@ -731,6 +740,23 @@ def dub(src, turns, voices, out, tmp, personas=None):
     return True
 
 
+def audio_sec(src):
+    """그 파일의 **소리** 길이(초). 소리가 없으면 0.
+
+    ⚠️ 2026-08-23 — 영상 길이만 보고 -shortest 로 잘랐더니 **나레이션 끝이
+       날아갔다.** 루미나 클립은 소리가 영상보다 조금 긴 것이 있다.
+       운영자: "영상 및 나레이션이 뒷부분이 남아있는 상태에서 끊겼어."
+    """
+    try:
+        out = subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "a:0",
+             "-show_entries", "stream=duration", "-of", "csv=p=0", str(src)],
+            capture_output=True, text=True).stdout.strip()
+        return float(out) if out and out != "N/A" else 0.0
+    except Exception:                                        # noqa: BLE001
+        return 0.0
+
+
 def video_place(vw, vh):
     """영상을 화면 어디에 얼마 크기로 깔지 (폭에 맞춘다 · 자르지 않는다).
 
@@ -749,7 +775,11 @@ def compose(src, hook, sub, out, tmp, label=None):
     """받은 클립 한 개 → 쇼츠 한 컷 (자르지 않고 폭에 맞춰 깔고 글자 얹기)."""
     src, out, tmp = Path(src), Path(out), Path(tmp)
     tmp.mkdir(parents=True, exist_ok=True)
-    vw, vh, sec = C.probe(src)
+    vw, vh, vsec = C.probe(src)
+    asec = audio_sec(src)
+    # ⭐ 둘 중 **긴 쪽**에 맞춘다. 짧은 쪽에 맞추면 남은 것이 잘려 나간다.
+    sec = max(vsec, asec)
+    hold = max(0.0, asec - vsec)         # 소리가 더 길면 마지막 화면을 붙잡는다
     vy, nh = video_place(vw, vh)
 
     # ⭐ 자막은 **한 토막씩** 뜬다 (말하는 사람 것만 / 긴 대사는 반 문장씩).
@@ -767,14 +797,21 @@ def compose(src, hook, sub, out, tmp, label=None):
         if len(spans) != len(chunks):
             spans = by_syllable(len(chunks), sec, chunks)
     spans[-1] = (spans[-1][0], sec)          # 마지막은 끝까지 남긴다
-    pngs = [overlay_png(hook, c, tmp / f"{src.stem}_txt{i}.png", label)
+    # ⭐ 틀(검은 띠·제목·채널명·후킹)은 **한 장으로 늘 켜 둔다** — 깜빡임의 원인.
+    frame_png = overlay_png(hook, "", tmp / f"{src.stem}_frame.png", label,
+                            parts="frame")
+    pngs = [overlay_png("", c, tmp / f"{src.stem}_txt{i}.png", None, parts="sub")
             for i, c in enumerate(chunks or [""])]
 
     # ⭐ 자르지 않는다. 폭만 맞춰 통째로 깐다.
     #   워터마크(AI)는 지우지 않고 **위 검은 띠가 덮는다** — 지우기(delogo)는
     #   주변 색으로 뭉개 얼룩이 남고 상자가 화면 밖으로 나가면 통째로 실패한다.
-    vf = [f"[1:v]scale={W}:{nh}[v]",
-          f"[0:v][v]overlay=0:{vy}[s0]"]
+    # 소리가 영상보다 길면 마지막 화면을 그만큼 붙잡아 둔다(뚝 끊기지 않게)
+    tpad = f",tpad=stop_mode=clone:stop_duration={hold + 0.05:.3f}" if hold > 0.02 else ""
+    vf = [f"[1:v]scale={W}:{nh}{tpad}[v]",
+          f"[0:v][v]overlay=0:{vy}[b]",
+          # 틀은 enable 없이 통째로 얹는다 → 한 프레임도 안 사라진다
+          f"[b][2:v]overlay=0:0[s0]"]
     # ⚠️ 2026-08-22 — between(t,a,b) 는 양 끝을 **포함**한다. 앞 토막이 2.0에
     #    끝나고 뒤 토막이 2.0에 시작하면, 딱 그 순간의 한 프레임에 **둘 다**
     #    켜져 자막이 겹쳐 보인다 (실제 프레임에서 발견). 앞 토막을 반 프레임
@@ -787,10 +824,11 @@ def compose(src, hook, sub, out, tmp, label=None):
             b = max(a, b - EN_EPS)
         tag = "[o]" if last else f"[s{i + 1}]"
         en = "" if len(pngs) == 1 else f":enable='between(t,{a:.3f},{b:.3f})'"
-        vf.append(f"[s{i}][{i + 2}:v]overlay=0:0{en}{tag}")
+        vf.append(f"[s{i}][{i + 3}:v]overlay=0:0{en}{tag}")
     cmd = ["ffmpeg", "-v", "error", "-y",
-           "-f", "lavfi", "-i", f"color=c=black:s={W}x{H}:r=24:d={sec:.3f}",
-           "-i", str(src)]
+           # 바탕은 넉넉하게 — 바탕이 짧으면 그것이 끝을 결정해 잘린다
+           "-f", "lavfi", "-i", f"color=c=black:s={W}x{H}:r=24:d={sec + 1:.3f}",
+           "-i", str(src), "-i", str(frame_png)]
     for q in pngs:
         cmd += ["-i", str(q)]
     # 소리: 컷마다 크기를 맞추고, 앞뒤 0.05초를 부드럽게 (이어 붙일 때 '툭' 소리 방지)
@@ -801,7 +839,10 @@ def compose(src, hook, sub, out, tmp, label=None):
             "-af", af,
             "-c:v", "libx264", "-preset", "medium", "-crf", "19",
             "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
-            "-shortest", "-movflags", "+faststart", str(out)]
+            # ⚠️ -shortest 는 **가장 짧은 입력**에서 끊는다. 바탕·영상·소리 중
+            #    하나라도 짧으면 거기서 잘린다(나레이션이 날아간 원인).
+            #    길이를 우리가 정해 준다 — 영상·소리 중 긴 쪽.
+            "-t", f"{sec:.3f}", "-movflags", "+faststart", str(out)]
     p = subprocess.run(cmd, capture_output=True, text=True)
     if p.returncode != 0:
         raise RuntimeError(f"ffmpeg 실패:\n{p.stderr[:600]}")
@@ -944,8 +985,15 @@ def episode(sid, no, clips_dir, out_dir):
             raise SystemExit(f"❌ {n}컷 클립이 없다 ({clips_dir})")
         # ⭐ ① 앞뒤 죽은 시간을 먼저 잘라 낸다 (플로우 6초짜리의 앞 1초 무음,
         #      제미나이 10초짜리의 뒤 3.8초 무음이 그대로 나가면 안 된다)
-        src = trim_dead(src, tmp / f"cut{n}_tight.mp4",
-                        turns=len(dia_turns(c.get("prompt"))))
+        # ⚠️⚠️ 2026-08-23 — 원본 소리를 그대로 쓸 때(루미나)는 **자르지 않는다.**
+        #    trim_dead 는 예전 Veo 가 대본에 없는 말을 지어내 채우던 것을
+        #    잘라내려고 만든 것이다. 루미나 나레이션은 전부 진짜 대사인데,
+        #    '말 토막이 대사 수보다 많다' 는 이유로 **진짜 대사를 잘라냈다.**
+        #    운영자: "영상 및 나레이션이 뒷부분이 남아있는 상태에서 끊겼어."
+        #    컷 길이는 루미나에서 운영자가 정한다 — 우리가 손댈 일이 아니다.
+        if not keep_audio():
+            src = trim_dead(src, tmp / f"cut{n}_tight.mp4",
+                            turns=len(dia_turns(c.get("prompt"))))
         # ⭐ ② 소리를 갈아 끼우고, ③ 그 다음에 자막·크롭을 얹는다.
         #    (자막이 **말하는 자리**를 소리에서 찾으므로 순서가 중요하다)
         dubbed = tmp / f"cut{n}_ko.mp4"
@@ -1017,7 +1065,8 @@ def one(clip, sid, no, cut, hook, sub, out_dir):
         print(f"    {who}: {text}")
 
     # ⭐ ① 앞뒤 죽은 시간부터 잘라 낸다 (대사 수를 알면 지어낸 말도 잘라 낸다)
-    src = trim_dead(clip, tmp / "tight.mp4", turns=len(turns))
+    src = clip if keep_audio() else trim_dead(clip, tmp / "tight.mp4",
+                                              turns=len(turns))
     # ⭐ ② 소리를 갈아 끼운다
     if not turns:
         print("  ⚠️ 대사를 못 찾아 **원래 소리를 그대로 쓴다.**\n"
