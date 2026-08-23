@@ -25,8 +25,35 @@ import urllib.error
 import urllib.request
 
 API = "https://generativelanguage.googleapis.com/v1beta/models"
-TEXT_MODEL = "gemini-2.5-flash"
 IMAGE_MODELS = ["gemini-2.5-flash-image", "gemini-3.1-flash-lite-image"]
+
+
+def text_model(key):
+    """글자 모델 이름을 **목록에서 골라온다.**
+
+    ⚠️ 처음엔 'gemini-2.5-flash' 를 박아 뒀는데 새 열쇠에서 404 가 났다 —
+       "이 모델은 새 사용자에게 더 이상 제공되지 않습니다". 새로 만든 프로젝트는
+       옛 모델을 못 쓴다. 이름을 박으면 열쇠를 갈아낄 때마다 이런 일이 난다.
+       진짜 파이프라인(src/llm.py)도 목록에서 골라 쓰므로 방식을 맞춘다."""
+    req = urllib.request.Request(f"{API}?pageSize=200",
+                                 headers={"x-goog-api-key": key})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            data = json.loads(r.read())
+    except Exception:
+        return None, []
+    names = []
+    for m in data.get("models", []):
+        n = m.get("name", "").split("/")[-1]
+        if "generateContent" not in m.get("supportedGenerationMethods", []):
+            continue
+        if any(x in n for x in ("image", "tts", "embedding", "veo", "vision")):
+            continue
+        names.append(n)
+    # 값싼 flash 계열을 먼저, 없으면 아무거나
+    pick = next((n for n in names if "flash" in n and "lite" not in n),
+                next((n for n in names if "flash" in n), names[0] if names else None))
+    return pick, names
 
 
 def call(model, body, key):
@@ -62,16 +89,22 @@ def main():
     print("| 무엇 | 결과 |")
     print("|---|---|")
 
+    tm, names = text_model(key)
     ok_text = False
-    st, body = call(TEXT_MODEL, {"contents": [{"parts": [{"text": "hi"}]}],
-                                 "generationConfig": {"maxOutputTokens": 1}}, key)
-    if st == 200:
-        ok_text, mark = True, "통과 — 대본·심사·채점은 지금도 됩니다"
-    elif st == 429:
-        mark = "한도 초과 — 무료 등급이거나 잔액이 0원입니다"
+    if not tm:
+        mark = "쓸 수 있는 글자 모델이 목록에 없습니다"
     else:
-        mark = f"막힘 (HTTP {st}) — {(body.get('error') or {}).get('message', '')[:80]}"
+        st, body = call(tm, {"contents": [{"parts": [{"text": "hi"}]}],
+                             "generationConfig": {"maxOutputTokens": 1}}, key)
+        if st == 200:
+            ok_text, mark = True, f"통과 — `{tm}` 로 대본·심사·채점을 합니다"
+        elif st == 429:
+            mark = "한도 초과 — 무료 등급이거나 잔액이 0원입니다"
+        else:
+            mark = f"막힘 (HTTP {st}) — {(body.get('error') or {}).get('message', '')[:80]}"
     print(f"| 글자 (대본) | {mark} |")
+    if names:
+        print(f"| 쓸 수 있는 글자 모델 | {len(names)}개 — `{'`, `'.join(names[:4])}` … |")
 
     free, ok_img = [], False
     for m in IMAGE_MODELS:
