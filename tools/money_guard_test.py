@@ -232,6 +232,20 @@ _ck("PyYAML 을 쓰기 전에 깐다", -1 < _i_install < _i_use,
     "쓰는 단계보다 뒤에서 깔면 그 단계에서 죽는다")
 _WF = _P(__file__).resolve().parent.parent / ".github" / "workflows"
 
+# ⓪ 저절로(schedule) 도는 워크플로에는 유료 열쇠가 없어야 한다
+#    (2026-08-23 — voice-health 가 매주 유료 열쇠로 돌고 있었다. 루미나 나레이션을
+#     쓰는 지금은 쓰지 않는 기능의 검진이라 순수하게 새는 돈이었다)
+for f in sorted(_WF.glob("*.yml")):
+    w = yaml.safe_load(f.read_text(encoding="utf-8"))
+    on = w.get(True) or w.get("on") or {}
+    if not isinstance(on, dict) or "schedule" not in on:
+        continue
+    txt = f.read_text(encoding="utf-8")
+    paid = [k for k in ("GEMINI_API_KEY", "GOOGLE_TTS_KEY", "ANTHROPIC_API_KEY")
+            if k in txt]
+    _ck(f"{f.name}: 저절로 도는데 유료 호출이 없다", not paid,
+        f"{paid} — 매주 돈이 나간다")
+
 # ① 밀 때마다 도는 워크플로에는 유료 열쇠가 없어야 한다
 for f in sorted(_WF.glob("*.yml")):
     w = yaml.safe_load(f.read_text(encoding="utf-8"))

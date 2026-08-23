@@ -965,6 +965,14 @@ def episode(sid, no, clips_dir, out_dir):
     if p.returncode != 0:
         raise RuntimeError(f"이어 붙이기 실패:\n{p.stderr[:400]}")
     total = sum(C.probe(p)[2] for p in parts)
+    # ⭐ 2026-08-23 운영자: "각 영상이 전부 6초는 아니니까 전체 영상 길이도
+    #    잘 파악해야 돼." — 컷 길이는 전부 실측(probe)으로 재고 있고, 여기서
+    #    **합계**를 검사한다. 60초를 넘으면 유튜브가 쇼츠로 안 태운다.
+    if total > 59.5:
+        print(f"\n⚠️⚠️ 전체 {total:.1f}초 — 60초를 넘으면 유튜브가 **쇼츠로 안 태웁니다.**"
+              f"\n     루미나에서 컷을 줄이거나 대사를 짧게 해 주십시오.")
+    elif total < 12:
+        print(f"\n⚠️ 전체 {total:.1f}초 — 너무 짧습니다. 컷이 빠지지 않았는지 확인하십시오.")
     won = tts.bill_flush(f"{sid} {no}화")
     print(f"\n✅ {final.name} — {len(parts)}컷 · {total:.1f}초"
           + (f" · 목소리 값 {won:.0f}원" if won else ""))

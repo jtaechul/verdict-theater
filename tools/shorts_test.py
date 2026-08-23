@@ -65,6 +65,11 @@ ck("자막이 어르신용으로 크다 (화면 폭의 7% 이상)", S.SUB_SIZE >
    f"{S.SUB_SIZE}px ({S.SUB_SIZE / S.W * 100:.1f}%)")
 ck("길어도 62px 아래로는 안 줄인다 (줄을 늘린다)", S.SUB_MIN >= 62 and S.SUB_LINES >= 3,
    f"최소 {S.SUB_MIN}px · 최대 {S.SUB_LINES}줄")
+# ⭐ 컷 길이를 어림(6초)이 아니라 **실측**으로 재는가 (2026-08-23 운영자 지시)
+_src = (ROOT / "src" / "shorts.py").read_text(encoding="utf-8")
+ck("컷 길이를 실측(probe)으로 잰다", "vw, vh, sec = C.probe(src)" in _src)
+ck("전체 길이 합계도 실측으로 잰다", "total = sum(C.probe(p)[2] for p in parts)" in _src)
+ck("60초(쇼츠 한도)를 넘으면 경고한다", "쇼츠로 안 태웁니다" in _src)
 ck("자막 최대 줄이 아래 띠 안에 들어간다",
    int(S.SUB_MIN * 1.28) * S.SUB_LINES <= S.SUB_BOT - S.SUB_TOP,
    f"{int(S.SUB_MIN * 1.28) * S.SUB_LINES}px vs 칸 {S.SUB_BOT - S.SUB_TOP}px")

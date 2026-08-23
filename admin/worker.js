@@ -60,8 +60,9 @@ const WORKFLOWS = [
 
   // ⭐ 2026-08-23 — 그림·영상을 우리가 만든다. 루미나에서 손으로 만들어
   //    올릴 일이 없어졌다. 인물 카드 → 컷 그림 → Veo → 쇼츠까지 한 번에.
-  { file: 'video.yml', name: '3. 영상 만들기 (그림 → 영상 → 쇼츠)',
-    desc: '대본 한 회차를 영상까지 통째로 만듭니다 (1화 약 3,700원)',
+  { file: 'video.yml', name: '3-2. (예비) 구글 Veo 로 영상 만들기 — 유료',
+    desc: '⚠️ 지금은 루미나로 만듭니다. 이 단추는 구글 Veo 로 만드는 예비 길이며 '
+        + '누르면 한 화에 약 4,200원이 나갑니다',
     inputs: [{ k: 'sid', label: '시리즈 번호', type: 'text', v: 'S001' },
              { k: 'ep', label: '몇 화', type: 'text', v: '1' },
              { k: 'cut', label: '한 컷만 시험 (비우면 전체)', type: 'text', v: '' }] },
@@ -1876,13 +1877,18 @@ function nextStep(eps, ready, ungated) {
   if (going) {
     const sid = going[0], v = going[1];
     const ep = (v.made || 0) + 1;
-    return { title: '「' + esc(v.title || sid) + '」 ' + ep + '화 영상을 만들 차례입니다',
-             body: '만든 영상 <b>' + (v.made || 0) + '/' + (v.episodes || 16) + '화</b>'
-                 + ' · 그림 → 영상(구글이 소리까지 만듭니다) → 쇼츠까지 한 번에 만듭니다.<br>'
-                 + '<span style="color:#9599ab">한 화(컷 5개)에 약 4,200원 · 20분쯤 '
-                 + '걸립니다. 누르고 나가셔도 됩니다.</span>',
-             btn: ep + '화 영상 만들기',
-             act: 'goVideo(\\'' + sid + '\\',' + ep + ')' };
+    // ⭐ 2026-08-23 — 컷은 **루미나에서** 만든다. 예전엔 이 자리가 Veo 영상
+    //    만들기(약 4,200원)를 한 번 누르면 바로 돈이 나가는 단추였다.
+    //    루미나로 전환한 지금 그 단추는 **돈 새는 문**이라 안내로 바꿨다.
+    //    (Veo 길은 실행 목록의 [3. 영상 만들기]에 예비로 남아 있다)
+    return { title: '「' + esc(v.title || sid) + '」 ' + ep + '화 컷을 루미나에서 만들 차례입니다',
+             body: '만든 영상 <b>' + (v.made || 0) + '/' + (v.episodes || 16) + '화</b><br>'
+                 + '① 아래에서 ' + ep + '화 <b>프롬프트를 복사</b>해 루미나에 붙입니다<br>'
+                 + '② 컷 5개(D001_E01_C01~C05)를 받아 <b>압축해 올립니다</b><br>'
+                 + '<span style="color:#9599ab">조립은 0원입니다. 영상은 루미나 '
+                 + '크레딧으로만 만들어집니다.</span>',
+             btn: ep + '화 대본·프롬프트 열기',
+             act: 'seriesView(\\'' + sid + '\\',' + ep + ')' };
   }
   if (ser.length && !going)
     return { title: '시리즈 16화가 다 만들어졌습니다',
