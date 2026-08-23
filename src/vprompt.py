@@ -51,6 +51,15 @@ LIPS_DIA = ("Each person's lips move ONLY while it is their own turn to speak, a
             "stay closed and still while the other person is speaking; they take "
             "turns one after another and never speak at the same time.")
 
+# ⚠️ 2026-08-23 운영자: "'어디 한번 끝까지 가보자고' 다음에 나레이션이 하나
+#    더 있는데 이건 자막은 안 떠."
+#    대사(5.5초)보다 컷(8초)이 길면 구글이 **남는 시간을 지어낸 말로 채운다.**
+#    지어낸 말은 대본에 없으니 자막이 없다. 적힌 대사만 말하게 못박는다.
+ONLY_LINES = ("They speak ONLY the exact lines written above and not a single word "
+              "more — no extra lines, no added narration, no improvised speech. "
+              "After the final written line, everyone stays completely silent and "
+              "holds a tense look until the clip ends.")
+
 FRAME = ("Center-framed medium waist shot with the people kept close to the middle "
          "of the frame, because the sides will be cropped away.")
 
@@ -127,7 +136,7 @@ def video_prompt(cut_prompt, sec=None):
     if sec:
         body = re.sub(r"\b\d+-second single continuous take",
                       f"{int(sec)}-second single continuous take", body)
-    return _tail(body.rstrip(), FRAME, BLUR, LIPS_DIA, NO_TEXT)
+    return _tail(body.rstrip(), FRAME, BLUR, LIPS_DIA, ONLY_LINES, NO_TEXT)
 
 
 def still_prompt(cut_prompt):

@@ -75,6 +75,11 @@ jobs:
       - name: 단추가 부르는 함수가 실제로 있는가
         run: node tools/onclick_check.mjs
 
+      # ⭐ 컷이 대사보다 길면 구글이 남는 시간을 지어낸 말로 채운다 —
+      #    지어낸 말은 자막이 없다 (2026-08-23 1화 5컷에서 실제 발생).
+      - name: 지어낸 말을 잘라 내는가
+        run: python3 tools/extra_speech_test.py
+
       - name: Veo 로 컷을 만드는 길이 성한가
         run: python3 tools/veo_test.py
 

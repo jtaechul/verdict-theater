@@ -499,8 +499,12 @@ HEAD_PAD = 0.25        # 첫 말 앞에 남겨 둘 숨
 TAIL_PAD = 0.45        # 끝말 뒤에 남겨 둘 여운
 
 
-def trim_dead(src, out):
-    """앞뒤로 말이 없는 시간을 잘라 낸다. 자를 것이 없으면 원본을 그대로."""
+def trim_dead(src, out, turns=0):
+    """앞뒤로 말이 없는 시간을 잘라 낸다. 자를 것이 없으면 원본을 그대로.
+
+    turns — 대본에 적힌 대사가 몇 마디인지. 주면 **그보다 많은 말은 지어낸
+    것으로 보고 뒤를 잘라 낸다** (2026-08-23 운영자: 5컷 끝에 대본에 없는
+    나레이션이 하나 더 나왔다 — 지어낸 말이라 자막이 없다)."""
     src, out = Path(src), Path(out)
     # ⚠️ 자르기는 **있으면 좋은 것**이지 없으면 안 되는 것이 아니다.
     #    클립을 못 읽는다고 여기서 죽으면 30초짜리 하나가 통째로 날아간다.
@@ -512,6 +516,20 @@ def trim_dead(src, out):
         return src
     if not spans:
         return src
+    if turns and len(spans) > turns:
+        # ⚠️ 한 문장 안의 짧은 숨(0.45초 미만)은 한 마디로 붙여 센다 —
+        #    안 붙이면 진짜 대사가 두 토막으로 세어져 뒤가 잘려 나간다.
+        glued = [list(spans[0])]
+        for a2, b2 in spans[1:]:
+            if a2 - glued[-1][1] < 0.45:
+                glued[-1][1] = b2
+            else:
+                glued.append([a2, b2])
+        if len(glued) > turns and dur - glued[turns - 1][1] > 0.8:
+            cut = len(spans) - len(glued[:turns])
+            print(f"    ✂️ 대본에 없는 말 {len(glued) - turns}마디를 잘라 낸다 "
+                  f"(대본 {turns}마디 · 소리에서 {len(glued)}마디)")
+            spans = [s2 for s2 in spans if s2[1] <= glued[turns - 1][1] + 0.01]
     a = max(0.0, spans[0][0] - HEAD_PAD)
     b = min(dur, spans[-1][1] + TAIL_PAD)
     if b - a < 1.0 or (a < 0.15 and dur - b < 0.15):
@@ -847,7 +865,8 @@ def episode(sid, no, clips_dir, out_dir):
             raise SystemExit(f"❌ {n}컷 클립이 없다 ({clips_dir})")
         # ⭐ ① 앞뒤 죽은 시간을 먼저 잘라 낸다 (플로우 6초짜리의 앞 1초 무음,
         #      제미나이 10초짜리의 뒤 3.8초 무음이 그대로 나가면 안 된다)
-        src = trim_dead(src, tmp / f"cut{n}_tight.mp4")
+        src = trim_dead(src, tmp / f"cut{n}_tight.mp4",
+                        turns=len(dia_turns(c.get("prompt"))))
         # ⭐ ② 소리를 갈아 끼우고, ③ 그 다음에 자막·크롭을 얹는다.
         #    (자막이 **말하는 자리**를 소리에서 찾으므로 순서가 중요하다)
         dubbed = tmp / f"cut{n}_ko.mp4"
@@ -910,8 +929,8 @@ def one(clip, sid, no, cut, hook, sub, out_dir):
     for who, text in turns:
         print(f"    {who}: {text}")
 
-    # ⭐ ① 앞뒤 죽은 시간부터 잘라 낸다
-    src = trim_dead(clip, tmp / "tight.mp4")
+    # ⭐ ① 앞뒤 죽은 시간부터 잘라 낸다 (대사 수를 알면 지어낸 말도 잘라 낸다)
+    src = trim_dead(clip, tmp / "tight.mp4", turns=len(turns))
     # ⭐ ② 소리를 갈아 끼운다
     if not turns:
         print("  ⚠️ 대사를 못 찾아 **원래 소리를 그대로 쓴다.**\n"

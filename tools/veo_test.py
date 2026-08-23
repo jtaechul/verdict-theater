@@ -130,6 +130,8 @@ if posts:
     ck("한국어 대사가 들어 있다",
        [ch for ch in pr if "\uac00" <= ch <= "\ud7a3"])
     ck("자기 차례에만 입을 움직이라고 시킨다", vprompt.LIPS_DIA in pr)
+    ck("적힌 대사 말고는 말하지 말라고 시킨다 (지어낸 나레이션 방지)",
+       vprompt.ONLY_LINES in pr)
     # ⭐ 2026-08-23 운영자 확정 — 소리는 구글이 만든다. VOICE·AUDIO 묘사가
     #    있어야 회차마다 목소리 결이 같아진다. 빼면 매번 다른 목소리가 나온다.
     ck("목소리(VOICE)·소리(AUDIO) 묘사가 남아 있다 (구글이 이대로 만든다)",
