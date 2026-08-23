@@ -113,11 +113,23 @@ def still_prompt(cut_prompt):
     return _tail(body.rstrip(), FRAME, NO_TEXT)
 
 
-def seconds_for(subtitle, lo=4, hi=8, per_sec=4.6):
-    """대사 길이에 맞는 컷 길이(초).
+# ⚠️⚠️ 2026-08-23 — Veo 가 받는 컷 길이는 **4·6·8초 셋뿐이다.**
+#    구글의 거절 문구가 "Please provide a value between 4 and 8, inclusive" 라
+#    처음에 '4~8 아무 정수' 로 읽었다가 7초를 보내 400 을 맞았다. 실측해 보니
+#    5초·7초는 거절이고 4·6·8 만 받는다. 문구를 믿지 말고 실측을 믿는다.
+OK_SEC = (4, 6, 8)
 
-    ⚠️ 한국어는 1초에 약 4.6자다. 6초 컷에 9초짜리 대사를 얹으면 남는 3초 동안
-       마지막 장면이 얼어붙어 방송 사고처럼 보인다. 대사가 길면 컷을 늘린다.
-       Veo 가 받는 값은 4~8초(실측)이므로 그 안으로 자른다."""
+
+def seconds_for(subtitle, per_sec=4.6):
+    """대사 길이에 맞는 컷 길이 — 받아 주는 값(4·6·8) 중에서 고른다.
+
+    한국어는 1초에 약 4.6자다. 6초 컷에 9초짜리 대사를 얹으면 남는 3초 동안
+    마지막 장면이 얼어붙어 방송 사고처럼 보인다. 대사가 길면 컷을 늘린다.
+    ⚠️ 모자라는 쪽보다 **넉넉한 쪽**으로 올린다 — 영상이 짧으면 얼어붙지만
+       길면 뒤가 조금 남을 뿐이라 눈에 덜 띈다."""
     chars = len(re.sub(r"[\s/]+", "", subtitle or ""))
-    return max(lo, min(hi, round(chars / per_sec + 0.8)))
+    want = chars / per_sec + 0.8
+    for s in OK_SEC:                       # 4 → 6 → 8 차례로, 처음 넘는 것
+        if want <= s:
+            return s
+    return OK_SEC[-1]

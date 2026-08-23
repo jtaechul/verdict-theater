@@ -130,6 +130,10 @@ jobs:
             && unzip -q -o build/cards.zip -d build/cards \
             || echo "받아 둔 카드가 없다 — 새로 만든다"
           python3 src/still.py cards "$SID" --out build/cards 2>&1 | tee -a make.log
+          # ⚠️ 만들자마자 올린다. 예전엔 맨 끝에 올렸는데 뒷단계가 실패하니
+          #    카드가 통째로 사라져 다음 실행에서 397원을 또 썼다.
+          python3 -c "import shutil;shutil.make_archive('build/cards','zip','build/cards')"
+          python3 tools/release_file.py put "cards-${SID}" cards.zip build/cards.zip || true
 
       - name: 2) 컷 첫 장면 그림
         run: |
@@ -172,11 +176,6 @@ jobs:
           fi
           test -n "$OUT" && test -f "$OUT" || { echo "❌ 만들어진 영상이 없습니다"; exit 1; }
           python3 tools/release_file.py put "short-${SID}-ep${EP}${SUF}" short.mp4 "$OUT"
-          # 인물 카드는 다음 회차에도 그대로 쓴다 — 다시 만들면 얼굴이 달라진다
-          if [ -d build/cards ]; then
-            python3 -c "import shutil;shutil.make_archive('build/cards','zip','build/cards')"
-            python3 tools/release_file.py put "cards-${SID}" cards.zip build/cards.zip || true
-          fi
 
       - name: 쓴 돈 장부 남기기
         if: always()

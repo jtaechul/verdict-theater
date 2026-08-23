@@ -104,8 +104,14 @@ if posts:
     C1 = DOC["episodes"][0]["cuts"][0]
     WANT_SEC = vprompt.seconds_for(C1["subtitle"])
     ck("모델 이름이 주소에 들어간다", veo.MODEL in u, u)
-    ck(f"컷 길이를 대사에 맞춰 {WANT_SEC}초로 보낸다 (4~8 안)",
-       p.get("durationSeconds") == WANT_SEC and 4 <= WANT_SEC <= 8, p)
+    # ⚠️⚠️ 구글은 4·6·8 초만 받는다. 거절 문구가 "between 4 and 8" 이라
+    #    7초를 보냈다가 400 을 맞고 컷이 통째로 날아갔다(2026-08-23).
+    ck(f"컷 길이를 대사에 맞춰 {WANT_SEC}초로 보낸다",
+       p.get("durationSeconds") == WANT_SEC, p)
+    ck("구글이 받는 길이(4·6·8)만 쓴다",
+       all(vprompt.seconds_for(c["subtitle"]) in vprompt.OK_SEC
+           for c in DOC["episodes"][0]["cuts"]),
+       [vprompt.seconds_for(c["subtitle"]) for c in DOC["episodes"][0]["cuts"]])
     ck("비율을 16:9 로 보낸다 (shorts 가 4:3 으로 자른다)", p.get("aspectRatio") == "16:9", p)
     ck("1080p 로 받는다 (최종 가로가 1080px)", p.get("resolution") == "1080p", p)
     ck('personGeneration 은 "ALLOW_ALL" (allow_adult 는 400)',
