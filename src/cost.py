@@ -126,6 +126,28 @@ def voice_krw(model, chars):
     return (max(0, int(chars)) / 1_000_000.0) * usd * USD_KRW
 
 
+# ── 영상값 (2026-08-23) ──────────────────────────────────
+#
+#   Veo 는 **초당** 값이 매겨진다. 장당인 그림과 셈법이 다르므로 따로 둔다.
+#   1화 = 6초 x 5컷 = 30초 → 30 x $0.06 = $1.80 (약 2,650원).
+#   모르는 이름이면 비싼 쪽으로 셈해서 한도에 먼저 걸리게 한다 — 덜 세는 것보다
+#   더 세는 쪽이 안전하다.
+VIDEO_USD_SEC = [
+    ("veo-3.1-lite", 0.06),
+    ("veo-3.1",      0.15),
+    ("veo-3",        0.15),
+]
+VIDEO_USD_SEC_UNKNOWN = 0.20
+
+
+def video_krw(model, seconds):
+    """영상 한 토막 값(원). 초 단위로 센다."""
+    for key, usd in VIDEO_USD_SEC:
+        if key in (model or ""):
+            return usd * max(0.0, float(seconds)) * USD_KRW
+    return VIDEO_USD_SEC_UNKNOWN * max(0.0, float(seconds)) * USD_KRW
+
+
 def image_krw(model, size="1K"):
     """그림 한 장 값(원). 모르는 것은 **비싸게** 잡는다."""
     name = (model or "").lower()
