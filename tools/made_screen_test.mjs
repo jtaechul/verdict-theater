@@ -71,7 +71,11 @@ ck('재생 단추가 있다', out.list.includes('madePlay(0)'));
 ck('재생을 누르면 영상이 붙는다', out.playing.includes('<video'));
 ck('아이폰이 전체화면으로 낚아채지 않는다', out.playing.includes('playsinline'),
    'playsinline 이 없으면 아이폰이 영상을 전체화면으로 가져간다');
-ck('올바른 주소를 본다', out.playing.includes('/api/short?sid=S001&ep=1&play=1'));
+ck('올바른 주소를 본다',
+   out.playing.includes('/api/short?sid=S001&ep=1') && out.playing.includes('play=1'));
+// ⭐ 2026-08-23 — 같은 영상에 소리만 다르게 얹은 판을 어느 것으로 재생할지
+//    주소에 실어 보낸다. 이게 없으면 늘 같은 판만 나와 **비교가 안 된다**.
+ck('어느 판을 재생할지 주소에 실린다', out.playing.includes('name='));
 ck('보는 중인 것은 다시 재생 단추가 안 뜬다',
    out.playing.includes('보는 중') && !out.playing.includes('madePlay(0)'));
 ck('그 자리에서 유튜브로 갈 수 있다',

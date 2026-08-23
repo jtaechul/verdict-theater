@@ -80,6 +80,10 @@ const WORKFLOWS = [
   { file: 'youtube-upload.yml', name: '유튜브에 올리기', desc: '', inputs: [], hidden: true },
 ];
 
+// ⭐ 재생할 수 있는 판들. 같은 영상에 소리만 다르게 얹은 것이다.
+//    2026-08-23 — 소리를 누가 만들지 정하려면 **귀로 비교**해야 한다.
+const PLAYABLE = ['short.mp4', 'ko.mp4', 'veo.mp4'];
+
 const THUMB_NAME = 'thumb.jpg';           // 릴리스 자산에 들어 있는 썸네일 파일명
 
 // 릴리스 자산 파일명 → 사람이 읽는 이름.
@@ -1940,6 +1944,15 @@ const mb = (b) => (b >= 1048576 ? Math.round(b/1048576) + 'MB' : Math.round(b/10
 //    첫 화면에서 한 번에 들어가 전부 볼 수 있게 한다.
 let SHORTS = [];
 let SHOWN = -1;
+// ⭐ 2026-08-23 — 같은 영상에 소리만 다르게 얹은 판을 골라 듣는다.
+//    운영자가 어느 소리로 갈지 **귀로 정해야** 하는데, 예전엔 목록이
+//    short.mp4 하나만 집어 와서 비교 자체가 불가능했다.
+let PICK = 'short.mp4';
+const PICK_LABEL = {
+  'ko.mp4': '① 우리 한국어 목소리',
+  'veo.mp4': '② 구글이 만든 소리',
+  'short.mp4': '기본',
+};
 
 function madeCard() {
   return '<div class="card"><h2>만든 영상</h2>'
@@ -1986,7 +1999,19 @@ function madeDraw() {
       + '<video id="pl" controls playsinline preload="metadata" '
       + 'style="width:100%;max-height:70vh;border-radius:12px;background:#000;'
       + 'display:block" src="/api/short?sid=' + encodeURIComponent(v.sid)
-      + '&ep=' + v.ep + (v.cut ? '&cut=' + v.cut : '') + '&play=1"></video>'
+      + '&ep=' + v.ep + (v.cut ? '&cut=' + v.cut : '')
+      + '&name=' + encodeURIComponent(PICK) + '&play=1"></video>'
+      + (((v.names || []).filter(function (n) { return n !== 'short.mp4'; }).length > 1)
+         ? '<div style="color:#9599ab;font-size:13px;margin:10px 0 4px">'
+           + '소리가 다른 판이 있습니다. 눌러서 바꿔 들어 보십시오 (영상은 똑같습니다).'
+           + '</div><div class="btns">'
+           + v.names.filter(function (n) { return n !== 'short.mp4'; })
+               .map(function (n) {
+                 return mini(PICK_LABEL[n] || n, 'pickAudio(\\'' + n + '\\')',
+                             PICK === n ? 'gold' : '');
+               }).join('')
+           + '</div>'
+         : '')
       + '<div style="color:#9599ab;font-size:13px;margin:10px 0 4px">'
       + esc(v.sid) + ' · ' + mb(v.size) + ' · '
       + esc(String(v.at || '').slice(0, 10)) + ' 만듦</div>'
@@ -3129,8 +3154,13 @@ export default {
           if (!m) continue;
           const a = (r.assets || []).find((x) => x.name === 'short.mp4');
           if (!a) continue;
+          // ⭐ 2026-08-23 — 같은 영상에 소리만 다르게 얹은 판이 여럿 있을 수 있다.
+          //    예전엔 short.mp4 하나만 집어 와서 **비교를 할 수가 없었다.**
+          const names = PLAYABLE.filter((n) =>
+            (r.assets || []).some((x) => x.name === n));
           items.push({ sid: m[1], ep: +m[2], cut: m[3] ? +m[3] : 0,
-                       size: a.size, at: a.updated_at || r.published_at || '' });
+                       size: a.size, names,
+                       at: a.updated_at || r.published_at || '' });
         }
         // 새로 만든 것이 위로
         items.sort((x, y) => String(y.at).localeCompare(String(x.at)));
@@ -3152,7 +3182,10 @@ export default {
                   + (cut ? `-cut${cut}` : '');
         let rel = null;
         try { rel = await gh(env, `/repos/${REPO}/releases/tags/${tag}`); } catch { rel = null; }
-        const a = (rel && (rel.assets || []).find((x) => x.name === 'short.mp4')) || null;
+        // 아무 이름이나 받지 않는다 — 미리 정해 둔 것만.
+        const want = PLAYABLE.includes(url.searchParams.get('name') || '')
+          ? url.searchParams.get('name') : 'short.mp4';
+        const a = (rel && (rel.assets || []).find((x) => x.name === want)) || null;
         if (!a) return Response.json({ ready: false });
         if (url.searchParams.get('play') !== '1')
           return Response.json({ ready: true, size: a.size, at: a.updated_at });
@@ -3160,7 +3193,8 @@ export default {
         // ⭐ 2026-08-23 — dl=1 이면 재생이 아니라 **내려받기**로 준다.
         //    파일 이름은 영문으로 (한글 이름은 올리기에서 한 번 죽었다).
         const dl = url.searchParams.get('dl') === '1'
-          ? `${sid}_ep${String(ep).padStart(2, '0')}${cut ? '_cut' + cut : ''}.mp4`
+          ? `${sid}_ep${String(ep).padStart(2, '0')}${cut ? '_cut' + cut : ''}`
+            + `${want === 'short.mp4' ? '' : '_' + want.replace('.mp4', '')}.mp4`
           : null;
         return streamAsset(env, req, a.id, dl);
       }
