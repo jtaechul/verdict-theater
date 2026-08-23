@@ -173,31 +173,48 @@ def scenes(sid, no, cards_dir, out_dir, only_cut=None):
     if only_cut:
         cuts = [c for c in cuts if int(c.get("n", 0)) == int(only_cut)]
     out_dir = Path(out_dir)
-    print(f"■ {sid} {no}화 「{ep.get('title','')}」 컷 스틸 {len(cuts)}장 "
-          f"(약 {cost.image_krw(MODEL, SIZE) * len(cuts):,.0f}원)")
-    made = 0
+    print(f"■ {sid} {no}화 「{ep.get('title','')}」 컷 스틸 {len(cuts) * 2}장 "
+          f"(시작·끝 두 장씩 · 약 {cost.image_krw(MODEL, SIZE) * len(cuts) * 2:,.0f}원)")
+    # ⭐⭐ 2026-08-23 운영자 지시 — 컷마다 **시작·끝 두 장**을 만든다.
+    #    한 장(시작)만 주니 도착점이 자유라 옷이 바뀌고 사람이 사라졌다 나타났다.
+    #    "이미지 여러 개를 가지고서 동영상이 연결되게끔만 했어도 이런 사단은
+    #     안 났잖아." — 맞는 말이라 그대로 한다. 영상은 두 장 사이를 잇기만 한다.
+    #    ⚠️ 끝 장면은 **시작 장면 그림을 참조에 같이 넣어** 만든다 — 그래야
+    #       두 장의 옷·배경·자리가 같은 데서 출발한다.
+    made, want = 0, 0
     for c in cuts:
         n = int(c.get("n", 0))
-        out = out_dir / f"c{n:03d}.png"
         names = who_in(c, doc)
         print(f"  컷{n}  나오는 사람: {', '.join(names) or '없음'}")
-        if out.exists() and out.stat().st_size > 10_000:
-            print("    (이미 있다 — 건너뛴다)")
-            made += 1
-            continue
         refs = [p for p in (card_path(cards_dir, x) for x in names) if p.exists()]
         if names and not refs:
             print("    ⚠️ 인물 카드가 없다 — 카드부터 만들어야 얼굴이 같아진다")
-        try:
-            gen(vprompt.still_prompt(c.get("prompt") or ""), out, refs=refs,
-                ratio="16:9", seed=seed_of(sid, no, n))
-            made += 1
-        except (StillError, cost.MonthlyCapReached) as e:
-            print(f"    ❌ {e}")
-            print(f"\n  여기서 멈춘다. 만든 {made}장은 남는다 — 다시 누르면 없는 것만 채운다.")
+        stop = False
+        for when, suffix in (("start", ""), ("end", "_end")):
+            want += 1
+            out = out_dir / f"c{n:03d}{suffix}.png"
+            if out.exists() and out.stat().st_size > 10_000:
+                print(f"    (이미 있다 — 건너뛴다: {out.name})")
+                made += 1
+                continue
+            use = list(refs)
+            first = out_dir / f"c{n:03d}.png"
+            if when == "end" and first.exists():
+                use = [first] + use          # 시작 장면이 첫 참조 — 그대로 이어지게
+            try:
+                gen(vprompt.still_prompt(c.get("prompt") or "", when), out,
+                    refs=use, ratio="16:9", seed=seed_of(sid, no, n, when))
+                made += 1
+            except (StillError, cost.MonthlyCapReached) as e:
+                print(f"    ❌ {e}")
+                print(f"\n  여기서 멈춘다. 만든 {made}장은 남는다 — "
+                      f"다시 누르면 없는 것만 채운다.")
+                stop = True
+                break
+        if stop:
             break
-    print(f"\n■ 스틸 {made}/{len(cuts)}장")
-    return 0 if made == len(cuts) else 1
+    print(f"\n■ 스틸 {made}/{want}장")
+    return 0 if made == want else 1
 
 
 def main():

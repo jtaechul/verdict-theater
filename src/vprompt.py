@@ -139,8 +139,22 @@ def video_prompt(cut_prompt, sec=None):
     return _tail(body.rstrip(), FRAME, BLUR, LIPS_DIA, ONLY_LINES, NO_TEXT)
 
 
-def still_prompt(cut_prompt):
-    """그 컷의 **첫 장면 스틸**을 그릴 지시문 (Veo 의 시작 프레임이 된다).
+# ⭐⭐ 2026-08-23 운영자 지적 (1화 실패 뒤):
+#    "이미지 여러 개를 가지고서 그냥 동영상이 연결되게끔만 했어도 이런 사단은
+#     안 났잖아. 시키는 대로 안 하니까 이런 사단이 나는 거 아니야."
+#    맞는 말이다. 시작 그림 **한 장**만 주면 출발점만 묶이고 도착점이 자유라,
+#    8초 가는 동안 옷이 바뀌고(4컷 내연녀) 사람이 사라졌다 나타났다(2컷 남편).
+#    그래서 컷마다 **시작·끝 두 장**을 만들어 둘 다 못박는다 — 영상은 그 사이를
+#    잇기만 한다. (image + lastFrame 동시 지정이 되는 것은 0원으로 실측했다)
+WHEN_START = ("This is the FIRST moment of the scene, the instant before anyone "
+              "starts the action: everyone in their starting position, mouths closed.")
+WHEN_END = ("This is the LAST moment of the scene, the instant after the action and "
+            "all the speaking has finished: same people, same clothing, same "
+            "positions in the room, mouths closed, holding the final expression.")
+
+
+def still_prompt(cut_prompt, when="start"):
+    """그 컷의 **시작(when='start') 또는 끝(when='end') 장면** 스틸 지시문.
 
     움직임 지시(ACTION)는 남긴다 — 그 순간의 자세를 잡아 주기 때문이다.
     다만 '한 컷 이어가기' 같은 영상 전용 문구는 뺀다."""
@@ -149,7 +163,8 @@ def still_prompt(cut_prompt):
         body = re.sub(pat, rep, body, flags=re.I)
     body = re.sub(r"\b\d+-second single continuous take\.?", "A single still frame.", body)
     body = re.sub(r"one single continuous take, no cut, no scene change, ", "", body)
-    return _tail(body.rstrip(), FRAME, BLUR, NO_TEXT)
+    when_line = WHEN_END if when == "end" else WHEN_START
+    return _tail(body.rstrip(), when_line, FRAME, BLUR, NO_TEXT)
 
 
 # ⚠️⚠️ 2026-08-23 — Veo 가 받는 컷 길이는 **4·6·8초 셋뿐이다.**

@@ -120,7 +120,7 @@ def _download(uri, out):
         raise VeoError(f"받은 영상이 너무 작다 ({out.stat().st_size} 바이트)")
 
 
-def make_clip(prompt, sec, out, ratio="16:9", seed=None, start=None):
+def make_clip(prompt, sec, out, ratio="16:9", seed=None, start=None, end=None):
     """컷 하나를 만든다. 돈을 쓰기 **전에** 한도를 본다."""
     if _calls["n"] >= CALL_CAP:
         raise VeoError(f"이번 실행의 영상 만들기 상한({CALL_CAP}번)에 걸렸다.")
@@ -138,6 +138,12 @@ def make_clip(prompt, sec, out, ratio="16:9", seed=None, start=None):
         #    한다 (하나만 넣으면 400). gcsUri 는 이 모델이 안 받는다.
         inst["image"] = {"bytesBase64Encoded": base64.b64encode(
             Path(start).read_bytes()).decode(), "mimeType": "image/png"}
+        if end:
+            # 2026-08-23 운영자 지시 — 끝 그림까지 못박아 영상은 두 장
+            # 사이를 **잇기만** 하게 한다. (lastFrame 은 image 와 같이 줄
+            # 때만 받는다 — 단독이면 400, 둘이면 통과. 0원 실측)
+            inst["lastFrame"] = {"bytesBase64Encoded": base64.b64encode(
+                Path(end).read_bytes()).decode(), "mimeType": "image/png"}
     op = _post(f"models/{MODEL}:predictLongRunning", {
         "instances": [inst],
         # ⭐ 2026-08-23 — 값 0원으로 실측한 규격만 보낸다 (틀린 필드는 400).
@@ -229,14 +235,21 @@ def episode(sid, no, out_dir, only_cut=None, stills=None, auto_sec=True):
         #    대사를 얹으면 남는 3초 동안 마지막 장면이 얼어붙어 사고처럼 보인다.
         csec = vprompt.seconds_for(c.get("subtitle") or "") if auto_sec else sec
         prompt = vprompt.video_prompt(raw, csec)
-        start = None
+        start = end = None
         if stills:
             cand = Path(stills) / f"c{n:03d}.png"
             if cand.exists() and cand.stat().st_size > 10_000:
                 start = cand
-                print(f"    시작 그림을 쓴다: {cand.name} (얼굴이 컷마다 같아진다)")
+            cand2 = Path(stills) / f"c{n:03d}_end.png"
+            if start and cand2.exists() and cand2.stat().st_size > 10_000:
+                end = cand2
+            if end:
+                print("    시작·끝 그림 두 장으로 못박는다 — 영상은 사이를 잇기만 한다")
+            elif start:
+                print(f"    시작 그림만 쓴다: {cand.name} (끝 그림이 없어 도착점이 자유다)")
         try:
-            spent += make_clip(prompt, csec, out, seed=_seed(sid, no, n), start=start)
+            spent += make_clip(prompt, csec, out, seed=_seed(sid, no, n),
+                               start=start, end=end)
             made += 1
         except (cost.MonthlyCapReached, VeoError) as e:
             print(f"    ❌ {e}")

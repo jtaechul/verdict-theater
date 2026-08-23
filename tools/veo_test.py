@@ -213,17 +213,34 @@ ck("왜 멈췄는지 알려준다", "이번 달 한도" in log.getvalue(), log.g
 #    "한도 초과"로 막힌다. 깨끗한 장부로 갈아 끼운다.
 cost.LEDGER = pathlib.Path(tempfile.mkdtemp(prefix="veo-ledger2-")) / "spend.json"
 
-print("⑥ 시작 그림이 있으면 시작 프레임으로 넣는가")
+print("⑥ 시작·끝 그림 두 장을 프레임으로 넣는가 (2026-08-23 운영자 지시)")
 d4 = pathlib.Path(tempfile.mkdtemp(prefix="veo-start-"))
 st = pathlib.Path(tempfile.mkdtemp(prefix="veo-stills-"))
 (st / "c001.png").write_bytes(b"\x89PNG" + b"\0" * 20_000)
+(st / "c001_end.png").write_bytes(b"\x89PNG" + b"\1" * 20_000)
 sent.clear(); veo._calls["n"] = 0
 with redirect_stdout(io.StringIO()):
     veo.episode("S001", 1, d4, only_cut=1, stills=st)
 b = [b for u, b in sent if ":predictLongRunning" in u][0]
 img = b["instances"][0].get("image") or {}
-ck("image 를 같이 보낸다", bool(img.get("bytesBase64Encoded")), list(img))
+last = b["instances"][0].get("lastFrame") or {}
+ck("시작 그림(image)을 보낸다", bool(img.get("bytesBase64Encoded")), list(img))
 ck("mimeType 도 같이 보낸다 (하나만 보내면 400)", img.get("mimeType") == "image/png", img.get("mimeType"))
+ck("끝 그림(lastFrame)도 같이 보낸다 — 도착점을 못박는다",
+   bool(last.get("bytesBase64Encoded")) and last.get("mimeType") == "image/png", list(last))
+ck("두 그림이 서로 다른 그림이다",
+   img.get("bytesBase64Encoded") != last.get("bytesBase64Encoded"))
+
+print("⑥-2 끝 그림이 없으면 시작 그림만으로도 돈다")
+d4b = pathlib.Path(tempfile.mkdtemp(prefix="veo-start2-"))
+st2 = pathlib.Path(tempfile.mkdtemp(prefix="veo-stills2-"))
+(st2 / "c001.png").write_bytes(b"\x89PNG" + b"\0" * 20_000)
+sent.clear(); veo._calls["n"] = 0
+with redirect_stdout(io.StringIO()):
+    veo.episode("S001", 1, d4b, only_cut=1, stills=st2)
+b2 = [b for u, b in sent if ":predictLongRunning" in u][0]
+ck("lastFrame 없이 image 만 보낸다 (단독 lastFrame 은 400)",
+   "lastFrame" not in b2["instances"][0] and "image" in b2["instances"][0])
 
 print("⑦ 안전필터에 걸린 것을 알아채는가")
 def blocked(req, timeout=None):
