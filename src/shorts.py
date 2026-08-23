@@ -31,6 +31,7 @@
 """
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -541,7 +542,17 @@ def trim_dead(src, out):
 #    만드는 일에서 shorts 를 들여와야 했고, 그때 PIL 이 없다고 죽었다.
 from series import dia_turns                                # noqa: E402,F401
 
+# ⭐ 2026-08-23 — 소리를 갈아 끼우지 않고 **구글이 만든 소리를 그대로** 두는 길.
+#    운영자에게 두 판(구글 소리 / 우리 목소리)을 같은 영상으로 들려드리기 위한 것이다.
+#    영상은 한 번만 만들면 되므로 두 판을 만들어도 영상값은 0원이 더 든다.
+def keep_audio():
+    return os.environ.get("KEEP_AUDIO", "").strip() not in ("", "0", "no", "false")
+
+
 def dub(src, turns, voices, out, tmp, personas=None):
+    if keep_audio():
+        print("  🔊 구글이 만든 소리를 그대로 둔다 (KEEP_AUDIO)")
+        return False
     """클립의 소리를 한국어 목소리로 갈아 끼운다. 못 하면 False.
 
     personas — {말하는이: "50대 중년 남성…"} (tts.pick_personas).

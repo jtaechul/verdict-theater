@@ -152,6 +152,10 @@ jobs:
           python3 src/veo.py "$SID" "$EPNO" --out build/in --stills build/stills $C \
             2>&1 | tee -a make.log
 
+      # ⭐ 2026-08-23 — 소리만 다른 **두 판**을 만든다. 영상은 이미 만들어 놨으므로
+      #    두 판을 만들어도 영상값은 한 푼도 더 안 든다. 귀로 듣고 고르시면 된다.
+      #      ① ko.mp4  우리 한국어 목소리를 얹은 것
+      #      ② veo.mp4 구글이 만든 소리를 그대로 둔 것
       - name: 4) 쇼츠 한 편으로 조립
         run: |
           set -o pipefail
@@ -169,16 +173,41 @@ jobs:
               2>&1 | tee -a make.log
           fi
 
+      - name: 5) 구글 소리 그대로인 판도 만든다 (영상값 0원)
+        continue-on-error: true
+        env:
+          KEEP_AUDIO: '1'
+        run: |
+          set -o pipefail
+          if [ -n "${SUF:-}" ]; then
+            CLIP=$(find build/in -name '*.mp4' | sort | head -1)
+            python3 src/shorts.py "$SID" "$EPNO" --demo "$CLIP" --cut "$CUT" \
+              --out build/veo 2>&1 | tee -a make.log
+          else
+            python3 src/shorts.py "$SID" "$EPNO" --clips build/in --out build/veo \
+              2>&1 | tee -a make.log
+          fi
+
       - name: 릴리스에 올리기 (저장소에는 안 넣는다)
         run: |
           set -euo pipefail
           if [ -n "${SUF:-}" ]; then
             OUT=$(find build/shorts -maxdepth 1 -name '*_short.mp4' | sort | head -1)
+            VEO=$(find build/veo -maxdepth 1 -name '*_short.mp4' 2>/dev/null | sort | head -1)
           else
             OUT="build/shorts/${SID}_ep${EP}_short.mp4"
+            VEO="build/veo/${SID}_ep${EP}_short.mp4"
           fi
           test -n "$OUT" && test -f "$OUT" || { echo "❌ 만들어진 영상이 없습니다"; exit 1; }
-          python3 tools/release_file.py put "short-${SID}-ep${EP}${SUF}" short.mp4 "$OUT"
+          TAG="short-${SID}-ep${EP}${SUF}"
+          python3 tools/release_file.py put "$TAG" short.mp4 "$OUT"
+          python3 tools/release_file.py put "$TAG" ko.mp4 "$OUT"
+          if [ -n "${VEO:-}" ] && [ -f "$VEO" ]; then
+            python3 tools/release_file.py put "$TAG" veo.mp4 "$VEO"
+            echo "두 판을 다 올렸다 — ko.mp4(우리 목소리) · veo.mp4(구글 소리)"
+          else
+            echo "⚠️ 구글 소리 판은 못 만들었다 — 우리 목소리 판만 올린다"
+          fi
 
       - name: 쓴 돈 장부 남기기
         if: always()

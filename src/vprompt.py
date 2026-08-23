@@ -40,9 +40,16 @@ SOFT = [
 NO_TEXT = ("Absolutely no text, no letters, no subtitles, no captions, "
            "no watermarks, no speech bubbles, no typography anywhere on screen.")
 
-# 입은 움직이되 소리는 우리가 넣는다 — 눈에 보이는 것만 시킨다
-LIPS = ("Everyone who speaks keeps their lips moving continuously and clearly "
-        "throughout, as if talking, with visible jaw movement.")
+# ⚠️⚠️ 2026-08-23 — 여기가 이번 사고의 자리다.
+#    대사를 프롬프트에서 빼 버리니 Veo 가 **누가 언제 말하는지** 모르게 됐고,
+#    "말하는 사람은 모두 계속 입을 움직여라" 만 남아 둘이 내내 입을 움직였다.
+#    그 위에 목소리를 얹으니 당연히 안 맞았다.
+#    운영자: "입이 움직이는 등장인물하고 목소리가 나오는 등장인물이 전혀 맞지 않아"
+LIPS_NO_DIA = ("Everyone who speaks keeps their lips moving continuously and clearly "
+               "throughout, as if talking, with visible jaw movement.")
+LIPS_DIA = ("Each person's lips move ONLY while it is their own turn to speak, and "
+            "stay closed and still while the other person is speaking; they take "
+            "turns one after another and never speak at the same time.")
 
 FRAME = ("Center-framed medium waist shot with the people kept close to the middle "
          "of the frame, because the sides will be cropped away.")
@@ -63,15 +70,17 @@ BLUR = ("The background is strongly out of focus and softly blurred throughout, 
         "shapes as soft indistinct colour masses with no readable detail.")
 
 DROP = ("DIALOGUE", "VOICE", "AUDIO")
+DROP_KEEP_DIA = ("VOICE", "AUDIO")      # 대사는 남기고 소리 묘사만 뺄 때
 
 
-def strip_lines(text):
-    """DIALOGUE·VOICE·AUDIO 토막을 통째로 뺀다 (이어지는 들여쓴 줄까지)."""
+def strip_lines(text, drop=None):
+    """적힌 토막을 통째로 뺀다 (이어지는 들여쓴 줄까지)."""
+    drop = drop or DROP
     out, skip = [], False
     for line in (text or "").splitlines():
         head = re.match(r"\s*([A-Z][A-Z ]{2,}):", line)
         if head:
-            skip = head.group(1).strip() in DROP
+            skip = head.group(1).strip() in drop
             if skip:
                 continue
         elif skip:
@@ -104,15 +113,22 @@ DANGLING = [
 ]
 
 
-def video_prompt(cut_prompt, sec=None):
-    """Veo 로 보낼 지시문. sec 를 주면 머리말의 초도 그 값으로 고친다."""
-    body = soften(strip_lines(cut_prompt))
+def video_prompt(cut_prompt, sec=None, dialogue=True):
+    """Veo 로 보낼 지시문.
+
+    dialogue=True 이면 **한국어 대사를 남긴다.** 남겨야 Veo 가 누가 언제
+    말하는지 알고 그 사람만 입을 움직인다. 소리는 나중에 우리 한국어 목소리로
+    갈아 끼우지만, **입 타이밍은 이 대사에서 나온다.**
+    (2026-08-21 기록: 대사를 넣었을 때 셋이 겹치지 않고 차례대로 말했고
+     경계도 0.98/2.79/4.57 로 깨끗했다. 남은 문제는 발음뿐이었다)"""
+    body = soften(strip_lines(cut_prompt, DROP_KEEP_DIA if dialogue else DROP))
     for pat, rep in DANGLING:
         body = re.sub(pat, rep, body, flags=re.I)
     if sec:
         body = re.sub(r"\b\d+-second single continuous take",
                       f"{int(sec)}-second single continuous take", body)
-    return _tail(body.rstrip(), FRAME, BLUR, LIPS, NO_TEXT)
+    return _tail(body.rstrip(), FRAME, BLUR,
+                 LIPS_DIA if dialogue else LIPS_NO_DIA, NO_TEXT)
 
 
 def still_prompt(cut_prompt):

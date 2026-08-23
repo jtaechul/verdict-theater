@@ -124,12 +124,14 @@ if posts:
     # ⭐ 여기가 이번 판의 핵심이다 — 지시문을 그대로 보내면 안 된다.
     pr = b["instances"][0]["prompt"]
     print("② 지시문을 제대로 고쳐 보내는가")
-    ck("대사(DIALOGUE) 토막이 빠졌다", "DIALOGUE" not in pr)
-    ck("목소리(VOICE)·소리(AUDIO) 토막이 빠졌다",
+    # ⚠️⚠️ 대사는 **남아 있어야 한다.** 빼면 Veo 가 누가 언제 말하는지 몰라
+    #    둘이 내내 입을 움직이고, 그 위에 얹은 목소리와 안 맞는다(2026-08-23 사고).
+    ck("대사(DIALOGUE) 토막이 남아 있다", "DIALOGUE" in pr)
+    ck("한국어 대사가 들어 있다",
+       [ch for ch in pr if "\uac00" <= ch <= "\ud7a3"])
+    ck("자기 차례에만 입을 움직이라고 시킨다", vprompt.LIPS_DIA in pr)
+    ck("목소리(VOICE)·소리(AUDIO) 묘사는 빠졌다 (어차피 버리는 소리)",
        "VOICE:" not in pr and "AUDIO:" not in pr)
-    ck("한국어 대사가 한 글자도 안 남았다",
-       not [ch for ch in pr if "\uac00" <= ch <= "\ud7a3"],
-       "".join(ch for ch in pr if "\uac00" <= ch <= "\ud7a3")[:40])
     ck("거친 낱말(furious·shouting)이 순화됐다",
        "furious" not in pr.lower() and "shouting" not in pr.lower())
     ck("화면 글자 막는 문구가 **맨 끝**에 있다",
@@ -147,7 +149,8 @@ if posts:
     ck("그림에도 배경을 흐리게 하라고 시킨다", vprompt.BLUR in sp)
     ck("그림에도 화면 글자 막는 문구가 맨 끝에 있다",
        sp.rstrip().endswith(vprompt.NO_TEXT), sp[-90:])
-    ck("그림에도 한국어 대사가 안 남았다",
+    # 그림은 한 장이라 말할 차례가 없다 — 대사는 여기선 뺀다
+    ck("그림에는 한국어 대사가 안 남았다",
        not [ch for ch in sp if "\uac00" <= ch <= "\ud7a3"],
        "".join(ch for ch in sp if "\uac00" <= ch <= "\ud7a3")[:40])
 
