@@ -15,16 +15,12 @@ name: 0. 제미나이 열쇠 점검 (값 0원)
 #   Veo(영상)는 싸게 찔러볼 방법이 없다. 그림이 통과하면 결제가 붙은 것이므로
 #   영상도 같이 열린다 — 그 사실을 화면에 적어 준다.
 
+# ⚠️ 표식 파일(.trigger)로도 돌게 해 봤다가 되돌렸다.
+#    tools/money_guard_test.py 가 잡아냈다 — "밀 때마다 도는 워크플로에
+#    유료 열쇠가 들어 있다". 값이 0원에 가깝더라도 **미는 것만으로 유료 호출이
+#    일어나는 길**은 만들면 안 된다는 규칙이 이 저장소에 이미 있었다. 옳은 규칙이라
+#    따른다. 이 점검은 관리자 페이지 단추로만 돈다.
 on:
-  # ⭐ 표식 파일(.trigger/keycheck)이 바뀌면 자동으로 돈다.
-  #    까닭: 고친 사람이 **직접 돌려서 확인**할 수 있어야 한다. 여태 운영자가
-  #    버튼을 눌러 주기 전에는 진짜로 되는지 아무도 못 봤다.
-  #    이 저장소가 이미 쓰는 방식과 같다 (.trigger/series · .trigger/produce).
-  push:
-    paths:
-      - '.trigger/keycheck'
-      - '.github/workflows/keycheck.yml'
-      - 'tools/gemini_key_check.py'
   workflow_dispatch:
 
 permissions:
