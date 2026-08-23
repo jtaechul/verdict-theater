@@ -352,6 +352,26 @@ await W._wk.fetch(new Request(
 ok(askedTag === 'short-S001-ep01-cut3', '진짜 시험본은 시험본 이름으로 찾는다');
 globalThis.fetch = oldFetch2;
 
+// ⭐ 2026-08-23 운영자: "제작된 동영상은 저장할 수 있도록"
+//    dl=1 이면 재생이 아니라 **받는 파일**로 내려줘야 한다.
+const dlr = await W._wk.fetch(new Request(
+  'https://admin.example.workers.dev/api/short?sid=S001&ep=1&play=1&dl=1',
+  { headers: { Cookie: cookie } }), env2);
+const cd = dlr.headers.get('Content-Disposition') || '';
+ok(cd.startsWith('attachment'), '받는 파일로 내려준다 (' + cd + ')');
+ok(cd.includes('S001_ep01.mp4'), '파일 이름이 영문이다 (한글 이름은 한 번 죽었다)');
+ok(!(vres.headers.get('Content-Disposition')), '재생일 때는 받는 파일이 아니다');
+
+// ⚠️⚠️ 2026-08-23 운영자: "유튜브에 올릴 내용이 중복으로 들어가 있어."
+//    상자(id="ytbox")를 두 군데서 만들어 같은 글이 두 벌로 보였다.
+//    **주석 아닌 줄**에서 상자를 만드는 곳이 딱 한 곳이어야 한다.
+const makers = src.split('\n')
+  .filter((l) => !l.trim().startsWith('//') && l.includes('id="ytbox"'));
+ok(makers.length === 1,
+   '올릴 내용 상자는 한 곳에서만 만든다 (' + makers.length + '곳)');
+ok(src.includes("function shortDl") && src.includes("function madeDl"),
+   '받기 단추가 두 화면(완성 카드·만든 영상)에 다 있다');
+
 const lst = await (await W._wk.fetch(new Request(
   'https://admin.example.workers.dev/api/shorts', { headers: { Cookie: cookie } }),
   env2)).json();

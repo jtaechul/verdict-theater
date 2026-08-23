@@ -184,7 +184,7 @@ async function gh(env, path, init = {}) {
 //       /api/video 는 이걸 제대로 하고 있었는데 /api/short(완성된 쇼츠)는
 //       그냥 통째로 주고 있었다. 운영자가 만든 영상을 한 번도 못 본 까닭이다.
 //       같은 코드를 두 군데가 나눠 쓰게 해서 한쪽만 낡는 일을 없앤다.
-async function streamAsset(env, req, id) {
+async function streamAsset(env, req, id, fname) {
   const r0 = await fetch(`${GH}/repos/${REPO}/releases/assets/${id}`, {
     headers: {
       'Authorization': `Bearer ${env.GH_TOKEN}`,
@@ -206,6 +206,8 @@ async function streamAsset(env, req, id) {
   h.set('Content-Type', 'video/mp4');
   h.set('Accept-Ranges', 'bytes');
   h.set('Cache-Control', 'private, no-store');
+  // 받는 파일로 내려줄 때 — 브라우저가 재생 대신 저장 창을 띄운다
+  if (fname) h.set('Content-Disposition', `attachment; filename="${fname}"`);
   for (const k of ['Content-Length', 'Content-Range', 'ETag', 'Last-Modified']) {
     const v = up.headers.get(k);
     if (v) h.set(k, v);
@@ -913,6 +915,15 @@ let SHORTW = null;
 // passive=true 면 **한 번만** 보고 끝낸다 (타이머를 안 켠다).
 // ⚠️ 화면을 열 때마다 30초 타이머를 켜면 안 된다 — 화면 검사기가 끝나지
 //    않고 멈췄고, 실제 화면에서도 타이머가 쌓인다.
+// ⭐ 2026-08-23 운영자: "제작된 동영상은 저장할 수 있도록 기능 추가해줘."
+//    받기 주소(dl=1)를 새 창으로 열면 아이폰이 내려받기 창을 띄운다.
+//    받은 뒤 [공유] → [비디오 저장] 을 누르면 사진첩에 들어간다.
+function shortDl(cut) {
+  window.open('/api/short?sid=' + SID + '&ep=' + SEP
+              + (cut ? '&cut=' + cut : '') + '&play=1&dl=1', '_blank');
+  toast('내려받기를 시작했습니다');
+}
+
 async function watchShort(cut, passive) {
   clearInterval(SHORTW);
   const q = cut ? '&cut=' + cut : '';
@@ -934,7 +945,13 @@ async function watchShort(cut, passive) {
       + '<div class="uphint">' + Math.round((j.size || 0) / 1048576 * 10) / 10
       + 'MB' + (cut ? ' · 시험본입니다. 소리를 들어 보십시오.'
                     : ' · 영상을 보신 뒤 아래에서 올리십시오.') + '</div>'
-      + (cut ? '' : '<div id="ytbox"></div>') + '</div>';
+      + '<div class="btns" style="margin-top:8px">'
+      + mini('영상 받기 (기기에 저장)', 'shortDl(\\'' + (cut || '') + '\\')')
+      + '</div></div>';
+    // ⚠️⚠️ 2026-08-23 운영자: "유튜브에 올릴 내용이 중복으로 들어가 있어."
+    //    예전엔 여기서 <div id="ytbox"> 를 **하나 더** 만들었다. 화면에는
+    //    이미 같은 id 의 상자가 있어서(회차 화면 아래쪽), 둘 다 채워져
+    //    같은 글이 두 벌로 보였다. 상자는 회차 화면의 **하나만** 쓴다.
     toast(cut ? cut + '컷 시험본이 만들어졌습니다' : '쇼츠가 만들어졌습니다');
     if (!cut) ytLoad();
   };
@@ -1806,6 +1823,7 @@ function madeDraw() {
       + '<div class="btns">'
       + mini('이 회차 열기 (유튜브에 올리기)',
              'seriesView(\\'' + v.sid + '\\',' + v.ep + ')', 'gold')
+      + mini('영상 받기 (기기에 저장)', 'madeDl(' + SHOWN + ')')
       + '</div></div>';
   }
   h += '<div class="card"><h2>만든 영상 ' + SHORTS.length + '개</h2>';
@@ -1822,6 +1840,14 @@ function madeDraw() {
 }
 
 function madePlay(k) { SHOWN = k; madeDraw(); scrollTo(0, 0); }
+
+function madeDl(k) {
+  const v = SHORTS[k];
+  if (!v) return;
+  window.open('/api/short?sid=' + encodeURIComponent(v.sid) + '&ep=' + v.ep
+              + (v.cut ? '&cut=' + v.cut : '') + '&play=1&dl=1', '_blank');
+  toast('내려받기를 시작했습니다');
+}
 
 // ── 영상 보기 ───────────────────────────────────────────
 // 영상은 저장소에 커밋하지 않는다. 제작 워크플로가 릴리스 자산으로 올려 두고,
@@ -2898,7 +2924,12 @@ export default {
         if (url.searchParams.get('play') !== '1')
           return Response.json({ ready: true, size: a.size, at: a.updated_at });
         // ⚠️ 예전엔 여기서 통째로 내려보냈다 → 아이폰이 재생을 못 했다.
-        return streamAsset(env, req, a.id);
+        // ⭐ 2026-08-23 — dl=1 이면 재생이 아니라 **내려받기**로 준다.
+        //    파일 이름은 영문으로 (한글 이름은 올리기에서 한 번 죽었다).
+        const dl = url.searchParams.get('dl') === '1'
+          ? `${sid}_ep${String(ep).padStart(2, '0')}${cut ? '_cut' + cut : ''}.mp4`
+          : null;
+        return streamAsset(env, req, a.id, dl);
       }
 
       // ⭐ 2026-08-20 운영자: "동영상 올릴 때 제목·설명·해시태그 아무것도 안 들어가
