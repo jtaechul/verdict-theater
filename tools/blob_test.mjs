@@ -267,6 +267,16 @@ const vpj = await (await W._wk.fetch(new Request(
   'https://admin.example.workers.dev/api/voicepick?t=2',
   { headers: { Cookie: cookie } }), env2)).json();
 ok(vpj.engine === 'typecast', '열쇠가 담기면 고르기 화면도 타입캐스트로 안다');
+// [추천 목소리 듣기]가 어느 시리즈 인물인지(sid)와 열쇠 주소를 같이 넘긴다
+called.length = 0;
+await (await W._wk.fetch(new Request(
+  'https://admin.example.workers.dev/api/voicepick',
+  { method: 'POST', headers: { Cookie: cookie },
+    body: JSON.stringify({ sid: 'S001' }) }), env2)).json();
+const dvp = called.find((c) => c.url.includes('voice-pick.yml'));
+ok(!!dvp && dvp.body.inputs.sid === 'S001', '추천 만들기에 시리즈 번호가 실린다');
+ok(!!dvp && /api\/blob\?key=voice%2F/.test(dvp.body.inputs.tckey || ''),
+   '추천 만들기에도 열쇠 주소가 실린다');
 
 // ⑪ 유튜브에 올릴 글 — 화면에서 고친 그대로 올라가는가.
 //    여기도 깃허브에 쓰던 자리였다(403 의 두 번째 원인).

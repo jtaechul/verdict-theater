@@ -282,6 +282,13 @@ ck("열쇠가 담기면 넣는 칸을 숨긴다",
    "form.style.display = tc ? 'none' : ''" in _wk2,
    "담긴 뒤에도 붙여넣는 칸이 보이면 안 된다")
 ck("[열쇠 바꾸기] 로 다시 열 수 있다", "function tcEdit" in _wk2)
+# ⭐ 2026-08-23 운영자: "1125개를 전부 다 들어보게 하면 어떡하냐 —
+#    등장인물별로 추천을 몇 개씩 해줘야지."
+ck("듣기 단추가 엔진 따라 이름을 바꾼다", 'id="audbtn"' in ep1)
+ck("인물별 추천 목록을 그릴 줄 안다", "kind === 'cast'" in _wk2)
+ck("인물별로 고를 수 있다", "function castSet" in _wk2)
+ck("추천 만들기가 실패하면 실패라고 말한다",
+   "voice-pick.yml" in _wk2 and _wk2.count("만들기가 실패했습니다") >= 2)
 # ⚠️⚠️ 2026-08-22 — 압축파일을 다 올린 **뒤에** 이 오류를 봤다:
 #    GitHub 403: "Resource not accessible by personal access token"
 #    처음엔 "토큰 권한을 쓰기로 바꾸십시오" 라고 화면에 적었다가 크게 혼났다.

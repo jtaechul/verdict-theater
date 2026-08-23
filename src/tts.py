@@ -198,7 +198,13 @@ def chosen():
     f = Path(__file__).resolve().parent.parent / "state" / "voice.json"
     try:
         d = json.loads(f.read_text(encoding="utf-8"))
-        return {k: str(v) for k, v in d.items() if k in ("f", "m") and v}
+        out = {k: str(v) for k, v in d.items() if k in ("f", "m") and v}
+        # ⭐ 2026-08-23 — 타입캐스트는 **인물별로** 고른다 (목소리가 1125개라
+        #    여/남 둘로는 부족하다). {"cast": {"본처": "tc_…", …}} 꼴.
+        cast = d.get("cast")
+        if isinstance(cast, dict):
+            out["cast"] = {str(k): str(v) for k, v in cast.items() if v}
+        return out
     except Exception:                                        # noqa: BLE001
         return {}
 
@@ -303,9 +309,16 @@ def pick_voices(chars):
     ⭐ 45살 이상 배역은 나이 든 목소리(MATURE_*)를 먼저 받는다.
     """
     vf, vm = best_voices("FEMALE"), best_voices("MALE")
+    cast = chosen().get("cast") or {}
     out, fi, mi, used = {}, 0, 0, set()
     for ch in chars or []:
         f = is_female(ch)
+        nm = (ch.get("name") or "").strip()
+        if nm in cast:                       # 운영자가 인물별로 고른 것 (최우선)
+            used.add(cast[nm])
+            for k in _speaker_keys(ch):
+                out[k] = cast[nm]
+            continue
         # ⚠️⚠️ 2026-08-23 — 처음엔 엔진을 안 보고 나이 든 목소리를 끼웠다.
         #    깃허브(제미나이 열쇠 없음)는 구글 목소리(ko-KR-…)로 도는데,
         #    거기에 제미나이 이름(Gacrux)을 건네니 못 알아듣는다.
@@ -578,6 +591,9 @@ def tc_voices():
         if not isinstance(v, dict):
             continue
         g = str(v.get("gender") or "").lower()
+        langs = v.get("languages") or v.get("language") or []
+        if isinstance(langs, str):
+            langs = [langs]
         out.append({
             "id": str(v.get("voice_id") or v.get("id") or ""),
             "name": str(v.get("voice_name") or v.get("name") or ""),
@@ -585,6 +601,8 @@ def tc_voices():
             "gender": ("f" if g.startswith(("f", "여")) else
                        "m" if g.startswith(("m", "남")) else ""),
             "emotions": [str(x) for x in (v.get("emotions") or [])],
+            "age": str(v.get("age") or "").lower(),
+            "langs": [str(x).lower() for x in langs],
         })
     _TC_V["list"] = [v for v in out if v["id"]]
     return _TC_V["list"]
@@ -651,6 +669,114 @@ def typecast_say(text, voice, out):
     if r2.returncode != 0 or not out.exists():
         raise RuntimeError(f"타입캐스트 소리를 못 읽었다: {r2.stderr[:150]}")
     return out
+
+
+# ⭐⭐ 2026-08-23 운영자: "목소리가 1125개인데 전부 다 들어보게 하면 어떡하냐.
+#    등장인물별로 추천을 몇 개씩 해줘야 될 거 아니야."
+#    맞다. 전부는 값도 시간도 말이 안 된다. 인물표(나이·성별)로 후보를
+#    좁혀 **인물마다 몇 개만** 뽑고, 그 인물의 실제 대사로 들려준다.
+OLD_AGE = ("middle", "old", "senior", "mature", "40", "50", "60", "중년", "장년")
+YOUNG_AGE = ("child", "kid", "teen", "10", "어린", "아이")
+
+
+def tc_recommend(chars, per=4):
+    """인물마다 후보 목소리 per 개. {인물이름: [목소리row, …]}"""
+    rows = tc_voices()
+    # 한국어를 할 줄 아는 것만 (언어 표시가 아예 없으면 다 후보로 둔다)
+    ko = [v for v in rows if any(l.startswith("ko") for l in v["langs"])]
+    if ko:
+        rows = ko
+    ssfm = [v for v in rows if v["model"].startswith("ssfm")]
+    if ssfm:
+        rows = ssfm
+    out, used = {}, set()
+    for ch in chars or []:
+        nm = (ch.get("name") or "").strip()
+        if not nm:
+            continue
+        f = is_female(ch)
+        want = "f" if f else "m"
+        cands = [v for v in rows if v["gender"] == want] or                 [v for v in rows if not v["gender"]] or rows
+        # 나이 표시가 있으면 배역 나이에 맞는 것을 앞으로
+        if age_of(ch) >= 45:
+            aged = [v for v in cands if any(t in v["age"] for t in OLD_AGE)]
+            rest = [v for v in cands if v not in aged]
+            cands = aged + rest
+        # 어린이 목소리는 성인 배역에서 뺀다
+        cands = [v for v in cands
+                 if not any(t in v["age"] for t in YOUNG_AGE)] or cands
+        cands = [v for v in cands if v["id"] not in used]
+        if not cands:
+            continue
+        # 앞쪽(나이 맞음)을 지키되, 뒤쪽에서도 고르게 섞어 다양하게
+        n = min(per, len(cands))
+        half = (n + 1) // 2
+        picks = cands[:half]
+        rest = cands[half:]
+        if rest and n > half:
+            step = max(1, len(rest) // (n - half))
+            picks += rest[::step][:n - half]
+        for v in picks:
+            used.add(v["id"])
+        out[nm] = picks
+    return out
+
+
+def first_line_of(doc, ch):
+    """이 인물이 대본에서 처음 하는 대사 한 줄 (견본용). 없으면 시험 문장."""
+    import sys as _s
+    _s.path.insert(0, str(Path(__file__).resolve().parent))
+    import series as SC                                      # noqa: E402
+    keys = set(_speaker_keys(ch))
+    for ep in doc.get("episodes") or []:
+        for c in ep.get("cuts") or []:
+            for who, text in SC.dia_turns(c.get("prompt")):
+                if who in keys and len(text) >= 5:
+                    return text
+    return AUD_F if is_female(ch) else AUD_M
+
+
+def tc_audition_cast(out_dir, doc, per=4):
+    """인물마다 추천 목소리 per 개로, 그 인물의 실제 대사를 만들어 담는다."""
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    chars = doc.get("characters") or []
+    rec = tc_recommend(chars, per)
+    personas = pick_personas(chars)
+    made = []
+    total = sum(len(v) for v in rec.values())
+    print(f"⭐ 인물 {len(rec)}명 × 추천 목소리 — 견본 {total}개를 만든다\n")
+    i = 0
+    for ch in chars:
+        nm = (ch.get("name") or "").strip()
+        if nm not in rec:
+            continue
+        line = first_line_of(doc, ch)
+        pe = personas.get(nm)
+        print(f"  {nm} — \"{line[:24]}\"")
+        for v in rec[nm]:
+            i += 1
+            f = out_dir / f"cast_{v['id']}.mp3"
+            try:
+                w = say(line, v["id"], 1.0, 0.0, out_dir / f"_{v['id']}.wav",
+                        who=pe)
+                subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(w),
+                                "-c:a", "libmp3lame", "-b:a", "160k", str(f)],
+                               check=True)
+                made.append({"kind": "cast", "char": nm,
+                             "sex": "여" if is_female(ch) else "남",
+                             "voice": v["id"], "label": v["name"],
+                             "file": f.name, "line": line,
+                             "engine": engine()})
+                print(f"    [{i:2d}/{total}] ✅ {v['name'] or v['id']}")
+            except Exception as e:                           # noqa: BLE001
+                print(f"    [{i:2d}/{total}] ❌ {v['name'] or v['id']} — "
+                      f"{str(e).splitlines()[0][:70]}")
+    won = bill_flush("인물별 목소리 추천")
+    print(f"\n✅ {len(made)}개를 만들었다" + (f" · 값 {won:.0f}원" if won else ""))
+    (out_dir / "list.json").write_text(
+        json.dumps(made, ensure_ascii=False, indent=1), encoding="utf-8")
+    return made
 
 
 def cloud_gem_say(text, voice, out, style=None, who=None):
@@ -1425,8 +1551,10 @@ def main():
     a.add_argument("--voice", default="")
     a.add_argument("--sec", type=float, default=0.0)
     a.add_argument("--out", default="tts.wav")
-    a.add_argument("--audition", default="", help="목소리 전부를 들어볼 곳")
+    a.add_argument("--audition", default="", help="목소리 견본을 담을 곳")
     a.add_argument("--only", default="", help="이 목소리들만 (쉼표로)")
+    a.add_argument("--cast-sid", default="",
+                   help="타입캐스트: 이 시리즈 인물별로 추천 견본 (예: S001)")
     g = a.parse_args()
     if not key():
         print("❌ 목소리 열쇠가 없다 — GEMINI_API_KEY 나 GOOGLE_TTS_KEY 중\n"
@@ -1434,7 +1562,13 @@ def main():
         return 2
     print(f"목소리 — {engine_note()}\n")
     if g.audition:
-        audition(g.audition, g.only)
+        if g.cast_sid:
+            doc = json.loads((Path(__file__).resolve().parent.parent / "data" /
+                              "series" / f"{g.cast_sid}.json")
+                             .read_text(encoding="utf-8"))
+            tc_audition_cast(g.audition, doc)
+        else:
+            audition(g.audition, g.only)
         return 0
     if g.sample:
         p = sample(g.sample, g.ep, g.out)

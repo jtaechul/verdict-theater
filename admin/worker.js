@@ -744,9 +744,11 @@ async function makeVoice() {
 // ⭐ 2026-08-22 — 목소리 26개를 다 만들어 보고, 들어 보고, 고른다.
 async function pickVoice() {
   const msg = document.getElementById('pickmsg');
-  msg.textContent = '전부 만드는 중입니다… (3~5분 걸립니다)';
+  msg.textContent = '견본을 만드는 중입니다… (2~4분 걸립니다)';
+  const t0 = Date.now();
   try {
-    const r = await fetch('/api/voicepick', { method: 'POST' });
+    const r = await fetch('/api/voicepick', { method: 'POST',
+      body: JSON.stringify({ sid: SID }) });
     const j = await r.json();
     if (!j.ok) throw new Error(j.detail || j.error || '실패');
   } catch (e) {
@@ -757,8 +759,20 @@ async function pickVoice() {
   const tick = async () => {
     n++;
     if (await pickShow(true)) { msg.textContent = '다 됐습니다. 들어보십시오.'; return; }
-    if (n > 40) { msg.textContent = '오래 걸립니다. [이미 만든 것 보기] 를 눌러 보십시오.'; return; }
-    msg.textContent = '만드는 중입니다… (' + (n * 10) + '초)';
+    // ⚠️ 실패해도 하염없이 "만드는 중" 만 돌던 것 — 실행 상태를 같이 본다
+    try {
+      const lr = await (await fetch('/api/lastrun?file=voice-pick.yml&t='
+                                    + Date.now())).json();
+      if (lr.found && new Date(lr.at).getTime() > t0 - 90000
+          && lr.conclusion === 'failure') {
+        msg.textContent = '❌ 만들기가 실패했습니다 — 잠시 뒤 한 번만 다시 눌러 '
+          + '보시고, 또 실패하면 말씀해 주십시오.';
+        return;
+      }
+    } catch (e) { /* 못 물어봤으면 계속 */ }
+    if (n > 30) { msg.textContent = '5분이 지나도 안 됩니다 — 잠시 뒤 '
+      + '[이미 만든 것 보기] 를 눌러 보십시오.'; return; }
+    msg.textContent = '만드는 중입니다… (' + (n * 10) + '초 · 보통 2~4분)';
     setTimeout(tick, 10000);
   };
   setTimeout(tick, 20000);
@@ -799,8 +813,11 @@ async function tcStat() {
       ? '지금 목소리 엔진: <b style="color:#4f9d69">타입캐스트</b> (한국어 전용 · 목소리 ' + j.n + '개)'
       : '지금 목소리 엔진: <b>제미나이</b> — 아래에 타입캐스트 열쇠를 넣으면 갈아탑니다';
     if (hint) hint.textContent = tc
-      ? '타입캐스트 목소리 전부를 같은 대사로 하나씩 만들어 들려드립니다 (글자 수만큼 크레딧, 3~5분).'
+      ? '목소리가 1,000개가 넘어 전부는 못 들려드립니다 — 등장인물의 나이·성별에 '
+        + '맞는 후보를 인물마다 4개씩 골라, 그 인물의 실제 대사로 들려드립니다.'
       : '쓸 수 있는 제미나이 목소리 26개를 같은 대사로 하나씩 만들어 들려드립니다 (15원, 3~5분).';
+    const ab = document.getElementById('audbtn');
+    if (ab) ab.textContent = tc ? '인물별 추천 목소리 듣기' : '전부 다 들어보기';
     // ⚠️⚠️ 2026-08-23 운영자: "열쇠가 담겨 있으면 여기는 감춰놔야 될 거 아니야."
     //    맞다. 담긴 뒤에도 붙여넣는 칸이 그대로 보였다. 담기면 칸을 숨기고
     //    상태 한 줄 + [열쇠 바꾸기] 만 남긴다.
@@ -843,6 +860,34 @@ async function pickShow(quiet) {
     return false;
   }
   const now = j.now || {};
+  // ⭐ 2026-08-23 — 타입캐스트는 **인물별 추천** 꼴로 온다 (1125개 전부가
+  //    아니라 인물마다 몇 개씩). 인물별로 묶어 그리고, 인물별로 고른다.
+  if (j.list.some((x) => x.kind === 'cast')) {
+    const byChar = {};
+    j.list.forEach((x) => { (byChar[x.char] = byChar[x.char] || []).push(x); });
+    const cast = (now.cast || {});
+    let h = '<div style="margin-top:10px">';
+    Object.keys(byChar).forEach((cname) => {
+      const items = byChar[cname];
+      h += '<div style="margin-top:12px"><b>' + esc(cname + ' (' + items[0].sex + ')')
+        + '</b><div class="uphint">대사: "' + esc(items[0].line || '') + '"</div>';
+      items.forEach((x) => {
+        const id = 'cv_' + cname + '_' + x.voice;
+        h += '<div style="display:flex;align-items:center;gap:8px;margin:4px 0">'
+          + '<label style="display:flex;align-items:center;gap:6px;min-width:130px">'
+          + '<input type="radio" name="cv_' + esc(cname) + '" value="' + esc(x.voice) + '"'
+          + (cast[cname] === x.voice ? ' checked' : '') + '>'
+          + esc(x.label || x.voice) + '</label>'
+          + '<audio controls preload="none" style="flex:1;max-width:240px" src="'
+          + '/api/voicepick?name=' + encodeURIComponent(x.file) + '"></audio></div>';
+      });
+      h += '</div>';
+    });
+    h += '<div class="btns" style="margin-top:12px">'
+      + mini('이 목소리들로 정하기', 'castSet()', 'gold') + '</div></div>';
+    box.innerHTML = h;
+    return true;
+  }
   const row = (x) => '<div style="display:flex;align-items:center;gap:8px;'
     + 'margin:4px 0"><b style="min-width:110px">' + esc(x.sex + ' ' + (x.label || x.voice))
     + (now[x.sex === '여' ? 'f' : 'm'] === x.voice ? ' ✅' : '') + '</b>'
@@ -860,6 +905,30 @@ async function pickShow(quiet) {
     + '<select id="pm">' + opt(m, now.m) + '</select> '
     + '<button class="gold" onclick="pickSet()">이 목소리로 정하기</button></div></div>';
   return true;
+}
+
+async function castSet() {
+  const msg = document.getElementById('pickmsg');
+  const cast = {};
+  document.querySelectorAll('input[type=radio]:checked').forEach((r) => {
+    if (r.name.indexOf('cv_') === 0) cast[r.name.slice(3)] = r.value;
+  });
+  if (!Object.keys(cast).length) {
+    msg.textContent = '인물마다 하나씩 골라 주십시오.'; return;
+  }
+  msg.textContent = '담아 두는 중…';
+  try {
+    const r = await fetch('/api/voicepick-set', { method: 'POST',
+      body: JSON.stringify({ cast: cast }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.detail || j.error || '실패');
+    msg.textContent = '✅ 정했습니다 — ' + Object.keys(cast).join(' · ')
+      + '. 다음부터 만드는 영상이 이 목소리를 씁니다.';
+    toast('인물별 목소리를 정했습니다');
+    pickShow(true);
+  } catch (e) {
+    msg.textContent = '담아 두지 못했습니다: ' + (e && e.message ? e.message : e);
+  }
 }
 
 async function pickSet() {
@@ -1245,7 +1314,7 @@ function seriesRender() {
      + '<div id="engbadge" class="uphint" style="margin-top:8px"></div>'
      + '<div id="audhint" class="uphint">목소리가 계속 어색하면 목소리 자체를 '
      + '바꿔 보십시오. 같은 대사를 모든 목소리로 하나씩 만들어 들려드립니다.</div>'
-     + '<button class="ghost" onclick="pickVoice()">전부 다 들어보기</button>'
+     + '<button id="audbtn" class="ghost" onclick="pickVoice()">전부 다 들어보기</button>'
      + '<button class="ghost" onclick="pickShow()">이미 만든 것 보기</button>'
      + '<div id="pickmsg" class="uphint"></div>'
      + '<div id="pickbox"></div>'
@@ -2913,7 +2982,10 @@ export default {
       //    26개 중 두 개만 써 보고 단정하고 있었다. 전부 들어 보고 고르게 한다.
       if (url.pathname === '/api/voicepick' && req.method === 'POST') {
         try {
+          let sid = '';
+          try { sid = String((await req.json()).sid || ''); } catch (e) { sid = ''; }
           const inputs = { only: '' };
+          if (/^S\d{3}$/.test(sid)) inputs.sid = sid;
           const tk = await blobPin(env, req, 'voice/tckey', 'voice');
           if (tk) inputs.tckey = tk;
           await gh(env, `/repos/${REPO}/actions/workflows/voice-pick.yml/dispatches`, {
