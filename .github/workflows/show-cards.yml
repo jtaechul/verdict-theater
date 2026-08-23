@@ -1,0 +1,45 @@
+name: 0. 인물 카드 꺼내 보기 (값 0원)
+
+# 릴리스에 보관된 인물 카드(cards-S001)를 저장소 docs/cards/ 로 꺼낸다.
+# 운영자가 "캐릭터 카드 만든 거 한번 올려봐" 라고 하셨는데, 카드가 릴리스에만
+# 있어 화면에 보여드릴 길이 없었다. 모델 호출 0번 — 이미 만든 것을 옮길 뿐이다.
+
+on:
+  push:
+    paths:
+      - '.trigger/showcards'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  show:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 카드 꺼내기
+        run: |
+          set -euo pipefail
+          SID=$(head -1 .trigger/showcards 2>/dev/null | awk '{print $1}')
+          SID=${SID:-S001}
+          python3 tools/release_file.py get "cards-${SID}" cards.zip build/cards.zip
+          mkdir -p "docs/cards/${SID}"
+          unzip -q -o build/cards.zip -d "docs/cards/${SID}"
+          ls -la "docs/cards/${SID}"
+      - name: 저장소에 넣기
+        run: |
+          git config user.name "verdict-theater-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add docs/cards
+          git diff --cached --quiet && echo "새것 없음" || {
+            git commit -m "인물 카드를 docs/cards 로 꺼냈다 (운영자 확인용) [skip ci]"
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          }
