@@ -286,5 +286,41 @@
     "kind": "image",
     "krw": 132,
     "note": "gemini-3.1-flash-image 2K 16:9 c001.png"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 본처.png"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 내연녀.png"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 남편.png"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 16:9 c001.png"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "영상",
+    "krw": 706,
+    "note": "veo-3.1-lite-generate-preview 8초 c001.mp4"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "목소리",
+    "krw": 30,
+    "note": "67자(어림) · gemini-3.1-flash-tts-preview S001 1화 1컷 시험"
   }
 ]
