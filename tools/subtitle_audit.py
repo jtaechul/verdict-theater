@@ -37,7 +37,11 @@ def drawn_lines(chunk):
     """조립 코드와 똑같이 그 토막을 줄로 나눠 본다 (compose 의 자막 경로)."""
     img = Image.new("RGBA", (S.W, S.H))
     d = ImageDraw.Draw(img)
-    f, ls = S.fit(d, chunk, S.FONT_M, S.SUB_SIZE, S.W - S.SIDE * 2, 2)
+    f, ls = S.fit(d, chunk, S.FONT_M, S.SUB_SIZE, S.W - S.SIDE * 2, 2,
+                  min_size=S.SUB_MIN)
+    if len(ls) > 2 or f.size < S.SUB_MIN:
+        f, ls = S.fit(d, chunk, S.FONT_M, S.SUB_SIZE, S.W - S.SIDE * 2,
+                      S.SUB_LINES, min_size=S.SUB_MIN)
     return f, ls
 
 
@@ -79,9 +83,14 @@ def main():
                     if norm("".join(ls)) != norm(ch):
                         fails.append(f"{where}: 화면에서 글자가 잘렸다 — "
                                      f"'{ch}' → {ls} ({f.size}px)")
-                    if f.size < 40:
+                    tall = int(f.size * 1.28) * len(ls)
+                    if tall > S.SUB_BOT - S.SUB_TOP:
+                        fails.append(f"{where}: 자막이 아래 띠를 넘친다 "
+                                     f"({tall}px > {S.SUB_BOT - S.SUB_TOP}px)")
+                    # ⭐ 어르신용 — 62px 아래로 내려가면 경고한다
+                    if f.size < S.SUB_MIN:
                         warns.append(f"{where}: 글자가 {f.size}px 까지 줄었다 — "
-                                     f"폰에서 읽기 어렵다 ('{ch[:24]}…')")
+                                     f"어르신이 읽기 어렵다 ('{ch[:24]}…')")
     # ④ 실제로 찍히는가 — 표본 한 장
     doc = json.loads(docs[0].read_text(encoding="utf-8"))
     c1 = doc["episodes"][0]["cuts"][0]

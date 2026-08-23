@@ -75,7 +75,7 @@ W, H = 1080, 1920                # 쇼츠 화면
 #      · 아래 띠 300px — 자막이 들어간다.
 VIDEO_FIT = "width"              # 영상은 폭에 맞춘다 (자르지 않는다)
 BAR_TOP = 120                    # 위 검은 띠 (제목·회차·채널명 + AI 표시 덮기)
-BAR_BOT = 300                    # 아래 검은 띠 (자막)
+BAR_BOT = 360                    # 아래 검은 띠 (자막) — 어르신용으로 키웠다
 WATERMARK_Y = 61                 # 폭 1080 기준 AI 표시가 끝나는 높이 (실측)
 MARK_Y, MARK_SIZE = 40, 38       # 우측 상단 채널 이름
 # ⭐ 2026-08-22 운영자: "몇 화인지, 드라마 제목이 뭔지가 안 나와 있어.
@@ -89,7 +89,13 @@ HOOK_TOP, HOOK_BOT = 200, 520
 HOOK_MAX, HOOK_MIN, HOOK_GAP = 132, 60, 1.18
 HOOK_SCRIM = 150                 # 후킹 뒤에 까는 어두운 판의 진하기 (0~255)
 # 자막은 **아래 검은 띠 안**에 들어간다 (2026-08-23 운영자 지시)
-SUB_TOP, SUB_BOT, SUB_SIZE = H - BAR_BOT + 40, H - 60, 62
+# ⭐ 운영자: "어르신들이 보는 건데 밑에 영상 자막은 좀 더 커야 되지 않을까?"
+#    맞는 말이다. 62 → 84px 로 키웠다(화면 폭의 7.8%). 폰을 팔 뻗어 보는
+#    거리에서도 읽힌다. 두 줄이 들어가도록 아래 띠도 300 → 360 으로 늘렸다.
+# ⚠️ 글자가 칸을 못 맞추면 fit() 이 줄여 버린다. 어르신용이므로 **62 아래로는
+#    안 줄인다** — 그보다 길면 줄을 늘리는 쪽이 낫다(SUB_LINES).
+SUB_TOP, SUB_BOT, SUB_SIZE = H - BAR_BOT + 34, H - 44, 84
+SUB_MIN, SUB_LINES = 62, 3
 SIDE = 64                        # 좌우 여백
 GOLD = (198, 160, 74)
 # ⭐ 후킹에서 별표로 감싼 토막에 넣을 색 (2026-08-21 운영자 지시).
@@ -193,7 +199,7 @@ def wrap(draw, text, font, max_w):
     return lines
 
 
-def fit(draw, text, path, size, max_w, max_lines, split_slash=False):
+def fit(draw, text, path, size, max_w, max_lines, split_slash=False, min_size=26):
     """줄 수 안에 들어갈 때까지 글자를 줄인다. (글꼴, 줄들) 을 준다.
 
     split_slash — 자막은 `A대사 / B대사 / A대사` 꼴로 온다. 한 덩어리로 이어
@@ -202,7 +208,7 @@ def fit(draw, text, path, size, max_w, max_lines, split_slash=False):
     parts = [x.strip() for x in str(text or "").split(" / ")] if split_slash \
         else [str(text or "")]
     parts = [x for x in parts if x]
-    while size >= 26:
+    while size >= min_size:
         f = ImageFont.truetype(str(path), size)
         ls = []
         for x in parts:
@@ -476,7 +482,11 @@ def overlay_png(hook, chunk, out, label=None):
 
     if str(chunk or "").strip():
         # 한 토막만 있으니 크게 쓸 수 있다 — 폰에서 읽기 훨씬 낫다
-        f, ls = fit(d, chunk, FONT_M, SUB_SIZE, W - SIDE * 2, 2)
+        # ⭐ 어르신용 — 글자를 작게 줄이는 대신 **줄을 늘린다**.
+        f, ls = fit(d, chunk, FONT_M, SUB_SIZE, W - SIDE * 2, 2, min_size=SUB_MIN)
+        if len(ls) > 2 or f.size < SUB_MIN:
+            f, ls = fit(d, chunk, FONT_M, SUB_SIZE, W - SIDE * 2, SUB_LINES,
+                        min_size=SUB_MIN)
         block(d, ls, f, SUB_TOP, SUB_BOT, (245, 245, 250, 255))
 
     img.save(out)
@@ -847,11 +857,16 @@ def pick_clips(d, n, cuts=None):
                    (".mp4", ".mov", ".m4v", ".webm") and not p.name.startswith("._")])
     out = {}
     for p in vids:
-        m = re.search(r"c(?:ut)?[ _-]?(\d{1,3})(?!\d)", p.stem, re.I)
-        if m:
+        # ⚠️⚠️ 2026-08-23 — **뒤에서부터** 찾는다. 앞에서 찾으면 파일 이름 앞에
+        #    붙는 무작위 글자(1bac78f9- · c9a12b- · abc7-)의 c+숫자를 컷 번호로
+        #    잘못 읽어 **컷이 뒤바뀐다.** 실제로 2컷과 3컷이 바뀌는 것을 잡았다.
+        #    진짜 번호는 늘 이름 끝에 있다 (D001_E01_C01 · ..._c3 · cut2).
+        ms = list(re.finditer(r"c(?:ut)?[ _-]?(\d{1,3})(?!\d)", p.stem, re.I))
+        for m in reversed(ms):
             k = int(m.group(1))
             if 1 <= k <= n and k not in out:
                 out[k] = p
+                break
 
     left_f = [p for p in vids if p not in out.values()]
     left_k = [k for k in range(1, n + 1) if k not in out]

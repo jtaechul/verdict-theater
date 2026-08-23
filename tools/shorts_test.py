@@ -60,6 +60,14 @@ ck("후킹은 영상 위에 얹힌다 (위 띠 아래)", S.HOOK_TOP >= S.BAR_TOP
    f"띠끝 {S.BAR_TOP} · 후킹 {S.HOOK_TOP}")
 ck("띠가 화면의 절반을 넘지 않는다", S.BAR_TOP + S.BAR_BOT < S.H // 2,
    f"띠 합계 {S.BAR_TOP + S.BAR_BOT}px")
+# ⭐ 2026-08-23 운영자: "어르신들이 보는 건데 자막은 좀 더 커야 되지 않을까?"
+ck("자막이 어르신용으로 크다 (화면 폭의 7% 이상)", S.SUB_SIZE >= S.W * 0.07,
+   f"{S.SUB_SIZE}px ({S.SUB_SIZE / S.W * 100:.1f}%)")
+ck("길어도 62px 아래로는 안 줄인다 (줄을 늘린다)", S.SUB_MIN >= 62 and S.SUB_LINES >= 3,
+   f"최소 {S.SUB_MIN}px · 최대 {S.SUB_LINES}줄")
+ck("자막 최대 줄이 아래 띠 안에 들어간다",
+   int(S.SUB_MIN * 1.28) * S.SUB_LINES <= S.SUB_BOT - S.SUB_TOP,
+   f"{int(S.SUB_MIN * 1.28) * S.SUB_LINES}px vs 칸 {S.SUB_BOT - S.SUB_TOP}px")
 
 print("\n② 글자가 제자리에만 그려지는가 (그림을 픽셀로 잰다)")
 with tempfile.TemporaryDirectory() as d:
