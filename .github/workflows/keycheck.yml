@@ -16,6 +16,15 @@ name: 0. 제미나이 열쇠 점검 (값 0원)
 #   영상도 같이 열린다 — 그 사실을 화면에 적어 준다.
 
 on:
+  # ⭐ 표식 파일(.trigger/keycheck)이 바뀌면 자동으로 돈다.
+  #    까닭: 고친 사람이 **직접 돌려서 확인**할 수 있어야 한다. 여태 운영자가
+  #    버튼을 눌러 주기 전에는 진짜로 되는지 아무도 못 봤다.
+  #    이 저장소가 이미 쓰는 방식과 같다 (.trigger/series · .trigger/produce).
+  push:
+    paths:
+      - '.trigger/keycheck'
+      - '.github/workflows/keycheck.yml'
+      - 'tools/gemini_key_check.py'
   workflow_dispatch:
 
 permissions:
