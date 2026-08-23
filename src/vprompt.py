@@ -113,22 +113,21 @@ DANGLING = [
 ]
 
 
-def video_prompt(cut_prompt, sec=None, dialogue=True):
-    """Veo 로 보낼 지시문.
+def video_prompt(cut_prompt, sec=None):
+    """Veo 로 보낼 지시문 — **소리까지 구글이 만든다** (2026-08-23 운영자 확정).
 
-    dialogue=True 이면 **한국어 대사를 남긴다.** 남겨야 Veo 가 누가 언제
-    말하는지 알고 그 사람만 입을 움직인다. 소리는 나중에 우리 한국어 목소리로
-    갈아 끼우지만, **입 타이밍은 이 대사에서 나온다.**
-    (2026-08-21 기록: 대사를 넣었을 때 셋이 겹치지 않고 차례대로 말했고
-     경계도 0.98/2.79/4.57 로 깨끗했다. 남은 문제는 발음뿐이었다)"""
-    body = soften(strip_lines(cut_prompt, DROP_KEEP_DIA if dialogue else DROP))
-    for pat, rep in DANGLING:
-        body = re.sub(pat, rep, body, flags=re.I)
+    운영자가 두 판(구글 소리 / 우리 목소리)을 귀로 비교하고 구글 쪽을 골랐다:
+    "입 모양이랑 나레이션이 자연스럽다."
+
+    그래서 대사(DIALOGUE)는 물론 **목소리(VOICE)·소리(AUDIO) 묘사도 그대로
+    남긴다** — 구글이 이 묘사대로 목소리를 만들기 때문에, 빼면 회차마다
+    목소리 결이 달라진다. 8/21 실측으로 대사를 넣으면 말 차례(0.98/2.79/4.57)가
+    깨끗하게 잡히는 것도 확인돼 있다."""
+    body = soften(cut_prompt or "")
     if sec:
         body = re.sub(r"\b\d+-second single continuous take",
                       f"{int(sec)}-second single continuous take", body)
-    return _tail(body.rstrip(), FRAME, BLUR,
-                 LIPS_DIA if dialogue else LIPS_NO_DIA, NO_TEXT)
+    return _tail(body.rstrip(), FRAME, BLUR, LIPS_DIA, NO_TEXT)
 
 
 def still_prompt(cut_prompt):

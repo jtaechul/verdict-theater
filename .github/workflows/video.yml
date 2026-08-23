@@ -6,7 +6,7 @@ name: 3. 영상 만들기 (그림 → Veo → 쇼츠)
 #   ① 인물 카드 (시리즈당 한 번 · 3장)
 #   ② 컷마다 첫 장면 그림 — 카드를 참조로 넣어 얼굴을 묶는다
 #   ③ 그 그림을 시작 프레임으로 Veo 가 컷 영상을 만든다
-#   ④ 타입캐스트 목소리를 얹고 쇼츠 한 편으로 조립한다
+#   ④ 구글이 만든 소리를 그대로 두고 쇼츠 한 편으로 조립한다 (2026-08-23 확정)
 #
 # 값: 1화 기준 그림 8장 약 1,060원 + 영상 약 30초 약 2,650원 = 약 3,700원.
 #     컷마다 부르기 전에 한도를 보고, 이미 만든 것은 다시 안 만든다.
@@ -59,6 +59,10 @@ jobs:
       GOOGLE_TTS_KEY: ${{ secrets.GOOGLE_TTS_KEY }}
       # ⚠️ 상한이 없으면 실패가 겹칠 때 조용히 수백 번을 부른다.
       TTS_CALL_CAP: '40'      # 한 화 대사 9줄 + 재시도 여유
+      # ⭐ 2026-08-23 운영자 확정 — 소리는 **구글(Veo)이 만든 것을 그대로** 쓴다.
+      #    두 판을 귀로 비교하고 고르셨다: "입 모양이랑 나레이션이 자연스럽다."
+      #    목소리를 갈아 끼우지 않으므로 타입캐스트·TTS 는 이 길에서 안 쓴다.
+      KEEP_AUDIO: '1'
       VEO_CALL_CAP: '8'       # 컷 5개 + 재시도 여유 (한 컷 약 600원)
       STILL_CALL_CAP: '16'    # 카드 3 + 컷 5 + 재시도 여유
       SID: ${{ inputs.sid || 'S001' }}
@@ -86,35 +90,6 @@ jobs:
           python3 tools/veo_test.py
           python3 tools/no_claude_test.py
 
-      - name: 타입캐스트 열쇠 받기
-        continue-on-error: true
-        run: |
-          if [ -n "${TCKEY_URL:-}" ]; then
-            case "$TCKEY_URL" in https://*.workers.dev/*) : ;; *) exit 0 ;; esac
-            K=$(curl -fsSL -H "x-vt-pass: ${ADMIN_PASS}" "$TCKEY_URL" || true)
-            if [ -n "$K" ]; then
-              echo "::add-mask::$K"
-              echo "TYPECAST_API_KEY=$K" >> "$GITHUB_ENV"
-              echo "타입캐스트 열쇠를 받았다"
-            fi
-          fi
-
-      - name: 골라 둔 목소리 가져오기
-        continue-on-error: true
-        run: |
-          mkdir -p state
-          if [ -n "${VOICE:-}" ] \
-             && curl -fsSL -H "x-vt-pass: ${ADMIN_PASS}" "$VOICE" -o state/voice.json; then
-            echo "관리자 페이지에서 골라 둔 것을 받았다"
-          elif [ -s state/voice.json ]; then
-            echo "저장소에 골라 둔 것이 있다"
-          else
-            echo "골라 둔 것이 없다 — 정해 둔 목소리로 간다"
-          fi
-
-      # 표식 첫 줄: "<시리즈> <회차> [컷] [아무 글자]"
-      # ⚠️ 네 번째 칸은 **일부러 시각을 적는다.** 내용이 이전과 똑같으면 깃허브가
-      #    '바뀐 것이 없다'고 보아 워크플로를 안 돌린다(2026-08-23에 겪었다).
       - name: 표식으로 돌 때 무엇을 만들지 읽기
         if: github.event_name == 'push'
         run: |
@@ -152,10 +127,6 @@ jobs:
           python3 src/veo.py "$SID" "$EPNO" --out build/in --stills build/stills $C \
             2>&1 | tee -a make.log
 
-      # ⭐ 2026-08-23 — 소리만 다른 **두 판**을 만든다. 영상은 이미 만들어 놨으므로
-      #    두 판을 만들어도 영상값은 한 푼도 더 안 든다. 귀로 듣고 고르시면 된다.
-      #      ① ko.mp4  우리 한국어 목소리를 얹은 것
-      #      ② veo.mp4 구글이 만든 소리를 그대로 둔 것
       - name: 4) 쇼츠 한 편으로 조립
         run: |
           set -o pipefail
@@ -173,41 +144,16 @@ jobs:
               2>&1 | tee -a make.log
           fi
 
-      - name: 5) 구글 소리 그대로인 판도 만든다 (영상값 0원)
-        continue-on-error: true
-        env:
-          KEEP_AUDIO: '1'
-        run: |
-          set -o pipefail
-          if [ -n "${SUF:-}" ]; then
-            CLIP=$(find build/in -name '*.mp4' | sort | head -1)
-            python3 src/shorts.py "$SID" "$EPNO" --demo "$CLIP" --cut "$CUT" \
-              --out build/veo 2>&1 | tee -a make.log
-          else
-            python3 src/shorts.py "$SID" "$EPNO" --clips build/in --out build/veo \
-              2>&1 | tee -a make.log
-          fi
-
       - name: 릴리스에 올리기 (저장소에는 안 넣는다)
         run: |
           set -euo pipefail
           if [ -n "${SUF:-}" ]; then
             OUT=$(find build/shorts -maxdepth 1 -name '*_short.mp4' | sort | head -1)
-            VEO=$(find build/veo -maxdepth 1 -name '*_short.mp4' 2>/dev/null | sort | head -1)
           else
             OUT="build/shorts/${SID}_ep${EP}_short.mp4"
-            VEO="build/veo/${SID}_ep${EP}_short.mp4"
           fi
           test -n "$OUT" && test -f "$OUT" || { echo "❌ 만들어진 영상이 없습니다"; exit 1; }
-          TAG="short-${SID}-ep${EP}${SUF}"
-          python3 tools/release_file.py put "$TAG" short.mp4 "$OUT"
-          python3 tools/release_file.py put "$TAG" ko.mp4 "$OUT"
-          if [ -n "${VEO:-}" ] && [ -f "$VEO" ]; then
-            python3 tools/release_file.py put "$TAG" veo.mp4 "$VEO"
-            echo "두 판을 다 올렸다 — ko.mp4(우리 목소리) · veo.mp4(구글 소리)"
-          else
-            echo "⚠️ 구글 소리 판은 못 만들었다 — 우리 목소리 판만 올린다"
-          fi
+          python3 tools/release_file.py put "short-${SID}-ep${EP}${SUF}" short.mp4 "$OUT"
 
       - name: 쓴 돈 장부 남기기
         if: always()

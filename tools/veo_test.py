@@ -125,13 +125,19 @@ if posts:
     pr = b["instances"][0]["prompt"]
     print("② 지시문을 제대로 고쳐 보내는가")
     # ⚠️⚠️ 대사는 **남아 있어야 한다.** 빼면 Veo 가 누가 언제 말하는지 몰라
-    #    둘이 내내 입을 움직이고, 그 위에 얹은 목소리와 안 맞는다(2026-08-23 사고).
+    #    둘이 내내 입을 움직인다(2026-08-23 사고).
     ck("대사(DIALOGUE) 토막이 남아 있다", "DIALOGUE" in pr)
     ck("한국어 대사가 들어 있다",
        [ch for ch in pr if "\uac00" <= ch <= "\ud7a3"])
     ck("자기 차례에만 입을 움직이라고 시킨다", vprompt.LIPS_DIA in pr)
-    ck("목소리(VOICE)·소리(AUDIO) 묘사는 빠졌다 (어차피 버리는 소리)",
-       "VOICE:" not in pr and "AUDIO:" not in pr)
+    # ⭐ 2026-08-23 운영자 확정 — 소리는 구글이 만든다. VOICE·AUDIO 묘사가
+    #    있어야 회차마다 목소리 결이 같아진다. 빼면 매번 다른 목소리가 나온다.
+    ck("목소리(VOICE)·소리(AUDIO) 묘사가 남아 있다 (구글이 이대로 만든다)",
+       "VOICE:" in pr and "AUDIO:" in pr)
+    import pathlib as _pl
+    _wf = (_pl.Path(__file__).resolve().parent.parent
+           / ".github" / "workflows" / "video.yml").read_text(encoding="utf-8")
+    ck("워크플로가 구글 소리를 그대로 둔다 (KEEP_AUDIO)", "KEEP_AUDIO: '1'" in _wf)
     ck("거친 낱말(furious·shouting)이 순화됐다",
        "furious" not in pr.lower() and "shouting" not in pr.lower())
     ck("화면 글자 막는 문구가 **맨 끝**에 있다",

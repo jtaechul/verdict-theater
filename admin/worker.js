@@ -1800,12 +1800,7 @@ function foldify() {
 function nextStep(eps, ready, ungated) {
   // ⭐ '돌아가는 중' 은 **손님이 누른 작업**일 때만이다 (2026-08-12 손님 지적:
   //    "다음에 할 일에 '지금 돌아가는 중입니다' 라고 나와서 영상을 만들 수가 없잖아")
-  //
-  //    예전에는 안 끝난 실행이 **하나라도** 있으면 이 카드가 떴다. 그런데 거기엔
-  //    [0. 자체 점검](코드 올릴 때마다 도는 0원짜리 검사)과 [6. 관리자 페이지 배포]가
-  //    섞여 있다. 둘 다 손님이 하려는 일과 아무 상관이 없는데, 그것 때문에
-  //    버튼이 통째로 사라져 아무것도 못 하게 됐다.
-  //    → 화면에 버튼이 있는 작업(WF)만 따진다. 그 밖의 것은 무시한다.
+  //    [0. 자체 점검]·[6. 배포] 같은 0원짜리 자동 실행은 여기서 무시한다.
   const mine = (S.runs || []).filter(r => !r.conclusion
                  && WF.some(w => w.name === r.name));
   if (mine.length)
@@ -1814,60 +1809,37 @@ function nextStep(eps, ready, ungated) {
                  + '<span style="color:#9599ab">멈추려면 [작업] 화면에서 그 작업의 '
                  + '[멈추기] 를 누르십시오.</span>' };
 
-  if (!(S.queue || []).length)
-    return { title: '재판 기록부터 모아야 합니다',
-             body: '아직 소재가 하나도 없습니다. 기록을 받아 오는 것부터 시작합니다.',
-             btn: '재판 기록 모으기', act: 'goNext(\\'collect\\')' };
-
-  // ⭐ 만들다 만 대본은 **처음부터 다시 만들지 않는다.**
-  //    컷을 쓰는 1·2단계가 값의 8할이고 20분을 먹는다. 이미 있는 컷을 그대로 두고
-  //    뒷단계만 마저 하면 값이 8할 줄고 5분이면 끝난다.
-  //    ⚠️ stage 값으로 짐작하면 안 된다. 'scripting' 은 src/script.py 에서
-  //       "대본은 다 됐는데 기계 검사 오류가 남았다" 는 뜻이지 "만들다 말았다" 가
-  //       아니다. 2026-08-11 에 그걸 잘못 읽어, 99점으로 완성된 EP002 를
-  //       '덜 만들어졌다' 로 띄우고 [이어서 마저 만들기] 를 권했다. 그 버튼은
-  //       완성되면 지워지는 초벌 파일을 찾으므로 **반드시 실패**했고, 실패해도
-  //       카드가 그대로라 또 누르게 되는 무한 반복이 됐다.
-  //       그래서 워크플로가 보는 것과 **똑같은 것**을 본다 — 초벌 파일의 존재.
-  const stuck = (S.drafts || [])[0];
-  if (stuck)
-    return { title: esc(stuck) + ' 대본이 덜 만들어졌습니다',
-             body: '도중에 멈춘 대본입니다. <b>이미 써 둔 컷은 그대로 두고</b> '
-                 + '남은 단계만 마저 합니다.<br>'
-                 + '<span style="color:#9599ab">약 5분 · 처음부터 다시 만드는 것보다 '
-                 + '값이 8할쯤 적게 듭니다.</span>',
-             btn: '이어서 마저 만들기', act: 'goNext(\\'resume\\')' };
-
-  // ⭐ 대본은 다 됐는데 영상이 아직 없는 회차가 있으면 **그것부터**다.
-  //    예전에는 이 갈래가 아예 없어서, 방금 대본을 만들어 놓고도 화면이
-  //    "대본을 만들 차례입니다" 라고 다음 편을 권했다. 만든 것을 두고
-  //    또 만들라고 하면 값만 두 배로 나간다.
-  // ⚠️ 2026-08-16 — eps 는 최신이 앞이라(내림차순) 그냥 find 하면 EP003 이
-  //    EP002 를 제치고 뽑혔다. 손님: "회차가 갑자기 다음 회차로 넘어가는 문제."
-  //    회차는 **차례대로** 간다 — 발행 안 된 것 중 가장 이른 회차부터
-  //    (영상 만들기의 '자동'과 같은 규칙이라, 권하는 회차와 만드는 회차가 늘 같다).
-  const noVideo = [...eps].sort((a, b) => a[0].localeCompare(b[0]))
-    .find(([k, v]) => v.stage !== 'published' && !(S.videos || {})[k]);
-  if (noVideo) {
-    const err = (noVideo[1].validation_errors || 0);
-    // 검사 오류가 남은 대본은 영상 만들기가 어차피 막는다 — 헛걸음 시키지 않는다.
-    if (noVideo[1].stage !== 'evaluated' && err)
-      return { title: esc(noVideo[0]) + ' 대본에 검사 오류가 ' + err + '건 남았습니다',
-               body: '이대로 영상을 만들면 대본 검사에서 멈춥니다. 도입부 문제면 '
-                   + '[대본 만들기]의 <b>도입 훅만 다시 쓰기</b>(약 150원)로 고쳐집니다.<br>'
-                   + '<span style="color:#9599ab">고친 뒤에 이 자리가 [영상 만들기]로 바뀝니다.</span>' };
-    return { title: esc(noVideo[0]) + ' 대본이 다 됐습니다 — 영상을 만들 차례입니다',
-             body: '채점 <b>' + (noVideo[1].script_score || '-') + '점</b>'
-                 + '<br><span style="color:#9599ab">약 40분 걸립니다. 누르고 나가셔도 됩니다.</span>',
-             btn: '영상 만들기', act: 'goNext(\\'produce\\')' };
+  // ⭐⭐ 2026-08-23 대개편 — 이 카드가 옛 길(EP001~003 롱폼)을 가리키고 있었다.
+  //    운영자: "이것도 현행화 안 돼 있잖아. 현행화 시켜"
+  //    지금 길은 **시리즈**다: 시리즈 대본(16화) → 회차마다 [영상 만들기]
+  //    (그림 → Veo → 쇼츠) → 확인 → 유튜브. EP 갈래는 지웠다 — 특히
+  //    '영상을 만들 차례' 단추는 NEXT_RUN 에 없는 produce 를 불러 눌러도
+  //    아무 일이 안 나는 죽은 단추였다.
+  const ser = Object.entries(S.series || {}).sort((a, b) => a[0].localeCompare(b[0]));
+  const going = ser.find(([, v]) => (v.made || 0) < (v.episodes || 16));
+  if (going) {
+    const sid = going[0], v = going[1];
+    const ep = (v.made || 0) + 1;
+    return { title: '「' + esc(v.title || sid) + '」 ' + ep + '화 영상을 만들 차례입니다',
+             body: '만든 영상 <b>' + (v.made || 0) + '/' + (v.episodes || 16) + '화</b>'
+                 + ' · 그림 → 영상(구글이 소리까지 만듭니다) → 쇼츠까지 한 번에 만듭니다.<br>'
+                 + '<span style="color:#9599ab">한 화(컷 5개)에 약 4,200원 · 20분쯤 '
+                 + '걸립니다. 누르고 나가셔도 됩니다.</span>',
+             btn: ep + '화 영상 만들기',
+             act: 'goVideo(\\'' + sid + '\\',' + ep + ')' };
   }
+  if (ser.length && !going)
+    return { title: '시리즈 16화가 다 만들어졌습니다',
+             body: '다음 시리즈를 시작할 차례입니다. 아래에서 새 소재로 '
+                 + '<b>시리즈 대본</b>을 만드십시오.',
+             btn: '시리즈 대본 만들기', act: 'goNext(\\'series\\')' };
 
   if (ready.length)
-    return { title: '대본을 만들 차례입니다',
+    return { title: '시리즈 대본을 만들 차례입니다',
              body: '쓸 만하다고 판정된 소재가 <b>' + ready.length + '건</b> 있습니다. '
-                 + '그중 가장 점수가 높은 것으로 한 편 만듭니다.<br>'
-                 + '<span style="color:#9599ab">약 20분 걸립니다. 누르고 나가셔도 됩니다.</span>',
-             btn: '대본 만들기', act: 'goNext(\\'script\\')' };
+                 + '가장 점수가 높은 것을 30초짜리 16화로 쪼갭니다.<br>'
+                 + '<span style="color:#9599ab">글만 쓰므로 수백 원 · 약 10분.</span>',
+             btn: '시리즈 대본 만들기', act: 'goNext(\\'series\\')' };
 
   if (ungated.length)
     return { title: '소재를 살펴볼 차례입니다',
@@ -1875,6 +1847,11 @@ function nextStep(eps, ready, ungated) {
                  + '10건을 점수 매겨 쓸 만한 것을 고릅니다.<br>'
                  + '<span style="color:#9599ab">약 4분 · 852원쯤 듭니다.</span>',
              btn: '소재 살펴보기', act: 'goNext(\\'gate\\')' };
+
+  if (!(S.queue || []).length)
+    return { title: '재판 기록부터 모아야 합니다',
+             body: '아직 소재가 하나도 없습니다. 기록을 받아 오는 것부터 시작합니다.',
+             btn: '재판 기록 모으기', act: 'goNext(\\'collect\\')' };
 
   return { title: '재판 기록을 더 모아야 합니다',
            body: '가진 기록을 다 살펴봤는데 쓸 만한 소재가 없습니다.',
@@ -1899,6 +1876,8 @@ function nextCard(eps, ready, ungated) {
 const NEXT_RUN = {
   collect: { file: 'collect.yml', name: '재판 기록 모으기',
              inputs: { max_calls: '180', topic: '전부', queries: '', pages: '3' } },
+  // 판례 번호를 비우면 점수가 가장 높은 것으로 자동
+  series:  { file: 'series.yml', name: '시리즈 대본 만들기', inputs: {} },
   gate:    { file: 'script.yml', name: '소재 살펴보기',
              inputs: { mode: '소재 심사만', gate_limit: '10',
                        budget: '1000' } },
@@ -1914,22 +1893,33 @@ const NEXT_RUN = {
   //    (자동 = 발행 안 된 가장 이른 회차 — 차례대로 간다).
 };
 
+// 회차 번호가 그때그때 달라 NEXT_RUN 에 못 박는다 — 따로 받는다.
+// 목소리·타입캐스트 열쇠는 서버(/api/run)가 알아서 얹는다.
+async function goVideo(sid, ep) {
+  return runNow('영상 만들기 (' + ep + '화)', 'video.yml',
+                { sid: sid, ep: String(ep) });
+}
+
 async function goNext(key) {
   const w = NEXT_RUN[key];
-  toast(w.name + ' 시작하는 중…');
+  return runNow(w.name, w.file, w.inputs);
+}
+
+async function runNow(name, file, inputs) {
+  toast(name + ' 시작하는 중…');
   let j = {};
   try {
     const r = await fetch('/api/run', { method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ file: w.file, inputs: w.inputs }) });
+      body: JSON.stringify({ file: file, inputs: inputs }) });
     j = await r.json();
   } catch (e) { j = { ok: false, error: '연결이 끊겼습니다' }; }
   if (!j.ok) {
-    showErr(w.name + ' — 실행이 시작되지 못했습니다',
+    showErr(name + ' — 실행이 시작되지 못했습니다',
             (j.error || '알 수 없는 이유') + (j.detail ? '  [깃허브 원문] ' + j.detail : ''));
     return;
   }
-  toast(w.name + ' 시작했습니다. 이 화면이 저절로 갱신됩니다.', 6000);
+  toast(name + ' 시작했습니다. 이 화면이 저절로 갱신됩니다.', 6000);
   watch();
 }
 
