@@ -358,5 +358,83 @@
     "kind": "목소리",
     "krw": 35,
     "note": "80자(어림) · gemini-3.1-flash-tts-preview S001 1화 1컷 시험"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 본처.png"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 내연녀.png"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 남편.png"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 16:9 c001.png"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 16:9 c002.png"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 16:9 c003.png"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 16:9 c004.png"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 16:9 c005.png"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "영상",
+    "krw": 706,
+    "note": "veo-3.1-lite-generate-preview 8초 c001.mp4"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "영상",
+    "krw": 706,
+    "note": "veo-3.1-lite-generate-preview 8초 c002.mp4"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "영상",
+    "krw": 706,
+    "note": "veo-3.1-lite-generate-preview 8초 c003.mp4"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "영상",
+    "krw": 706,
+    "note": "veo-3.1-lite-generate-preview 8초 c004.mp4"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "영상",
+    "krw": 706,
+    "note": "veo-3.1-lite-generate-preview 8초 c005.mp4"
   }
 ]
