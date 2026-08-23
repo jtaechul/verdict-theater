@@ -58,7 +58,7 @@ const WORKFLOWS = [
              { k: 'gate_limit', label: '살펴볼 소재 수', type: 'text', v: '10' },
              { k: 'budget', label: '값 상한(원)', type: 'text', v: '3000' }] },
 
-  // ⭐ 2026-08-23 — 그림·영상을 우리가 만든다. 구글 플로우에서 손으로 만들어
+  // ⭐ 2026-08-23 — 그림·영상을 우리가 만든다. 루미나에서 손으로 만들어
   //    올릴 일이 없어졌다. 인물 카드 → 컷 그림 → Veo → 쇼츠까지 한 번에.
   { file: 'video.yml', name: '3. 영상 만들기 (그림 → 영상 → 쇼츠)',
     desc: '대본 한 회차를 영상까지 통째로 만듭니다 (1화 약 3,700원)',
@@ -579,7 +579,7 @@ async function load() {
 
 // ⭐ 2026-08-20 손님: "관리자페이지에서 못봐??"
 //    시리즈 대본(16화 × 5컷)을 만들어 놓고 화면에 안 띄워서 GitHub 링크를 드렸다.
-//    손님은 GitHub 에 안 들어간다. 클립 프롬프트는 **여기서 복사**해 구글 플로우에
+//    손님은 GitHub 에 안 들어간다. 클립 프롬프트는 **여기서 복사**해 루미나에
 //    붙여 넣는 것이 실제 작업 순서이므로, 복사 버튼까지 여기 있어야 한다.
 function seriesCard() {
   const list = Object.entries(S.series || {}).sort((a, b) => b[0].localeCompare(a[0]));
@@ -601,7 +601,7 @@ function seriesCard() {
   return h + '</div>';
 }
 
-// ⚠️ 2026-08-20 손님: 복사해서 플로우에 붙이니 이런 것이 붙었다 —
+// ⚠️ 2026-08-20 손님: 복사해서 루미나(예전 플로우)에 붙이니 이런 것이 붙었다 —
 //      "...%20%22%EB%8D%94%EB%8A%94%20%EC%88%A8%20..."
 //    공백이 %20, 줄바꿈이 %0A, 한글이 %EB.. 로 바뀐 **URL 인코딩**이다.
 //    (빗금은 그대로인 것으로 보아 encodeURI 규칙)
@@ -612,6 +612,62 @@ function seriesCard() {
 //
 //    그리고 **복사한 것을 되읽어 확인한다.** 예전에는 실패해도 "복사했습니다"
 //    라고 띄웠다 — 손님은 엉뚱한 것이 붙어도 알 길이 없었다.
+
+// ⭐⭐ 2026-08-23 — 루미나(Lumina)용으로 다듬어 준다.
+//
+//    운영자: "루미나는 레퍼런스를 참조하는 기능이 있어서 캐릭터를 넣고 영상을
+//            제작하면 옷 같은 것들이 그대로 제작되기 때문에, 불필요한 부분은
+//            오히려 삭제하는 게 더 맞을 거 같아."
+//
+//    맞는 말이다. 옷을 글로 또 적으면 **참조 그림과 싸운다** — 실제로 1화에서
+//    카드(카키)와 대본(와인색)이 서로 다른 옷을 말해 4컷에서 세 번째 옷이
+//    나왔다. 참조가 정하는 것은 글에서 빼는 것이 맞다.
+//
+//    빼는 것
+//      · SUBJECT 줄의 **옷 묘사** (참조 그림이 정한다)
+//      · STYLE / COLOR / CONTINUITY 줄 (루미나는 참조로 화풍을 잡는다)
+//      · VOICE / AUDIO 줄 (원본 나레이션을 그대로 쓰므로 필요 없다)
+//    남기는 것 — SHOT · ACTION · DIALOGUE · SETTING · Avoid (연출과 대사)
+function luminaPrompt(t) {
+  const drop = ['STYLE:', 'COLOR:', 'CONTINUITY:', 'VOICE:', 'AUDIO:'];
+  const out = [];
+  let skip = false;
+  String(t || '').split(String.fromCharCode(10)).forEach((l) => {
+    const head = /^[A-Z][A-Z ]{2,}:/.test(l);
+    if (head) skip = drop.some((k) => l.indexOf(k) === 0);
+    else if (skip && l.indexOf('  ') === 0) return;   // 이어지는 들여쓴 줄
+    else if (skip) skip = false;
+    if (skip) return;
+    if (l.indexOf('SUBJECT:') === 0) {
+      // "the husband wearing an olive-green ... facing the wife wearing a ..."
+      // → "the husband facing the wife"  (옷은 참조 그림이 정한다)
+      // 사람마다 토막을 내고(…facing… / …and…), 토막마다 'wearing' 뒤를 버린다.
+      // ⚠️ 쉼표로 자르면 "with dark charcoal trousers" 처럼 옷이 새어 나온다.
+      const body = l.slice(8).replace(/\\.\\s*$/, '');
+      // ⚠️ 'and' 로 자를 땐 이어 붙일 때도 'and' 를 되돌려 놔야 한다
+      //    (안 그러면 "the wife the husband" 가 된다)
+      const who = body.split(/\\s+(?=facing\\b)|(\\s+and\\s+)(?=the\\b)/)
+        .filter((x) => x !== undefined)
+        .map((x) => (/^\\s+and\\s+$/.test(x) ? ' and '
+                     : x.replace(/\\s+wearing\\b[\\s\\S]*$/, '').trim()))
+        .filter((x) => x !== '');
+      l = ('SUBJECT: ' + who.join(' ')).replace(/\\s{2,}/g, ' ')
+            .replace(/\\s+and\\s+/g, ' and ') + '.';
+    }
+    out.push(l);
+  });
+  // ⚠️ 이 코드는 템플릿 문자열 안에 있다. 정규식에 줄바꿈 이스케이프를 쓰면
+  //    바깥 템플릿이 먼저 진짜 줄바꿈으로 풀어 버려 정규식이 통째로 깨진다
+  //    (페이지가 안 뜬다). 빈 줄 정리는 정규식 없이 한다.
+  const NL = String.fromCharCode(10);
+  const lines = out.join(NL).split(NL);
+  const tidy = [];
+  lines.forEach((x) => {
+    if (x.trim() === '' && tidy.length && tidy[tidy.length - 1].trim() === '') return;
+    tidy.push(x);
+  });
+  return tidy.join(NL).trim();
+}
 
 // 지금 화면에서 복사할 수 있는 원본들. 화면을 그릴 때 여기에 담는다.
 let COPY = {};
@@ -1245,17 +1301,17 @@ function seriesRender() {
   // 복사할 원본은 **화면에 그린 글자를 다시 읽지 않고** 여기 담아 둔다
   COPY = {};
 
-  // ① 캐릭터 — 플로우에서 얼굴을 먼저 만들어 두어야 화마다 같은 사람이 나온다
-  h += '<div class="card"><h2>① 먼저 구글 플로우에서 인물을 만듭니다 '
+  // ① 캐릭터 — 루미나에서 인물을 먼저 만들어 두면 참조로 얼굴·옷이 고정된다
+  h += '<div class="card"><h2>① 먼저 루미나에서 인물을 만듭니다 '
      + '<small style="font-weight:400;color:#9599ab">— 한 번만 하면 됩니다'
      + '</small></h2>'
-     + '<div class="uphint" style="margin:-4px 0 12px">플로우 [캐릭터 만들기] 에서 '
+     + '<div class="uphint" style="margin:-4px 0 12px">루미나 [캐릭터/레퍼런스] 에서 '
      + '인물마다 두 칸을 채웁니다. 아래 ①을 설명 칸에, ②를 사진 만드는 칸에 '
      + '붙여 넣으십시오.</div>';
   (d.characters || []).forEach((c, i) => {
     // ⭐ 2026-08-20 운영자: "인물 프롬프트가 너무 짧아 배경이 이상하게 뜬다.
     //    캐릭터 설명 넣을 내용도 같이 복사할 수 있게 해 줘."
-    //    플로우 캐릭터 만들기 화면에는 **두 칸**이 있다 —
+    //    루미나 레퍼런스 화면에도 얼굴칸·설명칸이 있다 —
     //      ① 캐릭터 설명   ② 기준 사진을 뽑는 프롬프트
     //    각각 따로 복사할 수 있어야 한다.
     const csid = 'chs' + i, cdid = 'chd' + i;
@@ -1290,7 +1346,7 @@ function seriesRender() {
   h += '<div class="upbox">'
      + '<div id="permwarn"></div>'
      + '<input type="file" id="clipzip" accept=".zip,application/zip">'
-     + '<div class="uphint">플로우에서 받은 ' + SEP + '화 클립 5개를 압축해서 고르십시오. '
+     + '<div class="uphint">루미나에서 받은 ' + SEP + '화 클립 5개를 압축해서 고르십시오. '
      + '파일 이름에 c001~c005 가 있으면 그 번호대로, 없으면 이름 순서대로 붙입니다.</div>'
      + '<div class="uphint" style="margin-top:8px">클립 <b>하나만</b> 시험해 볼 수도 '
      + '있습니다. 그 클립 하나만 압축해서 올리고, 아래에서 몇 컷인지 고르십시오. '
@@ -1369,7 +1425,7 @@ function seriesRender() {
                  + '</div></div>';
   (e.cuts || []).forEach((c, i) => {
     const pid = 'p' + SEP + '_' + (i + 1);
-    COPY[pid] = String(c.prompt || '');
+    COPY[pid] = luminaPrompt(String(c.prompt || ''));
     // ⚠️ 대사는 이제 여러 줄이다 — DIALOGUE 줄 + 그 아래 들여쓴 대사 줄들.
     //    한 줄만 집으면 화면에 '한국어로 말하라' 는 머리말만 뜬다.
     const _pl = String(c.prompt || '').split(String.fromCharCode(10));
@@ -1388,7 +1444,7 @@ function seriesRender() {
                       + '설명 자막: ' + esc(c.caption) + '</div>';
     h += '<div class="ptext">' + esc(c.prompt || '') + '</div>'
        + mini('이 컷 프롬프트 복사', 'copyRaw(\\'' + pid + '\\',\\'' + c.n + '컷\\')', 'gold');
-    // ⭐ 2026-08-22 — 앞 컷과 **같은 장소**면 플로우의 [이 영상에서 이어서
+    // ⭐ 2026-08-22 — 앞 컷과 **같은 장소**면 루미나의 [이 영상에서 이어서
     //    만들기](장면 연장)를 쓰는 편이 훨씬 낫다. 앞 영상의 마지막 프레임을
     //    실제로 물려받으므로 옷·배경이 튈 수가 없다.
     //    그때는 방·옷을 다시 세우면 물려받은 화면과 싸우므로, **바뀌는 것만**
@@ -1396,7 +1452,7 @@ function seriesRender() {
     if (c.ext) {
       const eid = 'ext' + SEP + '_' + c.n;
       h += '<div class="uphint" style="margin-top:10px">앞 컷과 같은 장소입니다. '
-         + '플로우에서 앞 영상의 <b>[이 영상에서 이어서 만들기]</b> 를 누르고 '
+         + '루미나에서 앞 영상의 <b>[이어서 만들기]</b> 를 누르고 '
          + '아래 것을 넣으면 옷·배경이 안 튑니다.</div>'
          + '<div class="ptext" id="' + eid + '" style="display:none">'
          + esc(c.ext) + '</div>'
@@ -1977,7 +2033,7 @@ function madeDraw() {
   if (!SHORTS.length) {
     h += '<div class="card"><h2>만든 영상</h2><div class="empty">'
        + '아직 만든 영상이 없습니다.<br>'
-       + '<b>시리즈 대본</b>에서 회차를 열고 플로우에서 받은 '
+       + '<b>시리즈 대본</b>에서 회차를 열고 루미나에서 받은 '
        + '<b>클립 압축파일</b>을 올리시면 여기에 쌓입니다.</div></div>';
     document.getElementById('app').innerHTML = h;
     return;
@@ -2824,7 +2880,7 @@ export default {
       }
 
       // ⭐ 시리즈 대본 한 편 (16화 × 5컷). 클립 프롬프트를 여기서 복사해
-      //    구글 플로우에 붙여 넣는다.
+      //    루미나에 붙여 넣는다.
       if (url.pathname === '/api/series') {
         const sid = url.searchParams.get('sid') || '';
         if (!/^S\d{3}$/.test(sid)) return Response.json({ error: 'bad sid' }, { status: 400 });

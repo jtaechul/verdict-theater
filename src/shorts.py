@@ -55,7 +55,28 @@ FONT_M = ROOT / "assets" / "fonts" / "KoPub_Dotum_Pro_Medium.otf"
 FONT_H = ROOT / "assets" / "fonts" / "NanumGothic_ExtraBold.ttf"
 
 W, H = 1080, 1920                # 쇼츠 화면
-VIDEO_Y, VIDEO_H = 520, 810      # 4:3 영상이 앉는 자리
+
+# ⭐⭐ 2026-08-23 대개편 — 루미나(Lumina) 영상을 **자르지 않고 그대로 살린다.**
+#
+#    운영자: "있는 영상 그대로 살리면 되는 거 아니야?"
+#            "검은색 띠를 위아래 얇게 넣어. 그 안에 제목·회차·판결극장만."
+#            "AI 워터마크도 그 검은 띠로 덮어버리면 어떨까."
+#
+#    예전(플로우 시절)에는 가로 영상을 받아 4:3 으로 잘라 가운데 띠에 넣었다.
+#    루미나는 **처음부터 세로(496x864)** 로 준다. 그걸 4:3 으로 자르면 864 중
+#    372 만 남아 **화면의 57%가 날아가고 얼굴이 잘린다.** 그래서 자르기를 없앤다.
+#
+#    새 배치 — 영상을 폭 1080 에 맞춰 통째로 깔고, 위아래에 검은 띠만 얹는다.
+#      · 496x864 → 폭 1080 이면 높이 1881 (화면 1920 보다 39 모자람 → 아래 띠가 덮는다)
+#      · 위 띠 120px — 「제목 · n화」 와 「판결극장」 이 들어간다.
+#        루미나의 "AI" 표시가 폭 1080 기준 y 44~61 이므로 **이 띠가 통째로 덮는다.**
+#        ⚠️ 워터마크 지우기(delogo)를 안 쓴다 — 그건 주변 색으로 뭉개 얼룩이
+#           남고, 상자가 화면 밖으로 나가면 통째로 실패한다. 덮는 쪽이 확실하다.
+#      · 아래 띠 300px — 자막이 들어간다.
+VIDEO_FIT = "width"              # 영상은 폭에 맞춘다 (자르지 않는다)
+BAR_TOP = 120                    # 위 검은 띠 (제목·회차·채널명 + AI 표시 덮기)
+BAR_BOT = 300                    # 아래 검은 띠 (자막)
+WATERMARK_Y = 61                 # 폭 1080 기준 AI 표시가 끝나는 높이 (실측)
 MARK_Y, MARK_SIZE = 40, 38       # 우측 상단 채널 이름
 # ⭐ 2026-08-22 운영자: "몇 화인지, 드라마 제목이 뭔지가 안 나와 있어.
 #    화면 최상단 좌측이나 이런 곳에 들어와야 될 거 같아."
@@ -63,9 +84,12 @@ MARK_Y, MARK_SIZE = 40, 38       # 우측 상단 채널 이름
 #      부딪히지 않게, 길면 글씨를 줄이고 그래도 길면 …로 자른다.
 LABEL_SIZE, LABEL_MIN = 34, 24   # 좌측 상단 제목·회차
 # 후킹은 **상자에 꽉 차게** 키운다 — 아래 HOOK_MAX 부터 줄여 가며 맞춘다
-HOOK_TOP, HOOK_BOT = 150, 470
+# 후킹은 영상 **위에** 얹는다 (아래 띠 위쪽). 글자가 묻히지 않게 어두운 판을 깐다.
+HOOK_TOP, HOOK_BOT = 200, 520
 HOOK_MAX, HOOK_MIN, HOOK_GAP = 132, 60, 1.18
-SUB_TOP, SUB_BOT, SUB_SIZE = 1360, 1610, 68
+HOOK_SCRIM = 150                 # 후킹 뒤에 까는 어두운 판의 진하기 (0~255)
+# 자막은 **아래 검은 띠 안**에 들어간다 (2026-08-23 운영자 지시)
+SUB_TOP, SUB_BOT, SUB_SIZE = H - BAR_BOT + 40, H - 60, 62
 SIDE = 64                        # 좌우 여백
 GOLD = (198, 160, 74)
 # ⭐ 후킹에서 별표로 감싼 토막에 넣을 색 (2026-08-21 운영자 지시).
@@ -418,6 +442,11 @@ def overlay_png(hook, chunk, out, label=None):
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
+    # ⭐ 2026-08-23 — 위아래 **검은 띠**. 여기에 제목·회차·채널명·자막이 들어가고,
+    #    위 띠는 루미나의 "AI" 표시(폭 1080 기준 y 61 까지)를 통째로 덮는다.
+    d.rectangle([0, 0, W, BAR_TOP], fill=(0, 0, 0, 255))
+    d.rectangle([0, H - BAR_BOT, W, H], fill=(0, 0, 0, 255))
+
     mark = ImageFont.truetype(str(FONT_B), MARK_SIZE)
     mark_w = d.textlength(CHANNEL, font=mark)
     d.text((W - SIDE - mark_w, MARK_Y),
@@ -426,6 +455,18 @@ def overlay_png(hook, chunk, out, label=None):
         draw_label(d, str(label).strip(), mark_w)
 
     if str(hook or "").strip():
+        # ⚠️ 후킹은 이제 **영상 위에** 얹힌다(예전엔 검은 바탕이었다). 밝은 장면에서
+        #    흰 글자가 묻히므로 글자 뒤에 어두운 판을 깔아 준다.
+        # ⚠️ 네모난 판을 그대로 깔면 아래쪽에 **선명한 경계선**이 생겨 촌스럽다.
+        #    위 검은 띠에서 이어져 아래로 서서히 사라지게 만든다.
+        top, bot = BAR_TOP, HOOK_BOT + 90
+        scrim = Image.new("RGBA", (W, bot - top), (0, 0, 0, 0))
+        sd = ImageDraw.Draw(scrim)
+        for y in range(bot - top):
+            k = y / max(1, bot - top - 1)
+            a = int(HOOK_SCRIM * (1 - k) ** 1.6)     # 위는 진하게, 아래로 사라짐
+            sd.line([(0, y), (W, y)], fill=(0, 0, 0, a))
+        img.alpha_composite(scrim, (0, top))
         # ⭐ `*…*` 로 감싼 토막만 금색으로 (2026-08-21 운영자 지시)
         f, ls = fit_box_runs(d, hook, FONT_H, W - SIDE * 2,
                              HOOK_BOT - HOOK_TOP, HOOK_MAX, HOOK_MIN,
@@ -564,7 +605,15 @@ from series import dia_turns                                # noqa: E402,F401
 #    운영자에게 두 판(구글 소리 / 우리 목소리)을 같은 영상으로 들려드리기 위한 것이다.
 #    영상은 한 번만 만들면 되므로 두 판을 만들어도 영상값은 0원이 더 든다.
 def keep_audio():
-    return os.environ.get("KEEP_AUDIO", "").strip() not in ("", "0", "no", "false")
+    """원본 소리를 그대로 둘 것인가. **기본이 '그대로 둔다' 이다.**
+
+    ⭐ 2026-08-23 운영자 지시 — 루미나가 만든 나레이션을 그대로 쓴다.
+       "원본영상 나래이션을 쓸꺼라 typecast나 제미나이 api tts도 없애야 해."
+       예전 기본값은 '갈아 끼운다' 였다. 플로우 영상의 한국어 발음이 어눌해서
+       우리 목소리로 덮던 시절의 값인데, 루미나는 발음이 멀쩡하다.
+       굳이 갈아 끼우려면 KEEP_AUDIO=0 을 준다."""
+    v = os.environ.get("KEEP_AUDIO", "").strip().lower()
+    return v not in ("0", "no", "false")
 
 
 def dub(src, turns, voices, out, tmp, personas=None):
@@ -672,13 +721,26 @@ def dub(src, turns, voices, out, tmp, personas=None):
     return True
 
 
+def video_place(vw, vh):
+    """영상을 화면 어디에 얼마 크기로 깔지 (폭에 맞춘다 · 자르지 않는다).
+
+    ⭐ 2026-08-23 — 예전엔 4:3 으로 **잘라서** 가운데 띠에 넣었다. 루미나는
+       처음부터 세로로 주므로 자를 이유가 없다. 폭 1080 에 맞춰 통째로 깔고,
+       화면(1920)보다 짧으면 가운데에 놓아 위아래 띠가 덮게 한다.
+       화면보다 길면 **얼굴이 있는 위쪽을 살린다** — 아래(다리·바닥)를 버린다."""
+    nh = round(W * vh / vw)
+    nh -= nh % 2
+    if nh >= H:
+        return 0, nh                     # 위쪽부터 — 얼굴을 지킨다
+    return (H - nh) // 2, nh             # 짧으면 가운데 (띠가 위아래를 덮는다)
+
+
 def compose(src, hook, sub, out, tmp, label=None):
-    """받은 클립 한 개 → 쇼츠 한 컷 (워터마크 지우고 4:3 자르고 글자 얹기)."""
+    """받은 클립 한 개 → 쇼츠 한 컷 (자르지 않고 폭에 맞춰 깔고 글자 얹기)."""
     src, out, tmp = Path(src), Path(out), Path(tmp)
     tmp.mkdir(parents=True, exist_ok=True)
     vw, vh, sec = C.probe(src)
-    mx, my, mw, mh = C.mark_box(vw, vh)
-    cx, cy, cw, ch = C.crop_box(vw, vh)
+    vy, nh = video_place(vw, vh)
 
     # ⭐ 자막은 **한 토막씩** 뜬다 (말하는 사람 것만 / 긴 대사는 반 문장씩).
     #    말하는 시각은 소리에서 찾는다.
@@ -698,9 +760,11 @@ def compose(src, hook, sub, out, tmp, label=None):
     pngs = [overlay_png(hook, c, tmp / f"{src.stem}_txt{i}.png", label)
             for i, c in enumerate(chunks or [""])]
 
-    vf = [f"[1:v]delogo=x={mx}:y={my}:w={mw}:h={mh},"
-          f"crop={cw}:{ch}:{cx}:{cy},scale={W}:{VIDEO_H}[v]",
-          f"[0:v][v]overlay=0:{VIDEO_Y}[s0]"]
+    # ⭐ 자르지 않는다. 폭만 맞춰 통째로 깐다.
+    #   워터마크(AI)는 지우지 않고 **위 검은 띠가 덮는다** — 지우기(delogo)는
+    #   주변 색으로 뭉개 얼룩이 남고 상자가 화면 밖으로 나가면 통째로 실패한다.
+    vf = [f"[1:v]scale={W}:{nh}[v]",
+          f"[0:v][v]overlay=0:{vy}[s0]"]
     # ⚠️ 2026-08-22 — between(t,a,b) 는 양 끝을 **포함**한다. 앞 토막이 2.0에
     #    끝나고 뒤 토막이 2.0에 시작하면, 딱 그 순간의 한 프레임에 **둘 다**
     #    켜져 자막이 겹쳐 보인다 (실제 프레임에서 발견). 앞 토막을 반 프레임

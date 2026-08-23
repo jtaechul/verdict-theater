@@ -49,10 +49,14 @@ with tempfile.TemporaryDirectory() as d:
     label = f"{doc['title']} · 1화"
 
     def left_top_pixels(png):
-        img = Image.open(png)
-        # 왼쪽 위 (라벨 자리): x SIDE~절반, y MARK_Y~MARK_Y+50
+        """왼쪽 위 라벨 자리에 **글자가** 몇 픽셀인가.
+
+        ⚠️ 2026-08-23 — 예전엔 '투명한 픽셀이 0개인가' 로 쟀다. 이제 위 띠를
+           검게 채우므로(루미나 워터마크를 덮으려고) 그 방법은 늘 실패한다.
+           검은 띠가 아니라 **밝은 글자**를 센다."""
+        img = Image.open(png).convert("RGB")
         box = img.crop((S.SIDE, S.MARK_Y, S.W // 2, S.MARK_Y + 50))
-        return sum(1 for px in box.getdata() if px[3] > 0)
+        return sum(1 for px in box.getdata() if max(px) > 90)
 
     with_l = S.overlay_png("후킹", "자막", d / "a.png", label)
     without = S.overlay_png("후킹", "자막", d / "b.png", None)
@@ -67,8 +71,10 @@ with tempfile.TemporaryDirectory() as d:
     mark_w = ImageDraw.Draw(img).textlength(S.CHANNEL, font=mk)
     gap = img.crop((int(S.W - S.SIDE - mark_w - 30), S.MARK_Y,
                     int(S.W - S.SIDE - mark_w - 4), S.MARK_Y + 50))
+    # ⚠️ 2026-08-23 — 위 띠를 검게 채우게 됐으므로 '투명한가' 로는 못 잰다.
+    #    검은 띠가 아니라 **밝은 글자**가 있는지로 본다.
     ck("아주 긴 제목도 채널 이름을 침범하지 않는다",
-       sum(1 for px in gap.getdata() if px[3] > 0) == 0,
+       sum(1 for px in gap.convert("RGB").getdata() if max(px) > 90) == 0,
        "길면 줄이고 …로 자른다")
 
 # 배선: 만드는 두 길(한 화 · 한 컷 시험) 모두 라벨을 넘긴다

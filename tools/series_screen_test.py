@@ -93,6 +93,12 @@ const run = new Function('DOC', 'SIDIN', 'CLIP', 'navigator', 'Blob', 'Clipboard
   // 실제로 복사되는 글자를 붙잡는다
   out.copied = {};
   Object.keys(COPY).forEach(k => { out.copied[k] = COPY[k]; });
+  // ⭐ 2026-08-23 — 복사본은 루미나용으로 다듬은 글이다. 파이썬 쪽에서 다시
+  //    구현하면 두 벌이 되어 어긋나므로, **화면 코드가 만든 값**을 그대로 준다.
+  out.lumina = {};
+  (DOC.episodes[0].cuts || []).forEach((c, i) => {
+    out.lumina['p1_' + (i + 1)] = luminaPrompt(String(c.prompt || ''));
+  });
   SEP = 16; seriesRender();
   out.ep16 = document.getElementById('app').innerHTML;
 
@@ -198,9 +204,13 @@ for i, ch in enumerate(doc.get("characters", [])):
 ck("설명 복사 단추가 있다", "설명 복사" in ep1)
 ck("사진 프롬프트 복사 단추가 있다", "사진 프롬프트 복사" in ep1)
 bad_enc, bad_eq = [], []
+# ⭐ 2026-08-23 — 복사되는 글은 원본 그대로가 아니라 **루미나용으로 다듬은 것**이다
+#    (옷·화풍·목소리 묘사를 뺀다 — 루미나는 참조 그림이 그것을 정한다).
+#    검사의 목적은 그대로다: 글자가 **깨지지 않는가**(URL 인코딩·줄바꿈 사고).
+lumina = out.get("lumina") or {}
 for i, c in enumerate(e1["cuts"], 1):
     got = copied.get(f"p1_{i}")
-    if got != (c.get("prompt") or ""):
+    if got != lumina.get(f"p1_{i}"):
         bad_eq.append(f"{i}컷")
     if got and re.search(r"%[0-9A-Fa-f]{2}", got):
         bad_enc.append(f"{i}컷")
@@ -212,12 +222,14 @@ for i, ch in enumerate(doc.get("characters", [])):
         bad_eq.append(f"인물{i + 1} 사진")
 ck("복사되는 글자가 원본과 **한 글자도** 다르지 않다", not bad_eq, ", ".join(bad_eq))
 ck("%20 같은 URL 인코딩이 섞이지 않는다", not bad_enc, ", ".join(bad_enc))
-# ⚠️ 줄 수를 숫자로 못 박아 두면 줄이 하나 늘 때마다 시험이 깨진다
-#    (머리말 · VOICE · AUDIO 를 붙일 때마다 실제로 깨졌다). **대본과 견준다.**
+# ⚠️ 줄 수를 숫자로 못 박아 두면 시험이 매번 깨진다. **다듬은 글과 견준다.**
+#    (2026-08-23 — 이제 옷·화풍·소리 줄을 빼므로 원본보다 줄이 적은 게 정상이다)
 ck("줄바꿈이 진짜 줄바꿈으로 남아 있다",
-   all(copied.get(f"p1_{i}", "").count("\n") == e1["cuts"][i - 1]["prompt"].count("\n")
-       for i in range(1, len(e1["cuts"]) + 1)),
-   f"컷마다 {e1['cuts'][0]['prompt'].count(chr(10)) + 1}줄")
+   all(copied.get(f"p1_{i}", "").count("\n")
+       == (lumina.get(f"p1_{i}") or "").count("\n")
+       for i in range(1, len(e1["cuts"]) + 1))
+   and (lumina.get("p1_1") or "").count("\n") > 3,
+   f"1컷 {copied.get('p1_1','').count(chr(10)) + 1}줄")
 
 # ⭐⭐ 2026-08-20 두 번째 사고 — 우리 클립보드는 멀쩡한데, **붙여 넣는 쪽**이
 #    `SHOT:` 을 주소 이름(http: 같은 것)으로 읽어 글자를 통째로 %20 · %EB.. 로
@@ -235,18 +247,27 @@ ck("아이폰이 쓰는 길(write + ClipboardItem)로 넣는다", cl.get("how") 
 ck("글자 꼴을 text/plain 하나로만 못 박는다",
    cl.get("kinds") == ["text/plain"] and cl.get("blobType") == "text/plain",
    f"{cl.get('kinds')} · {cl.get('blobType')}")
-ck("클립보드에 들어간 글이 원본과 한 글자도 다르지 않다",
-   cl.get("last") == (e1["cuts"][0].get("prompt") or ""),
-   "다름" if cl.get("last") != (e1["cuts"][0].get("prompt") or "") else "")
+ck("클립보드에 들어간 글이 화면이 만든 글과 한 글자도 다르지 않다",
+   cl.get("last") == lumina.get("p1_1"),
+   "다름" if cl.get("last") != lumina.get("p1_1") else "")
 ck("클립보드 글에 %20 같은 인코딩이 없다",
    not re.search(r"%[0-9A-Fa-f]{2}", cl.get("last") or ""))
 ck("[안 되면 여기서] 같은 우회 단추가 없다", "showCopySheet(" not in ep1)
+
+# ⭐ 2026-08-23 운영자 지시 — 루미나는 참조 그림이 옷·화풍을 정하므로 글에서 뺀다.
+#    "불필요한 부분은 오히려 삭제하는 게 더 맞을 거 같아."
+_dirty = [k for k, v in lumina.items()
+          if "wearing" in v or "STYLE:" in v or "VOICE:" in v or "AUDIO:" in v]
+ck("복사되는 글에 옷·화풍·목소리 묘사가 없다 (참조 그림이 정한다)",
+   not _dirty, " ".join(_dirty))
+ck("연출과 대사는 그대로 남아 있다",
+   all(x in (lumina.get("p1_1") or "") for x in ("SHOT:", "ACTION:", "DIALOGUE:", "SETTING:")))
 
 c2 = out.get("clip2") or {}
 ck("ClipboardItem 이 없는 기기에서는 두 번째 길로 넘어간다", c2.get("how") == "writeText",
    c2.get("how") or "안 넘어감")
 ck("두 번째 길로 가도 글자는 그대로다",
-   c2.get("last") == (e1["cuts"][0].get("prompt") or ""))
+   c2.get("last") == lumina.get("p1_1"))
 nepn = ep1.count('class="epn')
 ck("1~16화 번호판이 다 있다", nepn == len(doc["episodes"]), f"{nepn}개")
 

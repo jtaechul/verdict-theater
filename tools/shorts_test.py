@@ -44,14 +44,22 @@ def rows_with_ink(img, y0, y1):
 
 print("⭐ 쇼츠 배치 시험\n")
 
-print("① 칸이 서로 겹치지 않는가")
-ck("위 검은 칸 → 영상 → 아래 검은 칸 순서다",
-   S.HOOK_BOT <= S.VIDEO_Y < S.VIDEO_Y + S.VIDEO_H <= S.SUB_TOP,
-   f"후킹끝 {S.HOOK_BOT} · 영상 {S.VIDEO_Y}~{S.VIDEO_Y + S.VIDEO_H} · 자막 {S.SUB_TOP}")
-ck("영상이 정확히 4:3", S.W * 3 == S.VIDEO_H * 4, f"{S.W}×{S.VIDEO_H}")
+print("① 배치 — 영상은 자르지 않고 위아래 검은 띠만 얹는다 (2026-08-23 대개편)")
 ck("전체가 쇼츠 규격(9:16)", S.W * 16 == S.H * 9, f"{S.W}×{S.H}")
-ck("유튜브 단추 자리(아래 300px 이상)를 비워 뒀다", S.H - S.SUB_BOT >= 300,
-   f"{S.H - S.SUB_BOT}px 비움")
+ck("영상을 자르지 않는다 (폭에만 맞춘다)", S.VIDEO_FIT == "width", S.VIDEO_FIT)
+# 루미나 496x864 를 넣으면 어디에 얼마로 놓이는가
+_vy, _nh = S.video_place(496, 864)
+ck("루미나 영상이 폭 1080 그대로 들어간다", _nh == 1880 and _vy == 20,
+   f"y={_vy} 높이={_nh}")
+ck("위 검은 띠가 AI 표시를 완전히 덮는다",
+   S.BAR_TOP > S.WATERMARK_Y + _vy, f"띠 {S.BAR_TOP} · 표시 끝 {S.WATERMARK_Y + _vy}")
+ck("자막이 아래 검은 띠 안에 들어간다",
+   S.H - S.BAR_BOT <= S.SUB_TOP < S.SUB_BOT <= S.H,
+   f"띠 {S.H - S.BAR_BOT}~{S.H} · 자막 {S.SUB_TOP}~{S.SUB_BOT}")
+ck("후킹은 영상 위에 얹힌다 (위 띠 아래)", S.HOOK_TOP >= S.BAR_TOP,
+   f"띠끝 {S.BAR_TOP} · 후킹 {S.HOOK_TOP}")
+ck("띠가 화면의 절반을 넘지 않는다", S.BAR_TOP + S.BAR_BOT < S.H // 2,
+   f"띠 합계 {S.BAR_TOP + S.BAR_BOT}px")
 
 print("\n② 글자가 제자리에만 그려지는가 (그림을 픽셀로 잰다)")
 with tempfile.TemporaryDirectory() as d:
@@ -63,16 +71,20 @@ with tempfile.TemporaryDirectory() as d:
 
     hook_ink = rows_with_ink(img, S.HOOK_TOP, S.HOOK_BOT)
     sub_ink = rows_with_ink(img, S.SUB_TOP, S.SUB_BOT)
-    video_ink = rows_with_ink(img, S.VIDEO_Y, S.VIDEO_Y + S.VIDEO_H)
-    below_ink = rows_with_ink(img, S.SUB_BOT, S.H)
+    mark_ink = rows_with_ink(img, 0, S.BAR_TOP)
+    mid_ink = rows_with_ink(img, S.HOOK_BOT + 120, S.H - S.BAR_BOT - 20)
 
-    ck("후킹 문구가 위 칸에 그려졌다", len(hook_ink) > 20, f"{len(hook_ink)}줄")
-    ck("자막이 아래 칸에 그려졌다", len(sub_ink) > 20, f"{len(sub_ink)}줄")
-    ck("영상 자리에는 글자가 없다", not video_ink, f"{len(video_ink)}줄 침범")
-    ck("유튜브 단추 자리에도 글자가 없다", not below_ink, f"{len(below_ink)}줄 침범")
+    ck("후킹 문구가 그려졌다", len(hook_ink) > 20, f"{len(hook_ink)}줄")
+    ck("자막이 아래 띠 안에 그려졌다", len(sub_ink) > 20, f"{len(sub_ink)}줄")
+    ck("위 띠에 제목·채널 이름이 있다", len(mark_ink) > 5, f"{len(mark_ink)}줄")
+    # 후킹 아래~아래 띠 위 사이에는 글자가 없어야 한다 (영상이 다 보여야 한다)
+    ck("영상 한가운데에는 글자가 없다", not mid_ink, f"{len(mid_ink)}줄 침범")
 
-    mark_ink = rows_with_ink(img, 0, S.VIDEO_Y and S.HOOK_TOP)
-    ck("우측 상단에 채널 이름이 있다", len(mark_ink) > 5, f"{len(mark_ink)}줄")
+    # 검은 띠가 실제로 불투명한가 (여기로 워터마크를 덮는다)
+    ck("위 띠가 완전히 불투명하다",
+       min(img.getchannel("A").crop((0, 0, S.W, S.BAR_TOP)).getextrema()) == 255)
+    ck("아래 띠가 완전히 불투명하다",
+       min(img.getchannel("A").crop((0, S.H - S.BAR_BOT, S.W, S.H)).getextrema()) == 255)
 
 print("\n③ 자막을 말한 사람마다 줄을 나누는가")
 from PIL import ImageDraw                                   # noqa: E402
