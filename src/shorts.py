@@ -438,6 +438,27 @@ def draw_label(d, label, mark_w):
            font=f, fill=(206, 208, 216, 255))
 
 
+def end_png(big, small, out):
+    """마지막 컷 위에 겹칠 「다음 화 — 제목」 + 구독 안내 한 장."""
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    # 글자가 묻히지 않게 위아래로 사라지는 어두운 판을 깐다
+    top, bot = END_TOP - 60, H - BAR_BOT
+    scrim = Image.new("RGBA", (W, bot - top), (0, 0, 0, 0))
+    sd = ImageDraw.Draw(scrim)
+    for y in range(bot - top):
+        k = y / max(1, bot - top - 1)
+        sd.line([(0, y), (W, y)], fill=(0, 0, 0, int(205 * min(1.0, k * 2.2))))
+    img.alpha_composite(scrim, (0, top))
+
+    f, ls = fit(d, big, FONT_B, END_BIG, W - SIDE * 2, 2, min_size=52)
+    block(d, ls, f, END_TOP, END_TOP + 170, (255, 255, 255, 255))
+    f2, ls2 = fit(d, small, FONT_M, END_SMALL, W - SIDE * 2, 2, min_size=34)
+    block(d, ls2, f2, END_TOP + 178, H - BAR_BOT - 16, GOLD + (255,))
+    img.save(out)
+    return out
+
+
 def overlay_png(hook, chunk, out, label=None, parts="all"):
     """글자만 있는 투명 그림 한 장 (영상 위에 얹는다).
 
@@ -740,6 +761,35 @@ def dub(src, turns, voices, out, tmp, personas=None):
     return True
 
 
+# ⭐⭐ 2026-08-23 — 마지막에 「다음 화에 계속」 + 구독 안내 (운영자 아이디어).
+#
+#    ⚠️ 다만 **뒤에 따로 붙이지 않는다.** 쇼츠는 끝나면 곧바로 처음으로 되감긴다.
+#       뒤에 2~3초짜리 정지 화면을 덧붙이면 그 구간은 거의 아무도 안 보고
+#       빠져나가, '평균 시청률' 이 그만큼 깎인다(유튜브가 이 값으로 노출을
+#       정한다). 그래서 **마지막 컷의 끝 2.6초 위에 겹쳐서** 띄운다.
+#       길이가 안 늘어나므로 시청률 손해가 없다.
+#
+#    ⚠️ 그리고 「다음 화에 계속」 만 쓰지 않는다. **다음 화 제목을 같이 보여 주는
+#       쪽이 훨씬 세다** — '무슨 일이 벌어지는지' 가 궁금해야 다음 편을 찾는다.
+#       구독 안내는 그 아래 작은 줄로 한 번만 (두 화면으로 나누면 둘 다 흐려진다).
+END_SEC = 2.6                    # 끝 안내를 띄우는 시간 (길이는 안 늘어난다)
+END_BIG, END_SMALL = 76, 46      # 큰 줄 · 작은 줄 글자 크기
+END_TOP = H - BAR_BOT - 300      # 아래 검은 띠 바로 위
+
+
+def end_card(doc, no):
+    """마지막에 띄울 두 줄. (큰 줄, 작은 줄)
+
+    다음 화가 있으면 그 **제목**을 보여 준다. 마지막 화면 회차면 완결 안내."""
+    eps = doc.get("episodes") or []
+    nxt = next((e for e in eps if int(e.get("no", 0)) == int(no) + 1), None)
+    if nxt:
+        t = str(nxt.get("title") or "").strip()
+        big = f"다음 화 — {t}" if t else "다음 화에 계속"
+        return big, "구독하면 다음 화를 놓치지 않습니다"
+    return "완 결", "1화부터 정주행 · 구독하고 다음 이야기도 보세요"
+
+
 def audio_sec(src):
     """그 파일의 **소리** 길이(초). 소리가 없으면 0.
 
@@ -771,7 +821,7 @@ def video_place(vw, vh):
     return (H - nh) // 2, nh             # 짧으면 가운데 (띠가 위아래를 덮는다)
 
 
-def compose(src, hook, sub, out, tmp, label=None):
+def compose(src, hook, sub, out, tmp, label=None, end=None):
     """받은 클립 한 개 → 쇼츠 한 컷 (자르지 않고 폭에 맞춰 깔고 글자 얹기)."""
     src, out, tmp = Path(src), Path(out), Path(tmp)
     tmp.mkdir(parents=True, exist_ok=True)
@@ -825,6 +875,17 @@ def compose(src, hook, sub, out, tmp, label=None):
         tag = "[o]" if last else f"[s{i + 1}]"
         en = "" if len(pngs) == 1 else f":enable='between(t,{a:.3f},{b:.3f})'"
         vf.append(f"[s{i}][{i + 3}:v]overlay=0:0{en}{tag}")
+    # ⭐ 끝 안내 — **길이를 안 늘리고** 마지막 몇 초 위에 겹친다
+    if end:
+        ep_png = end_png(end[0], end[1], tmp / f"{src.stem}_end.png")
+        a0 = max(0.0, sec - END_SEC)
+        vf.append(f"[o][{len(pngs) + 3}:v]overlay=0:0"
+                  f":enable='between(t,{a0:.3f},{sec:.3f})'[o2]")
+        pngs = pngs + [ep_png]           # 입력 목록 맨 뒤에 붙는다
+        last_tag = "[o2]"
+    else:
+        last_tag = "[o]"
+
     cmd = ["ffmpeg", "-v", "error", "-y",
            # 바탕은 넉넉하게 — 바탕이 짧으면 그것이 끝을 결정해 잘린다
            "-f", "lavfi", "-i", f"color=c=black:s={W}x{H}:r=24:d={sec + 1:.3f}",
@@ -835,7 +896,7 @@ def compose(src, hook, sub, out, tmp, label=None):
     g = gain_for(src)
     af = (f"volume={g}dB,afade=t=in:st=0:d=0.05,"
           f"afade=t=out:st={max(0, sec - 0.05):.3f}:d=0.05")
-    cmd += ["-filter_complex", ";".join(vf), "-map", "[o]", "-map", "1:a?",
+    cmd += ["-filter_complex", ";".join(vf), "-map", last_tag, "-map", "1:a?",
             "-af", af,
             "-c:v", "libx264", "-preset", "medium", "-crf", "19",
             "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
@@ -999,8 +1060,10 @@ def episode(sid, no, clips_dir, out_dir):
         dubbed = tmp / f"cut{n}_ko.mp4"
         if dub(src, dia_turns(c.get("prompt")), voices, dubbed, tmp, personas):
             src = dubbed
+        # ⭐ 마지막 컷에만 「다음 화 — 제목」 + 구독 안내를 겹친다
+        last_cut = (c is ep["cuts"][-1])
         d = compose(src, hook, c.get("subtitle"), tmp / f"cut{n}.mp4", tmp,
-                    label=label)
+                    label=label, end=end_card(doc, no) if last_cut else None)
         parts.append(d)
         print(f"  ✅ {n}컷 ← {files[n].name}  (소리 {gain_for(src):+.1f}dB)")
 

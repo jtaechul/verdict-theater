@@ -98,7 +98,41 @@ ck("아래 띠도 내내 살아 있다", not gone_bot,
 ck("자막은 그대로 조각마다 바뀐다 (띠와 달리 늘 켜 두면 안 된다)",
    len(subs) >= 3, f"모양이 {len(subs)}가지뿐")
 
-print("④ 원본 소리를 쓸 때는 클립을 자르지 않는다")
+print("④ 끝 안내 — 길이를 안 늘리고 마지막에만 겹친다")
+import json                                                  # noqa: E402
+DOC = json.loads((ROOT / "data" / "series" / "S001.json").read_text(encoding="utf-8"))
+big, small = S.end_card(DOC, 1)
+ck("다음 화 **제목**을 보여 준다 (그냥 '다음 화에 계속' 보다 세다)",
+   big != "다음 화에 계속" and len(big) > 6, big)
+ck("구독 안내는 한 줄만 (화면을 둘로 나누지 않는다)", "구독" in small, small)
+lbig, lsmall = S.end_card(DOC, len(DOC["episodes"]))
+ck("마지막 화는 완결 안내로 바뀐다", "완" in lbig, lbig)
+
+src4 = make(TMP, 5.0, 5.0, color="0x3a4050")
+plain = S.compose(src4, "", "마지막 대사.", TMP / "d.mp4", TMP)
+withend = S.compose(src4, "", "마지막 대사.", TMP / "e.mp4", TMP,
+                    end=(big, small))
+ck("끝 안내를 넣어도 길이가 안 늘어난다 (쇼츠 시청률 보호)",
+   abs(S.C.probe(withend)[2] - S.C.probe(plain)[2]) < 0.05,
+   f"{S.C.probe(plain)[2]:.2f} → {S.C.probe(withend)[2]:.2f}초")
+
+
+def ink_mid(mp4, t):
+    """그 시각 화면의 **가운데 아래**(끝 안내 자리)에 글자가 있는가."""
+    q = TMP / f"p{t}.png"
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", str(t), "-i", str(mp4),
+                    "-frames:v", "1", str(q)], check=True, capture_output=True)
+    im = Image.open(q).convert("L").crop(
+        (0, S.END_TOP, S.W, S.H - S.BAR_BOT))
+    return sum(im.histogram()[150:])
+
+
+ck("앞부분에는 끝 안내가 안 뜬다", ink_mid(withend, 1.0) < 2000,
+   f"{ink_mid(withend, 1.0)}픽셀")
+ck("마지막 2.6초에만 뜬다", ink_mid(withend, 4.4) > 8000,
+   f"{ink_mid(withend, 4.4)}픽셀")
+
+print("⑤ 원본 소리를 쓸 때는 클립을 자르지 않는다")
 _src = (ROOT / "src" / "shorts.py").read_text(encoding="utf-8")
 ck("keep_audio 면 trim_dead 를 건너뛴다", "if not keep_audio():" in _src)
 ck("-shortest 로 끊지 않는다 (길이를 우리가 정한다)",
