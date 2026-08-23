@@ -262,6 +262,11 @@ ok(!!dtc && /\/api\/blob\?key=voice%2F/.test(dtc.body.inputs.tckey || ''),
    '워크플로에 열쇠 주소를 넘긴다');
 ok(!!dtc && !JSON.stringify(dtc.body).includes('tk_good'),
    '열쇠 값 자체는 워크플로 입력에 안 싣는다 (실행 기록에 보이면 안 된다)');
+// 고르기 화면이 지금 엔진을 알 수 있어야 옛(제미나이) 견본을 걸러 낸다
+const vpj = await (await W._wk.fetch(new Request(
+  'https://admin.example.workers.dev/api/voicepick?t=2',
+  { headers: { Cookie: cookie } }), env2)).json();
+ok(vpj.engine === 'typecast', '열쇠가 담기면 고르기 화면도 타입캐스트로 안다');
 
 // ⑪ 유튜브에 올릴 글 — 화면에서 고친 그대로 올라가는가.
 //    여기도 깃허브에 쓰던 자리였다(403 의 두 번째 원인).

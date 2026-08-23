@@ -264,6 +264,18 @@ ck("말투 결을 고를 수 있다", 'id="vstyle"' in ep1)
 for _s in ("drama", "fierce", "dry", "deep"):
     ck(f"결 '{_s}' 를 고를 수 있다", f'value="{_s}"' in ep1)
 ck("클립 하나만 시험할 수 있다", 'id="cutone"' in ep1)
+# ⭐ 2026-08-23 운영자: "들어보기 언제까지 만들 거야 / 타입캐스트로 바꿨으면
+#    제대로 바뀌어야지." — 화면이 엔진을 알고, 옛 견본을 안 틀고, 실패를 말한다.
+ck("지금 엔진이 화면에 적힐 자리가 있다", 'id="engbadge"' in ep1)
+ck("들어보기 안내가 엔진 따라 바뀔 자리가 있다", 'id="audhint"' in ep1)
+_wk2 = (ROOT / "admin" / "worker.js").read_text(encoding="utf-8")
+ck("들어보기가 누른 뒤 만든 것만 받아들인다",
+   "new Date(j.at).getTime() < t0" in _wk2,
+   "옛 견본을 '다 됐다'며 틀어 주면 엔진을 바꿔도 옛 소리가 난다")
+ck("들어보기가 실패하면 실패라고 말한다",
+   "voice-sample.yml" in _wk2 and "만들기가 실패했습니다" in _wk2)
+ck("고르기 화면이 지금 엔진 것만 보여 준다",
+   "(x.engine || 'gemini') === j.engine" in _wk2)
 # ⚠️⚠️ 2026-08-22 — 압축파일을 다 올린 **뒤에** 이 오류를 봤다:
 #    GitHub 403: "Resource not accessible by personal access token"
 #    처음엔 "토큰 권한을 쓰기로 바꾸십시오" 라고 화면에 적었다가 크게 혼났다.

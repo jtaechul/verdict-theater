@@ -1334,9 +1334,12 @@ def audition(out_dir, only=""):
             print(f"  [{i:2d}/{len(jobs)}] ❌ {g} {label or v} — {str(e).splitlines()[0][:70]}")
     won = bill_flush("목소리 고르기")
     print(f"\n✅ {len(made)}개를 만들었다" + (f" · 값 {won:.0f}원" if won else ""))
+    # ⭐ 어느 엔진으로 만든 견본인지 줄마다 적는다 — 화면이 다른 엔진의
+    #    옛 견본을 현재 것인 양 보여 주지 않게 (2026-08-23 운영자 지적)
     (out_dir / "list.json").write_text(
         json.dumps([{"voice": v, "sex": g, "file": f.name,
-                     "label": (label if label != v else "")}
+                     "label": (label if label != v else ""),
+                     "engine": engine()}
                     for v, g, f, label in made],
                    ensure_ascii=False, indent=1), encoding="utf-8")
     return made

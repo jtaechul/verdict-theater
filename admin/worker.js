@@ -689,6 +689,11 @@ async function makeVoice() {
     msg.textContent = '부르지 못했습니다: ' + (e && e.message ? e.message : e);
     return;
   }
+  // ⚠️⚠️ 2026-08-23 운영자: "들어보기를 누르면 언제까지 만들 거야?"
+  //    예전엔 옛날에 만든 견본이 있으면 그걸 "다 됐다" 며 틀어 줬다 —
+  //    타입캐스트로 바꿔도 **옛 제미나이 소리**가 나왔다. 누른 시각보다
+  //    새로 만들어진 것만 받아들이고, 실패하면 실패라고 말한다.
+  const t0 = Date.now();
   let n = 0;
   const tick = async () => {
     n++;
@@ -696,6 +701,20 @@ async function makeVoice() {
       const q = await fetch('/api/voice?sid=' + encodeURIComponent(SID)
         + '&ep=' + SEP + st + '&t=' + Date.now());
       const j = await q.json();
+      if (j.ready && j.at && new Date(j.at).getTime() < t0 - 60000) j.ready = false;
+      if (!j.ready && n % 3 === 0) {
+        try {
+          const lr = await (await fetch('/api/lastrun?file=voice-sample.yml&t='
+                                        + Date.now())).json();
+          if (lr.found && new Date(lr.at).getTime() > t0 - 90000
+              && lr.conclusion === 'failure') {
+            msg.textContent = '❌ 만들기가 실패했습니다 — 목소리 열쇠나 한도 문제일 '
+              + '때가 많습니다. 아래 타입캐스트 열쇠 칸이 ✅ 인지 확인하고 '
+              + '다시 눌러 주십시오.';
+            return;
+          }
+        } catch (e) { /* 못 물어봤으면 계속 기다린다 */ }
+      }
       if (j.ready) {
         msg.textContent = '다 됐습니다. 눌러서 들어보십시오.';
         // ⭐ 2026-08-21 — 어떤 목소리로 만들었는지 **화면에 적는다.**
@@ -714,8 +733,9 @@ async function makeVoice() {
         return;
       }
     } catch (e) { /* 아직 안 됐다 */ }
-    if (n > 40) { msg.textContent = '오래 걸립니다. 잠시 뒤 다시 눌러 보십시오.'; return; }
-    msg.textContent = '만드는 중입니다… (' + (n * 5) + '초)';
+    if (n > 48) { msg.textContent = '4분이 지나도 안 됩니다 — 화면을 새로고침한 뒤 '
+      + '한 번만 다시 눌러 보십시오.'; return; }
+    msg.textContent = '만드는 중입니다… (' + (n * 5) + '초 · 보통 1~2분)';
     setTimeout(tick, 5000);
   };
   setTimeout(tick, 8000);
@@ -724,7 +744,7 @@ async function makeVoice() {
 // ⭐ 2026-08-22 — 목소리 26개를 다 만들어 보고, 들어 보고, 고른다.
 async function pickVoice() {
   const msg = document.getElementById('pickmsg');
-  msg.textContent = '만드는 중입니다… (26개라 3~5분 걸립니다)';
+  msg.textContent = '전부 만드는 중입니다… (3~5분 걸립니다)';
   try {
     const r = await fetch('/api/voicepick', { method: 'POST' });
     const j = await r.json();
@@ -769,10 +789,18 @@ async function tcSave() {
 
 async function tcStat() {
   const msg = document.getElementById('tcmsg');
-  if (!msg) return;
+  const badge = document.getElementById('engbadge');
+  const hint = document.getElementById('audhint');
   try {
     const j = await (await fetch('/api/tckey?t=' + Date.now())).json();
-    if (j.have) msg.textContent = j.alive
+    const tc = !!(j.have && j.alive);
+    if (badge) badge.innerHTML = tc
+      ? '지금 목소리 엔진: <b style="color:#4f9d69">타입캐스트</b> (한국어 전용 · 목소리 ' + j.n + '개)'
+      : '지금 목소리 엔진: <b>제미나이</b> — 아래에 타입캐스트 열쇠를 넣으면 갈아탑니다';
+    if (hint) hint.textContent = tc
+      ? '타입캐스트 목소리 전부를 같은 대사로 하나씩 만들어 들려드립니다 (글자 수만큼 크레딧, 3~5분).'
+      : '쓸 수 있는 제미나이 목소리 26개를 같은 대사로 하나씩 만들어 들려드립니다 (15원, 3~5분).';
+    if (msg && j.have) msg.textContent = j.alive
       ? '✅ 열쇠가 담겨 있습니다 (목소리 ' + j.n + '개) — 타입캐스트로 만듭니다.'
       : '⚠️ 열쇠가 담겨 있는데 타입캐스트가 거절합니다 — 새 열쇠를 넣어 주십시오.';
   } catch (e) { /* 조용히 */ }
@@ -784,8 +812,18 @@ async function pickShow(quiet) {
   let j = null;
   try { j = await (await fetch('/api/voicepick?t=' + Date.now())).json(); }
   catch (e) { return false; }
+  const engName = (j && j.engine === 'typecast') ? '타입캐스트' : '제미나이';
   if (!j || !j.ready) {
-    if (!quiet) msg.textContent = '아직 만든 것이 없습니다. [26개 다 들어보기] 를 누르십시오.';
+    if (!quiet) msg.textContent = '아직 만든 것이 없습니다. [전부 다 들어보기] 를 누르십시오.';
+    return false;
+  }
+  // ⚠️⚠️ 2026-08-23 운영자: "타입캐스트로 바꿨으면 제대로 바뀌어야지."
+  //    다른 엔진(제미나이) 시절에 만든 옛 견본을 현재 것인 양 보여 주고 있었다.
+  //    지금 엔진으로 만든 것만 보여 준다. 없으면 다시 만들라고 말한다.
+  j.list = (j.list || []).filter((x) => (x.engine || 'gemini') === j.engine);
+  if (!j.list.length) {
+    if (!quiet) msg.textContent = '지금은 ' + engName + ' 목소리를 씁니다 — '
+      + '이 엔진으로 만든 견본이 아직 없습니다. [전부 다 들어보기] 를 누르십시오.';
     return false;
   }
   const now = j.now || {};
@@ -1188,10 +1226,9 @@ function seriesRender() {
   // ⭐ 2026-08-22 — 목소리 자체를 바꿔 본다. 쓸 수 있는 것이 26개인데
   //    여태 두 개만 써 봤다. 전부 들어 보고 고른다.
   h += '<div class="upbox" style="margin-top:12px">'
-     + '<div class="uphint">목소리가 계속 어색하면 <b>목소리 자체</b>를 바꿔 '
-     + '보십시오. 쓸 수 있는 것이 <b>26개</b>인데 지금은 그중 둘만 쓰고 '
-     + '있습니다. 같은 대사를 26개 목소리로 하나씩 만들어 들려드립니다 '
-     + '(15원, 3~5분).</div>'
+     + '<div id="engbadge" class="uphint" style="margin-top:8px"></div>'
+     + '<div id="audhint" class="uphint">목소리가 계속 어색하면 목소리 자체를 '
+     + '바꿔 보십시오. 같은 대사를 모든 목소리로 하나씩 만들어 들려드립니다.</div>'
      + '<button class="ghost" onclick="pickVoice()">전부 다 들어보기</button>'
      + '<button class="ghost" onclick="pickShow()">이미 만든 것 보기</button>'
      + '<div id="pickmsg" class="uphint"></div>'
@@ -2488,7 +2525,10 @@ export default {
       //    업로드 실패를 손님이 알 길이 없었다. 이제 화면이 직접 결과를 보여준다.
       if (url.pathname === '/api/lastrun') {
         const file = url.searchParams.get('file') || '';
-        if (!WORKFLOWS.some((w) => w.file === file))
+        // ⚠️ 목소리 둘은 [실행] 카드 목록엔 없지만 상태는 물어볼 수 있어야 한다
+        //    (2026-08-23 — 들어보기가 실패해도 실패라고 말을 못 했다)
+        const EXTRA = ['voice-sample.yml', 'voice-pick.yml', 'shorts.yml'];
+        if (!WORKFLOWS.some((w) => w.file === file) && !EXTRA.includes(file))
           return Response.json({ error: '알 수 없는 작업' }, { status: 400 });
         const r = await gh(env,
           `/repos/${REPO}/actions/workflows/${file}/runs?per_page=1`).catch(() => null);
@@ -2887,6 +2927,10 @@ export default {
       }
 
       if (url.pathname === '/api/voicepick') {
+        // ⭐ 2026-08-23 운영자: "타입캐스트로 바꾸기로 했으면 제대로 바뀌어야지."
+        //    지금 엔진을 같이 알려 줘서, 화면이 **다른 엔진으로 만든 옛 견본**을
+        //    현재 것인 양 보여 주지 않게 한다.
+        const eng = (await blobText(env, 'voice/tckey')) ? 'typecast' : 'gemini';
         let rel = null;
         try { rel = await gh(env, `/repos/${REPO}/releases/tags/voicepick`); }
         catch { rel = null; }
@@ -2902,7 +2946,7 @@ export default {
             'Content-Type': 'audio/mpeg', 'Cache-Control': 'no-store' } });
         }
         const a = (rel && (rel.assets || []).find((x) => x.name === 'list.json')) || null;
-        if (!a) return Response.json({ ready: false });
+        if (!a) return Response.json({ ready: false, engine: eng });
         const r0 = await fetch(`${GH}/repos/${REPO}/releases/assets/${a.id}`, {
           headers: { 'Authorization': `Bearer ${env.GH_TOKEN}`,
                      'Accept': 'application/octet-stream',
@@ -2919,7 +2963,7 @@ export default {
                        'User-Agent': 'verdict-theater-admin' } });
           try { now = await r1.json(); } catch (e) { now = null; }
         }
-        return Response.json({ ready: true, list, now });
+        return Response.json({ ready: true, list, now, engine: eng });
       }
 
       // ⭐⭐ 2026-08-22 운영자: "미리보기도 없고, 제목·해시태그도 없고,

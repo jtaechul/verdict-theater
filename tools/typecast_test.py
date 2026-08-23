@@ -158,6 +158,8 @@ with tempfile.TemporaryDirectory() as d:
     ck("화면에 보일 한글 이름표가 있다",
        any(r.get("label") == "지수" for r in rows))
     ck("파일 이름은 영문이다", all(r["file"].isascii() for r in rows))
+    ck("줄마다 어느 엔진인지 적힌다 (옛 견본과 안 섞이게)",
+       all(r.get("engine") == "typecast" for r in rows))
 
 urllib.request.urlopen = _real
 os.environ.pop("TYPECAST_API_KEY", None)

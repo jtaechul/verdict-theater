@@ -104,11 +104,14 @@ jobs:
         run: |
           mkdir -p state
           # ⚠️ 저장소에 이미 있으면 그것이 최신이다. 릴리스 것으로 덮지 않는다.
-          if [ -s state/voice.json ]; then
+          # ⚠️ 2026-08-23 — 순서를 뒤집었다. 예전엔 저장소 파일이 이겼는데,
+          #    운영자가 관리자 페이지에서 **방금** 고른 것(주소로 온다)이
+          #    저장소의 옛 것에 밀려 반영이 안 됐다. 방금 고른 것이 이긴다.
+          if [ -n "${VOICE:-}" ] \
+             && curl -fsSL -H "x-vt-pass: ${ADMIN_PASS}" "$VOICE" -o state/voice.json; then
+            echo "관리자 페이지에서 골라 둔 것을 받았다: $(cat state/voice.json)"
+          elif [ -s state/voice.json ]; then
             echo "저장소에 골라 둔 것이 있다: $(cat state/voice.json)"
-          elif [ -n "${VOICE:-}" ]; then
-            curl -fsSL -H "x-vt-pass: ${ADMIN_PASS}" "$VOICE" -o state/voice.json \
-              && echo "관리자 페이지에서 골라 둔 것을 받았다: $(cat state/voice.json)"
           else
             python3 tools/release_file.py get voicepick chosen.json state/voice.json \
               || echo "골라 둔 것이 없다 — 정해 둔 목소리로 간다"
