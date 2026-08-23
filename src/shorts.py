@@ -826,7 +826,9 @@ def episode(sid, no, clips_dir, out_dir):
     personas = tts.pick_personas(doc.get("characters"))
     # 왼쪽 위 「시리즈 제목 · n화」 (2026-08-22 운영자 지시)
     label = f"{str(doc.get('title') or '').strip()} · {int(no)}화"
-    if tts.key():
+    if keep_audio():
+        pass          # 구글 소리 그대로 — "갈아 끼운다" 인사말을 찍으면 거짓말이 된다
+    elif tts.key():
         print(f"  🎙 목소리를 갈아 끼운다 — {tts.engine_note()}")
         # ⚠️ 위 한 줄은 **기본값**이다. 실제 배정은 배역 나이에 따라 다르다.
         #    (2026-08-22 — 머리말은 Erinome·Iapetus 라고 적혔는데 실제로는
@@ -914,6 +916,8 @@ def one(clip, sid, no, cut, hook, sub, out_dir):
     if not turns:
         print("  ⚠️ 대사를 못 찾아 **원래 소리를 그대로 쓴다.**\n"
               "     --sid S001 --no 1 --cut 1 처럼 어느 컷인지 알려 주면 갈아 끼운다")
+    elif keep_audio():
+        print("  🔊 구글이 만든 소리를 그대로 둔다 (KEEP_AUDIO)")
     elif not tts.key():
         print("  ⚠️ 목소리 열쇠가 없어 **원래 소리를 그대로 쓴다** —\n"
               "     GEMINI_API_KEY 나 GOOGLE_TTS_KEY 가 있어야 한다")

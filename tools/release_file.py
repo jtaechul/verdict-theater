@@ -15,6 +15,7 @@
 """
 import json
 import os
+import pathlib
 import sys
 import urllib.error
 import urllib.request
@@ -68,6 +69,10 @@ def get(tag, name, dest):
                   f"(있는 것: {[x['name'] for x in others] or '없음'})", file=sys.stderr)
             return 1
     data = call(f"{repo()}/releases/assets/{a['id']}", raw=True)
+    # ⚠️ 2026-08-23 — 받을 폴더(build/)가 아직 없으면 여기서 통째로 죽었다.
+    #    그 바람에 릴리스에 멀쩡히 있는 인물 카드를 못 받고 매번 새로
+    #    만들어(397원) 돈이 샜다. 폴더는 만들어 주면 되는 일이다.
+    pathlib.Path(dest).parent.mkdir(parents=True, exist_ok=True)
     with open(dest, "wb") as f:
         f.write(data)
     print(f"✅ {tag}/{a['name']} → {dest} ({len(data):,} 바이트)")
