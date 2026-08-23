@@ -47,6 +47,21 @@ LIPS = ("Everyone who speaks keeps their lips moving continuously and clearly "
 FRAME = ("Center-framed medium waist shot with the people kept close to the middle "
          "of the frame, because the sides will be cropped away.")
 
+# ⭐ 배경은 **최대한 흐리게** (2026-08-23 운영자 확인 — 파이프라인 정리 때 정한 것을
+#    내가 프롬프트에 안 넣어 배경이 아주 선명하게 나왔다).
+#
+#    왜 흐려야 하나 — 보기 좋아서만이 아니다.
+#      ① 컷마다 배경 소품이 조금씩 달라지는 것이 눈에 안 띈다 (일관성이 가장 깨지기
+#         쉬운 자리가 배경이다)
+#      ② 세로 화면의 4:3 띠로 자를 때 배경이 잘려 나가는 것이 덜 티난다
+#      ③ 시선이 인물 얼굴로 모인다 — 우리 이야기는 표정으로 간다
+#
+#    ⚠️ 대본의 STYLE 줄 맨 끝에 'shallow depth of field' 가 파묻혀 있었는데
+#       그것만으로는 전혀 안 먹었다. 짧고 강하게, 따로 한 줄로 준다.
+BLUR = ("The background is strongly out of focus and softly blurred throughout, "
+        "heavy bokeh, only the people are sharp and in focus; keep background "
+        "shapes as soft indistinct colour masses with no readable detail.")
+
 DROP = ("DIALOGUE", "VOICE", "AUDIO")
 
 
@@ -97,7 +112,7 @@ def video_prompt(cut_prompt, sec=None):
     if sec:
         body = re.sub(r"\b\d+-second single continuous take",
                       f"{int(sec)}-second single continuous take", body)
-    return _tail(body.rstrip(), FRAME, LIPS, NO_TEXT)
+    return _tail(body.rstrip(), FRAME, BLUR, LIPS, NO_TEXT)
 
 
 def still_prompt(cut_prompt):
@@ -110,7 +125,7 @@ def still_prompt(cut_prompt):
         body = re.sub(pat, rep, body, flags=re.I)
     body = re.sub(r"\b\d+-second single continuous take\.?", "A single still frame.", body)
     body = re.sub(r"one single continuous take, no cut, no scene change, ", "", body)
-    return _tail(body.rstrip(), FRAME, NO_TEXT)
+    return _tail(body.rstrip(), FRAME, BLUR, NO_TEXT)
 
 
 # ⚠️⚠️ 2026-08-23 — Veo 가 받는 컷 길이는 **4·6·8초 셋뿐이다.**

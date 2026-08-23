@@ -135,8 +135,21 @@ if posts:
     ck("화면 글자 막는 문구가 **맨 끝**에 있다",
        pr.rstrip().endswith(vprompt.NO_TEXT), pr[-90:])
     ck("가운데로 몰아 찍으라고 시킨다 (좌우가 잘린다)", vprompt.FRAME in pr)
+    # ⚠️ 2026-08-23 — "배경은 최대한 블러" 는 파이프라인 정리 때 정해 놓고
+    #    프롬프트에 안 넣어 배경이 아주 선명하게 나왔다. 다시 빠지지 않게 못박는다.
+    ck("배경을 흐리게 하라고 시킨다", vprompt.BLUR in pr, pr[-400:])
     ck("머리말의 초가 실제 길이와 같다", f"{WANT_SEC}-second" in pr,
        pr.splitlines()[0][-40:])
+
+    # 그림(시작 프레임)이 선명하면 영상도 선명해진다 — 그림 쪽에도 있어야 한다
+    sp = vprompt.still_prompt(C1["prompt"])
+    print("③ 시작 그림 지시문도 같은 규칙을 지키는가")
+    ck("그림에도 배경을 흐리게 하라고 시킨다", vprompt.BLUR in sp)
+    ck("그림에도 화면 글자 막는 문구가 맨 끝에 있다",
+       sp.rstrip().endswith(vprompt.NO_TEXT), sp[-90:])
+    ck("그림에도 한국어 대사가 안 남았다",
+       not [ch for ch in sp if "\uac00" <= ch <= "\ud7a3"],
+       "".join(ch for ch in sp if "\uac00" <= ch <= "\ud7a3")[:40])
 
 # ⑥ 장부
 print("② 쓴 돈이 장부에 남는가")
