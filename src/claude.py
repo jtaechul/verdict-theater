@@ -597,86 +597,67 @@ class Claude:
 
 
 # ── 어느 쪽을 쓸지 고르기 ────────────────────────────────
-def writer(max_calls=24, prefer=None):
-    """대본·심사·채점에 쓸 모델을 고른다.
+#
+# ⭐ 2026-08-23 운영자 지시 — "클로드 꺼. 모두 제미나이 API 가 저렴하니까 제미나이로 진행해."
+#
+#    글·심사·채점 전부 제미나이 하나로 간다. 잠금은 **두 겹**이다.
+#      ① 이 파일 — writer()/grader() 가 클로드를 아예 돌려주지 않는다.
+#      ② 워크플로 — CLAUDE_API_KEY 를 러너에 넘기지 않는다. 금고에 열쇠가
+#         남아 있어도 코드가 그 값을 볼 수조차 없다.
+#    한 겹이 실수로 풀려도 다른 겹이 막는다. tools/no_claude_test.py 가
+#    매번 두 겹이 다 살아 있는지 검사한다 (값 0원).
+#
+#    되돌리려면 두 겹을 **둘 다** 되살려야 한다 — 이 파일의 writer()/grader() 옛 갈래를
+#    git 이력에서 되돌리고, 워크플로에 CLAUDE_API_KEY 를 다시 넘긴다. 한쪽만 풀면
+#    안 돌아간다. 일부러 그렇게 해 뒀다 — 돈이 나가는 전환이라 실수로 켜지면 안 된다.
+#
+#    아래 CLAUDE_OFF 는 '지금 꺼져 있다'는 표시다. 검사기가 이 값을 본다.
+CLAUDE_OFF = True
 
-    고르는 순서
-      1. VT_WRITER 환경변수 (claude / gemini) — 워크플로 버튼에서 넘어온다
-      2. CLAUDE_API_KEY 가 있으면 Claude
-      3. 없으면 Gemini
 
-    글은 Claude, 그림과 소리는 Gemini. 둘 다 없으면 여기서 멈춘다."""
+def _gemini(max_calls):
+    """제미나이를 잡아 온다. 열쇠가 없으면 여기서 멈춘다 (값 0원)."""
     import llm
+    if not os.environ.get("GEMINI_API_KEY", "").strip():
+        raise llm.LLMError(
+            "GEMINI_API_KEY 가 없다.\n"
+            "  Settings → Secrets and variables → Actions 에 GEMINI_API_KEY 를 등록하라.\n"
+            "  (결제가 붙은 프로젝트의 열쇠여야 한다 — 무료 등급은 그림·영상 한도가 0이다)"
+        )
+    return llm.Gemini(max_calls=max_calls), "gemini"
 
+
+def _refuse(where):
+    return ClaudeError(
+        f"클로드는 꺼져 있다 ({where} 에서 claude 를 지정했다).\n"
+        "  2026-08-23 운영자 지시로 글·심사·채점 전부 제미나이만 쓴다.\n"
+        "  되돌리려면 src/claude.py 의 CLAUDE_OFF 와 워크플로의 CLAUDE_API_KEY 를 둘 다 되살려라."
+    )
+
+
+def writer(max_calls=24, prefer=None):
+    """대본을 쓸 모델을 고른다 — **언제나 제미나이**다.
+
+    예전에는 CLAUDE_API_KEY 가 있으면 말없이 클로드로 갔다. 그게 8월 18일
+    대본 작업에서 실제로 돌았고, 장부에는 어느 쪽이었는지 남지도 않았다.
+    이제 고를 여지를 없앤다. claude 를 대놓고 지정하면 조용히 넘어가지 않고
+    **눈에 보이게 멈춘다** — 조용한 갈아타기가 바로 지난번 문제였다."""
     want = (prefer or os.environ.get("VT_WRITER", "")).strip().lower()
-    has_claude = bool((os.environ.get("CLAUDE_API_KEY", "")
-                       or os.environ.get("ANTHROPIC_API_KEY", "")).strip())
-    has_gemini = bool(os.environ.get("GEMINI_API_KEY", "").strip())
-
-    if want == "gemini" or (not want and not has_claude):
-        if not has_gemini:
-            raise llm.LLMError(
-                "대본을 쓸 열쇠가 하나도 없다.\n"
-                "  CLAUDE_API_KEY 또는 GEMINI_API_KEY 를 Secrets 에 등록하라."
-            )
-        return llm.Gemini(max_calls=max_calls), "gemini"
-
-    if not has_claude:
-        raise ClaudeError("CLAUDE_API_KEY 가 없는데 claude 를 쓰라고 지정됐다.")
-    return Claude(max_calls=max_calls), "claude"
+    if want == "claude":
+        raise _refuse("writer")
+    return _gemini(max_calls)
 
 
 def grader(max_calls=24, prefer=None):
-    """**채점·심사**에 쓸 모델을 고른다. 글을 쓰는 writer() 와 일부러 나눠 놨다.
+    """채점·심사에 쓸 모델을 고른다 — **언제나 제미나이**다.
 
-    왜 나눴나 (2026-08-10 손님 지시: "채점은 Gemini api로 하고, 대본 생성만 Claude api로")
-        글을 쓰는 일과 점수를 매기는 일은 값이 크게 다르다.
-          · 대본 쓰기 — 이야기 품질이 채널의 전부다. 비싼 모델(Claude Opus)을 쓴다.
-          · 채점·심사 — '몇 점인지 + 짧은 이유'만 내면 된다. 비싼 모델을 쓸 이유가 없다.
-        한 편 만들 때 채점·심사가 모델 호출의 **절반 이상**(심사 10 + 채점 1)을 차지하는데,
-        그게 전부 가장 비싼 모델로 돌고 있었다. 그쪽만 값싼 Gemini 로 옮긴다.
-
-    고르는 순서
-      1. VT_GRADER 환경변수 (gemini / claude) — 명시하면 그대로 따른다
-      2. GEMINI_API_KEY 가 있으면 Gemini            ← 보통 여기
-      3. 없으면 Claude 로 되돌아간다 (멈추지 않는다)
-
-    ⚠️ 3번이 중요하다. Gemini 열쇠가 등록돼 있지 않아도 **일이 멈추면 안 된다.**
-       조용히 Claude 로 돌아가고, 부른 쪽에서 어느 쪽을 썼는지 화면에 찍는다.
-    """
-    import llm
-
+    ⚠️ 예전 이 자리에는 "제미나이가 대답이 없으면 조용히 클로드로 돌아간다"는
+       길이 있었다. 일은 안 멈추지만 **묻지도 않고 값비싼 쪽으로 돈이 나갔다.**
+       그 길을 없앴다. 제미나이가 안 되면 그 사실이 그대로 드러나야 한다."""
     want = (prefer or os.environ.get("VT_GRADER", "")).strip().lower()
-    has_claude = bool((os.environ.get("CLAUDE_API_KEY", "")
-                       or os.environ.get("ANTHROPIC_API_KEY", "")).strip())
-    has_gemini = bool(os.environ.get("GEMINI_API_KEY", "").strip())
-
     if want == "claude":
-        if not has_claude:
-            raise ClaudeError("CLAUDE_API_KEY 가 없는데 claude 로 채점하라고 지정됐다.")
-        return Claude(max_calls=max_calls), "claude"
-
-    if has_gemini:
-        g = llm.Gemini(max_calls=max_calls)
-        # ⚠️ 열쇠가 '있다'와 '쓸 수 있다'는 다르다. 열쇠가 틀렸거나 Gemini 가 잠깐
-        #    맛이 갔을 때, 채점 때문에 제작 전체가 죽으면 안 된다. 여기서 한 번
-        #    실제로 물어보고, 대답이 없으면 조용히 Claude 로 돌아간다.
-        try:
-            g.pick("pro")
-            return g, "gemini"
-        except Exception as e:
-            if not has_claude:
-                raise
-            print(f"    (Gemini 로 채점하려 했으나 응답이 없다: {e}"
-                  f"\n     → Claude 로 채점한다. 값은 더 들지만 일은 멈추지 않는다)")
-
-    if has_claude:
-        return Claude(max_calls=max_calls), "claude"
-
-    raise llm.LLMError(
-        "채점할 열쇠가 하나도 없다.\n"
-        "  GEMINI_API_KEY 또는 CLAUDE_API_KEY 를 Secrets 에 등록하라."
-    )
+        raise _refuse("grader")
+    return _gemini(max_calls)
 
 
 if __name__ == "__main__":

@@ -22,6 +22,14 @@ from contextlib import redirect_stdout
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 import tts                                                   # noqa: E402
+import cost                                                  # noqa: E402
+
+# ⚠️ 2026-08-23 발견 — 이 검사는 "값 0원" 이라고 적혀 있는데 tts.say() 가
+#    **진짜 장부(state/spend.json)에 돈을 적고 있었다.** 검사 한 번에 200원쯤
+#    가짜로 쌓였고, 그게 한 달 한도를 갉아먹어 언젠가 진짜 제작을 막는다.
+#    장부를 임시 파일로 돌려놓는다. (다른 검사기도 같은 사고를 안 내는지
+#    tools/checkall.sh 를 돌린 뒤 git status 로 확인한다)
+cost.LEDGER = pathlib.Path(tempfile.mkdtemp(prefix="ledger-")) / "spend.json"
 
 bad = 0
 

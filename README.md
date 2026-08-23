@@ -51,7 +51,6 @@
 
 | 이름 | 언제 필요한가 | 어디서 받나 |
 |---|---|---|
-| `CLAUDE_API_KEY` | **대본·소재 심사·채점** | [console.anthropic.com](https://console.anthropic.com) |
 | `GEMINI_API_KEY` | **이미지·음성** (대본 대체용으로도 가능) | [aistudio.google.com](https://aistudio.google.com) → Get API key |
 | `YOUTUBE_CLIENT_ID` | 업로드 | STARTGUIDE 3-2 |
 | `YOUTUBE_CLIENT_SECRET` | 업로드 | 〃 |
@@ -108,7 +107,8 @@
 **글은 Claude, 그림과 소리는 Gemini.** 지침서 0번이 "대본 생성 프롬프트가 이 사업의 유일한
 핵심 자산"이라고 못 박는다. 이 사업은 대본 품질이 전부다. 긴 한국어 감정 서사와 절제된 대사는
 Claude 쪽이 낫고, 그림과 목소리는 Claude 가 못 만든다. 그래서 나눴다.
-`CLAUDE_API_KEY` 가 없으면 대본도 Gemini 가 쓴다 — 파이프라인이 멈추지 않는다.
+글·소재 심사·채점·그림·목소리 **전부 Gemini 하나로** 간다.
+(2026-08-23 운영자 지시로 Claude API 를 껐다. `tools/no_claude_test.py` 가 매번 다시 새지 않는지 검사한다.)
 
 **모델 이름을 코드에 박지 않는다.** 모델명은 자주 바뀐다. 박아두면 어느 날 갑자기
 파이프라인이 죽는데 운영자는 원인을 알 수 없다. 실행할 때마다 API에 "지금 쓸 수 있는 모델"을

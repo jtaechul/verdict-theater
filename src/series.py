@@ -1799,7 +1799,7 @@ def main():
     ap.add_argument("--check", default="", help="이미 만든 시리즈만 다시 검사 (0원)")
     ap.add_argument("--repair", action="store_true",
                     help="--check 와 함께 — 고친 결과를 파일에 **저장**한다 (0원)")
-    ap.add_argument("--writer", default="", help="claude / gemini (기본: gemini)")
+    ap.add_argument("--writer", default="", help="지금은 제미나이 하나뿐이다")
     args = ap.parse_args()
 
     SERIES_DIR.mkdir(parents=True, exist_ok=True)
@@ -1838,7 +1838,7 @@ def main():
     print(f"  {row.get('one_line', '')[:70]}")
 
     # ⭐ 글은 제미나이가 쓴다 (2026-08-18 운영자 지시)
-    llm, who = writer(max_calls=6, prefer=(args.writer or "gemini"))
+    llm, who = writer(max_calls=6, prefer="gemini")
     body = prompts.fill(prompts.load("series_gen"), CASE_JSON=case_json(row))
     # ⚠️ 2026-08-20 — 대사가 길어지고 caption 칸이 생기면서 16화 JSON 이
     #    32,768 토큰을 넘어 잘렸다. 16화 × 5컷 × (프롬프트 7줄 + 자막 2종)

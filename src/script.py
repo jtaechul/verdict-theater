@@ -751,13 +751,13 @@ def _make_hook_only(ep, prefer):
 
 
 def _shorts_retry(doc, prefer):
-    """쇼츠는 대본과 달리 짧고 싸다. 한 곳이 실패하면 다른 곳으로 한 번 더 해본다.
+    """쇼츠는 대본과 달리 짧고 싸다. 한 번 실패하면 한 번 더 해본다.
 
-    대본 품질은 Claude 로 지켜야 하지만, 쇼츠는 이미 완성된 대본에서 구간을 골라내는
-    기계적인 일이다. 여기서 어느 쪽이 만들었는지는 결과에 차이를 만들지 않는다."""
-    other = "gemini" if (prefer or "claude") != "gemini" else "claude"
+    ⚠️ 예전에는 여기서 **다른 회사 모델(클로드)로 갈아탔다.** 2026-08-23 부터
+       제미나이만 쓰므로 갈아탈 곳이 없다. 대신 그냥 한 번 더 부른다 —
+       모델은 같은 물음에도 매번 다르게 답하므로 재시도 자체에 값어치가 있다."""
     try:
-        alt, who = writer(max_calls=3, prefer=other)
+        alt, who = writer(max_calls=3, prefer="gemini")
         print(f"  {who} 로 한 번 더 시도한다")
         return make_shorts(alt, doc)
     except (LLMError, ClaudeError) as e:
@@ -804,8 +804,8 @@ def main():
     ap.add_argument("--case", default="", help="판례일련번호를 지정")
     ap.add_argument("--max-calls", type=int, default=24, help="모델 호출 상한")
     ap.add_argument("--dry-run", action="store_true", help="모델 호출 없이 배관만 시험")
-    ap.add_argument("--writer", default="", choices=["", "claude", "gemini"],
-                    help="대본을 쓸 곳. 비우면 CLAUDE_API_KEY 가 있을 때 claude")
+    ap.add_argument("--writer", default="", choices=["", "gemini"],
+                    help="대본을 쓸 곳. 지금은 제미나이 하나뿐이다")
     ap.add_argument("--hook-only", default="", metavar="EP002",
                     help="도입 훅(앞 22초) 대사만 다시 쓴다. 나머지 막은 그대로 둔다")
     ap.add_argument("--shorts-only", default="", metavar="EP001",

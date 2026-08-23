@@ -45,9 +45,7 @@ const WORKFLOWS = [
   { file: 'series.yml', name: '2. 시리즈 대본 만들기',
     desc: '판례 하나를 30초짜리 16화로 쪼갭니다. 매일 한 편씩 내고 16일이면 '
         + '8분 롱폼이 공짜로 나옵니다 (글만 쓰므로 수백 원)',
-    inputs: [{ k: 'case', label: '판례 번호 (비우면 자동)', type: 'text', v: '' },
-             { k: 'writer', label: '누가 쓸까요', type: 'select',
-               opts: ['Gemini', 'Claude'] }] },
+    inputs: [{ k: 'case', label: '판례 번호 (비우면 자동)', type: 'text', v: '' }] },
 
   { file: 'script.yml', name: '2. 대본 만들기',
     desc: '소재를 골라 대본을 씁니다 (회차당 수백 원)',
@@ -57,13 +55,17 @@ const WORKFLOWS = [
                       { v: '도입 훅만 다시 쓰기 (앞 22초 · 약 150원)',
                         t: '도입 훅만 다시 쓰기 (약 150원)' }] },
              { k: 'episode', label: "회차 ('쇼츠만 다시' 일 때 · 예: EP002)", type: 'text', v: '' },
-             { k: 'writer', label: '누가 쓸까요', type: 'select',
-               opts: ['자동 (Claude 우선)', 'Claude', 'Gemini'] },
              { k: 'gate_limit', label: '살펴볼 소재 수', type: 'text', v: '10' },
              { k: 'budget', label: '값 상한(원)', type: 'text', v: '3000' }] },
 
   { file: 'stats.yml', name: '4. 성과 보기',
     desc: '올린 영상이 얼마나 보였는지 확인합니다 (0원)',
+    inputs: [] },
+
+  // ⭐ 2026-08-23 — 열쇠를 갈아끼운 뒤 **돈 쓰기 전에** 쓸 수 있는 열쇠인지 본다.
+  //    계정은 유료인데 담긴 열쇠가 결제 안 붙은 것이어서 그림이 통째로 막힌 적이 있다.
+  { file: 'keycheck.yml', name: '0. 제미나이 열쇠 점검',
+    desc: '지금 담긴 열쇠로 그림·영상을 만들 수 있는지 확인합니다 (0원)',
     inputs: [] },
 
   // hidden — 실행 목록에는 안 보이고 '영상 보기' 화면의 버튼만 부른다.
@@ -1895,14 +1897,14 @@ const NEXT_RUN = {
   collect: { file: 'collect.yml', name: '재판 기록 모으기',
              inputs: { max_calls: '180', topic: '전부', queries: '', pages: '3' } },
   gate:    { file: 'script.yml', name: '소재 살펴보기',
-             inputs: { mode: '소재 심사만', writer: '자동 (Claude 우선)', gate_limit: '10',
+             inputs: { mode: '소재 심사만', gate_limit: '10',
                        budget: '1000' } },
   script:  { file: 'script.yml', name: '대본 만들기',
-             inputs: { mode: '둘다', writer: '자동 (Claude 우선)', gate_limit: '10',
+             inputs: { mode: '둘다', gate_limit: '10',
                        budget: '3000' } },
   // 회차를 안 보낸다 — 워크플로가 만들다 만 것을 알아서 찾는다
   resume:  { file: 'script.yml', name: '이어서 마저 만들기',
-             inputs: { mode: '이어서 마저 만들기', writer: '자동 (Claude 우선)',
+             inputs: { mode: '이어서 마저 만들기',
                        budget: '3000' } },
   // ⚠️ 2026-08-16 — 회차 칸이 고르는 칸(choice)이 되면서 빈 값('')은
   //    깃허브가 거절한다. 목록에 있는 '자동'을 그대로 보낸다

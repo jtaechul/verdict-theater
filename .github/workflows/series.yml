@@ -24,14 +24,6 @@ on:
         description: '판례 번호 (비우면 점수가 가장 높은 것으로 자동)'
         required: false
         default: ''
-      writer:
-        description: '누가 쓸까요'
-        required: true
-        default: 'Gemini'
-        type: choice
-        options:
-          - 'Gemini'
-          - 'Claude'
 
 permissions:
   contents: write
@@ -54,12 +46,10 @@ jobs:
       - name: 시리즈 대본 만들기
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
-          VT_WRITER: ${{ inputs.writer }}
         run: |
           set -o pipefail
           CASE="${{ inputs.case }}"
-          W=$(echo "${{ inputs.writer }}" | tr 'A-Z' 'a-z')
+          W=gemini   # 클로드는 꺼져 있다 (2026-08-23)
           # 표식 파일로 돌 때는 버튼 값이 비어 있으므로 파일에서 읽는다
           if [ "${{ github.event_name }}" = "push" ]; then
             CASE=$(head -1 .trigger/series 2>/dev/null | tr -d '\r' | xargs || true)
@@ -67,7 +57,6 @@ jobs:
               ''|*[!0-9]*) echo "표식에 판례 번호가 없습니다 — 자동으로 고릅니다"; CASE="" ;;
               *) echo "표식에 적힌 판례: $CASE" ;;
             esac
-            W=gemini
           fi
           python3 src/series.py --case "$CASE" --writer "$W" 2>&1 | tee series.log
 

@@ -66,6 +66,13 @@ jobs:
       - name: 빠뜨린 준비물이 없는가
         run: python3 tools/deps_order_check.py
 
+      # ⭐ 2026-08-23 운영자 지시로 클로드를 껐다. 여섯 군데를 막았는데
+      #    한 군데만 되살아나도 다시 돈이 샌다. 매번 기계가 본다.
+      - name: 클로드로 가는 길이 다 막혔는가
+        run: |
+          python3 tools/no_claude_test.py
+          python3 tools/no_claude_test.py --selftest
+
       - name: 파이썬 문법
         run: python3 -m py_compile src/*.py tools/*.py
 

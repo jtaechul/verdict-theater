@@ -938,7 +938,6 @@ Actions가 렌더링 → 유튜브 비공개 업로드 → stage: uploaded_priva
 아이폰 사파리에서 저장소 → Settings → Secrets and variables → Actions 에 등록.
 
 ```
-CLAUDE_API_KEY          ★ 대본·소재 심사·채점 (글)
 GEMINI_API_KEY          이미지·음악·TTS 생성 (그림과 소리). 대본 대체용으로도 가능
 LAW_OC                  법제처 인증키 (panryetheater) — ⚠️ 등록 불필요. 아래 설명 참조
 YOUTUBE_CLIENT_ID
@@ -949,7 +948,10 @@ NOTIFY_WEBHOOK          실패 알림용 (선택)
 
 - ⚠️ **글은 Claude, 그림과 소리는 Gemini 로 나눈다.** 0번이 "대본 프롬프트가 유일한 핵심 자산"
   이라고 못 박듯 이 사업은 대본 품질이 전부다. 긴 한국어 감정 서사·절제된 대사는 Claude 가 낫고,
-  그림과 목소리는 Claude 가 만들지 못한다. `CLAUDE_API_KEY` 가 없으면 대본도 Gemini 가 쓴다 —
+  ⭐ 2026-08-23 운영자 지시로 **Claude API 를 껐다.** 글·심사·채점·그림·목소리
+  전부 `GEMINI_API_KEY` 하나로 간다 — 값이 더 싸기 때문이다.
+  잠금은 두 겹이다: ① `src/claude.py` 의 writer()/grader() 가 클로드를 안 돌려준다
+  ② 워크플로가 `CLAUDE_API_KEY` 를 러너에 안 넘긴다. `tools/no_claude_test.py` 가 매번 본다 —
   파이프라인이 멈추지는 않는다. 워크플로 버튼에서 어느 쪽으로 쓸지 고를 수 있다.
 - ⚠️ **`LAW_OC` 는 Secrets 에 넣지 않아도 된다.** 법제처가 누구에게나 발급하는 공개 API의
   식별자이고 이 문서 5번에 평문으로 적혀 있다. 감출 것이 없는데 등록을 깜빡하면 수집이 멈춘다.

@@ -96,7 +96,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=10, help="이번에 평가할 판례 수")
     ap.add_argument("--max-calls", type=int, default=0, help="모델 호출 상한 (기본: limit + 2)")
-    ap.add_argument("--writer", choices=["claude", "gemini"], default=None,
+    ap.add_argument("--writer", choices=["gemini"], default=None,
                     help="심사할 곳. 비우면 값싼 쪽(Gemini)으로 채점한다")
     args = ap.parse_args()
 
@@ -120,7 +120,7 @@ def main():
     #    (2026-08-10 손님: "채점은 Gemini api로 하고, 대본 생성만 Claude api로")
     #    한 번 누를 때 판례 10건을 매기느라 이 자리에서만 모델을 10번 부른다 —
     #    한 편에 드는 모델 호출의 절반이 넘는데, 그게 전부 가장 비싼 값으로 돌고 있었다.
-    #    ⚠️ 버튼에서 만들 곳을 직접 고른 경우(--writer)는 그 뜻을 존중해 그대로 따른다.
+    #    ⚠️ 2026-08-23 부터 양쪽 다 제미나이라 어느 길로 가도 결과는 같다.
     try:
         pick = (grader if not args.writer else writer)
         llm, who = pick(max_calls=args.max_calls or (args.limit + 2), prefer=args.writer)

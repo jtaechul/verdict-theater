@@ -1,0 +1,41 @@
+name: 0. 제미나이 열쇠 점검 (값 0원)
+
+# 금고에 든 GEMINI_API_KEY 가 **결제가 붙은 열쇠인지** 확인한다.
+#
+# 왜 필요한가 (2026-08-23)
+#   그림·영상이 안 만들어져서 원인을 찾았더니, 계정은 유료인데 시스템에 담긴
+#   열쇠가 **결제 안 붙은 다른 프로젝트 것**이었다. 글자 생성은 멀쩡히 되니까
+#   "열쇠는 살아 있다" 고만 보였고, 그림을 실제로 만들어 보기 전에는 아무도 몰랐다.
+#   열쇠를 갈아끼운 뒤 **돈 쓰기 전에** 확인할 길이 있어야 한다.
+#
+# 값이 왜 0원인가
+#   그림 모델에 "그림 말고 글자로 답해라(responseModalities: TEXT)" 라고 시킨다.
+#   한도(quota)는 **모델 단위**로 걸리므로, 무료 등급이면 이 요청도 똑같이 429 로
+#   막힌다 — 막히면 값은 당연히 0원이다. 통과하면 글자 몇 자 값(0.01원 미만)만 든다.
+#   Veo(영상)는 싸게 찔러볼 방법이 없다. 그림이 통과하면 결제가 붙은 것이므로
+#   영상도 같이 열린다 — 그 사실을 화면에 적어 준다.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keycheck
+  cancel-in-progress: true
+
+jobs:
+  keycheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 열쇠 점검
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python3 tools/gemini_key_check.py | tee -a "$GITHUB_STEP_SUMMARY"
