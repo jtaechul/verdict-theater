@@ -142,5 +142,11 @@
     "kind": "목소리",
     "krw": 138,
     "note": "314자(어림) · gemini-2.5-pro-preview-tts S001 1화"
+  },
+  {
+    "date": "2026-08-23",
+    "kind": "목소리",
+    "krw": 52,
+    "note": "118자(어림) · gemini-2.5-flash-preview-tts S001 1화"
   }
 ]

@@ -112,7 +112,9 @@ print("\n③ 가짜 목소리로 **진짜 갈아 끼워** 본다 (열쇠 없이)
 real = [T.say, T.key]
 
 
-def fake_say(text, voice="", rate=1.0, pitch=0.0, out=None):
+# ⚠️ 진짜 say() 와 같은 모양이어야 한다 — 진짜에 who(배역)가 생겼다 (2026-08-22)
+def fake_say(text, voice="", rate=1.0, pitch=0.0, out=None, style=None,
+             who=None):
     """가짜 목소리 — 글자 수만큼 긴 '삐' 소리."""
     sec = max(0.4, len(text) * 0.10 / max(0.5, float(rate)))
     p = Path(out or (tmp / "f.wav"))
@@ -196,7 +198,7 @@ _rs, _rk = T.say, T.key
 T.key = lambda: "TEST"
 
 
-def _spy(text, voice="", rate=1.0, pitch=0.0, out=None):
+def _spy(text, voice="", rate=1.0, pitch=0.0, out=None, style=None, who=None):
     _calls.append(round(float(rate), 3))
     return fake_say(text, voice, rate, pitch, out)
 

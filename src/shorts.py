@@ -56,6 +56,11 @@ FONT_H = ROOT / "assets" / "fonts" / "NanumGothic_ExtraBold.ttf"
 W, H = 1080, 1920                # 쇼츠 화면
 VIDEO_Y, VIDEO_H = 520, 810      # 4:3 영상이 앉는 자리
 MARK_Y, MARK_SIZE = 40, 38       # 우측 상단 채널 이름
+# ⭐ 2026-08-22 운영자: "몇 화인지, 드라마 제목이 뭔지가 안 나와 있어.
+#    화면 최상단 좌측이나 이런 곳에 들어와야 될 거 같아."
+#    → 왼쪽 위에 「시리즈 제목 · n화」 를 작게 넣는다. 채널 이름(오른쪽 위)과
+#      부딪히지 않게, 길면 글씨를 줄이고 그래도 길면 …로 자른다.
+LABEL_SIZE, LABEL_MIN = 34, 24   # 좌측 상단 제목·회차
 # 후킹은 **상자에 꽉 차게** 키운다 — 아래 HOOK_MAX 부터 줄여 가며 맞춘다
 HOOK_TOP, HOOK_BOT = 150, 470
 HOOK_MAX, HOOK_MIN, HOOK_GAP = 132, 60, 1.18
@@ -385,18 +390,39 @@ def sub_chunks(sub):
     return parts, False
 
 
-def overlay_png(hook, chunk, out):
+def draw_label(d, label, mark_w):
+    """왼쪽 위에 「시리즈 제목 · n화」. 채널 이름과 겹치지 않는 너비만 쓴다."""
+    room = W - SIDE * 2 - mark_w - 36
+    size = LABEL_SIZE
+    f = ImageFont.truetype(str(FONT_B), size)
+    while d.textlength(label, font=f) > room and size > LABEL_MIN:
+        size -= 2
+        f = ImageFont.truetype(str(FONT_B), size)
+    while label and d.textlength(label + "…", font=f) > room and size <= LABEL_MIN:
+        label = label[:-1]
+        if d.textlength(label + "…", font=f) <= room:
+            label += "…"
+            break
+    d.text((SIDE, MARK_Y + (MARK_SIZE - size) // 2), label,
+           font=f, fill=(206, 208, 216, 255))
+
+
+def overlay_png(hook, chunk, out, label=None):
     """글자만 있는 투명 그림 한 장 (영상 위에 얹는다).
 
     chunk — 지금 화면에 띄울 자막 **한 토막**. 나머지는 안 그린다
             (2026-08-20 운영자: "모든 대사가 한 번에 다 뜨지 않아").
+    label — 왼쪽 위 「시리즈 제목 · n화」 (2026-08-22 운영자 지시).
     """
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
     mark = ImageFont.truetype(str(FONT_B), MARK_SIZE)
-    d.text((W - SIDE - d.textlength(CHANNEL, font=mark), MARK_Y),
+    mark_w = d.textlength(CHANNEL, font=mark)
+    d.text((W - SIDE - mark_w, MARK_Y),
            CHANNEL, font=mark, fill=GOLD + (255,))
+    if str(label or "").strip():
+        draw_label(d, str(label).strip(), mark_w)
 
     if str(hook or "").strip():
         # ⭐ `*…*` 로 감싼 토막만 금색으로 (2026-08-21 운영자 지시)
@@ -515,8 +541,13 @@ def trim_dead(src, out):
 #    만드는 일에서 shorts 를 들여와야 했고, 그때 PIL 이 없다고 죽었다.
 from series import dia_turns                                # noqa: E402,F401
 
-def dub(src, turns, voices, out, tmp):
-    """클립의 소리를 한국어 목소리로 갈아 끼운다. 못 하면 False."""
+def dub(src, turns, voices, out, tmp, personas=None):
+    """클립의 소리를 한국어 목소리로 갈아 끼운다. 못 하면 False.
+
+    personas — {말하는이: "50대 중년 남성…"} (tts.pick_personas).
+    ⭐ 2026-08-22 운영자: "주인공들 나이 목소리가 맞지 않아."
+      목소리 지시에 배역 나이를 실어 보낸다.
+    """
     if not turns or not tts.key():
         return False
     try:
@@ -534,6 +565,7 @@ def dub(src, turns, voices, out, tmp):
     for i, ((who, text), (a, b)) in enumerate(zip(turns, spans)):
         v = (voices.get(who) or voices.get(who.lower())
              or tts.best_voices("FEMALE")[0])
+        pe = (personas or {}).get(who) or (personas or {}).get(who.lower())
         # ⭐ 2026-08-21 — **입이 움직인 시간에 억지로 우겨넣지 않는다.**
         #    영상 만드는 쪽은 32음절을 4.4초에 쏟아냈다(초당 7.3음절).
         #    거기에 딱 맞추면 우리 한국어 목소리도 똑같이 급해져서, 애써
@@ -543,12 +575,14 @@ def dub(src, turns, voices, out, tmp):
         try:
             p, d = tts.say_to_fit(text, v, max(0.6, b - a),
                                   tmp / f"{src.stem}_v{i}.wav",
-                                  tts.tone_of(text), room=max(0.6, room))
+                                  tts.tone_of(text), room=max(0.6, room),
+                                  who=pe)
         except Exception as e:                               # noqa: BLE001
             print(f"    ⚠️ 목소리 만들기 실패 ({e}) — 원래 소리를 쓴다")
             return False
         made.append((a, p, d))
-        print(f"    🎙 {who}: {text[:18]}…  {a:.2f}초부터 {d:.2f}초")
+        print(f"    🎙 {who}" + (f"({pe.split(',')[0]})" if pe else "")
+              + f": {text[:18]}…  {a:.2f}초부터 {d:.2f}초")
 
     # ⭐⭐ 2026-08-22 — **원본이 말하던 크기에 맞춘다.**
     #    맞추지 않으면 우리 목소리만 동떨어진 크기로 얹혀서, 장면에 안 앉고
@@ -591,7 +625,7 @@ def dub(src, turns, voices, out, tmp):
     return True
 
 
-def compose(src, hook, sub, out, tmp):
+def compose(src, hook, sub, out, tmp, label=None):
     """받은 클립 한 개 → 쇼츠 한 컷 (워터마크 지우고 4:3 자르고 글자 얹기)."""
     src, out, tmp = Path(src), Path(out), Path(tmp)
     tmp.mkdir(parents=True, exist_ok=True)
@@ -614,15 +648,22 @@ def compose(src, hook, sub, out, tmp):
         if len(spans) != len(chunks):
             spans = by_syllable(len(chunks), sec, chunks)
     spans[-1] = (spans[-1][0], sec)          # 마지막은 끝까지 남긴다
-    pngs = [overlay_png(hook, c, tmp / f"{src.stem}_txt{i}.png")
+    pngs = [overlay_png(hook, c, tmp / f"{src.stem}_txt{i}.png", label)
             for i, c in enumerate(chunks or [""])]
 
     vf = [f"[1:v]delogo=x={mx}:y={my}:w={mw}:h={mh},"
           f"crop={cw}:{ch}:{cx}:{cy},scale={W}:{VIDEO_H}[v]",
           f"[0:v][v]overlay=0:{VIDEO_Y}[s0]"]
+    # ⚠️ 2026-08-22 — between(t,a,b) 는 양 끝을 **포함**한다. 앞 토막이 2.0에
+    #    끝나고 뒤 토막이 2.0에 시작하면, 딱 그 순간의 한 프레임에 **둘 다**
+    #    켜져 자막이 겹쳐 보인다 (실제 프레임에서 발견). 앞 토막을 반 프레임
+    #    일찍 끈다.
+    EN_EPS = 0.021                       # 24fps 반 프레임
     for i in range(len(pngs)):
         a, b = spans[i] if i < len(spans) else (0.0, sec)
         last = (i == len(pngs) - 1)
+        if not last:
+            b = max(a, b - EN_EPS)
         tag = "[o]" if last else f"[s{i + 1}]"
         en = "" if len(pngs) == 1 else f":enable='between(t,{a:.3f},{b:.3f})'"
         vf.append(f"[s{i}][{i + 2}:v]overlay=0:0{en}{tag}")
@@ -753,8 +794,18 @@ def episode(sid, no, clips_dir, out_dir):
 
     files = pick_clips(clips_dir, len(ep["cuts"]), ep["cuts"])
     voices = tts.pick_voices(doc.get("characters"))
+    personas = tts.pick_personas(doc.get("characters"))
+    # 왼쪽 위 「시리즈 제목 · n화」 (2026-08-22 운영자 지시)
+    label = f"{str(doc.get('title') or '').strip()} · {int(no)}화"
     if tts.key():
         print(f"  🎙 목소리를 갈아 끼운다 — {tts.engine_note()}")
+        # ⚠️ 위 한 줄은 **기본값**이다. 실제 배정은 배역 나이에 따라 다르다.
+        #    (2026-08-22 — 머리말은 Erinome·Iapetus 라고 적혔는데 실제로는
+        #     Gacrux·Algenib 가 말하고 있었다. 화면이 거짓말하면 안 된다.)
+        for ch in doc.get("characters") or []:
+            nm = (ch.get("name") or "").strip()
+            if nm:
+                print(f"   배역: {nm} → {voices.get(nm)} ({personas.get(nm)})")
     else:
         print("  (목소리 열쇠가 없어 원래 소리를 그대로 쓴다 —\n           GEMINI_API_KEY 나 GOOGLE_TTS_KEY 가 있어야 한다)")
     parts = []
@@ -769,9 +820,10 @@ def episode(sid, no, clips_dir, out_dir):
         # ⭐ ② 소리를 갈아 끼우고, ③ 그 다음에 자막·크롭을 얹는다.
         #    (자막이 **말하는 자리**를 소리에서 찾으므로 순서가 중요하다)
         dubbed = tmp / f"cut{n}_ko.mp4"
-        if dub(src, dia_turns(c.get("prompt")), voices, dubbed, tmp):
+        if dub(src, dia_turns(c.get("prompt")), voices, dubbed, tmp, personas):
             src = dubbed
-        d = compose(src, hook, c.get("subtitle"), tmp / f"cut{n}.mp4", tmp)
+        d = compose(src, hook, c.get("subtitle"), tmp / f"cut{n}.mp4", tmp,
+                    label=label)
         parts.append(d)
         print(f"  ✅ {n}컷 ← {files[n].name}  (소리 {gain_for(src):+.1f}dB)")
 
@@ -804,7 +856,7 @@ def one(clip, sid, no, cut, hook, sub, out_dir):
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     tmp = out_dir / "_tmp"
-    turns, voices = [], {}
+    turns, voices, personas, label = [], {}, {}, None
     if sid and no and cut:
         # 대본에서 이 컷의 후킹·자막·대사를 그대로 가져온다
         doc = json.loads((ROOT / "data" / "series" / f"{sid}.json")
@@ -820,6 +872,8 @@ def one(clip, sid, no, cut, hook, sub, out_dir):
         sub = sub or c.get("subtitle") or ""
         turns = dia_turns(c.get("prompt"))
         voices = tts.pick_voices(doc.get("characters"))
+        personas = tts.pick_personas(doc.get("characters"))
+        label = f"{str(doc.get('title') or '').strip()} · {int(no)}화"
         print(f"{sid} {no}화 {cut}컷 「{ep.get('title','')}」")
     print(f"  후킹 문구: {hook}")
     for who, text in turns:
@@ -837,13 +891,13 @@ def one(clip, sid, no, cut, hook, sub, out_dir):
     else:
         print(f"  🎙 목소리를 갈아 끼운다 — {tts.engine_note()}")
         dubbed = tmp / "ko.mp4"
-        if dub(src, turns, voices, dubbed, tmp):
+        if dub(src, turns, voices, dubbed, tmp, personas):
             src = dubbed
         else:
             print("  ⚠️ 갈아 끼우기가 안 됐다 — 원래 소리가 그대로 나간다")
     # ⭐ ③ 그 다음에 자막·크롭을 얹는다
     out = out_dir / (clip.stem + "_short.mp4")
-    compose(src, hook, sub, out, tmp)
+    compose(src, hook, sub, out, tmp, label=label)
     won = tts.bill_flush(f"{sid or '?'} {no or '?'}화 {cut or '?'}컷 시험")
     print(f"\n✅ {out} — {C.probe(out)[2]:.1f}초 · 소리 {gain_for(out):+.1f}dB"
           + (f" · 목소리 값 {won:.0f}원" if won else ""))

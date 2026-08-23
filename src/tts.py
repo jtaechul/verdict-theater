@@ -89,7 +89,9 @@ _GEM_MODEL = None
 TIERS = ["Chirp3-HD", "Chirp-HD", "Neural2", "Wavenet", "Standard"]
 _VOICES = None
 
-RATE_MIN, RATE_MAX = 0.75, 1.35     # 이 밖으로 나가면 사람 소리가 아니게 된다
+# ⚠️ 2026-08-22 — 1.35배까지 빨리 감았더니 발음이 뭉개졌다(운영자 지적).
+#    한국어는 1.3배부터 자음이 무너진다. 조금 넘치는 편이 낫다.
+RATE_MIN, RATE_MAX = 0.75, 1.28     # 이 밖으로 나가면 발음이 뭉개진다
 PITCH = {"low": -2.0, "high": 2.0}
 
 
@@ -128,8 +130,8 @@ def engine_note():
         return (f"제미나이 목소리 — 연기 지시를 함께 보낸다\n"
                 f"   길: {route_note()}\n"
                 f"   말투 결: {style_of()['name']}\n"
-                f"   여자 {best_voices('FEMALE')[0]} · "
-                f"남자 {best_voices('MALE')[0]}")
+                f"   기본 목소리: 여자 {best_voices('FEMALE')[0]} · "
+                f"남자 {best_voices('MALE')[0]} (45살 이상 배역은 나이 든 목소리)")
     f = best_voices("FEMALE")[0] if gkey() else VOICE_F[0]
     m = best_voices("MALE")[0] if gkey() else VOICE_M[0]
     return f"구글 클라우드 TTS — 여자 {f} · 남자 {m}"
@@ -206,24 +208,85 @@ def is_female(ch):
     return not re.search(r"\bman\b|\bmale\b|\bboy\b", blob)
 
 
-def pick_voices(chars):
-    """인물표 → {이름: 목소리 이름}. 같은 목소리가 겹치지 않게."""
-    vf, vm = best_voices("FEMALE"), best_voices("MALE")
-    out, fi, mi = {}, 0, 0
+def _speaker_keys(ch):
+    """이 인물이 대사 줄에서 불리는 이름들 (본처 · Wife · wife …).
+
+    ⚠️ `.title()` 을 쓰면 "Other Woman" 이 되는데 대사 줄의 이름표는
+       "Other woman" 이다(첫 글자만 대문자). 그러면 못 찾는다.
+    """
+    keys = [(ch.get("name") or "").strip(),
+            (ch.get("role_en") or "").strip()]
+    short = re.sub(r"^the\s+", "", keys[1]).strip()
+    keys.append(short[:1].upper() + short[1:] if short else "")
+    return [k for k in keys if k]
+
+
+def age_of(ch):
+    """인물 설명에서 나이를 읽는다. 없으면 0."""
+    m = re.search(r"(\d{1,2})\s*years?\s*old",
+                  str(ch.get("flow_prompt") or ""))
+    return int(m.group(1)) if m else 0
+
+
+def persona_of(ch):
+    """이 인물을 **몇 살, 어떤 목소리로** 읽어야 하는지 한 줄.
+
+    ⭐ 2026-08-22 운영자: "주인공들 나이 목소리가 맞지 않아."
+       본처 52·남편 55인데 목소리 지시에 나이가 한 글자도 없었다.
+       같은 목소리라도 배역 나이를 알려 주면 훨씬 그 나이답게 읽는다.
+    """
+    age, f = age_of(ch), is_female(ch)
+    sex = "여성" if f else "남성"
+    if not age:
+        return f"성인 {sex}"
+    dec = age // 10 * 10
+    if age >= 45:
+        return (f"{dec}대 중년 {sex}, 나이에 맞게 "
+                + ("원숙하고 차분한 목소리" if f else "낮고 묵직한 목소리"))
+    return f"{dec}대 {sex}"
+
+
+def pick_personas(chars):
+    """인물표 → {이름: 배역 한 줄}. pick_voices 와 같은 이름 키를 쓴다."""
+    out = {}
     for ch in chars or []:
-        keys = [(ch.get("name") or "").strip(),
-                (ch.get("role_en") or "").strip()]
-        # ⚠️ `.title()` 을 쓰면 "Other Woman" 이 되는데 대사 줄의 이름표는
-        #    "Other woman" 이다(첫 글자만 대문자). 그러면 못 찾는다.
-        short = re.sub(r"^the\s+", "", keys[1]).strip()
-        keys.append(short[:1].upper() + short[1:] if short else "")
-        if is_female(ch):
+        who = persona_of(ch)
+        for k in _speaker_keys(ch):
+            out[k] = who
+    return out
+
+
+# ⭐ 2026-08-22 — 45살 이상 배역에게 줄 **나이 든 목소리**.
+#    운영자가 귀로 고른 것(Erinome·Iapetus)은 50대 배역엔 너무 젊게 들렸다.
+#    목록 주석에 이미 적혀 있던 그 목소리들이다 (Gacrux "연륜 — 어머니뻘",
+#    Algenib "거칠다"). 젊은 배역은 여전히 골라 둔 목소리를 쓴다.
+MATURE_F = ["Gacrux", "Sulafat"]
+MATURE_M = ["Algenib", "Alnilam"]
+
+
+def pick_voices(chars):
+    """인물표 → {이름: 목소리 이름}. 같은 목소리가 겹치지 않게.
+
+    ⭐ 45살 이상 배역은 나이 든 목소리(MATURE_*)를 먼저 받는다.
+    """
+    vf, vm = best_voices("FEMALE"), best_voices("MALE")
+    out, fi, mi, used = {}, 0, 0, set()
+    for ch in chars or []:
+        f = is_female(ch)
+        mature = [v for v in (MATURE_F if f else MATURE_M) if v not in used]
+        if age_of(ch) >= 45 and mature:
+            v = mature[0]
+        elif f:
+            while vf[fi % len(vf)] in used and fi < len(vf) * 2:
+                fi += 1
             v, fi = vf[fi % len(vf)], fi + 1
         else:
+            while vm[mi % len(vm)] in used and mi < len(vm) * 2:
+                mi += 1
             v, mi = vm[mi % len(vm)], mi + 1
-        for k in keys:
-            if k:
-                out[k] = v
+        used.add(v)
+        for k in _speaker_keys(ch):
+            out[k] = v
     return out
 
 
@@ -285,7 +348,10 @@ STYLES = {
         #    → 결은 줄마다의 mood() 를 **살리고**, 그 위에 세기만 얹는다.
         #      한국 드라마의 싸움은 내지르지 않는다. 낮게, 빠르게 몰아붙인다.
         "how": None,
-        "add": "감정을 더 세게 실어 빠르게",
+        # ⚠️ 2026-08-22 운영자: "발음이 조금씩 뭉개져."
+        #    여기 있던 "빠르게" 가 주범이다 — 빠르게 읽으라고 시키니
+        #    자음이 뭉개진다. 세기는 유지하되 서두르지 말라고 바꾼다.
+        "add": "감정을 더 세게 싣되 서두르지 않고",
         "rate": 1.0,
         # ⚠️ 목소리도 함께 바꿨던 것을 되돌린다. 운영자가 한국사람 같다고 한
         #    그 소리가 Orus 였다. 한 번에 둘을 바꾸면 무엇이 범인인지 모른다.
@@ -329,21 +395,22 @@ def mood(text):
     return MOOD_BASE
 
 
-def direct(text):
+def direct(text, who=None):
     """제미나이에 보낼 한 덩어리 — 연기 지시 + 대사.
 
     ⚠️ 지시를 **소리 내어 읽어 버리면** 견본이 통째로 망가진다. 구글이 권하는
        모양(지시 → 쌍점 → 대사)을 그대로 지킨다. 지시는 짧게, 대사는 큰따옴표
        안에 딱 한 번만 둔다. 진짜로 안 읽는지는 tools/tts_live_check.py 가
        **소리 길이를 재서** 확인한다 (지시까지 읽으면 길이가 두 배가 넘는다).
+    (또박또박은 how_of 안에 이미 있다 — 여기서 또 적으면 겹말이 된다)
     """
     t = re.sub(r'^["“”]+|["“”]+$', "", str(text or "").strip())
-    return (f"{how_of(t)} "
-            f"또박또박, 다음 큰따옴표 안의 말만 그대로: \"{t}\"")
+    return (f"{how_of(t, who)} "
+            f"다음 큰따옴표 안의 말만 그대로: \"{t}\"")
 
 
-def how_of(text):
-    """**연기 지시만** (대사는 빼고).
+def how_of(text, who=None):
+    """**연기 지시만** (대사는 빼고). `who` 는 배역 한 줄 (persona_of).
 
     ⚠️ 두 길이 규격이 다르다 —
        AI 스튜디오 쪽은 지시와 대사를 **한 덩어리**로 받는다 → direct()
@@ -359,7 +426,13 @@ def how_of(text):
     how = st["how"] or mood(t)
     if st.get("add"):
         how = f"{how}, {st['add']}"
-    return f"한국 드라마의 한 장면이다. 서울 말씨로, {how} 말한다."
+    lead = "한국 드라마의 한 장면이다."
+    if who:
+        # ⭐ 2026-08-22 — 배역 나이를 알려 준다 ("주인공들 나이 목소리가 맞지 않아")
+        lead += f" {who} 배역이다."
+    # ⭐ 발음은 어느 길로 가든 또박또박 — "빠르게" 가 뭉개던 것을 여기서 되잡는다
+    return (f"{lead} 서울 말씨로, {how} 말하되, "
+            f"발음은 뭉개지지 않게 또박또박 말한다.")
 
 
 # ── 제미나이 목소리 ────────────────────────────────────
@@ -426,13 +499,13 @@ def cloud_model():
     return (os.environ.get("CLOUD_TTS_MODEL") or "gemini-2.5-flash-tts").strip()
 
 
-def cloud_gem_say(text, voice, out, style=None):
+def cloud_gem_say(text, voice, out, style=None, who=None):
     """구글 클라우드로 제미나이 목소리 한 마디 (연기 지시를 함께 보낸다)."""
     k = gkey()
     if not k:
         raise RuntimeError("GOOGLE_TTS_KEY 가 없다")
     body = {
-        "input": {"text": bare(text), "prompt": style or how_of(text)},
+        "input": {"text": bare(text), "prompt": style or how_of(text, who)},
         "voice": {"languageCode": "ko-KR", "name": voice,
                   "model_name": cloud_model()},
         "audioConfig": {"audioEncoding": "LINEAR16", "sampleRateHertz": 48000},
@@ -750,14 +823,14 @@ def _gem_once(model, prompt, voice, safe=True):
     return base64.b64decode(part["data"]), _rate_of(part.get("mimeType"))
 
 
-def gem_say(text, voice, out, style=None):
+def gem_say(text, voice, out, style=None, who=None):
     """제미나이로 한 마디. **연기 지시를 함께 보낸다.**
 
     막히면 지시를 순하게 → 지시 없이 → 다음 모델 순으로 물러서며 다시 만든다.
     """
     if not gem_key():
         raise RuntimeError("GEMINI_API_KEY 가 없다")
-    ways = [style or direct(text), soft(text), flat(text)]
+    ways = [style or direct(text, who), soft(text), flat(text)]
     why, spent, busy = "까닭을 못 받았다", 0.0, False
     for model in gem_order():
         dead = False
@@ -929,7 +1002,8 @@ def _tempo(src, factor, out):
     return out if r.returncode == 0 and out.exists() else Path(src)
 
 
-def say(text, voice=None, rate=1.0, pitch=0.0, out=None, style=None):
+def say(text, voice=None, rate=1.0, pitch=0.0, out=None, style=None,
+        who=None):
     """한 마디를 소리로 만든다. 만들어진 wav 파일 경로를 돌려준다.
 
     목소리 이름이 `ko-KR-…` 이면 구글 클라우드 TTS, 아니면 제미나이다.
@@ -952,12 +1026,12 @@ def say(text, voice=None, rate=1.0, pitch=0.0, out=None, style=None):
     # ⭐ 클라우드 길이 열려 있으면 그쪽을 **먼저** 쓴다 — 하루 10번 벽이 없다.
     if cloud_gem_ready():
         try:
-            return _after(cloud_gem_say(text, voice, out, style), eff, out)
+            return _after(cloud_gem_say(text, voice, out, style, who), eff, out)
         except Exception as e:                               # noqa: BLE001
             print(f"    ⚠️ 클라우드 쪽 실패 → AI 스튜디오 쪽으로 간다 "
                   f"({str(e).splitlines()[0][:90]})")
     try:
-        p = gem_say(text, voice, out, style)
+        p = gem_say(text, voice, out, style, who)
     except Exception as e:                                   # noqa: BLE001
         # ⚠️ 제미나이가 끝내 안 되면 구글 클라우드로 물러선다. **소리 없이
         #    넘어가면 영상의 원래(외국인 같은) 소리가 그대로 나가기 때문**이다.
@@ -992,7 +1066,7 @@ def dur_of(p):
         return 0.0
 
 
-def say_to_fit(text, voice, seconds, out, pitch=0.0, room=None):
+def say_to_fit(text, voice, seconds, out, pitch=0.0, room=None, who=None):
     """입이 움직인 시간에 맞춰 한 마디를 만들되, **급해지지 않게** 만든다.
 
     · `seconds` — 영상 속 사람의 입이 움직인 시간
@@ -1004,7 +1078,7 @@ def say_to_fit(text, voice, seconds, out, pitch=0.0, room=None):
        → 자연스럽게 읽은 길이가 `room` 안에 들어가면 **그대로 둔다.**
          넘칠 때만, 그것도 `room` 에 맞춰 조금만 빠르게 한다.
     """
-    p = say(text, voice, 1.0, pitch, out)
+    p = say(text, voice, 1.0, pitch, out, who=who)
     d = dur_of(p)
     if d <= 0 or seconds <= 0:
         return p, d
@@ -1016,7 +1090,7 @@ def say_to_fit(text, voice, seconds, out, pitch=0.0, room=None):
     #    사람 소리로 들리는 범위를 넘느니 조금 넘치게 두는 편이 낫다.
     rate = min(RATE_MAX, max(RATE_MIN, d / limit))
     if abs(rate - 1.0) > 0.04:
-        p = say(text, voice, rate, pitch, out)
+        p = say(text, voice, rate, pitch, out, who=who)
         d = dur_of(p)
     if d > limit + 0.1:
         print(f"    ⚠️ 대사가 길어 {d - limit:.2f}초 넘친다 "
@@ -1096,6 +1170,7 @@ def sample(sid, no, out, gap=0.45):
     if not ep:
         raise SystemExit(f"❌ {sid} 에 {no}화가 없다")
     voices = pick_voices(doc.get("characters"))
+    personas = pick_personas(doc.get("characters"))
     turns = []
     for c in ep["cuts"]:
         turns += SC.dia_turns(c.get("prompt"))
@@ -1112,13 +1187,14 @@ def sample(sid, no, out, gap=0.45):
     made = []
     for i, (who, text) in enumerate(turns):
         v = voices.get(who) or best_voices("FEMALE")[0]
-        p = say(text, v, 1.0, tone_of(text), tmp / f"s{i}.wav")
+        pe = personas.get(who)
+        p = say(text, v, 1.0, tone_of(text), tmp / f"s{i}.wav", who=pe)
         made.append(p)
-        print(f"  🎙 {who} ({v}) — {text}")
+        print(f"  🎙 {who} ({v}" + (f" · {pe}" if pe else "") + f") — {text}")
         if engine() == "gemini":
-            # ⚠️ mood(text) 를 적으면 안 된다. 작품 전체 결이 정해져 있으면
-            #    실제로 보낸 것은 그쪽이라 화면과 실제가 어긋난다.
-            print(f"      연기 지시: {style_of()['how'] or mood(text)}")
+            # ⚠️ 실제로 보내는 지시 그대로를 적는다. 다르게 적으면
+            #    화면과 실제가 어긋난다 (한 번 겪었다).
+            print(f"      연기 지시: {how_of(text, pe)}")
 
     # 사이를 조금 띄워 이어 붙인다.
     # ⚠️ 예전에는 concat 목록 파일을 썼는데, 그건 **모든 조각의 소리 규격이
