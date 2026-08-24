@@ -1079,25 +1079,28 @@ function seriesRender() {
   h += '</div></div>';
 
   // ③ 만든 영상 올리기 — 여기서 쇼츠가 나온다
+  // ⭐ 컷 수는 화마다 다르다 (보통 3개, 장소가 여럿이면 4개).
+  //    화면에 5개라고 박아 두면 없는 컷을 만들라고 시키는 셈이다.
+  const NC = ((e.cuts || []).length) || 3;
   h += '<div class="card"><h2>③ 만든 영상 올리면 쇼츠가 됩니다 '
-     + '<small style="font-weight:400;color:#9599ab">— 5컷을 압축(zip)해서 한 번에'
+     + '<small style="font-weight:400;color:#9599ab">— ' + NC + '컷을 압축(zip)해서 한 번에'
      + '</small></h2>';
   h += '<div class="upbox">'
      + '<div id="permwarn"></div>'
      + '<input type="file" id="clipzip" accept=".zip,application/zip">'
-     + '<div class="uphint">루미나에서 <b>16:9(가로)</b> 로 만든 ' + SEP + '화 클립 5개를 '
-     + '압축해서 고르십시오. 좌우 끝을 잘라 4:3 으로 만든 뒤 화면 가운데에 넣고, '
+     + '<div class="uphint">루미나에서 <b>16:9(가로)</b> 로 만든 ' + SEP + '화 클립 '
+     + NC + '개를 압축해서 고르십시오. 좌우 끝을 잘라 4:3 으로 만든 뒤 화면 가운데에 넣고, '
      + '위 칸에 후킹 · 아래 칸에 자막을 넣습니다. 루미나 AI 표시도 이때 같이 잘려 나갑니다.</div>'
-     + '<div class="uphint" style="margin-top:8px">파일 이름에 c001~c005 가 있으면 '
+     + '<div class="uphint" style="margin-top:8px">파일 이름에 c001~c00' + NC + ' 가 있으면 '
      + '그 번호대로, 없으면 이름 순서대로 붙입니다.</div>'
      + '<div class="uphint" style="margin-top:8px">클립 <b>하나만</b> 시험해 볼 수도 '
      + '있습니다. 그 클립 하나만 압축해서 올리고, 아래에서 몇 컷인지 고르십시오. '
-     + '(만드는 차례는 5컷짜리와 똑같습니다 — 루미나 나레이션을 그대로 씁니다)</div>'
+     + '(만드는 차례는 전체와 똑같습니다 — 루미나 나레이션을 그대로 씁니다)</div>'
      + '<select id="cutone" style="margin-top:8px">'
-     + '<option value="">5컷 전체 (완성본)</option>'
-     + '<option value="1">1컷만 시험</option><option value="2">2컷만 시험</option>'
-     + '<option value="3">3컷만 시험</option><option value="4">4컷만 시험</option>'
-     + '<option value="5">5컷만 시험</option></select>'
+     + '<option value="">전체 ' + NC + '컷 (완성본)</option>'
+     + Array.from({ length: NC }, (_, i) =>
+         '<option value="' + (i + 1) + '">' + (i + 1) + '컷만 시험</option>').join('')
+     + '</select>'
      + '<button class="gold" onclick="upClips()">' + SEP + '화 올리고 쇼츠 만들기</button>'
      + '<div id="upmsg" class="uphint"></div>'
      + '</div>';
@@ -1107,14 +1110,14 @@ function seriesRender() {
   h += '<div id="ytbox"></div>';
   h += '</div>';
 
-  // ④ 이 화의 5컷
+  // ④ 이 화의 컷들 (보통 3개 · 장소가 여럿이면 4개)
   h += '<div class="card"><h2>④ ' + SEP + '화 — ' + esc(e.title || '') + '</h2>';
   if (e.recap) h += '<div style="color:#9599ab;font-size:14px;margin-bottom:10px">'
                   + '지난 줄거리: ' + esc(e.recap) + '</div>';
-  // ⭐ 후킹은 **첫 컷 앞 3초**에만 크게 뜨는 한 줄이다. 이걸 보고 남느냐
+  // ⭐ 후킹은 화면 **맨 위 검은 칸**에 내내 뜨는 한 줄이다. 이걸 보고 남느냐
   //    떠나느냐가 갈리므로 영상 만들기 전에 운영자가 반드시 눈으로 본다.
-  //    (2026-08-24 — 예전엔 내내 켜 둬서 등장인물 얼굴을 덮었다. 3초 뒤
-  //     옅어지며 사라지고, 그 뒤로는 얼굴이 다 보인다.)
+  //    (2026-08-24 — 영상을 4:3 으로 줄여 가운데에 넣으므로 위아래에 빈
+  //     검은 칸이 생긴다. 후킹이 거기 앉으니 얼굴을 가릴 일이 없다.)
   // ⚠️ 여기는 백틱 문자열 안이다 — 정규식 역슬래시를 두 번 써야 살아남는다.
   //    한 번만 쓰면 브라우저에서 'g is not defined' 로 죽는다.
   //    (주석에도 백틱을 쓰면 안 된다 — 문자열이 거기서 끊긴다)
