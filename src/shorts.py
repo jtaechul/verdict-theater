@@ -132,11 +132,10 @@ WHO_KO = {
 # 시안 1 — 이름을 **세로로 세우고** 왼쪽에 머리카락 같은 가는 선을 세운다.
 #   · 채워진 상자가 없다 (상자가 싸구려로 보이던 원인)
 #   · 색은 원색이 아니라 **필름톤으로 눌렀다** — 바랜 호박 · 강청 · 마른 장미
-NAME_SIZE = 52                   # 세로쓰기 이름 글자 크기 (어르신용)
-NAME_STEP = 62                   # 글자와 글자 사이
-NAME_RULE = 4                    # 왼쪽 세로선 굵기
-NAME_X = 18                      # 세로선과 이름 사이
-NAME_ROOM = 178                  # 이름 기둥이 차지하는 폭 (자막은 그 오른쪽)
+NAME_SIZE = 52                   # 이름 글자 크기 (어르신용)
+NAME_RULE = 6                    # **세로 막대** 굵기 — 세로인 것은 막대뿐이다
+NAME_X = 24                      # 막대와 이름 사이
+NAME_GAP = 18                    # 이름 줄과 자막 사이
 SIDE = 64                        # 좌우 여백
 GOLD = (198, 160, 74)
 # ⭐ 후킹에서 별표로 감싼 토막에 넣을 색 (2026-08-21 운영자 지시).
@@ -452,25 +451,19 @@ def who_ko(who):
     return WHO_KO.get(k)
 
 
-def name_column(d, label, color, cy):
-    """자막 왼쪽에 **세로로 세운 이름** + 가는 세로선. (차지한 폭)
+def name_column(d, label, color, top):
+    """자막 왼쪽 위 — **가는 세로 막대 + 가로로 쓴 이름**. 그린 높이를 준다.
 
-    ⭐⭐ 2026-08-24 — 둥근 알약 → 각진 태그 → 밑줄까지 다 퇴짜를 맞았다.
-       운영자: "색이름표 디자인 너무 구려." 모양만 바꿔서는 안 되는 문제였다.
-         · 이름도 자막도 같은 굵은 고딕 → **앱 화면**처럼 보였다
-         · 금색·파랑·분홍이 원색에 가까워 **유치**했다
-       → 이름은 바탕체(명조), 색은 필름톤, 그리고 **세로쓰기**.
-         한국 드라마 포스터의 세로 표기처럼 읽힌다.
+    ⭐⭐ 2026-08-24 운영자가 고른 안(①) — 세로인 것은 **막대뿐**이고 이름은
+       가로로 쓴다. 채워진 상자가 없고, 글꼴은 바탕체(명조), 색은 필름톤.
     """
     f = ImageFont.truetype(str(FONT_SERIF), NAME_SIZE)
-    ch = [c for c in str(label or "") if c.strip()]
-    h = NAME_STEP * len(ch)
-    y = cy - h / 2
-    d.rectangle([SIDE, y + 4, SIDE + NAME_RULE, y + h - 12], fill=tuple(color))
-    for c in ch:
-        d.text((SIDE + NAME_X, y), c, font=f, fill=tuple(color))
-        y += NAME_STEP
-    return NAME_ROOM
+    bb = d.textbbox((0, 0), str(label or ""), font=f)
+    h = (bb[3] - bb[1]) + 10
+    d.rectangle([SIDE, top, SIDE + NAME_RULE, top + h], fill=tuple(color))
+    d.text((SIDE + NAME_X, top - bb[1] + 5), str(label or ""), font=f,
+           fill=tuple(color))
+    return h
 
 
 def sub_chunks(sub):
@@ -587,21 +580,18 @@ def overlay_png(hook, chunk, out, label=None, parts="all", who=None, end=None):
                    HOOK_HI, HOOK_GAP)
 
     if want_sub and str(chunk or "").strip():
-        # ⭐ 이름은 자막 **왼쪽 기둥**에 세로로 (2026-08-24 · 운영자 지시)
+        # ⭐ 이름은 자막 **왼쪽 위**에 — 세로 막대 + 가로로 쓴 이름
+        top = SUB_TOP
         wk = who_ko(who)
-        x0 = SIDE + (NAME_ROOM if wk else 0)
-        room = W - SIDE - x0
+        if wk:
+            top += name_column(d, wk[0], wk[1], SUB_TOP) + NAME_GAP
         # 한 토막만 있으니 크게 쓸 수 있다 — 폰에서 읽기 훨씬 낫다
         # ⭐ 어르신용 — 글자를 작게 줄이는 대신 **줄을 늘린다**.
-        f, ls = fit(d, chunk, FONT_M, SUB_SIZE, room, 2, min_size=SUB_MIN)
+        f, ls = fit(d, chunk, FONT_M, SUB_SIZE, W - SIDE * 2, 2, min_size=SUB_MIN)
         if len(ls) > 2 or f.size < SUB_MIN:
-            f, ls = fit(d, chunk, FONT_M, SUB_SIZE, room, SUB_LINES,
+            f, ls = fit(d, chunk, FONT_M, SUB_SIZE, W - SIDE * 2, SUB_LINES,
                         min_size=SUB_MIN)
-        if wk:
-            # 이름 기둥은 자막 덩어리와 **가운데를 맞춘다**
-            name_column(d, wk[0], wk[1], (SUB_TOP + SUB_BOT) / 2)
-        block(d, ls, f, SUB_TOP, SUB_BOT, (245, 245, 250, 255),
-              x0=x0, x1=W - SIDE)
+        block(d, ls, f, top, SUB_BOT, (245, 245, 250, 255))
 
     img.save(out)
     return out
