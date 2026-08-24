@@ -294,6 +294,20 @@ def camera_line(order, who, speaker, wide, behind=None):
             + f". So {where}.")
 
 
+def cam_cast(cut, rank):
+    """그 컷 화면에 **있는** 사람들 (왼쪽부터).
+
+    ⚠️ 말한 사람만 세면 **말 없이 서 있는 사람의 자리가 안 정해진다.**
+       그러면 컷마다 그 사람이 왼쪽에 있다 오른쪽에 있다 한다.
+       SUBJECT 줄에 이름이 있으면 화면에 있는 것이다.
+    """
+    sub = next((l for l in (cut.get("prompt") or "").split("\n")
+                if l.startswith("SUBJECT:")), "").lower()
+    said = {w for w, _ in dia_turns(cut.get("prompt"))}
+    seen = {w for w in rank if w.lower() in sub} | said
+    return sorted(seen, key=lambda w: rank.get(w, 99))
+
+
 def fix_camera(doc):
     """컷마다 CAMERA 줄을 만들어 SETTING 바로 뒤에 넣는다. (고친 컷 수)"""
     rank = cam_rank(doc)
@@ -304,14 +318,12 @@ def fix_camera(doc):
         #    좌우가 흔들리면 안 되고, 장소가 바뀌면 다시 세워도 된다.
         by_place = {}
         for c in cuts:
-            k = cam_place(c)
-            by_place.setdefault(k, set()).update(
-                w for w, _ in dia_turns(c.get("prompt")))
+            by_place.setdefault(cam_place(c), set()).update(cam_cast(c, rank))
         order = {k: sorted(v, key=lambda w: rank.get(w, 99))
                  for k, v in by_place.items()}
         for c in cuts:
             turns = dia_turns(c.get("prompt"))
-            who = sorted({w for w, _ in turns}, key=lambda w: rank.get(w, 99))
+            who = cam_cast(c, rank)
             shot = next((l for l in (c.get("prompt") or "").split("\n")
                          if l.startswith("SHOT:")), "")
             wide = "Medium-wide" in shot or "Wide shot" in shot

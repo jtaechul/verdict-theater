@@ -74,6 +74,17 @@ def gl(c, k):
     return next((l for l in c["prompt"].split("\n") if l.startswith(k)), "")
 
 
+def cast_of(c):
+    """그 컷 화면에 **있는** 사람들 (말을 안 해도 서 있는 사람 포함).
+
+    ⚠️ 말한 사람만으로 SUBJECT 를 다시 쓰면 **말 없이 서 있는 사람이 사라진다.**
+       1화 1컷에서 아내가 "이 여자 누구야" 라고 하는데 정작 그 여자가 화면에
+       없어지는 사고가 났다. 원래 컷의 SUBJECT 를 그대로 물려받는다.
+    """
+    sub = gl(c, "SUBJECT:")
+    return [w for w in WEARS if WEARS[w] in sub]
+
+
 def syl(t):
     return len(re.findall(r"[가-힣]", str(t or "")))
 
@@ -117,9 +128,10 @@ def main():
         for c in e["cuts"]:
             place, st = S.cam_place(c), gl(c, "SETTING:")
             act = re.sub(r"\s*(Both people|The person) keep.*$", "", gl(c, "ACTION:"))
+            cast = cast_of(c)
             for who, txt in S.dia_turns(c["prompt"]):
                 flat.append({"who": who, "txt": txt, "place": place,
-                             "set": st, "act": act})
+                             "set": st, "act": act, "cast": cast})
 
         # ② 같은 장소끼리 묶는다
         runs = []
@@ -161,9 +173,12 @@ def main():
         # ④ 덩어리마다 컷 하나
         cuts, n_all, seen = [], sum(len(g) for g in groups), 0
         for i, g in enumerate(groups):
-            who = sorted({f["who"] for f in g}, key=lambda w: rank.get(w, 99))
-            face = max(who, key=lambda w: sum(syl(f["txt"]) for f in g
-                                              if f["who"] == w))
+            says = sorted({f["who"] for f in g}, key=lambda w: rank.get(w, 99))
+            # 화면에 있는 사람 = 말한 사람 + 원래 컷에 서 있던 사람
+            who = sorted({w for f in g for w in f["cast"]} | set(says),
+                         key=lambda w: rank.get(w, 99))
+            face = max(says, key=lambda w: sum(syl(f["txt"]) for f in g
+                                               if f["who"] == w))
             other = next((w for w in who if w != face), face)
             if i == 0 and len(who) >= 2:
                 shot = ("SHOT: Medium-wide two-shot, static camera, both people "
@@ -197,7 +212,7 @@ def main():
                     "ACTION: " + g[0]["act"][8:].strip()
                     + (SYNC2 if len(who) > 1 else SYNC1),
                     *dia,
-                    "VOICE: " + "; ".join(VOICES[w] for w in who) + ".",
+                    "VOICE: " + "; ".join(VOICES[w] for w in says) + ".",
                     audio, g[0]["set"], S.COLOR_FIX, S.STYLE_FIX, S.AVOID_FIX]
             cuts.append({
                 "n": i + 1, "sec": sec,
