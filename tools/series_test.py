@@ -33,8 +33,10 @@ SOLO = ('시동생 says in Korean, calm: "이 집, 오늘 안에 비워 주세�
 
 
 def good_prompt(dialogue=SOLO):
+    # ⭐ FRAMING 도 시스템이 붙이는 고정 줄이다 (2026-08-24 · 코드에서 가져온다)
     return (S.HEAD_FIX + "\n"
             "SHOT: Medium two-shot, static camera.\n"
+            + S.FRAME_FIX + "\n"
             "SUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.\n"
             "ACTION: 시동생 holds out a closed folder toward 며느리.\n"
             f"DIALOGUE: {dialogue}\n"

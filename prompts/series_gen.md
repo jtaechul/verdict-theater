@@ -64,7 +64,7 @@
 > 머리말은 콜론 없이 쓴다 — 그래야 주소로 안 읽힌다.
 
 ```
-Fictional scene, invented characters, semi-realistic illustrated drama. 6-second single continuous take.
+Fictional scene, invented characters, semi-realistic illustrated drama. 6-second single continuous take, landscape widescreen format (16 x 9).
 SHOT: 샷 크기 + 카메라 움직임 (하나만) — 뒤에 '허리 위로·얼굴 크게' 를 우리가 붙인다
 SUBJECT: 등장인물을 가리키는 **영어 관계말** + 옷차림 (얼굴 묘사 절대 금지 — 아래 ⚠️ 참고)
 ACTION: 동작 하나
@@ -164,7 +164,7 @@ Avoid: overlapping voices, on-screen text, signage, documents with visible writi
 `맞섬`·`뒤집기` 는 받아치는 말이 있어야 장면이 뒤집힌다. 이렇게 쓴다:
 
 ```
-Fictional scene, invented characters, semi-realistic illustrated drama. 6-second single continuous take.
+Fictional scene, invented characters, semi-realistic illustrated drama. 6-second single continuous take, landscape widescreen format (16 x 9).
 SHOT: Medium two-shot, static camera, both faces visible.
 DIALOGUE: 아내 (furious): "여기가 어디라고 와? 당장 안 나가면 경찰 부른다." / 동거녀 (calm): "마지막 가는 길인데 인사도 못 해요?"
 ```
@@ -784,7 +784,7 @@ shot` 은 세로 쇼츠에서 쓸모가 없다. `medium close-up` · `close-up` 
           "role": "후킹",
           "subtitle": "\"이 집, 오늘 안에 비워 주세요.\" / \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"",
           "caption": "장례를 치른 다음 날, 시동생이 집을 요구했다",
-          "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 6-second single continuous take.\nSHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: the brother-in-law in a black suit facing the daughter-in-law in black mourning hanbok.\nACTION: the brother-in-law sets a closed folder on the table and steps back.\nDIALOGUE: the brother-in-law (calm and cold): \"이 집, 오늘 안에 비워 주세요.\" / the daughter-in-law (trembling): \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, grounded adult proportions and restrained faces rather than cartoon exaggeration, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nAvoid: overlapping voices, on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different person."
+          "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 6-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: the brother-in-law in a black suit facing the daughter-in-law in black mourning hanbok.\nACTION: the brother-in-law sets a closed folder on the table and steps back.\nDIALOGUE: the brother-in-law (calm and cold): \"이 집, 오늘 안에 비워 주세요.\" / the daughter-in-law (trembling): \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, grounded adult proportions and restrained faces rather than cartoon exaggeration, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nAvoid: overlapping voices, on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different person."
         }
       ]
     }
@@ -814,7 +814,7 @@ shot` 은 세로 쇼츠에서 쓸모가 없다. `medium close-up` · `close-up` 
 
 - [ ] 16화 × 5컷 = 80컷이 다 있는가
 - [ ] 모든 화의 컷1이 **대사 또는 충격 장면**으로 시작하는가 (설명 금지)
-- [ ] 모든 `prompt` 가 **머리말 줄**(`Fictional scene, invented characters, semi-realistic illustrated drama. 6-second single continuous take.`) 로 시작하는가
+- [ ] 모든 `prompt` 가 **머리말 줄**(`Fictional scene, invented characters, semi-realistic illustrated drama. 6-second single continuous take, landscape widescreen format (16 x 9).`) 로 시작하는가
       (`SHOT:` 으로 시작하면 붙여 넣을 때 주소로 읽혀 글자가 통째로 깨진다)
 - [ ] 머리말 다음이 `SHOT:` 이고 `Avoid:` 로 끝나는가
 - [ ] 모든 `prompt` 에 `STYLE:` 줄이 **글자 그대로 똑같이** 들어갔는가

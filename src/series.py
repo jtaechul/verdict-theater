@@ -147,9 +147,22 @@ TALK_MIN = 2           # 한 화 5컷 중 **주고받는 컷**이 최소 몇 컷
 SUB_MAX = 60           # 자막은 주고받은 대사를 다 담아야 한다 (' / ' 로 나눈다)
 
 # 프롬프트 6줄 규격 — 이 순서, 이 이름이 아니면 반려한다
-LINES = ["SHOT:", "SUBJECT:", "ACTION:", "DIALOGUE:", "AUDIO:",
+LINES = ["SHOT:", "FRAMING:", "SUBJECT:", "ACTION:", "DIALOGUE:", "AUDIO:",
          "SETTING:", "CONTINUITY:", "COLOR:", "STYLE:", "Avoid:"]
 LINES_OPT = ["VOICE:"]      # 대사가 있는 컷에만 붙는다
+
+# ⭐⭐ 2026-08-24 — 16:9 로 만들어 4:3 으로 잘라 쓰므로, **좌우 12.5%씩이
+#    날아간다.** 인물을 화면 끝에 세우면 잘린다. 그리고 4:3 으로 자르면
+#    인물이 작아지므로 와이드샷을 쓰면 얼굴이 안 보인다.
+#    → 컷마다 이 줄을 우리가 붙인다 (모델이 빠뜨려도 채워 넣는다).
+#    ⚠️ 이 줄에는 "reads · text · paper · screen …" 같은 낱말을 쓰면 안 된다.
+#       글자가 화면에 나오는 것을 막는 검사(text_bait)가 그 낱말을 보고
+#       80컷을 통째로 걸러 버린다 — 실제로 한 번 걸렸다.
+FRAME_FIX = ("FRAMING: 16:9 landscape. The left and right edges will be cropped "
+             "away later — keep every person and every important thing inside the "
+             "middle 75% of the frame and leave the far left and far right empty. "
+             "Never a wide establishing shot; the people must be large in frame so "
+             "each face stays clear.")
 
 # ⭐⭐ 2026-08-20 운영자: "영상 색상톤도 통일시켜야 할 것 같아."
 #    컷마다 색이 튀면 다섯 조각을 이어 붙였을 때 딴 작품처럼 보인다.
@@ -455,8 +468,14 @@ def fix_voice(doc):
 #       → 방송·배우를 가리키는 말을 모두 빼고, **지어낸 인물**임을 먼저 밝힌다.
 #    ⚠️ `realistic live footage` 도 뺐다 — "실제로 찍은 영상" 으로 읽혀
 #       실존 인물 쪽으로 기운다. 사실적인 느낌은 STYLE 줄이 이미 지고 있다.
+# ⭐⭐ 2026-08-24 — 화면 비율을 **머리말에 못박는다.** 운영자가 루미나에서
+#    16:9(가로)로 만들고, 우리가 4:3 으로 잘라 띠에 넣는다. 비율이 어긋나면
+#    잘라 낼 때 인물이 잘리므로 프롬프트 맨 앞에서 못을 박아 둔다.
 HEAD_FIX = (f"Fictional scene, invented characters, semi-realistic "
-            f"illustrated drama. {SEC}-second single continuous take.")
+#    ⚠️ 머리말에는 콜론을 쓸 수 없다(붙여 넣을 때 주소로 읽혀 글자가 깨진다)
+#       → 여기는 "16 x 9", 정확한 "16:9" 는 FRAMING 줄이 맡는다.
+            f"illustrated drama. {SEC}-second single continuous take, "
+            f"landscape widescreen format (16 x 9).")
 
 
 def looks_like_url(t):
@@ -1246,6 +1265,11 @@ def normalize(doc):
                            if l.startswith("SETTING:")), len(out))
                 out.insert(at, "DIALOGUE: None.")
                 n += 1
+            # ⭐ FRAMING 은 늘 SHOT 바로 뒤에 — 옛 글이 남아 있으면 갈아 끼운다
+            out = [l for l in out if not l.startswith("FRAMING:")]
+            at = next((i for i, l in enumerate(out) if l.startswith("SHOT:")), -1)
+            if at >= 0:
+                out.insert(at + 1, FRAME_FIX)
             # 아예 빠뜨린 경우에도 우리가 붙인다 — 고정 문구라 받을 이유가 없다
             if not any(l.startswith("STYLE:") for l in out):
                 out.append(STYLE_FIX)
@@ -1261,7 +1285,7 @@ def normalize(doc):
             #    → 콜론 없는 '머리말 꼴' 을 통째로 걸러 내고 지금 것을 넣는다.
             out = [l for l in out if l.strip()
                    and l != HEAD_FIX
-                   and not re.match(r"^[^:]*single continuous take\.\s*$", l)]
+                   and not re.match(r"^[^:]*single continuous take[^:]*\.\s*$", l)]
             out.insert(0, HEAD_FIX)
             if (c.get("prompt") or "").split("\n")[:1] != [HEAD_FIX]:
                 n += 1
@@ -1644,8 +1668,12 @@ def check(doc):
             if want and c.get("role") != want:
                 bad.append(f"{tag}: 역할이 '{c.get('role')}' 이다 (있어야 할 것 '{want}')")
 
+            # ⚠️ 2026-08-24 — 예전엔 "콜론이 있는 줄" 을 전부 머리표로 봤다.
+            #    머리말에 `16:9` 가 들어가자 그것까지 머리표로 잡혀 규격 검사가
+            #    통째로 깨졌다. **`KEY:` 꼴인 줄만** 머리표로 본다.
             got = [l.split(":")[0] + ":" for l in p.split("\n")
-                   if ":" in l and not l.startswith(DIA_INDENT)]
+                   if re.match(r"^[A-Za-z][A-Za-z ]{0,12}:", l)
+                   and not l.startswith(DIA_INDENT)]
             got = [l for l in got if l not in LINES_OPT]     # VOICE 는 선택
             if got[:len(LINES)] != LINES:
                 bad.append(f"{tag}: 6줄 규격이 아니다 — {got[:8]}")
