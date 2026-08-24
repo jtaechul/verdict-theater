@@ -638,8 +638,12 @@ function luminaPrompt(t) {
   //    2026-08-23 에 '루미나는 레퍼런스로 화풍을 잡으니 필요 없다'고 뺐는데,
   //    레퍼런스는 **사람**을 잡지 장면의 색·화풍을 안 잡는다. 그래서
   //    회차마다 색감이 달라졌다(운영자: "1화랑 2화랑 왜 색감이 달라?").
-  //    → 색과 화풍은 반드시 남긴다. 떼는 것은 소리·이어짐 지시뿐.
-  const drop = ['CONTINUITY:', 'VOICE:', 'AUDIO:'];
+  //    → 색과 화풍은 반드시 남긴다. 떼는 것은 소리 지시뿐.
+  //    ⚠️⚠️ 2026-08-24 (두 번째) — CONTINUITY 도 떼고 있었다. 그 줄이
+  //    "앞 컷과 같은 옷·같은 방·같은 자리" 를 붙잡는 줄인데, 그것을 떼니
+  //    컷마다 배경과 옷이 다시 그려져 이어지는 느낌이 사라졌다.
+  //    (운영자: "컷별로 연결된다는 느낌이 안 들어") → 다시 남긴다.
+  const drop = ['VOICE:', 'AUDIO:'];
   const out = [];
   let skip = false;
   String(t || '').split(String.fromCharCode(10)).forEach((l) => {
@@ -1117,7 +1121,7 @@ function seriesRender() {
   //    후킹의 별표는 색 넣을 자리 표시라 화면 목록에서는 뗀다.
   if (e.hook) h += '<div style="background:#2a2416;border:1px solid #6b5a24;'
                  + 'border-radius:8px;padding:10px 12px;margin-bottom:10px">'
-                 + '<div style="color:#9599ab;font-size:12px">첫 3초 후킹 — 얼굴을 덮지 않게 그 뒤엔 사라집니다 ('
+                 + '<div style="color:#9599ab;font-size:12px">화면 위 검은 칸에 <b>내내</b> 뜹니다 — 얼굴을 가리지 않습니다 ('
                  + String(e.hook).replace(/\\*([^*]+)\\*/g, '$1').length
                  + '자)</div>'
                  + '<div style="color:#f0d68a;font-size:17px;font-weight:700">'
@@ -1582,7 +1586,7 @@ function nextStep(eps, ready, ungated) {
     return { title: '「' + esc(v.title || sid) + '」 ' + ep + '화 컷을 루미나에서 만들 차례입니다',
              body: '만든 영상 <b>' + (v.made || 0) + '/' + (v.episodes || 16) + '화</b><br>'
                  + '① 아래에서 ' + ep + '화 <b>프롬프트를 복사</b>해 루미나에 붙입니다<br>'
-                 + '② 컷 5개(D001_E01_C01~C05)를 받아 <b>압축해 올립니다</b><br>'
+                 + '② 컷 3개(D001_E01_C01~C03· 장소가 여럿이면 4개)를 받아 <b>압축해 올립니다</b><br>'
                  + '<span style="color:#9599ab">조립은 0원입니다. 영상은 루미나 '
                  + '크레딧으로만 만들어집니다.</span>',
              btn: ep + '화 대본·프롬프트 열기',

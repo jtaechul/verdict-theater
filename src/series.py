@@ -21,6 +21,7 @@
 """
 import argparse
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -38,9 +39,15 @@ QUEUE = ROOT / "state" / "queue.json"
 STATE = ROOT / "state" / "series.json"
 
 EPISODES = 16          # 16화 × 30초 = 8분 (롱폼 한 편)
-CUTS = 5               # 한 화 5컷
-SEC = 6                # 컷 하나 6초 (플로우 무료 하루 50크레딧 = 45크레딧)
-ROLES = ["후킹", "상황", "맞섬", "뒤집기", "끊기"]
+# ⭐⭐ 2026-08-24 손님: "컷이 다섯 개면 컷끼리 연결된다는 느낌이 안 든다.
+#    배경이 계속 바뀌고 감정선도 한 화에서 너무 많이 바뀐다. 영상을 한 번에
+#    십 초씩, 세 컷으로 만드는 건 어때?"
+#    재 봤더니 맞는 계산이다 — 한 화 대사가 130~140음절이므로 셋으로 나누면
+#    컷마다 45음절, 초당 6.4음절이니 딱 10초치다. 이어 붙일 자리가 4번에서
+#    2번으로 줄어드니 끊기는 느낌도 그만큼 줄어든다.
+CUTS = 3               # 한 화 3컷 (장소가 여럿이면 4컷까지 늘어난다)
+SEC = 10               # 컷 하나 10초
+ROLES = ["터짐", "맞섬", "선언"]
 
 # ⚠️ 2026-08-19 첫 실행에서 20군데가 걸렸는데 **15군데가 이 한 줄** 때문이었다.
 #    지난 줄거리를 18자로 정해 뒀는데, 한국어로 지난 화를 요약하기엔 너무 짧다.
@@ -136,15 +143,49 @@ DIA_SYL_MAX = int(SPEAK_SEC * EASY_SYL_PER_SEC)  # 4.8초 × 6.0 = 28음절
 #    길이가 모자란 것이 아니라 **주고받는 횟수가 모자랐다.** 두 번을 세 번으로
 #    (A→B→A) 늘리면 한 번에 10~12음절씩 30~35가 된다. 그건 프롬프트가 할 일이고,
 #    바닥은 다시 '거의 빈 컷'만 막는 자리로 돌려놓는다(반씩 걸러 내면 돈만 나간다).
-DIA_SYL_MIN = int(3.2 * EASY_SYL_PER_SEC)       # 3.2초어치 = 19음절
+DIA_SYL_MIN = int(SPEAK_SEC * 0.67 * EASY_SYL_PER_SEC)   # 말할 시간의 2/3
 # ⚠️ 상한을 35 → 28 로 내리자 이미 만든 S001 의 80컷 중 15컷이 걸렸다.
 #    그런데 그 15컷은 전부 **29~30음절**, 한두 음절 넘칠 뿐이었다.
 #    이런 것으로 16화를 반려하면 돈만 나간다(이 저장소가 여러 번 겪은 일이다).
 #    → 두 단계로 나눈다. 목표는 28, **진짜 못 말할 길이**만 반려한다.
-DIA_SYL_HARD = int(5.5 * EASY_SYL_PER_SEC)      # 5.5초어치 = 33음절
-TALKERS_MAX = 3        # 한 컷에 말을 주고받는 횟수 ("뭐?" "들었잖아." "야!")
-TALK_MIN = 2           # 한 화 5컷 중 **주고받는 컷**이 최소 몇 컷이어야 하는가
-SUB_MAX = 60           # 자막은 주고받은 대사를 다 담아야 한다 (' / ' 로 나눈다)
+DIA_SYL_HARD = int((SPEAK_SEC + 1.2) * EASY_SYL_PER_SEC)  # 앞머리까지 다 써야 겨우
+# ⚠️ 컷 길이가 6~10초로 달라졌으니 주고받는 횟수도 **그 컷의 초**로 잰다.
+#    한 마디가 1.2초는 되어야 받침이 안 뭉개진다 → 6초 4번, 10초 7번.
+TALKERS_MAX = 5        # 기본값(6초 기준). 실제 검사는 talkers_max(초) 를 쓴다
+TALK_MIN = 2           # 한 화에서 **말하는 사람이 바뀌는 횟수**의 최소값
+# ⚠️ 자막은 그 컷의 대사를 **한 글자도 빠짐없이** 담아야 한다. 손으로
+#    숫자를 적으면 컷이 길어질 때마다 어긋나므로 대사 상한에서 계산한다.
+#    (한글 한 음절에 띄어쓰기·문장부호가 붙어 글자 수는 음절의 약 1.8배)
+SUB_MAX = int(DIA_SYL_HARD * 1.8)   # 60음절 × 1.8 = 108자
+
+
+def cut_sec(syllables):
+    """이 컷의 대사를 다 말하려면 몇 초짜리로 만들어야 하는가.
+
+    ⭐ 2026-08-24 — 컷마다 대사 양이 다르므로 길이도 컷마다 다르다.
+       앞뒤로 1.5초쯤 여유를 두고(말을 시작하기 전·끝난 뒤), 6~10초 사이로 자른다.
+       루미나에 넣을 때 이 숫자를 머리말에 적는다.
+    """
+    n = int(syllables or 0)
+    return max(6, min(SEC, math.ceil(n / SYL_PER_SEC + 1.5)))
+
+
+def dia_syl_range(sec=None):
+    """그 컷 길이에 맞는 대사 음절 (바닥, 알맞음, 진짜 상한).
+
+    ⚠️ 예전엔 6초 하나만 놓고 19/28/33 을 상수로 박아 뒀다. 컷 길이가
+       6~10초로 달라진 지금 그 숫자를 그대로 쓰면 10초짜리 컷이 절반이 빈
+       채로 통과한다. **그 컷의 초에서 계산한다.**
+    """
+    talk = max(1.0, float(sec or SEC) - DEAD_HEAD)
+    return (int(talk * 0.67 * EASY_SYL_PER_SEC),
+            int(talk * EASY_SYL_PER_SEC),
+            int((talk + 1.2) * EASY_SYL_PER_SEC))
+
+
+def talkers_max(sec=None):
+    """그 컷 길이에 몇 번까지 주고받을 수 있는가 (한 마디에 1.2초)."""
+    return max(3, int((max(1.0, float(sec or SEC) - DEAD_HEAD)) / 1.2))
 
 # 프롬프트 6줄 규격 — 이 순서, 이 이름이 아니면 반려한다
 LINES = ["SHOT:", "FRAMING:", "SUBJECT:", "ACTION:", "DIALOGUE:", "AUDIO:",
@@ -193,13 +234,18 @@ def cam_place(cut):
     return st[9:].split("—")[0].strip().lower()
 
 
-def camera_line(order, who, speaker, wide):
+def camera_line(order, who, speaker, wide, behind=None):
     """컷 하나의 CAMERA 줄.
 
     order   — **이 장소에서** 왼쪽부터 세운 사람들. 한 장면 내내 안 바뀐다.
               (장소가 바뀌면 새 장면이므로 다시 세워도 된다 — 영화도 그렇게 한다)
     who     — 이 컷에 나오는 사람들 (왼쪽부터)
     speaker — 카메라가 바라보는 사람 (얼굴이 보이는 쪽)
+    behind  — 카메라가 등 뒤에 선 사람. SHOT 줄에서 읽어 온다.
+              ⚠️ 2026-08-24 — 예전엔 여기서 맨 왼쪽·맨 오른쪽만 보고 혼자
+              골랐다. 세 사람이 나오는 컷에서 SHOT 은 "남편 뒤에서",
+              CAMERA 는 "그 여자 자리에서" 라고 서로 다른 말을 했다.
+              **SHOT 이 적은 그대로** 따라간다.
     """
     if not who:
         # 대사가 없는 컷 — 그래도 카메라가 반대쪽으로 넘어가면 안 된다
@@ -207,19 +253,24 @@ def camera_line(order, who, speaker, wide):
                 "other clips shot in this room; never cross to the opposite side "
                 "between shots.")
 
-    def spot(p):
-        if p not in order or len(order) < 2:
+    row = list(order) if len(order or []) >= 2 else list(who)
+
+    def spot(pp):
+        if pp not in row or len(row) < 2:
             return "left"
-        i = order.index(p)
-        return "left" if i == 0 else ("right" if i == len(order) - 1 else "middle")
+        k = row.index(pp)
+        return "left" if k == 0 else ("right" if k == len(row) - 1 else "middle")
+
+    # ⭐ 줄 세우기는 **늘 같은 문장으로** 적는다. 같은 장소인데 1컷은
+    #    아내·남편, 2컷은 아내·그 여자 라고 적으면 모델이 좌우를 다시 잡는다.
+    lineup = ", ".join(
+        f"{w} on the left" if spot(w) == "left"
+        else (f"{w} on the right" if spot(w) == "right" else f"{w} in the middle")
+        for w in row)
 
     if wide and len(who) >= 2:
-        place = ", ".join(
-            f"{w} on the left" if spot(w) == "left"
-            else (f"{w} on the right" if spot(w) == "right"
-                  else f"{w} in the middle") for w in who)
         return ("CAMERA: seen from the side of the room so everyone is in view at "
-                "once — " + place + ". This left-to-right order never changes "
+                "once — " + lineup + ". This left-to-right order never changes "
                 "anywhere in this scene.")
     sd = spot(speaker)
     if sd == "middle":
@@ -232,11 +283,11 @@ def camera_line(order, who, speaker, wide):
                  f"SETTING, and the {opp} part must not appear in this shot")
         look = opp
     if len(who) >= 2:
-        a, b = who[0], who[-1]
-        other = b if speaker == a else a
-        return (f"CAMERA: in this room {a} always stands to the LEFT of {b} and "
-                f"never the other way round. This shot is taken from where {other} "
-                f"stands, looking at {speaker}, so {where}.")
+        back = behind if (behind and behind != speaker) else (
+            who[-1] if speaker == who[0] else who[0])
+        return (f"CAMERA: in this room the people always keep the same left-to-right "
+                f"order and never swap — {lineup}. This shot is taken from where "
+                f"{back} stands, looking at {speaker}, so {where}.")
     return (f"CAMERA: {speaker} keeps the same place as in every other clip shot in "
             f"this room — the {sd} of it"
             + (f", looking toward the {look} of frame" if look else "")
@@ -264,8 +315,28 @@ def fix_camera(doc):
             shot = next((l for l in (c.get("prompt") or "").split("\n")
                          if l.startswith("SHOT:")), "")
             wide = "Medium-wide" in shot or "Wide shot" in shot
-            spk = turns[0][0] if turns else (who[0] if who else "")
-            line = camera_line(order.get(cam_place(c), who), who, spk, wide)
+            # ⭐ 카메라가 바라보는 사람 = 그 컷에서 **가장 많이 말하는 사람**.
+            #    SHOT 줄이 고르는 기준과 같아야 둘이 어긋나지 않는다.
+            said = {}
+            for w, x in turns:
+                said[w] = said.get(w, 0) + len(re.findall(r"[가-힣]", x))
+            spk = max(who, key=lambda w: said.get(w, 0)) if who else ""
+
+            # ⭐ SHOT 줄이 "from behind 남편 … with 아내's face" 라고 적었으면
+            #    CAMERA 도 **그대로** 따라간다 (둘이 어긋나면 배경이 뒤집힌다).
+            def pick(pat):
+                m = re.search(pat, shot)
+                if not m:
+                    return None
+                got = m.group(1).strip()
+                return next((w for w in who if w.lower() == got.lower()), None)
+
+            behind = pick(r"from behind ([A-Za-z][A-Za-z ]*?)[,.]")
+            face = pick(r"with ([A-Za-z][A-Za-z ]*?)'s face")
+            if face:
+                spk = face
+            line = camera_line(order.get(cam_place(c), who), who, spk, wide,
+                               behind)
             lines = [l for l in (c.get("prompt") or "").split("\n")
                      if not l.startswith("CAMERA:")]
             at = next((i for i, l in enumerate(lines)
@@ -599,10 +670,15 @@ def fix_voice(doc):
 # ⭐⭐ 2026-08-24 — 화면 비율을 **머리말에 못박는다.** 운영자가 루미나에서
 #    16:9(가로)로 만들고, 우리가 4:3 으로 잘라 띠에 넣는다. 비율이 어긋나면
 #    잘라 낼 때 인물이 잘리므로 프롬프트 맨 앞에서 못을 박아 둔다.
-HEAD_FIX = (f"Fictional scene, invented characters, semi-realistic "
 #    ⚠️ 머리말에는 콜론을 쓸 수 없다(붙여 넣을 때 주소로 읽혀 글자가 깨진다)
 #       → 여기는 "16 x 9", 정확한 "16:9" 는 FRAMING 줄이 맡는다.
-            f"illustrated drama. {SEC}-second single continuous take, "
+HEAD_FIX = ("Fictional scene, invented characters, semi-realistic "
+            "illustrated drama.")
+
+
+def head_line(sec=None):
+    """컷 머리말 — **그 컷의 초**를 적는다 (컷마다 길이가 다르다)."""
+    return (f"{HEAD_FIX} {int(sec or SEC)}-second single continuous take, "
             f"landscape widescreen format (16 x 9).")
 
 
@@ -1782,15 +1858,17 @@ def check(doc):
     for e in eps:
         no = e.get("no", "?")
         cuts = e.get("cuts") or []
-        if len(cuts) != CUTS:
-            bad.append(f"{no}화: 컷이 {len(cuts)}개다 (있어야 할 것 {CUTS}개)")
+        # ⭐ 장소가 여럿인 화는 컷을 하나 더 쓴다 (장소가 바뀌면 컷도 갈린다)
+        if not (CUTS <= len(cuts) <= CUTS + 1):
+            bad.append(f"{no}화: 컷이 {len(cuts)}개다 "
+                       f"(있어야 할 것 {CUTS}개, 장소가 여럿이면 {CUTS + 1}개)")
         if no != 1 and not (e.get("recap") or "").strip():
             bad.append(f"{no}화: 지난 줄거리(recap)가 비었다")
         if len(e.get("recap") or "") > RECAP_MAX:
             bad.append(f"{no}화: 지난 줄거리가 {RECAP_MAX}자를 넘는다 "
                        f"({len(e['recap'])}자)")
 
-        talk = 0          # 이 화에서 두 사람이 주고받은 컷 수
+        voices = []       # 이 화에서 말한 사람의 차례 (컷을 넘어서 이어 본다)
         for c in cuts:
             n = c.get("n", "?")
             tag = f"{no}화 {n}컷"
@@ -1855,25 +1933,27 @@ def check(doc):
 
             says = dia_says(p)
             total = sum(syl(x) for x in says)
-            if total > DIA_SYL_HARD:
+            csec = int(c.get("sec") or SEC)
+            lo, mid, hi = dia_syl_range(csec)
+            if total > hi:
                 bad.append(f"{tag}: 대사가 다 합쳐 {total}음절이다 "
-                           f"({DIA_SYL_HARD}음절을 넘으면 "
-                           f"{total / EASY_SYL_PER_SEC:.1f}초라 {SEC}초에 못 넣는다)")
-            elif total > DIA_SYL_MAX:
+                           f"({hi}음절을 넘으면 "
+                           f"{total / EASY_SYL_PER_SEC:.1f}초라 {csec}초에 못 넣는다)")
+            elif total > mid:
                 soft_extra.append(f"{tag}: 대사가 {total}음절이다 "
-                                  f"({DIA_SYL_MAX}음절이 알맞다 — 넘치면 급하게 쏟아내 "
+                                  f"({mid}음절이 알맞다 — 넘치면 급하게 쏟아내 "
                                   f"받침이 뭉개진다)")
-            if len(says) > TALKERS_MAX:
+            tmax = talkers_max(csec)
+            if len(says) > tmax:
                 bad.append(f"{tag}: 한 컷에서 {len(says)}번 말한다 "
-                           f"({TALKERS_MAX}번 이내 — 6초에 그 이상은 뭉개진다)")
-            if says and total < DIA_SYL_MIN:
+                           f"({tmax}번 이내 — {csec}초에 그 이상은 뭉개진다)")
+            if says and total < lo:
                 bad.append(f"{tag}: 대사가 다 합쳐 {total}음절뿐이다 "
-                           f"({DIA_SYL_MIN}음절 이상 — {total / SYL_PER_SEC:.1f}초라 {SEC}초가 "
+                           f"({lo}음절 이상 — {total / SYL_PER_SEC:.1f}초라 {csec}초가 "
                            f"거의 빈다) — {' / '.join(says)}")
             stiff_hits.update(w for x in says for w in STIFF if w in x)
             stiff_lines += sum(1 for x in says if any(w in x for w in STIFF))
-            if len(says) >= 2:
-                talk += 1
+            voices += [w for w, _ in dia_turns(p)]
             if len(c.get("subtitle") or "") > SUB_MAX:
                 bad.append(f"{tag}: 자막이 {SUB_MAX}자를 넘는다")
             # 지시대명사 — 컷은 하나씩 따로 만들어져 모델이 못 알아듣는다.
@@ -1888,11 +1968,16 @@ def check(doc):
                 bad.append(f"{tag}: SUBJECT 에 이름 없이 지시대명사를 썼다 "
                            f"— 누가 화면에 있는지 이름으로 적는다")
 
-        # ⭐ 한 명이 혼잣말만 5번 하면 이야기가 안 굴러간다 (2026-08-20 손님 지적).
-        #    맞섬·뒤집기 같은 컷은 반드시 주고받아야 장면이 앞으로 나간다.
-        if cuts and talk < TALK_MIN:
-            bad.append(f"{no}화: 두 사람이 주고받는 컷이 {talk}컷뿐이다 "
-                       f"({TALK_MIN}컷 이상 — 혼잣말만 이으면 이야기가 안 굴러간다)")
+        # ⭐ 한 명이 혼잣말만 이으면 이야기가 안 굴러간다 (2026-08-20 손님 지적).
+        #    ⚠️ 2026-08-24 — 한 화가 3컷으로 줄었고, 손님이 "굳이 두 사람이
+        #       나란히 있을 필요 없이 한 명씩 번갈아 말해도 좋다" 고 하셨다.
+        #       그래서 **한 컷 안에 둘이 있는가** 를 세는 대신, 화 전체에서
+        #       **말하는 사람이 몇 번 바뀌는가** 를 센다. 컷이 갈려도
+        #       주고받기만 하면 이야기는 앞으로 나간다.
+        swaps = sum(1 for a, b in zip(voices, voices[1:]) if a != b)
+        if cuts and swaps < TALK_MIN:
+            bad.append(f"{no}화: 말하는 사람이 {swaps}번밖에 안 바뀐다 "
+                       f"({TALK_MIN}번 이상 — 혼잣말만 이으면 이야기가 안 굴러간다)")
 
     # ⭐ 아래 셋은 첫 화 완성본을 보고 찾은 것들 (2026-08-20).
     #    ⚠️ 전부 **손볼 곳**이 아니라 검사다 — 얼굴·장소가 튀면 영상이 못 쓰게 된다.
