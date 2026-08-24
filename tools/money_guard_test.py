@@ -296,10 +296,23 @@ finally:
         _os.environ["TTS_CALL_CAP"] = _keep
 
 # ④ 쓴 돈이 저장소에 남는가
-for f in ("voice-pick.yml", "shorts.yml", "voice-sample.yml"):
+#    ⚠️ 2026-08-24 — voice-pick.yml · voice-sample.yml 은 없앴다(목소리 메뉴 폐기).
+#       돈을 쓰는 워크플로만 남겨 견준다.
+for f in ("script.yml", "shorts.yml", "video.yml"):
     txt = (_WF / f).read_text(encoding="utf-8")
     _ck(f"{f}: 쓴 돈 장부를 저장소에 남긴다", "state/spend.json" in txt,
        "깃허브 안에서만 적히면 컨테이너와 함께 버려진다 (실제로 그랬다)")
+
+# ⑤ ⭐⭐ 2026-08-24 — 쇼츠 만들기는 이제 **돈 드는 열쇠를 아예 안 받는다.**
+#    루미나 나레이션을 그대로 쓰기로 해서 목소리 만들기를 없앴다. 열쇠가
+#    다시 끼어들면 조용히 다시 돈이 나가므로, 없는 것을 검사로 못박는다.
+_sh = (_WF / "shorts.yml").read_text(encoding="utf-8")
+for _k in ("GEMINI_API_KEY", "GOOGLE_TTS_KEY", "ANTHROPIC_API_KEY",
+           "CLAUDE_API_KEY", "TYPECAST_API_KEY", "TCKEY_URL"):
+    _ck(f"shorts.yml 이 {_k} 를 안 받는다", _k not in _sh,
+        "쇼츠 만들기는 0원이어야 한다 — 원본 소리를 그대로 쓴다")
+_ck("shorts.yml 이 원본 소리를 쓴다고 못박아 뒀다", "KEEP_AUDIO: '1'" in _sh,
+    "기본값에만 기대면 기본값이 바뀔 때 조용히 유료 목소리로 되돌아간다")
 
 
 print("─" * 52)

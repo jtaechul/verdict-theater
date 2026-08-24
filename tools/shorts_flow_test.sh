@@ -141,16 +141,9 @@ ck "3컷 시험은 3컷으로 만든다" "$a"
 grep -q "release_file .*put short-S001-ep01-cut3 " "$L" && a=1 || a=0
 ck "시험본은 딴 이름으로 올린다 (완성본을 안 덮는다)" "$a" "$(grep -m1 'release_file .*put' "$L")"
 
-# ③-b 방금 고른 목소리(주소)가 저장소의 옛 것보다 이긴다 (2026-08-23)
-d="$WORK/vwin"; mkdir -p "$d"; cd "$d"; mkdir -p build state
-echo '{"f":"OldRepo","m":"OldRepo"}' > state/voice.json
-export LOG="$d/log.txt"; : > "$LOG"; export GITHUB_ENV="$d/env.txt"; : > "$GITHUB_ENV"
-export ZIPSRC="$WORK/clips.zip"; export PATH="$WORK/bin:$PATH"
-export SID=S001 EPNO=1 CUT="" BLOB="" ADMIN_PASS=pw
-export VOICE="https://x.workers.dev/api/blob?key=voice%2Fabc"
-( eval "$(cd "$ROOT" && step '골라 둔 목소리 가져오기')" ) >>"$LOG" 2>&1
-grep -q "관리자 페이지에서 골라 둔 것을 받았다" "$LOG" && a=1 || a=0
-ck "방금 고른 목소리가 저장소의 옛 것을 이긴다" "$a" "$(tail -2 "$LOG" | head -1)"
+# ③-b (지움) 목소리 고르기는 2026-08-24 에 없앴다 — 루미나 나레이션을
+#       그대로 쓰기로 해서 shorts.yml 의 '골라 둔 목소리 가져오기' 칸
+#       자체가 사라졌다. 돈 나갈 자리가 없는지는 money_guard_test.py 가 본다.
 unset VOICE
 cd "$ROOT"
 

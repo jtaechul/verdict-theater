@@ -548,6 +548,13 @@ for wf in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
             and "py_compile" not in ln]
     if not runs:
         continue
+    # ⭐⭐ 2026-08-24 — **원본 소리를 그대로 쓰는**(KEEP_AUDIO: '1') 워크플로는
+    #    목소리를 아예 안 만든다. 루미나 나레이션을 쓰기로 했고 관리자 페이지의
+    #    목소리 메뉴도 지웠다. 그런 워크플로에 목소리 열쇠를 넘기라고 하면
+    #    **쓰지도 않을 유료 열쇠를 들고 있으라**는 말이 된다.
+    if re.search(r"KEEP_AUDIO:\s*'1'", txt):
+        ck(True, f"{wf.name} 은 원본 소리를 써서 목소리 열쇠가 필요 없다")
+        continue
     ck("GEMINI_API_KEY" in txt,
        f"{wf.name} 이 GEMINI_API_KEY 를 넘긴다",
        "안 넘기면 조용히 옛날(외국인 같은) 소리로 되돌아간다")

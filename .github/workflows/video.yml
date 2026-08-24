@@ -33,14 +33,6 @@ on:
         description: '한 컷만 시험 (비우면 전체)'
         required: false
         default: ''
-      voice:
-        description: '골라 둔 목소리 주소 (관리자 페이지가 채웁니다)'
-        required: false
-        default: ''
-      tckey:
-        description: '타입캐스트 열쇠 주소 (관리자 페이지가 채웁니다)'
-        required: false
-        default: ''
 
 permissions:
   contents: write
@@ -68,8 +60,6 @@ jobs:
       SID: ${{ inputs.sid || 'S001' }}
       EPNO: ${{ inputs.ep || '1' }}
       CUT: ${{ inputs.cut }}
-      VOICE: ${{ inputs.voice }}
-      TCKEY_URL: ${{ inputs.tckey }}
       ADMIN_PASS: ${{ secrets.ADMIN_PASSWORD }}
 
     steps:

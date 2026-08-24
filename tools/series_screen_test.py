@@ -274,44 +274,7 @@ nepn = ep1.count('class="epn')
 ck("1~16화 번호판이 다 있다", nepn == len(doc["episodes"]), f"{nepn}개")
 
 print("\n③-3 만든 영상을 올리는 칸이 있는가 (2026-08-20 운영자 지시)")
-# ⭐ 2026-08-21 — 목소리는 클립 5개를 다 만들기 전에 들어 봐야 한다
-ck("목소리 들어보기 단추가 있다", "makeVoice()" in ep1)
-ck("들을 자리가 있다", 'id="voicebox"' in ep1)
-# ⚠️ 2026-08-22 — 예전에는 "값 0원" 이라고 적혀 있는지 봤다. 그런데 목소리를
-#    무료 등급(하루 10번)에서 **결제 계정**으로 옮긴 뒤로 0원이 아니다.
-#    화면이 거짓말을 하면 안 되므로, 값이 **얼마든 적혀 있는지**를 본다.
-ck("값이 얼마인지 알려 준다", "원" in ep1 and ("1원 미만" in ep1 or "0원" in ep1),
-   "누르면 돈이 나가는데 화면에 안 적혀 있으면 안 된다")
-# ⭐ 2026-08-22 — 말투 결을 운영자가 귀로 고른다 (내가 혼자 골랐다가 틀렸다)
-ck("말투 결을 고를 수 있다", 'id="vstyle"' in ep1)
-for _s in ("drama", "fierce", "dry", "deep"):
-    ck(f"결 '{_s}' 를 고를 수 있다", f'value="{_s}"' in ep1)
 ck("클립 하나만 시험할 수 있다", 'id="cutone"' in ep1)
-# ⭐ 2026-08-23 운영자: "들어보기 언제까지 만들 거야 / 타입캐스트로 바꿨으면
-#    제대로 바뀌어야지." — 화면이 엔진을 알고, 옛 견본을 안 틀고, 실패를 말한다.
-ck("지금 엔진이 화면에 적힐 자리가 있다", 'id="engbadge"' in ep1)
-ck("들어보기 안내가 엔진 따라 바뀔 자리가 있다", 'id="audhint"' in ep1)
-# ⭐ 2026-08-23 운영자: "열쇠가 담겨 있으면 여기는 감춰놔야 될 거 아니야."
-ck("열쇠 넣는 칸이 숨길 수 있는 상자 안에 있다", 'id="tcform"' in ep1)
-_wk2 = (ROOT / "admin" / "worker.js").read_text(encoding="utf-8")
-ck("들어보기가 누른 뒤 만든 것만 받아들인다",
-   "new Date(j.at).getTime() < t0" in _wk2,
-   "옛 견본을 '다 됐다'며 틀어 주면 엔진을 바꿔도 옛 소리가 난다")
-ck("들어보기가 실패하면 실패라고 말한다",
-   "voice-sample.yml" in _wk2 and "만들기가 실패했습니다" in _wk2)
-ck("고르기 화면이 지금 엔진 것만 보여 준다",
-   "(x.engine || 'gemini') === j.engine" in _wk2)
-ck("열쇠가 담기면 넣는 칸을 숨긴다",
-   "form.style.display = tc ? 'none' : ''" in _wk2,
-   "담긴 뒤에도 붙여넣는 칸이 보이면 안 된다")
-ck("[열쇠 바꾸기] 로 다시 열 수 있다", "function tcEdit" in _wk2)
-# ⭐ 2026-08-23 운영자: "1125개를 전부 다 들어보게 하면 어떡하냐 —
-#    등장인물별로 추천을 몇 개씩 해줘야지."
-ck("듣기 단추가 엔진 따라 이름을 바꾼다", 'id="audbtn"' in ep1)
-ck("인물별 추천 목록을 그릴 줄 안다", "kind === 'cast'" in _wk2)
-ck("인물별로 고를 수 있다", "function castSet" in _wk2)
-ck("추천 만들기가 실패하면 실패라고 말한다",
-   "voice-pick.yml" in _wk2 and _wk2.count("만들기가 실패했습니다") >= 2)
 # ⚠️⚠️ 2026-08-22 — 압축파일을 다 올린 **뒤에** 이 오류를 봤다:
 #    GitHub 403: "Resource not accessible by personal access token"
 #    처음엔 "토큰 권한을 쓰기로 바꾸십시오" 라고 화면에 적었다가 크게 혼났다.
@@ -350,11 +313,22 @@ ck("올리기 단추가 있다", "upClips()" in ep1)
 ck("완성된 쇼츠가 나올 자리가 있다", 'id="shortbox"' in ep1)
 ck("고른 화 번호가 단추에 찍힌다", "1화 올리고 쇼츠 만들기" in ep1)
 
+# ⭐⭐ 2026-08-24 운영자: "이 부분은 이제 불필요한 메뉴이니 삭제해."
+#    루미나가 나레이션까지 만들어 주므로 목소리 만들기는 통째로 없앴다.
+#    지운 것이 슬그머니 되살아나지 않는지 여기서 지킨다 — 되살아나면
+#    쓰지도 않을 유료 열쇠가 다시 돌아다니게 된다.
+print("\n③-4 없앤 목소리 메뉴가 되살아나지 않았는가 (2026-08-24)")
+for _dead in ("makeVoice()", "pickVoice()", "pickShow()", "tcSave()",
+              "id=\"vstyle\"", "id=\"voicebox\"", "id=\"tcform\"",
+              "id=\"engbadge\"", "id=\"audbtn\""):
+    ck(f"화면에 {_dead} 가 없다", _dead not in ep1, "지운 메뉴가 되살아났다")
+_wk3 = (ROOT / "admin" / "worker.js").read_text(encoding="utf-8")
+for _dead in ("/api/voice", "/api/voicepick", "/api/tckey",
+              "voice-sample.yml", "voice-pick.yml", "typecast.ai"):
+    ck(f"서버에 {_dead} 길이 없다", _dead not in _wk3, "지운 길이 되살아났다")
+
 wk = (ROOT / "admin" / "worker.js").read_text(encoding="utf-8")
 ck("서버에 올리는 길이 있다", "'/api/upload-clips'" in wk)
-ck("목소리 견본을 만드는 길이 있다", "'/api/voice'" in wk)
-ck("목소리 워크플로를 부른다", "voice-sample.yml/dispatches" in wk)
-ck("목소리를 소리 파일로 흘려보낸다", "audio/mpeg" in wk)
 ck("완성본을 보는 길이 있다", "'/api/short'" in wk)
 # ⭐ 2026-08-22 — 압축파일을 깃허브에 직접 올리던 길은 **지웠다.**
 #    읽기 전용 열쇠로는 403 이 나고, 운영자는 깃허브에서 아무것도 하지 않는다.

@@ -27,15 +27,6 @@ on:
         description: '올린 압축파일 주소 (관리자 페이지가 채웁니다 · 비우면 릴리스에서 찾습니다)'
         required: false
         default: ''
-      voice:
-        description: '골라 둔 목소리 주소 (관리자 페이지가 채웁니다)'
-        required: false
-        default: ''
-      tckey:
-        description: '타입캐스트 열쇠 주소 (관리자 페이지가 채웁니다)'
-        required: false
-        default: ''
-
 permissions:
   contents: write
 
@@ -49,15 +40,13 @@ jobs:
     timeout-minutes: 30
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # ⭐ 한국어 목소리 (2026-08-21). 없으면 원래 소리를 그대로 쓴다 —
-      #    영상은 계속 나오되 발음이 어눌한 채로 나간다.
-      # ⭐ 2026-08-21 — 목소리를 제미나이로 바꿨다. 이 열쇠를 안 넘기면
-      #    조용히 옛날(외국인 같은) 소리로 되돌아간다.
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      GOOGLE_TTS_KEY: ${{ secrets.GOOGLE_TTS_KEY }}
-      # ⚠️ 이 실행에서 목소리를 몇 번까지 부를 수 있는가.
-      #    상한이 없으면 실패가 겹칠 때 조용히 수백 번을 부른다.
-      TTS_CALL_CAP: '40'   # 한 화 대사 9줄 + 재시도 여유
+      # ⭐⭐ 2026-08-24 — 루미나가 만든 나레이션을 **그대로** 쓴다.
+      #    (운영자: "원본영상 나래이션을 쓸꺼라 typecast나 제미나이 api tts도
+      #     없애야 해" — 관리자 페이지의 목소리 메뉴도 함께 지웠다)
+      #    ⚠️ src/shorts.py 의 기본값도 '그대로 둔다' 이지만 여기에 못박아
+      #       둔다 — 기본값이 언젠가 바뀌어도 이 워크플로만은 돈 드는
+      #       목소리 만들기로 되돌아가지 않는다.
+      KEEP_AUDIO: '1'
       SID: ${{ inputs.sid }}
       EPNO: ${{ inputs.ep }}
       CUT: ${{ inputs.cut }}
@@ -65,8 +54,6 @@ jobs:
       #    클라우드플레어 보관함에 있다. 주소만 여기로 넘어온다.
       #    받아 갈 때 쓰는 암호는 이미 등록해 둔 ADMIN_PASSWORD 그대로다.
       BLOB: ${{ inputs.blob }}
-      VOICE: ${{ inputs.voice }}
-      TCKEY_URL: ${{ inputs.tckey }}
       ADMIN_PASS: ${{ secrets.ADMIN_PASSWORD }}
 
     steps:
@@ -80,42 +67,6 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg unzip
           python3 -m pip install --quiet pillow
-
-      # ⭐ 2026-08-22 — 운영자가 귀로 고른 목소리가 있으면 그것을 쓴다.
-      #    없으면 (|| true) 정해 둔 것으로 간다.
-      # ⭐ 2026-08-23 — 타입캐스트 열쇠 (관리자 페이지 보관함에서 받는다)
-      #    열쇠 값은 워크플로 입력에 싣지 않는다 — 입력은 실행 기록에 보인다.
-      #    주소만 받고, 여기서 암호(ADMIN_PASSWORD)를 대고 꺼낸 뒤 가린다.
-      - name: 타입캐스트 열쇠 받기
-        continue-on-error: true
-        run: |
-          if [ -n "${TCKEY_URL:-}" ]; then
-            case "$TCKEY_URL" in https://*.workers.dev/*) : ;; *) exit 0 ;; esac
-            K=$(curl -fsSL -H "x-vt-pass: ${ADMIN_PASS}" "$TCKEY_URL" || true)
-            if [ -n "$K" ]; then
-              echo "::add-mask::$K"
-              echo "TYPECAST_API_KEY=$K" >> "$GITHUB_ENV"
-              echo "타입캐스트 열쇠를 받았다 — 목소리가 타입캐스트로 나간다"
-            fi
-          fi
-
-      - name: 골라 둔 목소리 가져오기
-        continue-on-error: true
-        run: |
-          mkdir -p state
-          # ⚠️ 저장소에 이미 있으면 그것이 최신이다. 릴리스 것으로 덮지 않는다.
-          # ⚠️ 2026-08-23 — 순서를 뒤집었다. 예전엔 저장소 파일이 이겼는데,
-          #    운영자가 관리자 페이지에서 **방금** 고른 것(주소로 온다)이
-          #    저장소의 옛 것에 밀려 반영이 안 됐다. 방금 고른 것이 이긴다.
-          if [ -n "${VOICE:-}" ] \
-             && curl -fsSL -H "x-vt-pass: ${ADMIN_PASS}" "$VOICE" -o state/voice.json; then
-            echo "관리자 페이지에서 골라 둔 것을 받았다: $(cat state/voice.json)"
-          elif [ -s state/voice.json ]; then
-            echo "저장소에 골라 둔 것이 있다: $(cat state/voice.json)"
-          else
-            python3 tools/release_file.py get voicepick chosen.json state/voice.json \
-              || echo "골라 둔 것이 없다 — 정해 둔 목소리로 간다"
-          fi
 
       - name: 올린 압축파일 받기
         run: |
