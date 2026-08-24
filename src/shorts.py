@@ -465,8 +465,26 @@ def end_png(big, small, out):
 
     f, ls = fit(d, big, FONT_B, END_BIG, W - SIDE * 2, 2, min_size=52)
     block(d, ls, f, END_TOP, END_TOP + 170, (255, 255, 255, 255))
-    f2, ls2 = fit(d, small, FONT_M, END_SMALL, W - SIDE * 2, 2, min_size=34)
-    block(d, ls2, f2, END_TOP + 178, H - BAR_BOT - 16, GOLD + (255,))
+    # ⭐⭐ 2026-08-24 운영자: "구독 유도 안내문구는 폰트를 바꿔볼까? 밋밋해."
+    #    맞는 지적이다. 가는 글씨(KoPub 미디엄) + 어두운 바탕 위 금색이라
+    #    **각주처럼** 보였다. 그런데 글꼴만 바꿔서는 부족하다 — 구독 유도는
+    #    '문장'이 아니라 **'누르고 싶은 단추'** 로 보여야 손이 간다.
+    #    → 금색 알약 안에 **굵은 검은 글씨**(나눔고딕 엑스트라볼드).
+    #      바탕이 금색이라 밝은 장면에서도 안 묻히고, 위 흰 제목과도 안 겹친다.
+    #    ⚠️ 시스템 이모지는 안 쓴다(기기마다 모양이 달라 싸구려처럼 보인다).
+    #       모서리 둥근 도형은 직접 그린다.
+    padx, pady = END_PILL_PAD
+    f2 = ImageFont.truetype(str(FONT_H), END_SMALL)
+    while f2.size > 30 and d.textlength(small, font=f2) > W - SIDE * 2 - padx * 2:
+        f2 = ImageFont.truetype(str(FONT_H), f2.size - 2)
+    bb = d.textbbox((0, 0), small, font=f2)
+    bw = (bb[2] - bb[0]) + padx * 2
+    bh = (bb[3] - bb[1]) + pady * 2
+    bx = (W - bw) / 2
+    by = min(END_TOP + 196, H - BAR_BOT - 8 - bh)
+    d.rounded_rectangle([bx, by, bx + bw, by + bh], radius=bh / 2, fill=HOOK_HI)
+    d.text((bx + bw / 2, by + bh / 2), small, font=f2,
+           fill=(26, 21, 12, 255), anchor="mm")
     img.save(out)
     return out
 
@@ -786,7 +804,8 @@ def dub(src, turns, voices, out, tmp, personas=None):
 #       쪽이 훨씬 세다** — '무슨 일이 벌어지는지' 가 궁금해야 다음 편을 찾는다.
 #       구독 안내는 그 아래 작은 줄로 한 번만 (두 화면으로 나누면 둘 다 흐려진다).
 END_SEC = 2.6                    # 끝 안내를 띄우는 시간 (길이는 안 늘어난다)
-END_BIG, END_SMALL = 76, 46      # 큰 줄 · 작은 줄 글자 크기
+END_BIG, END_SMALL = 76, 46      # 큰 줄 · 알약 안 글자 크기
+END_PILL_PAD = (48, 26)          # 알약 좌우 · 위아래 여백
 END_TOP = H - BAR_BOT - 300      # 아래 검은 띠 바로 위
 
 
@@ -800,7 +819,7 @@ def end_card(doc, no):
         t = str(nxt.get("title") or "").strip()
         big = f"다음 화 — {t}" if t else "다음 화에 계속"
         return big, "구독하면 다음 화를 놓치지 않습니다"
-    return "완 결", "1화부터 정주행 · 구독하고 다음 이야기도 보세요"
+    return "완 결", "1화부터 정주행하고 구독해 주세요"
 
 
 def audio_sec(src):
