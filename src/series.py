@@ -169,12 +169,21 @@ FRAME_FIX = ("FRAMING: 16:9 landscape. The left and right edges will be cropped 
 #    STYLE 줄의 "muted desaturated palette" 만으로는 느슨하다 —
 #    **모든 컷에 글자 그대로 똑같은 색 지시**를 따로 한 줄 둔다.
 #    (고정 문구라 normalize 가 80컷에 자동으로 갈아 끼운다)
-COLOR_FIX = ("COLOR: the same colour grade in every shot of the series — "
-             "warm neutral base, slightly lifted blacks, gentle amber "
-             "highlights from the practical lamps, muted greens and cyans, "
-             "natural unsaturated skin tones, low overall contrast, "
-             "a calm evening illustrated look that stays identical from the "
-             "first shot to the last.")
+# ⭐⭐ 2026-08-24 운영자: "1화랑 2화랑 왜 색감이 달라? 색감이 유지되도록
+#    한 줄 반영해야 될 거 아니야."
+#    ⚠️ 줄은 **있었다.** 그런데 관리자 페이지가 루미나용으로 다듬으면서
+#       COLOR·STYLE 줄을 통째로 떼어 내고 있었다(2026-08-23. '레퍼런스가
+#       화풍을 잡는다'고 봤는데, 레퍼런스는 **사람**을 잡지 장면의 색을
+#       안 잡는다). 그래서 붙여 넣는 글에는 색 지시가 한 글자도 없었다.
+#    → 떼어 내지 않게 고치고(admin/worker.js), 문구도 **회차를 넘어서**
+#      같은 색이어야 한다고 못박는다. 앞 문구는 "of the series" 라 한 화
+#      안에서만 같으면 되는 것으로 읽힐 여지가 있었다.
+COLOR_FIX = ("COLOR: use the exact same colour grade in every clip of this "
+             "series, in every episode from the first to the last — warm "
+             "neutral base, low overall contrast, slightly lifted blacks, soft "
+             "amber light from the practical lamps, muted greens and cyans, "
+             "natural unsaturated skin tones. Do not restyle or re-grade this "
+             "shot; match the earlier clips exactly.")
 
 # ⭐⭐ 2026-08-20 운영자: "나레이션이 너무 로봇 같은데?"
 #    프롬프트를 다시 보니 **소리에 관한 지시가 한 줄도 없었다.**

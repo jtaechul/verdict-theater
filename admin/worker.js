@@ -634,7 +634,12 @@ function seriesCard() {
 //      · VOICE / AUDIO 줄 (원본 나레이션을 그대로 쓰므로 필요 없다)
 //    남기는 것 — SHOT · ACTION · DIALOGUE · SETTING · Avoid (연출과 대사)
 function luminaPrompt(t) {
-  const drop = ['STYLE:', 'COLOR:', 'CONTINUITY:', 'VOICE:', 'AUDIO:'];
+  // ⚠️⚠️ 2026-08-24 — 여기서 COLOR·STYLE 을 떼어 내고 있었다.
+  //    2026-08-23 에 '루미나는 레퍼런스로 화풍을 잡으니 필요 없다'고 뺐는데,
+  //    레퍼런스는 **사람**을 잡지 장면의 색·화풍을 안 잡는다. 그래서
+  //    회차마다 색감이 달라졌다(운영자: "1화랑 2화랑 왜 색감이 달라?").
+  //    → 색과 화풍은 반드시 남긴다. 떼는 것은 소리·이어짐 지시뿐.
+  const drop = ['CONTINUITY:', 'VOICE:', 'AUDIO:'];
   const out = [];
   let skip = false;
   String(t || '').split(String.fromCharCode(10)).forEach((l) => {
