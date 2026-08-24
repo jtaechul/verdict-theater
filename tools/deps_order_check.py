@@ -11,10 +11,17 @@
     두 번 다 **내 컴퓨터에는 이미 깔려 있어** 로컬에서는 "전부 통과" 로 보였고,
     깃허브에서만 빨간불이 났다. 눈으로는 절대 안 보인다.
 
+    2026-08-24 ③  ffmpeg 를 까는 줄이 **칸 정리를 하다 통째로 사라졌다.**
+                  로컬에는 ffmpeg 가 깔려 있어 또 "전부 통과" 로 보였고,
+                  깃허브에서는 15번 내리 빨간불이었다(compose_frame_test 가
+                  ffmpeg 를 못 찾아 죽었다). 파이썬 꾸러미만 보던 이 검사가
+                  **바깥 프로그램**은 안 보고 있었다.
+
 무엇을 보나
     ① 준비물은 맨 앞 '준비물' 칸 **한 곳에서만** 깐다 (아래에 흩어 두지 않는다)
     ② 자체 점검이 돌리는 검사들이 읽는 바깥 꾸러미가 그 목록에 다 있는가
        (검사가 읽는 src/*.py 가 읽는 것까지 따라 들어간다)
+    ③ 검사가 부르는 **바깥 프로그램**(ffmpeg·ffprobe)도 깔아 두는가
 """
 
 import ast
@@ -29,6 +36,8 @@ WF = ROOT / ".github" / "workflows" / "selfcheck.yml"
 
 # 꾸러미 이름과 읽는 이름이 다른 것들
 ALIAS = {"PIL": "pillow", "yaml": "pyyaml", "cv2": "opencv-python"}
+# 파이썬 꾸러미가 아니라 **깔아야 하는 프로그램** (프로그램 → apt 꾸러미)
+PROG_PKG = {"ffmpeg": "ffmpeg", "ffprobe": "ffmpeg"}
 # 우리 것 (깔 필요 없다)
 OURS = {p.stem for p in (ROOT / "src").glob("*.py")} | \
        {p.stem for p in (ROOT / "tools").glob("*.py")}
@@ -71,14 +80,50 @@ def third_party(path, seen=None):
     return out
 
 
+def ours_chain(path, seen=None):
+    """이 파일과, 이 파일이 읽는 **우리 파일들** 전부 (깊이 따라 들어간다)."""
+    seen = seen if seen is not None else set()
+    path = pathlib.Path(path)
+    if not path.exists() or path in seen:
+        return seen
+    seen.add(path)
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+    except Exception:
+        return seen
+    for node in ast.walk(tree):          # 함수 안에서 읽는 것까지 본다
+        names = []
+        if isinstance(node, ast.Import):
+            names = [a.name.split(".")[0] for a in node.names]
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            names = [node.module.split(".")[0]]
+        for n in names:
+            if n in OURS:
+                for d in ("src", "tools"):
+                    ours_chain(ROOT / d / f"{n}.py", seen)
+    return seen
+
+
+def programs(path):
+    """그 검사가 (읽는 우리 파일까지 따라가) **부르는 바깥 프로그램** 이름."""
+    out = set()
+    for f in ours_chain(path):
+        txt = f.read_text(encoding="utf-8", errors="ignore")
+        for prog in PROG_PKG:
+            if re.search(r"[\"']" + prog + r"[\"']", txt):
+                out.add(prog)
+    return out
+
+
 def scan(steps, resolve=True):
     """어긋난 곳들을 돌려준다."""
     bad = []
-    prep_i, installed = None, set()
+    prep_i, installed, apt = None, set(), set()
     for i, st in enumerate(steps):
         name = str(st.get("name") or "")
         run = str(st.get("run") or "")
         installs = re.findall(r"pip\s+install[^\n]*", run)
+        apts = re.findall(r"apt-get\s+install[^\n]*", run)
         if name.strip() == "준비물":          # 정확히 이 이름인 칸만
             prep_i = i
             if not installs:
@@ -88,8 +133,13 @@ def scan(steps, resolve=True):
                     if w in ("pip", "install", "--quiet", "-q", "python3", "-m"):
                         continue
                     installed.add(w.lower())
+            for one in apts:
+                for w in one.split():
+                    if w.startswith("-") or w in ("apt-get", "install", "sudo"):
+                        continue
+                    apt.add(w.lower())
             continue
-        for one in installs:
+        for one in installs + apts:
             bad.append(f"{i + 1}번째 칸 '{name}' 에서 준비물을 깝니다 → {one.strip()}")
 
     if prep_i is None:
@@ -117,6 +167,20 @@ def scan(steps, resolve=True):
     for pkg, who in sorted(need.items()):
         if pkg not in installed:
             bad.append(f"'{pkg}' 를 안 깔았는데 {', '.join(sorted(who))} 가 읽습니다")
+
+    # ③ 검사가 **부르는 프로그램**(ffmpeg 등)도 깔아 두는가
+    needp = {}
+    for st in steps:
+        for line in str(st.get("run") or "").splitlines():
+            m = re.match(r"^\s*python3\s+(tools/[\w.]+\.py)", line)
+            if not m:
+                continue
+            for prog in programs(ROOT / m.group(1)):
+                needp.setdefault(prog, set()).add(m.group(1))
+    for prog, who in sorted(needp.items()):
+        if PROG_PKG[prog] not in apt:
+            bad.append(f"'{prog}' 를 안 깔았는데 {', '.join(sorted(who))} 가 부릅니다 "
+                       f"— '준비물' 칸에 apt-get install {PROG_PKG[prog]} 가 있어야 합니다")
     return bad
 
 
@@ -141,10 +205,19 @@ def selftest():
             {"name": "검사", "run": "python3 tools/clip_order_test.py"}]
     got = scan(miss)
     assert any("pillow" in b for b in got), f"안 깐 꾸러미를 못 잡는다: {got}"
-    full = [{"name": "준비물", "run": "python3 -m pip install --quiet PyYAML pillow"},
+    # ⭐⭐ 2026-08-24 — **바깥 프로그램**도 잡는가.
+    #    ffmpeg 를 까는 줄이 사라져 자체 점검이 15번 내리 빨간불이었다.
+    noff = [{"name": "준비물", "run": "python3 -m pip install --quiet PyYAML pillow"},
+            {"name": "검사", "run": "python3 tools/clip_order_test.py"}]
+    got = scan(noff)
+    assert any("ffmpeg" in b for b in got), f"안 깐 프로그램을 못 잡는다: {got}"
+    full = [{"name": "준비물",
+             "run": "sudo apt-get install -y -qq ffmpeg fonts-nanum\n"
+                    "python3 -m pip install --quiet PyYAML pillow"},
             {"name": "검사", "run": "python3 tools/clip_order_test.py"}]
     assert not scan(full), f"멀쩡한 것을 걸었다: {scan(full)}"
-    print("   ✅ 자기시험: 늦게 까는 것 · 순서 뒤바뀜 · **안 깐 꾸러미** 다 잡는다")
+    print("   ✅ 자기시험: 늦게 까는 것 · 순서 뒤바뀜 · 안 깐 꾸러미 · "
+          "**안 깐 프로그램** 다 잡는다")
 
 
 print("⭐ 준비물을 다 깔았는가 · 쓰는 것보다 먼저 까는가")
