@@ -44,22 +44,32 @@ def rows_with_ink(img, y0, y1):
 
 print("⭐ 쇼츠 배치 시험\n")
 
-print("① 배치 — 영상은 자르지 않고 위아래 검은 띠만 얹는다 (2026-08-23 대개편)")
+print("① 배치 — 16:9 로 받아 4:3 으로 잘라 가운데 띠에 (2026-08-24 대개편)")
 ck("전체가 쇼츠 규격(9:16)", S.W * 16 == S.H * 9, f"{S.W}×{S.H}")
-ck("영상을 자르지 않는다 (폭에만 맞춘다)", S.VIDEO_FIT == "width", S.VIDEO_FIT)
-# 루미나 496x864 를 넣으면 어디에 얼마로 놓이는가
-_vy, _nh = S.video_place(496, 864)
-ck("루미나 영상이 폭 1080 그대로 들어간다", _nh == 1880 and _vy == 20,
-   f"y={_vy} 높이={_nh}")
-ck("위 검은 띠가 AI 표시를 완전히 덮는다",
-   S.BAR_TOP > S.WATERMARK_Y + _vy, f"띠 {S.BAR_TOP} · 표시 끝 {S.WATERMARK_Y + _vy}")
-ck("자막이 아래 검은 띠 안에 들어간다",
-   S.H - S.BAR_BOT <= S.SUB_TOP < S.SUB_BOT <= S.H,
-   f"띠 {S.H - S.BAR_BOT}~{S.H} · 자막 {S.SUB_TOP}~{S.SUB_BOT}")
-ck("후킹은 영상 위에 얹힌다 (위 띠 아래)", S.HOOK_TOP >= S.BAR_TOP,
-   f"띠끝 {S.BAR_TOP} · 후킹 {S.HOOK_TOP}")
-ck("띠가 화면의 절반을 넘지 않는다", S.BAR_TOP + S.BAR_BOT < S.H // 2,
-   f"띠 합계 {S.BAR_TOP + S.BAR_BOT}px")
+ck("띠 배치다", S.LAYOUT == "band", S.LAYOUT)
+ck("영상 자리가 4:3 이다", S.W * 3 == S.VID_H * 4, f"{S.W}×{S.VID_H}")
+# 16:9(1920x1080) 를 넣으면 어디를 자르는가
+_cw, _ch, _cx, _cy = S.crop_43(1920, 1080)
+ck("16:9 을 가운데서 4:3 으로 잘라 낸다",
+   (_cw, _ch, _cy) == (1440, 1080, 0) and _cx == 240,
+   f"{_cw}×{_ch} at x={_cx},y={_cy}")
+# ⭐ 루미나 "AI" 표시는 왼쪽 위 4~6% 자리 → 이 자르기에 같이 잘려 나간다
+ck("잘라 내면 왼쪽 위 AI 표시가 사라진다", _cx >= 1920 * 0.10,
+   f"왼쪽에서 {_cx}px({_cx / 1920 * 100:.1f}%) 버린다 — 표시는 6% 안쪽에 있다")
+# 세로로 긴 것이 잘못 들어와도 죽지 않는가 (예전 세로 클립)
+_c2 = S.crop_43(496, 864)
+ck("세로 영상이 들어와도 4:3 으로 만든다", _c2[0] * 3 == _c2[1] * 4, str(_c2))
+ck("세로일 때는 얼굴이 있는 위쪽을 살린다", _c2[3] < (864 - _c2[1]) / 2 + 1, str(_c2))
+ck("영상이 위 칸과 아래 칸 사이에 놓인다",
+   S.HOOK_BOT < S.VID_TOP and S.VID_TOP + S.VID_H < S.SUB_TOP,
+   f"후킹끝 {S.HOOK_BOT} · 영상 {S.VID_TOP}~{S.VID_TOP + S.VID_H} · 자막 {S.SUB_TOP}")
+ck("아래 300px 은 비워 둔다 (유튜브 단추 자리)", S.H - S.SUB_BOT >= 280,
+   f"{S.H - S.SUB_BOT}px")
+# ⭐⭐ 2026-08-24 운영자: "위에 후킹문구를 계속 띄워놓은건 어때?"
+#    띠 배치에서는 후킹이 **빈 검은 칸**에 앉는다 — 가릴 얼굴이 없으니 내내 띄운다.
+ck("후킹은 영상 위가 아니라 **빈 검은 칸**에 앉는다", S.HOOK_BOT <= S.VID_TOP,
+   f"후킹 {S.HOOK_TOP}~{S.HOOK_BOT} · 영상은 {S.VID_TOP} 부터")
+ck("후킹을 내내 띄운다 (HOOK_SEC = 0)", S.HOOK_SEC == 0, f"{S.HOOK_SEC}초")
 # ⭐ 2026-08-23 운영자: "어르신들이 보는 건데 자막은 좀 더 커야 되지 않을까?"
 ck("자막이 어르신용으로 크다 (화면 폭의 7% 이상)", S.SUB_SIZE >= S.W * 0.07,
    f"{S.SUB_SIZE}px ({S.SUB_SIZE / S.W * 100:.1f}%)")
@@ -86,20 +96,16 @@ with tempfile.TemporaryDirectory() as d:
 
     hook_ink = rows_with_ink(img, S.HOOK_TOP, S.HOOK_BOT)
     sub_ink = rows_with_ink(img, S.SUB_TOP, S.SUB_BOT)
-    mark_ink = rows_with_ink(img, 0, S.BAR_TOP)
-    mid_ink = rows_with_ink(img, S.HOOK_BOT + 120, S.H - S.BAR_BOT - 20)
+    mark_ink = rows_with_ink(img, 0, S.HOOK_TOP - 10)
+    mid_ink = rows_with_ink(img, S.VID_TOP + 10, S.VID_TOP + S.VID_H - 10)
 
     ck("후킹 문구가 그려졌다", len(hook_ink) > 20, f"{len(hook_ink)}줄")
-    ck("자막이 아래 띠 안에 그려졌다", len(sub_ink) > 20, f"{len(sub_ink)}줄")
-    ck("위 띠에 제목·채널 이름이 있다", len(mark_ink) > 5, f"{len(mark_ink)}줄")
-    # 후킹 아래~아래 띠 위 사이에는 글자가 없어야 한다 (영상이 다 보여야 한다)
-    ck("영상 한가운데에는 글자가 없다", not mid_ink, f"{len(mid_ink)}줄 침범")
-
-    # 검은 띠가 실제로 불투명한가 (여기로 워터마크를 덮는다)
-    ck("위 띠가 완전히 불투명하다",
-       min(img.getchannel("A").crop((0, 0, S.W, S.BAR_TOP)).getextrema()) == 255)
-    ck("아래 띠가 완전히 불투명하다",
-       min(img.getchannel("A").crop((0, S.H - S.BAR_BOT, S.W, S.H)).getextrema()) == 255)
+    ck("자막이 아래 칸에 그려졌다", len(sub_ink) > 20, f"{len(sub_ink)}줄")
+    ck("맨 위에 제목·채널 이름이 있다", len(mark_ink) > 5, f"{len(mark_ink)}줄")
+    # ⭐⭐ 이것이 이번 배치의 핵심 — **영상 자리에는 글자가 한 줄도 없다.**
+    #    세로 통짜 배치에서는 후킹이 얼굴을 덮어 이탈률이 올라갔다.
+    ck("영상 자리에는 글자가 하나도 없다 (얼굴을 안 가린다)", not mid_ink,
+       f"{len(mid_ink)}줄 침범")
 
 print("\n③ 자막을 말한 사람마다 줄을 나누는가")
 from PIL import ImageDraw                                   # noqa: E402

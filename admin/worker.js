@@ -648,7 +648,10 @@ function luminaPrompt(t) {
       // → "the husband facing the wife"  (옷은 참조 그림이 정한다)
       // 사람마다 토막을 내고(…facing… / …and…), 토막마다 'wearing' 뒤를 버린다.
       // ⚠️ 쉼표로 자르면 "with dark charcoal trousers" 처럼 옷이 새어 나온다.
-      const body = l.slice(8).replace(/\\.\\s*$/, '');
+      // ⭐ 2026-08-24 — 한 컷에 세 사람이 나오면 세미콜론으로 나열한다.
+      //    아래 자르기가 facing 과 and 만 알므로 먼저 바꿔 준다.
+      //    ⚠️ 여기는 템플릿 문자열 안이다 — 주석에도 백틱을 쓰면 안 된다.
+      const body = l.slice(8).replace(/\\.\\s*$/, '').replace(/;\\s+/g, ' and ');
       // ⚠️ 'and' 로 자를 땐 이어 붙일 때도 'and' 를 되돌려 놔야 한다
       //    (안 그러면 "the wife the husband" 가 된다)
       const who = body.split(/\\s+(?=facing\\b)|(\\s+and\\s+)(?=the\\b)/)
@@ -1073,11 +1076,14 @@ function seriesRender() {
   h += '<div class="upbox">'
      + '<div id="permwarn"></div>'
      + '<input type="file" id="clipzip" accept=".zip,application/zip">'
-     + '<div class="uphint">루미나에서 받은 ' + SEP + '화 클립 5개를 압축해서 고르십시오. '
-     + '파일 이름에 c001~c005 가 있으면 그 번호대로, 없으면 이름 순서대로 붙입니다.</div>'
+     + '<div class="uphint">루미나에서 <b>16:9(가로)</b> 로 만든 ' + SEP + '화 클립 5개를 '
+     + '압축해서 고르십시오. 좌우 끝을 잘라 4:3 으로 만든 뒤 화면 가운데에 넣고, '
+     + '위 칸에 후킹 · 아래 칸에 자막을 넣습니다. 루미나 AI 표시도 이때 같이 잘려 나갑니다.</div>'
+     + '<div class="uphint" style="margin-top:8px">파일 이름에 c001~c005 가 있으면 '
+     + '그 번호대로, 없으면 이름 순서대로 붙입니다.</div>'
      + '<div class="uphint" style="margin-top:8px">클립 <b>하나만</b> 시험해 볼 수도 '
      + '있습니다. 그 클립 하나만 압축해서 올리고, 아래에서 몇 컷인지 고르십시오. '
-     + '(만드는 차례는 5컷짜리와 똑같습니다 — 소리도 한국어로 갈아 끼웁니다)</div>'
+     + '(만드는 차례는 5컷짜리와 똑같습니다 — 루미나 나레이션을 그대로 씁니다)</div>'
      + '<select id="cutone" style="margin-top:8px">'
      + '<option value="">5컷 전체 (완성본)</option>'
      + '<option value="1">1컷만 시험</option><option value="2">2컷만 시험</option>'
