@@ -1,33 +1,34 @@
 #!/usr/bin/env python3
-"""⭐ 쇼츠 한 편을 조립한다 — 위에 후킹 문구, 가운데 영상, 아래 자막.
+"""⭐ 쇼츠 한 편을 조립한다 — 루미나 세로 영상 그대로 + 위아래 검은 띠.
 
     python3 src/shorts.py S001 1 --clips 받은클립폴더/ --out build/
     python3 src/shorts.py --demo 클립.mp4 --hook "..." --sub "..."   (한 컷만 미리보기)
 
-화면 배치 (2026-08-20 운영자 지시: "상단 검은 빈 프레임에는 후킹 문구,
-아래쪽 검은 빈 프레임에는 자막")
+화면 배치 (2026-08-24 기준)
 
     ┌───────────────── 1080 × 1920 (쇼츠) ─────────────────┐
-    │                                        판결극장  ← 우측 상단 │  y 40
+    │ 제목 · n화                              판결극장       │  y 0~120  검은 띠
+    ├───────────────────────────────────────────────────────┤          (AI 표시를 덮는다)
     │                                                       │
-    │            후 킹  문 구  (크게, 최대 3줄)               │  y 150~470
+    │        후 킹  문 구  — **첫 컷 앞 3초만**              │  y 200~520
+    │        (3초 뒤 옅어지며 사라진다)                       │
     │                                                       │
-    ├───────────────────────────────────────────────────────┤  y 520
+    │            루미나 세로 영상 (자르지 않음)                │  y 20~1900
+    │            496×864 → 폭 1080 에 맞춰 1880 높이          │
     │                                                       │
-    │              영상 4:3  (1080 × 810)                    │
-    │                                                       │
-    ├───────────────────────────────────────────────────────┤  y 1330
-    │              자 막  (최대 3줄)                          │  y 1370~1600
-    │                                                       │
-    │        (이 아래는 유튜브 단추가 덮는 자리 — 비워 둔다)      │  y 1600~
+    ├───────────────────────────────────────────────────────┤  y 1560
+    │            자 막  (크게, 최대 3줄)                      │  검은 띠 360px
     └───────────────────────────────────────────────────────┘
 
 왜 이렇게 나눴나
-    · 영상은 4:3 이라 폭을 꽉 채우면 세로 810px 이다. 남는 1110px 을 위아래로
-      나눠 쓴다.
-    · 자막을 화면 맨 아래에 두면 **유튜브 쇼츠의 제목·좋아요 단추에 가린다.**
-      아래 320px 은 비워 두고 자막은 영상 바로 밑에 붙인다.
-    · 후킹 문구는 처음 1초에 남느냐 떠나느냐를 가른다 — 가장 크게 둔다.
+    · 루미나가 처음부터 세로로 준다. 4:3 으로 자르면 얼굴이 2.3배 작아지고
+      좌우 25%가 날아간다 — 어르신 시청자에게 최악이다. 그래서 안 자른다.
+    · "AI" 워터마크는 지우지 않고 **위 검은 띠가 덮는다** (지우기는 얼룩이 남는다).
+    · 자막을 화면 맨 아래에 두면 유튜브 단추에 가린다 → 아래 띠 안에 넣는다.
+    · ⭐ 후킹은 **처음 3초에 손가락을 멈추게 하는 것**이 일이다. 내내 켜 두면
+      얼굴 자리 500px 을 20초 내내 덮는다 (2026-08-24 운영자 신고).
+      3초 뒤 사라져 나머지 90% 동안 얼굴을 온전히 보여 준다.
+    · 끝 안내(다음 화 제목 + 구독)는 **길이를 안 늘리고** 마지막 2.6초에 겹친다.
 """
 import argparse
 import json
@@ -88,6 +89,17 @@ LABEL_SIZE, LABEL_MIN = 34, 24   # 좌측 상단 제목·회차
 HOOK_TOP, HOOK_BOT = 200, 520
 HOOK_MAX, HOOK_MIN, HOOK_GAP = 132, 60, 1.18
 HOOK_SCRIM = 150                 # 후킹 뒤에 까는 어두운 판의 진하기 (0~255)
+# ⭐⭐ 2026-08-24 운영자: "9:16으로 제작하니까 등장인물 얼굴이 글씨에 가린다.
+#    다시 예전처럼 16:9로 제작하고 4:3으로 잘라서 쓰면 어떨까?"
+#    재 보니 **범인은 화면 비율이 아니다.** 후킹 문구가 처음부터 끝까지 켜져
+#    있던 것이 범인이다 — 후킹은 y200~520 을 차지하는데 영상은 y20 부터
+#    깔리므로 **얼굴 자리 500px 을 20초 내내** 덮고 있었다.
+#    4:3 으로 되돌리면 얼굴이 오히려 2.3배 작아지고 좌우 25%가 날아간다
+#    (어르신 시청자에겐 최악). 그래서 비율은 그대로 두고 후킹만 시간을 준다.
+#    후킹의 일은 **처음 몇 초에 손가락을 멈추게 하는 것**이다. 그 뒤로는
+#    자리만 차지한다 → **첫 컷 앞 3초만** 띄우고 부드럽게 사라진다.
+HOOK_SEC = 3.0                   # 후킹을 띄우는 시간 (첫 컷에서만)
+HOOK_FADE = 0.5                  # 사라질 때 부드럽게 (뚝 끊기면 눈에 거슬린다)
 # 자막은 **아래 검은 띠 안**에 들어간다 (2026-08-23 운영자 지시)
 # ⭐ 운영자: "어르신들이 보는 건데 밑에 영상 자막은 좀 더 커야 되지 않을까?"
 #    맞는 말이다. 62 → 84px 로 키웠다(화면 폭의 7.8%). 폰을 팔 뻗어 보는
@@ -476,6 +488,7 @@ def overlay_png(hook, chunk, out, label=None, parts="all"):
     #    **띠까지 통째로 사라졌다.** 운영자: "검은 띠가 짧게 없어졌다
     #    나타나기를 반복해. 깜빡거리는 느낌이야."
     want_frame = parts in ("all", "frame")
+    want_hook = parts in ("all", "hook")     # 후킹은 앞 몇 초만 켠다
     want_sub = parts in ("all", "sub")
 
     if want_frame:
@@ -490,7 +503,7 @@ def overlay_png(hook, chunk, out, label=None, parts="all"):
         if str(label or "").strip():
             draw_label(d, str(label).strip(), mark_w)
 
-    if want_frame and str(hook or "").strip():
+    if want_hook and str(hook or "").strip():
         # ⚠️ 후킹은 이제 **영상 위에** 얹힌다(예전엔 검은 바탕이었다). 밝은 장면에서
         #    흰 글자가 묻히므로 글자 뒤에 어두운 판을 깔아 준다.
         # ⚠️ 네모난 판을 그대로 깔면 아래쪽에 **선명한 경계선**이 생겨 촌스럽다.
@@ -821,7 +834,7 @@ def video_place(vw, vh):
     return (H - nh) // 2, nh             # 짧으면 가운데 (띠가 위아래를 덮는다)
 
 
-def compose(src, hook, sub, out, tmp, label=None, end=None):
+def compose(src, hook, sub, out, tmp, label=None, end=None, hook_sec=HOOK_SEC):
     """받은 클립 한 개 → 쇼츠 한 컷 (자르지 않고 폭에 맞춰 깔고 글자 얹기)."""
     src, out, tmp = Path(src), Path(out), Path(tmp)
     tmp.mkdir(parents=True, exist_ok=True)
@@ -847,11 +860,19 @@ def compose(src, hook, sub, out, tmp, label=None, end=None):
         if len(spans) != len(chunks):
             spans = by_syllable(len(chunks), sec, chunks)
     spans[-1] = (spans[-1][0], sec)          # 마지막은 끝까지 남긴다
-    # ⭐ 틀(검은 띠·제목·채널명·후킹)은 **한 장으로 늘 켜 둔다** — 깜빡임의 원인.
-    frame_png = overlay_png(hook, "", tmp / f"{src.stem}_frame.png", label,
-                            parts="frame")
+    # ⭐ 틀(검은 띠·제목·채널명)은 **한 장으로 늘 켜 둔다** — 깜빡임의 원인.
+    #   ⚠️ 후킹은 이제 틀에서 빠졌다. 얼굴을 내내 덮지 않게 **따로, 앞 몇 초만**.
+    imgs = [overlay_png("", "", tmp / f"{src.stem}_frame.png", label,
+                        parts="frame")]
+    hook_i = None
+    if str(hook or "").strip() and float(hook_sec) > 0:
+        hook_i = len(imgs)
+        imgs.append(overlay_png(hook, "", tmp / f"{src.stem}_hook.png",
+                                None, parts="hook"))
+    sub_i = len(imgs)
     pngs = [overlay_png("", c, tmp / f"{src.stem}_txt{i}.png", None, parts="sub")
             for i, c in enumerate(chunks or [""])]
+    imgs += pngs
 
     # ⭐ 자르지 않는다. 폭만 맞춰 통째로 깐다.
     #   워터마크(AI)는 지우지 않고 **위 검은 띠가 덮는다** — 지우기(delogo)는
@@ -862,6 +883,15 @@ def compose(src, hook, sub, out, tmp, label=None, end=None):
           f"[0:v][v]overlay=0:{vy}[b]",
           # 틀은 enable 없이 통째로 얹는다 → 한 프레임도 안 사라진다
           f"[b][2:v]overlay=0:0[s0]"]
+    # ⭐ 후킹 — 앞 hook_sec 초만. 끝에서 부드럽게 사라진다(뚝 끊기면 거슬린다).
+    cur = "[s0]"
+    if hook_i is not None:
+        hs = min(float(hook_sec), sec)
+        fs = max(0.0, hs - HOOK_FADE)
+        vf.append(f"[{2 + hook_i}:v]format=rgba,"
+                  f"fade=t=out:st={fs:.3f}:d={min(HOOK_FADE, hs):.3f}:alpha=1[hk]")
+        vf.append(f"{cur}[hk]overlay=0:0:enable='between(t,0,{hs:.3f})'[h0]")
+        cur = "[h0]"
     # ⚠️ 2026-08-22 — between(t,a,b) 는 양 끝을 **포함**한다. 앞 토막이 2.0에
     #    끝나고 뒤 토막이 2.0에 시작하면, 딱 그 순간의 한 프레임에 **둘 다**
     #    켜져 자막이 겹쳐 보인다 (실제 프레임에서 발견). 앞 토막을 반 프레임
@@ -872,16 +902,17 @@ def compose(src, hook, sub, out, tmp, label=None, end=None):
         last = (i == len(pngs) - 1)
         if not last:
             b = max(a, b - EN_EPS)
-        tag = "[o]" if last else f"[s{i + 1}]"
+        tag = "[o]" if last else f"[t{i}]"
         en = "" if len(pngs) == 1 else f":enable='between(t,{a:.3f},{b:.3f})'"
-        vf.append(f"[s{i}][{i + 3}:v]overlay=0:0{en}{tag}")
+        vf.append(f"{cur}[{2 + sub_i + i}:v]overlay=0:0{en}{tag}")
+        cur = tag
     # ⭐ 끝 안내 — **길이를 안 늘리고** 마지막 몇 초 위에 겹친다
     if end:
         ep_png = end_png(end[0], end[1], tmp / f"{src.stem}_end.png")
         a0 = max(0.0, sec - END_SEC)
-        vf.append(f"[o][{len(pngs) + 3}:v]overlay=0:0"
+        vf.append(f"[o][{2 + len(imgs)}:v]overlay=0:0"
                   f":enable='between(t,{a0:.3f},{sec:.3f})'[o2]")
-        pngs = pngs + [ep_png]           # 입력 목록 맨 뒤에 붙는다
+        imgs.append(ep_png)              # 입력 목록 맨 뒤에 붙는다
         last_tag = "[o2]"
     else:
         last_tag = "[o]"
@@ -889,8 +920,12 @@ def compose(src, hook, sub, out, tmp, label=None, end=None):
     cmd = ["ffmpeg", "-v", "error", "-y",
            # 바탕은 넉넉하게 — 바탕이 짧으면 그것이 끝을 결정해 잘린다
            "-f", "lavfi", "-i", f"color=c=black:s={W}x{H}:r=24:d={sec + 1:.3f}",
-           "-i", str(src), "-i", str(frame_png)]
-    for q in pngs:
+           "-i", str(src)]
+    for k, q in enumerate(imgs):
+        # ⚠️ 후킹만 **영상처럼** 넣는다(-loop). 그림 한 장은 프레임이 하나뿐이라
+        #    fade(서서히 사라지기)가 안 걸린다 — 늘려 줘야 걸린다.
+        if hook_i is not None and k == hook_i:
+            cmd += ["-loop", "1", "-framerate", "24", "-t", f"{sec + 1:.3f}"]
         cmd += ["-i", str(q)]
     # 소리: 컷마다 크기를 맞추고, 앞뒤 0.05초를 부드럽게 (이어 붙일 때 '툭' 소리 방지)
     g = gain_for(src)
@@ -1060,10 +1095,13 @@ def episode(sid, no, clips_dir, out_dir):
         dubbed = tmp / f"cut{n}_ko.mp4"
         if dub(src, dia_turns(c.get("prompt")), voices, dubbed, tmp, personas):
             src = dubbed
+        # ⭐ 후킹은 **첫 컷 앞 3초에만** (2026-08-24). 내내 켜 두면 얼굴을 덮는다.
         # ⭐ 마지막 컷에만 「다음 화 — 제목」 + 구독 안내를 겹친다
+        first_cut = (c is ep["cuts"][0])
         last_cut = (c is ep["cuts"][-1])
-        d = compose(src, hook, c.get("subtitle"), tmp / f"cut{n}.mp4", tmp,
-                    label=label, end=end_card(doc, no) if last_cut else None)
+        d = compose(src, hook if first_cut else "", c.get("subtitle"),
+                    tmp / f"cut{n}.mp4", tmp, label=label,
+                    end=end_card(doc, no) if last_cut else None)
         parts.append(d)
         print(f"  ✅ {n}컷 ← {files[n].name}  (소리 {gain_for(src):+.1f}dB)")
 

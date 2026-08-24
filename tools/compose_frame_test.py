@@ -132,7 +132,42 @@ ck("앞부분에는 끝 안내가 안 뜬다", ink_mid(withend, 1.0) < 2000,
 ck("마지막 2.6초에만 뜬다", ink_mid(withend, 4.4) > 8000,
    f"{ink_mid(withend, 4.4)}픽셀")
 
-print("⑤ 원본 소리를 쓸 때는 클립을 자르지 않는다")
+print("⑤ 후킹은 첫 컷 앞 3초만 — 얼굴을 내내 덮지 않는다")
+# 2026-08-24 운영자: "9:16으로 제작하니까 등장인물 얼굴이 글씨에 가린다."
+# 범인은 비율이 아니라 **내내 켜져 있던 후킹**이었다(얼굴 자리 500px 을 20초 내내).
+src5 = make(TMP, 6.0, 6.0, color="0x101015")          # 어두운 화면 = 흰 글자가 도드라진다
+hooked = S.compose(src5, "이것이 후킹 문구다", "한 줄 대사.", TMP / "f.mp4", TMP,
+                   label="제목 · 1화")
+
+
+def ink_hook(mp4, t):
+    """그 시각 **후킹 자리(얼굴 자리)** 에 밝은 글자가 있는가."""
+    q = TMP / f"h{t}.png"
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", str(t), "-i", str(mp4),
+                    "-frames:v", "1", str(q)], check=True, capture_output=True)
+    im = Image.open(q).convert("L").crop((0, S.HOOK_TOP, S.W, S.HOOK_BOT))
+    return sum(im.histogram()[150:])
+
+
+ck(f"앞 {S.HOOK_SEC:.0f}초에는 후킹이 크게 뜬다", ink_hook(hooked, 0.5) > 8000,
+   f"{ink_hook(hooked, 0.5)}픽셀")
+ck(f"{S.HOOK_SEC:.0f}초가 지나면 사라진다 (얼굴 자리를 돌려준다)",
+   ink_hook(hooked, S.HOOK_SEC + 0.7) < 500,
+   f"{ink_hook(hooked, S.HOOK_SEC + 0.7)}픽셀 — 아직 덮고 있다")
+ck("사라질 때 뚝 끊기지 않고 옅어진다",
+   0 < ink_hook(hooked, S.HOOK_SEC - 0.25) < ink_hook(hooked, 0.5),
+   f"{ink_hook(hooked, S.HOOK_SEC - 0.25)} vs {ink_hook(hooked, 0.5)}")
+
+plain5 = S.compose(src5, "", "한 줄 대사.", TMP / "g.mp4", TMP, label="제목 · 1화")
+ck("둘째 컷부터는 후킹이 아예 안 뜬다 (첫 컷에만 넘긴다)",
+   ink_hook(plain5, 0.5) < 500, f"{ink_hook(plain5, 0.5)}픽셀")
+ck("후킹이 없어도 길이는 그대로", abs(S.C.probe(plain5)[2] - 6.0) < 0.1,
+   f"{S.C.probe(plain5)[2]:.2f}초")
+_ep = (ROOT / "src" / "shorts.py").read_text(encoding="utf-8")
+ck("첫 컷에만 후킹을 넘기도록 코드가 박혀 있다",
+   "hook if first_cut else \"\"" in _ep)
+
+print("⑥ 원본 소리를 쓸 때는 클립을 자르지 않는다")
 _src = (ROOT / "src" / "shorts.py").read_text(encoding="utf-8")
 ck("keep_audio 면 trim_dead 를 건너뛴다", "if not keep_audio():" in _src)
 ck("-shortest 로 끊지 않는다 (길이를 우리가 정한다)",

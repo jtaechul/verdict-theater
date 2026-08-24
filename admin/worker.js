@@ -1410,15 +1410,17 @@ function seriesRender() {
   h += '<div class="card"><h2>④ ' + SEP + '화 — ' + esc(e.title || '') + '</h2>';
   if (e.recap) h += '<div style="color:#9599ab;font-size:14px;margin-bottom:10px">'
                   + '지난 줄거리: ' + esc(e.recap) + '</div>';
-  // ⭐ 후킹은 30초 내내 화면 맨 위에 붙는 한 줄이다. 이걸 보고 남느냐 떠나느냐가
-  //    갈리므로 영상 만들기 전에 운영자가 반드시 눈으로 본다 (2026-08-20).
+  // ⭐ 후킹은 **첫 컷 앞 3초**에만 크게 뜨는 한 줄이다. 이걸 보고 남느냐
+  //    떠나느냐가 갈리므로 영상 만들기 전에 운영자가 반드시 눈으로 본다.
+  //    (2026-08-24 — 예전엔 내내 켜 둬서 등장인물 얼굴을 덮었다. 3초 뒤
+  //     옅어지며 사라지고, 그 뒤로는 얼굴이 다 보인다.)
   // ⚠️ 여기는 백틱 문자열 안이다 — 정규식 역슬래시를 두 번 써야 살아남는다.
   //    한 번만 쓰면 브라우저에서 'g is not defined' 로 죽는다.
   //    (주석에도 백틱을 쓰면 안 된다 — 문자열이 거기서 끊긴다)
   //    후킹의 별표는 색 넣을 자리 표시라 화면 목록에서는 뗀다.
   if (e.hook) h += '<div style="background:#2a2416;border:1px solid #6b5a24;'
                  + 'border-radius:8px;padding:10px 12px;margin-bottom:10px">'
-                 + '<div style="color:#9599ab;font-size:12px">화면 맨 위 후킹 ('
+                 + '<div style="color:#9599ab;font-size:12px">첫 3초 후킹 — 얼굴을 덮지 않게 그 뒤엔 사라집니다 ('
                  + String(e.hook).replace(/\\*([^*]+)\\*/g, '$1').length
                  + '자)</div>'
                  + '<div style="color:#f0d68a;font-size:17px;font-weight:700">'
