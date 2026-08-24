@@ -416,7 +416,27 @@ def sub_lines(sub):
     return [x.strip() for x in str(sub or "").split(" / ") if x.strip()]
 
 
-SPLIT_OVER = 16          # 이보다 길면 한 사람 말도 반으로 끊어 띄운다 (음절)
+SPLIT_OVER = 16          # 이보다 길면 한 사람 말도 끊어서 띄운다 (음절)
+# ⭐⭐ 2026-08-24 — 컷이 10초로 길어지면서 한 사람이 45음절을 내리 말하는
+#    자리가 생겼다. 그 한 마디를 통째로 화면에 올리려다 fit() 이 **넘친 줄을
+#    말없이 버려**, 자막 뒷부분이 화면에서 사라졌다(11군데).
+#    → 한 토막이 이 길이를 넘지 않게 **끝까지 쪼갠다.**
+CHUNK_MAX = 22           # 한 번에 띄우는 토막의 최대 음절 (두 줄에 넉넉히 들어간다)
+RUNT = 8                 # 이보다 짧은 토막은 옆에 붙인다 (혼자 깜빡이면 읽기 나쁘다)
+
+
+def _cut_words(s):
+    """한 문장이 너무 길면 **띄어쓰기에서** 고르게 갈라 낸다 (될 때까지)."""
+    s = s.strip()
+    if syl(s) <= CHUNK_MAX:
+        return [s]
+    spots = [m.end() for m in re.finditer(r"\s+", s)]
+    spots = [i for i in spots if 1 < i < len(s) - 1]
+    if not spots:
+        return [s]
+    total = syl(s)
+    bp = min(spots, key=lambda i: abs(syl(s[:i]) - (total - syl(s[:i]))))
+    return _cut_words(s[:bp]) + _cut_words(s[bp:])
 
 
 def halve(t):
@@ -424,26 +444,33 @@ def halve(t):
 
     ⚠️ 처음엔 '가운데에서 반으로' 잘랐는데 9음절 + 19음절 처럼 치우쳤다.
        한 문장을 억지로 자르는 것보다 **문장 단위로 끊는 쪽**이 자연스럽고
-       토막마다 말이 온전하다. 문장이 하나뿐이고 길면 그때만 반으로 가른다.
+       토막마다 말이 온전하다. 문장이 하나뿐이고 길면 띄어쓰기에서 가른다.
+
+    ⚠️ 2026-08-24 — 예전엔 **두 토막까지만** 갈랐다. 45음절짜리 대사가
+       22음절씩 두 토막이 되어도 화면에 다 안 들어가 뒷부분이 사라졌다.
+       이제 **어느 토막도 CHUNK_MAX 를 안 넘을 때까지** 쪼갠다.
     """
     t = t.strip()
     if syl(t) <= SPLIT_OVER:
         return [t]
 
-    # ① 문장 단위 (마침표·물음표·느낌표 뒤)
+    # ① 문장 단위 (마침표·물음표·느낌표 뒤) → ② 그래도 길면 띄어쓰기에서
     sent = [x.strip() for x in re.split(r"(?<=[.!?…])\s+", t) if x.strip()]
-    if len(sent) >= 2:
-        return sent[:3] if len(sent) <= 3 else [
-            " ".join(sent[:len(sent) // 2]), " ".join(sent[len(sent) // 2:])]
+    small = []
+    for s in (sent or [t]):
+        small += _cut_words(s)
 
-    # ② 문장이 하나뿐 → 소리 나는 양이 고르게 갈리는 띄어쓰기에서
-    total = syl(t)
-    spots = [m.end() for m in re.finditer(r"\s+", t)]
-    spots = [i for i in spots if 1 < i < len(t) - 1]
-    if not spots:
-        return [t]
-    bp = min(spots, key=lambda i: abs(syl(t[:i]) - (total - syl(t[:i]))))
-    return [t[:bp].strip(), t[bp:].strip()]
+    # ③ **너무 짧은** 토막만 옆에 붙인다 — 한두 마디가 깜빡이면 읽기 나쁘다.
+    #    ⚠️ 들어가는 대로 다 붙이면 문장 단위로 끊은 뜻이 사라진다
+    #       (세 문장짜리 혼잣말이 두 토막으로 뭉쳤다).
+    out = []
+    for s in small:
+        runt = out and (syl(out[-1]) < RUNT or syl(s) < RUNT)
+        if runt and syl(out[-1]) + syl(s) <= CHUNK_MAX:
+            out[-1] += " " + s
+        else:
+            out.append(s)
+    return out
 
 
 def who_ko(who):
@@ -476,12 +503,23 @@ def sub_chunks(sub):
        아직 안 한 말까지 미리 보여 김이 샌다.
 
     · 여러 사람이 주고받는 컷 → **말하는 사람 것만** 한 줄씩
-    · 한 사람이 길게 말하는 컷 → **반 문장씩** 두 토막으로
+    · 한 사람이 길게 말하는 컷 → **반 문장씩** 나눠서
+
+    ⚠️ 2026-08-24 — 예전엔 **한 사람만 말하는 컷**에서만 잘랐다. 컷이
+       10초로 길어지자 "A가 45음절 / B가 8음절" 같은 컷이 생겼고, A의 긴
+       말이 통째로 올라가다 화면에서 뒷부분이 잘렸다(11군데).
+       → 어느 사람 말이든 길면 자른다.
+
+    돌려주는 것 — (토막들, 토막마다 **몇 번째 사람의 말인지**).
+    이름표를 토막에 짝지어 붙이는 데 쓴다.
     """
     parts = sub_lines(sub)
-    if len(parts) == 1 and syl(parts[0]) > SPLIT_OVER:
-        return halve(parts[0]), True
-    return parts, False
+    chunks, owners = [], []
+    for i, one in enumerate(parts):
+        for h in (halve(one) if syl(one) > SPLIT_OVER else [one]):
+            chunks.append(h)
+            owners.append(i)
+    return chunks, owners
 
 
 def draw_label(d, label, mark_w):
@@ -920,16 +958,28 @@ def compose(src, hook, sub, out, tmp, label=None, end=None,
 
     # ⭐ 자막은 **한 토막씩** 뜬다 (말하는 사람 것만 / 긴 대사는 반 문장씩).
     #    말하는 시각은 소리에서 찾는다.
-    chunks, halved = sub_chunks(sub)
-    people = len(sub_lines(sub))
-    if halved:
+    chunks, owners = sub_chunks(sub)
+    parts = sub_lines(sub)
+    people = len(parts)
+
+    def share(base, mine):
+        """한 사람 몫의 시간을 그 사람 토막들에 **음절 수대로** 나눈다."""
+        tot = max(1, sum(syl(x) for x in mine))
+        a0, b0 = base
+        return [(a0 + (b0 - a0) * a / tot, a0 + (b0 - a0) * b / tot)
+                for a, b in _runs([syl(x) for x in mine])]
+
+    if people <= 1:
         # 한 사람이 길게 말하는 컷 — 그 사람이 말하는 동안을 음절 수로 나눈다
-        base = speech_spans(src, 1, sec)[0]
-        spans = [(base[0] + (base[1] - base[0]) * a / max(1, sum(map(syl, chunks))),
-                  base[0] + (base[1] - base[0]) * b / max(1, sum(map(syl, chunks))))
-                 for a, b in _runs([syl(c) for c in chunks])]
+        spans = share(speech_spans(src, 1, sec)[0], chunks)
     else:
-        spans = speech_spans(src, people, sec)
+        # 사람마다 말하는 동안을 먼저 찾고, 그 안에서 토막끼리 다시 나눈다
+        pspans = speech_spans(src, people, sec)
+        if len(pspans) != people:
+            pspans = by_syllable(people, sec, parts)
+        spans = []
+        for i in range(people):
+            spans += share(pspans[i], [c for c, w in zip(chunks, owners) if w == i])
         if len(spans) != len(chunks):
             spans = by_syllable(len(chunks), sec, chunks)
     spans[-1] = (spans[-1][0], sec)          # 마지막은 끝까지 남긴다
@@ -950,8 +1000,8 @@ def compose(src, hook, sub, out, tmp, label=None, end=None,
     # ⭐ 토막마다 **누가 한 말인지** 짝지어 준다 (2026-08-24).
     #    한 사람 대사를 반으로 쪼갠 컷(halved)은 두 토막 다 같은 사람이다.
     ws = list(whos or [])
-    if halved:
-        ws = [ws[0]] * len(chunks) if ws else []
+    if len(ws) == people:
+        ws = [ws[w] for w in owners]       # 쪼갠 토막도 **원래 말한 사람**을 따라간다
     if len(ws) != len(chunks):
         ws = [None] * len(chunks)          # 수가 안 맞으면 아무것도 안 붙인다
     pngs = [overlay_png("", c, tmp / f"{src.stem}_txt{i}.png", None,

@@ -514,6 +514,27 @@ def dia_says(prompt):
     return re.findall(r'"([^"]*)"', dia_text(prompt))
 
 
+def dia_who(prompt):
+    """말한 사람을 **말한 차례대로**.
+
+    ⚠️ dia_turns 는 줄로 나뉜 대사(들여쓴 줄)만 읽는다. 모델이 갓 써낸
+       대본은 아직 한 줄에 ` / ` 로 이어 붙인 꼴이라 그때는 빈손이 온다.
+       주고받기를 세는 데 쓰므로 **두 꼴 다** 읽을 수 있어야 한다.
+    """
+    turns = dia_turns(prompt)
+    if turns:
+        return [w for w, _ in turns]
+    out = []
+    for piece in re.split(r"\s+/\s+", dia_text(prompt)):
+        m = re.search(r'(?:DIALOGUE:\s*)?([^:("]+?)\s*(?:\([^)]*\))?\s*:\s*"',
+                      piece)
+        if m:
+            # `본처 says in Korean, firm` 처럼 뒤에 붙은 말은 떼어 낸다
+            out.append(re.sub(r"\s+(says|said|replies|answers|asks)\b.*$", "",
+                              m.group(1).strip()))
+    return out
+
+
 def turn_label(who):
     """`the wife` → `Wife` (말 차례가 눈에 확 들어오게)."""
     t = re.sub(r"^the\s+", "", str(who or "").strip())
@@ -1933,7 +1954,7 @@ def check(doc):
 
             says = dia_says(p)
             total = sum(syl(x) for x in says)
-            csec = int(c.get("sec") or SEC)
+            csec = int(c.get("sec") or cut_sec(total))
             lo, mid, hi = dia_syl_range(csec)
             if total > hi:
                 bad.append(f"{tag}: 대사가 다 합쳐 {total}음절이다 "
@@ -1953,7 +1974,7 @@ def check(doc):
                            f"거의 빈다) — {' / '.join(says)}")
             stiff_hits.update(w for x in says for w in STIFF if w in x)
             stiff_lines += sum(1 for x in says if any(w in x for w in STIFF))
-            voices += [w for w, _ in dia_turns(p)]
+            voices += dia_who(p)
             if len(c.get("subtitle") or "") > SUB_MAX:
                 bad.append(f"{tag}: 자막이 {SUB_MAX}자를 넘는다")
             # 지시대명사 — 컷은 하나씩 따로 만들어져 모델이 못 알아듣는다.

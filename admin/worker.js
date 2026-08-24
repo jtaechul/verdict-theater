@@ -1121,7 +1121,7 @@ function seriesRender() {
   //    후킹의 별표는 색 넣을 자리 표시라 화면 목록에서는 뗀다.
   if (e.hook) h += '<div style="background:#2a2416;border:1px solid #6b5a24;'
                  + 'border-radius:8px;padding:10px 12px;margin-bottom:10px">'
-                 + '<div style="color:#9599ab;font-size:12px">화면 위 검은 칸에 <b>내내</b> 뜹니다 — 얼굴을 가리지 않습니다 ('
+                 + '<div style="color:#9599ab;font-size:12px">후킹 문구 — 화면 위 검은 칸에 <b>내내</b> 뜹니다 (얼굴을 안 가립니다) ('
                  + String(e.hook).replace(/\\*([^*]+)\\*/g, '$1').length
                  + '자)</div>'
                  + '<div style="color:#f0d68a;font-size:17px;font-weight:700">'

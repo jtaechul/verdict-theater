@@ -59,10 +59,10 @@ def good_doc():
             # 후킹·유튜브 제목은 모델이 반드시 내야 하는 칸이다 (2026-08-20)
             "hook": f"{i}화에서 통장이 비어 있었다",
             "yt_title": f"{i}화 — 남편이 통장을 비우고 집을 나갔습니다",
+            # ⚠️ 2026-08-24 — 컷이 3개로 줄었다. 시험마다 컷 하나를 혼잣말로
+            #    바꿔 보므로 **기본은 전부 주고받는 컷**이어야 한다.
             "cuts": [{"n": n, "role": S.ROLES[n - 1], "subtitle": '"짧은 자막"',
-                      # 3·4컷은 주고받는다 — 혼잣말만 이으면 이야기가 안 굴러간다
-                      "prompt": good_prompt(TALK) if n in (3, 4)
-                      else (good_prompt() if n == 1 else good_prompt("None."))}
+                      "prompt": good_prompt(TALK)}
                      for n in range(1, S.CUTS + 1)],
         })
     return {"title": "시험", "case_id": "1", "characters": [{"name": "며느리"}],
@@ -76,7 +76,8 @@ ck("문제 0건", S.check(good_doc()) == [], f"{len(S.check(good_doc()))}건")
 print("\n② 운영자가 못 박은 것을 어기면 잡는가")
 d = good_doc()
 d["episodes"][3]["cuts"][0]["role"] = "상황"
-ck("첫 컷이 후킹이 아니면 잡는다", any("후킹" in b for b in S.check(d)))
+ck(f"첫 컷이 {S.ROLES[0]} 이 아니면 잡는다",
+   any(S.ROLES[0] in b for b in S.check(d)))
 
 d = good_doc()
 d["episodes"][2]["cuts"][1]["prompt"] = good_prompt().replace(
@@ -112,13 +113,23 @@ d["episodes"] = d["episodes"][:12]
 ck("16화가 아니면 잡는다", any("화 수가" in b for b in S.check(d)))
 
 d = good_doc()
-d["episodes"][5]["cuts"] = d["episodes"][5]["cuts"][:3]
-ck("5컷이 아니면 잡는다", any("컷이 3개" in b for b in S.check(d)))
+d["episodes"][5]["cuts"] = d["episodes"][5]["cuts"][:2]
+ck(f"{S.CUTS}컷이 아니면 잡는다", any("컷이 2개" in b for b in S.check(d)))
+
+# ⭐ 장소가 여럿인 화는 컷 하나를 더 쓴다 — 그것까지 막으면 안 된다
+d = good_doc()
+d["episodes"][5]["cuts"] = d["episodes"][5]["cuts"] + [
+    dict(d["episodes"][5]["cuts"][-1], n=S.CUTS + 1)]
+ck(f"장소가 여럿이면 {S.CUTS + 1}컷도 통과시킨다", S.check(d) == [],
+   str(S.check(d))[:70])
 
 d = good_doc()
 d["episodes"][0]["cuts"][0]["prompt"] = good_prompt(
-    '시동생 says in Korean: "이 집은 이제 전부 저희 것이니 오늘 안에 짐을 싸서 지금 당장 나가 주셔야 하겠습니다. 더는 드릴 말씀이 없습니다."')
-ck(f"대사가 {S.DIA_SYL_MAX}음절을 넘으면 잡는다", any("음절이다" in b for b in S.check(d)))
+    '시동생 says in Korean: "이 집은 이제 전부 저희 것이니 오늘 안에 짐을 싸서 '
+    '지금 당장 나가 주셔야 하겠습니다. 더는 드릴 말씀도 없고 기다려 드릴 생각도 '
+    '전혀 없습니다. 이건 형님 뜻이기도 합니다."')
+ck(f"대사가 {S.dia_syl_range(S.SEC)[2]}음절을 넘으면 잡는다",
+   any("음절이다" in b for b in S.check(d)))
 
 # ⚠️ 한 글자 차이로 멀쩡한 대사 둘을 막았다. 실제로 나왔던 그 대사를 넣어 둔다.
 d = good_doc()
@@ -132,14 +143,14 @@ d["episodes"][4]["recap"] = ""
 ck("2화부터 지난 줄거리가 비면 잡는다", any("지난 줄거리" in b for b in S.check(d)))
 
 d = good_doc()
-d["episodes"][7]["cuts"][4]["prompt"] = good_prompt("None.").replace(
+d["episodes"][7]["cuts"][-1]["prompt"] = good_prompt("None.").replace(
     "SUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.",
     "SUBJECT: the same woman in a black coat.")
 ck("SUBJECT 에 이름 없이 가리키면 잡는다", any("지시대명사" in b for b in S.check(d)))
 
 # ⚠️ 우리 예시 대본이 바로 이 검사에 걸렸다. 앞에 이름이 있으면 통과해야 한다.
 d = good_doc()
-d["episodes"][7]["cuts"][4]["prompt"] = good_prompt("None.").replace(
+d["episodes"][7]["cuts"][-1]["prompt"] = good_prompt("None.").replace(
     "toward 며느리.", "toward 며느리; she does not take it.")
 ck("앞에 이름이 있는 she 는 통과시킨다", S.check(d) == [], str(S.check(d))[:60])
 
@@ -166,7 +177,7 @@ ck("STYLE·Avoid 줄이 없으면 우리가 채운다", S.check(S.normalize(d)) 
 
 # 대사 없는 컷에서 DIALOGUE 줄을 통째로 빠뜨리는 일이 있다 — 빈칸만 채운다
 d = good_doc()
-d["episodes"][5]["cuts"][4]["prompt"] = "\n".join(
+d["episodes"][5]["cuts"][-1]["prompt"] = "\n".join(
     l for l in good_prompt("None.").split("\n") if not l.startswith("DIALOGUE:"))
 ck("DIALOGUE 줄이 없으면 우리가 채운다", S.check(S.normalize(d)) == [],
    str(S.check(S.normalize(d)))[:60])
@@ -592,24 +603,38 @@ ck(f"대사가 {S.DIA_SYL_MIN}음절에 못 미치면 잡는다 (6초가 빈다)
    any("거의 빈다" in b for b in S.check(d)))
 
 d = good_doc()
-for n in (3, 4):
-    d["episodes"][6]["cuts"][n - 1]["prompt"] = good_prompt("None.")
-ck("한 화에 주고받는 컷이 모자라면 잡는다",
-   any("주고받는 컷" in b for b in S.check(d)))
+for c in d["episodes"][6]["cuts"]:          # 한 화가 통째로 혼잣말
+    c["prompt"] = good_prompt(SOLO)
+ck("한 화에서 말하는 사람이 안 바뀌면 잡는다",
+   any("말하는 사람이" in b for b in S.check(d)))
+
+# ⭐ 한 컷에 한 명씩 **번갈아** 말하는 것은 통과해야 한다 (2026-08-24 손님)
+d = good_doc()
+for i, c in enumerate(d["episodes"][6]["cuts"]):
+    who = "시동생" if i % 2 == 0 else "며느리"
+    c["prompt"] = good_prompt(
+        f'{who} says in Korean, firm: "몰래 빼돌린 건 몇 년이 지나도 안 없어져. '
+        f'끝까지 다 받아낼 거니까 그렇게 알고 기다려."')
+ck("한 명씩 번갈아 말하는 화는 통과시킨다", S.check(d) == [], str(S.check(d))[:70])
 
 d = good_doc()
 d["episodes"][2]["cuts"][2]["prompt"] = good_prompt(
-    '시동생 (cold): "이 집은 이제 전부 저희 것이니 오늘 안에 나가 주십시오." / '
+    '시동생 (cold): "이 집은 이제 전부 저희 것이니 오늘 안에 나가 주십시오. '
+    '더 드릴 말씀도 없습니다." / '
     '며느리 (trembling): "그이 관 앞에서 무슨 소리를 하시는 겁니까, 지금. '
-    '부끄럽지도 않으세요?"')
-ck(f"한 컷 대사 총합이 {S.DIA_SYL_MAX}음절을 넘으면 잡는다",
+    '부끄럽지도 않으세요? 사람이 어떻게 그럴 수가 있습니까."')
+ck(f"한 컷 대사 총합이 {S.dia_syl_range(S.SEC)[2]}음절을 넘으면 잡는다",
    any("음절이다" in b for b in S.check(d)))
 
 d = good_doc()
+# ⚠️ 주고받는 횟수 상한은 **그 컷의 초**에서 나온다 (7초면 4번).
 d["episodes"][2]["cuts"][2]["prompt"] = good_prompt(
-    '시동생: "나가." / 며느리: "싫어." / 시어머니: "그만." / 아들: "왜요."')
-ck(f"한 컷에 {S.TALKERS_MAX}번 넘게 말하면 잡는다",
-   any("번 말한다" in b for b in S.check(d)))
+    '시동생: "지금 나가 주세요." / 며느리: "못 나갑니다." / '
+    '시어머니: "그만들 해라." / 아들: "왜 이러세요." / '
+    '시동생: "더 할 말 없습니다."')
+ck("한 컷에 너무 여러 번 말하면 잡는다",
+   any("번 말한다" in b for b in S.check(d)),
+   str([b for b in S.check(d) if "번 말한다" in b])[:60])
 
 ck("두 사람이 주고받는 멀쩡한 컷은 통과시킨다", S.check(good_doc()) == [],
    str(S.check(good_doc()))[:70])
