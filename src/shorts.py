@@ -62,6 +62,9 @@ FONT_M = ROOT / "assets" / "fonts" / "KoPub_Dotum_Pro_Medium.otf"
 #    ⚠️ 저장소에 글꼴 파일을 넣어 둔다 — 깃허브 실행기에는 한글 글꼴이
 #       아예 없어서, 시스템 글꼴에 기대면 네모(두부)로 나온다.
 FONT_H = ROOT / "assets" / "fonts" / "NanumGothic_ExtraBold.ttf"
+# ⭐ 이름표는 **바탕체(명조)** 로 쓴다 — 굵은 고딕은 드라마가 아니라
+#    앱 화면처럼 보인다 (2026-08-24 운영자: "색이름표 디자인 너무 구려").
+FONT_SERIF = ROOT / "assets" / "fonts" / "KoPub_Batang_Pro_Bold.otf"
 
 W, H = 1080, 1920                # 쇼츠 화면
 
@@ -120,15 +123,20 @@ SUB_MIN, SUB_LINES = 62, 3
 #    ⚠️ 대본 속 이름은 영어(Wife/Husband/Other woman)다. 모르는 이름이면
 #       **아무것도 안 붙인다** — 틀린 이름을 붙이는 것보다 없는 편이 낫다.
 WHO_KO = {
-    "wife": ("아내", (240, 196, 92)),
-    "husband": ("남편", (126, 176, 240)),
-    "other woman": ("그 여자", (232, 128, 158)),
-    "lawyer": ("변호사", (150, 200, 170)),
-    "judge": ("재판장", (200, 200, 210)),
+    "wife": ("아내", (226, 196, 142)),          # 바랜 호박
+    "husband": ("남편", (150, 178, 200)),       # 강청
+    "other woman": ("그 여자", (206, 146, 150)),  # 마른 장미
+    "lawyer": ("변호사", (150, 190, 168)),
+    "judge": ("재판장", (196, 196, 206)),
 }
-NAME_SIZE = 48                   # 이름표 글자 크기 (어르신용 — 작으면 안 보인다)
-NAME_PAD = (28, 8)               # 이름표 좌우 · 위아래 여백
-NAME_GAP = 8                     # 이름표와 자막 사이
+# 시안 1 — 이름을 **세로로 세우고** 왼쪽에 머리카락 같은 가는 선을 세운다.
+#   · 채워진 상자가 없다 (상자가 싸구려로 보이던 원인)
+#   · 색은 원색이 아니라 **필름톤으로 눌렀다** — 바랜 호박 · 강청 · 마른 장미
+NAME_SIZE = 52                   # 세로쓰기 이름 글자 크기 (어르신용)
+NAME_STEP = 62                   # 글자와 글자 사이
+NAME_RULE = 4                    # 왼쪽 세로선 굵기
+NAME_X = 18                      # 세로선과 이름 사이
+NAME_ROOM = 178                  # 이름 기둥이 차지하는 폭 (자막은 그 오른쪽)
 SIDE = 64                        # 좌우 여백
 GOLD = (198, 160, 74)
 # ⭐ 후킹에서 별표로 감싼 토막에 넣을 색 (2026-08-21 운영자 지시).
@@ -376,7 +384,8 @@ def fit_owned(draw, parts, path, size, max_w, max_lines):
     return f, ls[:max_lines], owner[:max_lines]
 
 
-def block(d, lines, font, top, bottom, fill, gap=1.28, live=None, dim=None):
+def block(d, lines, font, top, bottom, fill, gap=1.28, live=None, dim=None,
+          x0=0, x1=W):
     """정해진 칸 안에서 가운데 맞춰 그린다.
 
     live — 지금 말하는 사람의 줄 번호. 그 줄만 밝게, 나머지는 흐리게 그린다
@@ -388,7 +397,7 @@ def block(d, lines, font, top, bottom, fill, gap=1.28, live=None, dim=None):
     y = top + max(0, (bottom - top - total) // 2)
     for i, l in enumerate(lines):
         c = fill if (live is None or i == live) else (dim or DIM)
-        x = (W - d.textlength(l, font=font)) / 2
+        x = x0 + (x1 - x0 - d.textlength(l, font=font)) / 2
         d.text((x, y), l, font=font, fill=c)
         y += lh
 
@@ -443,19 +452,25 @@ def who_ko(who):
     return WHO_KO.get(k)
 
 
-def name_pill(d, label, color, top):
-    """자막 위에 붙는 「아내」 같은 둥근 이름표. 그린 높이를 돌려준다."""
-    f = ImageFont.truetype(str(FONT_B), NAME_SIZE)
-    bb = d.textbbox((0, 0), label, font=f)
-    px, py = NAME_PAD
-    w = (bb[2] - bb[0]) + px * 2
-    h = (bb[3] - bb[1]) + py * 2
-    x0 = (W - w) / 2
-    d.rounded_rectangle([x0, top, x0 + w, top + h], radius=h / 2,
-                        fill=tuple(color) + (255,))
-    d.text((x0 + w / 2, top + h / 2), label, font=f,
-           fill=(22, 19, 12, 255), anchor="mm")
-    return h
+def name_column(d, label, color, cy):
+    """자막 왼쪽에 **세로로 세운 이름** + 가는 세로선. (차지한 폭)
+
+    ⭐⭐ 2026-08-24 — 둥근 알약 → 각진 태그 → 밑줄까지 다 퇴짜를 맞았다.
+       운영자: "색이름표 디자인 너무 구려." 모양만 바꿔서는 안 되는 문제였다.
+         · 이름도 자막도 같은 굵은 고딕 → **앱 화면**처럼 보였다
+         · 금색·파랑·분홍이 원색에 가까워 **유치**했다
+       → 이름은 바탕체(명조), 색은 필름톤, 그리고 **세로쓰기**.
+         한국 드라마 포스터의 세로 표기처럼 읽힌다.
+    """
+    f = ImageFont.truetype(str(FONT_SERIF), NAME_SIZE)
+    ch = [c for c in str(label or "") if c.strip()]
+    h = NAME_STEP * len(ch)
+    y = cy - h / 2
+    d.rectangle([SIDE, y + 4, SIDE + NAME_RULE, y + h - 12], fill=tuple(color))
+    for c in ch:
+        d.text((SIDE + NAME_X, y), c, font=f, fill=tuple(color))
+        y += NAME_STEP
+    return NAME_ROOM
 
 
 def sub_chunks(sub):
@@ -572,18 +587,21 @@ def overlay_png(hook, chunk, out, label=None, parts="all", who=None, end=None):
                    HOOK_HI, HOOK_GAP)
 
     if want_sub and str(chunk or "").strip():
-        # ⭐ 누가 말하는지 이름표를 자막 **위에** 붙인다 (2026-08-24)
-        top = SUB_TOP
+        # ⭐ 이름은 자막 **왼쪽 기둥**에 세로로 (2026-08-24 · 운영자 지시)
         wk = who_ko(who)
-        if wk:
-            top += name_pill(d, wk[0], wk[1], SUB_TOP - 4) + NAME_GAP - 4
+        x0 = SIDE + (NAME_ROOM if wk else 0)
+        room = W - SIDE - x0
         # 한 토막만 있으니 크게 쓸 수 있다 — 폰에서 읽기 훨씬 낫다
         # ⭐ 어르신용 — 글자를 작게 줄이는 대신 **줄을 늘린다**.
-        f, ls = fit(d, chunk, FONT_M, SUB_SIZE, W - SIDE * 2, 2, min_size=SUB_MIN)
+        f, ls = fit(d, chunk, FONT_M, SUB_SIZE, room, 2, min_size=SUB_MIN)
         if len(ls) > 2 or f.size < SUB_MIN:
-            f, ls = fit(d, chunk, FONT_M, SUB_SIZE, W - SIDE * 2, SUB_LINES,
+            f, ls = fit(d, chunk, FONT_M, SUB_SIZE, room, SUB_LINES,
                         min_size=SUB_MIN)
-        block(d, ls, f, top, SUB_BOT, (245, 245, 250, 255))
+        if wk:
+            # 이름 기둥은 자막 덩어리와 **가운데를 맞춘다**
+            name_column(d, wk[0], wk[1], (SUB_TOP + SUB_BOT) / 2)
+        block(d, ls, f, SUB_TOP, SUB_BOT, (245, 245, 250, 255),
+              x0=x0, x1=W - SIDE)
 
     img.save(out)
     return out

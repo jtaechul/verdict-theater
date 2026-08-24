@@ -156,11 +156,12 @@ ck("모든 컷에 후킹을 넘기도록 코드가 박혀 있다",
 print("⑥ 자막에 '누가 말하는지' 이름표가 붙는가 (2026-08-24)")
 # 1화 이탈률 60%를 파고들다 찾은 것: 사람이 셋 나오는데 화자 표시가 없어
 # "얘가 누구지?" 하는 순간 이야기에서 튕겨 나갔다.
-PILLBOX = (0, S.SUB_TOP - 6, S.W, S.SUB_TOP + 74)
+# ⭐ 2026-08-24 — 이름표는 자막 **왼쪽 기둥**에 세로로 선다 (둥근 알약 폐기)
+PILLBOX = (S.SIDE - 8, S.SUB_TOP, S.SIDE + S.NAME_ROOM - 20, S.SUB_BOT)
 
 
 def pill_colors(mp4, t):
-    """그 시각 자막 **바로 위**(이름표 자리)에 색 있는 알약이 있는가."""
+    """그 시각 자막 **왼쪽 기둥**(이름표 자리)에 색 글자가 있는가."""
     q = TMP / f"n{t}_{mp4.stem}.png"
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", str(t), "-i", str(mp4),
                     "-frames:v", "1", str(q)], check=True, capture_output=True)
@@ -171,7 +172,14 @@ def pill_colors(mp4, t):
 src6 = make(TMP, 5.0, 5.0, color="0x101015")
 named = S.compose(src6, "", "당장 나가. / 그만해.", TMP / "n1.mp4", TMP,
                   whos=["Wife", "Husband"])
-ck("이름표가 자막 위에 뜬다", pill_colors(named, 0.6) > 0, "아무것도 안 그려졌다")
+ck("이름표가 자막 왼쪽에 세로로 선다", pill_colors(named, 0.6) > 0,
+   "아무것도 안 그려졌다")
+ck("이름표가 바탕체(명조)다 — 굵은 고딕은 앱 화면처럼 보인다",
+   "FONT_SERIF" in (ROOT / "src" / "shorts.py").read_text(encoding="utf-8")
+   and S.FONT_SERIF.exists(), str(S.FONT_SERIF.name))
+ck("색이 원색이 아니라 눌린 색이다 (유치해 보이지 않게)",
+   all(max(c) - min(c) < 110 for _, c in S.WHO_KO.values()),
+   str([c for _, c in S.WHO_KO.values()]))
 plain6 = S.compose(src6, "", "당장 나가. / 그만해.", TMP / "n2.mp4", TMP)
 ck("화자를 모르면 아무것도 안 붙인다 (틀린 이름보다 없는 편이 낫다)",
    pill_colors(plain6, 0.6) == 0, "이름표가 그려졌다")
