@@ -108,6 +108,23 @@ HOOK_FADE = 0.5                  # 사라질 때 부드럽게 (뚝 끊기면 눈
 #    안 줄인다** — 그보다 길면 줄을 늘리는 쪽이 낫다(SUB_LINES).
 SUB_TOP, SUB_BOT, SUB_SIZE = H - BAR_BOT + 34, H - 44, 84
 SUB_MIN, SUB_LINES = 62, 3
+# ⭐⭐ 2026-08-24 — 자막에 **누가 말하는지** 를 붙인다.
+#    1화 이탈률 60%를 파고들다 찾은 것: 1화에 사람이 셋 나오는데 이름도
+#    화자 표시도 하나도 없었다. 3컷에서 처음 보는 여자가 갑자기 말을
+#    시작하니 "얘가 누구지?" 하는 순간 이야기에서 튕겨 나간다.
+#    → 자막 위에 카톡 말풍선처럼 **색 이름표**를 붙인다. 어르신도 한눈에 안다.
+#    ⚠️ 대본 속 이름은 영어(Wife/Husband/Other woman)다. 모르는 이름이면
+#       **아무것도 안 붙인다** — 틀린 이름을 붙이는 것보다 없는 편이 낫다.
+WHO_KO = {
+    "wife": ("아내", (240, 196, 92)),
+    "husband": ("남편", (126, 176, 240)),
+    "other woman": ("그 여자", (232, 128, 158)),
+    "lawyer": ("변호사", (150, 200, 170)),
+    "judge": ("재판장", (200, 200, 210)),
+}
+NAME_SIZE = 48                   # 이름표 글자 크기 (어르신용 — 작으면 안 보인다)
+NAME_PAD = (28, 8)               # 이름표 좌우 · 위아래 여백
+NAME_GAP = 8                     # 이름표와 자막 사이
 SIDE = 64                        # 좌우 여백
 GOLD = (198, 160, 74)
 # ⭐ 후킹에서 별표로 감싼 토막에 넣을 색 (2026-08-21 운영자 지시).
@@ -416,6 +433,27 @@ def halve(t):
     return [t[:bp].strip(), t[bp:].strip()]
 
 
+def who_ko(who):
+    """대본 속 화자 이름 → (화면에 쓸 한국어 이름, 색). 모르면 None."""
+    k = re.sub(r"^the\s+", "", str(who or "").strip()).lower()
+    return WHO_KO.get(k)
+
+
+def name_pill(d, label, color, top):
+    """자막 위에 붙는 「아내」 같은 둥근 이름표. 그린 높이를 돌려준다."""
+    f = ImageFont.truetype(str(FONT_B), NAME_SIZE)
+    bb = d.textbbox((0, 0), label, font=f)
+    px, py = NAME_PAD
+    w = (bb[2] - bb[0]) + px * 2
+    h = (bb[3] - bb[1]) + py * 2
+    x0 = (W - w) / 2
+    d.rounded_rectangle([x0, top, x0 + w, top + h], radius=h / 2,
+                        fill=tuple(color) + (255,))
+    d.text((x0 + w / 2, top + h / 2), label, font=f,
+           fill=(22, 19, 12, 255), anchor="mm")
+    return h
+
+
 def sub_chunks(sub):
     """화면에 **한 번에 하나씩** 띄울 토막들.
 
@@ -489,7 +527,7 @@ def end_png(big, small, out):
     return out
 
 
-def overlay_png(hook, chunk, out, label=None, parts="all"):
+def overlay_png(hook, chunk, out, label=None, parts="all", who=None):
     """글자만 있는 투명 그림 한 장 (영상 위에 얹는다).
 
     chunk — 지금 화면에 띄울 자막 **한 토막**. 나머지는 안 그린다
@@ -542,13 +580,18 @@ def overlay_png(hook, chunk, out, label=None, parts="all"):
                    HOOK_HI, HOOK_GAP)
 
     if want_sub and str(chunk or "").strip():
+        # ⭐ 누가 말하는지 이름표를 자막 **위에** 붙인다 (2026-08-24)
+        top = SUB_TOP
+        wk = who_ko(who)
+        if wk:
+            top += name_pill(d, wk[0], wk[1], SUB_TOP - 4) + NAME_GAP - 4
         # 한 토막만 있으니 크게 쓸 수 있다 — 폰에서 읽기 훨씬 낫다
         # ⭐ 어르신용 — 글자를 작게 줄이는 대신 **줄을 늘린다**.
         f, ls = fit(d, chunk, FONT_M, SUB_SIZE, W - SIDE * 2, 2, min_size=SUB_MIN)
         if len(ls) > 2 or f.size < SUB_MIN:
             f, ls = fit(d, chunk, FONT_M, SUB_SIZE, W - SIDE * 2, SUB_LINES,
                         min_size=SUB_MIN)
-        block(d, ls, f, SUB_TOP, SUB_BOT, (245, 245, 250, 255))
+        block(d, ls, f, top, SUB_BOT, (245, 245, 250, 255))
 
     img.save(out)
     return out
@@ -853,7 +896,8 @@ def video_place(vw, vh):
     return (H - nh) // 2, nh             # 짧으면 가운데 (띠가 위아래를 덮는다)
 
 
-def compose(src, hook, sub, out, tmp, label=None, end=None, hook_sec=HOOK_SEC):
+def compose(src, hook, sub, out, tmp, label=None, end=None,
+            hook_sec=HOOK_SEC, whos=None):
     """받은 클립 한 개 → 쇼츠 한 컷 (자르지 않고 폭에 맞춰 깔고 글자 얹기)."""
     src, out, tmp = Path(src), Path(out), Path(tmp)
     tmp.mkdir(parents=True, exist_ok=True)
@@ -889,7 +933,15 @@ def compose(src, hook, sub, out, tmp, label=None, end=None, hook_sec=HOOK_SEC):
         imgs.append(overlay_png(hook, "", tmp / f"{src.stem}_hook.png",
                                 None, parts="hook"))
     sub_i = len(imgs)
-    pngs = [overlay_png("", c, tmp / f"{src.stem}_txt{i}.png", None, parts="sub")
+    # ⭐ 토막마다 **누가 한 말인지** 짝지어 준다 (2026-08-24).
+    #    한 사람 대사를 반으로 쪼갠 컷(halved)은 두 토막 다 같은 사람이다.
+    ws = list(whos or [])
+    if halved:
+        ws = [ws[0]] * len(chunks) if ws else []
+    if len(ws) != len(chunks):
+        ws = [None] * len(chunks)          # 수가 안 맞으면 아무것도 안 붙인다
+    pngs = [overlay_png("", c, tmp / f"{src.stem}_txt{i}.png", None,
+                        parts="sub", who=(ws[i] if i < len(ws) else None))
             for i, c in enumerate(chunks or [""])]
     imgs += pngs
 
@@ -1120,7 +1172,8 @@ def episode(sid, no, clips_dir, out_dir):
         last_cut = (c is ep["cuts"][-1])
         d = compose(src, hook if first_cut else "", c.get("subtitle"),
                     tmp / f"cut{n}.mp4", tmp, label=label,
-                    end=end_card(doc, no) if last_cut else None)
+                    end=end_card(doc, no) if last_cut else None,
+                    whos=[w for w, _ in dia_turns(c.get("prompt"))])
         parts.append(d)
         print(f"  ✅ {n}컷 ← {files[n].name}  (소리 {gain_for(src):+.1f}dB)")
 
@@ -1205,7 +1258,8 @@ def one(clip, sid, no, cut, hook, sub, out_dir):
             print("  ⚠️ 갈아 끼우기가 안 됐다 — 원래 소리가 그대로 나간다")
     # ⭐ ③ 그 다음에 자막·크롭을 얹는다
     out = out_dir / (clip.stem + "_short.mp4")
-    compose(src, hook, sub, out, tmp, label=label)
+    compose(src, hook, sub, out, tmp, label=label,
+            whos=[w for w, _ in turns])
     won = tts.bill_flush(f"{sid or '?'} {no or '?'}화 {cut or '?'}컷 시험")
     print(f"\n✅ {out} — {C.probe(out)[2]:.1f}초 · 소리 {gain_for(out):+.1f}dB"
           + (f" · 목소리 값 {won:.0f}원" if won else ""))

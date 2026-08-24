@@ -167,7 +167,42 @@ _ep = (ROOT / "src" / "shorts.py").read_text(encoding="utf-8")
 ck("첫 컷에만 후킹을 넘기도록 코드가 박혀 있다",
    "hook if first_cut else \"\"" in _ep)
 
-print("⑥ 원본 소리를 쓸 때는 클립을 자르지 않는다")
+print("⑥ 자막에 '누가 말하는지' 이름표가 붙는가 (2026-08-24)")
+# 1화 이탈률 60%를 파고들다 찾은 것: 사람이 셋 나오는데 화자 표시가 없어
+# "얘가 누구지?" 하는 순간 이야기에서 튕겨 나갔다.
+src6 = make(TMP, 5.0, 5.0, color="0x101015")
+
+
+def pill(mp4, t):
+    """그 시각 자막 **바로 위**(이름표 자리)에 색 있는 알약이 있는가."""
+    q = TMP / f"n{t}.png"
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", str(t), "-i", str(mp4),
+                    "-frames:v", "1", str(q)], check=True, capture_output=True)
+    im = Image.open(q).convert("RGB").crop((0, S.SUB_TOP - 6, S.W, S.SUB_TOP + 74))
+    cs = [c for n, c in im.getcolors(im.size[0] * im.size[1]) if sum(c) > 200]
+    return len(cs), (max(im.getcolors(im.size[0]*im.size[1]))[1] if cs else None)
+
+
+named = S.compose(src6, "", "당장 나가. / 그만해.", TMP / "n1.mp4", TMP,
+                  whos=["Wife", "Husband"])
+n1, _ = pill(named, 0.6)
+ck("이름표가 자막 위에 뜬다", n1 > 0, "아무것도 안 그려졌다")
+plain6 = S.compose(src6, "", "당장 나가. / 그만해.", TMP / "n2.mp4", TMP)
+n2, _ = pill(plain6, 0.6)
+ck("화자를 모르면 아무것도 안 붙인다 (틀린 이름보다 없는 편이 낫다)", n2 == 0,
+   f"{n2}가지 색이 그려졌다")
+odd = S.compose(src6, "", "당장 나가.", TMP / "n3.mp4", TMP, whos=["Nobody"])
+n3, _ = pill(odd, 0.6)
+ck("모르는 이름은 그냥 넘어간다", n3 == 0, f"{n3}가지 색")
+ck("아내·남편·그 여자 이름표가 준비돼 있다",
+   all(S.who_ko(k) for k in ("Wife", "the wife", "Husband", "Other woman")))
+ck("사람마다 색이 다르다",
+   len({S.who_ko(k)[1] for k in ("Wife", "Husband", "Other woman")}) == 3)
+_src2 = (ROOT / "src" / "shorts.py").read_text(encoding="utf-8")
+ck("대본에서 화자를 뽑아 넘긴다",
+   "whos=[w for w, _ in dia_turns(c.get(\"prompt\"))]" in _src2)
+
+print("⑦ 원본 소리를 쓸 때는 클립을 자르지 않는다")
 _src = (ROOT / "src" / "shorts.py").read_text(encoding="utf-8")
 ck("keep_audio 면 trim_dead 를 건너뛴다", "if not keep_audio():" in _src)
 ck("-shortest 로 끊지 않는다 (길이를 우리가 정한다)",

@@ -704,7 +704,9 @@ for _e in _doc.get("episodes") or []:
         #    삼켜서, 같은 옷인데도 다르다고 나온다 (fix_outfits 주석에 적혀 있던
         #    바로 그 실수를 시험에서 되풀이했다).
         for _m in re.finditer(
-                r"\b(?:the )?(\w[\w ]*?) wearing (.+?)(?=\s+facing\b|\.$|$)",
+                # ⭐ 2026-08-24 — 한 컷에 세 사람이 나오면 `;` 로 나열한다.
+                #    거기서도 끊어 줘야 앞사람 옷이 뒷사람 것까지 삼키지 않는다.
+                r"\b(?:the )?(\w[\w ]*?) wearing (.+?)(?=\s+facing\b|;|\.$|$)",
                 _su):
             _by_who.setdefault((_e.get("no"), _m.group(1).strip()), set()).add(
                 _m.group(2).strip())

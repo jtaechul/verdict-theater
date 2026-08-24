@@ -49,8 +49,25 @@ def order(names, cuts):
     return {k: v.name for k, v in got.items()}, buf.getvalue()
 
 
-doc = json.loads((ROOT / "data" / "series" / "S001.json").read_text(encoding="utf-8"))
-cuts = doc["episodes"][0]["cuts"]
+# ⚠️⚠️ 2026-08-24 — 예전엔 여기서 **지금의 1화 대본**을 읽어 왔다. 그런데
+#    1화 대사·연출을 다시 쓰자 이 검사가 통째로 깨졌다. 이 검사가 지키려는
+#    것은 "2026-08-22 에 실제로 올라온 파일 이름이 제 컷에 붙는가" 이지
+#    "1화 대본이 그때 그대로인가" 가 아니다. 그래서 **그때의 컷을 여기에
+#    박아 둔다** — 대본을 고쳐도 이 검사는 계속 같은 것을 지킨다.
+TWO = ("SHOT: Medium two-shot, static camera, both faces visible. Framed from the waist "
+       "up so both faces fill much of the frame, close enough that every expression is clear.")
+ONE = ("SHOT: Medium close-up, static camera, focusing on the character. Framed from the "
+       "waist up so both faces fill much of the frame, close enough that every expression "
+       "is clear.")
+SYNC = " Both people keep their lips moving in exact sync with the Korean lines they say."
+cuts = [
+    {"n": 1, "prompt": TWO + "\nACTION: the wife steps in front of the husband, "
+                             "blocking the way." + SYNC},
+    {"n": 2, "prompt": ONE + "\nACTION: the husband pulls away sharply." + SYNC},
+    {"n": 3, "prompt": TWO + "\nACTION: the other woman smirks crossing her arms." + SYNC},
+    {"n": 4, "prompt": ONE + "\nACTION: the husband glares coldly at her." + SYNC},
+    {"n": 5, "prompt": ONE + "\nACTION: the wife clenches her fists tightly." + SYNC},
+]
 
 print("⭐ 받은 파일이 제 컷에 붙는가")
 

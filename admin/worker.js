@@ -141,7 +141,11 @@ function ytMeta(doc, no) {
   let title = ytClean(ep.yt_title);
   if (!title) title = hook || line || series;
   // ⭐ 몇 화인지는 우리가 붙인다 (대본에는 적지 말라고 일러 두었다)
-  if (title.indexOf('(' + no + '/') < 0) title = title + ' (' + no + '/' + total + ')';
+  // ⭐⭐ 2026-08-24 — 예전엔 `(1/16)`. 처음 보는 사람에게 '16편짜리'는
+  //    분량 부담으로 읽힌다(1화 이탈률 60%를 파고들다 나온 것).
+  //    순서는 알려 주되 총 편수는 안 보이게 `(1화)` 로.
+  if (title.indexOf('(' + no + '화') < 0 && title.indexOf('(' + no + '/') < 0)
+    title = title + ' (' + no + '화)';
   if (title.toLowerCase().indexOf('#shorts') < 0 && title.length + 8 <= 100)
     title += ' #shorts';
   title = title.slice(0, 100);

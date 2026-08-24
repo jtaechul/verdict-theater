@@ -49,7 +49,8 @@ m2 = Y.make(DOC, 2)
 ck("제목이 비지 않는다", bool(m1["title"].strip()))
 ck("100자를 넘지 않는다", len(m1["title"]) <= 100, f"{len(m1['title'])}자")
 ck("#shorts 가 붙는다", "#shorts" in m1["title"], m1["title"])
-ck("몇 화인지 들어간다", "(1/2)" in m1["title"])
+# ⭐ 2026-08-24 — `(1/2)` → `(1화)`. 총 편수를 감춰 분량 부담을 없앤다.
+ck("몇 화인지 들어간다", "(1화)" in m1["title"])
 ck("후킹이 있으면 그것을 쓴다", m2["title"].startswith("통장이 텅"), m2["title"])
 
 print("\n② 해시태그")

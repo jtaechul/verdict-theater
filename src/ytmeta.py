@@ -89,8 +89,11 @@ def make(doc, no):
         title = hook or line or series
     # ⭐ 몇 화인지는 **우리가** 붙인다. 대본에 적지 말라고 일러 두었으므로
     #    yt_title 을 그대로 쓰는 경우에도 여기서 붙어야 한다.
-    if f"({no}/" not in title:
-        title = f"{title} ({no}/{total})"
+    # ⭐⭐ 2026-08-24 — 예전엔 `(1/16)` 이었다. 그런데 처음 보는 사람에게
+    #    "16편짜리"는 **분량 부담**으로 읽힌다(1화 이탈률 60%를 파고들다 나온 것).
+    #    순서는 알려 주되 총 편수는 안 보이게 `(1화)` 로 바꾼다.
+    if f"({no}화" not in title and f"({no}/" not in title:
+        title = f"{title} ({no}화)"
     if "#shorts" not in title.lower():
         if len(title) + 8 <= TITLE_MAX:
             title += " #shorts"
