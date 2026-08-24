@@ -384,7 +384,7 @@ def fit_owned(draw, parts, path, size, max_w, max_lines):
 
 
 def block(d, lines, font, top, bottom, fill, gap=1.28, live=None, dim=None,
-          x0=0, x1=W):
+          x0=0, x1=W, align="center"):
     """정해진 칸 안에서 가운데 맞춰 그린다.
 
     live — 지금 말하는 사람의 줄 번호. 그 줄만 밝게, 나머지는 흐리게 그린다
@@ -396,7 +396,8 @@ def block(d, lines, font, top, bottom, fill, gap=1.28, live=None, dim=None,
     y = top + max(0, (bottom - top - total) // 2)
     for i, l in enumerate(lines):
         c = fill if (live is None or i == live) else (dim or DIM)
-        x = x0 + (x1 - x0 - d.textlength(l, font=font)) / 2
+        x = x0 if align == "left" \
+            else x0 + (x1 - x0 - d.textlength(l, font=font)) / 2
         d.text((x, y), l, font=font, fill=c)
         y += lh
 
@@ -591,7 +592,9 @@ def overlay_png(hook, chunk, out, label=None, parts="all", who=None, end=None):
         if len(ls) > 2 or f.size < SUB_MIN:
             f, ls = fit(d, chunk, FONT_M, SUB_SIZE, W - SIDE * 2, SUB_LINES,
                         min_size=SUB_MIN)
-        block(d, ls, f, top, SUB_BOT, (245, 245, 250, 255))
+        # ⭐ 자막도 이름과 **같은 왼쪽 선**에 맞춘다 (2026-08-24 운영자 지시 그림)
+        block(d, ls, f, top, SUB_BOT, (245, 245, 250, 255),
+              x0=SIDE, x1=W - SIDE, align="left" if wk else "center")
 
     img.save(out)
     return out
