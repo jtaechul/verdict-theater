@@ -148,7 +148,7 @@ SUB_MAX = 60           # 자막은 주고받은 대사를 다 담아야 한다 (
 
 # 프롬프트 6줄 규격 — 이 순서, 이 이름이 아니면 반려한다
 LINES = ["SHOT:", "FRAMING:", "SUBJECT:", "ACTION:", "DIALOGUE:", "AUDIO:",
-         "SETTING:", "CONTINUITY:", "COLOR:", "STYLE:", "Avoid:"]
+         "SETTING:", "CAMERA:", "CONTINUITY:", "COLOR:", "STYLE:", "Avoid:"]
 LINES_OPT = ["VOICE:"]      # 대사가 있는 컷에만 붙는다
 
 # ⭐⭐ 2026-08-24 — 16:9 로 만들어 4:3 으로 잘라 쓰므로, **좌우 12.5%씩이
@@ -158,6 +158,125 @@ LINES_OPT = ["VOICE:"]      # 대사가 있는 컷에만 붙는다
 #    ⚠️ 이 줄에는 "reads · text · paper · screen …" 같은 낱말을 쓰면 안 된다.
 #       글자가 화면에 나오는 것을 막는 검사(text_bait)가 그 낱말을 보고
 #       80컷을 통째로 걸러 버린다 — 실제로 한 번 걸렸다.
+# ⭐⭐⭐ 2026-08-24 — **마주보는 두 사람의 배경이 똑같이 나오던 문제.**
+#    운영자: "남편이 말할 때 뒤 배경이랑 아내가 말할 때 뒤 배경이 각도가
+#    달라야 하는데 똑같아. 두 사람이 그냥 왔다 갔다 하는 것처럼 보여."
+#    원인 둘 —
+#      ① SETTING 이 컷마다 글자까지 똑같다 → 누가 화면에 있든 같은 벽이 나온다.
+#         (마주보면 두 사람 뒤는 **서로 반대쪽 벽**이어야 한다)
+#      ② 두 사람의 **좌우 자리**를 정해 둔 적이 없다 → 컷마다 뒤바뀐다.
+#         영화에서 말하는 180도 법칙(가상선)을 안 지키고 있었다.
+#    → SETTING 은 그대로 두고(같은 방을 지키는 규칙을 깨지 않는다),
+#      **CAMERA 줄을 새로 만들어** 컷마다 "누가 어느 쪽" · "카메라는 어디서"
+#      · "그래서 뒤에 보이는 것은 방의 어느 쪽" 을 적는다.
+#    ⚠️ 이 줄에도 text_bait 낱말(read·text·paper·screen…)을 쓰면 안 된다.
+def cam_rank(doc):
+    """말한 사람이 **처음 나온 차례** — 그 차례대로 왼쪽→오른쪽에 세운다.
+
+    시리즈 전체에서 한 번만 정한다. 그래야 1화에서 왼쪽이던 사람이
+    9화에서도 왼쪽이다 (보는 사람이 헷갈리지 않는다).
+    """
+    rank, n = {}, 0
+    for e in doc.get("episodes") or []:
+        for c in e.get("cuts") or []:
+            for w, _ in dia_turns(c.get("prompt")):
+                if w not in rank:
+                    rank[w] = n
+                    n += 1
+    return rank
+
+
+def cam_place(cut):
+    """그 컷의 장소 이름 (SETTING 의 앞머리). 같은 장소 = 한 장면."""
+    st = next((l for l in (cut.get("prompt") or "").split("\n")
+               if l.startswith("SETTING:")), "")
+    return st[9:].split("—")[0].strip().lower()
+
+
+def camera_line(order, who, speaker, wide):
+    """컷 하나의 CAMERA 줄.
+
+    order   — **이 장소에서** 왼쪽부터 세운 사람들. 한 장면 내내 안 바뀐다.
+              (장소가 바뀌면 새 장면이므로 다시 세워도 된다 — 영화도 그렇게 한다)
+    who     — 이 컷에 나오는 사람들 (왼쪽부터)
+    speaker — 카메라가 바라보는 사람 (얼굴이 보이는 쪽)
+    """
+    if not who:
+        # 대사가 없는 컷 — 그래도 카메라가 반대쪽으로 넘어가면 안 된다
+        return ("CAMERA: keep the camera on the same side of the room as in the "
+                "other clips shot in this room; never cross to the opposite side "
+                "between shots.")
+
+    def spot(p):
+        if p not in order or len(order) < 2:
+            return "left"
+        i = order.index(p)
+        return "left" if i == 0 else ("right" if i == len(order) - 1 else "middle")
+
+    if wide and len(who) >= 2:
+        place = ", ".join(
+            f"{w} on the left" if spot(w) == "left"
+            else (f"{w} on the right" if spot(w) == "right"
+                  else f"{w} in the middle") for w in who)
+        return ("CAMERA: seen from the side of the room so everyone is in view at "
+                "once — " + place + ". This left-to-right order never changes "
+                "anywhere in this scene.")
+    sd = spot(speaker)
+    if sd == "middle":
+        where = (f"behind {speaker} we see the middle of the room named in SETTING, "
+                 f"not the far left and not the far right of it")
+        look = ""
+    else:
+        opp = "right" if sd == "left" else "left"
+        where = (f"behind {speaker} we see the {sd} part of the room named in "
+                 f"SETTING, and the {opp} part must not appear in this shot")
+        look = opp
+    if len(who) >= 2:
+        a, b = who[0], who[-1]
+        other = b if speaker == a else a
+        return (f"CAMERA: in this room {a} always stands to the LEFT of {b} and "
+                f"never the other way round. This shot is taken from where {other} "
+                f"stands, looking at {speaker}, so {where}.")
+    return (f"CAMERA: {speaker} keeps the same place as in every other clip shot in "
+            f"this room — the {sd} of it"
+            + (f", looking toward the {look} of frame" if look else "")
+            + f". So {where}.")
+
+
+def fix_camera(doc):
+    """컷마다 CAMERA 줄을 만들어 SETTING 바로 뒤에 넣는다. (고친 컷 수)"""
+    rank = cam_rank(doc)
+    n = 0
+    for e in doc.get("episodes") or []:
+        cuts = e.get("cuts") or []
+        # ⭐ **장소마다** 사람을 한 줄로 세운다 — 같은 장소면 같은 장면이므로
+        #    좌우가 흔들리면 안 되고, 장소가 바뀌면 다시 세워도 된다.
+        by_place = {}
+        for c in cuts:
+            k = cam_place(c)
+            by_place.setdefault(k, set()).update(
+                w for w, _ in dia_turns(c.get("prompt")))
+        order = {k: sorted(v, key=lambda w: rank.get(w, 99))
+                 for k, v in by_place.items()}
+        for c in cuts:
+            turns = dia_turns(c.get("prompt"))
+            who = sorted({w for w, _ in turns}, key=lambda w: rank.get(w, 99))
+            shot = next((l for l in (c.get("prompt") or "").split("\n")
+                         if l.startswith("SHOT:")), "")
+            wide = "Medium-wide" in shot or "Wide shot" in shot
+            spk = turns[0][0] if turns else (who[0] if who else "")
+            line = camera_line(order.get(cam_place(c), who), who, spk, wide)
+            lines = [l for l in (c.get("prompt") or "").split("\n")
+                     if not l.startswith("CAMERA:")]
+            at = next((i for i, l in enumerate(lines)
+                       if l.startswith("SETTING:")), len(lines) - 1)
+            if line:
+                lines.insert(at + 1, line)
+                n += 1
+            c["prompt"] = "\n".join(lines)
+    return n
+
+
 FRAME_FIX = ("FRAMING: 16:9 landscape. The left and right edges will be cropped "
              "away later — keep every person and every important thing inside the "
              "middle 75% of the frame and leave the far left and far right empty. "
@@ -1301,6 +1420,10 @@ def normalize(doc):
             c["prompt"] = "\n".join(out)
     if n:
         print(f"  (고정 문구 {n}줄을 우리가 채워 넣었다 — 이것 때문에 버리지 않는다)")
+    cf = fix_camera(doc)
+    if cf:
+        print(f"  (컷 {cf}곳에 카메라 자리·좌우 지시를 넣었다 — 마주보는 두 사람의\n"
+              f"   배경이 똑같이 나오던 문제)")
     tf = fix_touch(doc)
     if tf:
         print(f"  (서로 닿는 동작 {tf}곳을 안 닿는 동작으로 바꿨다)")

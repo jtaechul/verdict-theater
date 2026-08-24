@@ -274,6 +274,10 @@ ck("복사되는 글에 **화풍 지시**가 들어 있다", not _nostyle, " ".j
 ck("색 지시가 '회차를 넘어서' 같아야 한다고 못박는다",
    "every episode" in (lumina.get("p1_1") or ""),
    "한 화 안에서만 같으면 되는 것으로 읽힌다")
+# ⭐⭐ 2026-08-24 — 카메라 자리 지시도 반드시 남아야 한다. 이게 빠지면
+#    마주보는 두 사람 뒤에 **같은 벽**이 나온다(운영자 신고).
+_nocam2 = [k for k, v in lumina.items() if "CAMERA:" not in v]
+ck("복사되는 글에 **카메라 자리** 지시가 들어 있다", not _nocam2, " ".join(_nocam2))
 ck("연출과 대사는 그대로 남아 있다",
    all(x in (lumina.get("p1_1") or "") for x in ("SHOT:", "ACTION:", "DIALOGUE:", "SETTING:")))
 

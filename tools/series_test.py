@@ -41,7 +41,11 @@ def good_prompt(dialogue=SOLO):
             "ACTION: 시동생 holds out a closed folder toward 며느리.\n"
             f"DIALOGUE: {dialogue}\n"
             + S.AUDIO_FIX + "\n"
-            + "SETTING: Korean funeral hall reception room, evening, dim light.\n"
+            + "SETTING: Korean funeral hall reception room, evening, dim light — "
+              "a low table on the left, a sliding door in the middle, coat racks "
+              "on the right.\n"
+            # ⭐ CAMERA 도 시스템이 붙이는 줄이다 (2026-08-24)
+            + "CAMERA: in this room 시동생 always stands to the LEFT of 며느리.\n"
             # 아래 두 줄도 시스템이 붙이는 고정 줄이다 (코드에서 가져온다)
             + S.CONT_FIRST + "\n" + S.COLOR_FIX + "\n"
             + S.STYLE_FIX + "\n" + S.AVOID_FIX)
@@ -720,6 +724,36 @@ ck("같은 장소는 늘 똑같이 적혀 있다", not _bad_p,
    f"{list(_bad_p)[:2]} — 글자가 다르면 다른 방이 나온다")
 _bad_w = {k: v for k, v in _by_who.items() if len(v) > 1}
 ck("한 화 안에서 같은 사람은 같은 옷", not _bad_w, str(list(_bad_w)[:2]))
+
+# ⭐⭐⭐ 2026-08-24 — **마주보는 두 사람의 배경이 똑같이 나오던 문제.**
+#    운영자: "남편 뒤 배경이랑 아내 뒤 배경이 각도가 달라야 하는데 똑같아.
+#             두 사람이 그냥 왔다 갔다 하는 것처럼 보여."
+#    ① SETTING 이 좌우를 안 적으면 CAMERA 가 가리킬 것이 없다
+#    ② 한 장소 안에서 사람의 좌우가 흔들리면 180도 법칙이 깨진다
+print("\n⑩-2 마주보는 두 사람의 배경·좌우 (2026-08-24)")
+_nolr = [f"{e.get('no')}화 {c['n']}컷" for e in _doc.get("episodes") or []
+         for c in e.get("cuts") or []
+         if not (re.search(r"\bleft\b", _line(c, "SETTING:"))
+                 and re.search(r"\bright\b", _line(c, "SETTING:")))]
+ck("SETTING 이 왼쪽·오른쪽에 무엇이 있는지 적는다", not _nolr,
+   " ".join(_nolr[:3]) + " — 안 적으면 CAMERA 가 가리킬 것이 없다")
+_nocam = [f"{e.get('no')}화 {c['n']}컷" for e in _doc.get("episodes") or []
+          for c in e.get("cuts") or [] if not _line(c, "CAMERA:")]
+ck("컷마다 카메라 자리 지시가 있다", not _nocam, " ".join(_nocam[:3]))
+_flip = []
+for _e in _doc.get("episodes") or []:
+    _seen = {}
+    for _c in _e.get("cuts") or []:
+        _pl, _cam = S.cam_place(_c), _line(_c, "CAMERA:")
+        _m = re.search(r"behind (\w[\w ]*?) we see the (left|right|middle)", _cam)
+        if _m:
+            _seen.setdefault((_pl, _m.group(1)), set()).add(_m.group(2))
+        for _w, _a, _b in re.findall(
+                r"(\w[\w ]*?) (?:on the (left|right)|in the (middle))", _cam):
+            _seen.setdefault((_pl, _w.strip()), set()).add(_a or _b)
+    _flip += [f"{_e.get('no')}화 {w}" for (pl, w), sd in _seen.items() if len(sd) > 1]
+ck("한 장소 안에서 사람의 좌우가 안 흔들린다 (180도 법칙)", not _flip,
+   " ".join(_flip[:3]) + " — 컷마다 자리가 바뀌면 왔다 갔다 하는 것처럼 보인다")
 ck("옷을 정한 인물이 실제로 있다", len(_by_who) >= 3, f"{len(_by_who)}명")
 
 # ⚠️ 얼굴·나이는 절대 안 적는다 — 유명인 정책에 다섯 번 막혔던 자리다

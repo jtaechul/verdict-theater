@@ -131,6 +131,19 @@ Avoid: overlapping voices, on-screen text, signage, documents with visible writi
     · 같은 장소인 컷은 SETTING 을 **한 글자도 다르지 않게** 쓴다
     · 장소가 바뀌는 **첫 컷의 `caption`** 에 어디인지 한 줄 적는다
       (예: `현관 밖, 그 여자가 기다리고 있었다`)
+    · ⭐⭐ **왼쪽에 무엇이 있고 오른쪽에 무엇이 있는지 반드시 적는다.**
+      (2026-08-24 · 실제 영상) 마주보고 대화하면 두 사람 뒤의 벽은 서로
+      반대쪽이어야 하는데, SETTING 에 좌우가 없으니 누가 화면에 있든 같은
+      배경이 나왔다 — 두 사람이 그냥 왔다 갔다 하는 것처럼 보였다.
+      꼴: `<장소>, <때>, <빛> — <왼쪽 것> on the left, <가운데 것> in the
+      middle, <오른쪽 것> on the right.`
+      ✗ `Funeral hall reception, daytime, dim overhead light.` (아무것도 없다)
+      ✓ `Funeral hall reception, daytime, dim overhead light — a low table with
+         white chrysanthemums on the left, a wide sliding door in the middle,
+         a row of coat racks on the right.`
+      ⚠️ `CAMERA` 줄은 **네가 쓰지 않는다.** 우리가 컷마다 자동으로 붙인다
+         (누가 왼쪽·오른쪽인지, 카메라가 어디서 보는지). 너는 SETTING 의
+         좌우만 정확히 써 주면 된다.
 - ⭐ **서로 몸이 닿는 동작을 쓰지 않는다** (2026-08-20 · 실제 영상에서 확인).
   첫 클립에서 여자가 남자 팔을 잡았는데 **손가락이 옷 속으로 녹아들어 갔다.**
   영상 만드는 쪽이 두 사람이 닿는 자리를 아직 제대로 못 그린다. 닿는 곳이
