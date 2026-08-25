@@ -53,7 +53,9 @@ const WORKFLOWS = [
         + '0원으로 걸러지고, 여기서는 기계가 못 보는 것만 봅니다',
     inputs: [{ k: 'mode', label: '무엇을 할까요', type: 'select',
                opts: ['검토 (약 150원)', '반영 (0원)'] },
-             { k: 'sid', label: '시리즈 번호', type: 'text', v: 'S001' }] },
+             { k: 'sid', label: '시리즈 번호', type: 'text', v: 'S001' },
+             { k: 'pick', label: '고를 번호 (비우면 전부 · 예: 1,3,7)',
+               type: 'text', v: '' }] },
 
   { file: 'script.yml', name: '2. 대본 만들기',
     desc: '소재를 골라 대본을 씁니다 (회차당 수백 원)',

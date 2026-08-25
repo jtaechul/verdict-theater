@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """대본 다듬기 — 자연스러움 · 정합성 · 자극성을 **모델에게 한 번 더 검토시킨다.**
 
-    python3 src/polish.py review S001    검토만 한다 (약 150원)
-    python3 src/polish.py apply  S001    검토에서 나온 고침안을 대본에 넣는다 (0원)
+    python3 src/polish.py review S001        검토만 한다 (약 150원)
+    python3 src/polish.py apply  S001        나온 고침안을 전부 넣는다 (0원)
+    python3 src/polish.py apply  S001 2,4,9  **고른 번호만** 넣는다 (0원)
 
 왜 이 절차가 있는가 (2026-08-25 운영자)
     "대사의 자연스러움과 전체 맥락에서의 정합성을 체크하고 자극적이도록
@@ -125,13 +126,18 @@ def review(sid):
                    encoding="utf-8")
     print(f"\n⭐ 대본 다듬기 검토 — {sid} · 지적 {len(issues)}가지\n")
     print((got.get("verdict") or "").strip() + "\n")
-    for i in issues:
-        print(f"  [{i.get('kind', '?')}] {i.get('ep')}화 {i.get('cut')}컷")
+    for k, i in enumerate(issues, 1):
+        print(f"  {k}) [{i.get('kind', '?')}] {i.get('ep')}화 {i.get('cut')}컷")
         print(f"     지금 : {i.get('before')}")
         print(f"     고침 : {i.get('after')}")
         print(f"     까닭 : {i.get('why', '')}\n")
     if issues:
-        print("→ 넣으려면 [대본 다듬기 반영] 을 누르십시오 (0원).")
+        # ⚠️ 2026-08-25 — **모델이 틀릴 때가 있다.** 첫 검토에서 9가지 중
+        #    3가지가 헛짚음이었다(대본에 실제로 있는 물건을 없다고 하거나,
+        #    말하는 사람이 헷갈리는 대사로 바꾸거나). 그래서 통째로 넣지 말고
+        #    **번호를 골라** 넣을 수 있게 해 둔다.
+        print("→ 전부 넣으려면 [반영] 을, 골라 넣으려면 [반영] 의 '고를 번호' 칸에")
+        print("  1,3,7 처럼 적으십시오 (0원).")
     return 0
 
 
@@ -148,12 +154,17 @@ def checks_pass():
     return True
 
 
-def apply(sid):
+def apply(sid, pick=""):
     if not OUT.exists():
         print("검토 결과가 없다 — 먼저 [대본 다듬기 검토] 를 돌리십시오.")
         return 1
     got = json.loads(OUT.read_text(encoding="utf-8"))
     issues = got.get("issues") or []
+    # ⭐ 번호를 골라 넣을 수 있다 (모델이 헛짚은 것을 빼기 위해)
+    want = [int(x) for x in re.findall(r"\d+", str(pick or ""))]
+    if want:
+        issues = [i for k, i in enumerate(issues, 1) if k in want]
+        print(f"고른 번호: {', '.join(map(str, want))} → {len(issues)}가지")
     if not issues:
         print("고칠 곳이 없다.")
         return 0
@@ -195,8 +206,9 @@ def apply(sid):
 def main(argv):
     what = (argv[1] if len(argv) > 1 else "review").strip()
     sid = (argv[2] if len(argv) > 2 else "S001").strip().upper()
+    pick = argv[3] if len(argv) > 3 else ""
     if what == "apply":
-        return apply(sid)
+        return apply(sid, pick)
     return review(sid)
 
 

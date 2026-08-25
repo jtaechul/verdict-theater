@@ -25,6 +25,10 @@ on:
         description: '시리즈 번호 (예: S001)'
         required: false
         default: 'S001'
+      pick:
+        description: "고를 번호 (비우면 전부 · 예: 1,3,7). 모델이 헛짚은 것을 뺄 때 씁니다"
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -57,7 +61,7 @@ jobs:
             반영*) WHAT=apply ;;
             *)     WHAT=review ;;
           esac
-          python3 src/polish.py "$WHAT" "$SID" 2>&1 | tee /tmp/polish.txt
+          python3 src/polish.py "$WHAT" "$SID" "${{ inputs.pick }}" 2>&1 | tee /tmp/polish.txt
 
       - name: 결과를 요약 화면에 찍는다
         if: always()
