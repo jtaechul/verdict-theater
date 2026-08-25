@@ -87,13 +87,38 @@ def who_list(cast):
     return ", ".join(cast[:-1]) + " and " + cast[-1]
 
 
-def shot_line(i, cast, face, other):
-    """컷 자리마다 **다른 크기**로 — 두 사람 → 어깨 너머 → 얼굴.
+# ⭐⭐⭐ 2026-08-25 운영자: "너무 두 사람을 다 보여줄 필요는 없고, 필요할 때는
+#    한 명만 줌인해서 그 한 명만 이야기하게 하는 것도 좋을 거 같아. 지금 보면
+#    두 사람이 나와 있다 보니 씬이 너무 단조로워."
+#    세어 보니 **48컷 중 47컷에 두 사람**이 나오고, 16화가 **전부 같은 순서**
+#    (두 사람 → 어깨너머 → 클로즈업)였다. 한 번도 안 바뀌었다.
+#    세로 드라마 작법도 같은 말을 한다 — "대사는 한 명씩 번갈아 잡고,
+#    주고받는 느낌은 컷 전환이 지게 하라."
+#    → ① 말하는 사람이 **한 명뿐인 컷은 무조건 클로즈업** (얼굴이 3배 커진다)
+#      ② 샷 순서를 화마다 다르게 (이야기 파일의 `shots` 로 정한다)
+LADDER = ["two", "ots", "close"]        # 안 정하면 쓰는 기본 순서
 
-    ⭐⭐ 2026-08-25 — SUBJECT 줄을 없앴으므로(옷은 기준 사진이 잡는다)
-       **누가 화면에 있는지**를 이 줄이 진다. 이름만 적고 옷은 안 적는다.
+
+def shot_line(i, cast, face, other, ladder=None):
+    """컷 자리마다 **다른 크기**로.
+
+    ⭐⭐ SUBJECT 줄을 없앴으므로(옷은 기준 사진이 잡는다) **누가 화면에
+       있는지**를 이 줄이 진다. 이름만 적고 옷은 안 적는다.
     """
-    if i == 0 and len(cast) >= 2:
+    kinds = list(ladder or LADDER)
+    want = kinds[i] if i < len(kinds) else kinds[-1]
+    # 혼자 말하는 컷은 **언제나 얼굴**이다 — 두 사람 샷을 쓸 수가 없다
+    if len(cast) < 2:
+        want = "close"
+    if want == "close":
+        return (f"SHOT: Close-up on {face}, static camera, framed from the "
+                f"shoulders up so the whole face fills the frame, held for the "
+                f"whole take.")
+    if want == "ots":
+        return (f"SHOT: Over-the-shoulder shot from behind {other}, seen from the "
+                f"right of the room, with {face}'s face and upper body filling "
+                f"most of the frame.")
+    if True:
         # ⚠️ "faces read clearly" 라고 쓰면 안 된다. read 는 '글자를 읽는다' 로
         #    잡혀서, 컷 안에 서류·봉투가 있으면 통째로 반려된다(두 번째 실수다).
         kind = "two-shot" if len(cast) == 2 else "group shot"
@@ -101,10 +126,6 @@ def shot_line(i, cast, face, other):
                 "framed from the waist up in the middle of the frame, close enough that "
                 "every face stays clear. The movement is already under way in the very "
                 "first frame — nothing is still at the start.")
-    if i == 1 and len(cast) >= 2:
-        return (f"SHOT: Over-the-shoulder shot from behind {other}, seen from the right "
-                f"of the room, with {face}'s face and upper body filling most of the "
-                f"frame.")
     return (f"SHOT: Close-up on {face}, static camera, framed from the shoulders up so "
             f"the whole face fills the frame, held for the whole take.")
 
@@ -122,9 +143,13 @@ def main():
         cuts = []
         for i, (place, action, lines) in enumerate(e["cuts"]):
             says = sorted({w for w, _ in lines}, key=lambda w: rank[w])
-            cast = says                       # 화면에 있는 사람 = 말하는 사람
+            # ⭐ 말은 안 해도 화면에 서 있는 사람 (이야기 파일의 extras)
+            extra = [w for w in (e.get("extras") or {}).get(i + 1, [])
+                     if w not in says]
+            cast = sorted(set(says) | set(extra), key=lambda w: rank[w])
             face = max(says, key=lambda w: sum(S.syl(t) for w2, t in lines if w2 == w))
             other = next((w for w in cast if w != face), face)
+            ladder = e.get("shots")
             n_syl = sum(S.syl(t) for _, t in lines)
             sec = S.cut_sec(n_syl)
 
@@ -140,13 +165,27 @@ def main():
             # ⚠️ SUBJECT 줄은 **안 만든다** (2026-08-25 운영자 지시).
             #    옷·얼굴은 루미나 기준 사진이 잡는다. 여기 또 적으면 싸운다.
             body = [S.head_line(sec),
-                    shot_line(i, cast, face, other),
+                    shot_line(i, cast, face, other, ladder),
                     S.FRAME_FIX,
+                    # ⚠️ 입 모양 지시는 **말한 사람 수**를 따른다. 화면에
+                    #    있는 사람 수로 세면, 혼자 말하는 컷에 "둘 다 입을
+                    #    움직여라" 가 붙는다 (2026-08-25 실제로 그랬다).
                     "ACTION: " + action.strip().rstrip(".") + "."
-                    + (SYNC2 if len(cast) > 1 else SYNC1),
+                    + (SYNC2 if len(says) > 1 else SYNC1),
                     *dia,
                     "VOICE: " + "; ".join(story.VOICES[w] for w in says) + ".",
-                    audio, SET[PLACE[place]],
+                    # ⚠️ AUDIO 도 **말한 사람 수**를 따라간다. 1화 1컷에서
+                    #    통째로 복사해 오면 혼자 말하는 컷에 "the two people"
+                    #    이 붙는다 (2026-08-25 실제로 그랬다).
+                    (audio if len(says) > 1 else
+                     audio.replace("the two people in the shot say the lines "
+                                   "themselves",
+                                   "the person in the shot says the lines "
+                                   "themselves")
+                          .replace("each person speaking one after another so "
+                                   "every word stays clear",
+                                   "every word stays clear")),
+                    SET[PLACE[place]],
                     S.COLOR_FIX, S.STYLE_FIX, S.AVOID_FIX]
             cuts.append({
                 "n": i + 1, "sec": sec,

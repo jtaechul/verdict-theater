@@ -578,6 +578,41 @@ def draw_end(d, big, small):
            fill=(26, 21, 12, 255), anchor="mm")
 
 
+def draw_preview(img, d, tag, big, pill):
+    """**영상 칸만** 반투명 검정으로 덮고 가운데에 다음 화 예고를 그린다.
+
+    tag  — 「다음 화 예고」 (작게, 금색)
+    big  — 다음 화 **후킹** (제목보다 세다 — 이미 자극적으로 뽑아 둔 한 줄)
+    pill — 구독 알약 안 글자
+    """
+    ov = Image.new("RGBA", (W, VID_H), (0, 0, 0, int(255 * PREV_DARK)))
+    img.alpha_composite(ov, (0, VID_TOP))
+    cy = VID_TOP + VID_H // 2
+    f0 = ImageFont.truetype(str(FONT_H), PREV_TAG)
+    w0 = d.textlength(tag, font=f0)
+    d.text(((W - w0) / 2, cy - 210), tag, font=f0, fill=GOLD + (255,))
+    f, ls = fit(d, big, FONT_B, PREV_BIG, W - SIDE * 2 - 40, 3, min_size=54)
+    block(d, ls, f, cy - 140, cy + 120, (255, 255, 255, 255), gap=1.24)
+    f2 = ImageFont.truetype(str(FONT_H), PREV_PILL)
+    bb = d.textbbox((0, 0), pill, font=f2)
+    bw, bh = (bb[2] - bb[0]) + 96, (bb[3] - bb[1]) + 52
+    bx, by = (W - bw) / 2, cy + 160
+    d.rounded_rectangle([bx, by, bx + bw, by + bh], radius=bh / 2, fill=HOOK_HI)
+    d.text((bx + bw / 2, by + bh / 2), pill, font=f2, fill=(26, 21, 12, 255),
+           anchor="mm")
+
+
+def speech_end(src, dur):
+    """그 클립에서 **말이 끝나는 시각**. 못 찾으면 끝에서 1.6초 앞."""
+    try:
+        got = voiced_spans(src, 0, dur)
+        if got:
+            return min(float(got[-1][1]), dur)
+    except Exception:                                        # noqa: BLE001
+        pass
+    return max(0.0, dur - 1.6)
+
+
 def draw_stamp(d, text):
     """자막 칸 **오른쪽 위**에 때를 작게 적는다 (예: 2013년 8월)."""
     f = ImageFont.truetype(str(FONT_M), STAMP_SIZE)
@@ -586,7 +621,7 @@ def draw_stamp(d, text):
 
 
 def overlay_png(hook, chunk, out, label=None, parts="all", who=None, end=None,
-                stamp=""):
+                stamp="", preview=None):
     """글자만 있는 투명 그림 한 장 (영상 위에 얹는다).
 
     chunk — 지금 화면에 띄울 자막 **한 토막**. 나머지는 안 그린다
@@ -606,6 +641,10 @@ def overlay_png(hook, chunk, out, label=None, parts="all", who=None, end=None,
         else parts in ("all", "hook")
     want_sub = parts in ("all", "sub")
     want_stamp = parts in ("all", "stamp")
+    want_prev = parts in ("all", "preview")
+
+    if want_prev and preview:
+        draw_preview(img, d, *preview)
 
     if want_stamp and str(stamp or "").strip():
         draw_stamp(d, str(stamp).strip())
@@ -910,23 +949,55 @@ def dub(src, turns, voices, out, tmp, personas=None):
 #    ⚠️ 그리고 「다음 화에 계속」 만 쓰지 않는다. **다음 화 제목을 같이 보여 주는
 #       쪽이 훨씬 세다** — '무슨 일이 벌어지는지' 가 궁금해야 다음 편을 찾는다.
 #       구독 안내는 그 아래 작은 줄로 한 번만 (두 화면으로 나누면 둘 다 흐려진다).
-END_SEC = 2.6                    # 끝 안내를 띄우는 시간 (길이는 안 늘어난다)
+# ⭐⭐⭐ 2026-08-25 운영자: "만든 영상이 끝나면 다음화 예고 문구를 화면
+#    중간에 띄워주고, 그 화면이 반투명 검정색으로 바뀌고… 드라마 보면
+#    다음 화 안내하잖아."
+#    맞는 방향인데 **화면 전체**를 덮으면 위 칸의 후킹까지 어두워진다
+#    (운영자는 "후킹은 끝까지 유지" 라고도 하셨다 — 둘이 부딪힌다).
+#    → 위아래 띠는 **원래 검은색**이므로 **영상 칸만** 어둡게 하면
+#      화면 전체가 고르게 어두워 보이면서 후킹은 위에서 그대로 밝다.
+#    ⚠️ 길이는 1초도 안 늘린다. 쇼츠는 뒤에 붙이면 평균 시청률이 깎인다
+#       (30초 미만은 65%가 확산 기준). 마지막 컷 **위에 겹친다.**
+PREV_DARK = 0.82                 # 영상 칸을 얼마나 어둡게 (0~1)
+PREV_SEC = 2.2                   # 마지막에 띄우는 시간 (최대)
+PREV_FADE = 0.5                  # 서서히 어두워지는 시간
+PREV_LEAD = 0.15                 # 마지막 말이 끝나고 이만큼 뒤에 시작한다
+PREV_TAG, PREV_BIG, PREV_PILL = 44, 82, 44
+
+END_SEC = 2.6                    # (옛 방식) 끝 안내를 띄우는 시간
 END_BIG, END_SMALL = 76, 46      # 큰 줄 · 알약 안 글자 크기
 END_PILL_PAD = (48, 26)          # 알약 좌우 · 위아래 여백
 END_TOP = HOOK_TOP               # 끝 안내도 **위 칸**(후킹 자리)에 그린다
 
 
 def end_card(doc, no):
-    """마지막에 띄울 두 줄. (큰 줄, 작은 줄)
+    """(옛 방식) 위 칸에 띄우던 두 줄. 지금은 preview_card 를 쓴다."""
+    big, _, small = preview_card(doc, no)
+    return big, small
 
-    다음 화가 있으면 그 **제목**을 보여 준다. 마지막 화면 회차면 완결 안내."""
+
+def hook_plain(t):
+    """별표를 떼어 낸 맨글자. (`*센 말*` 은 색 넣을 자리 표시라 화면엔 안 나온다)
+
+    ⚠️ 같은 함수가 series.py 에도 있다. 여기서 series 를 들여오면 조립할 때
+       대본 모듈이 통째로 딸려 온다 — 한 줄짜리라 그냥 둔다.
+    """
+    return re.sub(r"\*([^*]+)\*", r"\1", str(t or "")).strip()
+
+
+def preview_card(doc, no):
+    """마지막에 **화면 가운데**에 띄울 세 줄. (작은 머리말, 큰 줄, 알약)
+
+    ⭐⭐ 큰 줄은 다음 화의 **제목이 아니라 후킹**이다.
+       제목("이혼 소송 기각")은 목차처럼 밋밋하고, 후킹("바람피운 놈이 걸었다가
+       기각당했다")은 이미 손가락을 멈추게 하려고 뽑아 둔 한 줄이다.
+    """
     eps = doc.get("episodes") or []
     nxt = next((e for e in eps if int(e.get("no", 0)) == int(no) + 1), None)
     if nxt:
-        t = str(nxt.get("title") or "").strip()
-        big = f"다음 화 — {t}" if t else "다음 화에 계속"
-        return big, "구독하면 다음 화를 놓치지 않습니다"
-    return "완 결", "1화부터 정주행하고 구독해 주세요"
+        big = hook_plain(nxt.get("hook")) or str(nxt.get("title") or "").strip()
+        return "다음 화 예고", big or "다음 화에 계속", "구독하고 내일 이어 보기"
+    return "완 결", "여기까지 보셨다면 1화부터 정주행해 보세요", "구독하고 정주행"
 
 
 def audio_sec(src):
@@ -968,7 +1039,7 @@ def crop_43(vw, vh):
 
 
 def compose(src, hook, sub, out, tmp, label=None, end=None,
-            hook_sec=HOOK_SEC, whos=None, stamp=""):
+            hook_sec=HOOK_SEC, whos=None, stamp="", preview=None):
     """받은 클립 한 개 → 쇼츠 한 컷 (자르지 않고 폭에 맞춰 깔고 글자 얹기)."""
     src, out, tmp = Path(src), Path(out), Path(tmp)
     tmp.mkdir(parents=True, exist_ok=True)
@@ -1019,6 +1090,12 @@ def compose(src, hook, sub, out, tmp, label=None, end=None,
         hook_i = len(imgs)
         imgs.append(overlay_png(hook, "", tmp / f"{src.stem}_hook.png",
                                 None, parts="hook"))
+    # ⭐ 다음 화 예고 — 마지막 말이 끝난 뒤 **영상 칸만** 어두워진다.
+    prev_i = None
+    if preview:
+        prev_i = len(imgs)
+        imgs.append(overlay_png("", "", tmp / f"{src.stem}_prev.png", None,
+                                parts="preview", preview=preview))
     stamp_i = None
     if str(stamp or "").strip():
         stamp_i = len(imgs)
@@ -1067,6 +1144,16 @@ def compose(src, hook, sub, out, tmp, label=None, end=None,
         vf.append(f"{cur}[st]overlay=0:0:enable='between(t,0,{ss:.3f})'[sp]")
         cur = "[sp]"
 
+    # ⭐ 예고는 **말이 끝난 뒤**에 뜬다 (대사를 안 가린다). 길이는 그대로다.
+    if prev_i is not None:
+        ps = min(max(speech_end(src, sec) + PREV_LEAD, sec - PREV_SEC),
+                 max(0.0, sec - 1.2))
+        vf.append(f"[{2 + prev_i}:v]format=rgba,"
+                  f"fade=t=in:st={ps:.3f}:d={min(PREV_FADE, max(0.1, sec - ps)):.3f}"
+                  f":alpha=1[pv]")
+        vf.append(f"{cur}[pv]overlay=0:0:enable='gte(t,{ps:.3f})'[pw]")
+        cur = "[pw]"
+
     EN_EPS = 0.021                       # 24fps 반 프레임
     for i in range(len(pngs)):
         a, b = spans[i] if i < len(spans) else (0.0, sec)
@@ -1088,7 +1175,7 @@ def compose(src, hook, sub, out, tmp, label=None, end=None,
     for k, q in enumerate(imgs):
         # ⚠️ 후킹만 **영상처럼** 넣는다(-loop). 그림 한 장은 프레임이 하나뿐이라
         #    fade(서서히 사라지기)가 안 걸린다 — 늘려 줘야 걸린다.
-        if (hook_i is not None and k == hook_i) or k == stamp_i:
+        if (hook_i is not None and k == hook_i) or k in (stamp_i, prev_i):
             cmd += ["-loop", "1", "-framerate", "24", "-t", f"{sec + 1:.3f}"]
         cmd += ["-i", str(q)]
     # 소리: 컷마다 크기를 맞추고, 앞뒤 0.05초를 부드럽게 (이어 붙일 때 '툭' 소리 방지)
@@ -1269,11 +1356,15 @@ def episode(sid, no, clips_dir, out_dir):
         last_cut = (c is ep["cuts"][-1])
         # ⭐ 때 도장 — **첫 컷 앞 3초**에만. 8년짜리 사건이라 언제 얘기인지를
         #    안 알려 주면 화가 바뀔 때마다 시청자가 길을 잃는다 (2026-08-25).
+        # ⭐⭐ 2026-08-25 — 후킹은 **마지막 컷까지 그대로** 위 칸에 둔다
+        #    (운영자: "후킹 문구는 끝날 때까지 계속 유지").
+        #    다음 화 예고는 위 칸이 아니라 **화면 가운데**에, 마지막 말이
+        #    끝난 뒤 영상 칸만 어두워지면서 뜬다.
         d = compose(src, hook if (not HOOK_SEC or first_cut) else "",
                     c.get("subtitle"), tmp / f"cut{n}.mp4", tmp, label=label,
-                    end=end_card(doc, no) if last_cut else None,
                     whos=[w for w, _ in dia_turns(c.get("prompt"))],
-                    stamp=(ep.get("when") or "") if first_cut else "")
+                    stamp=(ep.get("when") or "") if first_cut else "",
+                    preview=preview_card(doc, no) if last_cut else None)
         parts.append(d)
         print(f"  ✅ {n}컷 ← {files[n].name}  (소리 {gain_for(src):+.1f}dB)")
 

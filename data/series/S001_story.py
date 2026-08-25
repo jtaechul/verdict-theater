@@ -39,6 +39,12 @@ EPS = [
       yt_title="결혼 20년, 남편이 그 여자를 집에 데려왔습니다",
       recap="", reveal="남편이 그 여자를 집에 데려와 이혼을 요구한다",
       must=["이혼하자"],
+      # ⭐⭐ 2026-08-25 — **1화만 먼저 시험** (운영자 지시).
+      #    2컷을 아내 **혼자 클로즈업**으로 바꿨다. 48컷 중 47컷에 두 사람이
+      #    나와 단조로웠다 — 혼자 말하는 컷이라야 진짜 얼굴 샷이 나온다.
+      #    그 여자는 말은 안 해도 2컷 화면에 서 있다 (extras).
+      shots=["two", "close", "ots"],
+      extras={2: [O, H]},
       cuts=[
         ("현관", "the front door is already swinging open as the shot starts; the wife "
                  "turns to see a strange woman standing close behind her husband",
@@ -46,12 +52,11 @@ EPS = [
           (H, "들어와. 어차피 알 사람이야."),
           (W, "알 사람? 나 몰래 만난 지 얼마나 됐는데."),
           (H, "일 년. 숨길 생각도 없어.")]),
-        ("거실", "the other woman walks past the wife into the living room and looks "
-                 "slowly around it while the wife stands frozen",
-         [(O, "생각보다 좁네요."),
-          (W, "당장 나가. 여기가 어디라고."),
-          (H, "그만해. 창피하게 왜 이래."),
-          (W, "창피는 내가 아니라 당신이 당해야지.")]),
+        ("거실", "the wife stands very still in the middle of the living room and holds "
+                 "his eyes, while the other woman and the husband wait behind her",
+         [(W, "당장 나가. 여기가 어디라고 들어와."),
+          (W, "이십 년을 내가 쓸고 닦은 집이야."),
+          (W, "저 여자 데리고 지금 당장 나가.")]),
         ("거실", "the husband pulls a bankbook from the drawer and slides it into his "
                  "inside pocket without looking at his wife",
          [(H, "이혼하자. 서류는 내가 보낼게."),
@@ -197,8 +202,8 @@ EPS = [
       reveal="남편의 통장에 남은 것은 빚 육억뿐이다",
       must=["빚 육억"],
       cuts=[
-        ("은행앞", "the wife holds a thin bank slip in both hands and does not look up "
-                   "from it",
+        ("은행앞", "the wife holds a thin bank slip in both hands and keeps her eyes on "
+                   "it",
          [(W, "통장을 다 열어 봤어. 남은 게 빚 육억이야."),
           (O, "그걸 왜 나한테 따져요."),
           (W, "네가 다 빼돌렸잖아."),
@@ -225,7 +230,7 @@ EPS = [
       must=["십억"],
       cuts=[
         ("병원복도", "the wife walks straight down the corridor and stops in front of the "
-                     "other woman, who does not move aside",
+                     "other woman, who stays exactly where she is",
          [(W, "여기서 당장 나가."),
           (O, "내 병원인데 왜 나가요."),
           (W, "이게 언제부터 네 병원이야."),
@@ -252,7 +257,7 @@ EPS = [
       must=["십삼억"],
       cuts=[
         ("보험사앞", "the wife holds a printed slip out at arm's length toward the other "
-                     "woman, who does not take it",
+                     "woman, who keeps both hands at her sides",
          [(W, "십삼억. 아홉 건 전부 네 이름이더라."),
           (O, "그이가 나 주려고 든 거예요."),
           (W, "진짜 끝까지 가는구나."),
@@ -411,8 +416,8 @@ EPS = [
           (O, "법이 그렇다는데 어떡해요."),
           (W, "그럼 나머지 절반은 네가 갖는 거야?"),
           (O, "그런 셈이죠.")]),
-        ("법원복도", "the wife walks past her toward the courtroom door and does not slow "
-                     "down",
+        ("법원복도", "the wife walks past her toward the courtroom door and keeps the same "
+                     "pace",
          [(W, "절반이라도 다 받아낼 거야."),
           (O, "다 뺏기고 울지나 마세요."),
           (W, "울게 되는 건 네가 될걸."),

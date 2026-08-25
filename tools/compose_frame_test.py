@@ -217,6 +217,34 @@ _src8 = (ROOT / "src" / "shorts.py").read_text(encoding="utf-8")
 ck("첫 컷에만 넘긴다 (대본의 when 을 그대로)",
    'stamp=(ep.get("when") or "") if first_cut else ""' in _src8)
 
+print("⑨ 다음 화 예고 — 영상 칸만 어두워지고, 후킹은 위에서 그대로 (2026-08-25)")
+# 운영자: "만든 영상이 끝나면 다음화 예고 문구를 화면 중간에 띄워주고, 그 화면이
+#   반투명 검정색으로 바뀌고… 드라마 보면 다음 화 안내하잖아."
+#   ⚠️ 화면 **전체**를 덮으면 위 칸 후킹까지 어두워진다 (운영자는 후킹을 끝까지
+#      유지하라고도 하셨다). 위아래 띠는 원래 검은색이니 **영상 칸만** 덮는다.
+src9 = make(TMP, 8.0, 5.5, color="0x6a5f52")
+PREV = ("다음 화 예고", "바람피운 놈이 걸었다가 기각당했다", "구독하고 내일 이어 보기")
+prev = S.compose(src9, "후킹 문구다", "그럼 애들은 어떻게 되는 건데?",
+                 TMP / "pv.mp4", TMP, whos=["Wife"], preview=PREV)
+noprev = S.compose(src9, "후킹 문구다", "그럼 애들은 어떻게 되는 건데?",
+                   TMP / "pv0.mp4", TMP, whos=["Wife"])
+ck("길이가 1초도 안 늘어난다 (쇼츠 평균 시청률 보호)",
+   abs(S.C.probe(prev)[2] - S.C.probe(noprev)[2]) < 0.05,
+   f"{S.C.probe(noprev)[2]:.2f} → {S.C.probe(prev)[2]:.2f}초")
+ck("영상 중간에는 예고가 안 뜬다 (대사를 안 가린다)",
+   abs(ink(prev, 2.0, VIDBOX) - ink(noprev, 2.0, VIDBOX)) < 200,
+   f"{ink(prev, 2.0, VIDBOX)} vs {ink(noprev, 2.0, VIDBOX)}")
+ck("마지막에는 화면 가운데에 예고가 뜬다",
+   ink(prev, 7.6, VIDBOX) - ink(noprev, 7.6, VIDBOX) > 2000,
+   f"{ink(prev, 7.6, VIDBOX)} vs {ink(noprev, 7.6, VIDBOX)}")
+ck("후킹은 예고가 떠도 위에서 그대로 밝다 (어두워지지 않는다)",
+   abs(ink(prev, 7.6, TOPBOX) - ink(noprev, 7.6, TOPBOX)) < 200,
+   f"{ink(prev, 7.6, TOPBOX)} vs {ink(noprev, 7.6, TOPBOX)}")
+_src9 = (ROOT / "src" / "shorts.py").read_text(encoding="utf-8")
+ck("마지막 컷에만 넘긴다", "preview=preview_card(doc, no) if last_cut else None" in _src9)
+ck("예고 큰 줄이 **다음 화 후킹**이다 (제목은 목차처럼 밋밋하다)",
+   "hook_plain(nxt.get(\"hook\"))" in _src9)
+
 print("⑦ 원본 소리를 쓸 때는 클립을 자르지 않는다")
 _src = (ROOT / "src" / "shorts.py").read_text(encoding="utf-8")
 ck("keep_audio 면 trim_dead 를 건너뛴다", "if not keep_audio():" in _src)

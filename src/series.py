@@ -761,7 +761,7 @@ STYLE_FIX = ("STYLE: one single continuous take, from first frame to last in "
              "the same place with the same people, "
              "semi-realistic hand-drawn illustration style with clean confident "
              "linework and soft cel shading, true-to-life body proportions and "
-             "calm natural faces rather than cartoon exaggeration, muted "
+             "calm natural faces with everyday, unexaggerated features, muted "
              "desaturated palette, soft practical lighting, shallow depth of "
              "field, consistent line weight in every shot.")
 
@@ -883,8 +883,9 @@ RISKY = {
     "underwear": "속옷",
 }
 # '하지 마' 를 뜻하는 말 — 프롬프트에 있으면 안 된다 (검사기가 못 알아듣는다)
-NEGATIVE = ["avoid:", "avoid ", "do not ", "don't ", "never ", "no cut",
-            "no scene change", "without any", "instead of"]
+NEGATIVE = ["avoid:", "avoid ", "do not ", "don't ", "does not ", "doesn't ",
+            "never ", "no cut", "no scene change", "without any", "instead of",
+            "no longer", "must not", "should not", "rather than"]
 
 
 # 대사(한국어)에 들어가면 **걸릴 수도** 있는 말. 이야기의 뼈대일 수 있으므로

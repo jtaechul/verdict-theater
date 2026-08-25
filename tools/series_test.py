@@ -285,6 +285,37 @@ _cs = [f"{ch['name']} {S.risky_words(ch.get('flow_sheet') or '')}"
        for ch in _real.get("characters") or []
        if S.risky_words(ch.get("flow_sheet") or "")]
 ck("인물 기준 사진 프롬프트에도 위험한 낱말이 없다", not _cs, " ".join(_cs[:3]))
+
+# ⭐⭐⭐ 2026-08-25 운영자: "너무 두 사람을 다 보여줄 필요는 없고, 필요할 때는
+#    한 명만 줌인해서… 지금 보면 씬이 너무 단조로워."
+#    세어 보니 48컷 중 47컷에 두 사람이 나오고 16화가 전부 같은 샷 순서였다.
+print("\n⑩-5 샷이 단조롭지 않은가 (한 명 클로즈업 · 화마다 다른 순서)")
+
+
+def _shot_kind(c):
+    sh = next((l for l in c["prompt"].split("\n") if l.startswith("SHOT:")), "")
+    return ("two" if "two-shot" in sh else "group" if "group shot" in sh
+            else "ots" if "Over-the-shoulder" in sh else "close")
+
+
+_solo = [(e["no"], c["n"]) for e in _real["episodes"] for c in e["cuts"]
+         if len({w for w, _ in S.dia_turns(c["prompt"])}) == 1]
+ck("혼자 말하는 컷이 있다 (그래야 진짜 얼굴 샷이 나온다)", bool(_solo),
+   str(_solo[:4]))
+for _no, _n in _solo:
+    _c = [c for e in _real["episodes"] if e["no"] == _no
+          for c in e["cuts"] if c["n"] == _n][0]
+    ck(f"{_no}화 {_n}컷 — 혼자 말하는 컷은 클로즈업이다",
+       _shot_kind(_c) == "close", _shot_kind(_c))
+    ck(f"{_no}화 {_n}컷 — 입 모양 지시가 '한 사람' 이다",
+       "The person keeps their lips" in _c["prompt"],
+       [l[:60] for l in _c["prompt"].split("\n") if "lips" in l])
+_orders = {e["no"]: tuple(_shot_kind(c) for c in e["cuts"])
+           for e in _real["episodes"]}
+ck("16화가 전부 같은 샷 순서는 아니다", len(set(_orders.values())) >= 2,
+   str(sorted(set(_orders.values()))))
+_flat = [no for no, o in _orders.items() if len(set(o)) < 3]
+ck("한 화 안에서 샷 크기가 세 가지다", not _flat, str(_flat[:4]))
 d = good_doc()
 d["episodes"][0]["cuts"][0]["prompt"] += "\nSUBJECT: the wife wearing a cardigan."
 ck("옷을 적은 대본은 검사가 반려한다",
@@ -382,9 +413,11 @@ ck("고정 문구가 '같은 사람이 끝까지' 를 바라는 쪽으로 적는
 # ⭐ 2026-08-21 — 화풍을 반실사 그림체로 바꿨다 (운영자 지시)
 import charsheet as _CS2                                    # noqa: E402
 ck("컷 화풍이 그림체다", "illustration" in S.STYLE_FIX.lower(), S.STYLE_FIX[60:110])
+# ⚠️ 2026-08-25 — 예전엔 "rather than cartoon exaggeration" 이라고 **부정으로**
+#    적혀 있었다. 루미나 안전 검사기는 부정을 못 알아들으므로 바라는 쪽으로 썼다.
 ck("만화가 아니라 반실사다",
    "semi-realistic" in S.STYLE_FIX.lower()
-   and "rather than cartoon exaggeration" in S.STYLE_FIX.lower())
+   and "unexaggerated" in S.STYLE_FIX.lower(), S.STYLE_FIX[150:230])
 ck("인물 그림도 **같은 화풍**이다 (따로 놀면 얼굴이 안 잡힌다)",
    "illustration" in _CS2.LOOK.lower() and "semi-realistic" in _CS2.LOOK.lower(),
    _CS2.LOOK[:50])
