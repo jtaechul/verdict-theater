@@ -1120,6 +1120,20 @@ function seriesRender() {
 
   // ④ 이 화의 컷들 (보통 3개 · 장소가 여럿이면 4개)
   h += '<div class="card"><h2>④ ' + SEP + '화 — ' + esc(e.title || '') + '</h2>';
+  // ⭐⭐ 2026-08-25 — 이 화가 **언제 얘기이고 무엇이 밝혀지는지**를 맨 위에
+  //    적어 둔다. 운영자가 "스토리가 이해가 안 된다" 고 한 원인 하나가
+  //    이것이었다 — 8년짜리 사건인데 어느 화가 언제인지 아무 데도 없었다.
+  if (e.when || e.reveal) {
+    h += '<div style="background:#16181f;border-left:3px solid #6b5a24;'
+       + 'border-radius:6px;padding:10px 12px;margin-bottom:10px">';
+    if (e.when) h += '<div style="color:#c8a951;font-size:13px">' + esc(e.when)
+                   + (e.mood ? ' · ' + esc(e.mood) : '')
+                   + (e.irony ? ' · 아내가 없는 화 (시청자만 먼저 압니다)' : '')
+                   + '</div>';
+    if (e.reveal) h += '<div style="color:#e7e9ef;font-size:14px;margin-top:4px">'
+                     + '이 화에서 밝혀지는 것 — ' + esc(e.reveal) + '</div>';
+    h += '</div>';
+  }
   if (e.recap) h += '<div style="color:#9599ab;font-size:14px;margin-bottom:10px">'
                   + '지난 줄거리: ' + esc(e.recap) + '</div>';
   // ⭐ 후킹은 화면 **맨 위 검은 칸**에 내내 뜨는 한 줄이다. 이걸 보고 남느냐

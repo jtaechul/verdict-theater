@@ -137,6 +137,17 @@ NAME_RULE = 6                    # **세로 막대** 굵기 — 세로인 것은
 NAME_X = 24                      # 막대와 이름 사이
 NAME_GAP = 18                    # 이름 줄과 자막 사이
 SIDE = 64                        # 좌우 여백
+
+# ⭐⭐ 2026-08-25 — **때(시점) 도장.** 운영자: "씬 앞뒤로 개연성이 없다."
+#    까닭 하나가 이것이었다 — 이 사건은 2012년부터 2020년까지 **8년**짜리인데
+#    화면에 때가 한 번도 안 나온다. 3화와 5화 사이에 3년이 흐르는 것을
+#    아무도 모른다. 그래서 화가 바뀔 때마다 "언제 얘기지?" 가 된다.
+#    자막 칸 **이름표 오른쪽이 늘 비어 있어서** 거기에 앉힌다 — 후킹도
+#    영상도 자막도 하나도 안 뺏는다 (실측으로 765~830px 이 남는다).
+STAMP_SIZE = 40                  # 때 도장 글자 크기 (자막보다 확실히 작게)
+STAMP_SEC = 3.0                  # 첫 컷 앞 몇 초만 (그 뒤엔 사라진다)
+STAMP_FADE = 0.6
+STAMP_COLOR = (168, 172, 186, 255)   # 흐린 회색 — 자막을 안 이긴다
 GOLD = (198, 160, 74)
 # ⭐ 후킹에서 별표로 감싼 토막에 넣을 색 (2026-08-21 운영자 지시).
 #    채널 이름에 쓰는 GOLD 는 검은 바탕에서 132px 로 키우면 탁해 보인다.
@@ -567,7 +578,15 @@ def draw_end(d, big, small):
            fill=(26, 21, 12, 255), anchor="mm")
 
 
-def overlay_png(hook, chunk, out, label=None, parts="all", who=None, end=None):
+def draw_stamp(d, text):
+    """자막 칸 **오른쪽 위**에 때를 작게 적는다 (예: 2013년 8월)."""
+    f = ImageFont.truetype(str(FONT_M), STAMP_SIZE)
+    w = d.textlength(str(text), font=f)
+    d.text((W - SIDE - w, SUB_TOP + 6), str(text), font=f, fill=STAMP_COLOR)
+
+
+def overlay_png(hook, chunk, out, label=None, parts="all", who=None, end=None,
+                stamp=""):
     """글자만 있는 투명 그림 한 장 (영상 위에 얹는다).
 
     chunk — 지금 화면에 띄울 자막 **한 토막**. 나머지는 안 그린다
@@ -586,6 +605,10 @@ def overlay_png(hook, chunk, out, label=None, parts="all", who=None, end=None):
     want_hook = parts in ("all", "frame", "hook") if not HOOK_SEC \
         else parts in ("all", "hook")
     want_sub = parts in ("all", "sub")
+    want_stamp = parts in ("all", "stamp")
+
+    if want_stamp and str(stamp or "").strip():
+        draw_stamp(d, str(stamp).strip())
 
     if want_frame:
         # ⭐ 2026-08-24 띠 배치 — 바탕이 통째로 검은색이라 **띠를 따로 안 그린다.**
@@ -945,7 +968,7 @@ def crop_43(vw, vh):
 
 
 def compose(src, hook, sub, out, tmp, label=None, end=None,
-            hook_sec=HOOK_SEC, whos=None):
+            hook_sec=HOOK_SEC, whos=None, stamp=""):
     """받은 클립 한 개 → 쇼츠 한 컷 (자르지 않고 폭에 맞춰 깔고 글자 얹기)."""
     src, out, tmp = Path(src), Path(out), Path(tmp)
     tmp.mkdir(parents=True, exist_ok=True)
@@ -996,6 +1019,11 @@ def compose(src, hook, sub, out, tmp, label=None, end=None,
         hook_i = len(imgs)
         imgs.append(overlay_png(hook, "", tmp / f"{src.stem}_hook.png",
                                 None, parts="hook"))
+    stamp_i = None
+    if str(stamp or "").strip():
+        stamp_i = len(imgs)
+        imgs.append(overlay_png("", "", tmp / f"{src.stem}_stamp.png", None,
+                                parts="stamp", stamp=stamp))
     sub_i = len(imgs)
     # ⭐ 토막마다 **누가 한 말인지** 짝지어 준다 (2026-08-24).
     #    한 사람 대사를 반으로 쪼갠 컷(halved)은 두 토막 다 같은 사람이다.
@@ -1030,6 +1058,15 @@ def compose(src, hook, sub, out, tmp, label=None, end=None,
     #    끝나고 뒤 토막이 2.0에 시작하면, 딱 그 순간의 한 프레임에 **둘 다**
     #    켜져 자막이 겹쳐 보인다 (실제 프레임에서 발견). 앞 토막을 반 프레임
     #    일찍 끈다.
+    # ⭐ 때 도장 — 첫 컷 앞 몇 초만. 끝에서 부드럽게 사라진다.
+    if stamp_i is not None:
+        ss = min(STAMP_SEC, sec)
+        fs = max(0.0, ss - STAMP_FADE)
+        vf.append(f"[{2 + stamp_i}:v]format=rgba,"
+                  f"fade=t=out:st={fs:.3f}:d={min(STAMP_FADE, ss):.3f}:alpha=1[st]")
+        vf.append(f"{cur}[st]overlay=0:0:enable='between(t,0,{ss:.3f})'[sp]")
+        cur = "[sp]"
+
     EN_EPS = 0.021                       # 24fps 반 프레임
     for i in range(len(pngs)):
         a, b = spans[i] if i < len(spans) else (0.0, sec)
@@ -1051,7 +1088,7 @@ def compose(src, hook, sub, out, tmp, label=None, end=None,
     for k, q in enumerate(imgs):
         # ⚠️ 후킹만 **영상처럼** 넣는다(-loop). 그림 한 장은 프레임이 하나뿐이라
         #    fade(서서히 사라지기)가 안 걸린다 — 늘려 줘야 걸린다.
-        if hook_i is not None and k == hook_i:
+        if (hook_i is not None and k == hook_i) or k == stamp_i:
             cmd += ["-loop", "1", "-framerate", "24", "-t", f"{sec + 1:.3f}"]
         cmd += ["-i", str(q)]
     # 소리: 컷마다 크기를 맞추고, 앞뒤 0.05초를 부드럽게 (이어 붙일 때 '툭' 소리 방지)
@@ -1230,10 +1267,13 @@ def episode(sid, no, clips_dir, out_dir):
         # ⭐ 마지막 컷에서는 그 자리가 「다음 화 — 제목」 + 구독 알약으로 바뀐다
         first_cut = (c is ep["cuts"][0])
         last_cut = (c is ep["cuts"][-1])
+        # ⭐ 때 도장 — **첫 컷 앞 3초**에만. 8년짜리 사건이라 언제 얘기인지를
+        #    안 알려 주면 화가 바뀔 때마다 시청자가 길을 잃는다 (2026-08-25).
         d = compose(src, hook if (not HOOK_SEC or first_cut) else "",
                     c.get("subtitle"), tmp / f"cut{n}.mp4", tmp, label=label,
                     end=end_card(doc, no) if last_cut else None,
-                    whos=[w for w, _ in dia_turns(c.get("prompt"))])
+                    whos=[w for w, _ in dia_turns(c.get("prompt"))],
+                    stamp=(ep.get("when") or "") if first_cut else "")
         parts.append(d)
         print(f"  ✅ {n}컷 ← {files[n].name}  (소리 {gain_for(src):+.1f}dB)")
 

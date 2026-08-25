@@ -193,6 +193,30 @@ _src3 = (ROOT / "src" / "shorts.py").read_text(encoding="utf-8")
 ck("대본에서 화자를 뽑아 넘긴다",
    "whos=[w for w, _ in dia_turns(c.get(\"prompt\"))]" in _src3)
 
+print("⑧ 때(시점) 도장 — 앞 3초만, 자막·영상은 하나도 안 뺏는다 (2026-08-25)")
+# 운영자: "씬 앞뒤로 개연성이 없다." 8년짜리 사건인데 화면에 때가 한 번도
+#   안 나왔다. 이름표 오른쪽 빈 자리에 앉히고 앞 3초만 띄운다.
+src8 = make(TMP, 8.0, 8.0, color="0x101015")
+stamped = S.compose(src8, "후킹 문구다", "당장 나가.", TMP / "st.mp4", TMP,
+                    whos=["Wife"], stamp="2013년 8월")
+plain8 = S.compose(src8, "후킹 문구다", "당장 나가.", TMP / "st0.mp4", TMP,
+                   whos=["Wife"])
+STAMPBOX = (S.W // 2, S.SUB_TOP, S.W, S.SUB_TOP + 60)
+ck("앞 3초 안에는 때가 떠 있다",
+   ink(stamped, 1.0, STAMPBOX) - ink(plain8, 1.0, STAMPBOX) > 300,
+   f"{ink(stamped, 1.0, STAMPBOX)} vs {ink(plain8, 1.0, STAMPBOX)}")
+ck("3초가 지나면 사라진다",
+   abs(ink(stamped, 6.0, STAMPBOX) - ink(plain8, 6.0, STAMPBOX)) < 200,
+   f"{ink(stamped, 6.0, STAMPBOX)} vs {ink(plain8, 6.0, STAMPBOX)}")
+ck("영상 자리를 하나도 안 가린다", ink(stamped, 1.0, VIDBOX) < 500,
+   f"{ink(stamped, 1.0, VIDBOX)}픽셀")
+ck("길이가 안 늘어난다",
+   abs(S.C.probe(stamped)[2] - S.C.probe(plain8)[2]) < 0.05,
+   f"{S.C.probe(plain8)[2]:.2f} → {S.C.probe(stamped)[2]:.2f}초")
+_src8 = (ROOT / "src" / "shorts.py").read_text(encoding="utf-8")
+ck("첫 컷에만 넘긴다 (대본의 when 을 그대로)",
+   'stamp=(ep.get("when") or "") if first_cut else ""' in _src8)
+
 print("⑦ 원본 소리를 쓸 때는 클립을 자르지 않는다")
 _src = (ROOT / "src" / "shorts.py").read_text(encoding="utf-8")
 ck("keep_audio 면 trim_dead 를 건너뛴다", "if not keep_audio():" in _src)
