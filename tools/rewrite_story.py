@@ -128,8 +128,10 @@ def main():
             n_syl = sum(S.syl(t) for _, t in lines)
             sec = S.cut_sec(n_syl)
 
-            dia = ["DIALOGUE: [LANGUAGE: KOREAN] each person speaks one after another, "
-                   "never overlapping"]
+            # ⚠️ 2026-08-25 — "never overlapping" 처럼 **부정문으로 적지 않는다.**
+            #    루미나 안전 검사기는 부정을 못 알아듣고 낱말만 본다.
+            dia = ["DIALOGUE: [LANGUAGE: KOREAN] each person speaks in turn, one "
+                   "voice at a time"]
             for k, (who, txt) in enumerate(lines):
                 # 감정 낱말은 그 화에 정한 셋만 — 컷 안에서 점점 깊어진다
                 m = e["words"][min(int(k / max(1, len(lines)) * 3), 2)]

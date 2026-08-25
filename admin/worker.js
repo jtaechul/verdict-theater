@@ -660,7 +660,13 @@ function luminaPrompt(t) {
   //    (운영자: "컷별로 연결된다는 느낌이 안 들어") → 다시 남긴다.
   // ⚠️ 2026-08-25 — SUBJECT 를 통째로 뺀다. 대본에서도 안 만들지만,
   //    예전에 만들어 둔 대본에는 아직 남아 있을 수 있어 여기서도 막는다.
-  const drop = ['SUBJECT:', 'VOICE:', 'AUDIO:'];
+  const drop = ['SUBJECT:', 'VOICE:', 'AUDIO:', 'Avoid:'];
+  // ⚠️ 여기는 백틱 문자열 안이다 — 주석에도 백틱을 쓰면 문자열이 끊긴다.
+  // ⚠️⚠️ 2026-08-25 — 예전 대본에는 마지막 줄이 Avoid 였다. 그 줄의
+  //    "옷을 갈아입지 마라 · 얼굴을 바꾸지 마라" 를 루미나 안전 검사기가
+  //    **해 달라는 말로 읽어** 영상 만들기를 거절했다 (code=23007).
+  //    지금 대본은 KEEP (바라는 것만) 으로 바뀌었지만, 옛 대본을 열었을
+  //    때를 대비해 붙여 넣는 글에서도 Avoid 줄은 뺀다.
   const out = [];
   let skip = false;
   String(t || '').split(String.fromCharCode(10)).forEach((l) => {

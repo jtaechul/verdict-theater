@@ -174,7 +174,7 @@ ck("프롬프트 파일의 예시 컷이 통과한다", S.check(S.normalize(d)) 
 d = good_doc()
 d["episodes"][3]["cuts"][1]["prompt"] = "\n".join(
     l for l in good_prompt("None.").split("\n")
-    if not l.startswith(("STYLE:", "Avoid:")))
+    if not l.startswith(("STYLE:", "KEEP:")))
 ck("STYLE·Avoid 줄이 없으면 우리가 채운다", S.check(S.normalize(d)) == [],
    str(S.check(S.normalize(d)))[:60])
 
@@ -188,8 +188,8 @@ ck("DIALOGUE 줄이 없으면 우리가 채운다", S.check(S.normalize(d)) == [
 # 줄 순서만 바뀐 것으로 16화를 다시 살 수는 없다
 d = good_doc()
 d["episodes"][6]["cuts"][0]["prompt"] = good_prompt("None.").replace(
-    S.STYLE_FIX + "\nAvoid:", "Avoid:").rstrip() + "\n" + S.STYLE_FIX
-ck("Avoid 가 맨 끝이 아니면 우리가 옮긴다", S.check(S.normalize(d)) == [],
+    S.STYLE_FIX + "\nKEEP:", "KEEP:").rstrip() + "\n" + S.STYLE_FIX
+ck("KEEP 이 맨 끝이 아니면 우리가 옮긴다", S.check(S.normalize(d)) == [],
    str(S.check(S.normalize(d)))[:60])
 
 # ⭐⭐ 2026-08-25 운영자: "우리 옷에 관한 정보는 안 넣기로 규칙에 정했잖아?!
@@ -245,6 +245,46 @@ _long = ("ACTION: the husband steps in front of his wife to block her way down t
 ck("앞 컷 요약을 문장 가운데서 안 끊는다", not S._gist(_long).endswith(("in", "the", "a")),
    S._gist(_long)[-40:])
 ck("앞 컷 요약이 110자를 안 넘는다", len(S._gist(_long)) <= 110)
+
+# ⭐⭐⭐ 2026-08-25 — 루미나가 영상 만들기를 거절했다 (code=23007
+#    "The generated video may contain sensitive information").
+#    까닭이 우리 프롬프트에 있었다 —
+#      ① STYLE 의 `grounded adult proportions and restrained faces`
+#      ② Avoid 의 `the person changing clothes or face mid-shot,
+#         swapping in a different person`
+#    ②가 특히 나빴다. **안전 검사기는 "하지 마" 를 못 알아듣고 낱말만 본다.**
+#    우리가 막으려고 적은 것을 "옷 벗기·얼굴 바꾸기를 해 달라" 로 읽었다.
+print("\n⑩-4 루미나 안전 검사에 걸릴 말이 없는가 (code=23007)")
+for w in ("adult", "restrained", "swapping", "changing clothes"):
+    ck(f"위험한 낱말을 잡는다 — {w}", bool(S.risky_words(f"STYLE: a {w} thing.")),
+       str(S.risky_words(f"STYLE: a {w} thing.")))
+ck("멀쩡한 말은 안 잡는다",
+   not S.risky_words("SETTING: a bare street tree and a coat hook."),
+   str(S.risky_words("SETTING: a bare street tree and a coat hook.")))
+for nm, fix in (("STYLE", S.STYLE_FIX), ("KEEP", S.AVOID_FIX),
+                ("FRAMING", S.FRAME_FIX), ("COLOR", S.COLOR_FIX),
+                ("AUDIO", S.AUDIO_FIX), ("CONTINUITY", S.CONT_FIRST)):
+    ck(f"고정 줄에 위험한 낱말이 없다 — {nm}", not S.risky_words(fix),
+       str(S.risky_words(fix)))
+    ck(f"고정 줄이 '하지 마' 로 안 적혀 있다 — {nm}", not S.negative_words(fix),
+       str(S.negative_words(fix)))
+ck("마지막 줄 이름이 KEEP 이다 (Avoid 면 다음 사람이 또 부정문을 채운다)",
+   S.LINES[-1] == "KEEP:" and S.AVOID_FIX.startswith("KEEP:"), S.LINES[-1])
+d = good_doc()
+d["episodes"][0]["cuts"][0]["prompt"] += "\nACTION: an adult scene."
+ck("위험한 낱말이 있으면 대본을 반려한다",
+   any("안전 검사" in b for b in S.check(d)), str(S.check(d))[:70])
+_real = json.loads((ROOT / "data" / "series" / "S001.json").read_text(encoding="utf-8"))
+_rk = [f"{e['no']}-{c['n']} {S.risky_words(c['prompt'])}"
+       for e in _real["episodes"] for c in e["cuts"] if S.risky_words(c["prompt"])]
+ck("실제 대본 48컷에 위험한 낱말이 없다", not _rk, " ".join(_rk[:3]))
+_ng = [f"{e['no']}-{c['n']} {S.negative_words(c['prompt'])}"
+       for e in _real["episodes"] for c in e["cuts"] if S.negative_words(c["prompt"])]
+ck("실제 대본 48컷에 '하지 마' 가 없다", not _ng, " ".join(_ng[:3]))
+_cs = [f"{ch['name']} {S.risky_words(ch.get('flow_sheet') or '')}"
+       for ch in _real.get("characters") or []
+       if S.risky_words(ch.get("flow_sheet") or "")]
+ck("인물 기준 사진 프롬프트에도 위험한 낱말이 없다", not _cs, " ".join(_cs[:3]))
 d = good_doc()
 d["episodes"][0]["cuts"][0]["prompt"] += "\nSUBJECT: the wife wearing a cardigan."
 ck("옷을 적은 대본은 검사가 반려한다",
@@ -323,15 +363,21 @@ print("\n⑬ 고정 문구를 글자로 베껴 두지 않았는가")
 # ⚠️ 2026-08-20 — STYLE·Avoid 를 손봤더니 시험과 프롬프트 예시가 옛 글자를
 #    베껴 두고 있어 80컷이 통째로 걸렸다. 코드에서 가져오는지 확인한다.
 _t = (ROOT / "tools" / "series_test.py").read_text(encoding="utf-8")
-ck("시험이 Avoid 를 코드에서 가져온다", "S.AVOID_FIX" in _t)
+ck("시험이 KEEP 줄을 코드에서 가져온다", "S.AVOID_FIX" in _t)
 _p = (ROOT / "prompts" / "series_gen.md").read_text(encoding="utf-8")
 ck("프롬프트 예시가 지금 머리말과 같다", S.HEAD_FIX in _p, S.HEAD_FIX)
 ck("프롬프트 예시가 지금 STYLE 과 같다", S.STYLE_FIX[7:40] in _p, S.STYLE_FIX[7:40])
-ck("프롬프트 예시가 지금 Avoid 와 같다", S.AVOID_FIX[7:40] in _p)
+ck("프롬프트 예시가 지금 KEEP 과 같다", S.AVOID_FIX[6:40] in _p, S.AVOID_FIX[6:40])
+# ⚠️ 2026-08-25 — 예전엔 "no scene change" 처럼 **부정문**으로 적혀 있었다.
+#    루미나 안전 검사기가 부정을 못 알아듣는다 → 바라는 것만 적는 쪽으로 바꿨다.
 ck("고정 문구에 '한 번에 찍기' 가 들어 있다",
-   "single continuous take" in S.STYLE_FIX and "no scene change" in S.STYLE_FIX)
-ck("고정 문구에 '중간에 옷·얼굴 바뀜 금지' 가 들어 있다",
-   "changing clothes or face mid-shot" in S.AVOID_FIX)
+   "single continuous take" in S.STYLE_FIX
+   and "same place with the same people" in S.STYLE_FIX)
+# ⚠️⚠️ 2026-08-25 — 여기 있던 `changing clothes or face mid-shot` 이
+#    루미나 안전 검사에 걸려 **영상이 아예 안 만들어졌다** (code=23007).
+#    같은 뜻을 **바라는 쪽**으로 적는다 — 한 번에 찍고, 같은 사람이 끝까지.
+ck("고정 문구가 '같은 사람이 끝까지' 를 바라는 쪽으로 적는다",
+   "same people all the way through" in S.AVOID_FIX, S.AVOID_FIX[:60])
 
 # ⭐ 2026-08-21 — 화풍을 반실사 그림체로 바꿨다 (운영자 지시)
 import charsheet as _CS2                                    # noqa: E402
@@ -529,7 +575,7 @@ ck("드라마 이름을 가리키는 말을 잡는다",
 ck("'stares' 를 'star' 로 잘못 잡지 않는다", not S.policy_hits("she stares at him"))
 d = good_doc()
 d["episodes"][0]["cuts"][0]["prompt"] = good_prompt().replace(
-    "different person.", "different actor.")
+    "exactly one voice at a time.", "a well-known actor plays the part.")
 ck("정책에 막히는 컷은 **반려**한다", any("정책" in b for b in S.check(d)),
    str(S.check(d))[:70])
 d2 = good_doc()

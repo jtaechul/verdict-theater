@@ -63,7 +63,7 @@ LIGHT = "soft even light from the front, no hard shadow, no coloured light"
 #    컷과 인물이 따로 놀아 얼굴이 안 잡힌다.
 #    ⚠️ 만화가 아니다. 판결극장은 실제 판결이 밑천이라 무게가 빠지면 안 된다.
 LOOK = ("semi-realistic hand-drawn character illustration with clean confident "
-        "linework and soft cel shading, grounded adult proportions, restrained "
+        "linework and soft cel shading, true-to-life body proportions, calm "
         "everyday face rather than cartoon exaggeration, muted desaturated "
         "colours, plain unremarkable features")
 # ⚠️ 예전 Avoid 에는 cartoon · illustration · anime 가 들어 있었다.

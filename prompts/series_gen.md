@@ -150,7 +150,7 @@
 
 # 클립 프롬프트 규격 (머리말 1줄 + 6줄 고정)
 
-각 컷의 `prompt` 는 **머리말 한 줄 + 아래 여섯 줄 + 마지막 Avoid 줄**로만 쓴다.
+각 컷의 `prompt` 는 **머리말 한 줄 + 아래 줄들 + 마지막 `KEEP` 줄**로만 쓴다.
 영어로 쓰되 대사만 한국어를 그대로 둔다. 줄 이름과 순서를 바꾸지 않는다.
 
 > ⭐ **맨 앞 머리말 줄은 반드시 있어야 한다.** 없이 `SHOT:` 으로 시작하면
@@ -170,13 +170,13 @@ AUDIO: (우리가 붙인다) 낭독이 아니라 그 자리에서 하는 말이�
 SETTING: 장소 + 조명
 CONTINUITY: (우리가 붙인다) 앞 컷에서 이어지는 장면이라는 못
 COLOR: (우리가 붙인다) 모든 컷에 똑같은 색
-STYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, grounded adult proportions and restrained faces rather than cartoon exaggeration, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.
-Avoid: overlapping voices, on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different person.
+STYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces rather than cartoon exaggeration, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.
+KEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time.
 ```
 
 **지켜야 할 것**
 
-- `STYLE` 과 `Avoid` 줄은 **모든 컷에서 글자 그대로 똑같이** 쓴다. 톤이 흔들리면
+- `STYLE` 과 `KEEP` 줄은 **모든 컷에서 글자 그대로 똑같이** 쓴다. 톤이 흔들리면
   이어붙였을 때 색이 튄다.
 - ⭐⭐⭐ **옷·얼굴·머리 모양을 컷 프롬프트에 한 글자도 적지 않는다.** (가장 중요)
 
@@ -224,11 +224,17 @@ Avoid: overlapping voices, on-screen text, signage, documents with visible writi
 - ⭐ **한 컷은 한 번에 찍은 것처럼** (2026-08-20 · 실제 영상).
   클립 하나 안에서 **배경이 바뀌고, 옷이 바뀌고, 얼굴이 딴사람이 되는**
   일이 있었다. 영상 만드는 쪽은 가만 두면 중간에 장면을 갈아엎는다.
-  그래서 모든 컷의 `STYLE`·`Avoid` 고정 문구에
-  `STYLE: one single continuous take, no cut, no scene change` 와
-  `cutting to another shot, changing the background mid-shot,
-  the person changing clothes or face mid-shot` 을 넣어 두었다.
+  그래서 모든 컷의 `STYLE`·`KEEP` 고정 문구에
+  `one single continuous take, from first frame to last in the same place with
+  the same people` 를 넣어 두었다.
   **이 두 줄은 손대지 않는다** — 우리 프로그램이 자동으로 채운다.
+
+  ⚠️⚠️ 예전에는 이것을 **"하지 마" 로** 적었다
+  (`Avoid: … the person changing clothes or face mid-shot, swapping in a
+  different person`). 그랬더니 루미나가 **영상 만들기를 거절했다**
+  (`code=23007`) — 안전 검사기는 부정을 못 알아듣고 **낱말만** 본다.
+  "옷 벗기 · 얼굴 바꾸기" 를 **해 달라**는 말로 읽은 것이다.
+  → **프롬프트에는 바라는 것만 적는다.**
 
 - ⭐ **`SETTING` 은 한 화에 두 곳까지** (2026-08-20 · 실제 영상).
   첫 화가 거실 → 복도로 넘어갔는데 아무 설명이 없어 갑자기 튀어 보였다.
@@ -667,8 +673,9 @@ DIALOGUE: [LANGUAGE: KOREAN] each person speaks one after another, never overlap
 **한 영상 안에서 화풍을 섞지 않는다.** 컷마다 그림체가 달라지면 싸구려로 보인다.
 `STYLE` 줄은 시스템이 모든 컷에 똑같이 넣으니 너는 신경 쓰지 않아도 된다.
 
-`Avoid` 에 `cartoon` `illustration` `anime` 같은 말을 **넣지 마라** —
-지금은 그림체가 바라는 것이다. (막을 것은 `chibi` 같은 과장된 비례다)
+`KEEP` 은 **바라는 것만** 적는 줄이다. `cartoon` `illustration` `anime` 처럼
+지금 바라는 것을 막는 말을 넣지 않는다. 과장된 비례가 싫으면
+`true-to-life body proportions` 처럼 **바라는 쪽**으로 적는다.
 
 ### `SHOT` — 세로 쇼츠에서는 **얼굴이 커야 한다**
 
@@ -877,7 +884,7 @@ shot` 은 세로 쇼츠에서 쓸모가 없다. `medium close-up` · `close-up` 
           "role": "후킹",
           "subtitle": "\"이 집, 오늘 안에 비워 주세요.\" / \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"",
           "caption": "장례를 치른 다음 날, 시동생이 집을 요구했다",
-          "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 10-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Medium two-shot of the brother-in-law and the daughter-in-law, static camera.\nACTION: the brother-in-law sets a closed folder on the table and steps back.\nDIALOGUE: the brother-in-law (calm and cold): \"이 집, 오늘 안에 비워 주세요.\" / the daughter-in-law (trembling): \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, grounded adult proportions and restrained faces rather than cartoon exaggeration, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nAvoid: overlapping voices, on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different person."
+          "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 10-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Medium two-shot of the brother-in-law and the daughter-in-law, static camera.\nACTION: the brother-in-law sets a closed folder on the table and steps back.\nDIALOGUE: the brother-in-law (calm and cold): \"이 집, 오늘 안에 비워 주세요.\" / the daughter-in-law (trembling): \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces rather than cartoon exaggeration, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
         }
       ]
     }
@@ -909,7 +916,10 @@ shot` 은 세로 쇼츠에서 쓸모가 없다. `medium close-up` · `close-up` 
 - [ ] 모든 화의 컷1이 **대사 또는 충격 장면**으로 시작하는가 (설명 금지)
 - [ ] 모든 `prompt` 가 **머리말 줄**(`Fictional scene, invented characters, semi-realistic illustrated drama. 10-second single continuous take, landscape widescreen format (16 x 9).`) 로 시작하는가
       (`SHOT:` 으로 시작하면 붙여 넣을 때 주소로 읽혀 글자가 통째로 깨진다)
-- [ ] 머리말 다음이 `SHOT:` 이고 `Avoid:` 로 끝나는가
+- [ ] 머리말 다음이 `SHOT:` 이고 `KEEP:` 으로 끝나는가
+- [ ] 프롬프트에 **"하지 마" 로 적은 곳이 하나도 없는가** (바라는 것만 적는다)
+- [ ] `adult` `restrained` `swap` `changing clothes` 처럼 **안전 검사에 걸리는
+      낱말**이 하나도 없는가 (뜻이 멀쩡해도 글자 자체가 걸린다)
 - [ ] 모든 `prompt` 에 `STYLE:` 줄이 **글자 그대로 똑같이** 들어갔는가
 - [ ] 문서·간판·화면처럼 **글자가 나올 물건**을 부른 컷이 하나도 없는가
 - [ ] 대사가 있는 컷은 말하는 사람이 화면 안에 있는가
