@@ -99,6 +99,12 @@ jobs:
       - name: 자막이 한 글자도 안 빠지는가 (전 회차 전수)
         run: python3 tools/subtitle_audit.py
 
+      # ⭐⭐ 2026-08-25 운영자: "씬 앞뒤로 개연성이 없다. 정합성이 안 맞는
+      #    부분이 자꾸 보이니 이런 오류 없게 검증 절차를 만들어."
+      #    16화를 한꺼번에 놓고 봐야 보이는 종류의 고장이다.
+      - name: 이야기가 앞뒤로 맞는가 (누설·폭로·끊기·금액·때)
+        run: python3 tools/story_check.py
+
       - name: 지어낸 말을 잘라 내는가
         run: python3 tools/extra_speech_test.py
 

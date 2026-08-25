@@ -1,0 +1,82 @@
+name: 2-2. 대본 다듬기 (약 150원)
+
+# 이미 만든 시리즈 대본을 **한 번 더 읽혀** 다듬는다.
+#
+#   검토  — 모델이 16화 전체를 한 번에 읽고 고칠 곳과 고침안을 낸다 (약 150원)
+#   반영  — 그 고침안을 대본에 넣고 기계 검사를 전부 다시 돌린다 (0원)
+#           하나라도 걸리면 통째로 되돌린다
+#
+# ⚠️ 기계로 잡히는 것(누설·빠진 폭로·답으로 끝내기·장부 밖 금액)은
+#    tools/story_check.py 가 이미 0원으로 잡는다. 여기서는 **기계가 못 보는 것**
+#    만 본다 — 누가 말하느냐에 따라 달라지는 말, 말투, 자극성.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: '무엇을 할까요'
+        required: true
+        default: '검토 (약 150원)'
+        type: choice
+        options:
+          - '검토 (약 150원)'
+          - '반영 (0원)'
+      sid:
+        description: '시리즈 번호 (예: S001)'
+        required: false
+        default: 'S001'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: polish
+  cancel-in-progress: false
+
+jobs:
+  polish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 준비물
+        run: python3 -m pip install --quiet PyYAML pillow
+
+      - name: 대본 다듬기
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          set -o pipefail
+          SID="${{ inputs.sid }}"; SID="${SID:-S001}"
+          case "${{ inputs.mode }}" in
+            반영*) WHAT=apply ;;
+            *)     WHAT=review ;;
+          esac
+          python3 src/polish.py "$WHAT" "$SID" 2>&1 | tee /tmp/polish.txt
+
+      - name: 결과를 요약 화면에 찍는다
+        if: always()
+        run: |
+          {
+            echo '## 대본 다듬기'
+            echo ''
+            echo '```'
+            tail -c 12000 /tmp/polish.txt 2>/dev/null || echo '(결과 없음)'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 고친 대본 저장
+        if: success()
+        run: |
+          git config user.name  "verdict-theater-bot"
+          git config user.email "actions@github.com"
+          git add -A data/series state/polish.json 2>/dev/null || true
+          git diff --cached --quiet && { echo "바뀐 것 없음"; exit 0; }
+          git commit -m "대본 다듬기: ${{ inputs.mode }} [skip ci]"
+          git pull --rebase --autostash origin main || true
+          git push origin HEAD:main

@@ -47,6 +47,14 @@ const WORKFLOWS = [
         + '8분 롱폼이 공짜로 나옵니다 (글만 쓰므로 수백 원)',
     inputs: [{ k: 'case', label: '판례 번호 (비우면 자동)', type: 'text', v: '' }] },
 
+  { file: 'polish.yml', name: '2-2. 대본 다듬기',
+    desc: '만든 16화를 한 번 더 읽혀 말투·앞뒤 맞음·자극성을 다듬습니다. '
+        + '기계로 잡히는 것(누설·빠진 폭로·답으로 끝내기·금액 어긋남)은 이미 '
+        + '0원으로 걸러지고, 여기서는 기계가 못 보는 것만 봅니다',
+    inputs: [{ k: 'mode', label: '무엇을 할까요', type: 'select',
+               opts: ['검토 (약 150원)', '반영 (0원)'] },
+             { k: 'sid', label: '시리즈 번호', type: 'text', v: 'S001' }] },
+
   { file: 'script.yml', name: '2. 대본 만들기',
     desc: '소재를 골라 대본을 씁니다 (회차당 수백 원)',
     inputs: [{ k: 'mode', label: '무엇을 할까요', type: 'select',
@@ -1230,7 +1238,7 @@ function home() {
   //    맞는 지적이었다. '가끔 쓰는 것' 에 넣어 뒀는데, 등장인물 그림이 없으면
   //    영상이 아예 안 나오므로 **지금 이것이 가장 중요한 버튼**이다.
   //    꺼내서 영상 만들기 바로 위에 둔다 — 순서도 실제로 그 순서다.
-  h += wfList(['series.yml', 'stats.yml']);
+  h += wfList(['series.yml', 'polish.yml', 'stats.yml']);
   h += '</div>';
 
   h += collectCard();

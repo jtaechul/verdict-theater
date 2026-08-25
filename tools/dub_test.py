@@ -372,7 +372,12 @@ _r = subprocess.run([sys.executable, "-c", _code], capture_output=True,
                     text=True, env=_env)
 ck("PIL 을 막아 놔도 tts 가 열린다", _r.returncode == 0,
    (_r.stderr.strip().splitlines() or [""])[-1][:80])
-ck("PIL 없이도 대사를 뽑는다", _r.stdout.startswith("OK 3"), _r.stdout.strip())
+# ⚠️ 예전엔 "OK 3" 을 글자 그대로 견줬다. 대본에서 대사 한 줄만 늘어도
+#    이 검사가 깨진다(2026-08-25 실제로 깨졌다). 보려는 것은 **대사를
+#    뽑아내느냐**이지 몇 줄이냐가 아니다.
+_m = re.match(r"OK (\d+)", _r.stdout.strip())
+ck("PIL 없이도 대사를 뽑는다", bool(_m) and int(_m.group(1)) >= 2,
+   _r.stdout.strip())
 ck("소리 쪽이 그림 모듈을 안 끌어온다", "False" in _r.stdout, _r.stdout.strip())
 _src = (ROOT / "src" / "tts.py").read_text(encoding="utf-8")
 ck("tts.py 가 shorts 를 안 들여온다", "import shorts" not in _src)
