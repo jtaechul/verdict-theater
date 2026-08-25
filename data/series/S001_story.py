@@ -67,13 +67,13 @@ EPS = [
       must=["기각"],
       cuts=[
         ("법원복도", "the husband steps in front of his wife to block her way down the "
-                     "corridor, a folded judgment paper crushed in his fist",
+                     "corridor, one hand closed tight at his side",
          [(H, "도장 하나 찍는 게 어려워?"),
           (W, "방금 판결문 못 봤어? 법원이 뭐랬는데."),
           (H, "그깟 종이 한 장이 뭐라고."),
           (W, "기각. 당신 이혼 청구 기각이야.")]),
-        ("법원복도", "the wife turns her back and grips her own sleeve while the husband "
-                     "stares at the closed courtroom door",
+        ("법원복도", "the wife turns her back and presses one palm flat on the wall while the "
+                     "husband stares at the closed courtroom door",
          [(W, "바람피운 쪽에 책임이 있대."),
           (H, "그래서 뭐 어쩌라고."),
           (W, "당신이 잘못했다고 법이 말한 거야."),
@@ -432,8 +432,8 @@ EPS = [
           (O, "십억을 어떻게 돌려줘요."),
           (W, "네가 도둑질한 대가야."),
           (O, "이건 말도 안 되는 재판이에요.")]),
-        ("법원앞", "the other woman grabs at her own sleeve and the wife keeps walking "
-                   "down one more step",
+        ("법원앞", "the other woman takes a half step back, both hands closing into fists, "
+                   "while the wife keeps walking down one more step",
          [(O, "내가 옆에서 얼마나 고생했는데."),
           (W, "고생? 우리 애들은 학비도 못 냈어."),
           (O, "절대 못 줘요. 한 푼도."),

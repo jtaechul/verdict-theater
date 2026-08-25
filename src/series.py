@@ -784,6 +784,53 @@ def word(w, s):
     return re.search(rf"\b{w}s?\b", s) is not None
 
 
+# ⭐⭐⭐ 2026-08-25 운영자 (두 번 말씀하셨다) —
+#    "내가 루미나에서 **main body reference**로 등장인물 참조 전신 이미지를
+#     넣기 때문에, 서브젝트에 옷 설명을 넣으면 **옷이 계속 바뀌는 상황**이
+#     발생해. 다시는 이런 일이 발생하지 않도록 프롬프트 및 코드에 반영해."
+#
+#    까닭이 분명하다. 루미나는 전신 참조 이미지로 **그 사람이 무엇을 입었는지**
+#    를 이미 알고 있다. 거기에 글로 옷을 또 적으면 두 지시가 싸우고, 컷마다
+#    이긴 쪽이 달라져 **옷이 계속 바뀐다.** 막으려던 바로 그것이 생긴다.
+#
+#    그래서 SUBJECT 줄을 없앤 것으로 끝내지 않고, **옷·생김새를 말하는 낱말이
+#    프롬프트 어디에 있어도** 잡는다. 다음에 누가 어느 줄에 넣든 걸린다.
+
+# 언제나 막는다 — 이 낱말은 옷·생김새를 말하는 것 말고 쓸 데가 없다
+WEAR_HARD = ["wearing", "wears", "dressed", "clad", "outfit", "attire",
+             "garment", "cardigan", "blouse", "crewneck", "trousers", "hanbok",
+             "blazer", "knitwear", "hairstyle", "ponytail", "moustache",
+             "lipstick", "eyeliner", "makeup", "clothes", "clothing"]
+
+# 물건 이름으로도 쓰이는 낱말 — **사람에게 붙었을 때만** 막는다
+#   ✗ "grips her own sleeve" (사람 옷)   ○ "a coat hook" · "shoes lined up" (가구)
+WEAR_SOFT = ["jacket", "suit", "dress", "shirt", "tee", "skirt", "coat", "hat",
+             "shoes", "scarf", "sleeve", "collar", "hair", "beard", "glasses",
+             "necklace", "tie"]
+# 사람에게 붙은 꼴 — "her (own) sleeve" · "in a black suit"
+WEAR_MINE = r"\b(?:her|his|their|its)\s+(?:own\s+)?(?:[\w-]+\s+){0,2}"
+WEAR_IN = r"\bin\s+(?:a|an|the)\s+(?:[\w-]+\s+){0,3}"
+
+# 이 줄들은 **우리가 붙이는 고정 문구**다. "identical clothing throughout" 처럼
+# '바꾸지 말라' 는 못이 들어 있어 옷 묘사와 다르다 — 검사에서 뺀다.
+WEAR_SKIP = ("STYLE:", "Avoid:", "COLOR:")
+
+
+def wear_bait(prompt):
+    """옷·생김새를 말한 곳이 있는가 (루미나 참조 이미지와 싸운다)."""
+    hit = []
+    for l in str(prompt or "").split("\n"):
+        if l.startswith(WEAR_SKIP):
+            continue
+        low = l.lower()
+        hit += [w for w in WEAR_HARD if word(w, low)]
+        for w in WEAR_SOFT:
+            if re.search(WEAR_MINE + w + r"s?\b", low) or \
+                    re.search(WEAR_IN + w + r"s?\b", low):
+                hit.append(w)
+    return sorted(set(hit))
+
+
 def text_bait(head):
     """글자가 나올 물건을 불렀는가."""
     hit = [w for w in TEXT_HARD if word(w, head)]
@@ -998,7 +1045,18 @@ def _gist(prompt):
     act = next((l for l in str(prompt or "").split("\n")
                 if l.startswith("ACTION:")), "")
     act = act[len("ACTION:"):].replace(LIPSYNC, "").strip().rstrip(".")
-    return act[:110]
+    # ⚠️ 2026-08-25 — 그냥 110자에서 자르니 문장이 **가운데서 끊겼다.**
+    #    "…a folded judgment paper crushed in ." 같은 토막이 48컷 전부에
+    #    들어가 있었다. 반쪽짜리 말은 모델을 헷갈리게 한다.
+    #    → 110자를 넘으면 **쉼표·세미콜론 앞**에서 끊는다. 끊을 자리가
+    #      없으면 마지막 띄어쓰기에서 끊는다.
+    if len(act) <= 110:
+        return act
+    head = act[:110]
+    for sep in (";", ","):
+        if sep in head:
+            return head[:head.rfind(sep)].strip()
+    return head[:head.rfind(" ")].strip() if " " in head else head
 
 
 def _place(prompt):
@@ -1026,15 +1084,14 @@ def fix_continuity(doc):
             elif _place(pc.get("prompt")) == _place(c.get("prompt")):
                 line = ("CONTINUITY: this shot continues straight on from the "
                         "previous shot, in which " + gist + ". Same room, same "
-                        "people, same clothes, same hair, same light and the "
+                        "people, same light and the "
                         "same colour grade — pick up exactly where that shot "
                         "ended, as one unbroken scene.")
             else:
                 line = ("CONTINUITY: this shot follows the previous shot, in "
                         "which " + gist + ". The scene moves to another place "
-                        "a little later, but the same people, the same "
-                        "clothes, the same faces and exactly the same colour "
-                        "grade carry over.")
+                        "a little later, but the same people, the same faces "
+                        "and exactly the same colour grade carry over.")
         lines = [l for l in (c.get("prompt") or "").split("\n")
                  if not l.startswith("CONTINUITY:")]
         at = next((i for i, l in enumerate(lines)
@@ -1162,7 +1219,7 @@ def _pick(bank, k):
 #    화면과 싸워서 오히려 튄다. **바뀌는 것만** 적어야 한다.
 #    → 같은 장소가 이어지는 컷에는 **이어서 만들기용 짧은 프롬프트**를 따로 붙인다.
 EXT_HEAD = ("Continue directly from the final frame of the previous clip. "
-            "Same room, same people, same clothes, same hair, same light — "
+            "Same room, same people, same light — "
             "do not re-establish anything, just carry straight on.")
 
 
@@ -1830,6 +1887,15 @@ def check(doc):
             hit = text_bait(head)
             if hit:
                 bad.append(f"{tag}: 글자가 나올 물건을 불렀다 — {', '.join(hit)}")
+
+            # ⭐⭐⭐ 옷·생김새를 말하면 **루미나 전신 참조 이미지와 싸운다.**
+            #    운영자: "main body reference 로 참조 전신 이미지를 넣기 때문에
+            #    옷 설명을 넣으면 옷이 계속 바뀌는 상황이 발생해."
+            wh = wear_bait(p)
+            if wh:
+                bad.append(f"{tag}: 옷·생김새를 적었다 — {', '.join(wh)} "
+                           f"(루미나 전신 참조 이미지가 정하는 몫이다. "
+                           f"글로 또 적으면 참조와 싸워 옷이 컷마다 바뀐다)")
 
             # 한국어 대사 — 6초에 들어가는 양 (한 줄 · 총합 · 말하는 사람 수)
             f3 = facing_error(c, doc.get("characters") or [])

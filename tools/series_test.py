@@ -217,6 +217,39 @@ ck("옷차림이 대본 어디에도 안 남아 있다",
    not any("wearing" in c["prompt"] for e in good_doc()["episodes"]
            for c in e["cuts"]))
 
+# ⭐⭐⭐ 2026-08-25 운영자: "내가 루미나에서 main body reference 로 등장인물
+#    참조 **전신 이미지**를 넣기 때문에, 서브젝트에 옷 설명을 넣으면 옷이
+#    계속 바뀌는 상황이 발생해. 다시는 이런 일이 발생하지 않도록 반영해."
+#    → SUBJECT 줄만 막아서는 부족하다. **어느 줄에 적어도** 잡아야 한다.
+print("\n⑩-3 옷·생김새를 어느 줄에 적어도 잡는가 (전신 참조 이미지와 싸운다)")
+for line, why in [
+        ("SUBJECT: the wife wearing a cardigan.", "SUBJECT 에 적은 옷"),
+        ("SHOT: Close-up on the husband in a black suit.", "SHOT 에 적은 옷"),
+        ("ACTION: the wife grips her own sleeve.", "옷을 만지는 동작"),
+        ("SETTING: a room, and the wife in a red dress.", "SETTING 에 적은 옷"),
+        ("ACTION: the wife ties up her long hair.", "머리 모양"),
+]:
+    ck(f"잡는다 — {why}", bool(S.wear_bait(line)), f"{line[:44]} → {S.wear_bait(line)}")
+for line, why in [
+        ("SETTING: a coat hook and a narrow shoe cabinet on the right.", "가구(코트걸이)"),
+        ("SETTING: shoes lined up on the left.", "가구(신발)"),
+        ("ACTION: the wife presses one palm flat on the wall.", "옷을 안 만지는 동작"),
+]:
+    ck(f"봐준다 — {why}", not S.wear_bait(line), f"{line[:44]} → {S.wear_bait(line)}")
+ck("우리가 붙이는 고정 줄은 봐준다 (STYLE·Avoid 에는 '옷을 바꾸지 말라' 는 못이 있다)",
+   not S.wear_bait(S.STYLE_FIX) and not S.wear_bait(S.AVOID_FIX))
+# ⚠️ 2026-08-25 — 앞 컷 요약을 110자에서 그냥 잘랐더니 문장이 **가운데서
+#    끊겨** "…crushed in ." 같은 토막이 48컷 전부에 들어가 있었다.
+_long = ("ACTION: the husband steps in front of his wife to block her way down the "
+         "corridor, one hand closed tight at his side, and the wife stops")
+ck("앞 컷 요약을 문장 가운데서 안 끊는다", not S._gist(_long).endswith(("in", "the", "a")),
+   S._gist(_long)[-40:])
+ck("앞 컷 요약이 110자를 안 넘는다", len(S._gist(_long)) <= 110)
+d = good_doc()
+d["episodes"][0]["cuts"][0]["prompt"] += "\nSUBJECT: the wife wearing a cardigan."
+ck("옷을 적은 대본은 검사가 반려한다",
+   any("옷·생김새" in b for b in S.check(d)), str(S.check(d))[:70])
+
 print("\n⑪ 첫 영상에서 본 것들이 프롬프트·검사에 실제로 들어갔는가")
 pr = (ROOT / "prompts" / "series_gen.md").read_text(encoding="utf-8")
 for k, why in [("face_tag", "얼굴이 컷마다 다른 배우로 나왔다"),

@@ -178,22 +178,29 @@ Avoid: overlapping voices, on-screen text, signage, documents with visible writi
 
 - `STYLE` 과 `Avoid` 줄은 **모든 컷에서 글자 그대로 똑같이** 쓴다. 톤이 흔들리면
   이어붙였을 때 색이 튄다.
-- ⭐⭐ **옷·얼굴·나이·머리 모양을 컷 프롬프트에 한 글자도 적지 않는다.**
-  (2026-08-25 운영자: "우리 옷에 관한 정보는 안 넣기로 규칙에 정했잖아?!
-  SUBJECT 부분은 삭제하도록 모든 프롬프트에 반영해.")
+- ⭐⭐⭐ **옷·얼굴·머리 모양을 컷 프롬프트에 한 글자도 적지 않는다.** (가장 중요)
 
-  생김새는 **루미나 기준 사진(캐릭터 레퍼런스)** 이 잡는 몫이다. 글로 또 적으면
-  참조 그림과 싸워서, 막으려던 바로 그것(옷이 컷마다 달라지는 것)이 오히려 생긴다.
-  실제로 1화에서 카드(카키)와 대본(와인색)이 서로 다른 옷을 말해 **세 번째 옷**이
-  나왔다.
+  > 운영자: "내가 루미나에서 **main body reference** 로 등장인물 참조 **전신
+  > 이미지**를 넣기 때문에, 서브젝트에 옷 설명을 넣으면 **옷이 계속 바뀌는
+  > 상황**이 발생해."
+
+  루미나는 전신 참조 이미지로 **그 사람이 무엇을 입었는지 이미 알고 있다.**
+  거기에 글로 옷을 또 적으면 **두 지시가 싸우고**, 컷마다 이긴 쪽이 달라져
+  옷이 계속 바뀐다 — 막으려던 바로 그것이 생긴다.
 
   → `SUBJECT` 줄은 **아예 쓰지 않는다.** 우리가 받아도 떼어 낸다.
   → 누가 화면에 있는지는 **`SHOT` 줄에 이름으로** 적는다 (옷은 안 적는다).
+  → `ACTION`·`SETTING` 에도 옷을 적지 않는다. 옷을 만지는 동작도 쓰지 않는다.
 
   ```
   ✗ SUBJECT: the husband wearing an olive-green cotton work jacket …
+  ✗ ACTION: the wife grips her own sleeve            ← 옷을 만진다
   ○ SHOT: Medium-wide two-shot of the wife and the husband, static camera, …
+  ○ ACTION: the wife presses one palm flat on the wall
   ```
+
+  검사기가 **프롬프트 어느 줄에 있어도** 잡는다 (`wearing` `cardigan`
+  `her own sleeve` `in a black suit` …). 가구는 봐준다 (`a coat hook`).
 - `ACTION` 은 **동작 하나**. 한 컷에 두 가지 이상을 넣으면 다 뭉개진다.
 - ⭐ **`SHOT` 을 컷마다 다르게** 잡는다 (2026-08-20 · 실제 영상).
   첫 화에서 여러 컷이 전부 비슷한 미디엄 샷 한 명이라 리듬이 밋밋했다.
@@ -933,7 +940,9 @@ shot` 은 세로 쇼츠에서 쓸모가 없다. `medium close-up` · `close-up` 
 - [ ] `DIALOGUE` 의 톤이 한 낱말이 아니라 **어떻게 말하는지**를 적었는가
 - [ ] 인물마다 `outfit`(색까지) 과 `face_tag`(짧게) 를 정했는가
 - [ ] `flow_prompt` 에 **나이·얼굴형·눈·코입·피부·머리·몸·표정**이 다 들어갔는가
-- [ ] `SUBJECT` 줄을 **아예 쓰지 않았는가** (옷·얼굴은 기준 사진이 잡는다)
+- [ ] `SUBJECT` 줄을 **아예 쓰지 않았는가** (옷·얼굴은 전신 참조 이미지가 잡는다)
+- [ ] `ACTION`·`SETTING` 에도 **옷 이야기가 한 글자도 없는가**
+      (옷을 만지는 동작도 안 된다 — `grips her own sleeve` ✗)
 - [ ] `SHOT` 줄에 **누가 화면에 있는지 이름**이 적혔는가 (옷은 적지 않는다)
 - [ ] 세 컷의 `SHOT` 크기가 **다 다른가** (3컷은 클로즈업)
 - [ ] `wide shot` `full body` 처럼 **넓게 잡는 말**을 쓰지 않았는가
