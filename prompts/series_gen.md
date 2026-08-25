@@ -161,8 +161,7 @@
 
 ```
 Fictional scene, invented characters, semi-realistic illustrated drama. 10-second single continuous take, landscape widescreen format (16 x 9).
-SHOT: 샷 크기 + 카메라 움직임 (하나만) — 뒤에 '허리 위로·얼굴 크게' 를 우리가 붙인다
-SUBJECT: 등장인물을 가리키는 **영어 관계말** + 옷차림 (얼굴 묘사 절대 금지 — 아래 ⚠️ 참고)
+SHOT: 샷 크기 + 카메라 움직임 (하나만) + **누가 화면에 있는지 이름** (옷 묘사 금지)
 ACTION: 동작 하나
 DIALOGUE: 말하는 사람과 톤 + 한국어 대사. 주고받으면 ` / ` 로 잇는다 (없으면 "None.")
           → 시스템이 **한 사람에 한 줄**로 나눠서 다시 적는다
@@ -179,19 +178,22 @@ Avoid: overlapping voices, on-screen text, signage, documents with visible writi
 
 - `STYLE` 과 `Avoid` 줄은 **모든 컷에서 글자 그대로 똑같이** 쓴다. 톤이 흔들리면
   이어붙였을 때 색이 튄다.
-- ⭐ `SUBJECT` 는 **모든 컷에서 한 글자도 다르지 않게** 쓴다 (2026-08-20 · 실제 영상).
-  첫 화 완성본에서 **남편이 1·2·4컷 모두 다른 배우**로 나왔다. 본처도 얼굴이 튀었다.
-  플로우 캐릭터를 안 붙이면 컷마다 새 얼굴을 만들기 때문이다.
+- ⭐⭐ **옷·얼굴·나이·머리 모양을 컷 프롬프트에 한 글자도 적지 않는다.**
+  (2026-08-25 운영자: "우리 옷에 관한 정보는 안 넣기로 규칙에 정했잖아?!
+  SUBJECT 부분은 삭제하도록 모든 프롬프트에 반영해.")
 
-  꼴을 고정한다 — `{이름}({face_tag}) in {outfit}`
+  생김새는 **루미나 기준 사진(캐릭터 레퍼런스)** 이 잡는 몫이다. 글로 또 적으면
+  참조 그림과 싸워서, 막으려던 바로 그것(옷이 컷마다 달라지는 것)이 오히려 생긴다.
+  실제로 1화에서 카드(카키)와 대본(와인색)이 서로 다른 옷을 말해 **세 번째 옷**이
+  나왔다.
+
+  → `SUBJECT` 줄은 **아예 쓰지 않는다.** 우리가 받아도 떼어 낸다.
+  → 누가 화면에 있는지는 **`SHOT` 줄에 이름으로** 적는다 (옷은 안 적는다).
 
   ```
-  SUBJECT: 남편(55, square face, deep forehead lines) in a charcoal jacket over a black tee.
+  ✗ SUBJECT: the husband wearing an olive-green cotton work jacket …
+  ○ SHOT: Medium-wide two-shot of the wife and the husband, static camera, …
   ```
-
-  `face_tag` 는 **짧게(대여섯 낱말)**. 길게 묘사하면 미리 정해 둔 캐릭터와 싸워
-  오히려 얼굴이 흔들린다. 짧고 **매번 똑같은 것**이 핵심이다 — 플로우 캐릭터를
-  붙였으면 거들어 주고, 안 붙였으면 그것만으로도 얼굴이 잡힌다.
 - `ACTION` 은 **동작 하나**. 한 컷에 두 가지 이상을 넣으면 다 뭉개진다.
 - ⭐ **`SHOT` 을 컷마다 다르게** 잡는다 (2026-08-20 · 실제 영상).
   첫 화에서 여러 컷이 전부 비슷한 미디엄 샷 한 명이라 리듬이 밋밋했다.
@@ -209,7 +211,7 @@ Avoid: overlapping voices, on-screen text, signage, documents with visible writi
   `저 여자` `그 여자` `저 사람` `그놈` 같은 말은 **그 자리에 없는 사람**에게만
   쓴다. 화면에 있는 사람은 `당신` · `너` · 이름으로 부른다.
 
-  뒤집어 말하면, `SUBJECT` 에 없는 사람에게 말을 걸어도 안 된다.
+  뒤집어 말하면, `SHOT` 에 없는 사람에게 말을 걸어도 안 된다.
   말을 주고받는 사람은 **둘 다 화면 안에** 있어야 한다.
 
 - ⭐ **한 컷은 한 번에 찍은 것처럼** (2026-08-20 · 실제 영상).
@@ -274,7 +276,7 @@ Avoid: overlapping voices, on-screen text, signage, documents with visible writi
 
 ```
 Fictional scene, invented characters, semi-realistic illustrated drama. 10-second single continuous take, landscape widescreen format (16 x 9).
-SHOT: Medium two-shot, static camera, both faces visible.
+SHOT: Medium two-shot of the brother-in-law and the daughter-in-law, static camera.
 DIALOGUE: 아내 (tight): "여기가 어디라고 와? 당장 안 나가면 경찰 부른다." / 동거녀 (hard): "마지막 가는 길인데 인사도 못 해요? 그이가 부른 거예요." / 아내 (furious): "그이는 죽었어. 이제 당신이 부를 사람도 없어."
 ```
 
@@ -406,8 +408,8 @@ caption: 사망 두 달 전, 병원 지분 12억이 동거녀 앞으로 넘어�
   판결문·기사에나 쓰는 제3자 호칭이라, 사람이 입으로 하면 즉시 어색해진다.
   실제로 하는 말로 쓴다. (✗ `"내연녀 집에서 떨어져 죽었다고요?"`
   ○ `"그 여자 집에서 떨어져 죽었다고요?"`)
-- `SUBJECT` 줄에는 **반드시 등장인물 이름**을 적는다. `the same woman` 처럼 이름
-  없이 가리키면 컷마다 다른 사람이 나온다 (컷은 하나씩 따로 만들어진다).
+- `SHOT`·`ACTION` 에는 **반드시 등장인물 이름**을 적는다. `the same woman` 처럼
+  이름 없이 가리키면 컷마다 다른 사람이 나온다 (컷은 하나씩 따로 만들어진다).
 
 **아래 영어 낱말은 프롬프트에 쓰지 않는다** (그 자체가 글자인 물건이라, 부르는
 순간 화면에 글자가 찍힌다):
@@ -452,37 +454,19 @@ Korean woman, 52 years old,
 **나이와 얼굴형·눈·머리는 반드시** 넣는다 — 이 넷이 없으면 매번 딴사람이 나온다.
 `Photorealistic…` 같은 화풍 문구는 **적지 않는다** (우리가 붙인다).
 
-### `face_tag` · `outfit`
+### `face_tag` · `outfit` — **기준 사진에만** 쓴다
 
 `face_tag` 는 위 설명에서 **가장 눈에 띄는 대여섯 낱말**만 뽑은 것이다
-(예: `oval face, tired eyes, low bun`). **플로우에서 캐릭터(기준 사진)를
-만들 때만 쓴다.**
+(예: `oval face, tired eyes, low bun`). `outfit` 은 색까지 정한 옷차림이다.
 
-> ⚠️ `face_tag` 를 **컷 프롬프트에 넣지 않는다.** 한때 이름 뒤에 붙였다가
-> 80컷이 전부 거절됐다 (「정책에 막히는 말」 참고). 컷의 `SUBJECT` 는
-> **이름 + 옷차림**까지만이다.
-
-`outfit` 은 **색까지** 정한 옷차림이다. 이것은 컷마다 똑같이 적는다.
+> ⚠️⚠️ **둘 다 컷 프롬프트에 넣지 않는다.** (2026-08-25 운영자 지시)
+> 기준 사진(캐릭터 레퍼런스)을 만들 때만 쓴다.
+>
+> 한때 얼굴을 컷에 적었다가 **80컷이 전부 거절**됐고(「정책에 막히는 말」),
+> 옷을 컷에 적었다가 카드와 대본이 서로 다른 옷을 말해 **세 번째 옷**이 나왔다.
+> 컷 프롬프트에는 **이름만** 적는다.
 
 이름은 **관계**로 짓는다 (며느리 · 시동생 · 시어머니). 실명은 쓰지 않는다.
-
-### ⭐ `outfit` — 30초 내내 갈아입지 않는다 (2026-08-20 · 실제 영상에서 확인)
-
-첫 화 완성본에서 **본처의 카디건이 1컷 초록 → 3컷 베이지 → 5컷 초록**으로 튀었다.
-SUBJECT 에 `본처 in a simple cardigan` 이라고만 써서 색을 안 정해 줬기 때문이다.
-영상 만드는 쪽은 색을 안 정해 주면 매번 새로 고른다. 그러면 딴사람으로 보인다.
-
-인물마다 `outfit` 을 **색까지** 정하고, 모든 컷의 `SUBJECT` 에 그대로 쓴다.
-
-```json
-{ "name": "본처",
-  "face_tag": "52, oval face, tired eyes, low bun",
-  "outfit": "a moss-green knit cardigan over a grey striped tee",
-  "flow_prompt": "Korean woman, 52 years old, …" }
-```
-
-`SUBJECT: 본처 in a moss-green knit cardigan over a grey striped tee.`
-— 한 화 안에서는 **한 글자도 바꾸지 않는다.**
 
 ---
 
@@ -716,13 +700,13 @@ shot` 은 세로 쇼츠에서 쓸모가 없다. `medium close-up` · `close-up` 
 
 ### ⚠️ 컷 프롬프트 안에서는 배역을 **영어 관계말**로 부른다
 
-`SUBJECT: 남편 …` 처럼 한글 배역말을 쓰면 기계는 그것이 무슨 뜻인지 모른다.
+`SHOT: … 남편 …` 처럼 한글 배역말을 쓰면 기계는 그것이 무슨 뜻인지 모른다.
 아는 것은 "사람 자리에 들어간 모르는 낱말" 뿐이라 **사람 이름**으로 읽고,
 이름 붙은 사람을 사진처럼 만들어 달라는 말이 되어 유명인 검사에 걸린다.
 
 | ✗ 막힌다 | ○ 통과한다 |
 |---|---|
-| `SUBJECT: 남편 in a casual jacket` | `SUBJECT: the husband in a casual jacket` |
+| `SHOT: Close-up on 남편` | `SHOT: Close-up on the husband` |
 | `ACTION: 본처 steps in front of 남편` | `ACTION: the wife steps in front of the husband` |
 | `DIALOGUE: 본처 (furious): "…"` | `DIALOGUE: the wife (furious): "…"` |
 
@@ -734,20 +718,20 @@ shot` 은 세로 쇼츠에서 쓸모가 없다. `medium close-up` · `close-up` 
 내연녀 → `the other woman` · 며느리 → `the daughter-in-law` ·
 시동생 → `the brother-in-law` · 시어머니 → `the mother-in-law`
 
-### ⚠️ `SUBJECT` 에 얼굴을 적으면 **모든 컷이 막힌다** (실제로 겪었다)
+### ⚠️ 컷에 얼굴을 적으면 **모든 컷이 막힌다** (실제로 겪었다)
 
-`SUBJECT: 남편(55, square face, short neatly parted black hair) …` 로 적었더니
+`남편(55, square face, short neatly parted black hair) …` 로 적었더니
 80컷이 전부 거절됐다. 기계 눈에는 이렇게 보인다 —
 **"남편이라는 사람, 55살, 이 얼굴"** = 실존 인물을 찍어 달라는 말.
 `본처` `남편` 은 배역말인데 기계는 **사람 이름**으로 읽는다.
 
 | ✗ 막힌다 | ○ 통과한다 |
 |---|---|
-| `남편(55, square face, short black hair) in a casual jacket` | `남편 in a casual jacket` |
-| `본처, a 52-year-old woman with an oval face` | `본처 in a simple cardigan` |
+| `Close-up on the husband, 55, square face, short black hair` | `Close-up on the husband` |
+| `the wife, a 52-year-old woman with an oval face` | `the wife` |
 
-얼굴은 **플로우 캐릭터(기준 사진)** 가 잡아 준다. 컷 프롬프트는
-**이름 + 옷차림**까지만 적는다. 나이·얼굴형·머리 모양을 컷에 적지 않는다.
+얼굴도 옷도 **기준 사진**이 잡아 준다. 컷 프롬프트는 **이름만** 적는다.
+나이·얼굴형·머리 모양·옷차림을 컷에 적지 않는다.
 
 ### 절대 쓰지 않는 말
 
@@ -886,7 +870,7 @@ shot` 은 세로 쇼츠에서 쓸모가 없다. `medium close-up` · `close-up` 
           "role": "후킹",
           "subtitle": "\"이 집, 오늘 안에 비워 주세요.\" / \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"",
           "caption": "장례를 치른 다음 날, 시동생이 집을 요구했다",
-          "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 10-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Medium two-shot, static camera, both faces visible.\nSUBJECT: the brother-in-law in a black suit facing the daughter-in-law in black mourning hanbok.\nACTION: the brother-in-law sets a closed folder on the table and steps back.\nDIALOGUE: the brother-in-law (calm and cold): \"이 집, 오늘 안에 비워 주세요.\" / the daughter-in-law (trembling): \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, grounded adult proportions and restrained faces rather than cartoon exaggeration, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nAvoid: overlapping voices, on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different person."
+          "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 10-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Medium two-shot of the brother-in-law and the daughter-in-law, static camera.\nACTION: the brother-in-law sets a closed folder on the table and steps back.\nDIALOGUE: the brother-in-law (calm and cold): \"이 집, 오늘 안에 비워 주세요.\" / the daughter-in-law (trembling): \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: one single continuous take, no cut, no scene change, same location and same person from first frame to last, identical clothing throughout, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, grounded adult proportions and restrained faces rather than cartoon exaggeration, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nAvoid: overlapping voices, on-screen text, signage, documents with visible writing, screens, background extras in focus, cutting to another shot, changing the background mid-shot, the person changing clothes or face mid-shot, swapping in a different person."
         }
       ]
     }
@@ -949,9 +933,8 @@ shot` 은 세로 쇼츠에서 쓸모가 없다. `medium close-up` · `close-up` 
 - [ ] `DIALOGUE` 의 톤이 한 낱말이 아니라 **어떻게 말하는지**를 적었는가
 - [ ] 인물마다 `outfit`(색까지) 과 `face_tag`(짧게) 를 정했는가
 - [ ] `flow_prompt` 에 **나이·얼굴형·눈·코입·피부·머리·몸·표정**이 다 들어갔는가
-- [ ] 같은 인물의 `SUBJECT` 가 **모든 컷에서 한 글자도 같은가** (다르면 딴사람이 나온다)
-- [ ] 한 `SUBJECT` 줄에 **같은 사람을 두 번** 적지 않았는가
-      (✗ `남편 in a suit facing 본처 in a blouse facing 남편 in a suit` — 사람이 셋인 줄 알고 한 명 더 그린다)
+- [ ] `SUBJECT` 줄을 **아예 쓰지 않았는가** (옷·얼굴은 기준 사진이 잡는다)
+- [ ] `SHOT` 줄에 **누가 화면에 있는지 이름**이 적혔는가 (옷은 적지 않는다)
 - [ ] 세 컷의 `SHOT` 크기가 **다 다른가** (3컷은 클로즈업)
 - [ ] `wide shot` `full body` 처럼 **넓게 잡는 말**을 쓰지 않았는가
       (세로 쇼츠에서 얼굴이 작으면 표정이 안 보여 그냥 넘긴다)
@@ -966,7 +949,7 @@ shot` 은 세로 쇼츠에서 쓸모가 없다. `medium close-up` · `close-up` 
 - [ ] 1화부터 16화까지 **일어난 순서대로**인가 (죽은 사람이 뒤에서 살아나지 않는가)
 - [ ] 컷 프롬프트 안에서 배역을 **영어 관계말**(`the wife` `the husband`)로 불렀는가
       (한글 배역말은 사람 이름으로 읽혀 막힌다 · 따옴표 안 대사는 한국어 그대로)
-- [ ] `SUBJECT` 에 **나이·얼굴형·머리 모양**을 적지 않았는가
+- [ ] 컷 프롬프트 어디에도 **나이·얼굴형·머리 모양·옷차림**이 없는가
       (`남편(55, square face…)` ✗ → `남편 in a casual jacket` ○ · 적으면 80컷이 전부 막힌다)
 - [ ] `actor` `celebrity` `K-drama` 처럼 **실제 방송·배우를 가리키는 말**이 없는가
       (있으면 플로우가 "유명인 동영상 생성 정책" 으로 막아 영상이 아예 안 나온다)
@@ -981,12 +964,6 @@ shot` 은 세로 쇼츠에서 쓸모가 없다. `medium close-up` · `close-up` 
 그래서 "앞이랑 똑같이" 라고 써 봐야 소용이 없다 — 앞이 무엇이었는지 모르니까.
 
 연속돼 보이게 하는 방법은 하나뿐이다: **무엇인지 못 박고, 컷마다 똑같이 쓴다.**
-
-  ✗ `SUBJECT: 남편 in a casual jacket`
-     → 세상의 온갖 자켓 중 아무거나. 다섯 컷에 다섯 벌이 나온다.
-  ○ `SUBJECT: 남편 wearing an olive-green cotton work jacket over a grey
-     crewneck, with dark charcoal trousers`
-     → 색·소재까지 하나. 기억이 없어도 매번 같은 것이 나온다.
 
   ✗ `SETTING: Korean apartment living room, evening`
      → 매번 다른 거실.

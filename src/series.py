@@ -188,7 +188,14 @@ def talkers_max(sec=None):
     return max(3, int((max(1.0, float(sec or SEC) - DEAD_HEAD)) / 1.2))
 
 # 프롬프트 6줄 규격 — 이 순서, 이 이름이 아니면 반려한다
-LINES = ["SHOT:", "FRAMING:", "SUBJECT:", "ACTION:", "DIALOGUE:", "AUDIO:",
+# ⭐⭐ 2026-08-25 운영자: "우리 옷에 관한 정보는 안 넣기로 규칙에 정했잖아?!
+#    SUBJECT 부분은 삭제하도록 모든 프롬프트에 반영해."
+#    맞다 — 옷·얼굴은 **루미나 기준 사진(캐릭터 레퍼런스)** 이 잡는 몫이다.
+#    프롬프트에 옷을 또 적으면 레퍼런스와 싸워서 오히려 옷이 흔들린다.
+#    (규격 문서에는 아직 "이름 + 옷차림까지" 라고 적혀 있었다 — 같이 고친다)
+#    → SUBJECT 줄을 통째로 없앤다. 누가 화면에 있는지는 SHOT·CAMERA·DIALOGUE
+#      가 이름으로 말해 준다.
+LINES = ["SHOT:", "FRAMING:", "ACTION:", "DIALOGUE:", "AUDIO:",
          "SETTING:", "CAMERA:", "CONTINUITY:", "COLOR:", "STYLE:", "Avoid:"]
 LINES_OPT = ["VOICE:"]      # 대사가 있는 컷에만 붙는다
 
@@ -294,17 +301,25 @@ def camera_line(order, who, speaker, wide, behind=None):
             + f". So {where}.")
 
 
+def on_screen_text(cut):
+    """그 컷에 **누가 있는지 적힌 줄들** (SHOT·ACTION).
+
+    ⚠️ 예전에는 SUBJECT 줄을 읽었다. 2026-08-25 에 SUBJECT 를 없앴으므로
+       (옷은 기준 사진이 잡는다) 이름은 SHOT·ACTION 에서 읽는다.
+    """
+    return "\n".join(l for l in (cut.get("prompt") or "").split("\n")
+                     if l.startswith(("SHOT:", "ACTION:"))).lower()
+
+
 def cam_cast(cut, rank):
     """그 컷 화면에 **있는** 사람들 (왼쪽부터).
 
     ⚠️ 말한 사람만 세면 **말 없이 서 있는 사람의 자리가 안 정해진다.**
        그러면 컷마다 그 사람이 왼쪽에 있다 오른쪽에 있다 한다.
-       SUBJECT 줄에 이름이 있으면 화면에 있는 것이다.
     """
-    sub = next((l for l in (cut.get("prompt") or "").split("\n")
-                if l.startswith("SUBJECT:")), "").lower()
+    head = on_screen_text(cut)
     said = {w for w, _ in dia_turns(cut.get("prompt"))}
-    seen = {w for w in rank if w.lower() in sub} | said
+    seen = {w for w in rank if w.lower() in head} | said
     return sorted(seen, key=lambda w: rank.get(w, 99))
 
 
@@ -823,7 +838,7 @@ AVOID_FIX = ("Avoid: overlapping voices, on-screen text, signage, documents with
 
 # ⭐⭐ 2026-08-20 세 번째 — 얼굴 설명을 다 뺐는데도 플로우가 계속 막았다.
 #    "이 프롬프트는 유명인의 동영상 생성에 관한 정책을 위반할 가능성이…"
-#    남은 것은 **한글 배역말**이다. `SUBJECT: 남편 …` 에서 기계는 `남편` 이
+#    남은 것은 **한글 배역말**이다. `SHOT: … 남편 …` 에서 기계는 `남편` 이
 #    무슨 뜻인지 모른다 — 아는 것은 "사람 자리에 들어간 모르는 낱말" 뿐이라
 #    **사람 이름**으로 읽는다. 이름이 붙은 사람을 사진처럼 만들어 달라는 말이
 #    되니 유명인 검사에 걸린다.
@@ -1047,65 +1062,33 @@ def fix_color(doc):
     return n
 
 
-def fix_subject_dup(doc):
-    """SUBJECT 줄에서 **같은 사람이 두 번** 나오는 것을 지운다.
+def strip_subject(doc):
+    """컷 프롬프트에서 **SUBJECT 줄을 통째로 떼어 낸다.** (뗀 줄 수)
 
-    ⚠️ 모델이 실제로 이렇게 썼다 (S001 13줄) —
-         `남편 in a black suit facing 본처 in a grey blouse facing 남편 in a black suit.`
-       A가 B를 보는데 다시 A를 본다는 말이다. 영상 만드는 쪽이 이걸 보면
-       사람이 셋인 줄 알고 **한 명을 더 그려 넣는다.** 앞의 것만 남긴다.
+    ⭐⭐ 2026-08-25 운영자: "우리 옷에 관한 정보는 안 넣기로 규칙에 정했잖아?!
+       SUBJECT 부분은 삭제하도록 모든 프롬프트에 반영해."
+
+    맞는 지적이다. 옷과 얼굴은 **루미나 기준 사진(캐릭터 레퍼런스)** 이 잡는
+    몫이다. 컷 프롬프트에 옷을 또 적으면 레퍼런스와 싸워서, 막으려던 바로
+    그것(옷이 컷마다 달라지는 것)이 오히려 생긴다.
+
+    ⚠️ 예전에 이 자리에는 SUBJECT 를 **고쳐 주는** 장치가 셋이나 있었다
+       (같은 사람 두 번 적힌 것 지우기 · 옷을 색까지 못 박기 · 한 화 안에서
+       옷 통일하기). 줄 자체를 없애면 그 고장이 전부 사라진다.
+
+    누가 화면에 있는지는 SHOT · CAMERA · DIALOGUE 가 이름으로 말해 준다.
     """
-    names = sorted([(c.get("name") or "").strip()
-                    for c in (doc.get("characters") or []) if (c.get("name") or "").strip()],
-                   key=len, reverse=True)
     n = 0
     for e in doc.get("episodes") or []:
         for c in e.get("cuts") or []:
             lines = (c.get("prompt") or "").split("\n")
-            for i, l in enumerate(lines):
-                if not l.startswith("SUBJECT:"):
-                    continue
-                body = l[len("SUBJECT:"):].strip()
-                dot = "." if body.endswith(".") else ""
-                parts = re.split(r"\s+facing\s+", body.rstrip("."))
-                seen, keep = set(), []
-                for pt in parts:
-                    who = next((nm for nm in names if pt.strip().startswith(nm)),
-                               pt.strip()[:12])
-                    if who in seen:
-                        continue
-                    seen.add(who)
-                    keep.append(pt.strip())
-                new = "SUBJECT: " + " facing ".join(keep) + dot
-                if new != l:
-                    lines[i], n = new, n + 1
-            c["prompt"] = "\n".join(lines)
+            keep = [l for l in lines if not l.startswith("SUBJECT:")]
+            if len(keep) != len(lines):
+                n += len(lines) - len(keep)
+                c["prompt"] = "\n".join(keep)
     return n
 
 
-# ⭐⭐ 2026-08-22 운영자: "프롬프트에서 자꾸 옷이랑 뒤에 배경이 바뀌어.
-#    이전에 생성된 이미지와 연속된다는 말이 추가될 필요가 있을 거 같다."
-#
-#    ⚠️ 그 말은 **이미 들어 있다.** CONTINUITY 줄이 컷마다
-#       "Same room, same people, same clothes, same hair, same light" 라고
-#       말하고 있는데도 바뀌었다.
-#    ⚠️ 까닭: **플로우는 앞 컷을 기억하지 못한다.** 컷마다 백지에서 새로 그린다.
-#       앞이 무엇이었는지 모르는데 "앞이랑 똑같이" 그릴 수가 없다.
-#       그러니 그 말을 더 세게 써 봐야 소용이 없다.
-#
-#    진짜 까닭은 **말이 뭉뚱그려져 있는 것**이다 —
-#       `a casual jacket`             → 세상의 온갖 자켓 중 아무거나
-#       `a simple cardigan`           → 매번 다른 색
-#       `Korean apartment living room` → 매번 다른 거실
-#    같은 글자를 다섯 컷에 똑같이 써 놔도, 그 글자가 가리키는 것이 하나가
-#    아니면 다섯 번 다르게 나온다.
-#
-#    → 고칠 것은 "같게 그려라" 가 아니라 **무엇인지 못 박는 것**이다.
-#      색·소재·가구까지 적어 두면 기억이 없어도 매번 같은 것이 나온다.
-#      이것이 기억 없는 모델에게 연속성을 주는 유일한 방법이다.
-#
-#    ⚠️ 얼굴·나이는 절대 안 적는다 — 유명인 정책에 다섯 번 막혔던 자리다.
-#      옷과 가구만 적는다.
 VAGUE = re.compile(r"\b(a |an |the )?(casual|simple|plain|ordinary|everyday|"
                    r"nice|smart|basic|neat|regular|typical|comfortable)\s+", re.I)
 
@@ -1204,135 +1187,23 @@ def fix_extend(doc):
 
 
 def fix_look(doc):
-    """옷과 장소를 **색·가구까지 못 박는다.** 뭉뚱그린 말은 매번 다르게 나온다."""
+    """**장소**를 가구까지 못 박는다. 뭉뚱그린 말은 매번 다르게 나온다.
+
+    ⚠️ 2026-08-25 — 여기 있던 '옷' 절반은 없앴다. 옷은 기준 사진이 잡는다
+       (SUBJECT 줄을 통째로 뺐다 — strip_subject 참고).
+    """
     n = 0
-    # ① 옷 — 인물마다 하나를 정해 그 화 내내 똑같이
-    worn, k = {}, 0
-    for e in doc.get("episodes") or []:
-        for c in e.get("cuts") or []:
-            for i, l in enumerate((c.get("prompt") or "").split("\n")):
-                if not l.startswith("SUBJECT:"):
-                    continue
-                for m in re.finditer(r"\bin ([^,.]+?)(?=\s+facing\b|[,.]|$)", l):
-                    piece = m.group(1).strip()
-                    if piece in worn:
-                        continue
-                    if not VAGUE.search(piece) and len(piece.split()) > 4:
-                        continue                  # 이미 자세하다 — 그냥 둔다
-                    base = next((w for w in WEAR_LOOK if w in piece.lower()), "")
-                    worn[piece] = (_pick(WEAR_LOOK[base], k) if base
-                                   else _pick(WEAR_ANY, k))
-                    k += 1
-    # ② 장소 — 같은 장소는 늘 같은 글자로
     for e in doc.get("episodes") or []:
         for c in e.get("cuts") or []:
             lines = (c.get("prompt") or "").split("\n")
             for i, l in enumerate(lines):
-                if l.startswith("SUBJECT:"):
-                    new = l
-                    for old, good in worn.items():
-                        new = new.replace("in " + old, "wearing " + good)
-                    if new != l:
-                        lines[i] = new
-                        n += 1
-                elif l.startswith("SETTING:"):
+                if l.startswith("SETTING:"):
                     low = l.lower()
                     room = next((r for r in ROOM_LOOK if r in low), "")
                     if room and ROOM_LOOK[room][:24] not in l:
                         body = l[len("SETTING:"):].strip().rstrip(".")
                         lines[i] = f"SETTING: {body} — {ROOM_LOOK[room]}."
                         n += 1
-            c["prompt"] = "\n".join(lines)
-    return n
-
-
-def fix_outfits(doc):
-    """모든 컷에서 같은 인물은 **그 화 안에서 똑같은 옷**을 입게 만든다.
-
-    ⚠️ 2026-08-20 — 1화 완성본을 보니 본처의 카디건이 1컷 초록 → 3컷 베이지 →
-       5컷 초록으로 튀었다. SUBJECT 에 `본처 in a simple cardigan` 이라고만 써
-       색을 안 정해 줬기 때문이다. 영상 만드는 쪽은 매번 새로 고른다.
-
-    ⚠️ 그리고 이걸 고치면서 한 번 더 틀렸다. **16화 전체에서** 가장 흔한 옷을
-       골랐더니 1화 거실 장면에 법정 정장을 입혔다. 사람은 날마다 옷을 갈아입는다 —
-       맞춰야 할 범위는 **한 화 안**이다.
-
-    · 인물표에 `outfit` 이 있으면 그것으로 (글쓴이가 정한 것)
-    · 없으면 **그 화에서 가장 많이 쓴 옷차림**으로 나머지를 맞춘다 (0원 수리)
-    · `face_tag` 는 있으면 이름 뒤에 똑같이 붙인다 — 플로우 캐릭터를 안 붙여도
-      얼굴이 잡히게 (첫 화에서 남편이 컷마다 다른 배우로 나왔다)
-    """
-    fixed, face = {}, {}
-    for c in doc.get("characters") or []:
-        nm = (c.get("name") or "").strip()
-        if not nm:
-            continue
-        if (c.get("outfit") or "").strip():
-            fixed[nm] = c["outfit"].strip()
-        if (c.get("face_tag") or "").strip():
-            face[nm] = c["face_tag"].strip()
-    names = all_names(doc)
-    # 인물표는 한글 이름으로 적혀 있으므로, 영어 관계말에도 같은 옷을 물려준다
-    for ko, en in (doc.get("_name_map") or {}).items():
-        if ko in fixed and en not in fixed:
-            fixed[en] = fixed[ko]
-    if not names:
-        return 0
-
-    def subj_of(c):
-        return next((l for l in (c.get("prompt") or "").split("\n")
-                     if l.startswith("SUBJECT:")), "")
-
-    n = 0
-    for e in doc.get("episodes") or []:
-        cuts = e.get("cuts") or []
-        # 이 화에서 각 인물이 무엇을 입었나 → 가장 많은 것으로 통일
-        wear = dict(fixed)
-        for nm in names:
-            if nm in wear:
-                continue
-            v = []
-            for c in cuts:
-                # ⚠️ 여기서 `([^,.]*)` 로 끝까지 먹으면
-                #    "본처 in a cardigan facing 남편 in a jacket" 에서
-                #    본처의 옷이 **"a cardigan facing 남편 in a jacket"** 이 된다.
-                #    그대로 되돌려 넣으면 `facing …` 이 한 줄에 네 번 겹친다
-                #    (실제로 S001 17줄이 이렇게 망가졌다). `facing` 에서 끊는다.
-                m = re.search(rf"{re.escape(nm)}(?:\([^)]*\))?\s+in\s+"
-                              rf"([^,.]*?)(?=\s+facing\s|[,.]|$)", subj_of(c))
-                if m:
-                    v.append(m.group(1).strip())
-            if v:
-                wear[nm] = max(set(v), key=v.count)
-        if not wear and not face:
-            continue
-        for c in cuts:
-            lines = (c.get("prompt") or "").split("\n")
-            for i, l in enumerate(lines):
-                if not l.startswith("SUBJECT:"):
-                    continue
-                new = l
-                for nm, of in wear.items():
-                    new = re.sub(rf"({re.escape(nm)})(?:\([^)]*\))?\s+in\s+"
-                                 rf"[^,.]*?(?=\s+facing\s|[,.]|$)",
-                                 rf"\1 in {of}", new)
-                # ⭐⭐ 2026-08-20 — 여기서 이름 뒤에 얼굴을 박았더니 플로우가
-                #    **모든 컷을 거절했다**: "유명인의 동영상 생성에 관한 정책을
-                #    위반할 가능성이 있습니다."
-                #    `남편(55, square face, short neatly parted black hair)` 는
-                #    기계 눈에 "**남편**이라는 사람, 55살, 이 얼굴" 로 보인다 —
-                #    실존 인물을 찍어 달라는 말과 똑같은 꼴이다.
-                #    (본처·남편은 배역말인데 기계는 사람 이름으로 읽는다)
-                #    첫 영상이 성공했을 때는 `남편 in a casual jacket` 이었다.
-                #    얼굴은 **플로우 캐릭터(기준 사진)** 가 잡아 주는 몫이고,
-                #    컷 프롬프트는 이름 + 옷차림까지만 적는다.
-                #    → 박아 둔 것이 있으면 **떼어 낸다.**
-                for nm in names:
-                    new = re.sub(rf"(?<![\w가-힣]){re.escape(nm)}\([^)]*\)",
-                                 nm, new)
-                if new != l:
-                    lines[i] = new
-                    n += 1
             c["prompt"] = "\n".join(lines)
     return n
 
@@ -1542,10 +1413,11 @@ def normalize(doc):
     # ⭐ 인물 기준 사진 프롬프트를 제대로 된 것으로 채운다 (2026-08-20 운영자
     #    지시: "인물 생성 프롬프트가 너무 짧아 배경이 이상하게 뜬다").
     #    25낱말짜리로는 배경·자세·화면잡기가 매번 새로 뽑힌다.
-    q = fix_subject_dup(doc)
+    # ⭐⭐ 2026-08-25 — 모델이 SUBJECT 줄을 써 보내도 **여기서 떼어 낸다.**
+    #    옷은 기준 사진이 잡는다 (운영자 지시).
+    q = strip_subject(doc)
     if q:
-        print(f"  (한 줄에 같은 사람을 두 번 적은 SUBJECT {q}줄을 정리했다 "
-              f"— 그대로 두면 사람이 한 명 더 그려진다)")
+        print(f"  (SUBJECT {q}줄을 떼어 냈다 — 옷은 기준 사진이 잡는다)")
     # ⭐⭐ 2026-08-20 운영자: "플로우에서 캐릭터 음성을 미리 지정해 둔 것이
     #    원인으로 보인다. 그걸 해제할 테니 **캐릭터 정보와 매번 프롬프트에**
     #    목소리 정보를 넣자."
@@ -1557,11 +1429,10 @@ def normalize(doc):
     c2 = charsheet.fill(doc)
     if c2:
         print(f"  (인물 {c2}명의 기준 사진 프롬프트를 풀세트로 채웠다)")
-    k = fix_outfits(doc)
-    k += fix_look(doc)
+    k = fix_look(doc)
     k += fix_extend(doc)
     if k:
-        print(f"  (옷차림 {k}줄을 인물표대로 맞췄다 — 컷마다 옷이 바뀌면 딴사람으로 보인다)")
+        print(f"  (장소·길이 {k}줄을 손봤다)")
     # ⭐ 배역말 바꾸기는 **맨 마지막**이다. 위의 고치개들이 모두 한글 이름으로
     #    찾기 때문에, 먼저 바꿔 버리면 하나도 안 걸린다.
     nm = fix_names(doc)
@@ -1819,7 +1690,7 @@ def soft(doc):
 #    라고 지칭을 하고 있어."
 #    맞은편에 있는 사람을 남 얘기하듯 부르면 장면이 통째로 어긋난다.
 #    (1화 3컷 — 본처가 내연녀를 마주 보고 "저 여자가 이유였어?")
-#    화면에 누가 있는지는 SUBJECT 로, 남녀는 flow_prompt 로 안다.
+#    화면에 누가 있는지는 SHOT·ACTION 으로, 남녀는 flow_prompt 로 안다.
 THIRD_F = ["저 여자", "그 여자", "저년", "그년"]
 THIRD_M = ["저 남자", "그 남자", "저놈", "그놈", "저 새끼", "그 새끼"]
 THIRD_ANY = ["저 사람", "그 사람", "저것들", "그것들", "저 인간", "그 인간"]
@@ -1848,9 +1719,11 @@ def facing_error(cut, chars):
       · "그 사람" → 등장인물이 **전부** 이 컷에 있으면 오류
     """
     lines = (cut.get("prompt") or "").split("\n")
-    subj = next((l for l in lines if l.startswith("SUBJECT:")), "")
+    # ⚠️ 2026-08-25 — 예전에는 SUBJECT 줄을 읽었다. 그 줄을 없앴으므로
+    #    누가 화면에 있는지는 SHOT·ACTION 에서 읽는다.
+    subj = on_screen_text(cut)
     named = [c for c in chars if (c.get("name") or "").strip()]
-    here = [c for c in named if c["name"] in subj]
+    here = [c for c in named if c["name"].lower() in subj]
     if len(here) < 2:
         return []                       # 혼자 있는 컷은 남 얘기를 해도 된다
 
@@ -1993,13 +1866,14 @@ def check(doc):
             # ⚠️ 2026-08-20 — 이 검사가 **우리 예시 대본까지 걸러냈다.**
             #    "시동생 holds out a folder; she does not take it." 처럼 앞에 이름이
             #    있으면 모델은 알아듣는다. 정말 위험한 것은 화면에 누가 있는지
-            #    적는 SUBJECT 줄에 이름 없이 'the same woman' 만 적는 경우다.
-            #    그래서 SUBJECT 줄만, 그것도 이름이 하나도 없을 때만 잡는다.
-            subj = next((l for l in p.split("\n") if l.startswith("SUBJECT:")), "")
-            if re.search(r"\bthe same\b|\bshe\b|\bhe\b", subj.lower()) and \
-                    not any(nm and nm in subj for nm in names):
-                bad.append(f"{tag}: SUBJECT 에 이름 없이 지시대명사를 썼다 "
-                           f"— 누가 화면에 있는지 이름으로 적는다")
+            #    적는 줄에 이름 없이 'the same woman' 만 적는 경우다.
+            # ⚠️ 2026-08-25 — SUBJECT 줄을 없앴으므로(옷은 기준 사진이 잡는다)
+            #    이제 그 자리를 **SHOT·ACTION** 이 진다.
+            head2 = on_screen_text(c)
+            if re.search(r"\bthe same\b", head2) and \
+                    not any(nm and nm.lower() in head2 for nm in names):
+                bad.append(f"{tag}: 화면에 누가 있는지 이름 없이 지시대명사로 썼다 "
+                           f"— SHOT·ACTION 에 이름으로 적는다")
 
         # ⭐ 한 명이 혼잣말만 이으면 이야기가 안 굴러간다 (2026-08-20 손님 지적).
         #    ⚠️ 2026-08-24 — 한 화가 3컷으로 줄었고, 손님이 "굳이 두 사람이
@@ -2018,24 +1892,18 @@ def check(doc):
     for e in eps:
         no = e.get("no", "?")
         cuts = e.get("cuts") or []
-        shots, sets, subj = set(), set(), {}
+        # ⚠️ 2026-08-25 — 여기 있던 '옷차림이 컷마다 다른가' 검사는 없앴다.
+        #    컷 프롬프트에 옷을 아예 안 적으므로 견줄 것이 없다. 옷은 루미나
+        #    기준 사진이 잡고, 그것이 흔들리면 기준 사진을 고치면 된다.
+        shots, sets = set(), set()
         for c in cuts:
             lines = (c.get("prompt") or "").split("\n")
             sh = next((l for l in lines if l.startswith("SHOT:")), "")[5:].strip().lower()
             st = next((l for l in lines if l.startswith("SETTING:")), "")[8:].strip().lower()
-            sj = next((l for l in lines if l.startswith("SUBJECT:")), "")[8:].strip()
             if sh:
                 shots.add(re.split(r"[,.]", sh)[0].strip())
             if st:
                 sets.add(re.split(r"[,.]", st)[0].strip())
-            for nm in names:
-                # ⚠️ `facing` 앞에서 끊지 않으면 두 사람이 나오는 줄에서
-                #    상대방 옷까지 삼켜 **같은 옷을 다르다고** 읽는다.
-                m = re.search(rf"{re.escape(nm)}(\([^)]*\))?\s+in\s+"
-                              rf"([^,.]*?)(?=\s+facing\s|[,.]|$)", sj)
-                if m and nm:
-                    subj.setdefault(nm, set()).add(
-                        ((m.group(1) or "") + "|" + m.group(2)).strip())
         # ⚠️ 샷·장소는 **버리지 않는다** — 이야기는 멀쩡한데 그림이 밋밋한 것뿐이라
         #    16화를 다시 사면서까지 막을 일이 아니다. 프롬프트가 시키고, 여기선 알린다.
         if len(cuts) >= CUTS:
@@ -2045,10 +1913,6 @@ def check(doc):
             if len(sets) > 2:
                 soft_extra.append(f"{no}화: 장소가 {len(sets)}곳이다 "
                                   f"(두 곳까지가 안 튄다) — {sorted(sets)}")
-        for nm, v in subj.items():
-            if len(v) > 1:
-                bad.append(f"{no}화: '{nm}' 의 생김새·옷차림이 컷마다 다르다 "
-                           f"({len(v)}가지) — 딴사람으로 나온다")
 
     # ⭐ 대사가 법률 설명을 대신 지고 있으면 말이 통째로 가짜가 된다
     #    (2026-08-20 손님: "말도 어색해. 구어체가 아닌 것 같고 실제 같지 않아.")

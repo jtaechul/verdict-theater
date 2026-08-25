@@ -35,9 +35,9 @@ SOLO = ('시동생 says in Korean, calm: "이 집, 오늘 안에 비워 주세�
 def good_prompt(dialogue=SOLO):
     # ⭐ FRAMING 도 시스템이 붙이는 고정 줄이다 (2026-08-24 · 코드에서 가져온다)
     return (S.HEAD_FIX + "\n"
-            "SHOT: Medium two-shot, static camera.\n"
+            # ⭐ 2026-08-25 — SUBJECT 를 없앴다. 누가 화면에 있는지는 SHOT 이 적는다
+            "SHOT: Medium two-shot of 시동생 and 며느리, static camera.\n"
             + S.FRAME_FIX + "\n"
-            "SUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.\n"
             "ACTION: 시동생 holds out a closed folder toward 며느리.\n"
             f"DIALOGUE: {dialogue}\n"
             + S.AUDIO_FIX + "\n"
@@ -144,9 +144,12 @@ ck("2화부터 지난 줄거리가 비면 잡는다", any("지난 줄거리" in 
 
 d = good_doc()
 d["episodes"][7]["cuts"][-1]["prompt"] = good_prompt("None.").replace(
-    "SUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.",
-    "SUBJECT: the same woman in a black coat.")
-ck("SUBJECT 에 이름 없이 가리키면 잡는다", any("지시대명사" in b for b in S.check(d)))
+    "SHOT: Medium two-shot of 시동생 and 며느리, static camera.",
+    "SHOT: Medium two-shot of the same woman, static camera.").replace(
+    "ACTION: 시동생 holds out a closed folder toward 며느리.",
+    "ACTION: the same woman holds out a closed folder.")
+ck("이름 없이 가리키면 잡는다", any("지시대명사" in b for b in S.check(d)),
+   str(S.check(d))[:70])
 
 # ⚠️ 우리 예시 대본이 바로 이 검사에 걸렸다. 앞에 이름이 있으면 통과해야 한다.
 d = good_doc()
@@ -189,25 +192,30 @@ d["episodes"][6]["cuts"][0]["prompt"] = good_prompt("None.").replace(
 ck("Avoid 가 맨 끝이 아니면 우리가 옮긴다", S.check(S.normalize(d)) == [],
    str(S.check(S.normalize(d)))[:60])
 
-print("\n⑩ 컷마다 옷이 바뀌지 않게 맞추는가 (2026-08-20 · 실제 영상에서 확인)")
+# ⭐⭐ 2026-08-25 운영자: "우리 옷에 관한 정보는 안 넣기로 규칙에 정했잖아?!
+#    SUBJECT 부분은 삭제하도록 모든 프롬프트에 반영해."
+#    옷·얼굴은 **루미나 기준 사진**이 잡는 몫이다. 글로 또 적으면 참조 그림과
+#    싸워서, 막으려던 바로 그것(옷이 컷마다 달라지는 것)이 오히려 생긴다.
+print("\n⑩ SUBJECT(옷차림) 줄을 떼어 내는가 (2026-08-25 운영자 지시)")
 d = good_doc()
-d["characters"] = [{"name": "며느리", "outfit": "a black mourning hanbok"},
-                   {"name": "시동생", "outfit": "a charcoal suit"}]
-d["episodes"][0]["cuts"][1]["prompt"] = good_prompt("None.").replace(
-    "SUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.",
-    "SUBJECT: 며느리 in a beige cardigan.")
-S.fix_outfits(d)
-subj = next(l for l in d["episodes"][0]["cuts"][1]["prompt"].split("\n")
-            if l.startswith("SUBJECT:"))
-ck("옷차림이 인물표대로 갈아 끼워진다", "a black mourning hanbok" in subj, subj[:64])
-ck("두 사람이 나오는 줄도 각자 옷으로 바뀐다",
-   "a charcoal suit" in d["episodes"][0]["cuts"][0]["prompt"]
-   and "a black mourning hanbok" in d["episodes"][0]["cuts"][0]["prompt"])
-d2 = good_doc()          # outfit 이 없는 옛 대본은 건드리지 않는다
-before = d2["episodes"][0]["cuts"][0]["prompt"]
-S.fix_outfits(d2)
-ck("옷차림을 안 정한 옛 대본은 그대로 둔다",
-   d2["episodes"][0]["cuts"][0]["prompt"] == before)
+d["episodes"][0]["cuts"][1]["prompt"] = (
+    "SUBJECT: 며느리 in a beige cardigan.\n"
+    + d["episodes"][0]["cuts"][1]["prompt"])
+ck("모델이 SUBJECT 를 써 보내도 떼어 낸다", S.strip_subject(d) == 1)
+ck("떼어 낸 뒤 대본에 SUBJECT 가 하나도 없다",
+   not any("SUBJECT:" in c["prompt"] for e in d["episodes"] for c in e["cuts"]))
+ck("떼어 낸 뒤에도 규격 검사를 통과한다", S.check(d) == [], str(S.check(d))[:60])
+ck("규격(LINES)에 SUBJECT 가 없다", "SUBJECT:" not in S.LINES, str(S.LINES))
+ck("normalize 가 SUBJECT 를 떼어 낸다",
+   "SUBJECT:" not in S.normalize(
+       {**good_doc(),
+        "episodes": [{**good_doc()["episodes"][0],
+                      "cuts": [{**good_doc()["episodes"][0]["cuts"][0],
+                                "prompt": "SUBJECT: 며느리 in a coat.\n"
+                                + good_prompt()}]}]})["episodes"][0]["cuts"][0]["prompt"])
+ck("옷차림이 대본 어디에도 안 남아 있다",
+   not any("wearing" in c["prompt"] for e in good_doc()["episodes"]
+           for c in e["cuts"]))
 
 print("\n⑪ 첫 영상에서 본 것들이 프롬프트·검사에 실제로 들어갔는가")
 pr = (ROOT / "prompts" / "series_gen.md").read_text(encoding="utf-8")
@@ -219,47 +227,20 @@ for k, why in [("face_tag", "얼굴이 컷마다 다른 배우로 나왔다"),
                ("SETTING` 은 한 화에 두 곳까지", "장소가 갑자기 튀었다")]:
     ck(f"프롬프트에 들어갔다 — {why}", k in pr, k)
 
-# 같은 인물이 컷마다 다른 옷이면 잡는다
-d = good_doc()
-d["episodes"][0]["cuts"][1]["prompt"] = good_prompt("None.").replace(
-    "SUBJECT: 시동생 in a black suit facing 며느리 in black mourning hanbok.",
-    "SUBJECT: 며느리 in a beige coat.")
-ck("한 화 안에서 옷이 다르면 잡는다",
-   any("컷마다 다르다" in b for b in S.check(d)),
-   next((b[:44] for b in S.check(d) if "컷마다" in b), "안 잡음"))
-ck("normalize 가 먼저 맞춰 주면 통과한다", S.check(S.normalize(good_doc())) == [],
+ck("normalize 가 손봐 준 대본은 통과한다", S.check(S.normalize(good_doc())) == [],
    str(S.check(S.normalize(good_doc())))[:60])
-
-# 옷은 **화마다** 맞춘다 (16화 전체가 아니라)
-d = good_doc()
-for c in d["episodes"][0]["cuts"]:
-    c["prompt"] = c["prompt"].replace("in a black suit", "in a casual jacket")
-S.fix_outfits(d)
-ck("1화 옷을 뒷화 옷으로 덮어쓰지 않는다",
-   "casual jacket" in d["episodes"][0]["cuts"][0]["prompt"]
-   and "black suit" in d["episodes"][1]["cuts"][0]["prompt"])
 
 # ⭐⭐ 2026-08-20 — 한때 face_tag 를 이름 뒤에 박았다. 그랬더니 플로우가
 #    **80컷을 전부 거절했다**: "유명인의 동영상 생성에 관한 정책을 위반할
-#    가능성이 있습니다." 기계는 `시동생(50s, square face)` 를
-#    '시동생이라는 사람, 50대, 이 얼굴' 로 읽는다 — 실존 인물을 찍어 달라는 말.
-#    얼굴은 **플로우 캐릭터(기준 사진)** 가 잡는 몫이다. 컷에는 적지 않는다.
-#    → 박아 둔 것이 있으면 떼어 낸다.
+#    가능성이 있습니다." 얼굴은 기준 사진이 잡는 몫이다 — 컷에는 적지 않는다.
 d = good_doc()
 d["characters"] = [{"name": "시동생", "face_tag": "50s, square face"},
                    {"name": "며느리", "face_tag": "50s, oval face"}]
 for c in d["episodes"][0]["cuts"]:
     c["prompt"] = c["prompt"].replace(
-        "SUBJECT: 시동생 in a black suit facing 며느리",
-        "SUBJECT: 시동생(50s, square face) in a black suit facing 며느리")
+        "of 시동생 and 며느리", "of 시동생(50s, square face) and 며느리")
 ck("얼굴을 박아 둔 컷을 반려한다", any("유명인" in b for b in S.check(d)),
    str(S.check(d))[:70])
-S.fix_outfits(d)
-subj = [l for l in d["episodes"][0]["cuts"][0]["prompt"].split("\n")
-        if l.startswith("SUBJECT:")][0]
-ck("얼굴표를 이름 뒤에서 떼어 낸다", "(50s, square face)" not in subj, subj[:64])
-ck("이름과 옷차림은 그대로 둔다", "시동생" in subj and "black suit" in subj)
-ck("떼어 낸 뒤에는 검사가 조용하다", not any("유명인" in b for b in S.check(d)))
 
 # 샷·장소는 알려만 준다 (버리지 않는다)
 d = good_doc()
@@ -544,27 +525,27 @@ CH = [{"name": "본처", "flow_prompt": "Korean woman, 52 years old, …"},
 
 
 def cut(subj, dia):
-    return {"n": 1, "prompt": f"SUBJECT: {subj}\nDIALOGUE: {dia}"}
+    # ⭐ 2026-08-25 — 누가 화면에 있는지는 이제 SHOT 이 적는다
+    return {"n": 1, "prompt": f"SHOT: {subj}\nDIALOGUE: {dia}"}
 
 
 ck("마주 본 사람을 '저 여자' 라고 하면 잡는다",
    facing := S.facing_error(
-       cut("본처 in a cardigan facing 내연녀 in a red dress.",
+       cut("Medium two-shot of 본처 and 내연녀.",
            '본처: "저 여자가 이유였어?"'), CH), str(facing))
 ck("자리에 없는 사람 얘기는 안 잡는다 (2화 3컷 같은 것)",
-   S.facing_error(cut("본처 in a blouse facing 남편 in a suit.",
+   S.facing_error(cut("Medium two-shot of 본처 and 남편.",
                       '본처: "평생 그 여자랑 살지 마."'), CH) == [])
 ck("죽은 사람을 '그 사람' 이라 해도 안 잡는다 (14화 1컷 같은 것)",
-   S.facing_error(cut("내연녀 in a dress facing 본처 in a suit.",
+   S.facing_error(cut("Medium two-shot of 내연녀 and 본처.",
                       '본처: "죽던 날까지 그 사람 거였어."'), CH) == [])
 ck("혼자 있는 컷은 남 얘기를 해도 된다",
-   S.facing_error(cut("본처 in a cardigan.", '본처: "저 여자가 문제야."'), CH) == [])
+   S.facing_error(cut("Close-up on 본처.", '본처: "저 여자가 문제야."'), CH) == [])
 
 d = good_doc()
 d["characters"] = CH
 d["episodes"][0]["cuts"][0]["prompt"] = (
-    "SHOT: Medium two-shot, static camera.\n"
-    "SUBJECT: 본처 in a cardigan facing 내연녀 in a red dress.\n"
+    "SHOT: Medium two-shot of 본처 and 내연녀, static camera.\n"
     "ACTION: 본처 stares.\n"
     'DIALOGUE: 본처: "저 여자가 이유였어? 대체 언제부터 그런 거야?"\n'
     "SETTING: hallway, evening.\n" + S.STYLE_FIX + "\n" + S.AVOID_FIX)
@@ -721,34 +702,20 @@ def _line(cut, tag):
 
 
 _vague = []
-_by_place, _by_who = {}, {}
+_by_place = {}
 for _e in _doc.get("episodes") or []:
     for _c in _e.get("cuts") or []:
-        _su, _st = _line(_c, "SUBJECT:"), _line(_c, "SETTING:")
-        if S.VAGUE.search(_su):
-            _vague.append(f"{_e.get('no')}화 {_c['n']}컷: {_su[:60]}")
+        _su, _st = S.on_screen_text(_c), _line(_c, "SETTING:")
+        if "SUBJECT:" in (_c.get("prompt") or ""):
+            _vague.append(f"{_e.get('no')}화 {_c['n']}컷: SUBJECT 줄이 남아 있다")
         # 같은 장소 → SETTING 이 글자 그대로 같아야 한다
         _key = _st.split("—")[0].strip().lower()
         _by_place.setdefault(_key, set()).add(_st)
-        # 같은 인물 → 그 화 안에서 옷 글자가 같아야 한다
-        # ⚠️ 여기서 ` facing ` 을 넘어가면 안 된다. 옷 설명이 **다음 사람까지**
-        #    삼켜서, 같은 옷인데도 다르다고 나온다 (fix_outfits 주석에 적혀 있던
-        #    바로 그 실수를 시험에서 되풀이했다).
-        for _m in re.finditer(
-                # ⭐ 2026-08-24 — 한 컷에 세 사람이 나오면 `;` 로 나열한다.
-                #    거기서도 끊어 줘야 앞사람 옷이 뒷사람 것까지 삼키지 않는다.
-                r"\b(?:the )?(\w[\w ]*?) wearing (.+?)(?=\s+facing\b|;|\.$|$)",
-                _su):
-            _by_who.setdefault((_e.get("no"), _m.group(1).strip()), set()).add(
-                _m.group(2).strip())
-
-ck("뭉뚱그린 옷차림이 안 남아 있다", not _vague,
-   "; ".join(_vague[:2]) + " — 'casual jacket' 은 매번 다른 자켓이 된다")
+ck("SUBJECT 줄이 하나도 안 남아 있다", not _vague,
+   "; ".join(_vague[:2]) + " — 옷은 기준 사진이 잡는다")
 _bad_p = {k: v for k, v in _by_place.items() if k and len(v) > 1}
 ck("같은 장소는 늘 똑같이 적혀 있다", not _bad_p,
    f"{list(_bad_p)[:2]} — 글자가 다르면 다른 방이 나온다")
-_bad_w = {k: v for k, v in _by_who.items() if len(v) > 1}
-ck("한 화 안에서 같은 사람은 같은 옷", not _bad_w, str(list(_bad_w)[:2]))
 
 # ⭐⭐⭐ 2026-08-24 — **마주보는 두 사람의 배경이 똑같이 나오던 문제.**
 #    운영자: "남편 뒤 배경이랑 아내 뒤 배경이 각도가 달라야 하는데 똑같아.
@@ -779,7 +746,15 @@ for _e in _doc.get("episodes") or []:
     _flip += [f"{_e.get('no')}화 {w}" for (pl, w), sd in _seen.items() if len(sd) > 1]
 ck("한 장소 안에서 사람의 좌우가 안 흔들린다 (180도 법칙)", not _flip,
    " ".join(_flip[:3]) + " — 컷마다 자리가 바뀌면 왔다 갔다 하는 것처럼 보인다")
-ck("옷을 정한 인물이 실제로 있다", len(_by_who) >= 3, f"{len(_by_who)}명")
+# ⭐ 2026-08-25 — '옷을 정한 인물이 있는가' 시험은 없앴다. 컷 프롬프트에
+#    옷을 아예 안 적는다(옷은 기준 사진이 잡는다). 대신 **컷마다 누가 화면에
+#    있는지 이름이 적혀 있는가** 를 본다 — SUBJECT 가 지던 몫이다.
+_noname = [f"{e.get('no')}화 {c['n']}컷" for e in _doc.get("episodes") or []
+           for c in e.get("cuts") or []
+           if not any(w.lower() in S.on_screen_text(c)
+                      for w in ("wife", "husband", "other woman"))]
+ck("컷마다 누가 화면에 있는지 이름이 적혀 있다", not _noname,
+   " ".join(_noname[:3]) + " — SHOT·ACTION 에 이름이 없다")
 
 # ⚠️ 얼굴·나이는 절대 안 적는다 — 유명인 정책에 다섯 번 막혔던 자리다
 for _e in _doc.get("episodes") or []:

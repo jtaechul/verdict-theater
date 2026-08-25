@@ -80,15 +80,27 @@ PLACE = {
 }
 
 
+def who_list(cast):
+    """Wife and Husband · Wife, Husband and Other woman — 영어로 이어 붙인다."""
+    if len(cast) <= 1:
+        return cast[0] if cast else ""
+    return ", ".join(cast[:-1]) + " and " + cast[-1]
+
+
 def shot_line(i, cast, face, other):
-    """컷 자리마다 **다른 크기**로 — 두 사람 → 어깨 너머 → 얼굴."""
+    """컷 자리마다 **다른 크기**로 — 두 사람 → 어깨 너머 → 얼굴.
+
+    ⭐⭐ 2026-08-25 — SUBJECT 줄을 없앴으므로(옷은 기준 사진이 잡는다)
+       **누가 화면에 있는지**를 이 줄이 진다. 이름만 적고 옷은 안 적는다.
+    """
     if i == 0 and len(cast) >= 2:
         # ⚠️ "faces read clearly" 라고 쓰면 안 된다. read 는 '글자를 읽는다' 로
         #    잡혀서, 컷 안에 서류·봉투가 있으면 통째로 반려된다(두 번째 실수다).
-        return ("SHOT: Medium-wide two-shot, static camera, both people framed from the "
-                "waist up in the middle of the frame, close enough that both faces stay "
-                "clear. The movement is already under way in the very first frame — "
-                "nothing is still at the start.")
+        kind = "two-shot" if len(cast) == 2 else "group shot"
+        return (f"SHOT: Medium-wide {kind} of {who_list(cast)}, static camera, everyone "
+                "framed from the waist up in the middle of the frame, close enough that "
+                "every face stays clear. The movement is already under way in the very "
+                "first frame — nothing is still at the start.")
     if i == 1 and len(cast) >= 2:
         return (f"SHOT: Over-the-shoulder shot from behind {other}, seen from the right "
                 f"of the room, with {face}'s face and upper body filling most of the "
@@ -116,13 +128,6 @@ def main():
             n_syl = sum(S.syl(t) for _, t in lines)
             sec = S.cut_sec(n_syl)
 
-            if len(cast) == 1:
-                subj = "SUBJECT: " + story.WEARS[cast[0]] + "."
-            else:
-                subj = ("SUBJECT: " + story.WEARS[cast[0]] + " facing "
-                        + story.WEARS[cast[1]]
-                        + "".join("; " + story.WEARS[w] for w in cast[2:]) + ".")
-
             dia = ["DIALOGUE: [LANGUAGE: KOREAN] each person speaks one after another, "
                    "never overlapping"]
             for k, (who, txt) in enumerate(lines):
@@ -130,9 +135,11 @@ def main():
                 m = e["words"][min(int(k / max(1, len(lines)) * 3), 2)]
                 dia.append(f'{S.DIA_INDENT}{who} ({m}, in Korean): "{txt}"')
 
+            # ⚠️ SUBJECT 줄은 **안 만든다** (2026-08-25 운영자 지시).
+            #    옷·얼굴은 루미나 기준 사진이 잡는다. 여기 또 적으면 싸운다.
             body = [S.head_line(sec),
                     shot_line(i, cast, face, other),
-                    S.FRAME_FIX, subj,
+                    S.FRAME_FIX,
                     "ACTION: " + action.strip().rstrip(".") + "."
                     + (SYNC2 if len(cast) > 1 else SYNC1),
                     *dia,

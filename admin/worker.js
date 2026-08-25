@@ -639,7 +639,9 @@ function seriesCard() {
 //    나왔다. 참조가 정하는 것은 글에서 빼는 것이 맞다.
 //
 //    빼는 것
-//      · SUBJECT 줄의 **옷 묘사** (참조 그림이 정한다)
+//      · SUBJECT 줄 **통째로** (2026-08-25 운영자: "우리 옷에 관한 정보는 안
+//        넣기로 규칙에 정했잖아?! SUBJECT 부분은 삭제하도록 반영해.")
+//        — 옷도 얼굴도 참조 그림이 정한다. 누가 화면에 있는지는 SHOT 이 적는다.
 //      · STYLE / COLOR / CONTINUITY 줄 (루미나는 참조로 화풍을 잡는다)
 //      · VOICE / AUDIO 줄 (원본 나레이션을 그대로 쓰므로 필요 없다)
 //    남기는 것 — SHOT · ACTION · DIALOGUE · SETTING · Avoid (연출과 대사)
@@ -653,7 +655,9 @@ function luminaPrompt(t) {
   //    "앞 컷과 같은 옷·같은 방·같은 자리" 를 붙잡는 줄인데, 그것을 떼니
   //    컷마다 배경과 옷이 다시 그려져 이어지는 느낌이 사라졌다.
   //    (운영자: "컷별로 연결된다는 느낌이 안 들어") → 다시 남긴다.
-  const drop = ['VOICE:', 'AUDIO:'];
+  // ⚠️ 2026-08-25 — SUBJECT 를 통째로 뺀다. 대본에서도 안 만들지만,
+  //    예전에 만들어 둔 대본에는 아직 남아 있을 수 있어 여기서도 막는다.
+  const drop = ['SUBJECT:', 'VOICE:', 'AUDIO:'];
   const out = [];
   let skip = false;
   String(t || '').split(String.fromCharCode(10)).forEach((l) => {
@@ -662,25 +666,6 @@ function luminaPrompt(t) {
     else if (skip && l.indexOf('  ') === 0) return;   // 이어지는 들여쓴 줄
     else if (skip) skip = false;
     if (skip) return;
-    if (l.indexOf('SUBJECT:') === 0) {
-      // "the husband wearing an olive-green ... facing the wife wearing a ..."
-      // → "the husband facing the wife"  (옷은 참조 그림이 정한다)
-      // 사람마다 토막을 내고(…facing… / …and…), 토막마다 'wearing' 뒤를 버린다.
-      // ⚠️ 쉼표로 자르면 "with dark charcoal trousers" 처럼 옷이 새어 나온다.
-      // ⭐ 2026-08-24 — 한 컷에 세 사람이 나오면 세미콜론으로 나열한다.
-      //    아래 자르기가 facing 과 and 만 알므로 먼저 바꿔 준다.
-      //    ⚠️ 여기는 템플릿 문자열 안이다 — 주석에도 백틱을 쓰면 안 된다.
-      const body = l.slice(8).replace(/\\.\\s*$/, '').replace(/;\\s+/g, ' and ');
-      // ⚠️ 'and' 로 자를 땐 이어 붙일 때도 'and' 를 되돌려 놔야 한다
-      //    (안 그러면 "the wife the husband" 가 된다)
-      const who = body.split(/\\s+(?=facing\\b)|(\\s+and\\s+)(?=the\\b)/)
-        .filter((x) => x !== undefined)
-        .map((x) => (/^\\s+and\\s+$/.test(x) ? ' and '
-                     : x.replace(/\\s+wearing\\b[\\s\\S]*$/, '').trim()))
-        .filter((x) => x !== '');
-      l = ('SUBJECT: ' + who.join(' ')).replace(/\\s{2,}/g, ' ')
-            .replace(/\\s+and\\s+/g, ' and ') + '.';
-    }
     out.push(l);
   });
   // ⚠️ 이 코드는 템플릿 문자열 안에 있다. 정규식에 줄바꿈 이스케이프를 쓰면

@@ -48,8 +48,10 @@ def doc_with(actions):
         ],
         "episodes": [{"no": 1, "hook": "남편이 통장을 비우고 집을 나갔다",
                       "yt_title": "바람난 남편이 통장을 비우고 집을 나갔습니다",
-                      "cuts": [{"n": i + 1, "prompt": f"SHOT: Medium two-shot.\n"
-                                f"SUBJECT: 본처 in a cardigan facing 남편 in a jacket.\n"
+                      # ⭐ 2026-08-25 — SUBJECT 를 없앴다 (옷은 기준 사진이 잡는다).
+                      #    누가 화면에 있는지는 SHOT 이 적는다.
+                      "cuts": [{"n": i + 1,
+                                "prompt": f"SHOT: Medium two-shot of 본처 and 남편.\n"
                                 f"ACTION: {a}\nDIALOGUE: None.\n"
                                 f"SETTING: Korean apartment living room."}
                                for i, a in enumerate(actions)]}],
@@ -108,75 +110,36 @@ for nm, ft in tags.items():
     ck(f"{nm} 얼굴 못이 생겼다", bool(ft), str(ft))
     ck(f"{nm} 얼굴 못이 {C.FACE_MAX}자 이내다", len(ft or "") <= C.FACE_MAX,
        f"{len(ft or '')}자")
-S.fix_outfits(d3)
-sub = next(l for l in d3["episodes"][0]["cuts"][0]["prompt"].split("\n")
-           if l.startswith("SUBJECT:"))
-print("      " + sub)
-# ⭐⭐ 2026-08-20 — 여기에 얼굴을 박았더니 플로우가 80컷을 전부 거절했다.
-#    "유명인의 동영상 생성에 관한 정책을 위반할 가능성이 있습니다."
+# ⭐⭐ 2026-08-20 — 컷 프롬프트 이름 뒤에 얼굴을 박았더니 플로우가 80컷을
+#    전부 거절했다: "유명인의 동영상 생성에 관한 정책을 위반할 가능성이 있습니다."
 #    기계는 `남편(55, square face…)` 를 '남편이라는 사람, 55살, 이 얼굴' 로
-#    읽는다. 얼굴은 플로우 캐릭터가 잡는 몫이고 컷에는 **적지 않는다.**
+#    읽는다. 얼굴은 기준 사진이 잡는 몫이고 컷에는 **적지 않는다.**
+sub = next(l for l in d3["episodes"][0]["cuts"][0]["prompt"].split("\n")
+           if l.startswith("SHOT:"))
+print("      " + sub)
 ck("컷 프롬프트 이름 뒤에 얼굴을 안 붙인다",
    "본처(" not in sub and "남편(" not in sub, sub[:70])
-ck("이름과 옷차림은 그대로 남는다", "본처" in sub and "남편" in sub)
+ck("이름은 그대로 남는다", "본처" in sub and "남편" in sub)
+ck("옷차림은 한 글자도 안 적는다", "wearing" not in sub and " in a " not in sub,
+   sub[:70])
 
 d3b = doc_with(["본처 stands still."])
-d3b["episodes"][0]["cuts"][0]["prompt"] = d3b["episodes"][0]["cuts"][0]["prompt"].replace(
-    "SUBJECT: 본처 in a cardigan facing 남편 in a jacket.",
-    "SUBJECT: 본처(52, oval face, low bun) in a cardigan "
-    "facing 남편(55, square face) in a jacket.")
+d3b["episodes"][0]["cuts"][0]["prompt"] = \
+    d3b["episodes"][0]["cuts"][0]["prompt"].replace(
+        "SHOT: Medium two-shot of 본처 and 남편.",
+        "SHOT: Medium two-shot of 본처(52, oval face, low bun) and "
+        "남편(55, square face).")
 ck("얼굴을 박아 둔 컷을 검사가 잡는다",
    any("유명인" in b for b in S.check(d3b)), str(S.check(d3b))[:70])
-S.fix_outfits(d3b)
-sub_b = next(l for l in d3b["episodes"][0]["cuts"][0]["prompt"].split("\n")
-             if l.startswith("SUBJECT:"))
-ck("고쳐 주면 얼굴이 떼어진다", "(" not in sub_b, sub_b[:70])
 
-print("\n④-2 한 줄에 같은 사람을 두 번 적은 SUBJECT")
+print("\n④-2 SUBJECT 줄은 떼어 낸다 (2026-08-25 운영자 지시)")
 d4 = doc_with(["본처 stands still."])
 d4["episodes"][0]["cuts"][0]["prompt"] = (
-    "SHOT: Medium two-shot.\n"
-    "SUBJECT: 남편 in a black suit facing 본처 in a grey blouse "
-    "facing 남편 in a black suit.\n"
-    "ACTION: 본처 stands still.\nDIALOGUE: None.\n"
-    "SETTING: Korean apartment living room.")
-S.fix_subject_dup(d4)
-sub4 = next(l for l in d4["episodes"][0]["cuts"][0]["prompt"].split("\n")
-            if l.startswith("SUBJECT:"))
-print("      " + sub4)
-ck("같은 사람이 한 번만 남는다", sub4.count("남편") == 1, sub4)
-ck("상대는 지우지 않는다", "본처" in sub4)
-ck("마침표가 살아 있다", sub4.endswith("."))
-n4 = S.fix_subject_dup(d4)
-ck("두 번 돌려도 더 안 바뀐다", n4 == 0, f"{n4}줄")
-
-print("\n④-3 한글 배역말을 영어 관계말로 바꾸는가 (2026-08-20 · 세 번째 사고)")
-# ⚠️ 얼굴 설명을 다 뺐는데도 플로우가 막았다. 기계는 `남편` 이 무슨 뜻인지
-#    몰라 **사람 이름**으로 읽는다 → 유명인 검사에 걸린다.
-d5 = doc_with(["본처 steps in front of 남편, blocking the way."])
-d5["episodes"][0]["cuts"][0]["prompt"] = (
-    "SHOT: Medium two-shot.\n"
-    "SUBJECT: 본처 in a cardigan facing 남편 in a jacket.\n"
-    "ACTION: 본처 steps in front of 남편, blocking the way.\n"
-    'DIALOGUE: 본처 (furious): "당신 진짜 제정신이야?"\n'
-    "SETTING: Korean apartment living room.")
-S.fix_names(d5)
-pr5 = d5["episodes"][0]["cuts"][0]["prompt"]
-for l in pr5.split("\n"):
-    print("      " + l)
-ck("SUBJECT 가 영어 관계말이 된다", "the wife" in pr5 and "the husband" in pr5)
-ck("한글 배역말이 대사 밖에 안 남는다",
-   not any(n in l for l in pr5.split("\n") for n in ("본처", "남편")
-           if not l.startswith("DIALOGUE:")),
-   pr5.split("\n")[1])
-ck("따옴표 안 대사는 한국어 그대로다", '"당신 진짜 제정신이야?"' in pr5)
-ck("말하는 사람 이름표도 영어가 된다", "the wife (furious)" in pr5, pr5.split("\n")[3][:40])
-ck("두 번 돌려도 더 안 바뀐다", S.fix_names(d5) == 0)
-ck("배역말 표를 남긴다", d5.get("_name_map", {}).get("본처") == "the wife")
-d6 = doc_with(["본처 stands still."])
-d6["characters"].append({"name": "동업자", "flow_prompt": "Korean man, 60 years old."})
-ck("표에 없는 배역도 영어로 바꾼다",
-   S.name_map(d6).get("동업자") == "the business partner", str(S.name_map(d6)))
+    "SUBJECT: 남편 in a black suit facing 본처 in a grey blouse.\n"
+    + d4["episodes"][0]["cuts"][0]["prompt"])
+ck("모델이 SUBJECT 를 써 보내도 떼어 낸다", S.strip_subject(d4) == 1)
+ck("떼어 낸 뒤 옷 글자가 하나도 안 남는다",
+   "black suit" not in d4["episodes"][0]["cuts"][0]["prompt"])
 
 print("\n⑤ 후킹 검사")
 ok = doc_with(["본처 stands still."])
@@ -229,12 +192,14 @@ if p.exists():
             and S.touch_hits(l, names)]
     ck("사람에게 닿는 컷이 하나도 없다", not left, " ".join(left))
     dup = [f"{e['no']}-{c['n']}" for e in real["episodes"] for c in e["cuts"]
-           for l in c["prompt"].split("\n")
-           if l.startswith("SUBJECT:") and l.count(" facing ") > 1]
-    ck("한 줄에 같은 사람을 두 번 적은 곳이 없다", not dup, " ".join(dup))
+           if "SUBJECT:" in c["prompt"]]
+    ck("SUBJECT 줄이 하나도 없다 (옷은 기준 사진이 잡는다)", not dup, " ".join(dup))
+    wear = [f"{e['no']}-{c['n']}" for e in real["episodes"] for c in e["cuts"]
+            if "wearing" in c["prompt"]]
+    ck("옷차림을 적어 둔 컷이 하나도 없다", not wear, " ".join(wear[:4]))
     ck("컷에 얼굴을 적어 둔 곳이 없다 (정책에 막힌다)",
        not [1 for e in real["episodes"] for c in e["cuts"]
-            for l in c["prompt"].split("\n") if l.startswith("SUBJECT:")
+            for l in c["prompt"].split("\n") if l.startswith(("SHOT:", "ACTION:"))
             and any(re.search(rf"(?<![\w가-힣]){re.escape(n)}\(", l) for n in names)])
     ko = [c["name"] for c in real["characters"]]
     # ⚠️ 대사는 이제 여러 줄이다 (`  Wife (…): "…"`). 대사 **덩어리 전체**를

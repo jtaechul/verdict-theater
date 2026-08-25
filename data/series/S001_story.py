@@ -12,13 +12,9 @@ LEDGER = {
     "보험료": "이천만 원",     # 매달
 }
 
-WEARS = {
-    "Wife": "the wife wearing a dusty-blue wool cardigan over a white round-neck top",
-    "Husband": ("the husband wearing an olive-green cotton work jacket over a grey "
-                "crewneck, with dark charcoal trousers"),
-    "Other woman": ("the other woman wearing a deep wine-red sleeveless dress with a "
-                    "thin gold necklace"),
-}
+# ⚠️ 2026-08-25 — 옷차림 표(WEARS)를 없앴다. 옷은 **루미나 기준 사진**이
+#    잡는 몫이고, 컷 프롬프트에 또 적으면 레퍼런스와 싸워서 오히려 흔들린다.
+#    (운영자: "우리 옷에 관한 정보는 안 넣기로 규칙에 정했잖아?!")
 VOICES = {
     "Wife": ("Wife — a warm mid-range woman's voice in her fifties, native Korean "
              "speaker, weary and a little breathy, trails off at the end of a sentence"),
