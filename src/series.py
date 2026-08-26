@@ -39,7 +39,7 @@ QUEUE = ROOT / "state" / "queue.json"
 STATE = ROOT / "state" / "series.json"
 
 EPISODES = 16          # 16화 × 30초 = 8분 (롱폼 한 편)
-CHARS_MAX = 5          # 등장인물 상한 (아내·남편·그 여자·딸·변호사)
+CHARS_MAX = 5          # 등장인물 상한 (아내·남편·내연녀·딸·변호사)
 # ⭐⭐ 2026-08-24 손님: "컷이 다섯 개면 컷끼리 연결된다는 느낌이 안 든다.
 #    배경이 계속 바뀌고 감정선도 한 화에서 너무 많이 바뀐다. 영상을 한 번에
 #    십 초씩, 세 컷으로 만드는 건 어때?"
@@ -1644,6 +1644,8 @@ def all_names(doc):
 # ⚠️ 이것 때문에 16화를 버리지는 않는다 — 한 줄만 손보면 되는 일이다.
 #    반려가 아니라 **손볼 곳**으로 알려 준다.
 SPOKEN_BAN = ["내연녀", "내연남", "상간녀", "상간남", "피상속인"]
+# ⚠️ 변호사·재판장은 뺀다 — 그 자리에서는 이 말이 오히려 맞다 (2026-08-26)
+SPOKEN_OK = ("lawyer", "judge")
 
 # ⭐ 2026-08-20 — 첫 실제 영상에서 **여자 손가락이 남자 옷 속으로 녹아들었다.**
 #    영상 만드는 쪽이 두 사람이 닿는 자리를 아직 제대로 못 그린다.
@@ -1840,13 +1842,27 @@ def soft(doc):
                 out.append(f"{e.get('no')}화 {c.get('n')}컷: 서로 몸이 닿는 동작 "
                            f"— {', '.join(sorted(set(hit)))} "
                            f"(손이 옷 속으로 녹아든다)")
-            if True:
-                for say in dia_says(c.get("prompt")):
-                    for w in SPOKEN_BAN:
-                        if w in say:
-                            out.append(f"{e.get('no')}화 {c.get('n')}컷: 대사에 "
-                                       f"'{w}' — 사람은 그렇게 말하지 않는다 "
-                                       f'("{say}")')
+            # ⭐ 2026-08-26 — 예전엔 **누가 말했는지 안 보고** 막았다.
+            #    운영자가 호칭을 '내연녀' 로 정한 뒤 보니, 이 말을 실제로 쓰는
+            #    사람이 있다 — **변호사·재판장**이다. 판결문·서류를 읽어 주는
+            #    자리라 오히려 그렇게 말해야 자연스럽다.
+            #    막으려던 것은 '싸우는 사람 입에서 판결문 말이 나오는 것' 이므로
+            #    그 두 사람만 봐준다.
+            # ⚠️ dia_turns 는 **여러 줄로 늘어놓은 대사**만 읽는다. 옛 꼴
+            #    (`DIALOGUE: 본처 says in Korean: "…"`) 은 못 읽어 [] 를 준다 —
+            #    그대로 두면 옛 꼴 대본의 대사가 통째로 검사에서 빠진다.
+            #    못 읽으면 말한 사람 없이 대사만이라도 본다.
+            turns = dia_turns(c.get("prompt"))
+            if not turns:
+                turns = [("", x) for x in dia_says(c.get("prompt"))]
+            for who, say in turns:
+                if any(k in (who or "").lower() for k in SPOKEN_OK):
+                    continue
+                for w in SPOKEN_BAN:
+                    if w in say:
+                        out.append(f"{e.get('no')}화 {c.get('n')}컷: 대사에 "
+                                   f"'{w}' — 사람은 그렇게 말하지 않는다 "
+                                   f'("{say}")')
     return out
 
 

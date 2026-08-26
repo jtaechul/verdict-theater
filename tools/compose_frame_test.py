@@ -185,10 +185,14 @@ ck("화자를 모르면 아무것도 안 붙인다 (틀린 이름보다 없는 �
    pill_colors(plain6, 0.6) == 0, "이름표가 그려졌다")
 odd = S.compose(src6, "", "당장 나가.", TMP / "n3.mp4", TMP, whos=["Nobody"])
 ck("모르는 이름은 그냥 넘어간다", pill_colors(odd, 0.6) == 0, "이름표가 그려졌다")
-ck("아내·남편·그 여자 이름표가 준비돼 있다",
-   all(S.who_ko(k) for k in ("Wife", "the wife", "Husband", "Other woman")))
+# ⚠️ 2026-08-26 — 딸·변호사가 빠져 있었다. 이름표가 없는 사람은 자막 위에
+#    **아무것도 안 그려진다** — 어르신은 "얘가 누구지" 하다가 튕겨 나간다.
+_WHOS = ("Wife", "the wife", "Husband", "Other woman", "Daughter", "Lawyer")
+ck("다섯 사람 이름표가 다 준비돼 있다", all(S.who_ko(k) for k in _WHOS),
+   str([k for k in _WHOS if not S.who_ko(k)]))
 ck("사람마다 색이 다르다",
-   len({S.who_ko(k)[1] for k in ("Wife", "Husband", "Other woman")}) == 3)
+   len({S.who_ko(k)[1] for k in
+        ("Wife", "Husband", "Other woman", "Daughter", "Lawyer")}) == 5)
 _src3 = (ROOT / "src" / "shorts.py").read_text(encoding="utf-8")
 ck("대본에서 화자를 뽑아 넘긴다",
    "whos=[w for w, _ in dia_turns(c.get(\"prompt\"))]" in _src3)

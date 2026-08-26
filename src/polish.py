@@ -68,7 +68,8 @@ def script_text(doc):
 
 PROMPT = """너는 세로형 숏드라마(DramaBox 같은 것)의 **대본 감수자**다.
 아래는 실제 판결문으로 만든 16화짜리 한국어 숏드라마 대본이다.
-등장인물은 셋뿐이다 — Wife(본처) · Husband(남편) · Other woman(그 여자).
+등장인물은 다섯이다 — Wife(아내) · Husband(남편) · Other woman(내연녀) ·
+Daughter(딸) · Lawyer(변호사).
 
 세 가지만 본다.
 
