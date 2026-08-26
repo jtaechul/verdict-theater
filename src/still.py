@@ -34,6 +34,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import cost                                                  # noqa: E402
+import reuse                                                 # noqa: E402
 import vprompt                                               # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -133,8 +134,8 @@ def card_path(out_dir, name):
 
 
 def card_sig(out_dir, name):
-    """그 카드를 무엇으로 만들었는지 적어 두는 자리."""
-    return card_path(out_dir, name).with_suffix(".sig")
+    """그 카드를 무엇으로 만들었는지 적어 두는 자리 (규칙은 src/reuse.py)."""
+    return reuse.sig_file(card_path(out_dir, name))
 
 
 def cards(sid, out_dir):
@@ -156,19 +157,16 @@ def cards(sid, out_dir):
         name = c.get("name", "?")
         out = card_path(out_dir, name)
         prompt = vprompt.still_prompt(c.get("flow_sheet") or c.get("flow_prompt") or "")
-        sig = hashlib.sha1(prompt.encode("utf-8")).hexdigest()[:16]
-        sigf = card_sig(out_dir, name)
+        sig = reuse.sig_of(prompt)
         print(f"  {name}")
-        if out.exists() and out.stat().st_size > 10_000:
-            old = sigf.read_text(encoding="utf-8").strip() if sigf.exists() else ""
-            if old == sig:
-                print("    (그대로다 — 건너뛴다)")
-                continue
-            print("    ⚠️ 인물 설명이 바뀌었다 — 다시 만든다"
-                  + ("" if old else " (지문이 없다 — 옛 카드다)"))
+        ok, why = reuse.can_reuse(out, sig)
+        if ok:
+            print("    (그대로다 — 건너뛴다)")
+            continue
+        if why:
+            print(f"    ⚠️ {why} — 다시 만든다")
         gen(prompt, out, ratio="9:16", seed=seed_of(sid, name), label=name)
-        sigf.parent.mkdir(parents=True, exist_ok=True)
-        sigf.write_text(sig, encoding="utf-8")
+        reuse.stamp(out, sig)
     return 0
 
 
@@ -215,17 +213,26 @@ def scenes(sid, no, cards_dir, out_dir, only_cut=None):
         for when, suffix in (("start", ""), ("end", "_end")):
             want += 1
             out = out_dir / f"c{n:03d}{suffix}.png"
-            if out.exists() and out.stat().st_size > 10_000:
-                print(f"    (이미 있다 — 건너뛴다: {out.name})")
-                made += 1
-                continue
             use = list(refs)
             first = out_dir / f"c{n:03d}.png"
             if when == "end" and first.exists():
                 use = [first] + use          # 시작 장면이 첫 참조 — 그대로 이어지게
+            prompt = vprompt.still_prompt(c.get("prompt") or "", when)
+            # ⚠️ 지문에 **참조로 넣는 그림의 속내용까지** 넣는다. 인물 카드가
+            #    실사로 바뀌었는데 컷 그림은 그림체 카드로 그린 것이 그대로
+            #    남으면, 그 둘을 이은 영상이 앞뒤로 화풍이 갈린다 (2026-08-26).
+            sig = reuse.sig_of(prompt, *use)
+            ok, why = reuse.can_reuse(out, sig)
+            if ok:
+                print(f"    (그대로다 — 건너뛴다: {out.name})")
+                made += 1
+                continue
+            if why:
+                print(f"    ⚠️ {why} — 다시 만든다: {out.name}")
             try:
-                gen(vprompt.still_prompt(c.get("prompt") or "", when), out,
-                    refs=use, ratio="16:9", seed=seed_of(sid, no, n, when))
+                gen(prompt, out, refs=use, ratio="16:9",
+                    seed=seed_of(sid, no, n, when))
+                reuse.stamp(out, sig)
                 made += 1
             except (StillError, cost.MonthlyCapReached) as e:
                 print(f"    ❌ {e}")

@@ -25,6 +25,8 @@
        (베끼면 규격 파일만 고쳤을 때 검사기가 모르는 문장이 나간다)
     ③ **인물** — 인물 목록 · 목소리표 · 등장 차례 · 화면 이름표가 다 맞는가
     ④ **무시된 설정** — 이야기 파일에 적어 둔 것이 실제로 읽히는가
+    ⑦ **다시 쓰기** — 만들어 둔 것을 다시 쓸 때 지문을 보는가
+       (안 보면 재료를 고쳐도 옛것이 그대로 나온다 — 화풍 사고)
        (적어만 두고 아무도 안 읽으면 조용히 없는 셈이 된다)
 
 ⚠️ 새 짝이 생기면 **여기에 적는다.** 사고가 난 뒤에 붙이지 말고, 짝을 만들 때 적는다.
@@ -214,25 +216,49 @@ def check_title(bad, doc, state=None):
                        f"(data/series/{sid}.json ↔ state/series.json)")
 
 
-def check_cards(bad, src=None):
-    """⑦ 인물 설명이 바뀌면 인물 카드를 다시 만드는가.
+# ⑦ 돈 들여 만들어 두고 **다시 쓰는** 것들. 여기 적힌 파일은 예외 없이
+#    src/reuse.py 의 규칙(지문)을 따라야 한다.
+REUSERS = {"src/still.py": "인물 카드 · 컷 그림", "src/veo.py": "컷 영상"}
+# 날것 건너뛰기: "파일이 있고 크기가 얼마 넘으면 건너뛴다" — 이 모양이 사고다
+RAW_SKIP = re.compile(r"\.exists\(\)[^\n]*st_size\s*[><]=?\s*\d")
 
-    ⚠️⚠️ 2026-08-27 — 화풍을 실사로 바꿨는데 영상이 그림체로 나왔다.
-       카드 만드는 코드가 "이미 있으면 건너뛴다" 였고, 그림체 시절 카드가
-       그대로 다시 쓰였다. 지문을 적어 두고 바뀌면 다시 만들어야 한다.
+
+def check_reuse(bad, srcs=None):
+    """⑦ **만들어 둔 것을 다시 쓰는 자리마다 지문이 있는가.**
+
+    ⚠️⚠️ 2026-08-26 손님: "그림체는 실사로 가기로 했는데 영상 끝부분에는
+       일부러 애니메이션풍으로 바꾼거야?"
+       화풍을 실사로 바꿨는데 인물 카드가 그림체 시절 것으로 다시 쓰였다.
+       판단이 **"파일이 있으면 건너뛴다"** 였기 때문이다. 무엇으로 만든
+       것인지를 안 보니, 재료를 바꿔도 옛것이 그대로 나왔다.
+
+    그래서 카드 한 곳만 고치지 않고 **다시 쓰는 자리 전부**를 여기서 본다.
+      · 지문을 보고(can_reuse) 지문을 남기는가(stamp)
+      · 자리마다 짝이 맞는가 (본 자리는 셋인데 남기는 자리가 둘이면 사고다)
+      · 날것 건너뛰기가 남아 있지 않은가
     """
-    src = (ROOT / "src" / "still.py").read_text(encoding="utf-8") if src is None else src
-    if "card_sig" not in src or "sha1" not in src:
-        bad.append("인물 카드를 만들 때 **무엇으로 만들었는지(지문)** 를 안 남긴다 — "
-                   "인물 설명을 바꿔도 옛 카드가 그대로 다시 쓰인다 "
-                   "(src/still.py 의 cards)")
+    srcs = ({f: (ROOT / f).read_text(encoding="utf-8") for f in REUSERS}
+            if srcs is None else srcs)
+    for f, src in srcs.items():
+        what = REUSERS.get(f, f)
+        look, mark = src.count("reuse.can_reuse("), src.count("reuse.stamp(")
+        if not look or not mark:
+            bad.append(f"{what}을(를) 다시 쓸 때 **무엇으로 만들었는지(지문)** 를 "
+                       f"안 본다 — 지시문·그림을 고쳐도 옛것이 그대로 나온다 ({f})")
+        elif look != mark:
+            bad.append(f"{what}: 지문을 보는 자리 {look}곳인데 남기는 자리는 "
+                       f"{mark}곳이다 — 한쪽이 빠졌다 ({f})")
+        for m in RAW_SKIP.finditer(src):
+            line = src[:m.start()].count("\n") + 1
+            bad.append(f"{what}: 지문 없이 '파일이 있으면 건너뛴다' 가 남아 있다 "
+                       f"({f}:{line}) — reuse.can_reuse 로 바꿔야 한다")
 
 
 def scan(doc):
     bad = []
     check_playable(bad)
     check_title(bad, doc)
-    check_cards(bad)
+    check_reuse(bad)
     check_style(bad)
     check_fixed(bad)
     check_people(bad, doc)
@@ -331,17 +357,27 @@ def selftest():
     check_title(b, {"title": "32억"}, {"S001": {"title": "32억"}})
     assert not b, f"멀쩡한 것을 걸었다: {b}"
 
-    # ⑦ 카드를 지문 없이 건너뛰는 것 — 영상이 옛 화풍으로 나온 그 사고다
+    # ⑦ 지문 없이 다시 쓰는 것 — 영상이 옛 화풍으로 나온 그 사고다
     b = []
-    check_cards(b, "if out.exists():\n    continue")
-    assert any("지문" in x for x in b), f"지문 없는 카드 만들기를 못 잡는다: {b}"
+    check_reuse(b, {"src/still.py": "if out.exists():\n    continue"})
+    assert any("지문" in x for x in b), f"지문 없이 다시 쓰는 것을 못 잡는다: {b}"
+    # 지문을 보기만 하고 안 남기면 매번 다시 만든다 (돈이 새는 쪽 사고)
     b = []
-    check_cards(b, "sig = hashlib.sha1(p).hexdigest()\ncard_sig(out_dir, name)")
+    check_reuse(b, {"src/veo.py": "reuse.can_reuse(a, s)\nreuse.can_reuse(b, s)\n"
+                                  "reuse.stamp(a, s)"})
+    assert any("한쪽이 빠졌다" in x for x in b), f"어긋난 짝을 못 잡는다: {b}"
+    # 날것 건너뛰기가 한 줄이라도 남아 있으면 잡는다
+    b = []
+    check_reuse(b, {"src/veo.py": "reuse.can_reuse(a, s)\nreuse.stamp(a, s)\n"
+                                  "if out.exists() and out.stat().st_size > 10_000:"})
+    assert any("남아 있다" in x for x in b), f"날것 건너뛰기를 못 잡는다: {b}"
+    b = []
+    check_reuse(b, {"src/veo.py": "reuse.can_reuse(a, s)\nreuse.stamp(a, s)"})
     assert not b, f"멀쩡한 것을 걸었다: {b}"
 
     print("   ✅ 자기시험: 갈린 화풍 · 반대편을 안 막는 목록 · 바라는 것을 막는\n"
           "      목록 · 베낀 고정 줄 · 어긋난 인물표 · 빠진 이름표 ·\n"
-          "      무시된 설정 · 어긋난 재생 목록 · 갈린 제목 · 지문 없는 카드 —\n"
+          "      무시된 설정 · 어긋난 재생 목록 · 갈린 제목 ·\n      지문 없이 다시 쓰기 —\n"
           "      실제로 났던 사고를 재현해 다 잡는다")
 
 
@@ -365,7 +401,8 @@ def main():
     print("   ✅ 이야기 파일에 적어 둔 설정이 전부 읽힌다")
     print("   ✅ 관리자가 재생하려는 파일을 워크플로가 실제로 올린다")
     print("   ✅ 대본 제목과 화면 제목이 같다")
-    print("   ✅ 인물 설명이 바뀌면 인물 카드를 다시 만든다")
+    print("   ✅ 만들어 둔 것(카드·컷 그림·컷 영상)을 다시 쓸 때 "
+          "지문을 본다")
     print("\n" + "─" * 60)
     print("✅ 짝 검사: 전부 통과")
     return 0

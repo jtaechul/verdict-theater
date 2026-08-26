@@ -32,6 +32,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import cost                                                  # noqa: E402
+import reuse                                                 # noqa: E402
 import vprompt                                               # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -223,10 +224,6 @@ def episode(sid, no, out_dir, only_cut=None, stills=None, auto_sec=True):
         n = int(c.get("n", 0))
         out = out_dir / f"c{n:03d}.mp4"
         print(f"  컷{n} [{c.get('role', '')}] {c.get('subtitle', '')[:40]}")
-        if out.exists() and out.stat().st_size > 10_000:
-            print(f"    (이미 있다 — 건너뛴다: {out.name})")
-            made += 1
-            continue
         raw = (c.get("prompt") or "").strip()
         if not raw:
             print("    ⚠️ 이 컷에 영상 지시문이 없다 — 건너뛴다")
@@ -238,18 +235,30 @@ def episode(sid, no, out_dir, only_cut=None, stills=None, auto_sec=True):
         start = end = None
         if stills:
             cand = Path(stills) / f"c{n:03d}.png"
-            if cand.exists() and cand.stat().st_size > 10_000:
+            if cand.exists() and cand.stat().st_size > reuse.MIN_BYTES:
                 start = cand
             cand2 = Path(stills) / f"c{n:03d}_end.png"
-            if start and cand2.exists() and cand2.stat().st_size > 10_000:
+            if start and cand2.exists() and cand2.stat().st_size > reuse.MIN_BYTES:
                 end = cand2
             if end:
                 print("    시작·끝 그림 두 장으로 못박는다 — 영상은 사이를 잇기만 한다")
             elif start:
                 print(f"    시작 그림만 쓴다: {cand.name} (끝 그림이 없어 도착점이 자유다)")
+        # ⚠️ 보관해 둔 컷을 다시 쓸지는 **무엇으로 만든 것인가**로 판단한다.
+        #    "파일이 있으면 건너뛴다" 로 두면 지시문·그림을 고쳐도 옛 영상이
+        #    그대로 나온다 (2026-08-26 화풍 사고와 같은 모양). 규칙: src/reuse.py
+        sig = reuse.sig_of(prompt, csec, *(p for p in (start, end) if p))
+        ok, why = reuse.can_reuse(out, sig)
+        if ok:
+            print(f"    (그대로다 — 건너뛴다: {out.name})")
+            made += 1
+            continue
+        if why:
+            print(f"    ⚠️ {why} — 다시 만든다: {out.name}")
         try:
             spent += make_clip(prompt, csec, out, seed=_seed(sid, no, n),
                                start=start, end=end)
+            reuse.stamp(out, sig)
             made += 1
         except (cost.MonthlyCapReached, VeoError) as e:
             print(f"    ❌ {e}")
