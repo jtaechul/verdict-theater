@@ -71,7 +71,10 @@ def fake_open(req, timeout=0):
              "emotions": ["normal"]},
         ]
         # 추천 시험용 — 여럿 더 (나이 표시 포함, 어린이 하나)
-        for i in range(2, 9):
+        # ⚠️ 2026-08-25 — 예전엔 7명씩이었다. 등장인물이 5명(여자 3)이 되자
+        #    여자 목소리가 모자라 "인물끼리 안 겹친다" 를 잴 수가 없었다.
+        #    인물 수 × per 보다 넉넉히 둔다.
+        for i in range(2, 15):
             rows.append({"voice_id": f"tc_f{i}", "voice_name": f"여{i}",
                          "model": "ssfm-v21", "gender": "female",
                          "age": ("middle-aged" if i in (2, 3) else "young-adult"),
@@ -112,7 +115,8 @@ with tempfile.TemporaryDirectory() as d:
 
     print("② 목소리 목록을 읽는다")
     rows = tts.tc_voices()
-    ck("목소리를 다 읽었다", len(rows) == 18, str(len(rows)))
+    # ⚠️ 개수를 글자로 박아 두면 견본 목록을 늘릴 때마다 걸린다. 세어서 쓴다.
+    ck("목소리를 다 읽었다", len(rows) == 4 + 13 * 2, str(len(rows)))
     ck("성별을 알아본다", rows[0]["gender"] == "f" and rows[1]["gender"] == "m")
     ck("성별 모름도 죽지 않는다", rows[2]["gender"] == "")
     ck("여자 목록은 여자 먼저", tts.best_voices("FEMALE")[0] == "tc_f1")
@@ -188,7 +192,12 @@ with tempfile.TemporaryDirectory() as d:
     doc = _j.loads((ROOT / "data" / "series" / "S001.json")
                    .read_text(encoding="utf-8"))
     rec = tts.tc_recommend(doc["characters"], per=4)
-    ck("인물마다 추천이 온다", set(rec) == {"본처", "내연녀", "남편"}, str(set(rec)))
+    # ⚠️ 2026-08-25 — 세 사람을 글자로 박아 뒀더니 딸·변호사가 들어온 날
+    #    걸렸다. **대본에 있는 사람 전부**에게 추천이 가야 한다는 뜻이므로
+    #    대본에서 세어 쓴다 (한 명이라도 빠지면 그 사람은 손도 못 댄다).
+    _names = {c["name"] for c in doc["characters"]}
+    ck("인물마다 추천이 온다", set(rec) == _names,
+       f"{sorted(set(rec))} (있어야 할 것 {sorted(_names)})")
     ck("인물마다 4개뿐이다 (전부가 아니라)",
        all(len(v) == 4 for v in rec.values()),
        str({k: len(v) for k, v in rec.items()}))
@@ -207,12 +216,17 @@ with tempfile.TemporaryDirectory() as d:
     with redirect_stdout(io.StringIO()):
         tts.tc_audition_cast(aud2, doc, per=2)
     rows2 = json.loads((aud2 / "list.json").read_text(encoding="utf-8"))
-    ck("견본이 인물수×2개다", len(rows2) == 6, str(len(rows2)))
+    # ⚠️ 2026-08-25 — 3명을 글자로 박아 두었더니 딸·변호사가 들어온 날
+    #    멀쩡한 대본이 걸렸다. **대본에서 세어** 쓴다.
+    _want = len(doc.get("characters") or []) * 2
+    ck("견본이 인물수×2개다", len(rows2) == _want,
+       f"{len(rows2)} (있어야 할 것 {_want})")
     ck("줄마다 인물·대사·이름표가 있다",
        all(r["kind"] == "cast" and r["char"] and r["line"] and r["label"]
            for r in rows2))
     _mine = [c for c in CALLS if c["url"].endswith("text-to-speech")]
-    ck("만들기 호출이 6번뿐이다 (1125번이 아니라)", len(_mine) == 6, str(len(_mine)))
+    ck(f"만들기 호출이 {_want}번뿐이다 (1125번이 아니라)", len(_mine) == _want,
+       str(len(_mine)))
     # ⚠️ 본처의 실제 첫 대사가 **우연히** 시험 문장과 같은 문장이다
     #    ("당신 진짜 제정신이야?!"). ≠시험문장 으로 재면 헛경보가 난다.
     #    대본에서 직접 뽑아 **그 문장 그대로인지** 잰다.

@@ -1,5 +1,27 @@
 # -*- coding: utf-8 -*-
-"""S001 — 16화 이야기 데이터 (사건 장부 + 대사). 사람이 읽고 고치는 파일."""
+"""S001 — 16화 이야기 데이터 (사건 장부 + 대사). 사람이 읽고 고치는 파일.
+
+⭐⭐⭐ 2026-08-25 전면 재설계 (운영자)
+    "자극성만 신경쓰니까 씬 간 연결성과 스토리 전개가 제대로 이루어지지 않고
+     있어. 너무 어색해. 이건 광고가 아니고 드라마라는걸 다시 한번 생각해."
+
+    맞는 말이었다. 옛 대본을 세어 보니 —
+      · 5~16화, **12화 연속**으로 '아내와 그 여자가 어딘가에서 마주쳐 말싸움'
+      · 은행 앞·보험사 앞·법무사 앞·법원 앞 — 그 여자가 **거기 있을 이유가 없다**
+      · "보험사에도 가보시든가요" — **원수가 다음 단서를 친절히 알려준다** (4곳)
+      · 16화 중 14화가 물음표로 끝나는데 그중 4곳은 다음 화가 그 질문을 무시
+      · 첫 대사부터 끝까지 세기가 100 — 조용한 화가 **0개**
+      · 아이들은 네 번 언급되고 화면에는 **한 번도** 안 나옴
+
+    광고는 3초마다 결정타가 필요하다. 드라마는 **약하게 시작해서 어긋나고
+    그래서 무슨 일이 벌어지는가**를 본다. 다섯 가지로 다시 짰다.
+      ① 한 화 = 한 사건. 3컷은 **시작 → 어긋남 → 결과**
+      ② 이번 화의 `leaves` 가 다음 화의 `because` 와 **글자 그대로 같아야** 한다
+         (story_check 가 검사한다 — 이것이 '씬 간 연결'의 뼈대다)
+      ③ 정보는 원수가 아니라 **세상**에서 온다 (전화·창구·변호사·우편)
+      ④ 조용한 화(`quiet`)를 넣는다 — 다음 폭발이 세진다
+      ⑤ 컷당 대사 4개 → **2~3개**. 사람은 10초에 네 마디를 안 한다
+"""
 
 # ⭐ 금액 장부 — 실제 판결문 금액을 조금 늘려 백만원 단위 절사 (운영자 지시)
 LEDGER = {
@@ -22,431 +44,507 @@ VOICES = {
                 "Korean speaker, clipped and impatient, drops in volume at the end"),
     "Other woman": ("Other woman — a clear woman's voice in her forties, native Korean "
                     "speaker, cool and unhurried, with a small lilt at the end"),
+    "Daughter": ("Daughter — a light young woman's voice in her early twenties, native "
+                 "Korean speaker, careful and a little flat, keeps the end of a "
+                 "sentence low"),
+    "Lawyer": ("Lawyer — an even man's voice in his forties, native Korean speaker, "
+               "measured and unhurried, keeps the same level all the way through"),
 }
 
-W, H, O = "Wife", "Husband", "Other woman"
+W, H, O, D, L = "Wife", "Husband", "Other woman", "Daughter", "Lawyer"
+
+# 화면에 나오는 차례 (샷·이름표 순서). 새 사람을 넣으면 여기에도 넣는다.
+ORDER = [W, H, O, D, L]
+
+# ⭐⭐ 새로 들어온 두 사람 (2026-08-25 운영자가 고른 안 — "딸·변호사 2명 추가").
+#    까닭 — ① 딸이 있어야 **조용한 화**가 가능하다 (소리 안 지르고 더 아픈 화)
+#          ② 변호사가 있어야 아내가 금액을 **스스로 발견**한다.
+#             옛 대본은 그 여자가 "보험사에도 가보시든가요" 하고 알려 줬다.
+#    ⚠️ 생김새 글은 여기서만 적는다. 컷 프롬프트에는 절대 안 들어간다.
+# ⚠️ 기준 그림 프롬프트(flow_sheet)·설명(flow_desc)은 **여기서 안 쓴다.**
+#    src/charsheet.py 가 짓는다 — 배경·자세·화면잡기·빛·하지 말 것까지 한 벌로
+#    들어가야 하고, 그 문구가 바뀌면 다섯 사람이 **같이** 바뀌어야 한다.
+#    손으로 베껴 두면 한쪽만 낡아서 사람마다 다른 그림체가 나온다.
+NEW_CHARS = [
+    {
+        "name": "딸",
+        "flow_prompt": ("Korean woman, 22 years old, round face, calm dark eyes, "
+                        "straight black hair tied back low. Photorealistic, natural "
+                        "skin texture, grounded everyday Korean realism."),
+        "face_tag": "22, round face, straight black hair tied back low",
+        "role_en": "the daughter",
+        "voice": ("a light young woman's voice in her early twenties, native Korean "
+                  "speaker, careful and a little flat, keeps the end of a sentence low"),
+    },
+    {
+        "name": "변호사",
+        "flow_prompt": ("Korean man, 45 years old, long face, steady eyes, short black "
+                        "hair combed back. Photorealistic, natural skin texture, "
+                        "grounded everyday Korean realism."),
+        "face_tag": "45, long face, short black hair combed back",
+        "role_en": "the lawyer",
+        "voice": ("an even man's voice in his forties, native Korean speaker, measured "
+                  "and unhurried, keeps the same level all the way through"),
+    },
+]
 
 # 화별 이야기.
 #   when     화면에 띄울 때 (해가 바뀌면 시청자가 알아야 한다)
+#   because  이 화가 벌어지는 까닭 — **앞 화의 leaves 와 글자 그대로 같아야** 한다
+#   leaves   이 화가 남기는 것 → 다음 화의 because 가 된다
 #   reveal   이 화에서 **처음** 밝혀지는 것 (사건 장부)
 #   must     그 폭로가 대사에 실제로 있는지 검사할 낱말
 #   irony    아내가 없는 화 (시청자만 먼저 안다) — 누설 검사에서 뺀다
+#   quiet    소리 안 지르는 화 — 세기를 낮춰 다음 폭발을 세게 한다
+#   shots    컷 자리별 샷 크기 (two=두 사람 / ots=어깨너머 / close=클로즈업)
+#   extras   말은 안 해도 그 컷 화면에 서 있는 사람
 #   cuts     [장소키, 움직임, [(말한 사람, 대사)...]]
 EPS = [
- dict(no=1, title="그 여자를 집에 데려온 날", when="2012년 가을",
+ dict(no=1, title="낯선 여자", when="2012년 가을",
       mood="믿기지 않음", words=["numb", "shaken", "breaking"],
-      hook="이십 년 산 집에 *그 여자를 데려왔다*",
-      yt_title="결혼 20년, 남편이 그 여자를 집에 데려왔습니다",
-      recap="", reveal="남편이 그 여자를 집에 데려와 이혼을 요구한다",
+      hook="남편이 *낯선 여자*를 데리고 왔다",
+      yt_title="남편이 낯선 여자를 집에 데리고 들어왔습니다",
+      recap="", because="",
+      leaves="남편은 아이들한테는 아내가 말하라고 했다",
+      reveal="남편이 그 여자를 집에 데려와 이혼을 요구한다",
       must=["이혼하자"],
-      # ⭐⭐ 2026-08-25 — **1화만 먼저 시험** (운영자 지시).
-      #    2컷을 아내 **혼자 클로즈업**으로 바꿨다. 48컷 중 47컷에 두 사람이
-      #    나와 단조로웠다 — 혼자 말하는 컷이라야 진짜 얼굴 샷이 나온다.
-      #    그 여자는 말은 안 해도 2컷 화면에 서 있다 (extras).
       shots=["two", "close", "ots"],
-      extras={2: [O, H]},
+      extras={1: [O], 2: [H, O]},
       cuts=[
-        ("현관", "the front door is already swinging open as the shot starts; the wife "
-                 "turns to see a strange woman standing close behind her husband",
-         [(W, "이 여자 누구야."),
-          (H, "들어와. 어차피 알 사람이야."),
-          (W, "알 사람? 나 몰래 만난 지 얼마나 됐는데."),
-          (H, "일 년. 숨길 생각도 없어.")]),
-        ("거실", "the wife stands very still in the middle of the living room and holds "
-                 "his eyes, while the other woman and the husband wait behind her",
-         [(W, "당장 나가. 여기가 어디라고 들어와."),
-          (W, "이십 년을 내가 쓸고 닦은 집이야."),
-          (W, "저 여자 데리고 지금 당장 나가.")]),
-        ("거실", "the husband pulls a bankbook from the drawer and slides it into his "
-                 "inside pocket without looking at his wife",
-         [(H, "이혼하자. 서류는 내가 보낼게."),
-          (W, "이혼? 이십 년을 살았는데?"),
-          (H, "정 떨어진 지 오래야."),
-          (W, "그럼 우리 애들은 어떻게 되는 건데?")]),
+        ("현관", "the wife turns from the doorway with a spoon still in one hand as her "
+                 "husband steps in with a woman close behind him",
+         [(W, "왜 이렇게 늦었어. 밥 다 식었는데."),
+          (W, "…손님이셔?"),
+          (H, "들어와. 어차피 알 사람이야.")]),
+        ("거실", "the wife stands still in the middle of the living room while the woman "
+                 "sits down on the sofa behind her and the husband waits by the door",
+         [(W, "저기요. 지금 거기 앉으시는 거예요?"),
+          (W, "여보, 이 사람 누구냐고 물었잖아.")]),
+        ("거실", "the husband takes his car key from the low table and turns toward the "
+                 "door while his wife stays where she is",
+         [(H, "일 년 됐어. 숨길 생각 없어."),
+          (H, "이혼하자. 서류는 보낼게. 애들한테는 네가 말해."),
+          (W, "…애들한테? 그걸 왜 내가 말해?")]),
       ]),
- dict(no=2, title="이혼 소송 기각", when="2013년 8월",
+
+ dict(no=2, title="딸이 먼저 뜯었다", when="2012년 겨울",
+      mood="삼키는 마음", words=["quiet", "careful", "holding"],
+      hook="이혼 소장을 *딸이 먼저* 뜯었다",
+      yt_title="이혼 소장을 딸이 먼저 뜯어 봤습니다",
+      recap="남편이 그 여자를 집에 데려왔다",
+      because="남편은 아이들한테는 아내가 말하라고 했다",
+      leaves="아내는 딸에게 알아서 하겠다고 말했다",
+      reveal="남편이 이혼 소송을 냈고 딸이 먼저 알게 된다",
+      must=["소송"], quiet=True,
+      shots=["ots", "two", "close"],
+      extras={3: [D]},
+      cuts=[
+        ("현관", "the daughter stands just inside the door and holds out a torn-open "
+                 "envelope toward her mother, who has stopped with one shoe half off",
+         [(D, "엄마, 이거 아빠가 보낸 거야?"),
+          (W, "…이리 줘."),
+          (D, "아빠 이름이 있던데.")]),
+        ("부엌", "the mother sets a bowl down in front of her daughter and sits across "
+                 "the small table, both hands flat on the tabletop",
+         [(D, "이혼 소송이라고 하던데."),
+          (W, "어른들 일이야. 밥이나 먹어."),
+          (D, "엄마, 울었어?")]),
+        ("부엌", "the mother turns back to the counter and keeps her hands moving over "
+                 "the cutting board while her daughter stays sitting behind her",
+         [(W, "괜찮아. 양파 썰어서 그래."),
+          (W, "너는 아무 걱정 하지 마."),
+          (W, "…엄마가 알아서 할게.")]),
+      ]),
+
+ dict(no=3, title="기각", when="2013년 8월",
       mood="억눌린 분노", words=["tight", "hard", "furious"],
-      hook="바람피운 놈이 걸었다가 *기각당했다*",
-      yt_title="바람피운 남편이 먼저 이혼 소송을 걸었습니다",
-      recap="남편은 이혼 소송을 냈다", reveal="법원이 남편의 이혼 청구를 기각했다",
+      hook="바람피운 쪽이 걸었다가 *기각당했다*",
+      yt_title="바람피운 남편이 낸 이혼 소송, 법원이 기각했습니다",
+      recap="딸이 소장을 먼저 뜯어 보았다",
+      because="아내는 딸에게 알아서 하겠다고 말했다",
+      leaves="남편은 방법이 없는 건 아니라고 했다",
+      reveal="법원이 남편의 이혼 청구를 기각한다",
       must=["기각"],
+      shots=["two", "ots", "close"],
+      extras={3: [W]},
       cuts=[
-        ("법원복도", "the husband steps in front of his wife to block her way down the "
-                     "corridor, one hand closed tight at his side",
-         [(H, "도장 하나 찍는 게 어려워?"),
-          (W, "방금 판결문 못 봤어? 법원이 뭐랬는데."),
-          (H, "그깟 종이 한 장이 뭐라고."),
-          (W, "기각. 당신 이혼 청구 기각이야.")]),
-        ("법원복도", "the wife turns her back and presses one palm flat on the wall while the "
-                     "husband stares at the closed courtroom door",
-         [(W, "바람피운 쪽에 책임이 있대."),
-          (H, "그래서 뭐 어쩌라고."),
-          (W, "당신이 잘못했다고 법이 말한 거야."),
-          (H, "들킨 게 재수 없을 뿐이지.")]),
-        ("법원복도", "the husband walks away down the corridor and stops once without "
-                     "turning around",
-         [(H, "재산 때문에 이래? 내가 죽기라도 바라?"),
-          (W, "돈 얘기는 당신이 먼저 꺼냈어."),
-          (H, "두고 봐. 방법이 없는 건 아니니까."),
-          (W, "…무슨 방법?")]),
+        ("법원복도", "the husband steps in front of his wife to block the corridor, one "
+                     "hand closed tight at his side",
+         [(H, "도장 하나 찍는 게 그렇게 어려워?"),
+          (W, "방금 판사님 말 못 들었어?"),
+          (H, "그깟 종이 한 장이 뭐라고.")]),
+        ("법원복도", "the wife turns her back and presses one palm flat on the wall while "
+                     "the husband stays two steps behind her",
+         [(W, "기각. 당신 이혼 청구 기각이야."),
+          (H, "들킨 게 재수 없었을 뿐이야."),
+          (W, "잘못한 쪽에 책임이 있대.")]),
+        ("법원복도", "the husband stops at the top of the stairs and looks back down the "
+                     "corridor, the wife still standing where he left her",
+         [(H, "재산 때문에 이러는 거지?"),
+          (H, "두고 봐. 방법이 없는 건 아니니까…")]),
       ]),
- dict(no=3, title="죽으면 나오는 돈", when="2013년 겨울", irony=True,
-      mood="차가운 계산", words=["cool", "clipped", "icy"],
-      hook="이혼에 지자 *죽으면 나오는 돈*에 손댔다",
-      yt_title="소송에 진 남편이 죽으면 나오는 돈에 손댔습니다",
-      recap="소송에서 진 남편은 앙심을 품었다",
-      reveal="남편이 사망보험 아홉 건의 받을 사람을 그 여자로 바꾼다",
-      must=["아홉 건"],
+
+ dict(no=4, title="기각 당일", when="2013년 8월",
+      mood="차가운 계산", words=["cold", "brisk", "certain"],
+      hook="판결 난 *그날 바로* 넘겼다",
+      yt_title="이혼 기각 당일, 남편은 서류부터 넘겼습니다",
+      recap="법원이 남편의 이혼 청구를 기각했다",
+      because="남편은 방법이 없는 건 아니라고 했다",
+      leaves="남편이 그 여자 이름으로 재산을 넘기기 시작했다",
+      reveal="남편이 기각 당일 그 여자 이름으로 재산을 넘기기 시작한다",
+      must=["팔월 구일"], irony=True,
+      shots=["ots", "close", "two"],
+      extras={2: [O]},
       cuts=[
-        ("카페", "the husband sets a thin stack of forms on the table and turns them "
-                 "around to face the other woman",
-         [(H, "그 여자한테는 한 푼도 못 줘."),
-          (O, "그럼 어떻게 할 건데?"),
-          (H, "내 앞으로 된 걸 전부 자기 이름으로 돌릴 거야.")]),
-        ("카페", "the other woman leans in over the table and the husband looks away "
-                 "toward the window",
-         [(O, "정말 나한테 다 준다고?"),
-          (H, "당신밖에 없잖아."),
-          (O, "빈말이면 진짜 안 돼."),
-          (H, "빈말 아니야. 이번 주에 서류부터 넘길게.")]),
-        ("카페", "the husband taps one line on the form twice and pushes it closer to her",
-         [(H, "내가 죽으면 나오는 돈, 받을 사람을 바꿀 수 있대."),
-          (O, "…그걸 나로?"),
-          (H, "아홉 건 전부. 저 여자는 십 원도 못 받아."),
-          (O, "그래도 되는 거야?")]),
+        ("카페", "the husband sits down across from the woman and pushes his cup aside, "
+                 "both forearms on the table",
+         [(H, "오늘 재판 졌어. 도장을 안 찍어 주네."),
+          (O, "그럼 어떻게 되는 거야?"),
+          (H, "이혼은 안 되지. 길은 있어.")]),
+        ("카페", "the husband leans in over the small table while the woman sits back "
+                 "with both hands around her cup",
+         [(H, "내 앞으로 된 건 전부 자기 이름으로 돌릴 거야."),
+          (H, "저 여자한테는 십 원도 안 가게.")]),
+        ("카페", "the woman puts her cup down and looks up at him, while he keeps his "
+                 "eyes on the table between them",
+         [(O, "오늘 바로 하겠다고?"),
+          (H, "이천십삼년 팔월 구일. 오늘부터야."),
+          (O, "…부인이 알면 어쩌려고?")]),
       ]),
- dict(no=4, title="아내보다 먼저", when="2016년 여름", irony=True,
-      mood="들뜬 뻔뻔함", words=["airy", "smug", "brazen"],
-      hook="남편이 *집사람보다 자기가 먼저*라고 적었다",
-      yt_title="남편이 계약서에 아내보다 그 여자를 먼저 적었습니다",
-      recap="남편은 전 재산을 그 여자 앞으로 돌리기 시작했다",
+
+ dict(no=5, title="모르는 번호", when="2014년 봄",
+      mood="서늘한 예감", words=["puzzled", "uneasy", "alert"],
+      hook="모르는 번호가 *남편 서류*를 물었다",
+      yt_title="모르는 번호가 남편 서류를 확인해 달라고 했습니다",
+      recap="남편이 그 여자 이름으로 재산을 넘겼다",
+      because="남편이 그 여자 이름으로 재산을 넘기기 시작했다",
+      leaves="아내는 전화를 받았지만 아무것도 알아내지 못했다",
+      reveal="아내가 남편 서류를 확인하는 전화를 받는다",
+      must=["받는 사람"],
+      shots=["close", "two", "ots"],
+      extras={1: [D]},
+      cuts=[
+        ("거실", "the wife stops halfway across the living room with the phone against "
+                 "her ear and one hand going still on the back of a chair",
+         [(W, "네, 제가 그 사람 아내인데요."),
+          (W, "받는 사람을 바꿨다고요? 무슨 말씀이세요.")]),
+        ("거실", "the daughter comes in from the hallway and stops beside her mother, "
+                 "who lowers the phone to her chest",
+         [(D, "엄마, 누구야?"),
+          (W, "몰라. 보험회사라는데 잘못 걸었대."),
+          (D, "잘못 걸었는데 왜 그렇게 오래 통화해.")]),
+        ("거실", "the wife sets the phone face down on the table and keeps her hand on "
+                 "it while her daughter waits in the doorway",
+         [(W, "아니야. 그냥 잘못 온 전화야."),
+          (D, "아빠한테 물어보라니까."),
+          (W, "…근데 왜 내 이름을 알았을까?")]),
+      ]),
+
+ dict(no=6, title="부인보다 내가 먼저", when="2016년 여름",
+      mood="들뜬 뻔뻔함", words=["bright", "brisk", "uneasy"],
+      hook="계약서에 *\"부인보다 내가 먼저\"*",
+      yt_title="남편은 계약서에 아내보다 그 여자를 먼저 적었습니다",
+      recap="아내는 남편 서류를 묻는 전화를 받았다",
+      because="아내는 전화를 받았지만 아무것도 알아내지 못했다",
+      leaves="그 여자가 남편에게 왜 죽는 얘기를 하냐고 물었다",
       reveal="병원 지분을 죽으면 그 여자에게 주는 특약에 서명한다",
-      must=["특약"],
+      must=["특약"], irony=True,
+      shots=["two", "ots", "close"],
+      extras={3: [H]},
       cuts=[
-        ("새아파트", "the husband holds out a set of keys and the other woman takes them "
-                     "and turns slowly to look at the empty room",
-         [(H, "이거 받아. 이 집, 자기 이름으로 해놨어."),
-          (O, "진짜 집을 샀어?"),
-          (H, "이사 준비해."),
-          (O, "평생 자기 옆에서 잘할게.")]),
-        ("사무실", "the husband opens a folder on the desk and runs his finger down one "
-                   "page while the other woman stands behind his shoulder",
-         [(H, "병원 지분 말인데, 계약서 하나 고쳤어."),
+        ("사무실", "the husband turns his chair away from the desk to face the woman "
+                   "standing beside it, one hand tapping the armrest",
+         [(H, "병원 지분 말인데, 계약서를 하나 고쳤어."),
           (O, "무슨 계약서?"),
-          (H, "내가 잘못되면 내 몫은 자기 거야."),
-          (O, "부인이 있는데 그게 돼?")]),
-        ("사무실", "the husband closes the folder and pushes it into a drawer, then locks "
-                   "the drawer",
-         [(H, "특약에 적었어. 집사람보다 자기가 먼저라고."),
-          (O, "…부인보다 내가?"),
-          (H, "그래. 도장까지 다 찍었어."),
-          (O, "근데 자기, 갑자기 왜 죽는 얘기를 해?")]),
+          (H, "내가 잘못되면 내 몫은 자기 거야.")]),
+        ("사무실", "the woman steps back to the window and half turns while the husband "
+                   "stays in the chair watching her",
+         [(O, "부인이 있는데 그게 돼?"),
+          (H, "특약에 적었어. 부인보다 자기가 먼저라고.")]),
+        ("사무실", "the woman turns fully around to look at him, one hand still on the "
+                   "window frame, while he leans back out of the light",
+         [(O, "부인보다 내가 먼저라고?"),
+          (O, "…근데 자기, 갑자기 왜 죽는 얘기를 해?")]),
       ]),
- dict(no=5, title="갑작스러운 죽음", when="2017년 1월",
-      mood="무너짐", words=["stunned", "trembling", "wailing"],
-      hook="남편이 *그 여자 집에서 떨어져* 죽었다",
-      yt_title="남편이 그 여자 집에서 떨어져 죽었습니다",
-      recap="남편은 재산을 전부 그 여자 앞으로 돌려놓았다",
-      reveal="남편이 그 여자와 살던 아파트에서 떨어져 죽는다",
+
+ dict(no=7, title="새벽 전화", when="2017년 1월",
+      mood="무너짐", words=["numb", "shaken", "hollow"],
+      hook="새벽 전화 *남편분이 떨어지셨습니다*",
+      yt_title="새벽에 전화가 왔습니다. 남편이 떨어졌다고",
+      recap="남편은 아내보다 그 여자를 먼저로 적었다",
+      because="그 여자가 남편에게 왜 죽는 얘기를 하냐고 물었다",
+      leaves="아내는 남편이 그 여자 집에서 떨어져 죽은 것을 알았다",
+      reveal="남편이 그 여자와 살던 집에서 떨어져 죽는다",
       must=["떨어졌"],
+      shots=["close", "two", "ots"],
       cuts=[
-        ("병원복도밤", "the wife takes one step back and puts a hand out to the wall to "
-                       "steady herself",
-         [(W, "뭐라고요? 그이가 죽어요?"),
-          (O, "혼자 떨어졌어요. 나도 자다가 알았고."),
-          (W, "멀쩡하던 사람이 왜 떨어져."),
-          (O, "그걸 내가 어떻게 알아요.")]),
-        ("병원복도밤", "the other woman folds her arms and looks down the corridor while "
-                       "the wife stands in front of her",
-         [(W, "거기서 무슨 일이 있었길래 사람이 떨어져."),
-          (O, "나도 놀랐다니까요."),
-          (W, "네가 죽인 거 아니야?"),
-          (O, "사람 함부로 의심하지 마요.")]),
-        ("병원복도밤", "the other woman turns and walks a few steps away, then stops and "
-                       "speaks without turning back",
-         [(O, "죽은 건 죽은 거고, 나도 피해자예요."),
-          (W, "내 남편이 왜 네 집에서 죽어."),
-          (O, "그래서, 장례비는 그쪽이 낼 거죠?")]),
+        ("거실", "the wife sits up on the edge of the sofa with the phone at her ear, "
+                 "one hand gripping the armrest",
+         [(W, "여보세요… 네, 제가 아내인데요."),
+          (W, "네? 어디서 떨어졌다고요?")]),
+        ("병원복도밤", "the wife comes down the corridor and stops in front of the woman, "
+                       "who rises from one of the steel chairs",
+         [(W, "그이가 왜 거기서 떨어져요."),
+          (O, "혼자 나갔어요. 나도 자다가 알았고."),
+          (W, "왜 당신 집이야. 왜 하필 거기야.")]),
+        ("병원복도밤", "the woman takes her bag from the chair and steps around the wife "
+                       "toward the exit, then stops",
+         [(O, "저도 놀랐어요. 그만 좀 하세요."),
+          (W, "그이가 왜 당신 집에서."),
+          (O, "장례비는 그쪽이 내시는 거죠?")]),
       ]),
- dict(no=6, title="장례식장의 불청객", when="2017년 1월",
-      mood="치미는 모욕", words=["cold", "stung", "seething"],
+
+ dict(no=8, title="장례식장", when="2017년 1월",
+      mood="치미는 모욕", words=["tight", "hard", "cold"],
       hook="장례식장에 온 그 여자 *다 내 거예요*",
-      yt_title="장례식장에 찾아온 그 여자가 다 내 거라고 했습니다",
-      recap="장례식장에 그 여자가 찾아왔다",
+      yt_title="장례식장에 그 여자가 찾아왔습니다",
+      recap="남편은 그 여자 집에서 떨어져 죽었다",
+      because="아내는 남편이 그 여자 집에서 떨어져 죽은 것을 알았다",
+      leaves="그 여자가 남긴 건 전부 자기 것이라고 했다",
       reveal="그 여자가 남편이 남긴 것이 전부 자기 것이라고 말한다",
       must=["다 내 거"],
+      shots=["two", "close", "ots"],
+      extras={2: [O]},
       cuts=[
-        ("장례식장", "the other woman steps in through the sliding door and the wife "
-                     "stands up from the floor to block the way",
-         [(W, "여기가 어디라고 와!"),
-          (O, "마지막 인사하러 왔어요."),
-          (W, "당장 내 눈앞에서 꺼져."),
-          (O, "어차피 서류만 부부였잖아요.")]),
-        ("장례식장", "the wife's hand tightens on the door frame while the other woman "
-                     "looks past her into the mourning room",
-         [(W, "서류만 부부? 이십 년이 서류야?"),
-          (O, "곁을 지킨 건 나예요."),
-          (W, "우리 애들 밥은 내가 먹였어."),
-          (O, "말조심해요. 경찰 부를 거예요.")]),
-        ("장례식장", "the other woman turns to leave and pauses at the door",
-         [(O, "갈게요. 그 사람이 남긴 건 다 내 거니까."),
-          (W, "내 남편 재산에 네가 왜 손을 대."),
-          (O, "통장부터 열어 봐요."),
-          (W, "…그게 무슨 소리야?")]),
+        ("장례식장", "the wife comes out through the sliding door and stops the woman in "
+                     "the middle of the reception floor",
+         [(W, "여기가 어디라고 와."),
+          (O, "마지막 인사는 하고 가야죠."),
+          (W, "당장 내 눈앞에서 꺼져.")]),
+        ("장례식장", "the wife stands very still in the middle of the floor while the "
+                     "woman waits a few steps behind her",
+         [(W, "이십 년이야. 이십 년을 같이 살았어."),
+          (W, "그 사람 밥은 내가 차렸어.")]),
+        ("장례식장", "the woman turns at the doorway with her bag on one shoulder while "
+                     "the wife stays where she is",
+         [(O, "그이가 남긴 건 다 내 거예요."),
+          (W, "내 남편 물건에 네가 왜 손을 대."),
+          (O, "곧 알게 되실 텐데요…")]),
       ]),
- dict(no=7, title="남은 건 빚뿐", when="2017년 2월",
-      mood="절박함", words=["worn", "pleading", "desperate"],
-      hook="통장을 열자 남은 건 *빚 육억*뿐이었다",
-      yt_title="남편이 남긴 것은 빚 6억뿐이었습니다",
-      recap="장례가 끝나고 통장을 열어 보았다",
+
+ dict(no=9, title="통장을 열었다", when="2017년 2월",
+      mood="절박함", words=["low", "tight", "breaking"],
+      hook="통장을 열자 남은 건 *빚 육억*뿐",
+      yt_title="남편 통장을 열어 보니 빚만 6억 남아 있었습니다",
+      recap="그 여자가 남긴 건 전부 자기 것이라 했다",
+      because="그 여자가 남긴 건 전부 자기 것이라고 했다",
+      leaves="아내는 남편 통장에 빚만 남은 것을 보았다",
       reveal="남편의 통장에 남은 것은 빚 육억뿐이다",
-      must=["빚 육억"],
+      must=["빚 육억"], quiet=True,
+      shots=["ots", "two", "close"],
+      extras={1: [D], 3: [D]},
       cuts=[
-        ("은행앞", "the wife holds a thin bank slip in both hands and keeps her eyes on "
-                   "it",
-         [(W, "통장을 다 열어 봤어. 남은 게 빚 육억이야."),
-          (O, "그걸 왜 나한테 따져요."),
-          (W, "네가 다 빼돌렸잖아."),
-          (O, "난 받은 것뿐이에요.")]),
-        ("은행앞", "the wife steps in front of the other woman on the footpath, blocking "
-                   "her way without touching her",
-         [(W, "육억을 나한테 갚으라고? 그렇게는 못 해."),
-          (O, "법이 그런 걸 어떡해요."),
-          (W, "숨긴 돈 전부 내놔."),
-          (O, "숨긴 돈이 어디 있어요.")]),
-        ("은행앞", "the other woman walks around her and stops one step past, half "
-                   "turning back",
-         [(O, "빚 갚기 싫으면 포기하시든가요."),
-          (W, "포기하면 네가 다 갖잖아."),
-          (O, "이미 내 앞으로 다 넘어와 있어요."),
-          (W, "…뭐가 얼마나 넘어갔는데?")]),
+        ("은행창구", "the wife sits at the low counter and puts both hands flat on it, "
+                     "her daughter standing behind the chair",
+         [(W, "이게… 이게 다예요?"),
+          (W, "남은 게 빚 육억이라고요?"),
+          (D, "엄마, 잘못 본 거 아니야?")]),
+        ("은행창구", "the daughter comes round to the side of the counter and crouches "
+                     "next to her mother's chair",
+         [(D, "엄마, 아빠 돈은 어디 갔는데."),
+          (W, "…몰라. 하나도 안 남았대."),
+          (D, "그럼 우리가 그 빚을 갚아야 해?")]),
+        ("은행창구", "the wife keeps looking straight ahead at the counter while her "
+                     "daughter waits beside her",
+         [(W, "미안해. 엄마가 진짜 몰랐어."),
+          (W, "네 아빠가 이럴 사람이 아닌데…")]),
       ]),
- dict(no=8, title="병원 지분 십억", when="2017년 3월",
-      mood="맞부딪힘", words=["level", "sharp", "blazing"],
+
+ dict(no=10, title="등록금", when="2017년 3월",
+      mood="삼키는 마음", words=["quiet", "careful", "resolved"],
+      hook="딸의 등록금을 *못 냈다*",
+      yt_title="딸 등록금을 못 냈습니다",
+      recap="남편 통장에 남은 것은 빚뿐이었다",
+      because="아내는 남편 통장에 빚만 남은 것을 보았다",
+      leaves="아내는 빼돌린 돈을 찾아보기로 했다",
+      reveal="아내가 딸의 등록금을 내지 못한다",
+      must=["등록금"], quiet=True,
+      shots=["close", "two", "ots"],
+      extras={1: [D]},
+      cuts=[
+        ("부엌", "the wife stands at the counter with her back half turned and keeps "
+                 "stirring a pot while her daughter sits at the table",
+         [(W, "휴학? 왜 갑자기 휴학을 해."),
+          (W, "한 학기만 더 다니면 되잖아.")]),
+        ("부엌", "the daughter pushes her bowl aside and looks up while her mother sits "
+                 "down across from her",
+         [(D, "엄마, 등록금 못 냈잖아."),
+          (W, "엄마가 어떻게든 해볼게."),
+          (D, "그만해. 나 다 알아.")]),
+        ("부엌", "the daughter stops in the doorway on her way out while the wife "
+                 "stays at the table with both hands around a cold cup",
+         [(W, "네 아빠 돈 어디로 갔는지 찾을 거야."),
+          (D, "어떻게 찾아."),
+          (W, "다 찾아서 네 앞으로 돌려놓을게…")]),
+      ]),
+
+ dict(no=11, title="병원 지분 십억", when="2017년 5월",
+      mood="맞부딪힘", words=["tight", "hard", "cold"],
       hook="병원 지분 *십억*까지 그 여자 앞으로",
       yt_title="병원 지분 10억까지 그 여자 앞으로 넘어가 있었습니다",
-      recap="빼돌린 재산을 찾아 병원으로 갔다",
+      recap="아내는 빼돌린 돈을 찾아보기로 했다",
+      because="아내는 빼돌린 돈을 찾아보기로 했다",
+      leaves="아내는 십억 말고 더 있는지 알아보기로 했다",
       reveal="병원 지분 십억이 그 여자 앞으로 넘어가 있다",
       must=["십억"],
+      shots=["two", "ots", "close"],
       cuts=[
-        ("병원복도", "the wife walks straight down the corridor and stops in front of the "
-                     "other woman, who stays exactly where she is",
-         [(W, "여기서 당장 나가."),
-          (O, "내 병원인데 왜 나가요."),
-          (W, "이게 언제부터 네 병원이야."),
-          (O, "그이 몫 십억, 전부 내 앞으로 왔어요.")]),
-        ("병원복도", "the other woman holds up a folded document and then lowers it again "
-                     "without handing it over",
-         [(W, "그건 죽기 전 얘기지."),
-          (O, "죽어서도 내 거 맞거든요."),
-          (W, "이십 년 같이 산 나보다 네가 먼저야?"),
-          (O, "서류에 그렇게 적혀 있어요.")]),
-        ("병원복도", "the other woman walks past her toward the doorway and speaks over "
-                     "her shoulder",
-         [(O, "억울하면 소송이라도 하시든가."),
-          (W, "십억이 전부야?"),
-          (O, "글쎄요. 보험사에도 가보시든가요."),
-          (W, "…보험? 무슨 보험이 있는데?")]),
+        ("병원복도", "the wife comes down the corridor and stops in front of the woman, "
+                     "who is standing by the wheeled trolley",
+         [(W, "네가 여기 왜 있어."),
+          (O, "제 병원인데 왜 나가요."),
+          (W, "이게 언제부터 네 병원이야.")]),
+        ("병원복도", "the woman walks past the wife toward the far end of the corridor "
+                     "and the wife turns to follow her with her eyes",
+         [(O, "그이 몫 십억, 전부 제 앞으로 왔어요."),
+          (W, "그건 죽기 전 얘기지."),
+          (O, "서류에 그렇게 적혀 있어요. 억울하면 소송하시든가.")]),
+        ("병원복도", "the wife stands alone in the empty corridor and takes out her "
+                     "phone, then holds it in both hands",
+         [(W, "십억이 통째로 넘어갔어."),
+          (W, "이게 다일까. 아직 더 있는 거 아니야?")]),
       ]),
- dict(no=9, title="보험금 십삼억", when="2017년 4월",
-      mood="기막힘", words=["flat", "incredulous", "outraged"],
-      hook="*십삼억* 보험금, 아홉 건 전부 그 여자",
-      yt_title="사망보험금 13억이 전부 그 여자 앞으로 되어 있었습니다",
-      recap="병원 지분 말고도 빼돌린 돈이 더 있었다",
+
+ dict(no=12, title="보험 아홉 건", when="2017년 6월",
+      mood="기막힘", words=["low", "tight", "hard"],
+      hook="보험 아홉 건 *십삼억* 전부 그 여자",
+      yt_title="사망보험 9건, 13억이 전부 그 여자 앞으로 되어 있었습니다",
+      recap="병원 지분 십억이 그 여자 앞으로 갔다",
+      because="아내는 십억 말고 더 있는지 알아보기로 했다",
+      leaves="아내는 보험료가 어디서 나갔는지 알아보기로 했다",
       reveal="사망보험금 십삼억이 전부 그 여자 앞으로 되어 있다",
       must=["십삼억"],
+      shots=["two", "close", "ots"],
+      extras={2: [L]},
       cuts=[
-        ("보험사앞", "the wife holds a printed slip out at arm's length toward the other "
-                     "woman, who keeps both hands at her sides",
-         [(W, "십삼억. 아홉 건 전부 네 이름이더라."),
-          (O, "그이가 나 주려고 든 거예요."),
-          (W, "진짜 끝까지 가는구나."),
-          (O, "왜요, 내 이름 있으면 안 돼요?")]),
-        ("보험사앞", "the wife lowers the slip and folds it once, very slowly",
-         [(W, "그 돈이 어디서 났는데."),
-          (O, "그이가 벌어서 낸 거죠."),
-          (W, "그 사람이 번 돈은 우리 가족 돈이야."),
-          (O, "법대로 하면 전부 내 돈이에요.")]),
-        ("보험사앞", "the other woman steps down onto the footpath and turns to face her "
-                     "one last time",
-         [(W, "매달 이천만 원씩 부었더라."),
-          (O, "능력 없는 걸 왜 내 탓을 해요."),
-          (W, "애들한텐 십 원도 안 줬으면서."),
-          (O, "억울하면 더 찾아보시든가. 그게 다인 줄 알아요?")]),
+        ("변호사사무실", "the lawyer turns his laptop away and sits back while the wife "
+                         "leans forward in the visitor chair",
+         [(L, "보험이 아홉 건 나왔습니다."),
+          (W, "아홉 건이요? 무슨 보험이요."),
+          (L, "받는 사람이 전부 그 여자입니다. 다 합쳐 십삼억이요.")]),
+        ("변호사사무실", "the wife stops moving with one hand halfway to the desk and "
+                         "stays like that, the lawyer waiting across from her",
+         [(W, "십삼억이요…"),
+          (W, "우리 애 등록금은 못 냈어요. 한 학기를요.")]),
+        ("변호사사무실", "the wife sits back down and the lawyer folds both hands on the "
+                         "desk between them",
+         [(W, "그 돈이 어디서 났는데요."),
+          (L, "매달 이천만 원씩 나갔습니다."),
+          (W, "…어느 통장에서 나갔는데요?")]),
       ]),
- dict(no=10, title="다 합치니 삼십이억", when="2017년 5월",
-      mood="벼른 결심", words=["quiet", "firm", "unyielding"],
+
+ dict(no=13, title="다 합치니 삼십이억", when="2017년 8월",
+      mood="벼른 결심", words=["low", "steady", "hard"],
       hook="다 합치니 *삼십이억*이었다",
-      yt_title="빼돌린 돈을 다 합치니 32억이었습니다",
-      recap="빼돌린 재산을 하나씩 찾아냈다",
+      yt_title="다 합쳐 보니 32억이 빠져나가 있었습니다",
+      recap="보험금 십삼억도 그 여자 앞이었다",
+      because="아내는 보험료가 어디서 나갔는지 알아보기로 했다",
+      leaves="아내는 통장 기록을 전부 챙겨 두었다",
       reveal="현금과 수표로 구억이 더 빠져나가 합계가 삼십이억이 된다",
       must=["삼십이억"],
+      shots=["close", "two", "ots"],
+      extras={1: [D]},
       cuts=[
-        ("법무사앞", "the wife holds a thick folder against her chest with both arms",
-         [(W, "다 뒤졌어. 현금하고 수표로만 구억이 더 빠졌더라."),
-          (O, "그건 그냥 받은 거예요."),
-          (W, "합치면 삼십이억이야.")]),
-        ("법무사앞", "the other woman shrugs and looks at her watch while the wife stands "
-                     "very still",
-         [(O, "받은 걸 어떡해요."),
-          (W, "받은 게 아니라 빼돌린 거지."),
-          (O, "벌써 몇 년 전 일인데요."),
-          (W, "시간 지난다고 없어지는 게 아니야.")]),
-        ("법무사앞", "the wife turns toward the law firm door and stops with her hand on "
-                     "the handle",
-         [(W, "다 토해내게 해줄게. 숨겨둔 아파트까지 찾아냈어."),
-          (O, "할 테면 해봐요. 겁 안 나요."),
-          (W, "그 거짓말이 법정에서도 통할까?")]),
+        ("부엌", "the wife sits at the small table with a stack of bankbooks in front of "
+                 "her and moves them one by one to her left, her daughter waiting in "
+                 "the doorway",
+         [(W, "현금하고 수표로만 구억이 더 나갔어."),
+          (W, "이걸 몇 년에 걸쳐서 했더라.")]),
+        ("부엌", "the daughter sits down across the table and the wife pushes one "
+                 "bankbook toward her",
+         [(D, "다 합치면 얼마야?"),
+          (W, "삼십이억."),
+          (D, "…삼십이억? 그게 다 우리 돈이었잖아.")]),
+        ("부엌", "the wife gathers the bankbooks into one pile and puts a rubber band "
+                 "around them, then holds the pile in both hands",
+         [(W, "이건 하나도 안 버릴 거야."),
+          (D, "엄마, 이걸로 되겠어?"),
+          (W, "…이게 시작이야. 어디까지 갈 수 있을까?")]),
       ]),
- dict(no=11, title="그 빚, 나 안 갚아", when="2017년 여름",
-      mood="비웃음과 오기", words=["mocking", "stung", "defiant"],
-      hook="아내 *그 빚, 나 안 갚아*",
-      yt_title="빚 6억을 떠안은 줄 알았던 아내의 한마디",
-      recap="소송을 준비하며 법원 앞에서 마주쳤다",
-      reveal="아내가 한정승인을 신고해 빚 육억을 갚지 않는다",
-      must=["한정승인"],
+
+ dict(no=14, title="되돌릴 건 절반", when="2017년 겨울",
+      mood="팽팽함", words=["steady", "tight", "cold"],
+      hook="빚은 끊었는데 되돌릴 건 *절반*뿐",
+      yt_title="빚 6억은 끊었지만 되돌릴 수 있는 건 절반뿐이었습니다",
+      recap="현금까지 합쳐 삼십이억이 나갔다",
+      because="아내는 통장 기록을 전부 챙겨 두었다",
+      leaves="아내는 절반이라도 받아내겠다고 했다",
+      reveal="빚은 갚지 않아도 되지만 되돌릴 수 있는 것은 절반까지다",
+      must=["절반"],
+      shots=["two", "ots", "close"],
+      extras={3: [L]},
       cuts=[
-        ("법원앞", "the other woman comes down the courthouse steps and stops two steps "
-                   "above the wife, looking down at her",
-         [(O, "빚 육억 다 떠안았다면서요? 인생 끝났네."),
-          (W, "그 빚, 나 안 갚아."),
-          (O, "…뭐라고요?"),
-          (W, "한정승인. 벌써 석 달 전에 신고했어.")]),
-        ("법원앞", "the wife climbs one step so they stand level and the other woman "
-                   "steps back",
-         [(O, "그게 뭔데요."),
-          (W, "물려받은 만큼만 갚는 거야."),
-          (O, "그럼 육억은 누가 갚는데요."),
-          (W, "아무도 안 갚아. 없어지는 거야.")]),
-        ("법원앞", "the wife takes one folded page from her bag and holds it up between "
-                   "two fingers",
-         [(W, "그럼 남는 건 하나지."),
-          (O, "그건 그이가 준 거예요."),
-          (W, "준 게 아니라 빼돌린 거지. 종이가 하나 남았거든."),
-          (O, "…무슨 종이요?")]),
+        ("변호사사무실", "the lawyer sets a slim bankbook on the desk and turns it toward "
+                         "the wife, who is already sitting forward",
+         [(L, "빚 육억은 안 갚으셔도 됩니다."),
+          (W, "그게 돼요?"),
+          (L, "물려받은 만큼만 갚는 걸로 신고했습니다.")]),
+        ("변호사사무실", "the wife stands up out of the chair and the lawyer stays seated "
+                         "with one hand open on the desk",
+         [(W, "그럼 삼십이억은요. 다 받을 수 있어요?"),
+          (L, "되돌릴 수 있는 건 절반까지입니다."),
+          (W, "절반이요? 다 가져간 사람이 절반을 가져요?")]),
+        ("변호사사무실", "the wife stops at the door with one hand on the frame and turns "
+                         "back into the room",
+         [(W, "그래도 할래요."),
+          (W, "절반이라도 다 받아낼 거예요."),
+          (W, "…그 절반은 우리 애들 몫이잖아요?")]),
       ]),
- dict(no=12, title="보험료를 낸 통장", when="2018년 봄",
-      mood="팽팽함", words=["measured", "pressing", "heated"],
-      hook="보험료를 낸 통장이 *남편 것*이었다",
-      yt_title="매달 2천만원 보험료를 낸 통장이 남편 것이었습니다",
-      recap="법정에서 본격적인 다툼이 시작됐다",
-      reveal="보험료가 매달 남편 통장에서 빠져나간 기록이 나온다",
-      must=["통장에서 빠져"],
-      cuts=[
-        ("법정", "the other woman stands at the far side of the bench with her chin up "
-                 "while the wife sets one page down flat",
-         [(O, "보험금은 내 돈이에요. 수익자가 나니까."),
-          (W, "보험료는 누가 냈는데."),
-          (O, "그이가 알아서 낸 거죠."),
-          (W, "그 통장, 지금 내 손에 있어.")]),
-        ("법정", "the wife slides the page one hand's width toward the bench",
-         [(W, "매달 이천만 원, 그 사람 통장에서 빠져나갔더라."),
-          (O, "그게 뭐 어때서요."),
-          (W, "그게 바로 빼돌린 증거야."),
-          (O, "난 사인만 했어요.")]),
-        ("법정", "the other woman looks down at her own hands and then straight ahead",
-         [(W, "우리 가족 밥줄 끊어서 그 돈을 부은 거야."),
-          (O, "난 하라는 대로 했을 뿐이에요. 정말 몰랐어요."),
-          (W, "…정말 몰랐을까?")]),
-      ]),
- dict(no=13, title="서명한 날짜", when="2018년 가을",
-      mood="무너지는 거짓말", words=["smooth", "faltering", "cornered"],
-      hook="몰랐다던 서명, 날짜가 *기각 당일*이었다",
-      yt_title="몰랐다던 그 여자의 서명 날짜가 재판에 진 그날이었습니다",
-      recap="모른다던 그 여자의 말이 흔들리기 시작했다",
+
+ dict(no=15, title="서명한 날짜", when="2018년 가을",
+      mood="무너지는 거짓말", words=["cool", "tight", "hard"],
+      hook="몰랐다던 서명 날짜가 *기각 당일이었다*",
+      yt_title="몰랐다던 그 여자, 서명 날짜가 이혼 기각 당일이었습니다",
+      recap="되돌릴 수 있는 건 절반까지였다",
+      because="아내는 절반이라도 받아내겠다고 했다",
+      leaves="그 여자는 왜 그날인지 대답하지 못했다",
       reveal="그 여자의 서명 날짜가 이혼 기각 당일이라는 것이 드러난다",
       must=["팔월 구일"],
+      shots=["two", "close", "ots"],
+      extras={2: [O]},
       cuts=[
-        ("법원복도", "the wife holds up a photocopied page and the other woman looks at "
-                     "it for one second too long",
-         [(W, "몰랐다고 했지. 근데 여기 네 글씨가 있더라."),
-          (O, "그냥 하라는 대로 썼어요."),
-          (W, "신분증도 네가 냈던데."),
-          (O, "심부름한 것뿐이에요.")]),
-        ("법원복도", "the wife points at one line near the bottom of the page, her hand "
-                     "steady",
-         [(W, "그 서류에 적힌 날짜 봤어?"),
-          (O, "날짜가 왜요."),
-          (W, "이천십삼년 팔월 구일. 이혼 재판 진 바로 그날이야."),
-          (O, "…우연이겠죠.")]),
-        ("법원복도", "the other woman takes half a step back and looks toward the exit",
-         [(W, "판결 난 그날 바로 넘겼더라."),
-          (O, "그건, 그이가 갑자기 하자고 해서요."),
-          (W, "몰랐다며. 근데 왜 날짜는 기억해?")]),
+        ("법정", "the woman stands at the front of the courtroom and the wife rises from "
+                 "the bench behind her",
+         [(O, "저는 몰랐어요. 하라는 대로 썼을 뿐이에요."),
+          (W, "몰랐다고?"),
+          (W, "신분증까지 네가 냈던데.")]),
+        ("법정", "the wife holds up a thin bankbook at arm's length and keeps it there, "
+                 "the woman half turned toward her",
+         [(W, "보험료 낸 통장, 여기 있어."),
+          (W, "매달 그 사람 통장에서 나갔더라.")]),
+        ("법정", "the woman turns fully around to face the wife and then looks down at "
+                 "the floor, both hands at her sides",
+         [(W, "네가 서명한 날짜, 이천십삼년 팔월 구일이야."),
+          (O, "…그게 왜요."),
+          (W, "이혼 재판 진 그날이야. 몰랐다며, 근데 왜 그날이야?")]),
       ]),
- dict(no=14, title="특약 칠 조", when="2019년 봄",
-      mood="뻗대기", words=["assured", "insistent", "shrill"],
-      hook="그 여자 *\"부인보다 내가 먼저\"*",
-      yt_title="계약서에 아내보다 그 여자가 먼저라고 적혀 있었습니다",
-      recap="병원 지분을 두고 다시 부딪혔다",
-      reveal="계약서 특약 칠 조가 아내보다 그 여자를 먼저로 정해 놓았다",
-      must=["칠 조"],
-      cuts=[
-        ("법정", "the other woman lays her palm flat on a bound contract on the bench",
-         [(O, "병원 지분도 다 내 거예요. 계약서에 적혀 있어요."),
-          (W, "죽던 날까지 그 사람 거였어."),
-          (O, "특약 칠 조 읽어보셨어요?")]),
-        ("법정", "the wife leans in over the bench and stops halfway, her hand flat on the "
-                 "wood",
-         [(W, "거기 뭐라고 적혔는데."),
-          (O, "아내보다 내가 먼저 받는다고요."),
-          (W, "…그게 계약서에 있다고?"),
-          (O, "도장까지 찍혀 있어요.")]),
-        ("법정", "the wife straightens up and closes the contract with one finger",
-         [(W, "부부가 이십 년인데 종이 한 장이 먼저야?"),
-          (O, "그이가 나 잘 살라고 남겨준 거예요."),
-          (W, "법이 그걸 그냥 봐줄 것 같아?")]),
-      ]),
- dict(no=15, title="법이 정한 절반", when="2020년 봄",
-      mood="조롱과 버팀", words=["sneering", "steady", "immovable"],
-      hook="삼십이억을 뺏겼는데 *절반만 된다고?*",
-      yt_title="다 뺏을 줄 알았는데 법은 절반만 인정했습니다",
-      recap="판결을 앞두고 마지막으로 마주쳤다",
-      reveal="유류분은 전부가 아니라 절반까지만 되돌릴 수 있다",
-      must=["유류분"],
-      cuts=[
-        ("법원복도", "the other woman stops in the middle of the corridor and lets the "
-                     "wife walk up to her",
-         [(O, "다 뺏을 것 같죠? 전부는 못 받아요."),
-          (W, "그건 또 무슨 소리야."),
-          (O, "유류분. 절반까지만 되는 거예요."),
-          (W, "…절반?")]),
-        ("법원복도", "the wife opens her bag, checks one page, and closes it again",
-         [(W, "삼십이억을 가져갔는데 절반만?"),
-          (O, "법이 그렇다는데 어떡해요."),
-          (W, "그럼 나머지 절반은 네가 갖는 거야?"),
-          (O, "그런 셈이죠.")]),
-        ("법원복도", "the wife walks past her toward the courtroom door and keeps the same "
-                     "pace",
-         [(W, "절반이라도 다 받아낼 거야."),
-          (O, "다 뺏기고 울지나 마세요."),
-          (W, "울게 되는 건 네가 될걸."),
-          (O, "어디 판사님이 얼마를 뱉으라고 할지 볼까요?")]),
-      ]),
- dict(no=16, title="정의의 판결", when="2020년 6월",
+
+ dict(no=16, title="판결", when="2020년 6월",
       mood="담담한 승리", words=["low", "steady", "released"],
-      hook="법원 *\"십억 전부 돌려주라\"*",
+      hook="법원 *십억 전부 돌려주라*",
       yt_title="법원이 그 여자에게 10억을 돌려주라고 했습니다",
-      recap="마침내 판결이 나왔다",
+      recap="그 여자는 왜 그날인지 답하지 못했다",
+      because="그 여자는 왜 그날인지 대답하지 못했다",
+      leaves="",
       reveal="법원이 그 여자에게 십억을 돌려주라고 판결한다",
       must=["돌려주라"],
+      shots=["two", "ots", "close"],
+      extras={3: [D]},
       cuts=[
-        ("법원앞", "the wife comes down the courthouse steps holding a judgment paper at "
-                   "her side, unhurried",
-         [(W, "십억. 판사님이 다 돌려주라고 했어."),
+        ("법원앞", "the wife comes down the courthouse steps at an even pace and the "
+                   "woman is waiting at the bottom",
+         [(W, "십억. 다 돌려주라고 했어."),
           (O, "십억을 어떻게 돌려줘요."),
-          (W, "네가 도둑질한 대가야."),
-          (O, "이건 말도 안 되는 재판이에요.")]),
-        ("법원앞", "the other woman takes a half step back, both hands closing into fists, "
-                   "while the wife keeps walking down one more step",
+          (W, "네가 가져간 만큼이야.")]),
+        ("법원앞", "the woman steps up one stair toward the wife and the wife stays "
+                   "where she is",
          [(O, "내가 옆에서 얼마나 고생했는데."),
-          (W, "고생? 우리 애들은 학비도 못 냈어."),
-          (O, "절대 못 줘요. 한 푼도."),
-          (W, "안 주면 압류 들어가.")]),
-        ("법원앞", "the wife folds the judgment paper once and puts it into her bag, then "
-                   "looks up at the sky",
-         [(W, "우리 가족 피눈물 흘리게 한 값이야."),
-          (O, "…이제 난 어떻게 살라고."),
-          (W, "그건 네 사정이고. 십억은 전부 우리 애들 몫이야.")]),
+          (W, "고생? 우리 애는 학교를 그만뒀어."),
+          (O, "한 푼도 못 줘요.")]),
+        ("법원앞", "the wife walks down the last steps to where her daughter is waiting "
+                   "and they start off together",
+         [(W, "이제 가자. 집에 가자."),
+          (W, "이 돈은 전부 너희들 몫이야."),
+          (W, "…엄마가 다 받아냈어.")]),
       ]),
 ]

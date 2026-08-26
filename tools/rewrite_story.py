@@ -28,6 +28,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
+import charsheet as CS                                       # noqa: E402
 import series as S                                           # noqa: E402
 
 OUT = ROOT / "data" / "series" / "S001.json"
@@ -77,6 +78,32 @@ PLACE = {
     "법무사앞": "street outside a law firm",
     "법원앞": "outside the courthouse",
     "법정": "courtroom interior",
+    # ⭐ 2026-08-25 전면 재설계로 새로 생긴 장소 셋.
+    #    옛 대본은 은행 앞·보험사 앞·법무사 앞처럼 **그 여자가 있을 이유가
+    #    없는 길거리**에서 자꾸 마주쳤다. 이제는 아내가 혼자 가는 곳
+    #    (은행 창구·변호사 사무실)과 집 안(부엌)이 따로 있다.
+    "부엌": "korean apartment kitchen",
+    "은행창구": "bank branch interior",
+    "변호사사무실": "law office room",
+}
+
+# 옛 대본에 없던 장소라 물려받을 SETTING 이 없다 — 같은 꼴(왼쪽·가운데·
+# 오른쪽)로 새로 쓴다. ⚠️ 글자가 나올 물건(paper·document·sign…)은 안 부른다.
+NEW_SET = {
+    "korean apartment kitchen":
+        "SETTING: Korean apartment kitchen, evening, warm overhead light — a tall "
+        "fridge and a narrow pantry shelf on the left, a small square dining table "
+        "with two stools in the middle, a sink counter with a kettle and a dish "
+        "rack on the right.",
+    "bank branch interior":
+        "SETTING: Bank branch interior, daytime, even fluorescent lighting — a row "
+        "of waiting chairs along the left, a low teller counter with a small "
+        "partition in the middle, a wall of plain steel lockers on the right.",
+    "law office room":
+        "SETTING: Law office room, daytime, soft desk lamp light — a tall shelf of "
+        "dark binders along the left wall, a broad wooden desk with a closed laptop "
+        "and a plain mug in the middle, a window with half-drawn blinds and two "
+        "visitor chairs on the right.",
 }
 
 
@@ -99,7 +126,7 @@ def who_list(cast):
 LADDER = ["two", "ots", "close"]        # 안 정하면 쓰는 기본 순서
 
 
-def shot_line(i, cast, face, other, ladder=None):
+def shot_line(i, cast, face, other, ladder=None, says=None):
     """컷 자리마다 **다른 크기**로.
 
     ⭐⭐ SUBJECT 줄을 없앴으므로(옷은 기준 사진이 잡는다) **누가 화면에
@@ -107,8 +134,12 @@ def shot_line(i, cast, face, other, ladder=None):
     """
     kinds = list(ladder or LADDER)
     want = kinds[i] if i < len(kinds) else kinds[-1]
-    # 혼자 말하는 컷은 **언제나 얼굴**이다 — 두 사람 샷을 쓸 수가 없다
-    if len(cast) < 2:
+    # 혼자 말하는 컷은 **언제나 얼굴**이다.
+    # ⚠️ 2026-08-25 — 예전엔 `cast`(화면에 서 있는 사람) 로 셌다. 말은 안 해도
+    #    옆에 서 있는 사람(extras) 이 있으면 두 명으로 세어져, 혼자 말하는
+    #    컷에 어깨너머 샷이 붙었다(9화 1컷). **말한 사람 수**로 센다 —
+    #    입 모양 지시(SYNC1)·AUDIO_ONE 도 이미 그 기준을 쓴다.
+    if len(says if says is not None else cast) < 2:
         want = "close"
     if want == "close":
         return (f"SHOT: Close-up on {face}, static camera, framed from the "
@@ -133,8 +164,10 @@ def shot_line(i, cast, face, other, ladder=None):
 def main():
     story = load(SRC)
     old = json.loads(OUT.read_text(encoding="utf-8"))
-    SET = settings(old)
-    rank = {"Wife": 0, "Husband": 1, "Other woman": 2}
+    SET = {**settings(old), **NEW_SET}
+    # ⚠️ 예전엔 세 사람을 손으로 박아 뒀다. 딸·변호사가 들어오자 그 자리에서
+    #    KeyError 로 죽는다. 이야기 파일의 ORDER 를 그대로 쓴다.
+    rank = {w: i for i, w in enumerate(story.ORDER)}
     audio = next((l for l in old["episodes"][0]["cuts"][0]["prompt"].split("\n")
                   if l.startswith("AUDIO:")), "")
 
@@ -165,7 +198,7 @@ def main():
             # ⚠️ SUBJECT 줄은 **안 만든다** (2026-08-25 운영자 지시).
             #    옷·얼굴은 루미나 기준 사진이 잡는다. 여기 또 적으면 싸운다.
             body = [S.head_line(sec),
-                    shot_line(i, cast, face, other, ladder),
+                    shot_line(i, cast, face, other, ladder, says),
                     S.FRAME_FIX,
                     # ⚠️ 입 모양 지시는 **말한 사람 수**를 따른다. 화면에
                     #    있는 사람 수로 세면, 혼자 말하는 컷에 "둘 다 입을
@@ -177,14 +210,11 @@ def main():
                     # ⚠️ AUDIO 도 **말한 사람 수**를 따라간다. 1화 1컷에서
                     #    통째로 복사해 오면 혼자 말하는 컷에 "the two people"
                     #    이 붙는다 (2026-08-25 실제로 그랬다).
-                    (audio if len(says) > 1 else
-                     audio.replace("the two people in the shot say the lines "
-                                   "themselves",
-                                   "the person in the shot says the lines "
-                                   "themselves")
-                          .replace("each person speaking one after another so "
-                                   "every word stays clear",
-                                   "every word stays clear")),
+                    # ⚠️ 2026-08-25 — 예전엔 여기서 문장을 **손으로 고쳐 썼다.**
+                    #    검사기는 그 문장을 모르니 "AUDIO 줄이 없다" 로 걸렸고,
+                    #    저장된 대본을 검사하는 검사가 없어서 깃허브는 초록불
+                    #    이었다. 이제 규격 파일의 상수를 그대로 쓴다.
+                    (audio if len(says) > 1 else S.AUDIO_ONE),
                     SET[PLACE[place]],
                     S.COLOR_FIX, S.STYLE_FIX, S.AVOID_FIX]
             cuts.append({
@@ -199,10 +229,32 @@ def main():
             "mood": e["mood"], "when": e["when"],
             "reveal": e["reveal"], "must": e["must"],
             "irony": bool(e.get("irony")),
+            # ⭐⭐ 씬 간 연결의 뼈대 — 이 화가 남긴 것(leaves)이 다음 화가
+            #    시작되는 까닭(because)과 **글자 그대로 같아야** 한다.
+            #    tools/story_check.py 가 이것을 검사한다.
+            "because": e.get("because", ""),
+            "leaves": e.get("leaves", ""),
+            "quiet": bool(e.get("quiet")),
             "cuts": cuts,
         })
 
     doc = dict(old)
+    # ⭐ 딸·변호사를 더한다. 이미 있으면 그대로 둔다(두 번 돌려도 안 늘어난다).
+    chars = list(old.get("characters") or [])
+    # ⚠️ 2026-08-25 — 처음엔 "이미 있으면 건너뛴다" 로 썼다. 그러자 **앞선
+    #    실행이 남긴 낡은 기준 그림 프롬프트가 영영 안 고쳐졌다** (하지 말 것
+    #    줄이 빠진 채로 남았다). 새 인물 자리는 **늘 다시 짓는다** — 문구를
+    #    고치고 다시 돌리면 그대로 반영돼야 한다.
+    names = {c.get("name") for c in story.NEW_CHARS}
+    chars = [c for c in chars if c.get("name") not in names]
+    for c in story.NEW_CHARS:
+        c = dict(c)
+        # ⭐ 기준 그림 프롬프트·설명은 **손으로 안 적는다.** charsheet 가
+        #    배경·자세·화면잡기·빛·하지 말 것까지 한 벌로 지어 준다.
+        #    (베껴 두면 문구를 고칠 때 사람마다 다른 그림체가 된다)
+        c["flow_sheet"], c["flow_desc"] = CS.build(c)
+        chars.append(c)
+    doc["characters"] = chars
     doc["title"] = "바람난 남편이 빼돌린 32억"
     doc["episodes"] = eps
     doc["ledger"] = story.LEDGER

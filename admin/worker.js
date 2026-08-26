@@ -1125,9 +1125,22 @@ function seriesRender() {
     if (e.when) h += '<div style="color:#c8a951;font-size:13px">' + esc(e.when)
                    + (e.mood ? ' · ' + esc(e.mood) : '')
                    + (e.irony ? ' · 아내가 없는 화 (시청자만 먼저 압니다)' : '')
+                   + (e.quiet ? ' · 조용한 화 (소리 안 지릅니다)' : '')
                    + '</div>';
     if (e.reveal) h += '<div style="color:#e7e9ef;font-size:14px;margin-top:4px">'
                      + '이 화에서 밝혀지는 것 — ' + esc(e.reveal) + '</div>';
+    h += '</div>';
+  }
+  // 2026-08-25 운영자: "씬 간 연결성과 스토리 전개가 제대로 이루어지지 않고 있어."
+  //    앞 화가 남긴 것에서 이 화가 시작되고, 이 화가 남긴 것에서 다음 화가
+  //    시작된다. 그 고리를 화면에 그대로 보여 준다 — 끊긴 데가 눈에 보이게.
+  if (e.because || e.leaves) {
+    h += '<div style="background:#14161c;border-radius:6px;padding:10px 12px;'
+       + 'margin-bottom:10px;font-size:13px;line-height:1.7">';
+    if (e.because) h += '<div style="color:#9599ab">여기서 시작합니다 &larr; '
+                      + esc(e.because) + '</div>';
+    if (e.leaves) h += '<div style="color:#c8a951">여기서 다음 화로 &rarr; '
+                     + esc(e.leaves) + '</div>';
     h += '</div>';
   }
   if (e.recap) h += '<div style="color:#9599ab;font-size:14px;margin-bottom:10px">'

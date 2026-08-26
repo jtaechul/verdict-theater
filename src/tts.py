@@ -705,7 +705,13 @@ def tc_recommend(chars, per=4):
         # 어린이 목소리는 성인 배역에서 뺀다
         cands = [v for v in cands
                  if not any(t in v["age"] for t in YOUNG_AGE)] or cands
-        cands = [v for v in cands if v["id"] not in used]
+        # ⚠️ 2026-08-25 — 예전엔 남은 후보가 없으면 그 인물을 **통째로 건너뛰었다.**
+        #    등장인물이 셋일 땐 안 드러났는데 딸·변호사가 들어오자 딸에게
+        #    추천이 **하나도 안 갔다**(같은 성별 목소리를 앞 두 사람이 다 썼다).
+        #    화면에서 "딸: 추천 없음" 을 보면 손님은 손도 못 댄다.
+        #    → 다 썼으면 **겹쳐서라도 준다.** 겹치는 것이 없는 것보다 낫다.
+        fresh = [v for v in cands if v["id"] not in used]
+        cands = fresh or cands
         if not cands:
             continue
         # 앞쪽(나이 맞음)을 지키되, 뒤쪽에서도 고르게 섞어 다양하게

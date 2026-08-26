@@ -39,6 +39,7 @@ QUEUE = ROOT / "state" / "queue.json"
 STATE = ROOT / "state" / "series.json"
 
 EPISODES = 16          # 16화 × 30초 = 8분 (롱폼 한 편)
+CHARS_MAX = 5          # 등장인물 상한 (아내·남편·그 여자·딸·변호사)
 # ⭐⭐ 2026-08-24 손님: "컷이 다섯 개면 컷끼리 연결된다는 느낌이 안 든다.
 #    배경이 계속 바뀌고 감정선도 한 화에서 너무 많이 바뀐다. 영상을 한 번에
 #    십 초씩, 세 컷으로 만드는 건 어때?"
@@ -444,6 +445,19 @@ AUDIO_FIX = ("AUDIO: the two people in the shot say the lines themselves with "
              "the quiet room tone of the location underneath.")
 AUDIO_SILENT = ("AUDIO: the shot is quiet, with only the room tone of the "
                 "location and the small everyday sounds of the place.")
+
+# ⭐⭐ 혼자 말하는 컷용 AUDIO. **AUDIO_FIX 에서 만들어 낸다** — 글자로 베껴 두면
+#    한쪽만 고쳤을 때 48컷이 통째로 걸린다(이 저장소가 여러 번 겪은 일이다).
+# ⚠️ 2026-08-25 — 이 상수가 없어서 사고가 났다. rewrite_story.py 가 AUDIO 줄을
+#    제 나름대로 고쳐 썼는데 검사기는 그 문장을 모르니 "AUDIO 줄이 없다" 로
+#    걸었다. 그런데 자체 점검에는 **저장된 대본 파일을 규격 검사에 넣는 검사가
+#    아예 없어서** 깃허브는 초록불이었다. 두 구멍을 같이 막는다
+#    (여기 상수 + tools/script_check.py).
+AUDIO_ONE = (AUDIO_FIX
+             .replace("the two people in the shot say the lines themselves",
+                      "the person in the shot says the lines themselves")
+             .replace("each person speaking one after another so every word "
+                      "stays clear", "every word stays clear"))
 
 # 인물 설명에서 성격을 읽어 목소리를 짓는다 (인물표에 voice 가 없을 때)
 VOICE_TONE = [
@@ -1906,8 +1920,15 @@ def check(doc):
     eps = doc.get("episodes") or []
     if len(eps) != EPISODES:
         bad.append(f"화 수가 {len(eps)}개다 (있어야 할 것 {EPISODES}개)")
-    if len(doc.get("characters") or []) > 3:
-        bad.append("등장인물이 3명을 넘는다")
+    # ⭐⭐ 2026-08-25 — 3명 → 5명. 운영자가 "딸·변호사 2명 추가" 를 골랐다.
+    #    까닭: 세 사람(아내·남편·그 여자)뿐이면 **모든 화가 말싸움**이 된다.
+    #    실제로 옛 대본은 5~16화, 12화 연속으로 아내와 그 여자가 마주쳐
+    #    싸웠다. 딸이 있어야 소리 안 지르는 조용한 화가 가능하고, 변호사가
+    #    있어야 아내가 금액을 **스스로 발견**한다(원수가 알려 주지 않는다).
+    #    ⚠️ 더 늘리지는 않는다 — 사람이 늘수록 루미나 기준 사진도 늘고,
+    #       시청자가 30초 안에 알아볼 수 있는 얼굴 수에도 한계가 있다.
+    if len(doc.get("characters") or []) > CHARS_MAX:
+        bad.append(f"등장인물이 {CHARS_MAX}명을 넘는다")
     bad += policy_check(doc)
     names = all_names(doc)          # 한글 배역말 + 바꿔 넣은 영어 관계말
 
@@ -1959,7 +1980,8 @@ def check(doc):
             if ph:
                 bad.append(f"{tag}: 정책에 막히는 말 — {', '.join(ph)} "
                            f"(플로우가 '유명인 동영상 생성' 으로 거절한다)")
-            if AUDIO_FIX not in p and AUDIO_SILENT not in p:
+            if not any(a in p for a in (AUDIO_FIX, AUDIO_ONE,
+                                        AUDIO_SILENT)):
                 bad.append(f"{tag}: AUDIO 줄이 없다 — 그대로 두면 화면 밖 "
                            f"해설자가 또박또박 읽어 로봇처럼 들린다")
             if COLOR_FIX not in p:
