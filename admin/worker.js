@@ -1272,7 +1272,14 @@ function home() {
   //    맞는 지적이었다. '가끔 쓰는 것' 에 넣어 뒀는데, 등장인물 그림이 없으면
   //    영상이 아예 안 나오므로 **지금 이것이 가장 중요한 버튼**이다.
   //    꺼내서 영상 만들기 바로 위에 둔다 — 순서도 실제로 그 순서다.
-  h += wfList(['series.yml', 'polish.yml', 'stats.yml']);
+  // ⚠️⚠️ 2026-08-26 손님: "3-2가 관리자페이지에 없잖나…"
+  //    맞다. video.yml(3-2) 과 keycheck.yml(0) 은 **WORKFLOWS 에 적어만 두고
+  //    여기 목록에 안 넣어서** 화면에 한 번도 안 나왔다. 정의해 둔 것과
+  //    그려지는 것이 따로 놀았다. 이제 tools/check_admin.mjs 가 이걸 잡는다.
+  //    ⭐ 순서: 대본 → 다듬기 → **열쇠 점검 → 영상 만들기** → 성과.
+  //       돈 나가기 전에 열쇠부터 보는 것이 실제 순서다.
+  h += wfList(['series.yml', 'polish.yml',
+               'keycheck.yml', 'video.yml', 'stats.yml']);
   h += '</div>';
 
   h += collectCard();
@@ -1494,7 +1501,13 @@ function wfList(files) {
           return '<option value="' + esc(v) + '">' + esc(t) + '</option>';
         }).join('') + '</select>';
       else
-        h += '<input id="i_'+i+'_'+inp.k+'" value="' + esc(inp.def || '') + '">';
+        // ⚠️ 2026-08-26 — inp.def 만 봤는데 목록은 v: 로 적혀 있다.
+        //    그래서 **정해 둔 기본값이 한 번도 안 찍혔고** 칸이 늘 비어 있었다.
+        //    ⚠️ 이 줄 위아래 주석에 백틱을 쓰면 안 된다 — 여기는 템플릿
+        //       문자열 안이라 문자열이 통째로 끊긴다 (세 번째 사고다)
+        //    ("S001", "1" 을 손님이 매번 손으로 넣어야 했다)
+        h += '<input id="i_'+i+'_'+inp.k+'" value="'
+           + esc(inp.def !== undefined ? inp.def : (inp.v || '')) + '">';
       h += '</label>';
       if (inp.help)
         h += '<div style="color:#9599ab;font-size:12.5px;margin:-6px 0 10px;line-height:1.5">'

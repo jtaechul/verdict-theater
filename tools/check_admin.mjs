@@ -240,3 +240,44 @@ if (/<a[^>]+download=[^>]+href="\/api\/thumb/.test(painted)) {
 
 for (const f of [mod, js]) { try { unlinkSync(f); } catch {} }
 console.log('✅ 관리자 페이지: 바깥 코드 + 브라우저 코드 둘 다 정상');
+
+// ⭐⭐⭐ 2026-08-26 손님: "3-2가 관리자페이지에 없잖나…"
+//   맞았다. WORKFLOWS 에 **적어만 두고** wfList 목록에 안 넣어서 video.yml(3-2)
+//   과 keycheck.yml 이 화면에 한 번도 안 나왔다. 정의해 둔 것과 그려지는 것이
+//   따로 놀았는데 아무 검사도 그걸 안 봤다. 이제 여기서 본다.
+{
+  const list = src.match(/const WORKFLOWS = \[[\s\S]*?\n\];/);
+  if (!list) { console.error('❌ WORKFLOWS 목록을 못 찾았다'); process.exit(1); }
+  // ⚠️ 첫 시도는 file:…hidden:true 를 한 번에 훑어 **맨 앞 이름**을 숨김으로
+  //    잡았다(youtube-upload 대신 collect 가 걸렸다). 항목 단위로 쪼개서 본다.
+  const items = list[0].split(/\{\s*file:/).slice(1);
+  const defined = [];
+  const hidden = [];
+  for (const it of items) {
+    const m = it.match(/^\s*'([^']+)'/);
+    if (!m) continue;
+    defined.push(m[1]);
+    if (/hidden:\s*true/.test(it)) hidden.push(m[1]);
+  }
+  const drawn = new Set(
+    [...src.matchAll(/wfList\(\[([^\]]*)\]\)/g)]
+      .flatMap((m) => [...m[1].matchAll(/'([^']+)'/g)].map((x) => x[1])));
+  const missing = defined.filter((f) => !hidden.includes(f) && !drawn.has(f));
+  if (missing.length) {
+    console.error('❌ 목록에 적어만 두고 화면에 안 그리는 단추: ' + missing.join(', '));
+    console.error('   wfList([...]) 에 넣어야 손님이 누를 수 있다');
+    process.exit(1);
+  }
+  console.log(`✅ 적어 둔 단추 ${defined.length}개가 전부 화면에 그려진다 `
+            + `(숨김 ${hidden.length}개 제외)`);
+}
+
+// ⚠️ 2026-08-26 — 칸의 기본값(v:)이 화면에 안 찍히고 있었다. 손님이 S001·1 을
+//   매번 손으로 넣어야 했다. inp.def 만 보고 inp.v 를 안 봤기 때문이다.
+{
+  if (!/inp\.def !== undefined \? inp\.def : \(inp\.v/.test(src)) {
+    console.error('❌ 칸 기본값을 inp.v 에서 안 읽는다 — 칸이 늘 비어 보인다');
+    process.exit(1);
+  }
+  console.log('✅ 칸에 정해 둔 기본값이 찍힌다 (S001 · 1 을 손으로 안 넣어도 된다)');
+}
