@@ -195,9 +195,44 @@ def check_playable(bad, worker=None, wf=None):
                    f"(admin PLAYABLE ↔ video.yml)")
 
 
+def check_title(bad, doc, state=None):
+    """⑥ 대본 제목 ↔ 화면이 보여 주는 제목.
+
+    ⚠️ 2026-08-27 — 대본은 '32억' 인데 화면은 '15억' 이었다. 화면은
+       state/series.json 의 제목을 쓰는데 대본만 고치고 그쪽을 안 고쳤다.
+    """
+    if state is None:
+        f = ROOT / "state" / "series.json"
+        state = json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
+    for sid, v in (state or {}).items():
+        if not isinstance(v, dict) or not v.get("title"):
+            continue
+        want = doc.get("title") if sid == "S001" else None
+        if want and v["title"] != want:
+            bad.append(f"{sid} 제목이 갈렸다 — 대본은 '{want}' 인데 "
+                       f"화면은 '{v['title']}' 을 보여 준다 "
+                       f"(data/series/{sid}.json ↔ state/series.json)")
+
+
+def check_cards(bad, src=None):
+    """⑦ 인물 설명이 바뀌면 인물 카드를 다시 만드는가.
+
+    ⚠️⚠️ 2026-08-27 — 화풍을 실사로 바꿨는데 영상이 그림체로 나왔다.
+       카드 만드는 코드가 "이미 있으면 건너뛴다" 였고, 그림체 시절 카드가
+       그대로 다시 쓰였다. 지문을 적어 두고 바뀌면 다시 만들어야 한다.
+    """
+    src = (ROOT / "src" / "still.py").read_text(encoding="utf-8") if src is None else src
+    if "card_sig" not in src or "sha1" not in src:
+        bad.append("인물 카드를 만들 때 **무엇으로 만들었는지(지문)** 를 안 남긴다 — "
+                   "인물 설명을 바꿔도 옛 카드가 그대로 다시 쓰인다 "
+                   "(src/still.py 의 cards)")
+
+
 def scan(doc):
     bad = []
     check_playable(bad)
+    check_title(bad, doc)
+    check_cards(bad)
     check_style(bad)
     check_fixed(bad)
     check_people(bad, doc)
@@ -288,9 +323,26 @@ def selftest():
                    'release_file.py put "$TAG" short.mp4 "$OUT"\n')
     assert not b, f"멀쩡한 것을 걸었다: {b}"
 
+    # ⑥ 제목이 갈린 것 — 실제로 났던 사고다 (32억 ↔ 15억)
+    b = []
+    check_title(b, {"title": "32억"}, {"S001": {"title": "15억"}})
+    assert any("제목이 갈렸다" in x for x in b), f"갈린 제목을 못 잡는다: {b}"
+    b = []
+    check_title(b, {"title": "32억"}, {"S001": {"title": "32억"}})
+    assert not b, f"멀쩡한 것을 걸었다: {b}"
+
+    # ⑦ 카드를 지문 없이 건너뛰는 것 — 영상이 옛 화풍으로 나온 그 사고다
+    b = []
+    check_cards(b, "if out.exists():\n    continue")
+    assert any("지문" in x for x in b), f"지문 없는 카드 만들기를 못 잡는다: {b}"
+    b = []
+    check_cards(b, "sig = hashlib.sha1(p).hexdigest()\ncard_sig(out_dir, name)")
+    assert not b, f"멀쩡한 것을 걸었다: {b}"
+
     print("   ✅ 자기시험: 갈린 화풍 · 반대편을 안 막는 목록 · 바라는 것을 막는\n"
           "      목록 · 베낀 고정 줄 · 어긋난 인물표 · 빠진 이름표 ·\n"
-          "      무시된 설정 · 어긋난 재생 목록 — 실제로 났던 사고를 재현해 다 잡는다")
+          "      무시된 설정 · 어긋난 재생 목록 · 갈린 제목 · 지문 없는 카드 —\n"
+          "      실제로 났던 사고를 재현해 다 잡는다")
 
 
 def main():
@@ -312,6 +364,8 @@ def main():
     print("   ✅ 인물 목록 · 목소리표 · 등장 차례 · 화면 이름표가 다 맞는다")
     print("   ✅ 이야기 파일에 적어 둔 설정이 전부 읽힌다")
     print("   ✅ 관리자가 재생하려는 파일을 워크플로가 실제로 올린다")
+    print("   ✅ 대본 제목과 화면 제목이 같다")
+    print("   ✅ 인물 설명이 바뀌면 인물 카드를 다시 만든다")
     print("\n" + "─" * 60)
     print("✅ 짝 검사: 전부 통과")
     return 0

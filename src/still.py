@@ -132,8 +132,22 @@ def card_path(out_dir, name):
     return Path(out_dir) / f"{name}.png"
 
 
+def card_sig(out_dir, name):
+    """그 카드를 무엇으로 만들었는지 적어 두는 자리."""
+    return card_path(out_dir, name).with_suffix(".sig")
+
+
 def cards(sid, out_dir):
-    """인물 카드. 시리즈당 한 번만 만들면 된다."""
+    """인물 카드. 인물 설명이 바뀌면 **다시 만든다.**
+
+    ⚠️⚠️⚠️ 2026-08-27 손님: "1화(1컷 시험본) 누르면 옛날 영상 나온다고!"
+       화풍을 실사로 바꿨는데 영상이 여전히 그림체로 나왔다. 까닭은
+       **"이미 있으면 건너뛴다"** 였다. 그림체 시절 카드가 그대로 남아 있어
+       본처·남편·내연녀는 옛 그림으로 다시 쓰였고(새로 만든 것은 딸·변호사뿐),
+       그 그림에서 컷 그림이 나오고 그 컷 그림에서 영상이 나왔다.
+       → 카드 옆에 **무엇으로 만들었는지(지문)** 를 적어 두고, 인물 설명이
+         바뀌면 다시 만든다. 안 바뀌면 그대로 쓴다(값이 안 나간다).
+    """
     doc = load(sid)
     chars = doc.get("characters") or []
     print(f"■ {sid} 인물 카드 {len(chars)}장 (약 "
@@ -141,12 +155,20 @@ def cards(sid, out_dir):
     for c in chars:
         name = c.get("name", "?")
         out = card_path(out_dir, name)
+        prompt = vprompt.still_prompt(c.get("flow_sheet") or c.get("flow_prompt") or "")
+        sig = hashlib.sha1(prompt.encode("utf-8")).hexdigest()[:16]
+        sigf = card_sig(out_dir, name)
         print(f"  {name}")
         if out.exists() and out.stat().st_size > 10_000:
-            print(f"    (이미 있다 — 건너뛴다)")
-            continue
-        prompt = vprompt.still_prompt(c.get("flow_sheet") or c.get("flow_prompt") or "")
+            old = sigf.read_text(encoding="utf-8").strip() if sigf.exists() else ""
+            if old == sig:
+                print("    (그대로다 — 건너뛴다)")
+                continue
+            print("    ⚠️ 인물 설명이 바뀌었다 — 다시 만든다"
+                  + ("" if old else " (지문이 없다 — 옛 카드다)"))
         gen(prompt, out, ratio="9:16", seed=seed_of(sid, name), label=name)
+        sigf.parent.mkdir(parents=True, exist_ok=True)
+        sigf.write_text(sig, encoding="utf-8")
     return 0
 
 
