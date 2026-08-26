@@ -123,7 +123,7 @@ EPS = [
         ("거실", "the husband takes his car key from the low table and turns toward the "
                  "door while his wife stays where she is",
          [(H, "일 년 됐어. 숨길 생각 없어."),
-          (H, "이혼하자. 서류는 보낼게. 애들한테는 네가 말해."),
+          (H, "이혼하자. 애들한텐 네가 말하고."),
           (W, "…애들한테? 그걸 왜 내가 말해?")]),
       ]),
  dict(no=2, title="딸이 먼저 뜯었다", when="2012년 겨울", act=1,
@@ -259,7 +259,7 @@ EPS = [
         ("병원복도밤", "the woman takes her bag from the chair and steps around the wife "
                        "toward the exit, then stops",
          [(O, "저도 놀랐어요. 그만 좀 하세요."),
-          (W, "그이가 왜 당신 집에서."),
+          (W, "그이가 왜 당신 집에서…"),
           (O, "장례비는 그쪽이 내시는 거죠?")]),
       ]),
  dict(no=7, title="장례식장", when="2017년 1월", act=2,

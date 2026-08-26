@@ -112,6 +112,11 @@ jobs:
       - name: 저장된 대본이 규격대로인가 (손님이 복사해 가는 그 글)
         run: python3 tools/script_check.py
 
+      # ⭐⭐⭐ 2026-08-26 운영자: "대사도 더럽게 재미없어요. 말 뚝뚝 끊어먹고
+      #    어색하고 컴퓨터처럼 얘기하지 마. 사람이 얘기하는 것처럼 해야지."
+      - name: 대사가 사람 말처럼 들리는가 (토막·정보낭독·연설·문어체·군말)
+        run: python3 tools/talk_check.py
+
       - name: 지어낸 말을 잘라 내는가
         run: python3 tools/extra_speech_test.py
 
