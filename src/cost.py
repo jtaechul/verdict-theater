@@ -132,12 +132,18 @@ def voice_krw(model, chars):
 #   1화 = 약 10초 x 3컷 = 30초 → 30 x $0.06 = $1.80 (약 2,650원).
 #   모르는 이름이면 비싼 쪽으로 셈해서 한도에 먼저 걸리게 한다 — 덜 세는 것보다
 #   더 세는 쪽이 안전하다.
+# ⚠️ 2026-08-26 — 표가 실제와 달랐다. 공식 단가로 갈아 끼운다
+#    (ai.google.dev/gemini-api/docs/pricing · 1080p · 소리 포함이 기본).
+#      Veo 3.1 Lite     $0.08/초   ← 우리가 쓰는 것
+#      Veo 3.1 Fast     $0.12/초
+#      Veo 3.1 Standard $0.40/초   ← 예전 표에 0.15 로 적혀 있었다 (1/3 값)
+#    Veo 2 · Veo 3 는 2026-06-30 에 문을 닫았다.
 VIDEO_USD_SEC = [
-    ("veo-3.1-lite", 0.06),
-    ("veo-3.1",      0.15),
-    ("veo-3",        0.15),
+    ("veo-3.1-lite", 0.08),
+    ("veo-3.1-fast", 0.12),
+    ("veo-3.1",      0.40),
 ]
-VIDEO_USD_SEC_UNKNOWN = 0.20
+VIDEO_USD_SEC_UNKNOWN = 0.40
 
 
 def video_krw(model, seconds):

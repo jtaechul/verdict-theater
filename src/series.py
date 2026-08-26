@@ -771,13 +771,16 @@ def looks_like_url(t):
 #      adult      → 성인물 신호어
 #      restrained → 결박으로 읽힌다
 #    뜻은 그대로 두고 낱말만 안전한 것으로 바꿨다.
+# ⭐⭐⭐ 2026-08-26 운영자: "실사로 가자."
+#    5070 시청자에게는 그림체보다 실사가 '실제 있었던 일' 로 읽힌다.
+#    ⚠️ 정책에 걸리는 말은 안 쓴다 — actor · celebrity · live-action ·
+#       real person 이 들어가면 '유명인 동영상 생성' 으로 통째로 반려된다.
 STYLE_FIX = ("STYLE: one single continuous take, from first frame to last in "
              "the same place with the same people, "
-             "semi-realistic hand-drawn illustration style with clean confident "
-             "linework and soft cel shading, true-to-life body proportions and "
-             "calm natural faces with everyday, unexaggerated features, muted "
-             "desaturated palette, soft practical lighting, shallow depth of "
-             "field, consistent line weight in every shot.")
+             "photoreal look with natural skin texture and true-to-life body "
+             "proportions, ordinary everyday Korean faces with unexaggerated "
+             "features, muted desaturated palette, soft practical lighting, "
+             "shallow depth of field, the same colour grade in every shot.")
 
 # ⚠️ 영상에 글자가 나오는 가장 큰 원인은 '글자가 있는 물건'을 부른 것이다.
 #    그런데 **두 번 연속으로 지나치게 넓은 낱말이 멀쩡한 대본을 막았다.**

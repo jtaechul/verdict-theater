@@ -98,7 +98,10 @@ P = tts.pick_personas(chars)
 V = tts.pick_voices(chars)
 ck("본처(52)는 50대 중년 여성으로 읽는다", "50대 중년 여성" in (P.get("본처") or ""))
 ck("남편(55)은 50대 중년 남성으로 읽는다", "50대 중년 남성" in (P.get("남편") or ""))
-ck("내연녀(42)는 40대로 읽는다", "40대" in (P.get("내연녀") or ""))
+# ⚠️ 나이를 글자로 박아 두면 인물을 손볼 때마다 걸린다. 인물표에서 읽는다.
+_age = tts.age_of([c for c in chars if c.get("name") == "내연녀"][0])
+ck(f"내연녀({_age})는 {_age // 10}0대로 읽는다",
+   f"{_age // 10}0대" in (P.get("내연녀") or ""), P.get("내연녀"))
 ck("대사 줄 이름(Wife·Husband)으로도 찾아진다",
    P.get("Wife") == P.get("본처") and P.get("Husband") == P.get("남편"))
 ck("지시문에 배역이 실린다", "50대 중년 여성" in tts.how_of("말", P["본처"]))

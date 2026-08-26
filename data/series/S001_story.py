@@ -48,8 +48,8 @@ VOICES = {
              "speaker, weary and a little breathy, trails off at the end of a sentence"),
     "Husband": ("Husband — a low, slightly gravelly man's voice in his fifties, native "
                 "Korean speaker, clipped and impatient, drops in volume at the end"),
-    "Other woman": ("Other woman — a clear woman's voice in her forties, native Korean "
-                    "speaker, cool and unhurried, with a small lilt at the end"),
+    "Other woman": ("Other woman — a clear woman's voice in her late thirties, native "
+                    "Korean speaker, cool and unhurried, with a small lilt at the end"),
     "Daughter": ("Daughter — a light young woman's voice in her early twenties, native "
                  "Korean speaker, careful and a little flat, keeps the end of a "
                  "sentence low"),
@@ -77,6 +77,7 @@ NEW_CHARS = [
         "flow_prompt": ("Korean woman, 22 years old, round face, calm dark eyes, "
                         "straight black hair tied back low. Photorealistic, natural "
                         "skin texture, grounded everyday Korean realism."),
+        "body": "ordinary everyday build, plain unremarkable features",
         "face_tag": "22, round face, straight black hair tied back low",
         "role_en": "the daughter",
         "voice": ("a light young woman's voice in her early twenties, native Korean "
@@ -87,6 +88,7 @@ NEW_CHARS = [
         "flow_prompt": ("Korean man, 45 years old, long face, steady eyes, short black "
                         "hair combed back. Photorealistic, natural skin texture, "
                         "grounded everyday Korean realism."),
+        "body": "ordinary everyday build, plain unremarkable features",
         "face_tag": "45, long face, short black hair combed back",
         "role_en": "the lawyer",
         "voice": ("an even man's voice in his forties, native Korean speaker, measured "

@@ -410,22 +410,24 @@ ck("고정 문구에 '한 번에 찍기' 가 들어 있다",
 ck("고정 문구가 '같은 사람이 끝까지' 를 바라는 쪽으로 적는다",
    "same people all the way through" in S.AVOID_FIX, S.AVOID_FIX[:60])
 
-# ⭐ 2026-08-21 — 화풍을 반실사 그림체로 바꿨다 (운영자 지시)
+# ⭐⭐⭐ 2026-08-26 — 화풍을 **실사**로 바꿨다 (운영자: "실사로 가자")
+#    5070 시청자에게는 그림체보다 실사가 '실제 있었던 일' 로 읽힌다.
 import charsheet as _CS2                                    # noqa: E402
-ck("컷 화풍이 그림체다", "illustration" in S.STYLE_FIX.lower(), S.STYLE_FIX[60:110])
-# ⚠️ 2026-08-25 — 예전엔 "rather than cartoon exaggeration" 이라고 **부정으로**
-#    적혀 있었다. 루미나 안전 검사기는 부정을 못 알아들으므로 바라는 쪽으로 썼다.
-ck("만화가 아니라 반실사다",
-   "semi-realistic" in S.STYLE_FIX.lower()
-   and "unexaggerated" in S.STYLE_FIX.lower(), S.STYLE_FIX[150:230])
+ck("컷 화풍이 실사다", "photoreal" in S.STYLE_FIX.lower(), S.STYLE_FIX[60:120])
+ck("살결·비례를 실제처럼 적는다",
+   "natural skin texture" in S.STYLE_FIX.lower()
+   and "true-to-life" in S.STYLE_FIX.lower(), S.STYLE_FIX[100:200])
 ck("인물 그림도 **같은 화풍**이다 (따로 놀면 얼굴이 안 잡힌다)",
-   "illustration" in _CS2.LOOK.lower() and "semi-realistic" in _CS2.LOOK.lower(),
-   _CS2.LOOK[:50])
-# ⚠️ 반대편 목록에 그림체를 막는 말이 남아 있으면 바라는 것을 스스로 막는다
+   "photoreal" in _CS2.LOOK.lower(), _CS2.LOOK[:50])
+# ⚠️ 화풍을 바꿀 때는 **반대편 목록도 같이** 뒤집는다. 실사로 왔으니
+#    이제는 그림체를 막아야 한다 (그림체로 갈 때 빼 두었던 말들이다).
 for _w in ("cartoon", "illustration", "anime", "drawing"):
-    ck(f"하지 마라 목록에 '{_w}' 가 없다", _w not in _CS2.AVOID.lower(),
+    ck(f"하지 마라 목록이 '{_w}' 를 막는다", _w in _CS2.AVOID.lower(),
        _CS2.AVOID[-70:])
-ck("과장된 비례는 여전히 막는다", "chibi" in _CS2.AVOID.lower())
+# ⚠️ 얼굴은 FACE AND HAIR 가 진다. 공용 LOOK 이 얼굴까지 정하면
+#    내연녀를 '눈에 띄게' 적어도 공용 문구가 이겨 버린다.
+ck("공용 화풍 문구가 얼굴을 정하지 않는다",
+   "unremarkable" not in _CS2.LOOK.lower(), _CS2.LOOK[:60])
 ck("사진을 부르는 말은 그대로 떼어 낸다",
    "photorealistic" in _CS2.PHOTO_WORDS and "photograph" in _CS2.PHOTO_WORDS)
 

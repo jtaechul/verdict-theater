@@ -285,6 +285,12 @@ def main():
     #    실행이 남긴 낡은 기준 그림 프롬프트가 영영 안 고쳐졌다** (하지 말 것
     #    줄이 빠진 채로 남았다). 새 인물 자리는 **늘 다시 짓는다** — 문구를
     #    고치고 다시 돌리면 그대로 반영돼야 한다.
+    # ⚠️ 2026-08-26 — 옛 세 사람(본처·내연녀·남편)의 기준 그림은 **손으로 적힌
+    #    채 굳어 있었다.** 화풍을 실사로 바꾸자 그 셋만 그림체로 남았다.
+    #    이제 **다섯 사람 모두** charsheet 가 짓는다 — 문구를 고치면 다 같이 바뀐다.
+    for c in chars:
+        if c.get("flow_prompt"):
+            c["flow_sheet"], c["flow_desc"] = CS.build(c)
     names = {c.get("name") for c in story.NEW_CHARS}
     chars = [c for c in chars if c.get("name") not in names]
     for c in story.NEW_CHARS:

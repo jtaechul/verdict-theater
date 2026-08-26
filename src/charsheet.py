@@ -62,17 +62,26 @@ LIGHT = "soft even light from the front, no hard shadow, no coloured light"
 #    인물 기준 그림도 **같은 화풍**이어야 한다. 여기만 사진처럼 두면
 #    컷과 인물이 따로 놀아 얼굴이 안 잡힌다.
 #    ⚠️ 만화가 아니다. 판결극장은 실제 판결이 밑천이라 무게가 빠지면 안 된다.
-LOOK = ("semi-realistic hand-drawn character illustration with clean confident "
-        "linework and soft cel shading, true-to-life body proportions, calm "
-        "everyday face rather than cartoon exaggeration, muted desaturated "
-        "colours, plain unremarkable features")
+# ⭐⭐ 2026-08-26 — 그림체에서 **실사**로 바꿨다(운영자 지시). 컷과 인물이
+#    같은 결이어야 하므로 여기도 같이 바꾼다.
+# ⚠️ "rather than cartoon exaggeration" 처럼 **부정문으로 안 적는다** —
+#    안전 검사기는 부정을 못 알아듣고 낱말만 본다.
+# ⚠️ 2026-08-26 — 예전 LOOK 은 "plain unremarkable features" 로 **얼굴까지**
+#    정했다. 그러면 내연녀를 '눈에 띄게' 적어도 공용 문구가 이겨 버린다.
+#    얼굴은 FACE AND HAIR 가 지고, 여기는 **화풍만** 진다.
+LOOK = ("photoreal look with natural skin texture and true-to-life body "
+        "proportions, muted desaturated colours, soft even lighting")
 # ⚠️ 예전 Avoid 에는 cartoon · illustration · anime 가 들어 있었다.
 #    그림체로 가기로 한 지금 그 말이 남아 있으면 **바라는 것을 막는다.**
 #    고정 문구를 바꿀 때는 **반대편(하지 마라) 목록도 같이** 봐야 한다.
+# ⚠️ 2026-08-26 — 화풍을 실사로 바꿨으므로 이 목록도 **뒤집는다.**
+#    그림체로 갈 때 cartoon·illustration·anime 를 뺐었는데, 실사로 돌아온
+#    지금 그 말이 빠져 있으면 그림이 섞여 나온다.
+#    (고정 문구를 바꿀 때는 **반대편 목록도 같이** 봐야 한다 — 두 번째다)
 AVOID = ("Avoid: text, letters, watermark, logo, props, furniture, "
          "background scenery, other people, harsh or coloured lighting, "
-         "tilted camera, close-up crop, chibi or super-deformed proportions, "
-         "big sparkling eyes, 3D render, oil painting")
+         "tilted camera, close-up crop, cartoon, anime, illustration, "
+         "drawing, 3D render, oil painting")
 
 # 사진을 가리키는 말 — 인물 설명에 남아 있으면 떼어 낸다
 # ⚠️ 화풍이 그림체가 된 뒤에도 **사진을 부르는 말**은 그대로 떼어 낸다 —
@@ -186,10 +195,14 @@ def build(ch):
     outfit = strip_photo(ch.get("outfit"))
     label = (ch.get("role_en") or "").strip() or (ch.get("name") or "").strip()
 
-    sheet = [f"{HEAD} — {who_line(ch)}, drawn in the same "
-             f"semi-realistic illustration style as the scenes."]
+    sheet = [f"{HEAD} — {who_line(ch)}, in the same "
+             f"photoreal look as the scenes."]
     if look:
         sheet.append(f"FACE AND HAIR: {look}.")
+    # ⭐ 2026-08-26 — 몸집·자세 칸. 예전엔 얼굴 칸에 섞여 들어갔다.
+    build = strip_photo(ch.get("body"))
+    if build:
+        sheet.append(f"BUILD: {build}.")
     if outfit:
         sheet.append(f"WEARING: {outfit}.")
     sheet += [
