@@ -74,6 +74,36 @@ BOOK_OK = ("lawyer", "judge")      # 이 사람들은 원래 그렇게 말한다
 FILLER = ["야", "어", "아니", "근데", "그래서", "됐", "뭐", "글쎄", "참",
           "저기", "아유", "어휴", "그럼", "좀", "진짜", "왜", "무슨", "…"]
 
+# ⑥ 글로 쓰는 말 vs 입으로 하는 말 (2026-08-26 운영자)
+#    "사람이 말할 때는 '니가' 하지, '네가' 라고 하지 않아. 그건 구어체가
+#     아니고 문어체야. 구어체로 똑바로 적어."
+#    ⚠️ 대답하는 '네' 는 건드리면 안 된다 ("네, 제가 아내인데요").
+#       `네가` · `네 + 이름씨` · `너의` 만 본다 — '네,' 는 뒤가 쉼표라 안 걸린다.
+WRITTEN = [(r"네가", "니가"), (r"네\s+[가-힣]", "니 ~"), (r"너의", "니"),
+           (r"무엇을", "뭘"), (r"무엇이", "뭐가"), (r"하지 아니", "안 하")]
+
+# ⚠️ 감탄사·부름말은 **문장이 아니다.** 세면 멀쩡한 대사가 걸린다 —
+#      "어, 손님 오셨어? …여보. 이 사람 누구냐고."   ← 실은 두 문장이다
+#      "야. 이겼다고 좋아하지 마. 나 아직 안 끝났으니까."  ← 실은 두 문장이다
+#    (2026-08-26, 이 검사가 사람 말을 잡은 두 번째 사고다.
+#     **검사가 사람 말을 잡으면 대사가 아니라 검사가 틀린 것이다.**)
+INTERJ = {"야", "어", "아", "응", "네", "예", "아니", "여보", "엄마", "아빠",
+          "저기", "참", "아유", "어휴", "자", "그럼", "뭐", "글쎄", "허"}
+
+
+def sentences(t):
+    """실질 문장만 센다 — 감탄사·부름말 토막은 빼고."""
+    out = []
+    for x in re.split(r"[.!?…]+", t):
+        x = x.strip().strip("…,\"' ")
+        if not x:
+            continue
+        if x in INTERJ or x.rstrip(",") in INTERJ:
+            continue
+        out.append(x)
+    return out
+
+
 SENT_MAX = 2        # 한 대사는 두 문장까지
 NUM_MAX = 1         # 한 대사에 숫자는 하나까지
 
@@ -139,10 +169,18 @@ def scan(doc, soft=None):
                                f'된다 ("{t}")')
 
                 # ③ 연설
-                n_sent = len([x for x in re.split(r"[.!?…]+", t) if x.strip()])
+                n_sent = len(sentences(t))
                 if n_sent > SENT_MAX:
                     bad.append(f"{tag}: 한 대사가 {n_sent}문장이다 "
                                f'({SENT_MAX}문장까지 — 넘으면 연설이다) ("{t}")')
+
+                # ⑥ 글말투 대명사 — 입으로는 그렇게 말하지 않는다
+                for pat, better in WRITTEN:
+                    if re.search(pat, t):
+                        bad.append(f"{tag}: 글로 쓰는 말이다 — "
+                                   f"'{re.search(pat, t).group(0)}' 는 "
+                                   f"'{better}' 라고 말한다 (\"{t}\")")
+                        break
 
                 # ④ 문어체
                 if not any(k in (who or "").lower() for k in BOOK_OK):
@@ -193,17 +231,34 @@ def selftest():
 
     d = doc("야. 이거 봐. 저거 봐. 그거 봐.")
     assert any("문장이다" in b for b in scan(d)), "연설을 못 잡는다"
+    # 감탄사·부름말은 문장이 아니다 — 이걸 세면 멀쩡한 대사가 걸린다
+    d = doc("어, 손님 오셨어? …여보. 이 사람 누구냐고.")
+    assert not any("문장이다" in b for b in scan(d)), \
+        f"감탄사를 문장으로 세면 안 된다: {scan(d)}"
+    d = doc("야. 이겼다고 좋아하지 마. 나 아직 안 끝났으니까.")
+    assert not any("문장이다" in b for b in scan(d)), \
+        f"부름말을 문장으로 세면 안 된다: {scan(d)}"
 
     d = doc("야, 매달 이천만 원씩 부었더군요.")
     assert any("판결문 말투" in b for b in scan(d)), "문어체를 못 잡는다"
     d = doc("매달 이천만 원씩 부었더군요.", who="Lawyer")
     assert not any("판결문 말투" in b for b in scan(d)), "변호사까지 잡으면 안 된다"
 
+    d = doc("야, 네가 그랬잖아.")
+    assert any("글로 쓰는 말" in b for b in scan(d)), f"'네가' 를 못 잡는다: {scan(d)}"
+    d = doc("야, 니가 그랬잖아.")
+    assert not any("글로 쓰는 말" in b for b in scan(d)), "'니가' 를 잡으면 안 된다"
+    d = doc("네, 제가 그 사람 아내인데요.", "아니 왜요.")
+    assert not any("글로 쓰는 말" in b for b in scan(d)), \
+        f"대답하는 '네' 를 잡으면 안 된다: {scan(d)}"
+
     d = doc("이혼하자.", "서류는 보낼게.")
     assert any("군말도 하나도 없다" in b for b in scan(d)), \
         f"군말 없는 화를 못 잡는다: {scan(d)}"
     print("   ✅ 자기시험: 토막 · 정보 낭독 · 연설 · 문어체 · 군말 없음 다 잡고,\n"
-          "      되풀이 강조 · 날짜 하나 · 흐린 말끝은 잡지 않는다")
+          "      글말투('네가') 도 잡고,\n"
+          "      되풀이 강조 · 날짜 하나 · 흐린 말끝 · 대답하는 '네' ·\n"
+          "      감탄사('야' '어' '여보') 는 잡지 않는다")
 
 
 def main():
@@ -224,6 +279,7 @@ def main():
             print("   ✅ 대사가 금액·날짜를 나르지 않는다 (그건 해설 몫)")
             print("   ✅ 연설하는 대사가 없다 · 판결문 말투가 없다")
             print("   ✅ 화마다 되묻기·군말이 있다")
+            print("   ✅ 글말투가 없다 ('네가' 가 아니라 '니가')")
         for b in soft:
             print("   ·  " + b)
     print("\n" + "─" * 60)

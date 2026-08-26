@@ -23,6 +23,12 @@
       ⑤ 컷당 대사 4개 → **2~3개**. 사람은 10초에 네 마디를 안 한다
 """
 
+# ⭐⭐ 때(날짜) — **판결문 날짜를 그대로 쓰지 않는다** (2026-08-26 운영자 지시)
+#    "판례에 있는 날짜 그대로 쓰는 거 아니지? 오해받을 수 있으니깐 조금 바꿔라.
+#     그리고 일까지 표시하지 말고 몇 월인지 정도까지만 얘기하고."
+#    → ① 실제 날짜에서 **한 달씩 옮긴다** ② **일(日)은 화면에도 대사에도 안 쓴다**
+#    반전('기각 당일에 도장을 찍었다')은 숫자가 아니라 **'같은 날' 이라는 말**이 진다.
+#
 # ⭐ 금액 장부 — 실제 판결문 금액을 조금 늘려 백만원 단위 절사 (운영자 지시)
 LEDGER = {
     "병원지분": "십억",       # 판결문 9억 8,445만
@@ -123,7 +129,7 @@ EPS = [
         ("거실", "the husband takes his car key from the low table and turns toward the "
                  "door while his wife stays where she is",
          [(H, "일 년 됐어. 숨길 생각 없어."),
-          (H, "이혼하자. 애들한텐 네가 말하고."),
+          (H, "이혼하자. 애들한텐 니가 말하고."),
           (W, "…애들한테? 그걸 왜 내가 말해?")]),
       ]),
  dict(no=2, title="딸이 먼저 뜯었다", when="2012년 겨울", act=1,
@@ -154,7 +160,7 @@ EPS = [
           (W, "너는 아무 걱정 하지 마."),
           (W, "…엄마가 알아서 할게.")]),
       ]),
- dict(no=3, title="기각", when="2013년 8월", act=1,
+ dict(no=3, title="기각", when="2013년 9월", act=1,
       mood="억눌린 분노", words=["tight", "hard", "furious"],
       hook="바람피운 쪽이 걸었다가 *기각당했다*",
       yt_title="바람피운 남편이 낸 이혼 소송, 법원이 기각했습니다",
@@ -181,7 +187,7 @@ EPS = [
          [(H, "재산 때문에 이러는 거지?"),
           (H, "두고 봐. 방법이 없는 건 아니니까…")]),
       ]),
- dict(no=4, title="짐을 싸는 남편", when="2013년 가을", act=1,
+ dict(no=4, title="짐을 싸는 남편", when="2013년 겨울", act=1,
       mood="말라붙은 정", words=["flat", "cold", "final"],
       hook="남편이 *짐을 싸서* 나갔다",
       yt_title="기각당한 남편이 짐을 싸서 집을 나갔습니다",
@@ -236,7 +242,7 @@ EPS = [
           (D, "아빠한테 물어보라니까."),
           (W, "…근데 왜 내 이름을 알았을까?")]),
       ]),
- dict(no=6, title="새벽 전화", when="2017년 1월", act=2,
+ dict(no=6, title="새벽 전화", when="2017년 2월", act=2,
       mood="무너짐", words=["numb", "shaken", "hollow"],
       hook="새벽 전화 *남편분이 떨어지셨습니다*",
       yt_title="새벽에 전화가 왔습니다. 남편이 떨어졌다고",
@@ -262,7 +268,7 @@ EPS = [
           (W, "그이가 왜 당신 집에서…"),
           (O, "장례비는 그쪽이 내시는 거죠?")]),
       ]),
- dict(no=7, title="장례식장", when="2017년 1월", act=2,
+ dict(no=7, title="장례식장", when="2017년 2월", act=2,
       mood="치미는 모욕", words=["tight", "hard", "cold"],
       hook="장례식장에 온 내연녀 *다 내 거예요*",
       yt_title="장례식장에 내연녀가 찾아왔습니다",
@@ -286,10 +292,10 @@ EPS = [
         ("장례식장", "the woman turns at the doorway with her bag on one shoulder while "
                      "the wife stays where she is",
          [(O, "그이가 남긴 건 다 내 거예요."),
-          (W, "내 남편 물건에 네가 왜 손을 대."),
+          (W, "내 남편 물건에 니가 왜 손을 대."),
           (O, "곧 알게 되실 텐데요…")]),
       ]),
- dict(no=8, title="통장을 열었다", when="2017년 2월", act=2,
+ dict(no=8, title="통장을 열었다", when="2017년 3월", act=2,
       mood="절박함", words=["low", "tight", "breaking"],
       hook="통장을 열자 남은 건 *빚 육억*뿐",
       yt_title="남편 통장을 열어 보니 빚만 6억 남아 있었습니다",
@@ -314,9 +320,9 @@ EPS = [
         ("은행창구", "the wife keeps looking straight ahead at the counter while her "
                      "daughter waits beside her",
          [(W, "미안해. 엄마가 진짜 몰랐어."),
-          (W, "네 아빠가 이럴 사람이 아닌데…")]),
+          (W, "니 아빠가 이럴 사람이 아닌데…")]),
       ]),
- dict(no=9, title="등록금", when="2017년 3월", act=2,
+ dict(no=9, title="등록금", when="2017년 4월", act=2,
       mood="삼키는 마음", words=["quiet", "careful", "resolved"],
       hook="딸의 등록금을 *못 냈다*",
       yt_title="딸 등록금을 못 냈습니다",
@@ -339,11 +345,11 @@ EPS = [
           (D, "그만해. 나 다 알아.")]),
         ("부엌", "the daughter stops in the doorway on her way out while the wife "
                  "stays at the table with both hands around a cold cup",
-         [(W, "네 아빠 돈 어디로 갔는지 찾을 거야."),
+         [(W, "니 아빠 돈 어디로 갔는지 찾을 거야."),
           (D, "어떻게 찾아."),
-          (W, "다 찾아서 네 앞으로 돌려놓을게…")]),
+          (W, "다 찾아서 니 앞으로 돌려놓을게…")]),
       ]),
- dict(no=10, title="병원 지분 십억", when="2017년 5월", act=2,
+ dict(no=10, title="병원 지분 십억", when="2017년 6월", act=2,
       mood="맞부딪힘", words=["tight", "hard", "cold"],
       hook="병원 지분 *십억*까지 내연녀 앞으로",
       yt_title="병원 지분 10억까지 내연녀 앞으로 넘어가 있었습니다",
@@ -356,9 +362,9 @@ EPS = [
       cuts=[
         ("병원복도", "the wife comes down the corridor and stops in front of the woman, "
                      "who is standing by the wheeled trolley",
-         [(W, "네가 여기 왜 있어."),
+         [(W, "니가 여기 왜 있어."),
           (O, "제 병원인데 왜 나가요."),
-          (W, "이게 언제부터 네 병원이야.")]),
+          (W, "이게 언제부터 니 병원이야.")]),
         ("병원복도", "the woman walks past the wife toward the far end of the corridor "
                      "and the wife turns to follow her with her eyes",
          [(O, "그이 몫 십억, 전부 제 앞으로 왔어요."),
@@ -369,7 +375,7 @@ EPS = [
          [(W, "십억이 통째로 넘어갔어."),
           (W, "이게 다일까. 아직 더 있는 거 아니야?")]),
       ]),
- dict(no=11, title="보험 아홉 건", when="2017년 6월", act=2,
+ dict(no=11, title="보험 아홉 건", when="2017년 7월", act=2,
       mood="기막힘", words=["low", "tight", "hard"],
       hook="보험 아홉 건 *십삼억* 전부 내연녀",
       yt_title="사망보험 9건, 13억이 전부 내연녀 앞으로 되어 있었습니다",
@@ -396,7 +402,7 @@ EPS = [
           (L, "매달 이천만 원씩 나갔습니다."),
           (W, "…어느 통장에서 나갔는데요?")]),
       ]),
- dict(no=12, title="다 합치니 삼십이억", when="2017년 8월", act=3,
+ dict(no=12, title="다 합치니 삼십이억", when="2017년 9월", act=3,
       mood="벼른 결심", words=["low", "steady", "hard"],
       hook="다 합치니 *삼십이억*이었다",
       yt_title="다 합쳐 보니 32억이 빠져나가 있었습니다",
@@ -454,13 +460,13 @@ EPS = [
       ]),
  dict(no=14, title="서명한 날짜", when="2018년 가을", act=3,
       mood="무너지는 거짓말", words=["cool", "tight", "hard"],
-      hook="몰랐다던 서명 날짜가 *기각 당일이었다*",
-      yt_title="몰랐다던 내연녀, 서명 날짜가 이혼 기각 당일이었습니다",
+      hook="몰랐다던 도장, 날짜가 *기각 당일이었다*",
+      yt_title="몰랐다던 내연녀, 도장 찍은 날이 이혼 기각 당일이었습니다",
       recap="되돌릴 수 있는 건 절반까지였다",
       because="아내는 절반이라도 받아내겠다고 했다",
       leaves="내연녀는 왜 그날인지 대답하지 못했다",
-      reveal="내연녀의 서명 날짜가 이혼 기각 당일이라는 것이 드러난다",
-      must=["팔월 구일"],
+      reveal="내연녀가 도장을 찍은 날이 이혼 기각 당일이라는 것이 드러난다",
+      must=["구월"],
       shots=["two", "close", "ots"],
       extras={2: [O]},
       cuts=[
@@ -468,16 +474,16 @@ EPS = [
                  "the bench behind her",
          [(O, "저는 몰랐어요. 하라는 대로 썼을 뿐이에요."),
           (W, "몰랐다고?"),
-          (W, "신분증까지 네가 냈던데.")]),
+          (W, "신분증까지 니가 냈던데.")]),
         ("법정", "the wife holds up a thin bankbook at arm's length and keeps it there, "
                  "the woman half turned toward her",
          [(W, "보험료 낸 통장, 여기 있어."),
           (W, "매달 그 사람 통장에서 나갔더라.")]),
         ("법정", "the woman turns fully around to face the wife and then looks down at "
                  "the floor, both hands at her sides",
-         [(W, "네가 서명한 날짜, 이천십삼년 팔월 구일이야."),
+         [(W, "니가 도장 찍은 게 이천십삼년 구월이야."),
           (O, "…그게 왜요."),
-          (W, "이혼 재판 진 그날이야. 몰랐다며, 근데 왜 그날이야?")]),
+          (W, "그 인간 재판 진 날이랑 같은 날이잖아. 몰랐다면서?")]),
       ]),
  dict(no=15, title="삼 년째", when="2019년 가을", act=3,
       mood="지침", words=["tired", "low", "steady"],
@@ -499,14 +505,14 @@ EPS = [
         ("법원복도", "the mother keeps both hands folded in her lap and looks straight "
                      "ahead down the corridor while her daughter waits beside her",
          [(W, "엄마가 못 지켜준 게 미안해서 그래."),
-          (W, "네 아빠 돈, 그냥 두고는 못 살겠어.")]),
+          (W, "니 아빠 돈, 그냥 두고는 못 살겠어.")]),
         ("법원복도", "the mother stands up from the bench and the daughter steps aside "
                      "to let her pass toward the courtroom doors",
          [(D, "엄마가 너무 힘들잖아."),
           (W, "여기서 놓으면 그 사람이 이기는 거야."),
           (W, "…끝까지 갈 거야.")]),
       ]),
- dict(no=16, title="판결", when="2020년 6월", act=3,
+ dict(no=16, title="판결", when="2020년 7월", act=3,
       mood="담담한 승리", words=["low", "steady", "released"],
       hook="법원 *십억 전부 돌려주라*",
       yt_title="법원이 내연녀에게 10억을 돌려주라고 했습니다",
@@ -522,7 +528,7 @@ EPS = [
                    "woman is waiting at the bottom",
          [(W, "십억. 다 돌려주라고 했어."),
           (O, "십억을 어떻게 돌려줘요."),
-          (W, "네가 가져간 만큼이야.")]),
+          (W, "니가 가져간 만큼이야.")]),
         ("법원앞", "the woman steps up one stair toward the wife and the wife stays "
                    "where she is",
          [(O, "내가 옆에서 얼마나 고생했는데."),
