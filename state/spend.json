@@ -442,5 +442,35 @@
     "kind": "목소리",
     "krw": 288,
     "note": "392자(어림) · typecast S001 1화"
+  },
+  {
+    "date": "2026-08-26",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 딸.png"
+  },
+  {
+    "date": "2026-08-26",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 변호사.png"
+  },
+  {
+    "date": "2026-08-26",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 16:9 c001.png"
+  },
+  {
+    "date": "2026-08-26",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 16:9 c001_end.png"
+  },
+  {
+    "date": "2026-08-26",
+    "kind": "영상",
+    "krw": 941,
+    "note": "veo-3.1-lite-generate-preview 8초 c001.mp4"
   }
 ]
