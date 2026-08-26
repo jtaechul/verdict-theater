@@ -43,6 +43,8 @@ import shorts as SH                                          # noqa: E402
 
 STORY = ROOT / "data" / "series" / "S001_story.py"
 REWRITE = ROOT / "tools" / "rewrite_story.py"
+WORKER = ROOT / "admin" / "worker.js"
+VIDEO_YML = ROOT / ".github" / "workflows" / "video.yml"
 
 # ① 화풍을 가리키는 말 (어느 편인지 알아보는 용도)
 REAL_WORDS = ("photoreal", "natural skin", "photographic")
@@ -168,8 +170,34 @@ def check_used(bad, keys=None, src=None):
                        f"한 번도 안 읽는다 — 적어만 두고 조용히 무시된다")
 
 
+def check_playable(bad, worker=None, wf=None):
+    """⑤ 관리자가 **재생하려는 파일 이름** ↔ 워크플로가 **올리는 파일 이름**.
+
+    ⚠️⚠️ 2026-08-27 손님: "시험1컷 영상 만들기 한거 어디서봐? 다 옛날 영상뿐인데?"
+       관리자는 ko.mp4 · veo.mp4 도 재생 목록에 두고 **ko 를 먼저 골랐는데**,
+       워크플로는 2026-08-23 부터 short.mp4 하나만 올린다. 그래서 새로 만든
+       영상 대신 **사흘 전 파일**이 재생됐다. 두 이름표가 어긋난 것이다.
+    """
+    worker = WORKER.read_text(encoding="utf-8") if worker is None else worker
+    wf = VIDEO_YML.read_text(encoding="utf-8") if wf is None else wf
+    m = re.search(r"const PLAYABLE = \[([^\]]*)\]", worker)
+    if not m:
+        bad.append("관리자 페이지에서 재생 목록(PLAYABLE)을 못 찾았다")
+        return
+    want = [x.group(1) for x in re.finditer(r"'([^']+)'", m.group(1))]
+    puts = {x.group(1) for x in
+            re.finditer(r"release_file\.py put[^\n]*?\s(\S+\.mp4)\s", wf)}
+    miss = [n for n in want if n not in puts]
+    if miss:
+        bad.append(f"관리자가 재생하려는 {miss} 를 워크플로가 안 올린다 — "
+                   f"올리는 것은 {sorted(puts) or '없음'} 이다. "
+                   f"안 만드는 파일을 먼저 틀면 **옛 영상이 재생된다** "
+                   f"(admin PLAYABLE ↔ video.yml)")
+
+
 def scan(doc):
     bad = []
+    check_playable(bad)
     check_style(bad)
     check_fixed(bad)
     check_people(bad, doc)
@@ -250,9 +278,19 @@ def selftest():
     check_used(b, keys={"no"}, src='x = e.get("no")')
     assert not b, f"멀쩡한 것을 걸었다: {b}"
 
+    # ⑤ 재생 목록과 올리는 파일이 어긋난 것 — 실제로 난 사고다
+    b = []
+    check_playable(b, "const PLAYABLE = ['short.mp4', 'ko.mp4'];",
+                   'release_file.py put "$TAG" short.mp4 "$OUT"\n')
+    assert any("안 올린다" in x for x in b), f"어긋난 재생 목록을 못 잡는다: {b}"
+    b = []
+    check_playable(b, "const PLAYABLE = ['short.mp4'];",
+                   'release_file.py put "$TAG" short.mp4 "$OUT"\n')
+    assert not b, f"멀쩡한 것을 걸었다: {b}"
+
     print("   ✅ 자기시험: 갈린 화풍 · 반대편을 안 막는 목록 · 바라는 것을 막는\n"
           "      목록 · 베낀 고정 줄 · 어긋난 인물표 · 빠진 이름표 ·\n"
-          "      무시된 설정 — 실제로 났던 사고를 재현해 다 잡는다")
+          "      무시된 설정 · 어긋난 재생 목록 — 실제로 났던 사고를 재현해 다 잡는다")
 
 
 def main():
@@ -273,6 +311,7 @@ def main():
     print("   ✅ 대본 만드는 도구가 고정 줄을 글자로 베끼지 않는다")
     print("   ✅ 인물 목록 · 목소리표 · 등장 차례 · 화면 이름표가 다 맞는다")
     print("   ✅ 이야기 파일에 적어 둔 설정이 전부 읽힌다")
+    print("   ✅ 관리자가 재생하려는 파일을 워크플로가 실제로 올린다")
     print("\n" + "─" * 60)
     print("✅ 짝 검사: 전부 통과")
     return 0

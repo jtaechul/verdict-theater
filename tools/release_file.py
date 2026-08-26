@@ -93,7 +93,32 @@ def put(tag, name, src):
     return 0
 
 
+def prune(tag, keep):
+    """남길 것만 두고 나머지 자산을 지운다.
+
+    ⚠️⚠️ 2026-08-27 손님: "시험1컷 영상 만들기 한거 어디서봐? 다 옛날 영상뿐인데?"
+       같은 자리(릴리스)에 **사흘 전 판(ko.mp4·veo.mp4)** 이 남아 있어서
+       새로 만든 short.mp4 대신 옛것이 재생됐다. 새로 올릴 때 옛것을 치운다.
+    """
+    try:
+        rel = release(tag)
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return 0
+        raise
+    gone = []
+    for a in rel.get("assets", []):
+        if a["name"] not in keep:
+            call(f"{repo()}/releases/assets/{a['id']}", "DELETE")
+            gone.append(a["name"])
+    print(f"🧹 {tag}: 옛 자산 {len(gone)}개 치움"
+          + (f" ({', '.join(gone)})" if gone else ""))
+    return 0
+
+
 def main():
+    if len(sys.argv) >= 3 and sys.argv[1] == "prune":
+        return prune(sys.argv[2], set(sys.argv[3:]))
     if len(sys.argv) < 5:
         print(__doc__, file=sys.stderr)
         return 2

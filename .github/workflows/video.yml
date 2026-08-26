@@ -156,7 +156,11 @@ jobs:
             OUT="build/shorts/${SID}_ep${EP}_short.mp4"
           fi
           test -n "$OUT" && test -f "$OUT" || { echo "❌ 만들어진 영상이 없습니다"; exit 1; }
-          python3 tools/release_file.py put "short-${SID}-ep${EP}${SUF}" short.mp4 "$OUT"
+          TAG="short-${SID}-ep${EP}${SUF}"
+          python3 tools/release_file.py put "$TAG" short.mp4 "$OUT"
+          # ⚠️ 2026-08-27 — 같은 자리에 옛 판(ko.mp4·veo.mp4)이 남아 있으면
+          #    관리자 화면이 그걸 먼저 튼다. 새로 올린 뒤 옛것을 치운다.
+          python3 tools/release_file.py prune "$TAG" short.mp4 thumb.jpg || true
 
       - name: 쓴 돈 장부 남기기
         if: always()
