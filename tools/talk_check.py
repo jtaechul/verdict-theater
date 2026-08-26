@@ -104,6 +104,17 @@ def sentences(t):
     return out
 
 
+# ⑦ 높임말 일관성 (2026-08-26 운영자)
+#    "왜 자꾸 아내는 내연녀한테 존댓말 했다가 반말 했다가 일관성이 없어.
+#     특별히 바뀌어야 될 상황이 아니잖아."
+#    맞다. 세어 보니 세 쌍이 섞여 있었다 —
+#      아내 → 내연녀 : 16줄 중 15줄 반말, **한 줄만 존댓말**
+#      내연녀 → 아내 : 14줄 중 12줄 존댓말, **두 줄이 한 대사 안에서 반말**
+#      아내 → 딸     : 창구 직원에게 한 말이 '딸에게' 로 잘못 묶였다(aside 로 뺀다)
+#    사람 사이의 높임말은 **관계가 정하는 것**이라 장면마다 바뀌지 않는다.
+POLITE_END = ("요", "니다", "습니까", "세요", "십시오", "죠", "까요", "데요",
+              "군요", "는데요", "거든요", "잖아요")
+
 SENT_MAX = 2        # 한 대사는 두 문장까지
 NUM_MAX = 1         # 한 대사에 숫자는 하나까지
 
@@ -134,6 +145,15 @@ def chopped(t):
     return ""
 
 
+def politeness(t):
+    """이 대사가 존댓말인가 반말인가 — 마지막 실질 문장의 말끝으로 본다."""
+    ss = sentences(t)
+    if not ss:
+        return ""
+    b = re.sub(r"[.!?…\"'\s,]", "", ss[-1])
+    return "존댓말" if b.endswith(POLITE_END) else "반말"
+
+
 def ender(t):
     """말끝 두 글자 — 사람마다 달라야 한다."""
     body = re.sub(r"[.!?…\"']", "", t.strip())
@@ -144,6 +164,7 @@ def scan(doc, soft=None):
     bad = []
     soft = soft if soft is not None else []
     enders = {}
+    pair = {}          # (말한 사람 → 듣는 사람): {높임말: [어디]}
     for e in doc.get("episodes") or []:
         no = e.get("no")
         has_filler = False
@@ -189,10 +210,36 @@ def scan(doc, soft=None):
                         bad.append(f"{tag}: 판결문 말투 — {', '.join(hit)} "
                                    f'("{t}")')
 
+        # ⑦ 높임말 — 한 쌍은 처음부터 끝까지 같아야 한다
+        for c in e.get("cuts") or []:
+            turns = turns_of(c)
+            speakers = sorted({w for w, _ in turns if w})
+            if len(speakers) != 2:
+                continue                     # 혼잣말·전화는 상대를 알 수 없다
+            aside = set(c.get("aside") or [])
+            for w, t in turns:
+                if not w or w in aside:      # 화면 밖 상대에게 한 말은 뺀다
+                    continue
+                other = [x for x in speakers if x != w][0]
+                lv = politeness(t)
+                if lv:
+                    pair.setdefault((w, other), {}).setdefault(lv, []).append(
+                        f"{no}화 {c.get('n')}컷")
+
         # ⑤ 군말
         if (e.get("cuts") or []) and not has_filler:
             bad.append(f"{no}화: 되묻기도 군말도 하나도 없다 — "
                        f"사람은 말할 때 '야' '아니' '근데' '왜' 를 쓴다")
+
+    # ⑦ 섞인 쌍은 버린다
+    for (a, b), lv in sorted(pair.items()):
+        if len(lv) > 1:
+            bit = " / ".join(f"{k} {len(v)}줄({v[0]}…)" for k, v in lv.items())
+            few = min(lv, key=lambda k: len(lv[k]))
+            bad.append(f"{a} 가 {b} 에게 존댓말과 반말을 섞는다 — {bit}. "
+                       f"적은 쪽({few} {len(lv[few])}줄: "
+                       f"{', '.join(lv[few])})을 맞춘다. "
+                       f"높임말은 관계가 정하는 것이라 장면마다 안 바뀐다")
 
     # 말버릇 겹침 (알리기만)
     who_list = [w for w in enders if w]
@@ -252,13 +299,28 @@ def selftest():
     assert not any("글로 쓰는 말" in b for b in scan(d)), \
         f"대답하는 '네' 를 잡으면 안 된다: {scan(d)}"
 
+    # ⑦ 높임말이 섞이면 잡는다 (두 사람이 말하는 컷에서만 본다)
+    mix = {"episodes": [{"no": 1, "cuts": [{"n": 1, "prompt":
+           "DIALOGUE: x\n"
+           '  Wife (numb, in Korean): "야, 니가 왜 여기 있어."\n'
+           '  Other woman (numb, in Korean): "왜요, 오면 안 돼요?"'},
+           {"n": 2, "prompt":
+           "DIALOGUE: x\n"
+           '  Wife (numb, in Korean): "아니 왜 여기 계세요?"\n'
+           '  Other woman (numb, in Korean): "그냥 왔어요."'}]}]}
+    assert any("존댓말과 반말을 섞는다" in b for b in scan(mix)), \
+        f"섞인 높임말을 못 잡는다: {scan(mix)}"
+    mix["episodes"][0]["cuts"][1]["aside"] = ["Wife"]
+    assert not any("존댓말과 반말을 섞는다" in b for b in scan(mix)), \
+        "화면 밖 상대에게 한 말까지 잡으면 안 된다"
+
     d = doc("이혼하자.", "서류는 보낼게.")
     assert any("군말도 하나도 없다" in b for b in scan(d)), \
         f"군말 없는 화를 못 잡는다: {scan(d)}"
     print("   ✅ 자기시험: 토막 · 정보 낭독 · 연설 · 문어체 · 군말 없음 다 잡고,\n"
           "      글말투('네가') 도 잡고,\n"
           "      되풀이 강조 · 날짜 하나 · 흐린 말끝 · 대답하는 '네' ·\n"
-          "      감탄사('야' '어' '여보') 는 잡지 않는다")
+          "      감탄사('야' '어' '여보') 와 화면 밖 상대(창구·전화) 는 잡지 않는다")
 
 
 def main():
@@ -280,6 +342,7 @@ def main():
             print("   ✅ 연설하는 대사가 없다 · 판결문 말투가 없다")
             print("   ✅ 화마다 되묻기·군말이 있다")
             print("   ✅ 글말투가 없다 ('네가' 가 아니라 '니가')")
+            print("   ✅ 높임말이 사람 쌍마다 처음부터 끝까지 같다")
         for b in soft:
             print("   ·  " + b)
     print("\n" + "─" * 60)

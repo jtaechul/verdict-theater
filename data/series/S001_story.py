@@ -259,8 +259,8 @@ EPS = [
           (W, "네? 어디서 떨어졌다고요?")]),
         ("병원복도밤", "the wife comes down the corridor and stops in front of the woman, "
                        "who rises from one of the steel chairs",
-         [(W, "그이가 왜 거기서 떨어져요."),
-          (O, "혼자 나갔어요. 나도 자다가 알았고."),
+         [(W, "그이가 왜 거기서 떨어져."),
+          (O, "혼자 나갔어요. 저도 자다가 알았고요."),
           (W, "왜 당신 집이야. 왜 하필 거기야.")]),
         ("병원복도밤", "the woman takes her bag from the chair and steps around the wife "
                        "toward the exit, then stops",
@@ -306,6 +306,8 @@ EPS = [
       must=["빚 육억"], quiet=True,
       shots=["ots", "two", "close"],
       extras={1: [D], 3: [D]},
+      # ⭐ 화면 밖 상대에게 하는 말 (창구 직원). 높임말 검사에서 뺀다.
+      aside={1: [W]},
       cuts=[
         ("은행창구", "the wife sits at the low counter and puts both hands flat on it, "
                      "her daughter standing behind the chair",
@@ -531,7 +533,7 @@ EPS = [
           (W, "니가 가져간 만큼이야.")]),
         ("법원앞", "the woman steps up one stair toward the wife and the wife stays "
                    "where she is",
-         [(O, "내가 옆에서 얼마나 고생했는데."),
+         [(O, "제가 옆에서 얼마나 고생했는데요."),
           (W, "고생? 우리 애는 학교를 그만뒀어."),
           (O, "한 푼도 못 줘요.")]),
         ("법원앞", "the wife walks down the last steps to where her daughter is waiting "

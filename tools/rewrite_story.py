@@ -252,6 +252,8 @@ def main():
                     S.COLOR_FIX, S.STYLE_FIX, S.AVOID_FIX]
             cuts.append({
                 "n": i + 1, "sec": sec,
+                # ⭐ 화면 밖 상대(전화·창구)에게 하는 말. 높임말 검사가 뺀다.
+                "aside": [w for w in (e.get("aside") or {}).get(i + 1, [])],
                 "role": S.ROLES[min(i, len(S.ROLES) - 1)],
                 "subtitle": " / ".join(t for _, t in lines),
                 "prompt": "\n".join(body),
