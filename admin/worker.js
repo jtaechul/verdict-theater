@@ -1122,7 +1122,12 @@ function seriesRender() {
   if (e.when || e.reveal) {
     h += '<div style="background:#16181f;border-left:3px solid #6b5a24;'
        + 'border-radius:6px;padding:10px 12px;margin-bottom:10px">';
-    if (e.when) h += '<div style="color:#c8a951;font-size:13px">' + esc(e.when)
+    // ⭐ 2026-08-26 — 막(1막 배신 · 2막 죽음 · 3막 법정)과 '몇 년 뒤' 를 같이
+    //    보여 준다. 운영자: "각 화마다 시간적 순서가 너무 많이 바뀌고 쌩뚱맞아."
+    var ACTS = { 1: '1막 배신', 2: '2막 죽음', 3: '3막 법정' };
+    if (e.when) h += '<div style="color:#c8a951;font-size:13px">'
+                   + (ACTS[e.act] ? ACTS[e.act] + '  ·  ' : '')
+                   + esc(e.stamp || e.when)
                    + (e.mood ? ' · ' + esc(e.mood) : '')
                    + (e.irony ? ' · 아내가 없는 화 (시청자만 먼저 압니다)' : '')
                    + (e.quiet ? ' · 조용한 화 (소리 안 지릅니다)' : '')

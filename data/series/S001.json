@@ -62,6 +62,8 @@
     "이혼하자"
    ],
    "irony": false,
+   "act": 1,
+   "stamp": "2012년 가을",
    "because": "",
    "leaves": "남편은 아이들한테는 아내가 말하라고 했다",
    "quiet": false,
@@ -102,6 +104,8 @@
     "소송"
    ],
    "irony": false,
+   "act": 1,
+   "stamp": "2012년 겨울",
    "because": "남편은 아이들한테는 아내가 말하라고 했다",
    "leaves": "아내는 딸에게 알아서 하겠다고 말했다",
    "quiet": true,
@@ -142,6 +146,8 @@
     "기각"
    ],
    "irony": false,
+   "act": 1,
+   "stamp": "8개월 뒤 · 2013년 8월",
    "because": "아내는 딸에게 알아서 하겠다고 말했다",
    "leaves": "남편은 방법이 없는 건 아니라고 했다",
    "quiet": false,
@@ -171,48 +177,50 @@
   },
   {
    "no": 4,
-   "title": "기각 당일",
-   "recap": "법원이 남편의 이혼 청구를 기각했다",
-   "hook": "판결 난 *그날 바로* 넘겼다",
-   "yt_title": "이혼 기각 당일, 남편은 서류부터 넘겼습니다",
-   "mood": "차가운 계산",
-   "when": "2013년 8월",
-   "reveal": "남편이 기각 당일 내연녀 이름으로 재산을 넘기기 시작한다",
+   "title": "짐을 싸는 남편",
+   "recap": "남편의 이혼 청구가 기각됐다",
+   "hook": "남편이 *짐을 싸서* 나갔다",
+   "yt_title": "기각당한 남편이 짐을 싸서 집을 나갔습니다",
+   "mood": "말라붙은 정",
+   "when": "2013년 가을",
+   "reveal": "남편이 집을 나가 아내와 딸만 남는다",
    "must": [
-    "팔월 구일"
+    "나갈게"
    ],
-   "irony": true,
+   "irony": false,
+   "act": 1,
+   "stamp": "2013년 가을",
    "because": "남편은 방법이 없는 건 아니라고 했다",
-   "leaves": "남편이 내연녀 이름으로 재산을 넘기기 시작했다",
+   "leaves": "남편이 집을 나가고 아내와 딸만 남았다",
    "quiet": false,
    "cuts": [
     {
      "n": 1,
      "sec": 7,
      "role": "터짐",
-     "subtitle": "오늘 재판 졌어. 도장을 안 찍어 주네. / 그럼 어떻게 되는 거야? / 이혼은 안 되지. 길은 있어.",
-     "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 7-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Over-the-shoulder shot from behind Other woman, seen from the right of the room, with Husband's face and upper body filling most of the frame.\nFRAMING: 16:9 landscape. The left and right edges will be cropped away later — keep every person and every important thing inside the middle 75% of the frame and leave the far left and far right empty. Keep the people large in frame, close enough that each face stays clear.\nACTION: the husband sits down across from the woman and pushes his cup aside, both forearms on the table. Both people keep their lips moving in exact sync with the Korean lines they say.\nDIALOGUE: [LANGUAGE: KOREAN] each person speaks in turn, one voice at a time\n  Husband (cold, in Korean): \"오늘 재판 졌어. 도장을 안 찍어 주네.\"\n  Other woman (brisk, in Korean): \"그럼 어떻게 되는 거야?\"\n  Husband (certain, in Korean): \"이혼은 안 되지. 길은 있어.\"\nVOICE: Husband — a low, slightly gravelly man's voice in his fifties, native Korean speaker, clipped and impatient, drops in volume at the end; Other woman — a clear woman's voice in her forties, native Korean speaker, cool and unhurried, with a small lilt at the end.\nAUDIO: the two people in the shot say the lines themselves with their lips moving in sync, every line spoken in natural, fluent and highly authentic everyday Korean by native speakers with standard Seoul intonation, real spontaneous speech with uneven rhythm and short breaths between phrases, each person speaking one after another so every word stays clear, with only the quiet room tone of the location underneath.\nSETTING: Upscale cafe, daytime, soft natural lighting — a tall window with soft daylight and a potted plant on the left, a small square table with two white mugs in the middle, a wooden counter with a coffee machine and shelves of cups on the right.\nCAMERA: in this room the people always keep the same left-to-right order — Husband on the left, Other woman on the right. This shot is taken from where Other woman stands, looking at Husband, so behind Husband we see the left part of the room named in SETTING, and only that part.\nCONTINUITY: this shot belongs to the same continuing story as the previous shot, in which the husband stops at the top of the stairs and looks back down the corridor. It is a later moment, so the place may change, but the same people, the same faces, the same voices and exactly the same colour grade carry over.\nCOLOR: use the exact same colour grade in every clip of this series, in every episode from the first to the last — warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones. Match the earlier clips exactly, with the same grade as the very first one.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces with everyday, unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
+     "subtitle": "짐 좀 챙길게. 오래 안 걸려. / 재판에서 졌잖아. 어딜 가. / 판결은 판결이고, 나는 나갈게.",
+     "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 7-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Over-the-shoulder shot from behind Wife, seen from the right of the room, with Husband's face and upper body filling most of the frame.\nFRAMING: 16:9 landscape. The left and right edges will be cropped away later — keep every person and every important thing inside the middle 75% of the frame and leave the far left and far right empty. Keep the people large in frame, close enough that each face stays clear.\nACTION: the husband pulls a travel bag out from beside the sofa and starts filling it while his wife stands in the middle of the room. Both people keep their lips moving in exact sync with the Korean lines they say.\nDIALOGUE: [LANGUAGE: KOREAN] each person speaks in turn, one voice at a time\n  Husband (flat, in Korean): \"짐 좀 챙길게. 오래 안 걸려.\"\n  Wife (cold, in Korean): \"재판에서 졌잖아. 어딜 가.\"\n  Husband (final, in Korean): \"판결은 판결이고, 나는 나갈게.\"\nVOICE: Wife — a warm mid-range woman's voice in her fifties, native Korean speaker, weary and a little breathy, trails off at the end of a sentence; Husband — a low, slightly gravelly man's voice in his fifties, native Korean speaker, clipped and impatient, drops in volume at the end.\nAUDIO: the two people in the shot say the lines themselves with their lips moving in sync, every line spoken in natural, fluent and highly authentic everyday Korean by native speakers with standard Seoul intonation, real spontaneous speech with uneven rhythm and short breaths between phrases, each person speaking one after another so every word stays clear, with only the quiet room tone of the location underneath.\nSETTING: Korean apartment living room, evening, soft practical lighting — a beige three-seat fabric sofa and a tall dark-wood bookshelf along the left wall, a low walnut coffee table with a single white ceramic vase in the middle, a wide balcony window with the night city beyond and a warm floor lamp on the right.\nCAMERA: in this room the people always keep the same left-to-right order — Wife on the left, Husband on the right. This shot is taken from where Wife stands, looking at Husband, so behind Husband we see the right part of the room named in SETTING, and only that part.\nCONTINUITY: this shot belongs to the same continuing story as the previous shot, in which the husband stops at the top of the stairs and looks back down the corridor. It is a later moment, so the place may change, but the same people, the same faces, the same voices and exactly the same colour grade carry over.\nCOLOR: use the exact same colour grade in every clip of this series, in every episode from the first to the last — warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones. Match the earlier clips exactly, with the same grade as the very first one.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces with everyday, unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
     },
     {
      "n": 2,
      "sec": 7,
      "role": "맞섬",
-     "subtitle": "내 앞으로 된 건 전부 자기 이름으로 돌릴 거야. / 저 여자한테는 십 원도 안 가게.",
-     "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 7-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Close-up on Husband, static camera, framed from the shoulders up so the whole face fills the frame, held for the whole take.\nFRAMING: 16:9 landscape. The left and right edges will be cropped away later — keep every person and every important thing inside the middle 75% of the frame and leave the far left and far right empty. Keep the people large in frame, close enough that each face stays clear.\nACTION: the husband leans in over the small table while the woman sits back with both hands around her cup. The person keeps their lips moving in exact sync with the Korean lines they say.\nDIALOGUE: [LANGUAGE: KOREAN] each person speaks in turn, one voice at a time\n  Husband (cold, in Korean): \"내 앞으로 된 건 전부 자기 이름으로 돌릴 거야.\"\n  Husband (brisk, in Korean): \"저 여자한테는 십 원도 안 가게.\"\nVOICE: Husband — a low, slightly gravelly man's voice in his fifties, native Korean speaker, clipped and impatient, drops in volume at the end.\nAUDIO: the person in the shot says the lines themselves with their lips moving in sync, every line spoken in natural, fluent and highly authentic everyday Korean by native speakers with standard Seoul intonation, real spontaneous speech with uneven rhythm and short breaths between phrases, every word stays clear, with only the quiet room tone of the location underneath.\nSETTING: Upscale cafe, daytime, soft natural lighting — a tall window with soft daylight and a potted plant on the left, a small square table with two white mugs in the middle, a wooden counter with a coffee machine and shelves of cups on the right.\nCAMERA: Husband keeps the same place as in every other clip shot in this room — the left of it, looking toward the right of frame. So behind Husband we see the left part of the room named in SETTING, and only that part.\nCONTINUITY: this shot continues straight on from the previous shot, in which the husband sits down across from the woman and pushes his cup aside, both forearms on the table. Same room, same people, same light and the same colour grade — pick up exactly where that shot ended, as one unbroken scene.\nCOLOR: use the exact same colour grade in every clip of this series, in every episode from the first to the last — warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones. Match the earlier clips exactly, with the same grade as the very first one.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces with everyday, unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
+     "subtitle": "애들은 어쩌고. 아빠가 이러면 어떡해. / 생활비는 보낼게. / 돈 얘기가 아니잖아.",
+     "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 7-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Medium-wide two-shot of Wife and Husband, static camera, everyone framed from the waist up in the middle of the frame, close enough that every face stays clear. The movement is already under way in the very first frame — nothing is still at the start.\nFRAMING: 16:9 landscape. The left and right edges will be cropped away later — keep every person and every important thing inside the middle 75% of the frame and leave the far left and far right empty. Keep the people large in frame, close enough that each face stays clear.\nACTION: the husband sets the bag down on the entry step and reaches for the door handle while his wife stops in the doorway behind him. Both people keep their lips moving in exact sync with the Korean lines they say.\nDIALOGUE: [LANGUAGE: KOREAN] each person speaks in turn, one voice at a time\n  Wife (flat, in Korean): \"애들은 어쩌고. 아빠가 이러면 어떡해.\"\n  Husband (cold, in Korean): \"생활비는 보낼게.\"\n  Wife (final, in Korean): \"돈 얘기가 아니잖아.\"\nVOICE: Wife — a warm mid-range woman's voice in her fifties, native Korean speaker, weary and a little breathy, trails off at the end of a sentence; Husband — a low, slightly gravelly man's voice in his fifties, native Korean speaker, clipped and impatient, drops in volume at the end.\nAUDIO: the two people in the shot say the lines themselves with their lips moving in sync, every line spoken in natural, fluent and highly authentic everyday Korean by native speakers with standard Seoul intonation, real spontaneous speech with uneven rhythm and short breaths between phrases, each person speaking one after another so every word stays clear, with only the quiet room tone of the location underneath.\nSETTING: Just inside the apartment entrance, evening — a small tiled entry step with shoes lined up on the left, a steel front door standing open in the middle, a coat hook and a narrow shoe cabinet on the right, warm living room light spilling in from the right.\nCAMERA: seen from the side of the room so everyone is in view at once — Wife on the left, Husband in the middle, Daughter on the right. Everyone keeps this same left-to-right order in every shot of this scene.\nCONTINUITY: this shot follows the previous shot, in which the husband pulls a travel bag out from beside the sofa and starts filling it while his wife stands in the. The scene moves to another place a little later, but the same people, the same faces and exactly the same colour grade carry over.\nCOLOR: use the exact same colour grade in every clip of this series, in every episode from the first to the last — warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones. Match the earlier clips exactly, with the same grade as the very first one.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces with everyday, unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
     },
     {
      "n": 3,
-     "sec": 7,
+     "sec": 6,
      "role": "선언",
-     "subtitle": "오늘 바로 하겠다고? / 이천십삼년 팔월 구일. 오늘부터야. / …부인이 알면 어쩌려고?",
-     "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 7-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Medium-wide two-shot of Husband and Other woman, static camera, everyone framed from the waist up in the middle of the frame, close enough that every face stays clear. The movement is already under way in the very first frame — nothing is still at the start.\nFRAMING: 16:9 landscape. The left and right edges will be cropped away later — keep every person and every important thing inside the middle 75% of the frame and leave the far left and far right empty. Keep the people large in frame, close enough that each face stays clear.\nACTION: the woman puts her cup down and looks up at him, while he keeps his eyes on the table between them. Both people keep their lips moving in exact sync with the Korean lines they say.\nDIALOGUE: [LANGUAGE: KOREAN] each person speaks in turn, one voice at a time\n  Other woman (cold, in Korean): \"오늘 바로 하겠다고?\"\n  Husband (brisk, in Korean): \"이천십삼년 팔월 구일. 오늘부터야.\"\n  Other woman (certain, in Korean): \"…부인이 알면 어쩌려고?\"\nVOICE: Husband — a low, slightly gravelly man's voice in his fifties, native Korean speaker, clipped and impatient, drops in volume at the end; Other woman — a clear woman's voice in her forties, native Korean speaker, cool and unhurried, with a small lilt at the end.\nAUDIO: the two people in the shot say the lines themselves with their lips moving in sync, every line spoken in natural, fluent and highly authentic everyday Korean by native speakers with standard Seoul intonation, real spontaneous speech with uneven rhythm and short breaths between phrases, each person speaking one after another so every word stays clear, with only the quiet room tone of the location underneath.\nSETTING: Upscale cafe, daytime, soft natural lighting — a tall window with soft daylight and a potted plant on the left, a small square table with two white mugs in the middle, a wooden counter with a coffee machine and shelves of cups on the right.\nCAMERA: seen from the side of the room so everyone is in view at once — Husband on the left, Other woman on the right. Everyone keeps this same left-to-right order in every shot of this scene.\nCONTINUITY: this shot continues straight on from the previous shot, in which the husband leans in over the small table while the woman sits back with both hands around her cup. The. Same room, same people, same light and the same colour grade — pick up exactly where that shot ended, as one unbroken scene.\nCOLOR: use the exact same colour grade in every clip of this series, in every episode from the first to the last — warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones. Match the earlier clips exactly, with the same grade as the very first one.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces with everyday, unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
+     "subtitle": "괜찮아. 엄마 안 울어. / 저 사람 곧 돌아올 거야. / …돌아오겠지. 그렇지?",
+     "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 6-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Close-up on Wife, static camera, framed from the shoulders up so the whole face fills the frame, held for the whole take.\nFRAMING: 16:9 landscape. The left and right edges will be cropped away later — keep every person and every important thing inside the middle 75% of the frame and leave the far left and far right empty. Keep the people large in frame, close enough that each face stays clear.\nACTION: the wife stays facing the closed front door with one hand still on the handle, her daughter waiting behind her. The person keeps their lips moving in exact sync with the Korean lines they say.\nDIALOGUE: [LANGUAGE: KOREAN] each person speaks in turn, one voice at a time\n  Wife (flat, in Korean): \"괜찮아. 엄마 안 울어.\"\n  Wife (cold, in Korean): \"저 사람 곧 돌아올 거야.\"\n  Wife (final, in Korean): \"…돌아오겠지. 그렇지?\"\nVOICE: Wife — a warm mid-range woman's voice in her fifties, native Korean speaker, weary and a little breathy, trails off at the end of a sentence.\nAUDIO: the person in the shot says the lines themselves with their lips moving in sync, every line spoken in natural, fluent and highly authentic everyday Korean by native speakers with standard Seoul intonation, real spontaneous speech with uneven rhythm and short breaths between phrases, every word stays clear, with only the quiet room tone of the location underneath.\nSETTING: Just inside the apartment entrance, evening — a small tiled entry step with shoes lined up on the left, a steel front door standing open in the middle, a coat hook and a narrow shoe cabinet on the right, warm living room light spilling in from the right.\nCAMERA: in this room the people always keep the same left-to-right order — Wife on the left, Husband in the middle, Daughter on the right. This shot is taken from where Daughter stands, looking at Wife, so behind Wife we see the left part of the room named in SETTING, and only that part.\nCONTINUITY: this shot continues straight on from the previous shot, in which the husband sets the bag down on the entry step and reaches for the door handle while his wife stops in the. Same room, same people, same light and the same colour grade — pick up exactly where that shot ended, as one unbroken scene.\nCOLOR: use the exact same colour grade in every clip of this series, in every episode from the first to the last — warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones. Match the earlier clips exactly, with the same grade as the very first one.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces with everyday, unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
     }
    ]
   },
   {
    "no": 5,
    "title": "모르는 번호",
-   "recap": "남편이 내연녀 이름으로 재산을 넘겼다",
+   "recap": "남편이 짐을 싸서 집을 나갔다",
    "hook": "모르는 번호가 *남편 서류*를 물었다",
    "yt_title": "모르는 번호가 남편 서류를 확인해 달라고 했습니다",
    "mood": "서늘한 예감",
@@ -222,7 +230,9 @@
     "받는 사람"
    ],
    "irony": false,
-   "because": "남편이 내연녀 이름으로 재산을 넘기기 시작했다",
+   "act": 1,
+   "stamp": "6개월 뒤 · 2014년 봄",
+   "because": "남편이 집을 나가고 아내와 딸만 남았다",
    "leaves": "아내는 전화를 받았지만 아무것도 알아내지 못했다",
    "quiet": false,
    "cuts": [
@@ -231,7 +241,7 @@
      "sec": 6,
      "role": "터짐",
      "subtitle": "네, 제가 그 사람 아내인데요. / 받는 사람을 바꿨다고요? 무슨 말씀이세요.",
-     "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 6-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Close-up on Wife, static camera, framed from the shoulders up so the whole face fills the frame, held for the whole take.\nFRAMING: 16:9 landscape. The left and right edges will be cropped away later — keep every person and every important thing inside the middle 75% of the frame and leave the far left and far right empty. Keep the people large in frame, close enough that each face stays clear.\nACTION: the wife stops halfway across the living room with the phone against her ear and one hand going still on the back of a chair. The person keeps their lips moving in exact sync with the Korean lines they say.\nDIALOGUE: [LANGUAGE: KOREAN] each person speaks in turn, one voice at a time\n  Wife (puzzled, in Korean): \"네, 제가 그 사람 아내인데요.\"\n  Wife (uneasy, in Korean): \"받는 사람을 바꿨다고요? 무슨 말씀이세요.\"\nVOICE: Wife — a warm mid-range woman's voice in her fifties, native Korean speaker, weary and a little breathy, trails off at the end of a sentence.\nAUDIO: the person in the shot says the lines themselves with their lips moving in sync, every line spoken in natural, fluent and highly authentic everyday Korean by native speakers with standard Seoul intonation, real spontaneous speech with uneven rhythm and short breaths between phrases, every word stays clear, with only the quiet room tone of the location underneath.\nSETTING: Korean apartment living room, evening, soft practical lighting — a beige three-seat fabric sofa and a tall dark-wood bookshelf along the left wall, a low walnut coffee table with a single white ceramic vase in the middle, a wide balcony window with the night city beyond and a warm floor lamp on the right.\nCAMERA: Wife keeps the same place as in every other clip shot in this room — the left of it, looking toward the right of frame. So behind Wife we see the left part of the room named in SETTING, and only that part.\nCONTINUITY: this shot belongs to the same continuing story as the previous shot, in which the woman puts her cup down and looks up at him, while he keeps his eyes on the table between them. It is a later moment, so the place may change, but the same people, the same faces, the same voices and exactly the same colour grade carry over.\nCOLOR: use the exact same colour grade in every clip of this series, in every episode from the first to the last — warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones. Match the earlier clips exactly, with the same grade as the very first one.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces with everyday, unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
+     "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 6-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Close-up on Wife, static camera, framed from the shoulders up so the whole face fills the frame, held for the whole take.\nFRAMING: 16:9 landscape. The left and right edges will be cropped away later — keep every person and every important thing inside the middle 75% of the frame and leave the far left and far right empty. Keep the people large in frame, close enough that each face stays clear.\nACTION: the wife stops halfway across the living room with the phone against her ear and one hand going still on the back of a chair. The person keeps their lips moving in exact sync with the Korean lines they say.\nDIALOGUE: [LANGUAGE: KOREAN] each person speaks in turn, one voice at a time\n  Wife (puzzled, in Korean): \"네, 제가 그 사람 아내인데요.\"\n  Wife (uneasy, in Korean): \"받는 사람을 바꿨다고요? 무슨 말씀이세요.\"\nVOICE: Wife — a warm mid-range woman's voice in her fifties, native Korean speaker, weary and a little breathy, trails off at the end of a sentence.\nAUDIO: the person in the shot says the lines themselves with their lips moving in sync, every line spoken in natural, fluent and highly authentic everyday Korean by native speakers with standard Seoul intonation, real spontaneous speech with uneven rhythm and short breaths between phrases, every word stays clear, with only the quiet room tone of the location underneath.\nSETTING: Korean apartment living room, evening, soft practical lighting — a beige three-seat fabric sofa and a tall dark-wood bookshelf along the left wall, a low walnut coffee table with a single white ceramic vase in the middle, a wide balcony window with the night city beyond and a warm floor lamp on the right.\nCAMERA: Wife keeps the same place as in every other clip shot in this room — the left of it, looking toward the right of frame. So behind Wife we see the left part of the room named in SETTING, and only that part.\nCONTINUITY: this shot belongs to the same continuing story as the previous shot, in which the wife stays facing the closed front door with one hand still on the handle. It is a later moment, so the place may change, but the same people, the same faces, the same voices and exactly the same colour grade carry over.\nCOLOR: use the exact same colour grade in every clip of this series, in every episode from the first to the last — warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones. Match the earlier clips exactly, with the same grade as the very first one.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces with everyday, unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
     },
     {
      "n": 2,
@@ -251,48 +261,8 @@
   },
   {
    "no": 6,
-   "title": "부인보다 내가 먼저",
-   "recap": "아내는 남편 서류를 묻는 전화를 받았다",
-   "hook": "계약서에 *\"부인보다 내가 먼저\"*",
-   "yt_title": "남편은 계약서에 아내보다 내연녀를 먼저 적었습니다",
-   "mood": "들뜬 뻔뻔함",
-   "when": "2016년 여름",
-   "reveal": "병원 지분을 죽으면 내연녀에게 주는 특약에 서명한다",
-   "must": [
-    "특약"
-   ],
-   "irony": true,
-   "because": "아내는 전화를 받았지만 아무것도 알아내지 못했다",
-   "leaves": "내연녀가 남편에게 왜 죽는 얘기를 하냐고 물었다",
-   "quiet": false,
-   "cuts": [
-    {
-     "n": 1,
-     "sec": 7,
-     "role": "터짐",
-     "subtitle": "병원 지분 말인데, 계약서를 하나 고쳤어. / 무슨 계약서? / 내가 잘못되면 내 몫은 자기 거야.",
-     "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 7-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Medium-wide two-shot of Husband and Other woman, static camera, everyone framed from the waist up in the middle of the frame, close enough that every face stays clear. The movement is already under way in the very first frame — nothing is still at the start.\nFRAMING: 16:9 landscape. The left and right edges will be cropped away later — keep every person and every important thing inside the middle 75% of the frame and leave the far left and far right empty. Keep the people large in frame, close enough that each face stays clear.\nACTION: the husband turns his chair away from the desk to face the woman standing beside it, one hand tapping the armrest. Both people keep their lips moving in exact sync with the Korean lines they say.\nDIALOGUE: [LANGUAGE: KOREAN] each person speaks in turn, one voice at a time\n  Husband (bright, in Korean): \"병원 지분 말인데, 계약서를 하나 고쳤어.\"\n  Other woman (brisk, in Korean): \"무슨 계약서?\"\n  Husband (uneasy, in Korean): \"내가 잘못되면 내 몫은 자기 거야.\"\nVOICE: Husband — a low, slightly gravelly man's voice in his fifties, native Korean speaker, clipped and impatient, drops in volume at the end; Other woman — a clear woman's voice in her forties, native Korean speaker, cool and unhurried, with a small lilt at the end.\nAUDIO: the two people in the shot say the lines themselves with their lips moving in sync, every line spoken in natural, fluent and highly authentic everyday Korean by native speakers with standard Seoul intonation, real spontaneous speech with uneven rhythm and short breaths between phrases, each person speaking one after another so every word stays clear, with only the quiet room tone of the location underneath.\nSETTING: Office room, daytime, bright fluorescent lighting — a grey cabinet and a coat stand on the left, a plain wooden desk with a closed laptop in the middle, vertical blinds half drawn over a window on the right.\nCAMERA: seen from the side of the room so everyone is in view at once — Husband on the left, Other woman on the right. Everyone keeps this same left-to-right order in every shot of this scene.\nCONTINUITY: this shot belongs to the same continuing story as the previous shot, in which the wife sets the phone face down on the table and keeps her hand on it while her daughter waits in the. It is a later moment, so the place may change, but the same people, the same faces, the same voices and exactly the same colour grade carry over.\nCOLOR: use the exact same colour grade in every clip of this series, in every episode from the first to the last — warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones. Match the earlier clips exactly, with the same grade as the very first one.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces with everyday, unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
-    },
-    {
-     "n": 2,
-     "sec": 6,
-     "role": "맞섬",
-     "subtitle": "부인이 있는데 그게 돼? / 특약에 적었어. 부인보다 자기가 먼저라고.",
-     "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 6-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Over-the-shoulder shot from behind Other woman, seen from the right of the room, with Husband's face and upper body filling most of the frame.\nFRAMING: 16:9 landscape. The left and right edges will be cropped away later — keep every person and every important thing inside the middle 75% of the frame and leave the far left and far right empty. Keep the people large in frame, close enough that each face stays clear.\nACTION: the woman steps back to the window and half turns while the husband stays in the chair watching her. Both people keep their lips moving in exact sync with the Korean lines they say.\nDIALOGUE: [LANGUAGE: KOREAN] each person speaks in turn, one voice at a time\n  Other woman (bright, in Korean): \"부인이 있는데 그게 돼?\"\n  Husband (brisk, in Korean): \"특약에 적었어. 부인보다 자기가 먼저라고.\"\nVOICE: Husband — a low, slightly gravelly man's voice in his fifties, native Korean speaker, clipped and impatient, drops in volume at the end; Other woman — a clear woman's voice in her forties, native Korean speaker, cool and unhurried, with a small lilt at the end.\nAUDIO: the two people in the shot say the lines themselves with their lips moving in sync, every line spoken in natural, fluent and highly authentic everyday Korean by native speakers with standard Seoul intonation, real spontaneous speech with uneven rhythm and short breaths between phrases, each person speaking one after another so every word stays clear, with only the quiet room tone of the location underneath.\nSETTING: Office room, daytime, bright fluorescent lighting — a grey cabinet and a coat stand on the left, a plain wooden desk with a closed laptop in the middle, vertical blinds half drawn over a window on the right.\nCAMERA: in this room the people always keep the same left-to-right order — Husband on the left, Other woman on the right. This shot is taken from where Other woman stands, looking at Husband, so behind Husband we see the left part of the room named in SETTING, and only that part.\nCONTINUITY: this shot continues straight on from the previous shot, in which the husband turns his chair away from the desk to face the woman standing beside it. Same room, same people, same light and the same colour grade — pick up exactly where that shot ended, as one unbroken scene.\nCOLOR: use the exact same colour grade in every clip of this series, in every episode from the first to the last — warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones. Match the earlier clips exactly, with the same grade as the very first one.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces with everyday, unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
-    },
-    {
-     "n": 3,
-     "sec": 6,
-     "role": "선언",
-     "subtitle": "부인보다 내가 먼저라고? / …근데 자기, 갑자기 왜 죽는 얘기를 해?",
-     "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 6-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Close-up on Other woman, static camera, framed from the shoulders up so the whole face fills the frame, held for the whole take.\nFRAMING: 16:9 landscape. The left and right edges will be cropped away later — keep every person and every important thing inside the middle 75% of the frame and leave the far left and far right empty. Keep the people large in frame, close enough that each face stays clear.\nACTION: the woman turns fully around to look at him, one hand still on the window frame, while he leans back out of the light. The person keeps their lips moving in exact sync with the Korean lines they say.\nDIALOGUE: [LANGUAGE: KOREAN] each person speaks in turn, one voice at a time\n  Other woman (bright, in Korean): \"부인보다 내가 먼저라고?\"\n  Other woman (brisk, in Korean): \"…근데 자기, 갑자기 왜 죽는 얘기를 해?\"\nVOICE: Other woman — a clear woman's voice in her forties, native Korean speaker, cool and unhurried, with a small lilt at the end.\nAUDIO: the person in the shot says the lines themselves with their lips moving in sync, every line spoken in natural, fluent and highly authentic everyday Korean by native speakers with standard Seoul intonation, real spontaneous speech with uneven rhythm and short breaths between phrases, every word stays clear, with only the quiet room tone of the location underneath.\nSETTING: Office room, daytime, bright fluorescent lighting — a grey cabinet and a coat stand on the left, a plain wooden desk with a closed laptop in the middle, vertical blinds half drawn over a window on the right.\nCAMERA: Other woman keeps the same place as in every other clip shot in this room — the right of it, looking toward the left of frame. So behind Other woman we see the right part of the room named in SETTING, and only that part.\nCONTINUITY: this shot continues straight on from the previous shot, in which the woman steps back to the window and half turns while the husband stays in the chair watching her. Same room, same people, same light and the same colour grade — pick up exactly where that shot ended, as one unbroken scene.\nCOLOR: use the exact same colour grade in every clip of this series, in every episode from the first to the last — warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones. Match the earlier clips exactly, with the same grade as the very first one.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces with everyday, unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
-    }
-   ]
-  },
-  {
-   "no": 7,
    "title": "새벽 전화",
-   "recap": "남편은 아내보다 내연녀를 먼저로 적었다",
+   "recap": "모르는 번호가 남편 서류를 물었다",
    "hook": "새벽 전화 *남편분이 떨어지셨습니다*",
    "yt_title": "새벽에 전화가 왔습니다. 남편이 떨어졌다고",
    "mood": "무너짐",
@@ -302,7 +272,9 @@
     "떨어졌"
    ],
    "irony": false,
-   "because": "내연녀가 남편에게 왜 죽는 얘기를 하냐고 물었다",
+   "act": 2,
+   "stamp": "3년 뒤 · 2017년 1월",
+   "because": "아내는 전화를 받았지만 아무것도 알아내지 못했다",
    "leaves": "아내는 남편이 내연녀 집에서 떨어져 죽은 것을 알았다",
    "quiet": false,
    "cuts": [
@@ -311,7 +283,7 @@
      "sec": 6,
      "role": "터짐",
      "subtitle": "여보세요… 네, 제가 아내인데요. / 네? 어디서 떨어졌다고요?",
-     "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 6-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Close-up on Wife, static camera, framed from the shoulders up so the whole face fills the frame, held for the whole take.\nFRAMING: 16:9 landscape. The left and right edges will be cropped away later — keep every person and every important thing inside the middle 75% of the frame and leave the far left and far right empty. Keep the people large in frame, close enough that each face stays clear.\nACTION: the wife sits up on the edge of the sofa with the phone at her ear, one hand gripping the armrest. The person keeps their lips moving in exact sync with the Korean lines they say.\nDIALOGUE: [LANGUAGE: KOREAN] each person speaks in turn, one voice at a time\n  Wife (numb, in Korean): \"여보세요… 네, 제가 아내인데요.\"\n  Wife (shaken, in Korean): \"네? 어디서 떨어졌다고요?\"\nVOICE: Wife — a warm mid-range woman's voice in her fifties, native Korean speaker, weary and a little breathy, trails off at the end of a sentence.\nAUDIO: the person in the shot says the lines themselves with their lips moving in sync, every line spoken in natural, fluent and highly authentic everyday Korean by native speakers with standard Seoul intonation, real spontaneous speech with uneven rhythm and short breaths between phrases, every word stays clear, with only the quiet room tone of the location underneath.\nSETTING: Korean apartment living room, evening, soft practical lighting — a beige three-seat fabric sofa and a tall dark-wood bookshelf along the left wall, a low walnut coffee table with a single white ceramic vase in the middle, a wide balcony window with the night city beyond and a warm floor lamp on the right.\nCAMERA: Wife keeps the same place as in every other clip shot in this room — the left of it, looking toward the right of frame. So behind Wife we see the left part of the room named in SETTING, and only that part.\nCONTINUITY: this shot belongs to the same continuing story as the previous shot, in which the woman turns fully around to look at him, one hand still on the window frame. It is a later moment, so the place may change, but the same people, the same faces, the same voices and exactly the same colour grade carry over.\nCOLOR: use the exact same colour grade in every clip of this series, in every episode from the first to the last — warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones. Match the earlier clips exactly, with the same grade as the very first one.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces with everyday, unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
+     "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 6-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Close-up on Wife, static camera, framed from the shoulders up so the whole face fills the frame, held for the whole take.\nFRAMING: 16:9 landscape. The left and right edges will be cropped away later — keep every person and every important thing inside the middle 75% of the frame and leave the far left and far right empty. Keep the people large in frame, close enough that each face stays clear.\nACTION: the wife sits up on the edge of the sofa with the phone at her ear, one hand gripping the armrest. The person keeps their lips moving in exact sync with the Korean lines they say.\nDIALOGUE: [LANGUAGE: KOREAN] each person speaks in turn, one voice at a time\n  Wife (numb, in Korean): \"여보세요… 네, 제가 아내인데요.\"\n  Wife (shaken, in Korean): \"네? 어디서 떨어졌다고요?\"\nVOICE: Wife — a warm mid-range woman's voice in her fifties, native Korean speaker, weary and a little breathy, trails off at the end of a sentence.\nAUDIO: the person in the shot says the lines themselves with their lips moving in sync, every line spoken in natural, fluent and highly authentic everyday Korean by native speakers with standard Seoul intonation, real spontaneous speech with uneven rhythm and short breaths between phrases, every word stays clear, with only the quiet room tone of the location underneath.\nSETTING: Korean apartment living room, evening, soft practical lighting — a beige three-seat fabric sofa and a tall dark-wood bookshelf along the left wall, a low walnut coffee table with a single white ceramic vase in the middle, a wide balcony window with the night city beyond and a warm floor lamp on the right.\nCAMERA: Wife keeps the same place as in every other clip shot in this room — the left of it, looking toward the right of frame. So behind Wife we see the left part of the room named in SETTING, and only that part.\nCONTINUITY: this shot belongs to the same continuing story as the previous shot, in which the wife sets the phone face down on the table and keeps her hand on it while her daughter waits in the. It is a later moment, so the place may change, but the same people, the same faces, the same voices and exactly the same colour grade carry over.\nCOLOR: use the exact same colour grade in every clip of this series, in every episode from the first to the last — warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones. Match the earlier clips exactly, with the same grade as the very first one.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces with everyday, unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
     },
     {
      "n": 2,
@@ -330,7 +302,7 @@
    ]
   },
   {
-   "no": 8,
+   "no": 7,
    "title": "장례식장",
    "recap": "남편은 내연녀 집에서 떨어져 죽었다",
    "hook": "장례식장에 온 내연녀 *다 내 거예요*",
@@ -342,6 +314,8 @@
     "다 내 거"
    ],
    "irony": false,
+   "act": 2,
+   "stamp": "며칠 뒤 · 2017년 1월",
    "because": "아내는 남편이 내연녀 집에서 떨어져 죽은 것을 알았다",
    "leaves": "내연녀가 남긴 건 전부 자기 것이라고 했다",
    "quiet": false,
@@ -370,7 +344,7 @@
    ]
   },
   {
-   "no": 9,
+   "no": 8,
    "title": "통장을 열었다",
    "recap": "내연녀가 남긴 건 전부 자기 것이라 했다",
    "hook": "통장을 열자 남은 건 *빚 육억*뿐",
@@ -382,6 +356,8 @@
     "빚 육억"
    ],
    "irony": false,
+   "act": 2,
+   "stamp": "2017년 2월",
    "because": "내연녀가 남긴 건 전부 자기 것이라고 했다",
    "leaves": "아내는 남편 통장에 빚만 남은 것을 보았다",
    "quiet": true,
@@ -410,7 +386,7 @@
    ]
   },
   {
-   "no": 10,
+   "no": 9,
    "title": "등록금",
    "recap": "남편 통장에 남은 것은 빚뿐이었다",
    "hook": "딸의 등록금을 *못 냈다*",
@@ -422,6 +398,8 @@
     "등록금"
    ],
    "irony": false,
+   "act": 2,
+   "stamp": "2017년 3월",
    "because": "아내는 남편 통장에 빚만 남은 것을 보았다",
    "leaves": "아내는 빼돌린 돈을 찾아보기로 했다",
    "quiet": true,
@@ -450,7 +428,7 @@
    ]
   },
   {
-   "no": 11,
+   "no": 10,
    "title": "병원 지분 십억",
    "recap": "아내는 빼돌린 돈을 찾아보기로 했다",
    "hook": "병원 지분 *십억*까지 내연녀 앞으로",
@@ -459,9 +437,12 @@
    "when": "2017년 5월",
    "reveal": "병원 지분 십억이 내연녀 앞으로 넘어가 있다",
    "must": [
-    "십억"
+    "십억",
+    "특약"
    ],
    "irony": false,
+   "act": 2,
+   "stamp": "2017년 5월",
    "because": "아내는 빼돌린 돈을 찾아보기로 했다",
    "leaves": "아내는 십억 말고 더 있는지 알아보기로 했다",
    "quiet": false,
@@ -475,10 +456,10 @@
     },
     {
      "n": 2,
-     "sec": 9,
+     "sec": 8,
      "role": "맞섬",
-     "subtitle": "그이 몫 십억, 전부 제 앞으로 왔어요. / 그건 죽기 전 얘기지. / 서류에 그렇게 적혀 있어요. 억울하면 소송하시든가.",
-     "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 9-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Over-the-shoulder shot from behind Wife, seen from the right of the room, with Other woman's face and upper body filling most of the frame.\nFRAMING: 16:9 landscape. The left and right edges will be cropped away later — keep every person and every important thing inside the middle 75% of the frame and leave the far left and far right empty. Keep the people large in frame, close enough that each face stays clear.\nACTION: the woman walks past the wife toward the far end of the corridor and the wife turns to follow her with her eyes. Both people keep their lips moving in exact sync with the Korean lines they say.\nDIALOGUE: [LANGUAGE: KOREAN] each person speaks in turn, one voice at a time\n  Other woman (tight, in Korean): \"그이 몫 십억, 전부 제 앞으로 왔어요.\"\n  Wife (hard, in Korean): \"그건 죽기 전 얘기지.\"\n  Other woman (cold, in Korean): \"서류에 그렇게 적혀 있어요. 억울하면 소송하시든가.\"\nVOICE: Wife — a warm mid-range woman's voice in her fifties, native Korean speaker, weary and a little breathy, trails off at the end of a sentence; Other woman — a clear woman's voice in her forties, native Korean speaker, cool and unhurried, with a small lilt at the end.\nAUDIO: the two people in the shot say the lines themselves with their lips moving in sync, every line spoken in natural, fluent and highly authentic everyday Korean by native speakers with standard Seoul intonation, real spontaneous speech with uneven rhythm and short breaths between phrases, each person speaking one after another so every word stays clear, with only the quiet room tone of the location underneath.\nSETTING: Hospital corridor, daytime, bright fluorescent lighting — a row of steel-framed chairs along the left, a wheeled trolley by a doorway in the middle, tall windows with daylight on the right.\nCAMERA: in this room the people always keep the same left-to-right order — Wife on the left, Other woman on the right. This shot is taken from where Wife stands, looking at Other woman, so behind Other woman we see the right part of the room named in SETTING, and only that part.\nCONTINUITY: this shot continues straight on from the previous shot, in which the wife comes down the corridor and stops in front of the woman, who is standing by the wheeled trolley. Same room, same people, same light and the same colour grade — pick up exactly where that shot ended, as one unbroken scene.\nCOLOR: use the exact same colour grade in every clip of this series, in every episode from the first to the last — warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones. Match the earlier clips exactly, with the same grade as the very first one.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces with everyday, unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
+     "subtitle": "그이 몫 십억, 전부 제 앞으로 왔어요. / 그건 죽기 전 얘기지. / 특약에 부인보다 내가 먼저라고 적혀 있어요.",
+     "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 8-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Over-the-shoulder shot from behind Wife, seen from the right of the room, with Other woman's face and upper body filling most of the frame.\nFRAMING: 16:9 landscape. The left and right edges will be cropped away later — keep every person and every important thing inside the middle 75% of the frame and leave the far left and far right empty. Keep the people large in frame, close enough that each face stays clear.\nACTION: the woman walks past the wife toward the far end of the corridor and the wife turns to follow her with her eyes. Both people keep their lips moving in exact sync with the Korean lines they say.\nDIALOGUE: [LANGUAGE: KOREAN] each person speaks in turn, one voice at a time\n  Other woman (tight, in Korean): \"그이 몫 십억, 전부 제 앞으로 왔어요.\"\n  Wife (hard, in Korean): \"그건 죽기 전 얘기지.\"\n  Other woman (cold, in Korean): \"특약에 부인보다 내가 먼저라고 적혀 있어요.\"\nVOICE: Wife — a warm mid-range woman's voice in her fifties, native Korean speaker, weary and a little breathy, trails off at the end of a sentence; Other woman — a clear woman's voice in her forties, native Korean speaker, cool and unhurried, with a small lilt at the end.\nAUDIO: the two people in the shot say the lines themselves with their lips moving in sync, every line spoken in natural, fluent and highly authentic everyday Korean by native speakers with standard Seoul intonation, real spontaneous speech with uneven rhythm and short breaths between phrases, each person speaking one after another so every word stays clear, with only the quiet room tone of the location underneath.\nSETTING: Hospital corridor, daytime, bright fluorescent lighting — a row of steel-framed chairs along the left, a wheeled trolley by a doorway in the middle, tall windows with daylight on the right.\nCAMERA: in this room the people always keep the same left-to-right order — Wife on the left, Other woman on the right. This shot is taken from where Wife stands, looking at Other woman, so behind Other woman we see the right part of the room named in SETTING, and only that part.\nCONTINUITY: this shot continues straight on from the previous shot, in which the wife comes down the corridor and stops in front of the woman, who is standing by the wheeled trolley. Same room, same people, same light and the same colour grade — pick up exactly where that shot ended, as one unbroken scene.\nCOLOR: use the exact same colour grade in every clip of this series, in every episode from the first to the last — warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones. Match the earlier clips exactly, with the same grade as the very first one.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces with everyday, unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
     },
     {
      "n": 3,
@@ -490,7 +471,7 @@
    ]
   },
   {
-   "no": 12,
+   "no": 11,
    "title": "보험 아홉 건",
    "recap": "병원 지분 십억이 내연녀 앞으로 갔다",
    "hook": "보험 아홉 건 *십삼억* 전부 내연녀",
@@ -502,6 +483,8 @@
     "십삼억"
    ],
    "irony": false,
+   "act": 2,
+   "stamp": "2017년 6월",
    "because": "아내는 십억 말고 더 있는지 알아보기로 했다",
    "leaves": "아내는 보험료가 어디서 나갔는지 알아보기로 했다",
    "quiet": false,
@@ -530,7 +513,7 @@
    ]
   },
   {
-   "no": 13,
+   "no": 12,
    "title": "다 합치니 삼십이억",
    "recap": "보험금 십삼억도 내연녀 앞이었다",
    "hook": "다 합치니 *삼십이억*이었다",
@@ -542,6 +525,8 @@
     "삼십이억"
    ],
    "irony": false,
+   "act": 3,
+   "stamp": "2017년 8월",
    "because": "아내는 보험료가 어디서 나갔는지 알아보기로 했다",
    "leaves": "아내는 통장 기록을 전부 챙겨 두었다",
    "quiet": false,
@@ -570,7 +555,7 @@
    ]
   },
   {
-   "no": 14,
+   "no": 13,
    "title": "되돌릴 건 절반",
    "recap": "현금까지 합쳐 삼십이억이 나갔다",
    "hook": "빚은 끊었는데 되돌릴 건 *절반*뿐",
@@ -582,6 +567,8 @@
     "절반"
    ],
    "irony": false,
+   "act": 3,
+   "stamp": "2017년 겨울",
    "because": "아내는 통장 기록을 전부 챙겨 두었다",
    "leaves": "아내는 절반이라도 받아내겠다고 했다",
    "quiet": false,
@@ -610,7 +597,7 @@
    ]
   },
   {
-   "no": 15,
+   "no": 14,
    "title": "서명한 날짜",
    "recap": "되돌릴 수 있는 건 절반까지였다",
    "hook": "몰랐다던 서명 날짜가 *기각 당일이었다*",
@@ -622,6 +609,8 @@
     "팔월 구일"
    ],
    "irony": false,
+   "act": 3,
+   "stamp": "9개월 뒤 · 2018년 가을",
    "because": "아내는 절반이라도 받아내겠다고 했다",
    "leaves": "내연녀는 왜 그날인지 대답하지 못했다",
    "quiet": false,
@@ -650,9 +639,51 @@
    ]
   },
   {
+   "no": 15,
+   "title": "삼 년째",
+   "recap": "내연녀는 왜 그날인지 답 못 했다",
+   "hook": "재판 *삼 년째*, 딸이 그만하자고 했다",
+   "yt_title": "재판 3년째, 딸이 이제 그만하자고 했습니다",
+   "mood": "지침",
+   "when": "2019년 가을",
+   "reveal": "재판이 삼 년째로 길어져 딸이 그만하자고 한다",
+   "must": [
+    "삼 년"
+   ],
+   "irony": false,
+   "act": 3,
+   "stamp": "1년 뒤 · 2019년 가을",
+   "because": "내연녀는 왜 그날인지 대답하지 못했다",
+   "leaves": "아내는 끝까지 가겠다고 했다",
+   "quiet": true,
+   "cuts": [
+    {
+     "n": 1,
+     "sec": 7,
+     "role": "터짐",
+     "subtitle": "엄마, 오늘도 또 미뤄졌대. / 괜찮아. 기다리면 돼. / 벌써 삼 년이야. 이제 그만하자.",
+     "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 7-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Medium-wide two-shot of Wife and Daughter, static camera, everyone framed from the waist up in the middle of the frame, close enough that every face stays clear. The movement is already under way in the very first frame — nothing is still at the start.\nFRAMING: 16:9 landscape. The left and right edges will be cropped away later — keep every person and every important thing inside the middle 75% of the frame and leave the far left and far right empty. Keep the people large in frame, close enough that each face stays clear.\nACTION: the daughter comes down the corridor to where her mother is sitting on the bench and stays standing in front of her. Both people keep their lips moving in exact sync with the Korean lines they say.\nDIALOGUE: [LANGUAGE: KOREAN] each person speaks in turn, one voice at a time\n  Daughter (tired, in Korean): \"엄마, 오늘도 또 미뤄졌대.\"\n  Wife (low, in Korean): \"괜찮아. 기다리면 돼.\"\n  Daughter (steady, in Korean): \"벌써 삼 년이야. 이제 그만하자.\"\nVOICE: Wife — a warm mid-range woman's voice in her fifties, native Korean speaker, weary and a little breathy, trails off at the end of a sentence; Daughter — a light young woman's voice in her early twenties, native Korean speaker, careful and a little flat, keeps the end of a sentence low.\nAUDIO: the two people in the shot say the lines themselves with their lips moving in sync, every line spoken in natural, fluent and highly authentic everyday Korean by native speakers with standard Seoul intonation, real spontaneous speech with uneven rhythm and short breaths between phrases, each person speaking one after another so every word stays clear, with only the quiet room tone of the location underneath.\nSETTING: Court hallway, daytime, bright fluorescent lighting — a long corridor with pale grey stone walls, a row of dark wooden benches along the left, tall double doors of a courtroom in the middle, a wide window looking onto the street on the right.\nCAMERA: seen from the side of the room so everyone is in view at once — Wife on the left, Daughter on the right. Everyone keeps this same left-to-right order in every shot of this scene.\nCONTINUITY: this shot belongs to the same continuing story as the previous shot, in which the woman turns fully around to face the wife and then looks down at the floor, both hands at her sides. It is a later moment, so the place may change, but the same people, the same faces, the same voices and exactly the same colour grade carry over.\nCOLOR: use the exact same colour grade in every clip of this series, in every episode from the first to the last — warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones. Match the earlier clips exactly, with the same grade as the very first one.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces with everyday, unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
+    },
+    {
+     "n": 2,
+     "sec": 6,
+     "role": "맞섬",
+     "subtitle": "엄마가 못 지켜준 게 미안해서 그래. / 네 아빠 돈, 그냥 두고는 못 살겠어.",
+     "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 6-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Close-up on Wife, static camera, framed from the shoulders up so the whole face fills the frame, held for the whole take.\nFRAMING: 16:9 landscape. The left and right edges will be cropped away later — keep every person and every important thing inside the middle 75% of the frame and leave the far left and far right empty. Keep the people large in frame, close enough that each face stays clear.\nACTION: the mother keeps both hands folded in her lap and looks straight ahead down the corridor while her daughter waits beside her. The person keeps their lips moving in exact sync with the Korean lines they say.\nDIALOGUE: [LANGUAGE: KOREAN] each person speaks in turn, one voice at a time\n  Wife (tired, in Korean): \"엄마가 못 지켜준 게 미안해서 그래.\"\n  Wife (low, in Korean): \"네 아빠 돈, 그냥 두고는 못 살겠어.\"\nVOICE: Wife — a warm mid-range woman's voice in her fifties, native Korean speaker, weary and a little breathy, trails off at the end of a sentence.\nAUDIO: the person in the shot says the lines themselves with their lips moving in sync, every line spoken in natural, fluent and highly authentic everyday Korean by native speakers with standard Seoul intonation, real spontaneous speech with uneven rhythm and short breaths between phrases, every word stays clear, with only the quiet room tone of the location underneath.\nSETTING: Court hallway, daytime, bright fluorescent lighting — a long corridor with pale grey stone walls, a row of dark wooden benches along the left, tall double doors of a courtroom in the middle, a wide window looking onto the street on the right.\nCAMERA: in this room the people always keep the same left-to-right order — Wife on the left, Daughter on the right. This shot is taken from where Daughter stands, looking at Wife, so behind Wife we see the left part of the room named in SETTING, and only that part.\nCONTINUITY: this shot continues straight on from the previous shot, in which the daughter comes down the corridor to where her mother is sitting on the bench and stays standing in front. Same room, same people, same light and the same colour grade — pick up exactly where that shot ended, as one unbroken scene.\nCOLOR: use the exact same colour grade in every clip of this series, in every episode from the first to the last — warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones. Match the earlier clips exactly, with the same grade as the very first one.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces with everyday, unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
+    },
+    {
+     "n": 3,
+     "sec": 7,
+     "role": "선언",
+     "subtitle": "엄마가 너무 힘들잖아. / 여기서 놓으면 그 사람이 이기는 거야. / …끝까지 갈 거야.",
+     "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 7-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Over-the-shoulder shot from behind Daughter, seen from the right of the room, with Wife's face and upper body filling most of the frame.\nFRAMING: 16:9 landscape. The left and right edges will be cropped away later — keep every person and every important thing inside the middle 75% of the frame and leave the far left and far right empty. Keep the people large in frame, close enough that each face stays clear.\nACTION: the mother stands up from the bench and the daughter steps aside to let her pass toward the courtroom doors. Both people keep their lips moving in exact sync with the Korean lines they say.\nDIALOGUE: [LANGUAGE: KOREAN] each person speaks in turn, one voice at a time\n  Daughter (tired, in Korean): \"엄마가 너무 힘들잖아.\"\n  Wife (low, in Korean): \"여기서 놓으면 그 사람이 이기는 거야.\"\n  Wife (steady, in Korean): \"…끝까지 갈 거야.\"\nVOICE: Wife — a warm mid-range woman's voice in her fifties, native Korean speaker, weary and a little breathy, trails off at the end of a sentence; Daughter — a light young woman's voice in her early twenties, native Korean speaker, careful and a little flat, keeps the end of a sentence low.\nAUDIO: the two people in the shot say the lines themselves with their lips moving in sync, every line spoken in natural, fluent and highly authentic everyday Korean by native speakers with standard Seoul intonation, real spontaneous speech with uneven rhythm and short breaths between phrases, each person speaking one after another so every word stays clear, with only the quiet room tone of the location underneath.\nSETTING: Court hallway, daytime, bright fluorescent lighting — a long corridor with pale grey stone walls, a row of dark wooden benches along the left, tall double doors of a courtroom in the middle, a wide window looking onto the street on the right.\nCAMERA: in this room the people always keep the same left-to-right order — Wife on the left, Daughter on the right. This shot is taken from where Daughter stands, looking at Wife, so behind Wife we see the left part of the room named in SETTING, and only that part.\nCONTINUITY: this shot continues straight on from the previous shot, in which the mother keeps both hands folded in her lap and looks straight ahead down the corridor while her daughter. Same room, same people, same light and the same colour grade — pick up exactly where that shot ended, as one unbroken scene.\nCOLOR: use the exact same colour grade in every clip of this series, in every episode from the first to the last — warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones. Match the earlier clips exactly, with the same grade as the very first one.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces with everyday, unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
+    }
+   ]
+  },
+  {
    "no": 16,
    "title": "판결",
-   "recap": "내연녀는 왜 그날인지 답하지 못했다",
+   "recap": "딸이 그만하자고 했지만 아내는 갔다",
    "hook": "법원 *십억 전부 돌려주라*",
    "yt_title": "법원이 내연녀에게 10억을 돌려주라고 했습니다",
    "mood": "담담한 승리",
@@ -662,7 +693,9 @@
     "돌려주라"
    ],
    "irony": false,
-   "because": "내연녀는 왜 그날인지 대답하지 못했다",
+   "act": 3,
+   "stamp": "9개월 뒤 · 2020년 6월",
+   "because": "아내는 끝까지 가겠다고 했다",
    "leaves": "",
    "quiet": false,
    "cuts": [
@@ -671,7 +704,7 @@
      "sec": 7,
      "role": "터짐",
      "subtitle": "십억. 다 돌려주라고 했어. / 십억을 어떻게 돌려줘요. / 네가 가져간 만큼이야.",
-     "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 7-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Medium-wide two-shot of Wife and Other woman, static camera, everyone framed from the waist up in the middle of the frame, close enough that every face stays clear. The movement is already under way in the very first frame — nothing is still at the start.\nFRAMING: 16:9 landscape. The left and right edges will be cropped away later — keep every person and every important thing inside the middle 75% of the frame and leave the far left and far right empty. Keep the people large in frame, close enough that each face stays clear.\nACTION: the wife comes down the courthouse steps at an even pace and the woman is waiting at the bottom. Both people keep their lips moving in exact sync with the Korean lines they say.\nDIALOGUE: [LANGUAGE: KOREAN] each person speaks in turn, one voice at a time\n  Wife (low, in Korean): \"십억. 다 돌려주라고 했어.\"\n  Other woman (steady, in Korean): \"십억을 어떻게 돌려줘요.\"\n  Wife (released, in Korean): \"네가 가져간 만큼이야.\"\nVOICE: Wife — a warm mid-range woman's voice in her fifties, native Korean speaker, weary and a little breathy, trails off at the end of a sentence; Other woman — a clear woman's voice in her forties, native Korean speaker, cool and unhurried, with a small lilt at the end.\nAUDIO: the two people in the shot say the lines themselves with their lips moving in sync, every line spoken in natural, fluent and highly authentic everyday Korean by native speakers with standard Seoul intonation, real spontaneous speech with uneven rhythm and short breaths between phrases, each person speaking one after another so every word stays clear, with only the quiet room tone of the location underneath.\nSETTING: Outside the courthouse, daytime, bright sunlight — tall grey columns of the courthouse on the left, wide stone steps rising in the middle, a low stone balustrade and a bare tree on the right, open sky above.\nCAMERA: seen from the side of the room so everyone is in view at once — Wife on the left, Daughter in the middle, Other woman on the right. Everyone keeps this same left-to-right order in every shot of this scene.\nCONTINUITY: this shot belongs to the same continuing story as the previous shot, in which the woman turns fully around to face the wife and then looks down at the floor, both hands at her sides. It is a later moment, so the place may change, but the same people, the same faces, the same voices and exactly the same colour grade carry over.\nCOLOR: use the exact same colour grade in every clip of this series, in every episode from the first to the last — warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones. Match the earlier clips exactly, with the same grade as the very first one.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces with everyday, unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
+     "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 7-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Medium-wide two-shot of Wife and Other woman, static camera, everyone framed from the waist up in the middle of the frame, close enough that every face stays clear. The movement is already under way in the very first frame — nothing is still at the start.\nFRAMING: 16:9 landscape. The left and right edges will be cropped away later — keep every person and every important thing inside the middle 75% of the frame and leave the far left and far right empty. Keep the people large in frame, close enough that each face stays clear.\nACTION: the wife comes down the courthouse steps at an even pace and the woman is waiting at the bottom. Both people keep their lips moving in exact sync with the Korean lines they say.\nDIALOGUE: [LANGUAGE: KOREAN] each person speaks in turn, one voice at a time\n  Wife (low, in Korean): \"십억. 다 돌려주라고 했어.\"\n  Other woman (steady, in Korean): \"십억을 어떻게 돌려줘요.\"\n  Wife (released, in Korean): \"네가 가져간 만큼이야.\"\nVOICE: Wife — a warm mid-range woman's voice in her fifties, native Korean speaker, weary and a little breathy, trails off at the end of a sentence; Other woman — a clear woman's voice in her forties, native Korean speaker, cool and unhurried, with a small lilt at the end.\nAUDIO: the two people in the shot say the lines themselves with their lips moving in sync, every line spoken in natural, fluent and highly authentic everyday Korean by native speakers with standard Seoul intonation, real spontaneous speech with uneven rhythm and short breaths between phrases, each person speaking one after another so every word stays clear, with only the quiet room tone of the location underneath.\nSETTING: Outside the courthouse, daytime, bright sunlight — tall grey columns of the courthouse on the left, wide stone steps rising in the middle, a low stone balustrade and a bare tree on the right, open sky above.\nCAMERA: seen from the side of the room so everyone is in view at once — Wife on the left, Daughter in the middle, Other woman on the right. Everyone keeps this same left-to-right order in every shot of this scene.\nCONTINUITY: this shot belongs to the same continuing story as the previous shot, in which the mother stands up from the bench and the daughter steps aside to let her pass toward the courtroom doors. It is a later moment, so the place may change, but the same people, the same faces, the same voices and exactly the same colour grade carry over.\nCOLOR: use the exact same colour grade in every clip of this series, in every episode from the first to the last — warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones. Match the earlier clips exactly, with the same grade as the very first one.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces with everyday, unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
     },
     {
      "n": 2,

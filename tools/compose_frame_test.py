@@ -197,20 +197,23 @@ _src3 = (ROOT / "src" / "shorts.py").read_text(encoding="utf-8")
 ck("대본에서 화자를 뽑아 넘긴다",
    "whos=[w for w, _ in dia_turns(c.get(\"prompt\"))]" in _src3)
 
-print("⑧ 때(시점) 도장 — 앞 3초만, 자막·영상은 하나도 안 뺏는다 (2026-08-25)")
+print("⑧ 때(시점) 도장 — 첫 컷 내내, 자막·영상은 하나도 안 뺏는다 (2026-08-26)")
 # 운영자: "씬 앞뒤로 개연성이 없다." 8년짜리 사건인데 화면에 때가 한 번도
-#   안 나왔다. 이름표 오른쪽 빈 자리에 앉히고 앞 3초만 띄운다.
+#   안 나왔다. 이름표 오른쪽 빈 자리에 앉힌다.
+# ⚠️ 2026-08-26 — 처음엔 앞 3초만 띄웠다. 앞머리 1.2초가 무음이라 실제로
+#    읽을 시간은 1.8초뿐이었고, 운영자가 다시 "시간이 쌩뚱맞다" 고 했다.
+#    **첫 컷 내내** 띄우도록 바꿨다 (빈자리라 아무것도 안 가린다).
 src8 = make(TMP, 8.0, 8.0, color="0x101015")
 stamped = S.compose(src8, "후킹 문구다", "당장 나가.", TMP / "st.mp4", TMP,
                     whos=["Wife"], stamp="2013년 8월")
 plain8 = S.compose(src8, "후킹 문구다", "당장 나가.", TMP / "st0.mp4", TMP,
                    whos=["Wife"])
 STAMPBOX = (S.W // 2, S.SUB_TOP, S.W, S.SUB_TOP + 60)
-ck("앞 3초 안에는 때가 떠 있다",
+ck("앞머리에 때가 떠 있다",
    ink(stamped, 1.0, STAMPBOX) - ink(plain8, 1.0, STAMPBOX) > 300,
    f"{ink(stamped, 1.0, STAMPBOX)} vs {ink(plain8, 1.0, STAMPBOX)}")
-ck("3초가 지나면 사라진다",
-   abs(ink(stamped, 6.0, STAMPBOX) - ink(plain8, 6.0, STAMPBOX)) < 200,
+ck("컷이 끝날 때까지 안 사라진다",
+   ink(stamped, 6.0, STAMPBOX) - ink(plain8, 6.0, STAMPBOX) > 300,
    f"{ink(stamped, 6.0, STAMPBOX)} vs {ink(plain8, 6.0, STAMPBOX)}")
 ck("영상 자리를 하나도 안 가린다", ink(stamped, 1.0, VIDBOX) < 500,
    f"{ink(stamped, 1.0, VIDBOX)}픽셀")
@@ -218,8 +221,28 @@ ck("길이가 안 늘어난다",
    abs(S.C.probe(stamped)[2] - S.C.probe(plain8)[2]) < 0.05,
    f"{S.C.probe(plain8)[2]:.2f} → {S.C.probe(stamped)[2]:.2f}초")
 _src8 = (ROOT / "src" / "shorts.py").read_text(encoding="utf-8")
-ck("첫 컷에만 넘긴다 (대본의 when 을 그대로)",
-   'stamp=(ep.get("when") or "") if first_cut else ""' in _src8)
+ck("첫 컷에만 넘긴다 (대본의 stamp — '3년 뒤 · 2017년 1월')",
+   'ep.get("stamp") or ep.get("when")' in _src8 and "first_cut" in _src8)
+
+# ⭐⭐ 2026-08-26 — 지난 줄거리를 화면에 띄운다.
+#    화마다 한 줄씩 적어 두고도 **그리는 코드가 아예 없었다.** 쇼츠는 앞 화를
+#    안 보고 들어오는 사람이 대부분인데 맥락이 0이었다.
+print("⑧-2 지난 줄거리 — 앞머리에만, 길이는 그대로 (2026-08-26)")
+recapped = S.compose(src8, "후킹 문구다", "당장 나가.", TMP / "rc.mp4", TMP,
+                     whos=["Wife"], recap="모르는 번호가 남편 서류를 물었다")
+RECAPBOX = (0, S.VID_TOP, S.W, S.VID_TOP + S.RECAP_H)
+ck("앞머리에는 지난 줄거리 한 줄이 뜬다",
+   ink(recapped, 1.0, RECAPBOX) - ink(plain8, 1.0, RECAPBOX) > 500,
+   f"{ink(recapped, 1.0, RECAPBOX)} vs {ink(plain8, 1.0, RECAPBOX)}")
+ck("대사가 시작될 즈음엔 사라진다",
+   abs(ink(recapped, 5.0, RECAPBOX) - ink(plain8, 5.0, RECAPBOX)) < 300,
+   f"{ink(recapped, 5.0, RECAPBOX)} vs {ink(plain8, 5.0, RECAPBOX)}")
+ck("길이가 안 늘어난다",
+   abs(S.C.probe(recapped)[2] - S.C.probe(plain8)[2]) < 0.05,
+   f"{S.C.probe(plain8)[2]:.2f} → {S.C.probe(recapped)[2]:.2f}초")
+_src9 = (ROOT / "src" / "shorts.py").read_text(encoding="utf-8")
+ck("첫 컷에만 넘긴다 (대본의 recap)",
+   'recap=(ep.get("recap") or "") if first_cut else ""' in _src9)
 
 print("⑨ 다음 화 예고 — 영상 칸만 어두워지고, 후킹은 위에서 그대로 (2026-08-25)")
 # 운영자: "만든 영상이 끝나면 다음화 예고 문구를 화면 중간에 띄워주고, 그 화면이

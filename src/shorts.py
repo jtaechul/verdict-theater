@@ -149,9 +149,23 @@ SIDE = 64                        # 좌우 여백
 #    자막 칸 **이름표 오른쪽이 늘 비어 있어서** 거기에 앉힌다 — 후킹도
 #    영상도 자막도 하나도 안 뺏는다 (실측으로 765~830px 이 남는다).
 STAMP_SIZE = 40                  # 때 도장 글자 크기 (자막보다 확실히 작게)
-STAMP_SEC = 3.0                  # 첫 컷 앞 몇 초만 (그 뒤엔 사라진다)
+# ⚠️ 2026-08-26 — 3초만 띄웠더니 **놓치는 사람이 더 많았다.** 운영자:
+#    "각 화마다 시간적 순서가 너무 많이 바뀌고 쌩뚱맞아서 연결이 안 되는 느낌."
+#    앞머리 1.2초는 원래 무음이라 실제로 읽을 시간은 1.8초뿐이었다.
+#    → **첫 컷 내내** 띄운다 (자막 칸 오른쪽 빈자리라 아무것도 안 가린다).
+STAMP_SEC = 3.0                  # (안 쓴다 — 첫 컷 길이만큼 띄운다)
 STAMP_FADE = 0.6
 STAMP_COLOR = (168, 172, 186, 255)   # 흐린 회색 — 자막을 안 이긴다
+# ⭐⭐⭐ 2026-08-26 — **지난 줄거리를 화면에 띄운다.**
+#    화마다 한 줄씩 적어 두고도 **영상에 그리는 코드가 아예 없었다.**
+#    쇼츠는 앞 화를 안 보고 들어오는 사람이 대부분인데 맥락이 0이었다.
+#    영상 칸 맨 위에 어두운 띠를 깔고 한 줄 — 앞머리 무음 구간에 읽고 지나간다.
+RECAP_SEC = 2.8                  # 첫 컷 앞 몇 초 (무음 1.2초가 여기 들어 있다)
+RECAP_FADE = 0.7
+RECAP_SIZE = 46
+RECAP_DARK = 0.74                # 영상 위라 띠를 안 깔면 안 읽힌다
+RECAP_H = 112
+RECAP_COLOR = (226, 228, 238, 255)
 GOLD = (198, 160, 74)
 # ⭐ 후킹에서 별표로 감싼 토막에 넣을 색 (2026-08-21 운영자 지시).
 #    채널 이름에 쓰는 GOLD 는 검은 바탕에서 132px 로 키우면 탁해 보인다.
@@ -606,6 +620,15 @@ def draw_preview(img, d, tag, big, pill):
            anchor="mm")
 
 
+def draw_recap(img, d, text):
+    """영상 칸 **맨 위**에 「지난 화 · …」 한 줄. 앞머리에서만 잠깐 보인다."""
+    ov = Image.new("RGBA", (W, RECAP_H), (0, 0, 0, int(255 * RECAP_DARK)))
+    img.alpha_composite(ov, (0, VID_TOP))
+    line = "지난 화 · " + str(text).strip()
+    f, ls = fit(d, line, FONT_M, RECAP_SIZE, W - SIDE * 2, 2, min_size=34)
+    block(d, ls, f, VID_TOP + 8, VID_TOP + RECAP_H - 8, RECAP_COLOR, gap=1.2)
+
+
 def speech_end(src, dur):
     """그 클립에서 **말이 끝나는 시각**. 못 찾으면 끝에서 1.6초 앞."""
     try:
@@ -625,7 +648,7 @@ def draw_stamp(d, text):
 
 
 def overlay_png(hook, chunk, out, label=None, parts="all", who=None, end=None,
-                stamp="", preview=None):
+                stamp="", preview=None, recap=""):
     """글자만 있는 투명 그림 한 장 (영상 위에 얹는다).
 
     chunk — 지금 화면에 띄울 자막 **한 토막**. 나머지는 안 그린다
@@ -646,6 +669,10 @@ def overlay_png(hook, chunk, out, label=None, parts="all", who=None, end=None,
     want_sub = parts in ("all", "sub")
     want_stamp = parts in ("all", "stamp")
     want_prev = parts in ("all", "preview")
+    want_recap = parts in ("all", "recap")
+
+    if want_recap and str(recap or "").strip():
+        draw_recap(img, d, recap)
 
     if want_prev and preview:
         draw_preview(img, d, *preview)
@@ -1043,7 +1070,7 @@ def crop_43(vw, vh):
 
 
 def compose(src, hook, sub, out, tmp, label=None, end=None,
-            hook_sec=HOOK_SEC, whos=None, stamp="", preview=None):
+            hook_sec=HOOK_SEC, whos=None, stamp="", preview=None, recap=""):
     """받은 클립 한 개 → 쇼츠 한 컷 (자르지 않고 폭에 맞춰 깔고 글자 얹기)."""
     src, out, tmp = Path(src), Path(out), Path(tmp)
     tmp.mkdir(parents=True, exist_ok=True)
@@ -1100,6 +1127,11 @@ def compose(src, hook, sub, out, tmp, label=None, end=None,
         prev_i = len(imgs)
         imgs.append(overlay_png("", "", tmp / f"{src.stem}_prev.png", None,
                                 parts="preview", preview=preview))
+    recap_i = None
+    if str(recap or "").strip():
+        recap_i = len(imgs)
+        imgs.append(overlay_png("", "", tmp / f"{src.stem}_recap.png", None,
+                                parts="recap", recap=recap))
     stamp_i = None
     if str(stamp or "").strip():
         stamp_i = len(imgs)
@@ -1141,12 +1173,23 @@ def compose(src, hook, sub, out, tmp, label=None, end=None,
     #    일찍 끈다.
     # ⭐ 때 도장 — 첫 컷 앞 몇 초만. 끝에서 부드럽게 사라진다.
     if stamp_i is not None:
-        ss = min(STAMP_SEC, sec)
+        # ⚠️ 예전엔 min(STAMP_SEC, sec) 라 3초만 떴다. 앞머리 1.2초가 무음이라
+        #    실제로 읽을 시간은 1.8초뿐이었다 — **컷 내내** 띄운다.
+        ss = sec
         fs = max(0.0, ss - STAMP_FADE)
         vf.append(f"[{2 + stamp_i}:v]format=rgba,"
                   f"fade=t=out:st={fs:.3f}:d={min(STAMP_FADE, ss):.3f}:alpha=1[st]")
         vf.append(f"{cur}[st]overlay=0:0:enable='between(t,0,{ss:.3f})'[sp]")
         cur = "[sp]"
+
+    # ⭐ 지난 줄거리 — 앞머리 몇 초만. 첫 대사가 나오기 전에 사라진다.
+    if recap_i is not None:
+        rs = min(RECAP_SEC, max(1.2, sec - 1.0))
+        rf = max(0.0, rs - RECAP_FADE)
+        vf.append(f"[{2 + recap_i}:v]format=rgba,"
+                  f"fade=t=out:st={rf:.3f}:d={min(RECAP_FADE, rs):.3f}:alpha=1[rc]")
+        vf.append(f"{cur}[rc]overlay=0:0:enable='between(t,0,{rs:.3f})'[rp]")
+        cur = "[rp]"
 
     # ⭐ 예고는 **말이 끝난 뒤**에 뜬다 (대사를 안 가린다). 길이는 그대로다.
     if prev_i is not None:
@@ -1367,7 +1410,12 @@ def episode(sid, no, clips_dir, out_dir):
         d = compose(src, hook if (not HOOK_SEC or first_cut) else "",
                     c.get("subtitle"), tmp / f"cut{n}.mp4", tmp, label=label,
                     whos=[w for w, _ in dia_turns(c.get("prompt"))],
-                    stamp=(ep.get("when") or "") if first_cut else "",
+                    # ⭐ 2026-08-26 — 'when'(2017년 1월) 이 아니라 'stamp'
+                    #    (3년 뒤 · 2017년 1월). 사람은 절대 시각이 아니라
+                    #    **간격**으로 시간을 느낀다.
+                    stamp=((ep.get("stamp") or ep.get("when") or "")
+                           if first_cut else ""),
+                    recap=(ep.get("recap") or "") if first_cut else "",
                     preview=preview_card(doc, no) if last_cut else None)
         parts.append(d)
         print(f"  ✅ {n}컷 ← {files[n].name}  (소리 {gain_for(src):+.1f}dB)")

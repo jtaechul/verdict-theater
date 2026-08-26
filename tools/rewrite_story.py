@@ -24,6 +24,7 @@
 import importlib.util
 import json
 import pathlib
+import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -107,6 +108,38 @@ NEW_SET = {
 }
 
 
+# ⭐⭐⭐ 2026-08-26 운영자: "각 화마다 시간적 순서가 너무 많이 바뀌고 쌩뚱맞아서
+#    연결이 안 되는 느낌이야."
+#    재 보니 화 사이 간격이 **0개월에서 34개월까지** 널뛰었다. 그런데 화면에는
+#    "2017년 1월" 처럼 **그때가 언제인지만** 뜨고, **앞 화에서 얼마나 지났는지**는
+#    아무 데도 없었다. 사람은 절대 시각이 아니라 **간격**으로 시간을 느낀다.
+#    → 도장 글을 "3년 뒤 · 2017년 1월" 로 짓는다.
+SEASON = {"봄": 3, "여름": 6, "가을": 9, "겨울": 12}
+
+
+def when_key(t):
+    m = re.match(r"(\d{4})년\s*(?:(\d{1,2})월|(봄|여름|가을|겨울))?", str(t or ""))
+    if not m:
+        return None
+    return int(m.group(1)) * 12 + (int(m.group(2)) if m.group(2)
+                                   else SEASON.get(m.group(3), 1))
+
+
+def stamp_of(when, prev_when):
+    """화면 맨 아래 도장에 찍을 글 — 앞 화에서 얼마나 지났는지를 앞에 붙인다."""
+    a, b = when_key(prev_when), when_key(when)
+    if a is None or b is None:
+        return when
+    d = b - a
+    if d >= 12:
+        return f"{round(d / 12)}년 뒤 · {when}"
+    if d >= 6:
+        return f"{d}개월 뒤 · {when}"
+    if d <= 0:
+        return f"며칠 뒤 · {when}"
+    return when
+
+
 def who_list(cast):
     """Wife and Husband · Wife, Husband and Other woman — 영어로 이어 붙인다."""
     if len(cast) <= 1:
@@ -172,7 +205,7 @@ def main():
                   if l.startswith("AUDIO:")), "")
 
     eps = []
-    for e in story.EPS:
+    for idx, e in enumerate(story.EPS):
         cuts = []
         for i, (place, action, lines) in enumerate(e["cuts"]):
             says = sorted({w for w, _ in lines}, key=lambda w: rank[w])
@@ -232,6 +265,11 @@ def main():
             # ⭐⭐ 씬 간 연결의 뼈대 — 이 화가 남긴 것(leaves)이 다음 화가
             #    시작되는 까닭(because)과 **글자 그대로 같아야** 한다.
             #    tools/story_check.py 가 이것을 검사한다.
+            # ⭐ 막(act) — 1막 배신 · 2막 죽음 · 3막 법정.
+            #    큰 시간 점프는 **막이 바뀔 때만** 나게 짜 두었다.
+            "act": int(e.get("act") or 0),
+            "stamp": stamp_of(e["when"],
+                              story.EPS[idx - 1]["when"] if idx else None),
             "because": e.get("because", ""),
             "leaves": e.get("leaves", ""),
             "quiet": bool(e.get("quiet")),

@@ -34,6 +34,11 @@
     ⑦ **되풀이 대결** — 같은 사람 조합이 세 화를 넘어 잇달지 않는가
        (옛 대본은 5~16화, 12화 연속으로 아내와 그 여자가 싸웠다)
     ⑧ **셈여림** — 조용한 화(quiet)가 하나는 있고 절반은 넘지 않는가
+    ⑨ **시점** — 아내가 모든 화에 나오는가
+       (2026-08-26 운영자: "쌩뚱맞아서 연결이 안 되는 느낌." 원인 하나가
+        4·6화에 아내가 없어 시점이 두 번 튄 것이었다 — 이제 아내로 고정한다)
+    ⑩ **막 안 간격** — 큰 시간 점프는 **막이 바뀔 때만** 나는가
+       (막 안에서 12개월을 넘게 뛰면 시청자가 시간 감각을 놓친다)
 
 무엇을 알리기만 하나 (안 버린다)
     · **끊기** — 마지막 대사가 물음표·말줄임으로 끝나지 않는 화
@@ -79,6 +84,8 @@ def cast_key(ep):
 
 
 CHAIN_MAX = 3          # 같은 조합이 잇달아도 되는 최대 화 수
+LEAD = "Wife"          # 이야기를 끌고 가는 사람 — 모든 화에 나와야 한다
+ACT_GAP_MAX = 12       # 막 **안에서** 뛰어도 되는 최대 개월
 
 
 def scan(doc, soft=None):
@@ -179,6 +186,28 @@ def scan(doc, soft=None):
                        f"부딪힌다 — {run_key} (상대를 바꿔야 단조롭지 않다)")
         run_key, run_from, run = k, e.get("no") if e else None, 1
 
+    # ⑨ 시점 — 아내가 빠진 화가 있으면 그 화에서 이야기가 튄다
+    for e in eps:
+        if LEAD not in cast_key(e).split(" · "):
+            bad.append(f"{e.get('no')}화: 아내가 안 나온다 — "
+                       f"({cast_key(e) or '아무도 안 말한다'}) "
+                       f"시청자는 아내를 따라오는데 여기서 튄다")
+
+    # ⑩ 막 안에서 크게 뛰지 않는가 (큰 점프는 막이 바뀔 때만)
+    for a, b in zip(eps, eps[1:]):
+        ka, kb = when_key(a.get("when")), when_key(b.get("when"))
+        if ka is None or kb is None:
+            continue
+        same_act = a.get("act") and a.get("act") == b.get("act")
+        if same_act and kb - ka > ACT_GAP_MAX:
+            bad.append(f"{a.get('no')}화 → {b.get('no')}화: 같은 막 안에서 "
+                       f"{kb - ka}개월을 뛴다 ({ACT_GAP_MAX}개월 이내여야 한다 — "
+                       f"큰 점프는 막이 바뀔 때만)")
+    if eps and any(e.get("act") for e in eps):
+        for e in eps:
+            if not e.get("act"):
+                bad.append(f"{e.get('no')}화: 어느 막인지(act) 가 없다")
+
     # ⑧ 셈여림 — 조용한 화가 하나는 있어야 하고, 절반을 넘어서도 안 된다
     if eps:
         quiet = [e.get("no") for e in eps if e.get("quiet")]
@@ -207,8 +236,10 @@ def selftest():
         """멀쩡한 두 화 — 이음·조용한 화·상대 바꾸기까지 다 맞춰 둔다."""
         a = ep(1, "2012년 가을", ["기각"], "기각이야?", quiet=True, **kw)
         b = ep(2, "2013년 8월", ["십억"], "십억이라니.")
+        # ⚠️ 아내는 **모든 화에** 나와야 한다(⑨). 상대만 바꾼다.
         b["cuts"][0]["prompt"] = ("DIALOGUE: x\n"
-                                  '  Husband (numb, in Korean): "십억이라니."')
+                                  '  Husband (numb, in Korean): "그래서?"\n'
+                                  '  Wife (numb, in Korean): "십억이라니."')
         return {"ledger": {}, "episodes": [a, b]}
 
     ok = two()
@@ -260,8 +291,29 @@ def selftest():
     d = two(); d["episodes"][0]["quiet"] = False
     assert any("조용한 화" in b for b in scan(d)), "셈여림을 못 잡는다"
 
+    # ⑨ 아내가 빠진 화를 잡는다
+    d = two()
+    d["episodes"][0]["cuts"][0]["prompt"] = (
+        "DIALOGUE: x\n  Husband (numb, in Korean): \"기각이야?\"")
+    assert any("아내가 안 나온다" in b for b in scan(d)), \
+        f"아내 빠진 화를 못 잡는다: {scan(d)}"
+
+    # ⑩ 같은 막 안에서 크게 뛰는 것을 잡는다
+    d = two()
+    d["episodes"][0]["act"] = d["episodes"][1]["act"] = 1
+    d["episodes"][1]["when"] = "2015년 8월"
+    assert any("같은 막 안에서" in b for b in scan(d)), \
+        f"막 안 큰 점프를 못 잡는다: {scan(d)}"
+    # 막이 바뀌면 크게 뛰어도 된다
+    d = two()
+    d["episodes"][0]["act"], d["episodes"][1]["act"] = 1, 2
+    d["episodes"][1]["when"] = "2015년 8월"
+    assert not any("같은 막 안에서" in b for b in scan(d)), \
+        "막이 바뀌는 자리까지 잡으면 안 된다"
+
     print("   ✅ 자기시험: 누설 · 빠진 폭로 · 끊긴 이음 · 장부 밖 금액 · "
-          "거꾸로 가는 때 · 되풀이 대결 · 셈여림 다 잡는다")
+          "거꾸로 가는 때 · 되풀이 대결 · 셈여림 · 아내 빠진 화 · "
+          "막 안 큰 점프 다 잡는다")
 
 
 def main():
@@ -283,11 +335,12 @@ def main():
             print("   ✅ 앞 화가 남긴 것에서 다음 화가 시작된다 (이음)")
             print("   ✅ 금액이 장부와 같다 · 때가 앞으로만 간다")
             print("   ✅ 상대가 바뀐다 · 조용한 화가 섞여 있다")
+            print("   ✅ 아내가 모든 화에 나온다 · 큰 점프는 막이 바뀔 때만")
             for e in eps:
-                print("      %2d화 %-11s %-9s %-6s %s"
-                      % (e.get("no"), e.get("when", ""), e.get("mood", ""),
-                         "조용" if e.get("quiet") else
-                         ("아이러니" if e.get("irony") else ""),
+                print("      %d막 %2d화 %-16s %-6s %s"
+                      % (e.get("act") or 0, e.get("no"),
+                         e.get("stamp") or e.get("when", ""),
+                         "조용" if e.get("quiet") else "",
                          (e.get("reveal") or "")[:30]))
         for b in soft:
             print("   ·  " + b)
