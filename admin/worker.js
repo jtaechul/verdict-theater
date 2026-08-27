@@ -70,6 +70,17 @@ const WORKFLOWS = [
              { k: 'cut', label: '한 컷만 시험 (처음이면 1 · 비우면 전체)',
                type: 'text', v: '1' }] },
 
+  // ⭐⭐⭐ 2026-08-27 운영자: "90초로 만들어."
+  //    16화는 한 화에 사건이 하나뿐이라 "그래서 뭔데" 를 16번 기다려야 했다.
+  //    한 편이면 5초 만에 32억이 나온다. 컷마다 영상을 만들면 7천 원이 넘으므로
+  //    **그림 한 장 + 나레이션**으로 만든다 (손님: "비오로 하기 돈아까우니까").
+  { file: 'short90.yml', name: '4-2. 90초 한 편 만들기 — 유료',
+    desc: '재판 하나를 90초짜리 한 편으로 만듭니다. 그림 23장 + 나레이션 + 자막을 '
+        + '붙여 끝까지 자동으로 만듭니다. 처음 한 번 약 3,800원이고, 두 번째부터는 '
+        + '바뀐 것만 다시 만들어 대개 0원입니다',
+    inputs: [{ k: 'step', label: '어디까지', type: 'select',
+               opts: ['all', 'stills', 'voice', 'build'] }] },
+
   { file: 'stats.yml', name: '5. 성과 보기',
     desc: '올린 영상이 얼마나 보였는지 확인합니다 (0원)',
     inputs: [] },
@@ -1272,7 +1283,7 @@ function home() {
   //    ⭐ 순서: 대본 → 다듬기 → **열쇠 점검 → 영상 만들기** → 성과.
   //       돈 나가기 전에 열쇠부터 보는 것이 실제 순서다.
   h += wfList(['series.yml', 'polish.yml',
-               'keycheck.yml', 'video.yml', 'stats.yml']);
+               'keycheck.yml', 'video.yml', 'short90.yml', 'stats.yml']);
   h += '</div>';
 
   h += collectCard();

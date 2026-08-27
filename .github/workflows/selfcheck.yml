@@ -132,6 +132,14 @@ jobs:
       - name: 재료가 바뀌면 정말 다시 만드는가 (옛 화풍이 다시 나오지 않게)
         run: python3 tools/reuse_test.py
 
+      # ⭐⭐⭐ 2026-08-27 운영자: "90초로 만들어."
+      #    대본 23컷 · 자막이 칸에 들어가는지 · 실제로 mp4 가 나오는지까지
+      #    돈 한 푼 안 쓰고 본다 (그림·소리만 가짜로 바꿔치기한다).
+      - name: 90초 한 편이 진짜로 조립되는가
+        run: |
+          python3 tools/build_short90.py >/dev/null
+          python3 tools/short90_test.py
+
       - name: 지어낸 말을 잘라 내는가
         run: python3 tools/extra_speech_test.py
 

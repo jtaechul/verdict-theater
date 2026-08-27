@@ -65,6 +65,14 @@ def main():
     fails = 0
     for p in sorted((ROOT / "data" / "series").glob("S*.json")):
         doc = json.loads(p.read_text(encoding="utf-8"))
+        # ⚠️ 2026-08-27 — 90초 한 편(S90.json)은 **16화 규격이 아니다.** 컷을
+        #    화로 묶지 않고 23컷이 한 줄로 이어진다. 16화 자를 들이대면
+        #    "화 수가 0개다" 로 걸린다. 90초 편은 tools/short90_test.py 가 본다.
+        if not (doc.get("episodes") or []):
+            n = len(doc.get("cuts") or [])
+            print(f"\n{p.stem} — 90초 한 편 {n}컷 "
+                  f"(16화 규격이 아니라 여기서는 안 본다 — short90_test 가 본다)")
+            continue
         bad, soft = split(S.check(doc))
         eps = doc.get("episodes") or []
         cuts = sum(len(e.get("cuts") or []) for e in eps)

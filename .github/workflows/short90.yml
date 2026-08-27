@@ -1,0 +1,149 @@
+name: 4. 90초 한 편 만들기
+
+# ⭐ 2026-08-27 운영자 확정 — "90초로 만들어."
+#
+#   ① 대본 짓기 (0원)            data/series/S90.json — 23컷
+#   ② 인물 카드 (5장 · 약 661원)  얼굴을 컷마다 같게 묶는 기준 그림
+#   ③ 컷 그림 23장 (약 3,042원)   세로 9:16 · 카드를 참조로 넣어 얼굴을 묶는다
+#   ④ 나레이션·대사 소리 23줄     구글 TTS (약 100원)
+#   ⑤ 한 편으로 조립             자막·이름표·아주 느린 줌 → 약 100초
+#
+# 값: 처음 한 번 약 3,800원. 두 번째부터는 **바뀐 것만** 다시 만든다(대개 0원).
+#
+# ⚠️ 만든 것은 릴리스에 보관한다. 중간에 죽어도 돈이 날아가지 않는다.
+# ⚠️ 완성 영상은 저장소에 커밋하지 않는다 (지침). 릴리스에만 올린다.
+#
+# 대사 컷을 손으로 더 좋게 만들고 싶으면 — S90.json 의 `veo` 프롬프트를
+# 제미나이에 붙여 만든 mp4 를 clips-S90 릴리스에 clips.zip 으로 올리면
+# (파일 이름 c04.mp4 처럼) 그 컷만 영상으로 바뀐다.
+
+on:
+  push:
+    paths:
+      - '.trigger/short90'
+  workflow_dispatch:
+    inputs:
+      step:
+        description: '어디까지 (all / stills / voice / build)'
+        required: true
+        default: 'all'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: short90
+  cancel-in-progress: false
+
+jobs:
+  short90:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GOOGLE_TTS_KEY: ${{ secrets.GOOGLE_TTS_KEY }}
+      # ⚠️ 상한이 없으면 실패가 겹칠 때 조용히 수십 번을 부른다
+      STILL_CALL_CAP: '30'     # 카드 5 + 컷 23 + 재시도 여유
+      TTS_CALL_CAP: '40'
+      STEP: ${{ inputs.step || 'all' }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 준비물 (ffmpeg · 글자 그리기)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          python3 -m pip install --quiet pillow
+
+      - name: 돈 쓰기 전 점검 (값 0원)
+        run: |
+          python3 tools/build_short90.py
+          python3 tools/short90_test.py
+
+      - name: 1) 인물 카드 (얼굴을 묶는 기준 그림)
+        if: env.STEP == 'all' || env.STEP == 'stills'
+        run: |
+          set -o pipefail
+          mkdir -p build/s90
+          python3 tools/release_file.py get cards-S001 cards.zip build/cards.zip \
+            && unzip -q -o build/cards.zip -d build/s90/cards \
+            || echo "받아 둔 카드가 없다 — 새로 만든다"
+          python3 src/still.py cards S001 --out build/s90/cards 2>&1 | tee -a make.log
+          python3 -c "import shutil;shutil.make_archive('build/cards','zip','build/s90/cards')"
+          python3 tools/release_file.py put cards-S001 cards.zip build/cards.zip || true
+
+      - name: 2) 컷 그림 23장 (세로 9:16)
+        if: env.STEP == 'all' || env.STEP == 'stills'
+        run: |
+          set -o pipefail
+          python3 tools/release_file.py get stills-S90 stills.zip build/stills.zip \
+            && unzip -q -o build/stills.zip -d build/s90/stills \
+            || echo "받아 둔 컷 그림이 없다 — 새로 만든다"
+          python3 src/short90.py stills 2>&1 | tee -a make.log
+          python3 -c "import shutil;shutil.make_archive('build/stills','zip','build/s90/stills')"
+          python3 tools/release_file.py put stills-S90 stills.zip build/stills.zip || true
+
+      - name: 3) 나레이션·대사 소리
+        if: env.STEP == 'all' || env.STEP == 'voice'
+        run: |
+          set -o pipefail
+          python3 tools/release_file.py get voice-S90 voice.zip build/voice.zip \
+            && unzip -q -o build/voice.zip -d build/s90/voice \
+            || echo "받아 둔 소리가 없다 — 새로 만든다"
+          python3 src/short90.py voice 2>&1 | tee -a make.log
+          python3 -c "import shutil;shutil.make_archive('build/voice','zip','build/s90/voice')"
+          python3 tools/release_file.py put voice-S90 voice.zip build/voice.zip || true
+
+      - name: 4) 한 편으로 조립
+        run: |
+          set -o pipefail
+          # 앞 단계를 건너뛴 실행에서도 만들어 둔 것을 받아 온다
+          for T in stills voice; do
+            [ -d "build/s90/$T" ] || { \
+              python3 tools/release_file.py get "$T-S90" "$T.zip" "build/$T.zip" \
+              && unzip -q -o "build/$T.zip" -d "build/s90/$T" || true; }
+          done
+          # 손으로 만든 컷 영상이 올라와 있으면 그 컷만 영상으로 바뀐다
+          python3 tools/release_file.py get clips-S90 clips.zip build/clips.zip \
+            && unzip -q -o build/clips.zip -d build/s90/clips \
+            || echo "손으로 만든 컷 영상은 없다 — 전부 그림으로 만든다"
+          python3 src/short90.py build 2>&1 | tee -a make.log
+
+      - name: 릴리스에 올리기 (저장소에는 안 넣는다)
+        run: |
+          set -euo pipefail
+          OUT=build/s90/S90_short.mp4
+          test -f "$OUT" || { echo "❌ 만들어진 영상이 없습니다"; exit 1; }
+          python3 tools/release_file.py put short90-S90 short.mp4 "$OUT"
+          python3 tools/release_file.py prune short90-S90 short.mp4 || true
+
+      - name: 쓴 돈 장부 남기기
+        if: always()
+        continue-on-error: true
+        run: |
+          git config user.name "verdict-theater-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add state/spend.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "장부에 새로 적힌 것이 없다"
+          else
+            git commit -m "장부: 쓴 돈 [skip ci]"
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+            git push origin "HEAD:${GITHUB_REF_NAME}" || echo "못 밀었다"
+          fi
+
+      - name: 결과 화면
+        if: always()
+        run: |
+          {
+            echo "## 90초 한 편"
+            echo ""
+            echo '```'
+            tail -n 40 make.log 2>/dev/null || echo "기록 없음"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
