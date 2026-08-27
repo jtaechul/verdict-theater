@@ -74,12 +74,11 @@ const WORKFLOWS = [
   //    16화는 한 화에 사건이 하나뿐이라 "그래서 뭔데" 를 16번 기다려야 했다.
   //    한 편이면 5초 만에 32억이 나온다. 컷마다 영상을 만들면 7천 원이 넘으므로
   //    **그림 한 장 + 나레이션**으로 만든다 (손님: "비오로 하기 돈아까우니까").
-  { file: 'short90.yml', name: '4-2. 90초 한 편 만들기 — 유료',
-    desc: '재판 하나를 90초짜리 한 편으로 만듭니다. 그림 23장 + 나레이션 + 자막을 '
-        + '붙여 끝까지 자동으로 만듭니다. 처음 한 번 약 3,800원이고, 두 번째부터는 '
-        + '바뀐 것만 다시 만들어 대개 0원입니다',
-    inputs: [{ k: 'step', label: '어디까지', type: 'select',
-               opts: ['all', 'stills', 'voice', 'build'] }] },
+  // ⚠️⚠️ 2026-08-27 — 이 단추를 실행 목록에서 **뺐다.** 손님 화면에 이것만
+  //    보이고, 누르면 **올리신 인물 그림도 컷 영상도 안 쓰고** 그냥 돕니다.
+  //    손님: "여기서 뭘 어떻게 넣으라는거야. 아무것도할수없잖아."
+  //    → 90초 편은 아래 전용 화면(90초 한 편 ①②)에서만 시작한다.
+  { file: 'short90.yml', name: '90초 한 편 만들기', desc: '', inputs: [], hidden: true },
 
   { file: 'stats.yml', name: '5. 성과 보기',
     desc: '올린 영상이 얼마나 보였는지 확인합니다 (0원)',
@@ -820,7 +819,7 @@ const S90WHO = [['본처', '아내'], ['남편', '남편'], ['내연녀', '내�
 let S90CARDS = {};
 
 function short90Card() {
-  let h = '<div class="card"><h2>90초 한 편 — 인물 그림 올리기 '
+  let h = '<div class="card"><h2>90초 한 편 ① 인물 그림 '
         + '<small style="font-weight:400;color:#9599ab">'
         + '— 제미나이에서 만드신 다섯 장</small></h2>';
   h += '<div class="uphint">한 사람씩 골라 올리십시오. <b>올린 얼굴 그대로</b> '
@@ -838,11 +837,9 @@ function short90Card() {
        + 'onchange="upCard(this.id.slice(5))">'
        + '</div>';
   });
-  h += '<button class="gold" style="margin-top:14px" onclick="makeShort90()">'
-     + '90초 한 편 만들기</button>'
-     + '<div class="uphint" style="margin-top:8px">그림 23장 + 나레이션 + 자막을 '
-     + '붙여 약 100초짜리 한 편이 나옵니다. 10~20분 걸립니다.</div>'
-     + '<div id="s90msg" class="uphint"></div></div>';
+  h += '<div class="uphint" style="margin-top:10px">다 올리셨으면 <b>아래 ②</b> 로 '
+     + '내려가 컷별 영상을 올리시고, 맨 아래 [90초 한 편 만들기] 를 누르십시오.</div>';
+  h += '</div>';
   return h;
 }
 
@@ -889,7 +886,7 @@ async function s90Cuts() {
   const cuts = (S90DOC && S90DOC.cuts) || [];
   if (!cuts.length) { box.innerHTML = ''; return; }
   const nv = Object.keys(S90CLIPS).length;
-  let h = '<div class="card"><h2>90초 한 편 — 컷별 영상 '
+  let h = '<div class="card"><h2>90초 한 편 ② 컷별 영상 '
         + '<small style="font-weight:400;color:#9599ab">— 올린 컷만 영상, 나머지는 그림'
         + '</small></h2>';
   h += '<div class="uphint">컷마다 [프롬프트 복사] 를 눌러 제미나이에 붙여 영상을 '
@@ -915,6 +912,11 @@ async function s90Cuts() {
        + 'onchange="upCut(this.id.slice(5))">'
        + '</div>';
   });
+  h += '<button class="gold" style="margin-top:14px" onclick="makeShort90()">'
+     + '90초 한 편 만들기</button>'
+     + '<div class="uphint" style="margin-top:8px">올린 컷은 영상으로, 나머지는 '
+     + '그림으로 이어 붙여 약 100초짜리 한 편이 나옵니다. 10~20분 걸립니다.</div>'
+     + '<div id="s90msg" class="uphint"></div>';
   h += '</div>';
   box.innerHTML = h;
 }
@@ -1462,12 +1464,12 @@ function home() {
   //    ⭐ 순서: 대본 → 다듬기 → **열쇠 점검 → 영상 만들기** → 성과.
   //       돈 나가기 전에 열쇠부터 보는 것이 실제 순서다.
   h += wfList(['series.yml', 'polish.yml',
-               'keycheck.yml', 'video.yml', 'short90.yml', 'stats.yml']);
+               'keycheck.yml', 'video.yml', 'stats.yml']);
   h += '</div>';
 
   h += short90Card();
-  h += '<div id="s90cuts"></div>';
-  s90Cuts();
+  h += '<div id="s90cuts"><div class="card"><h2>90초 한 편 ② 컷별 영상</h2>'
+     + '<div class="empty">컷 목록 불러오는 중…</div></div></div>';
 
   h += collectCard();
 
@@ -1561,6 +1563,10 @@ function home() {
 
   document.getElementById('app').innerHTML = h;
   foldify();
+  // ⚠️ 화면에 글자를 넣은 **뒤에** 부른다. 앞에서 부르면 담을 자리가 아직
+  //    없어서(getElementById 가 null) 컷 목록이 통째로 안 그려진다.
+  //    2026-08-27 손님 화면에 컷별 영상 칸이 아예 안 나왔던 까닭이다.
+  s90Cuts();
   if (S.audition) fillAudition();
 }
 
@@ -1752,7 +1758,11 @@ function seekAudition(el) {
 // 카드마다 코드를 고치지 않는다. **다 그린 뒤에 한 번 훑어서** 제목 아래를
 // 통째로 접을 수 있게 만든다. 카드를 새로 만들어도 저절로 접히게 된다.
 // 접은 상태는 이 기기에 기억되므로, 한 번 접어두면 다음에 열어도 접혀 있다.
-const FOLD_OPEN = ['다음에 할 일', '지금 상태'];   // 처음엔 펴 두는 것
+// ⚠️ 여기 없는 카드는 **접힌 채로** 나온다 — 제목 한 줄만 보이고 안이 안 보인다.
+//    2026-08-27 손님이 90초 편 칸을 열지 못해 아무것도 못 하셨다.
+// ⚠️ 새 검사가 잡아 준 것 — 16화 쪽 '③ 만든 영상 올리면…' 칸도 접혀
+//    있었다. 파일을 고르는 칸이 접혀 있으면 손님은 아무것도 못 한다.
+const FOLD_OPEN = ['다음에 할 일', '지금 상태', '90초 한 편', '③ 만든 영상'];
 const foldKey = (t) => 'fold:' + t.slice(0, 24);
 
 function setFold(h, body, caret, open) {

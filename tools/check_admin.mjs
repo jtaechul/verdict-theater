@@ -281,3 +281,29 @@ console.log('✅ 관리자 페이지: 바깥 코드 + 브라우저 코드 둘 �
   }
   console.log('✅ 칸에 정해 둔 기본값이 찍힌다 (S001 · 1 을 손으로 안 넣어도 된다)');
 }
+
+// ⭐⭐⭐ 2026-08-27 손님(스크린샷): "여기서 뭘 어떻게 넣으라는거야. 아무것도할수없잖아."
+//   손이 필요한 칸(파일을 고르는 칸)이 **접힌 채로** 나왔다. 제목 한 줄만 보이고
+//   안이 안 보이니 아무것도 못 하신다. 접기 목록(FOLD_OPEN)에 없으면 접힌다.
+//   → 파일 고르는 칸이 있는 카드는 **처음부터 펴져 있어야** 한다.
+{
+  const open = (src.match(/const FOLD_OPEN = \[([^\]]*)\]/) || [, ''])[1];
+  const opens = [...open.matchAll(/'([^']+)'/g)].map((m) => m[1]);
+  const MARK = "<div class=\"card\"><h2>";
+  const at = [];
+  for (let i = src.indexOf(MARK); i >= 0; i = src.indexOf(MARK, i + 1)) at.push(i);
+  const bad = [];
+  at.forEach((p, k) => {
+    const rest = src.slice(p + MARK.length);
+    const title = (rest.match(/^([^'<]+)/) || [, ''])[1].trim();
+    const body = src.slice(p, at[k + 1] ?? src.length);
+    if (!/type="file"/.test(body)) return;
+    if (!opens.some((x) => title.indexOf(x) === 0)) bad.push(title || '(이름 없음)');
+  });
+  if (bad.length) {
+    console.error('❌ 파일을 고르는 칸인데 처음에 접혀 있다: ' + bad.join(' · '));
+    console.error('   제목 한 줄만 보여 손님이 아무것도 못 합니다 — FOLD_OPEN 에 넣으십시오');
+    process.exit(1);
+  }
+  console.log('✅ 파일을 고르는 칸은 처음부터 펴져 있다 (접혀서 못 쓰는 일이 없다)');
+}
