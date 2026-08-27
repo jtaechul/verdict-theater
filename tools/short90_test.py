@@ -62,10 +62,14 @@ def main():
        [c["n"] for c in cuts] == list(range(1, len(cuts) + 1)))
     ck("컷마다 화면에 뜰 글이 있다", all(c.get("text", "").strip() for c in cuts))
     ck("컷마다 그림 프롬프트가 있다", all(c.get("still", "").strip() for c in cuts))
-    ck("대사 컷마다 손으로 만들 영상 프롬프트가 있다",
-       all(c.get("veo", "").strip() for c in cuts if c["kind"] != "나레이션"))
-    ck("나레이션 컷에는 영상 프롬프트가 없다",
-       all(not c.get("veo") for c in cuts if c["kind"] == "나레이션"))
+    # ⭐ 2026-08-27 손님: "이미지는 중간중간 섞여 있고 동영상도 있어야 돼."
+    #    스물세 컷 **전부** 영상으로 올릴 수 있어야 한다
+    ck("컷 23개 모두 손으로 만들 영상 프롬프트가 있다",
+       all(c.get("veo", "").strip() for c in cuts))
+    ck("대사 컷 영상 프롬프트에는 그 대사가 들어 있다",
+       all(c["text"] in c["veo"] for c in cuts if c["kind"] != "나레이션"))
+    ck("나레이션 컷 영상 프롬프트는 아무도 말하지 않게 시킨다",
+       all("nobody speaks" in c["veo"] for c in cuts if c["kind"] == "나레이션"))
     say = [c for c in cuts if c["kind"] != "나레이션"]
     ck("대사 컷의 말하는 사람이 목소리표에 다 있다",
        all(c["kind"] in S9.VOICE for c in say),
@@ -103,13 +107,17 @@ def main():
         for c in cuts:
             fake_png(tmp / "stills" / f"c{c['n']:02d}.png", c["n"])
             fake_wav(tmp / "voice" / f"c{c['n']:02d}.wav", say_sec[c["n"]])
-        # ⑤ 한 컷만 손으로 만든 영상이 있는 상황
+        # ⑤ 손으로 만든 영상이 섞인 상황 — 대사 컷(소리 있음)·나레이션 컷(소리 있음)
+        (tmp / "clips").mkdir(parents=True, exist_ok=True)
+        for n, d in ((4, 6), (11, 5)):
+            subprocess.run(["ffmpeg", "-y", "-v", "error",
+                            "-f", "lavfi", "-i",
+                            f"color=c=red:s=720x1280:d={d}:r={S9.FPS}",
+                            "-f", "lavfi", "-i", f"sine=frequency=300:duration={d}",
+                            "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                            "-c:a", "aac", "-shortest",
+                            str(tmp / "clips" / f"c{n:02d}.mp4")], check=True)
         hand = tmp / "clips" / "c04.mp4"
-        hand.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i",
-                        f"color=c=red:s=720x1280:d=6:r={S9.FPS}",
-                        "-c:v", "libx264", "-pix_fmt", "yuv420p", str(hand)],
-                       check=True)
         # 붙이는 것은 컷 몇 개만 — 첫 컷·대사 컷·손영상 컷·가장 긴 컷·마지막 컷
         pick = {1, 4, 11, 16, 23}
         sample = dict(doc)
@@ -118,7 +126,13 @@ def main():
         final = tmp / "S90_short.mp4"
         ck("mp4 한 편이 나왔다", final.exists() and final.stat().st_size > 50_000)
         got = S9.dur_of(final)
-        exp = sum(max(c["sec"], say_sec[c["n"]] + S9.PAD) for c in sample["cuts"])
+        # ⚠️ 대사 컷에 영상을 올리면 **컷 길이는 그 영상이 정한다** (말이 잘리면
+        #    안 되니까). 셈에도 그대로 반영한다 — 안 그러면 시험이 틀린 값을 본다.
+        hand_sec = {4: 6.0}
+        exp = sum(hand_sec.get(c["n"]) if (c["n"] in hand_sec
+                                           and c["kind"] != "나레이션")
+                  else max(c["sec"], say_sec[c["n"]] + S9.PAD)
+                  for c in sample["cuts"])
         ck("붙인 길이가 셈과 맞는다 (±1초)", abs(got - exp) <= 1.0,
            f"{got:.1f}초 / 셈 {exp:.1f}초")
         # 소리가 진짜 붙어 있는가
@@ -129,6 +143,16 @@ def main():
         ck("소리 길이 전체에 붙어 있다", "audio" in out, out.strip() or "소리 없음")
         ck("손으로 만든 영상이 있는 컷은 그 영상을 쓴다",
            (tmp / "parts" / "c04.mp4").exists())
+        # 대사 컷은 **영상 안의 말**을 쓴다 — 우리 목소리를 덮어씌우면 입이 어긋난다
+        ck("대사 컷은 올린 영상 길이(6.0초)를 그대로 지킨다",
+           abs(S9.dur_of(tmp / "parts" / "c04.mp4") - 6.0) <= 0.35,
+           f"{S9.dur_of(tmp / 'parts' / 'c04.mp4'):.2f}초")
+        # 나레이션 컷은 영상을 올렸어도 **우리 나레이션** 길이로 간다
+        n11 = [c for c in cuts if c["n"] == 11][0]
+        want11 = max(n11["sec"], say_sec[11] + S9.PAD)
+        ck("나레이션 컷은 영상을 올려도 우리 나레이션 길이를 지킨다",
+           abs(S9.dur_of(tmp / "parts" / "c11.mp4") - want11) <= 0.35,
+           f"{S9.dur_of(tmp / 'parts' / 'c11.mp4'):.2f}초 / 바람 {want11:.2f}초")
 
     print("\n" + "─" * 60)
     if BAD:

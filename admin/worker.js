@@ -871,16 +871,106 @@ async function upCard(who) {
   }
 }
 
+// ⭐⭐⭐ 2026-08-27 손님: "이미지는 중간중간 섞여 있고 동영상도 있어야 돼. 알지?"
+//    맞다. 전부 그림이면 슬라이드쇼다. 컷마다 —
+//      · 붙여 넣을 영상 프롬프트를 보여 주고
+//      · 만든 영상을 그 자리에서 올리게 한다
+//    올린 컷만 영상이 되고 나머지는 그림으로 간다.
+let S90DOC = null;
+let S90CLIPS = {};
+
+async function s90Cuts() {
+  const box = document.getElementById('s90cuts');
+  if (!box) return;
+  if (!S90DOC) {
+    try { S90DOC = (await (await fetch('/api/short90')).json()).doc; }
+    catch (e) { S90DOC = null; }
+  }
+  const cuts = (S90DOC && S90DOC.cuts) || [];
+  if (!cuts.length) { box.innerHTML = ''; return; }
+  const nv = Object.keys(S90CLIPS).length;
+  let h = '<div class="card"><h2>90초 한 편 — 컷별 영상 '
+        + '<small style="font-weight:400;color:#9599ab">— 올린 컷만 영상, 나머지는 그림'
+        + '</small></h2>';
+  h += '<div class="uphint">컷마다 [프롬프트 복사] 를 눌러 제미나이에 붙여 영상을 '
+     + '만드시고, 만든 mp4 를 그 컷에 올리십시오. <b>말하는 컷(사람 이름이 붙은 컷)'
+     + '부터</b> 하시면 됩니다 — 그 컷은 영상 안의 목소리를 그대로 씁니다. '
+     + '나레이션 컷은 올리셔도 우리 나레이션이 깔립니다.</div>';
+  h += '<div class="uphint" style="margin-top:6px">지금 영상으로 갈 컷 <b>'
+     + nv + '개</b> · 그림으로 갈 컷 <b>' + (cuts.length - nv) + '개</b></div>';
+  cuts.forEach(function (c) {
+    const on = !!S90CLIPS[c.n];
+    h += '<div class="upbox" style="margin-top:10px">'
+       + '<b>컷 ' + c.n + '</b> '
+       + '<span style="color:' + (c.kind === '나레이션' ? '#9599ab' : '#c6a04a') + '">'
+       + esc(c.kind) + '</span> '
+       + '<span class="uphint" id="s90cs-' + c.n + '">'
+       + (on ? '영상 올림' : '그림으로 갑니다') + '</span>'
+       + '<div class="uphint" style="margin:6px 0">' + esc(c.text) + '</div>'
+       + '<textarea id="s90p-' + c.n + '" rows="2" readonly '
+       + 'style="width:100%;font-size:12px">' + esc(c.veo) + '</textarea>'
+       + '<button onclick="copyCut(this.id.slice(6))" id="s90cp-' + c.n + '">'
+       + '프롬프트 복사</button> '
+       + '<input type="file" accept="video/*" id="s90v-' + c.n + '" '
+       + 'onchange="upCut(this.id.slice(5))">'
+       + '</div>';
+  });
+  h += '</div>';
+  box.innerHTML = h;
+}
+
+function copyCut(n) {
+  const t = document.getElementById('s90p-' + n);
+  const b = document.getElementById('s90cp-' + n);
+  if (!t) return;
+  t.removeAttribute('readonly'); t.select(); t.setSelectionRange(0, 999999);
+  try { document.execCommand('copy'); } catch (e) { }
+  if (navigator.clipboard) { try { navigator.clipboard.writeText(t.value); } catch (e) { } }
+  t.setAttribute('readonly', 'readonly');
+  if (b) { b.textContent = '복사했습니다'; setTimeout(function () {
+    b.textContent = '프롬프트 복사'; }, 2000); }
+}
+
+async function upCut(n) {
+  const el = document.getElementById('s90v-' + n);
+  const st = document.getElementById('s90cs-' + n);
+  const f = el && el.files && el.files[0];
+  if (!f || !st) return;
+  const mb = f.size / 1048576;
+  if (mb > 90) { st.textContent = '너무 큽니다 (' + Math.round(mb) + 'MB)'; return; }
+  st.textContent = '올리는 중…';
+  try {
+    const r = await fetch('/api/upload-cut?n=' + encodeURIComponent(n),
+                          { method: 'POST', body: f });
+    const j = await r.json();
+    if (!j.ok) {
+      st.textContent = '못 올렸습니다';
+      showErr('컷 영상을 못 올렸습니다', (j.error || '') + ' ' + (j.detail || ''));
+      return;
+    }
+    S90CLIPS[n] = j.url;
+    st.textContent = '영상 올림 (' + mb.toFixed(1) + 'MB)';
+  } catch (e) {
+    st.textContent = '못 올렸습니다';
+    showErr('컷 영상을 못 올렸습니다', String(e && e.message ? e.message : e));
+  }
+}
+
 async function makeShort90() {
   const m = document.getElementById('s90msg');
   const n = Object.keys(S90CARDS).length;
-  const cost = 3042 + 100 + (5 - n) * 133;
-  if (!confirm('90초 한 편을 만듭니다. 약 ' + cost.toLocaleString()
+  const v = Object.keys(S90CLIPS).length;
+  // 영상으로 올린 컷은 그림을 안 그리므로 그만큼 값이 빠진다
+  const shots = Math.max(0, 23 - v);
+  const cost = shots * 133 + 100 + (5 - n) * 133;
+  if (!confirm('90초 한 편을 만듭니다. 영상 ' + v + '컷 · 그림 ' + shots
+               + '컷, 약 ' + cost.toLocaleString()
                + '원이 나갑니다. 계속할까요?')) return;
   if (m) m.textContent = '시작하는 중…';
   try {
     const r = await fetch('/api/make-short90',
-                          { method: 'POST', body: JSON.stringify({ cards: S90CARDS }) });
+                          { method: 'POST',
+                            body: JSON.stringify({ cards: S90CARDS, clips: S90CLIPS }) });
     const j = await r.json();
     if (!j.ok) {
       showErr('시작하지 못했습니다', (j.error || '') + ' ' + (j.detail || ''));
@@ -888,7 +978,8 @@ async function makeShort90() {
       return;
     }
     if (m) m.textContent = '시작했습니다. 10~20분 걸립니다. '
-                         + '(올리신 얼굴 ' + n + '명 · 나머지는 시스템이 그립니다)';
+                         + '(올리신 얼굴 ' + n + '명 · 영상 ' + v + '컷 · '
+                         + '나머지는 시스템이 그립니다)';
     toast('90초 한 편을 만들기 시작했습니다');
   } catch (e) {
     showErr('시작하지 못했습니다', String(e && e.message ? e.message : e));
@@ -1375,6 +1466,8 @@ function home() {
   h += '</div>';
 
   h += short90Card();
+  h += '<div id="s90cuts"></div>';
+  s90Cuts();
 
   h += collectCard();
 
@@ -2810,6 +2903,43 @@ export default {
           fix: 'setup-blob' }, { status: 503 });
       }
 
+      // ⭐ 90초 편 대본 — 컷마다 붙여 넣을 영상 프롬프트가 들어 있다
+      if (url.pathname === '/api/short90') {
+        const doc = await getJson(env, 'data/series/S90.json');
+        return Response.json({ doc });
+      }
+
+      // ⭐⭐⭐ 2026-08-27 손님: "이미지는 중간중간 섞여 있고 동영상도 있어야 돼."
+      //    맞다. 전부 그림이면 슬라이드쇼다. 컷마다 만든 영상을 여기서 받는다.
+      //    올린 컷만 영상이 되고 나머지는 그림으로 간다.
+      if (url.pathname === '/api/upload-cut' && req.method === 'POST') {
+        const n = parseInt(url.searchParams.get('n') || '0', 10) || 0;
+        if (n < 1 || n > 99)
+          return Response.json({ ok: false, error: '컷 번호가 이상합니다' },
+                               { status: 400 });
+        if (!bin(env) || !req.body)
+          return Response.json({ ok: false, error: '보관함이 아직 없습니다',
+            detail: '[영상 보관함 준비하기] 를 한 번 누르시고 1~2분 뒤에 다시 '
+                  + '올려 주십시오.', fix: 'setup-blob' }, { status: 503 });
+        if (+(req.headers.get('content-length') || 0) > KV_MAX)
+          return Response.json({ ok: false, error: '파일이 90MB 를 넘습니다' },
+                               { status: 400 });
+        try {
+          const key = `clips/S90-c${n}-${crypto.randomUUID()}`;
+          const size = await blobPutStream(env, req.body, key, KV_DAY);
+          if (!size)
+            return Response.json({ ok: false, error: '파일이 비었습니다' }, { status: 400 });
+          return Response.json({ ok: true, url: blobUrl(req, key), size });
+        } catch (e) {
+          const m = String(e && e.message ? e.message : e);
+          if (m.includes('TOO_BIG'))
+            return Response.json({ ok: false, error: '파일이 90MB 를 넘습니다' },
+                                 { status: 400 });
+          return Response.json({ ok: false, error: '올리지 못했습니다',
+            detail: m.slice(0, 220) + ` [판 ${BUILD}]` }, { status: 502 });
+        }
+      }
+
       // ⭐⭐⭐ 2026-08-27 손님이 제미나이에서 인물 그림을 직접 만들어 오셨다.
       //    한 장씩 받아 보관함에 두고 **주소만** 워크플로에 넘긴다
       //    (압축파일 올리기와 같은 길 — 깃허브에 직접 올리지 않는다).
@@ -2847,17 +2977,28 @@ export default {
           const v = body && body.cards ? body.cards[k] : '';
           if (typeof v === 'string' && v.startsWith('http')) cards[k] = v;
         }
+        // 컷마다 올린 영상 (없으면 그 컷은 그림으로 간다)
+        const clips = {};
+        const sent = (body && body.clips) || {};
+        for (const k of Object.keys(sent)) {
+          const num = parseInt(k, 10);
+          const v = sent[k];
+          if (num >= 1 && num <= 99 && typeof v === 'string' && v.startsWith('http'))
+            clips[String(num)] = v;
+        }
         // ⚠️ 넘기는 값은 **이 칸 안에서 만든 것**만 쓴다. 글자를 바로 적으면
         //    check_scope 가 "이 칸에 없는 것" 으로 잡는다 (일부러 그렇게 좁게
         //    본다 — 다른 칸 것을 잘못 넘기던 사고가 있었다).
         const step = 'all';
         const payload = JSON.stringify(cards);
+        const shots = JSON.stringify(clips);
         try {
           await gh(env, `/repos/${REPO}/actions/workflows/short90.yml/dispatches`, {
             method: 'POST', body: JSON.stringify({ ref: BRANCH,
-              inputs: { step: step, cards: payload } }),
+              inputs: { step: step, cards: payload, clips: shots } }),
           });
-          return Response.json({ ok: true, n: Object.keys(cards).length });
+          return Response.json({ ok: true, n: Object.keys(cards).length,
+                                 clips: Object.keys(clips).length });
         } catch (e) {
           const m = String(e && e.message ? e.message : e);
           return Response.json({ ok: false, error: '시작하지 못했습니다',

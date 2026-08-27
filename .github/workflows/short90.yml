@@ -15,9 +15,10 @@ name: 4. 90초 한 편 만들기
 # ⚠️ 만든 것은 릴리스에 보관한다. 중간에 죽어도 돈이 날아가지 않는다.
 # ⚠️ 완성 영상은 저장소에 커밋하지 않는다 (지침). 릴리스에만 올린다.
 #
-# 대사 컷을 손으로 더 좋게 만들고 싶으면 — S90.json 의 `veo` 프롬프트를
-# 제미나이에 붙여 만든 mp4 를 clips-S90 릴리스에 clips.zip 으로 올리면
-# (파일 이름 c04.mp4 처럼) 그 컷만 영상으로 바뀐다.
+# ⭐⭐ 컷 영상 — 관리자 페이지 [컷별 영상] 에서 컷마다 올린다.
+#   올린 컷은 영상, 안 올린 컷은 그림. 둘이 섞인다.
+#   · 대사 컷 + 올린 영상 → 그 영상 안에서 사람이 말한다 (영상 소리를 쓴다)
+#   · 나레이션 컷        → 화면에서 아무도 말하지 않고 우리 나레이션이 깔린다
 
 on:
   push:
@@ -31,6 +32,10 @@ on:
         default: 'all'
       cards:
         description: '손님이 올린 인물 그림 (관리자 페이지가 넣는다 · 손대지 마십시오)'
+        required: false
+        default: ''
+      clips:
+        description: '손님이 올린 컷 영상 (관리자 페이지가 넣는다 · 손대지 마십시오)'
         required: false
         default: ''
 
@@ -113,6 +118,8 @@ jobs:
           python3 tools/release_file.py put voice-S90 voice.zip build/voice.zip || true
 
       - name: 4) 한 편으로 조립
+        env:
+          CLIPS: ${{ inputs.clips }}
         run: |
           set -o pipefail
           # 앞 단계를 건너뛴 실행에서도 만들어 둔 것을 받아 온다
@@ -121,10 +128,17 @@ jobs:
               python3 tools/release_file.py get "$T-S90" "$T.zip" "build/$T.zip" \
               && unzip -q -o "build/$T.zip" -d "build/s90/$T" || true; }
           done
-          # 손으로 만든 컷 영상이 올라와 있으면 그 컷만 영상으로 바뀐다
-          python3 tools/release_file.py get clips-S90 clips.zip build/clips.zip \
-            && unzip -q -o build/clips.zip -d build/s90/clips \
-            || echo "손으로 만든 컷 영상은 없다 — 전부 그림으로 만든다"
+          # ⭐⭐ 손으로 만든 컷 영상 — 있는 컷만 영상이 되고 나머지는 그림이다
+          #    (2026-08-27 손님: "이미지는 중간중간 섞여 있고 동영상도 있어야 돼")
+          mkdir -p build/s90/clips
+          python3 tools/release_file.py get clips90-S90 clips.zip build/clips90.zip \
+            && unzip -q -o build/clips90.zip -d build/s90/clips \
+            || echo "보관된 컷 영상이 없다"
+          python3 tools/fetch_clips.py "$CLIPS" build/s90/clips 2>&1 | tee -a make.log
+          if [ -n "$(ls -A build/s90/clips 2>/dev/null)" ]; then
+            python3 -c "import shutil;shutil.make_archive('build/clips90','zip','build/s90/clips')"
+            python3 tools/release_file.py put clips90-S90 clips.zip build/clips90.zip || true
+          fi
           python3 src/short90.py build 2>&1 | tee -a make.log
 
       - name: 릴리스에 올리기 (저장소에는 안 넣는다)

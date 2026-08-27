@@ -96,6 +96,14 @@ def dur_of(path):
     return float(out.strip() or 0)
 
 
+def has_audio(path):
+    """이 영상에 소리가 붙어 있는가."""
+    out = run(["ffprobe", "-v", "error", "-select_streams", "a",
+               "-show_entries", "stream=codec_type", "-of",
+               "default=nw=1:nk=1", str(path)])
+    return "audio" in out
+
+
 # ── ① 그림 ────────────────────────────────────────────────────
 # 화면 이름 ↔ 인물 카드 파일 이름 (카드에는 아내가 '본처' 로 적혀 있다)
 ST_NAME = {"아내": "본처"}
@@ -232,12 +240,34 @@ def overlay(c, out):
 
 # ── ④ 조립 ────────────────────────────────────────────────────
 def cut_video(c, still, voice, clip, ov, out):
-    """컷 하나 → mp4. 손으로 만든 영상(clip)이 있으면 그것을 쓰고, 없으면 그림."""
-    a = dur_of(voice)
-    sec = max(float(c["sec"]), a + PAD)
+    """컷 하나 → mp4. 손으로 만든 영상(clip)이 있으면 그것을 쓰고, 없으면 그림.
+
+    ⭐⭐ 2026-08-27 손님: "이미지는 중간중간 섞여 있고 동영상도 있어야 돼."
+       그래서 소리를 누가 낼지도 컷마다 갈린다 —
+         · **대사 컷 + 올린 영상** → 그 영상 안에서 사람이 한국어로 말한다.
+           우리 목소리를 덮어씌우면 입과 소리가 어긋난다 → **영상 소리를 쓴다**
+         · **나레이션 컷** → 화면에서 아무도 말하지 않는다 → **우리 나레이션**
+           (영상을 올렸어도 그 소리는 안 쓴다. 그래야 나레이션이 안 묻힌다)
+    """
+    clip = Path(clip) if clip and Path(clip).exists() else None
+    talks = c["kind"] != "나레이션"
+    use_clip_audio = bool(clip and talks and has_audio(clip))
+    if use_clip_audio:
+        # ⚠️ 말하는 길이는 **영상이 정한다.** 대본의 초에 맞춰 늘이거나 줄이면
+        #    말이 잘리거나 같은 말이 두 번 나온다. 컷 길이 = 영상 길이.
+        sec = dur_of(clip)
+        snd = []                      # 소리는 영상(0번) 안에 있다
+        amap = "0:a"
+        loop = []                     # 늘일 일이 없으니 되돌려 잇지 않는다
+    else:
+        sec = max(float(c["sec"]), dur_of(voice) + PAD)
+        snd = ["-i", str(voice)]      # 0=화면 · 1=자막 · 2=우리 목소리
+        amap = "2:a"
+        loop = ["-stream_loop", "-1"] if clip else []
     frames = max(2, int(round(sec * FPS)))
-    if clip and Path(clip).exists():
-        src = ["-i", str(clip)]
+    if clip:
+        # ⚠️ 올린 영상이 컷보다 짧으면 마지막 그림이 얼어붙는다 — 되돌려 잇는다
+        src = [*loop, "-i", str(clip)]
         vf = (f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,"
               f"crop={W}:{H},fps={FPS},trim=0:{sec:.3f},setpts=PTS-STARTPTS[bg];")
     else:
@@ -254,9 +284,9 @@ def cut_video(c, still, voice, clip, ov, out):
               f"crop={sw}:{sh},"
               f"zoompan=z='{z}':d={frames}:x='iw/2-(iw/zoom/2)'"
               f":y='ih/2-(ih/zoom/2)':s={W}x{H}:fps={FPS}[bg];")
-    run(["ffmpeg", "-y", "-v", "error", *src, "-i", str(ov), "-i", str(voice),
+    run(["ffmpeg", "-y", "-v", "error", *src, "-i", str(ov), *snd,
          "-filter_complex", vf + "[bg][1:v]overlay=0:0:format=auto[v]",
-         "-map", "[v]", "-map", "2:a", "-af", "apad",
+         "-map", "[v]", "-map", amap, "-af", "apad",
          "-t", f"{sec:.3f}", "-r", str(FPS),
          "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
          "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k", "-ar", "48000",
@@ -287,7 +317,12 @@ def build(doc):
         sec = cut_video(c, still, voice, clip if clip.exists() else None, ov, out)
         total += sec
         parts.append(out)
-        mark = "영상" if clip.exists() else "그림"
+        if not clip.exists():
+            mark = "그림"
+        elif c["kind"] == "나레이션":
+            mark = "영상 + 우리 나레이션"
+        else:
+            mark = "영상 (그 안에서 말한다)" if has_audio(clip) else "영상 + 우리 목소리"
         print(f"  컷{n:>2} [{c['kind']:<4}] {sec:>5.2f}초 ({mark})")
 
     # ⚠️ concat 목록 안의 경로는 **목록 파일이 있는 자리 기준**이다. 파일 이름만

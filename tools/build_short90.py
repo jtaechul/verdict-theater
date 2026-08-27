@@ -6,8 +6,9 @@
 무엇을 짓나
     data/series/S90_story.py 의 23컷에 **컷마다 완결된 프롬프트 두 벌**을 붙인다.
       still — 그림 한 장 (세로 9:16). 우리 시스템이 이걸로 만든다
-      veo   — 영상 한 컷 (세로 9:16). 손님이 제미나이에서 손으로 만들 때 쓴다
-                (대사 컷만. 나레이션 컷은 그림 한 장이면 된다)
+      veo   — 영상 한 컷 (세로 9:16). 손님이 제미나이에서 손으로 만들 때 쓴다.
+              **스물세 컷 전부** 만들어 둔다 — 어느 컷을 영상으로 할지는 손님이
+              고르고, 안 고른 컷만 그림으로 간다 (그림과 영상이 섞인다)
 
 ⚠️ 사람 생김새·옷은 **여기서 안 적는다.** data/series/S001.json 의 인물 카드
    글(charsheet 가 지은 것)에서 뽑아 쓴다. 두 곳에 적으면 한쪽만 고쳐서
@@ -103,10 +104,24 @@ def still_prompt(c, look):
     return "\n".join(body)
 
 
+# 나레이션 컷용 소리 지시 — **아무도 말하지 않는다.**
+# ⚠️ 여기서 사람이 말해 버리면 우리 나레이션과 목소리가 겹친다. 나레이션 컷은
+#    올린 영상의 소리를 안 쓰고 우리 나레이션을 얹는다.
+AUDIO_QUIET = ("AUDIO: nobody speaks and nobody moves their lips at any point; "
+               "only the quiet room tone of the location, no music, no voice, "
+               "no narration.")
+
+
 def veo_prompt(c, look):
-    """대사 컷을 손으로 만들 때 쓸 영상 프롬프트 (제미나이에 그대로 붙인다)."""
+    """그 컷을 손으로 만들 때 쓸 영상 프롬프트 (제미나이에 그대로 붙인다).
+
+    ⭐ 2026-08-27 손님: "이미지는 중간중간 섞여 있고 동영상도 있어야 돼."
+       맞다. 그래서 **스물세 컷 전부** 영상 프롬프트를 만들어 둔다 — 어느 컷을
+       영상으로 올릴지는 손님이 고른다. 안 올린 컷만 그림으로 간다.
+    """
     who = c.get("who") or []
     speaker = c["kind"]
+    talks = speaker != "나레이션"
     sec = 4 if c["sec"] <= 4 else (6 if c["sec"] <= 6 else 8)
     body = [f"{S.HEAD_FIX} {sec}-second single continuous take, "
             f"vertical portrait format (9 x 16)."]
@@ -116,22 +131,28 @@ def veo_prompt(c, look):
                 f"clear, static camera. The movement is already under way in the very "
                 f"first frame.")
     body.append(FRAMING)
-    body.append(f"ACTION: {c['scene']}. {EN.get(speaker, speaker)}'s lips move in exact "
-                f"sync with the Korean line below; nobody else speaks or moves their "
-                f"lips.")
-    body.append("DIALOGUE: [LANGUAGE: KOREAN] one voice only")
-    body.append(f'  {EN.get(speaker, speaker)} (in Korean): "{c["text"]}"')
-    v = VOICE_KO.get(speaker)
-    if v:
-        body.append(f"VOICE: {EN.get(speaker, speaker)} — {v}.")
-    body.append("AUDIO: the person in the shot says the line themselves with their lips "
-                "moving in sync, spoken in natural, fluent and highly authentic everyday "
-                "Korean by a native speaker with standard Seoul intonation, real "
-                "spontaneous speech with uneven rhythm and short breaths between "
-                "phrases, with only the quiet room tone of the location underneath. "
-                "They speak only the exact line written above and not a single word "
-                "more; after it they stay completely silent and hold the look until "
-                "the clip ends.")
+    if talks:
+        body.append(f"ACTION: {c['scene']}. {EN.get(speaker, speaker)}'s lips move in "
+                    f"exact sync with the Korean line below; nobody else speaks or "
+                    f"moves their lips.")
+        body.append("DIALOGUE: [LANGUAGE: KOREAN] one voice only")
+        body.append(f'  {EN.get(speaker, speaker)} (in Korean): "{c["text"]}"')
+        v = VOICE_KO.get(speaker)
+        if v:
+            body.append(f"VOICE: {EN.get(speaker, speaker)} — {v}.")
+        body.append("AUDIO: the person in the shot says the line themselves with their "
+                    "lips moving in sync, spoken in natural, fluent and highly "
+                    "authentic everyday Korean by a native speaker with standard Seoul "
+                    "intonation, real spontaneous speech with uneven rhythm and short "
+                    "breaths between phrases, with only the quiet room tone of the "
+                    "location underneath. They speak only the exact line written above "
+                    "and not a single word more; after it they stay completely silent "
+                    "and hold the look until the clip ends.")
+    else:
+        body.append(f"ACTION: {c['scene']}, unfolding slowly and quietly over the whole "
+                    f"take, with small natural movement — a breath, a hand shifting, "
+                    f"light moving. Mouths stay closed the whole time.")
+        body.append(AUDIO_QUIET)
     body += ["CAMERA: " + BLUR, COLOR, S.STYLE_FIX, NO_TEXT]
     return "\n".join(body)
 
@@ -152,7 +173,7 @@ def main():
             "n": c["n"], "kind": c["kind"], "sec": c["sec"],
             "who": c.get("who") or [], "text": c["text"], "scene": c["scene"],
             "still": still_prompt(c, look),
-            "veo": veo_prompt(c, look) if c["kind"] != "나레이션" else "",
+            "veo": veo_prompt(c, look),
         })
     doc = {"sid": "S90", "title": story.TITLE, "hook": story.HOOK,
            "yt_title": story.YT_TITLE, "cuts": cuts,
