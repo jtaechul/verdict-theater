@@ -289,6 +289,9 @@ def main():
     #    채 굳어 있었다.** 화풍을 실사로 바꾸자 그 셋만 그림체로 남았다.
     #    이제 **다섯 사람 모두** charsheet 가 짓는다 — 문구를 고치면 다 같이 바뀐다.
     for c in chars:
+        # ⭐ 2026-08-27 — 옛 세 사람의 생김새 손질은 이야기 파일이 진다.
+        #    JSON 안에만 고쳐 두면 다음에 다시 지을 때 조용히 되돌아간다.
+        c.update(story.CHAR_LOOKS.get(c.get("name"), {}))
         if c.get("flow_prompt"):
             c["flow_sheet"], c["flow_desc"] = CS.build(c)
     names = {c.get("name") for c in story.NEW_CHARS}

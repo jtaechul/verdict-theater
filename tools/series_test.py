@@ -397,8 +397,12 @@ _t = (ROOT / "tools" / "series_test.py").read_text(encoding="utf-8")
 ck("시험이 KEEP 줄을 코드에서 가져온다", "S.AVOID_FIX" in _t)
 _p = (ROOT / "prompts" / "series_gen.md").read_text(encoding="utf-8")
 ck("프롬프트 예시가 지금 머리말과 같다", S.HEAD_FIX in _p, S.HEAD_FIX)
-ck("프롬프트 예시가 지금 STYLE 과 같다", S.STYLE_FIX[7:40] in _p, S.STYLE_FIX[7:40])
-ck("프롬프트 예시가 지금 KEEP 과 같다", S.AVOID_FIX[6:40] in _p, S.AVOID_FIX[6:40])
+# ⚠️⚠️ 2026-08-27 — 앞 40글자만 봤더니 **화풍이 통째로 바뀌었는데도 통과했다.**
+#    앞머리("one single continuous take, from ")는 실사·그림체가 똑같기 때문이다.
+#    그 바람에 이 파일만 그림체로 남았고, 새 대본을 지으면 다시 그림체가 나올
+#    참이었다. 자르지 말고 **줄 전체**를 본다.
+ck("프롬프트 예시가 지금 STYLE 과 같다", S.STYLE_FIX[7:] in _p, S.STYLE_FIX[7:])
+ck("프롬프트 예시가 지금 KEEP 과 같다", S.AVOID_FIX[6:] in _p, S.AVOID_FIX[6:])
 # ⚠️ 2026-08-25 — 예전엔 "no scene change" 처럼 **부정문**으로 적혀 있었다.
 #    루미나 안전 검사기가 부정을 못 알아듣는다 → 바라는 것만 적는 쪽으로 바꿨다.
 ck("고정 문구에 '한 번에 찍기' 가 들어 있다",

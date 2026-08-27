@@ -160,7 +160,7 @@
 > 머리말은 콜론 없이 쓴다 — 그래야 주소로 안 읽힌다.
 
 ```
-Fictional scene, invented characters, semi-realistic illustrated drama. 10-second single continuous take, landscape widescreen format (16 x 9).
+Fictional scene, invented characters, photoreal grounded drama. 10-second single continuous take, landscape widescreen format (16 x 9).
 SHOT: 샷 크기 + 카메라 움직임 (하나만) + **누가 화면에 있는지 이름** (옷 묘사 금지)
 ACTION: 동작 하나
 DIALOGUE: 말하는 사람과 톤 + 한국어 대사. 주고받으면 ` / ` 로 잇는다 (없으면 "None.")
@@ -170,7 +170,7 @@ AUDIO: (우리가 붙인다) 낭독이 아니라 그 자리에서 하는 말이�
 SETTING: 장소 + 조명
 CONTINUITY: (우리가 붙인다) 앞 컷에서 이어지는 장면이라는 못
 COLOR: (우리가 붙인다) 모든 컷에 똑같은 색
-STYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces rather than cartoon exaggeration, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.
+STYLE: one single continuous take, from first frame to last in the same place with the same people, photoreal look with natural skin texture and true-to-life body proportions, ordinary everyday Korean faces with unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.
 KEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time.
 ```
 
@@ -288,7 +288,7 @@ KEEP: one unbroken take in one place with the same people all the way through; e
 한 사람이 세 컷 내내 혼자 말하면 이야기가 안 굴러간다. 이렇게 쓴다:
 
 ```
-Fictional scene, invented characters, semi-realistic illustrated drama. 10-second single continuous take, landscape widescreen format (16 x 9).
+Fictional scene, invented characters, photoreal grounded drama. 10-second single continuous take, landscape widescreen format (16 x 9).
 SHOT: Medium two-shot of the brother-in-law and the daughter-in-law, static camera.
 DIALOGUE: 아내 (tight): "여기가 어디라고 와? 당장 안 나가면 경찰 부른다." / 동거녀 (hard): "마지막 가는 길인데 인사도 못 해요? 그이가 부른 거예요." / 아내 (furious): "그이는 죽었어. 이제 당신이 부를 사람도 없어."
 ```
@@ -884,7 +884,7 @@ shot` 은 세로 쇼츠에서 쓸모가 없다. `medium close-up` · `close-up` 
           "role": "후킹",
           "subtitle": "\"이 집, 오늘 안에 비워 주세요.\" / \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"",
           "caption": "장례를 치른 다음 날, 시동생이 집을 요구했다",
-          "prompt": "Fictional scene, invented characters, semi-realistic illustrated drama. 10-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Medium two-shot of the brother-in-law and the daughter-in-law, static camera.\nACTION: the brother-in-law sets a closed folder on the table and steps back.\nDIALOGUE: the brother-in-law (calm and cold): \"이 집, 오늘 안에 비워 주세요.\" / the daughter-in-law (trembling): \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, semi-realistic hand-drawn illustration style with clean confident linework and soft cel shading, true-to-life body proportions and calm natural faces rather than cartoon exaggeration, muted desaturated palette, soft practical lighting, shallow depth of field, consistent line weight in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
+          "prompt": "Fictional scene, invented characters, photoreal grounded drama. 10-second single continuous take, landscape widescreen format (16 x 9).\nSHOT: Medium two-shot of the brother-in-law and the daughter-in-law, static camera.\nACTION: the brother-in-law sets a closed folder on the table and steps back.\nDIALOGUE: the brother-in-law (calm and cold): \"이 집, 오늘 안에 비워 주세요.\" / the daughter-in-law (trembling): \"그이 장례가 어제였어요. 지금 그 말이 나와요?\"\nSETTING: Korean funeral hall reception room, evening, dim overhead fluorescent light.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, photoreal look with natural skin texture and true-to-life body proportions, ordinary everyday Korean faces with unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nKEEP: one unbroken take in one place with the same people all the way through; every wall, prop and surface plain and blank; anyone further back stays soft and out of focus; exactly one voice at a time."
         }
       ]
     }
@@ -914,7 +914,7 @@ shot` 은 세로 쇼츠에서 쓸모가 없다. `medium close-up` · `close-up` 
 
 - [ ] 16화 × 3컷 = 48컷이 다 있는가 (장소가 여럿인 화만 4컷)
 - [ ] 모든 화의 컷1이 **대사 또는 충격 장면**으로 시작하는가 (설명 금지)
-- [ ] 모든 `prompt` 가 **머리말 줄**(`Fictional scene, invented characters, semi-realistic illustrated drama. 10-second single continuous take, landscape widescreen format (16 x 9).`) 로 시작하는가
+- [ ] 모든 `prompt` 가 **머리말 줄**(`Fictional scene, invented characters, photoreal grounded drama. 10-second single continuous take, landscape widescreen format (16 x 9).`) 로 시작하는가
       (`SHOT:` 으로 시작하면 붙여 넣을 때 주소로 읽혀 글자가 통째로 깨진다)
 - [ ] 머리말 다음이 `SHOT:` 이고 `KEEP:` 으로 끝나는가
 - [ ] 프롬프트에 **"하지 마" 로 적은 곳이 하나도 없는가** (바라는 것만 적는다)

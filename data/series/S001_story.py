@@ -96,6 +96,37 @@ NEW_CHARS = [
     },
 ]
 
+# ⭐⭐ 옛 세 사람(본처·남편·내연녀)의 생김새 손질 (2026-08-27 운영자 지시)
+#    "다음에 등장인물 생성시 내연녀는 화장도 치마도 입고 하고 옷도 선정적으로 그려."
+#
+#    옛 세 사람의 생김새는 여태 data/series/S001.json 안에만 있었다. 거기만
+#    고치면 다음에 대본을 다시 지을 때 조용히 되돌아간다 — 그래서 **여기**에
+#    적고, rewrite_story 가 매번 덮어쓴다. (딸·변호사는 NEW_CHARS 가 진다)
+#
+#    ⚠️ 옷은 **인물 카드에만** 적는다. 컷 프롬프트에 옷을 적으면 규격 검사가
+#       막는다(wear_bait) — 컷마다 옷이 달라지는 사고를 막으려고 둔 규칙이다.
+#    ⚠️ 매혹적인 인상은 sexy · seductive · revealing 같은 말로 적지 않는다.
+#       그 낱말이 들어가면 안전 검사에 걸려 **영상이 아예 안 만들어진다.**
+#       striking · fitted · glossy · polished 로 적어야 실제로 그렇게 나온다.
+CHAR_LOOKS = {
+    "내연녀": {
+        "flow_prompt": (
+            "Korean woman, 38 years old, striking sharp V-line face, large "
+            "confident eyes with defined dark eyeliner and long lashes, "
+            "sculpted brows, bold red lipstick, polished glowing complexion, "
+            "long glossy wavy dark brown hair falling over one shoulder."),
+        "face_tag": ("striking V-line face, bold red lip, long glossy "
+                     "wavy brown hair"),
+        "body": ("tall and slender with an hourglass silhouette and long legs, "
+                 "graceful upright posture, poised and immaculately groomed"),
+        "outfit": (
+            "a close-fitting wine-red knee-length pencil skirt with a side "
+            "slit, a fitted cream silk blouse with the collar open at the "
+            "throat, sheer black stockings and glossy black high heels, "
+            "a slim gold necklace and small gold earrings"),
+    },
+}
+
 # 화별 이야기.
 #   when     화면에 띄울 때 (해가 바뀌면 시청자가 알아야 한다)
 #   because  이 화가 벌어지는 까닭 — **앞 화의 leaves 와 글자 그대로 같아야** 한다

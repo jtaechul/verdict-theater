@@ -50,7 +50,8 @@ VIDEO_YML = ROOT / ".github" / "workflows" / "video.yml"
 
 # ① 화풍을 가리키는 말 (어느 편인지 알아보는 용도)
 REAL_WORDS = ("photoreal", "natural skin", "photographic")
-DRAWN_WORDS = ("illustration", "hand-drawn", "cel shading", "linework")
+DRAWN_WORDS = ("illustration", "illustrated", "hand-drawn", "cel shading",
+               "linework", "anime", "cartoon")
 # ⚠️ 2026-08-26 — 처음엔 "반대편을 막아야 한다" 를 **양쪽 똑같이** 봤다가
 #    옛 상태(그림체)에서 헛경보가 났다. 코드가 실제로 막는 방식이 편마다 다르다 —
 #      실사  : charsheet.AVOID 에 cartoon·anime·illustration·drawing 을 적는다
@@ -87,8 +88,20 @@ def load_story():
 
 
 def check_style(bad):
-    """① 컷 화풍 · 인물 화풍 · '하지 마라' 목록이 같은 편인가."""
-    cut, char = style_of(S.STYLE_FIX), style_of(CS.LOOK)
+    """① 머리말 · 컷 화풍 · 인물 화풍 · '하지 마라' 목록이 같은 편인가.
+
+    ⚠️⚠️ 2026-08-27 — 처음엔 STYLE 과 인물 그림 **둘만** 봤다. 그런데 화풍을
+       정하는 자리는 **셋**이었다 — 프롬프트 첫 줄인 머리말(HEAD_FIX)까지.
+       STYLE 만 실사로 바꾸고 머리말은 "illustrated drama" 로 남아 있었고,
+       첫 줄이 가장 세게 먹으므로 영상이 앞뒤로 화풍이 갈렸다.
+    """
+    head, cut, char = (style_of(S.HEAD_FIX), style_of(S.STYLE_FIX),
+                       style_of(CS.LOOK))
+    if head != cut:
+        bad.append(f"화풍이 갈렸다 — 프롬프트 첫 줄(머리말)은 '{head}' 인데 "
+                   f"STYLE 줄은 '{cut}' 이다. 첫 줄이 가장 세게 먹으므로 "
+                   f"영상이 앞뒤로 갈린다 (series.HEAD_FIX ↔ series.STYLE_FIX)")
+        return
     if cut != char:
         bad.append(f"화풍이 갈렸다 — 컷은 '{cut}' 인데 인물 그림은 '{char}' 다. "
                    f"둘이 다르면 컷과 인물이 따로 놀아 얼굴이 안 잡힌다 "
@@ -272,8 +285,15 @@ def selftest():
     assert style_of("hand-drawn illustration with soft cel shading") == "그림체"
     assert style_of("photoreal hand-drawn illustration") == "섞임"
 
-    keep = (S.STYLE_FIX, CS.LOOK, CS.AVOID, CS.PHOTO_WORDS)
+    keep = (S.STYLE_FIX, CS.LOOK, CS.AVOID, CS.PHOTO_WORDS, S.HEAD_FIX)
     try:
+        # 머리말만 그림체로 남은 것 — 실제로 났던 사고다 (2026-08-27)
+        b = []
+        S.HEAD_FIX = "Fictional scene, semi-realistic illustrated drama."
+        S.STYLE_FIX = "STYLE: photoreal look with natural skin texture"
+        check_style(b)
+        assert any("머리말" in x for x in b), f"낡은 머리말을 못 잡는다: {b}"
+        S.HEAD_FIX = "Fictional scene, photoreal grounded drama."
         # 컷은 실사인데 인물 그림은 그림체 — 얼굴이 안 잡히는 그 사고다
         b = []
         S.STYLE_FIX = "STYLE: photoreal look with natural skin texture"
@@ -283,6 +303,7 @@ def selftest():
 
         # 실사인데 그림체를 안 막는다 — 실제로 두 번 난 사고다
         b = []
+        S.HEAD_FIX = "Fictional scene, photoreal grounded drama."
         CS.LOOK = "photoreal look with natural skin texture"
         CS.AVOID = "Avoid: text, letters, watermark"
         check_style(b)
@@ -296,6 +317,7 @@ def selftest():
 
         # 그림체일 때는 PHOTO_WORDS 로 본다 (AVOID 가 아니다)
         b = []
+        S.HEAD_FIX = "Fictional scene, hand-drawn illustrated drama."
         S.STYLE_FIX = CS.LOOK = "hand-drawn illustration with soft cel shading"
         CS.AVOID = "Avoid: text, letters, watermark"
         CS.PHOTO_WORDS = ["photorealistic", "photograph"]
@@ -307,7 +329,8 @@ def selftest():
         assert any("사진 부르는 말을 떼어 내지 않는다" in x for x in b), \
             f"그림체 쪽 구멍을 못 잡는다: {b}"
     finally:
-        S.STYLE_FIX, CS.LOOK, CS.AVOID, CS.PHOTO_WORDS = keep
+        (S.STYLE_FIX, CS.LOOK, CS.AVOID, CS.PHOTO_WORDS,
+         S.HEAD_FIX) = keep
 
     # ② 고정 줄을 글자로 베낀 것 — 실제로 AUDIO 줄에서 났던 사고다
     b = []
@@ -394,7 +417,7 @@ def main():
         print("\n" + "─" * 60)
         print(f"❌ 짝이 어긋난 곳 {len(bad)}군데 — 한쪽만 고쳤다")
         return 1
-    print(f"   ✅ 화풍이 한 편이다 — 컷 · 인물 그림 · 하지 마라 목록 "
+    print(f"   ✅ 화풍이 한 편이다 — 머리말 · 컷 · 인물 그림 · 하지 마라 목록 "
           f"({style_of(S.STYLE_FIX)})")
     print("   ✅ 대본 만드는 도구가 고정 줄을 글자로 베끼지 않는다")
     print("   ✅ 인물 목록 · 목소리표 · 등장 차례 · 화면 이름표가 다 맞는다")

@@ -734,8 +734,14 @@ def fix_voice(doc):
 #    잘라 낼 때 인물이 잘리므로 프롬프트 맨 앞에서 못을 박아 둔다.
 #    ⚠️ 머리말에는 콜론을 쓸 수 없다(붙여 넣을 때 주소로 읽혀 글자가 깨진다)
 #       → 여기는 "16 x 9", 정확한 "16:9" 는 FRAMING 줄이 맡는다.
-HEAD_FIX = ("Fictional scene, invented characters, semi-realistic "
-            "illustrated drama.")
+# ⚠️⚠️⚠️ 2026-08-27 — 여기가 **화풍이 섞인 두 번째 자리**였다.
+#    STYLE 줄만 실사로 바꾸고 이 머리말은 "illustrated drama" 인 채로 뒀다.
+#    머리말은 프롬프트의 **첫 줄**이라 가장 세게 먹는다 — 실사 지시문 맨 앞에서
+#    "그림 드라마" 라고 못을 박고 있었으니 앞뒤로 화풍이 갈릴 수밖에 없었다.
+#    손님: "영상 끝부분에는 일부러 애니메이션풍으로 바꾼거야?"
+#    → 화풍을 바꿀 때 고쳐야 할 자리는 셋이다: 머리말 · STYLE · 인물 그림.
+#      (pair_check ① 이 이제 셋을 같이 본다)
+HEAD_FIX = ("Fictional scene, invented characters, photoreal grounded drama.")
 
 
 def head_line(sec=None):
