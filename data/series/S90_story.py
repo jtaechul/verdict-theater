@@ -84,8 +84,9 @@ CUTS = [
     dict(n=11, kind="나레이션", sec=7.3, who=["내연녀"],
          text="남편은 자기가 죽으면 병원 지분 10억을 아내가 아니라 내연녀가 받도록 "
               "계약서에 특약을 넣었습니다.",
-         scene="a close view of the other woman's hand pressing a red seal onto the "
-               "bottom of a document, her sleeve and gold bracelet in frame"),
+         # ⚠️ 'her sleeve' 처럼 사람 옷을 적으면 기준 그림과 싸운다 (wear_bait)
+         scene="a close view of a woman's hand pressing a red seal onto the bottom "
+               "of a document lying on a table, the paper filling most of the frame"),
     dict(n=12, kind="나레이션", sec=5.4, who=[],
          text="사망보험 아홉 건도 남편은 받을 사람을 전부 내연녀로 바꿔 놓았습니다.",
          scene="a desk with a thick stack of blank insurance policy folders squared up "

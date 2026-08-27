@@ -65,37 +65,34 @@ def load_story():
     return m
 
 
-def person_line(sheet):
-    """인물 카드 글 → 한 줄짜리 생김새·옷 설명 (컷 프롬프트에 넣을 것)."""
-    got = {}
-    for ln in (sheet or "").splitlines():
-        m = re.match(r"(FACE AND HAIR|BUILD|WEARING):\s*(.+?)\.?\s*$", ln)
-        if m:
-            got[m.group(1)] = m.group(2).strip(" .")
-    bits = [got.get("FACE AND HAIR"), got.get("BUILD")]
-    if got.get("WEARING"):
-        bits.append("wearing " + got["WEARING"])
-    return ", ".join(b for b in bits if b)
+def people_of(names):
+    """컷에 나오는 사람 — **이름만** 적고 생김새·옷은 안 적는다.
 
-
-def people_of(names, look):
-    out = []
-    for ko in names:
-        line = look.get(CARD.get(ko, ko))
-        if line:
-            out.append(f"{EN.get(ko, ko)} — {line}.")
-    return " ".join(out)
+    ⚠️⚠️⚠️ 2026-08-27 손님: "wife 이미지가 있으면 와이프 옷차림 같은 건 쓰면
+       안 되잖아."
+       맞다. 그리고 이건 **이미 우리 규칙**이었다(series.wear_bait). 얼굴·옷은
+       **기준 그림(레퍼런스 이미지)** 이 잡는 몫이다. 컷 프롬프트에 옷을 또 적으면
+       두 지시가 싸우고, 컷마다 이긴 쪽이 달라져 **옷이 계속 바뀐다** — 막으려던
+       바로 그 사고가 난다. 내가 90초 편을 새로 만들면서 그 규칙을 어겼다.
+    """
+    if not names:
+        return ""
+    who = [EN.get(k, k) for k in names]
+    lst = who[0] if len(who) == 1 else ", ".join(who[:-1]) + " and " + who[-1]
+    return (f"PEOPLE: the reference images show, in order, {lst}. Keep each person "
+            f"exactly as they appear in their own reference image, unchanged from "
+            f"the first frame to the last.")
 
 
 def who_line(names):
     return ", ".join(EN.get(k, k) for k in names)
 
 
-def still_prompt(c, look):
+def still_prompt(c):
     who = c.get("who") or []
     body = [S.HEAD_FIX.rstrip(".") + ". A single still frame, vertical 9:16 portrait."]
     if who:
-        body.append("PEOPLE: " + people_of(who, look))
+        body.append(people_of(who))
         body.append(f"SHOT: {c['scene']}. Framed from the waist up so every face "
                     f"stays clear, static camera, mouths closed, holding the moment.")
     else:
@@ -112,7 +109,7 @@ AUDIO_QUIET = ("AUDIO: nobody speaks and nobody moves their lips at any point; "
                "no narration.")
 
 
-def veo_prompt(c, look):
+def veo_prompt(c):
     """그 컷을 손으로 만들 때 쓸 영상 프롬프트 (제미나이에 그대로 붙인다).
 
     ⭐ 2026-08-27 손님: "이미지는 중간중간 섞여 있고 동영상도 있어야 돼."
@@ -126,7 +123,7 @@ def veo_prompt(c, look):
     body = [f"{S.HEAD_FIX} {sec}-second single continuous take, "
             f"vertical portrait format (9 x 16)."]
     if who:
-        body.append("PEOPLE: " + people_of(who, look))
+        body.append(people_of(who))
     body.append(f"SHOT: {c['scene']}. Framed from the waist up so every face stays "
                 f"clear, static camera. The movement is already under way in the very "
                 f"first frame.")
@@ -160,11 +157,10 @@ def veo_prompt(c, look):
 def main():
     story = load_story()
     base = json.loads(BASE.read_text(encoding="utf-8"))
-    look = {c.get("name"): person_line(c.get("flow_sheet"))
-            for c in (base.get("characters") or [])}
-    missing = [k for k in set(CARD.values()) if not look.get(k)]
+    have = {c.get("name") for c in (base.get("characters") or [])}
+    missing = [k for k in set(CARD.values()) if k not in have]
     if missing:
-        print(f"❌ 인물 카드 글이 없다: {', '.join(missing)}")
+        print(f"❌ 인물 카드가 없다: {', '.join(missing)}")
         return 1
 
     cuts = []
@@ -172,8 +168,8 @@ def main():
         cuts.append({
             "n": c["n"], "kind": c["kind"], "sec": c["sec"],
             "who": c.get("who") or [], "text": c["text"], "scene": c["scene"],
-            "still": still_prompt(c, look),
-            "veo": veo_prompt(c, look),
+            "still": still_prompt(c),
+            "veo": veo_prompt(c),
         })
     doc = {"sid": "S90", "title": story.TITLE, "hook": story.HOOK,
            "yt_title": story.YT_TITLE, "cuts": cuts,

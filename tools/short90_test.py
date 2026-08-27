@@ -8,6 +8,7 @@
 
 무엇을 확인하나
     ① 대본 23컷이 규격대로인가 (번호·길이·글·프롬프트)
+       ⭐ 컷 프롬프트에 **옷·생김새가 없어야** 한다 — 기준 그림이 잡는 몫이다
     ② 컷마다 자막이 칸 안에 들어가는가 (넘치면 글자가 잘려 나간다)
     ③ 한 편 길이가 90초 언저리인가 (23컷을 다 붙이면 몇 분씩 걸려 셈으로 본다)
     ④ 실제로 mp4 가 나오고 붙인 길이가 셈과 맞는가 (컷 몇 개로 확인)
@@ -22,6 +23,7 @@ import wave
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
+import series as S                                           # noqa: E402
 import short90 as S9                                         # noqa: E402
 
 BAD = []
@@ -74,6 +76,22 @@ def main():
     ck("대사 컷의 말하는 사람이 목소리표에 다 있다",
        all(c["kind"] in S9.VOICE for c in say),
        {c["kind"] for c in say} - set(S9.VOICE))
+    # ⭐⭐⭐ 2026-08-27 손님: "wife 이미지가 있으면 와이프 옷차림 같은 건
+    #    쓰면 안 되잖아." 맞다 — 그리고 이건 **이미 우리 규칙**이었다.
+    #    얼굴·옷은 기준 그림이 잡는다. 컷 프롬프트에 또 적으면 두 지시가 싸워
+    #    컷마다 옷이 바뀐다. 16화 쪽은 series.wear_bait 가 막고 있었는데
+    #    90초 편을 새로 만들면서 그 검사를 안 붙여 그대로 새어 나갔다.
+    wear = []
+    for c in cuts:
+        for k in ("still", "veo"):
+            hit = S.wear_bait(c[k])
+            if hit:
+                wear.append(f"컷{c['n']}·{k}({','.join(hit)})")
+    ck("컷 프롬프트에 옷·생김새를 적은 곳이 없다 (기준 그림과 안 싸운다)",
+       not wear, " ".join(wear))
+    ck("사람이 나오는 컷은 기준 그림을 그대로 지키라고 시킨다",
+       all("reference image" in c["still"] for c in cuts if c.get("who")))
+
     ck("모든 컷 프롬프트가 세로(9:16)다",
        all("9:16" in c["still"] or "9 x 16" in c["still"] for c in cuts))
     mn = sum(c["sec"] for c in cuts)

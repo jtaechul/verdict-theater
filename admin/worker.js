@@ -890,11 +890,15 @@ async function s90Cuts() {
         + '<small style="font-weight:400;color:#9599ab">— 올린 컷만 영상, 나머지는 그림'
         + '</small></h2>';
   h += '<div class="uphint">컷마다 [프롬프트 복사] 를 눌러 제미나이에 붙여 영상을 '
-     + '만드시고, 만든 mp4 를 그 컷에 올리십시오. <b>말하는 컷(사람 이름이 붙은 컷)'
-     + '부터</b> 하시면 됩니다 — 그 컷은 영상 안의 목소리를 그대로 씁니다. '
+     + '만드시고, 만든 mp4 를 그 컷에 올리십시오. <b>말하는 컷(금색으로 이름이 '
+     + '붙은 컷)부터</b> 하시면 됩니다 — 그 컷은 영상 안의 목소리를 그대로 씁니다. '
      + '나레이션 컷은 올리셔도 우리 나레이션이 깔립니다.</div>';
-  h += '<div class="uphint" style="margin-top:6px">지금 영상으로 갈 컷 <b>'
-     + nv + '개</b> · 그림으로 갈 컷 <b>' + (cuts.length - nv) + '개</b></div>';
+  h += '<div class="uphint" style="margin-top:6px"><b>23컷 전부 영상으로 하셔도 '
+     + '됩니다.</b> 영상을 안 올린 컷만 그림으로 채웁니다 — 지금은 영상 <b>'
+     + nv + '컷</b> · 아직 안 올린 컷 <b>' + (cuts.length - nv) + '개</b>입니다.</div>';
+  h += '<div class="uphint" style="margin-top:6px">인물이 나오는 컷은 <b>①에서 '
+     + '올리신 인물 그림을 제미나이에 함께 넣어</b> 만드십시오. 프롬프트에는 '
+     + '옷·얼굴을 적지 않았습니다 — 그건 인물 그림이 잡습니다.</div>';
   cuts.forEach(function (c) {
     const on = !!S90CLIPS[c.n];
     h += '<div class="upbox" style="margin-top:10px">'
@@ -902,7 +906,7 @@ async function s90Cuts() {
        + '<span style="color:' + (c.kind === '나레이션' ? '#9599ab' : '#c6a04a') + '">'
        + esc(c.kind) + '</span> '
        + '<span class="uphint" id="s90cs-' + c.n + '">'
-       + (on ? '영상 올림' : '그림으로 갑니다') + '</span>'
+       + (on ? '영상 있음' : '아직 영상 없음') + '</span>'
        + '<div class="uphint" style="margin:6px 0">' + esc(c.text) + '</div>'
        + '<textarea id="s90p-' + c.n + '" rows="2" readonly '
        + 'style="width:100%;font-size:12px">' + esc(c.veo) + '</textarea>'
@@ -951,7 +955,7 @@ async function upCut(n) {
       return;
     }
     S90CLIPS[n] = j.url;
-    st.textContent = '영상 올림 (' + mb.toFixed(1) + 'MB)';
+    st.textContent = '영상 있음 (' + mb.toFixed(1) + 'MB)';
   } catch (e) {
     st.textContent = '못 올렸습니다';
     showErr('컷 영상을 못 올렸습니다', String(e && e.message ? e.message : e));
