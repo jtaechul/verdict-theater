@@ -310,6 +310,9 @@ async function listDir(env, path) {
 //
 // 보관함은 배포할 때 자동으로 만들어져 붙는다 (deploy-admin.yml).
 const KV_CHUNK = 8 * 1024 * 1024;   // 조각 하나 8MB (KV 한 값 상한 25MB 안쪽)
+// 90초 편 인물 카드 이름 (그림 파일 이름과 같아야 한다 — 아내는 '본처' 다)
+const S90_CARDS = ['본처', '남편', '내연녀', '딸', '변호사'];
+
 const KV_DAY = 60 * 60 * 24;
 const KV_MAX = 90 * 1024 * 1024;    // 한 번에 받는 최대 크기
 
@@ -808,6 +811,91 @@ async function upClips() {
   }
 }
 
+// ⭐⭐⭐ 2026-08-27 손님: "이미지 다 만들었어. 이제 다움은?"
+//    제미나이에서 손수 만드신 인물 그림 다섯 장을 여기서 올린다. 올린 얼굴로
+//    23컷을 그리므로 컷마다 같은 사람이 나오고, 인물 카드값(661원)도 안 나간다.
+//    ⚠️ 손님을 깃허브로 보내지 않는다 — 관리자 페이지가 유일한 조작 화면이다.
+const S90WHO = [['본처', '아내'], ['남편', '남편'], ['내연녀', '내연녀'],
+                ['딸', '딸'], ['변호사', '변호사']];
+let S90CARDS = {};
+
+function short90Card() {
+  let h = '<div class="card"><h2>90초 한 편 — 인물 그림 올리기 '
+        + '<small style="font-weight:400;color:#9599ab">'
+        + '— 제미나이에서 만드신 다섯 장</small></h2>';
+  h += '<div class="uphint">한 사람씩 골라 올리십시오. <b>올린 얼굴 그대로</b> '
+     + '23컷을 그립니다. 올리지 않은 사람은 시스템이 알아서 그립니다. '
+     + '한 번 올리면 다음에도 그대로 쓰입니다.</div>';
+  S90WHO.forEach(function (p) {
+    h += '<div class="upbox" style="margin-top:10px">'
+       + '<b>' + p[1] + '</b> '
+       + '<span class="uphint" id="s90st-' + p[0] + '">' 
+       + (S90CARDS[p[0]] ? '올렸습니다' : '') + '</span>'
+       // ⚠️ 여기서 따옴표로 이름을 넘기면 안 된다 — 이 코드는 통째로 템플릿
+       //    문자열 안이라 \' 가 ' 로 풀려 버려 줄이 깨진다 (한 번 깨뜨렸다).
+       //    칸 이름(id)에서 이름을 꺼내 쓰면 따옴표가 아예 필요 없다.
+       + '<input type="file" accept="image/*" id="s90f-' + p[0] + '" '
+       + 'onchange="upCard(this.id.slice(5))">'
+       + '</div>';
+  });
+  h += '<button class="gold" style="margin-top:14px" onclick="makeShort90()">'
+     + '90초 한 편 만들기</button>'
+     + '<div class="uphint" style="margin-top:8px">그림 23장 + 나레이션 + 자막을 '
+     + '붙여 약 100초짜리 한 편이 나옵니다. 10~20분 걸립니다.</div>'
+     + '<div id="s90msg" class="uphint"></div></div>';
+  return h;
+}
+
+async function upCard(who) {
+  const el = document.getElementById('s90f-' + who);
+  const st = document.getElementById('s90st-' + who);
+  const f = el && el.files && el.files[0];
+  if (!f || !st) return;
+  const mb = f.size / 1048576;
+  if (mb > 90) { st.textContent = '너무 큽니다 (' + Math.round(mb) + 'MB)'; return; }
+  st.textContent = '올리는 중…';
+  try {
+    const r = await fetch('/api/upload-card?who=' + encodeURIComponent(who),
+                          { method: 'POST', body: f });
+    const j = await r.json();
+    if (!j.ok) {
+      st.textContent = '못 올렸습니다';
+      showErr('인물 그림을 못 올렸습니다', (j.error || '') + ' ' + (j.detail || ''));
+      return;
+    }
+    S90CARDS[who] = j.url;
+    st.textContent = '올렸습니다 (' + mb.toFixed(1) + 'MB)';
+  } catch (e) {
+    st.textContent = '못 올렸습니다';
+    showErr('인물 그림을 못 올렸습니다', String(e && e.message ? e.message : e));
+  }
+}
+
+async function makeShort90() {
+  const m = document.getElementById('s90msg');
+  const n = Object.keys(S90CARDS).length;
+  const cost = 3042 + 100 + (5 - n) * 133;
+  if (!confirm('90초 한 편을 만듭니다. 약 ' + cost.toLocaleString()
+               + '원이 나갑니다. 계속할까요?')) return;
+  if (m) m.textContent = '시작하는 중…';
+  try {
+    const r = await fetch('/api/make-short90',
+                          { method: 'POST', body: JSON.stringify({ cards: S90CARDS }) });
+    const j = await r.json();
+    if (!j.ok) {
+      showErr('시작하지 못했습니다', (j.error || '') + ' ' + (j.detail || ''));
+      if (m) m.textContent = '';
+      return;
+    }
+    if (m) m.textContent = '시작했습니다. 10~20분 걸립니다. '
+                         + '(올리신 얼굴 ' + n + '명 · 나머지는 시스템이 그립니다)';
+    toast('90초 한 편을 만들기 시작했습니다');
+  } catch (e) {
+    showErr('시작하지 못했습니다', String(e && e.message ? e.message : e));
+    if (m) m.textContent = '';
+  }
+}
+
 // 다 만들어졌는지 30초마다 들여다본다
 // ⭐ 유튜브에 올릴 글 (2026-08-20 운영자: "제목·설명·해시태그 아무것도 안 들어가
 //    있어. 업로드 설정도 같이 추가해 줘.")
@@ -1285,6 +1373,8 @@ function home() {
   h += wfList(['series.yml', 'polish.yml',
                'keycheck.yml', 'video.yml', 'short90.yml', 'stats.yml']);
   h += '</div>';
+
+  h += short90Card();
 
   h += collectCard();
 
@@ -2718,6 +2808,61 @@ export default {
           detail: '[영상 보관함 준비하기] 를 한 번 누르시면 1~2분 뒤 올릴 수 있습니다. '
                 + '깃허브에서 하실 것은 없습니다.',
           fix: 'setup-blob' }, { status: 503 });
+      }
+
+      // ⭐⭐⭐ 2026-08-27 손님이 제미나이에서 인물 그림을 직접 만들어 오셨다.
+      //    한 장씩 받아 보관함에 두고 **주소만** 워크플로에 넘긴다
+      //    (압축파일 올리기와 같은 길 — 깃허브에 직접 올리지 않는다).
+      if (url.pathname === '/api/upload-card' && req.method === 'POST') {
+        const who = url.searchParams.get('who') || '';
+        if (S90_CARDS.indexOf(who) < 0)
+          return Response.json({ ok: false, error: '누구 그림인지 알 수 없습니다' },
+                               { status: 400 });
+        if (!bin(env) || !req.body)
+          return Response.json({ ok: false, error: '보관함이 아직 없습니다',
+            detail: '[영상 보관함 준비하기] 를 한 번 누르시고 1~2분 뒤에 다시 '
+                  + '올려 주십시오.', fix: 'setup-blob' }, { status: 503 });
+        if (+(req.headers.get('content-length') || 0) > KV_MAX)
+          return Response.json({ ok: false, error: '파일이 90MB 를 넘습니다' },
+                               { status: 400 });
+        try {
+          const key = `cards/S90-${who}-${crypto.randomUUID()}`;
+          const size = await blobPutStream(env, req.body, key, KV_DAY);
+          if (!size)
+            return Response.json({ ok: false, error: '파일이 비었습니다' }, { status: 400 });
+          return Response.json({ ok: true, url: blobUrl(req, key), size });
+        } catch (e) {
+          const m = String(e && e.message ? e.message : e);
+          return Response.json({ ok: false, error: '올리지 못했습니다',
+            detail: m.slice(0, 220) + ` [판 ${BUILD}]` }, { status: 502 });
+        }
+      }
+
+      // 올린 얼굴로 90초 한 편을 만들라고 시킨다
+      if (url.pathname === '/api/make-short90' && req.method === 'POST') {
+        let body = {};
+        try { body = await req.json(); } catch (e) { body = {}; }
+        const cards = {};
+        for (const k of S90_CARDS) {
+          const v = body && body.cards ? body.cards[k] : '';
+          if (typeof v === 'string' && v.startsWith('http')) cards[k] = v;
+        }
+        // ⚠️ 넘기는 값은 **이 칸 안에서 만든 것**만 쓴다. 글자를 바로 적으면
+        //    check_scope 가 "이 칸에 없는 것" 으로 잡는다 (일부러 그렇게 좁게
+        //    본다 — 다른 칸 것을 잘못 넘기던 사고가 있었다).
+        const step = 'all';
+        const payload = JSON.stringify(cards);
+        try {
+          await gh(env, `/repos/${REPO}/actions/workflows/short90.yml/dispatches`, {
+            method: 'POST', body: JSON.stringify({ ref: BRANCH,
+              inputs: { step: step, cards: payload } }),
+          });
+          return Response.json({ ok: true, n: Object.keys(cards).length });
+        } catch (e) {
+          const m = String(e && e.message ? e.message : e);
+          return Response.json({ ok: false, error: '시작하지 못했습니다',
+            detail: m.slice(0, 220) }, { status: 502 });
+        }
       }
 
       // ⭐⭐ 2026-08-22 운영자: "미리보기도 없고, 제목·해시태그도 없고,

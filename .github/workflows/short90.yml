@@ -4,6 +4,8 @@ name: 4. 90초 한 편 만들기
 #
 #   ① 대본 짓기 (0원)            data/series/S90.json — 23컷
 #   ② 인물 카드 (5장 · 약 661원)  얼굴을 컷마다 같게 묶는 기준 그림
+#      ⭐ 관리자 페이지에서 **손수 만든 인물 그림을 올리면** 그것을 쓴다 (0원).
+#         올린 사람은 시스템이 다시 안 그린다 (.hand 표시)
 #   ③ 컷 그림 23장 (약 3,042원)   세로 9:16 · 카드를 참조로 넣어 얼굴을 묶는다
 #   ④ 나레이션·대사 소리 23줄     구글 TTS (약 100원)
 #   ⑤ 한 편으로 조립             자막·이름표·아주 느린 줌 → 약 100초
@@ -27,6 +29,10 @@ on:
         description: '어디까지 (all / stills / voice / build)'
         required: true
         default: 'all'
+      cards:
+        description: '손님이 올린 인물 그림 (관리자 페이지가 넣는다 · 손대지 마십시오)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -65,17 +71,24 @@ jobs:
           python3 tools/build_short90.py
           python3 tools/short90_test.py
 
-      - name: 1) 인물 카드 (얼굴을 묶는 기준 그림)
+      - name: 1) 인물 카드 (손님이 올린 얼굴이 있으면 그것을 쓴다)
         if: env.STEP == 'all' || env.STEP == 'stills'
+        env:
+          CARDS: ${{ inputs.cards }}
         run: |
           set -o pipefail
-          mkdir -p build/s90
-          python3 tools/release_file.py get cards-S001 cards.zip build/cards.zip \
-            && unzip -q -o build/cards.zip -d build/s90/cards \
-            || echo "받아 둔 카드가 없다 — 새로 만든다"
+          mkdir -p build/s90/cards
+          # 지난번에 쓰던 얼굴을 먼저 받아 둔다 (손으로 올린 것도 여기 들어 있다)
+          python3 tools/release_file.py get cards90-S90 cards.zip build/cards90.zip \
+            && unzip -q -o build/cards90.zip -d build/s90/cards \
+            || echo "보관된 90초 편 카드가 없다"
+          # ⭐ 관리자 페이지에서 올리신 그림이 있으면 그것으로 덮어쓴다.
+          #    옆에 .hand 표시가 남아, 아래 단계가 그 사람은 다시 안 그린다.
+          python3 tools/fetch_cards.py "$CARDS" build/s90/cards 2>&1 | tee -a make.log
+          # 아직 얼굴이 없는 사람만 시스템이 그린다
           python3 src/still.py cards S001 --out build/s90/cards 2>&1 | tee -a make.log
-          python3 -c "import shutil;shutil.make_archive('build/cards','zip','build/s90/cards')"
-          python3 tools/release_file.py put cards-S001 cards.zip build/cards.zip || true
+          python3 -c "import shutil;shutil.make_archive('build/cards90','zip','build/s90/cards')"
+          python3 tools/release_file.py put cards90-S90 cards.zip build/cards90.zip || true
 
       - name: 2) 컷 그림 23장 (세로 9:16)
         if: env.STEP == 'all' || env.STEP == 'stills'

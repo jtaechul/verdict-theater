@@ -63,6 +63,15 @@ def can_reuse(out, sig):
     return False, "만든 재료가 바뀌었다" if old else "지문이 없다 — 옛것이다"
 
 
+def by_hand(out):
+    """손님이 손으로 올려 둔 것인가 (옆에 .hand 표시가 있는가).
+
+    ⭐ 2026-08-27 — 손님이 제미나이에서 인물 그림을 직접 만들어 눈으로 고르셨다.
+       시스템이 다시 그리면 **고르신 얼굴이 아닌 사람**이 나온다. 표시가 있으면
+       지문을 따지지 않고 그대로 쓴다."""
+    return Path(out).with_suffix(".hand").exists()
+
+
 def stamp(out, sig):
     """다 만든 뒤 지문을 적어 둔다. 이걸 빼먹으면 매번 다시 만든다."""
     f = sig_file(out)

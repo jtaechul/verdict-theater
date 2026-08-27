@@ -159,6 +159,10 @@ def cards(sid, out_dir):
         prompt = vprompt.still_prompt(c.get("flow_sheet") or c.get("flow_prompt") or "")
         sig = reuse.sig_of(prompt)
         print(f"  {name}")
+        # ⭐ 손님이 올린 그림이면 손대지 않는다 (2026-08-27)
+        if reuse.by_hand(out) and out.exists():
+            print("    (손님이 올리신 그림이다 — 그대로 쓴다)")
+            continue
         ok, why = reuse.can_reuse(out, sig)
         if ok:
             print("    (그대로다 — 건너뛴다)")
