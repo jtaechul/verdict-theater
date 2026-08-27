@@ -108,7 +108,28 @@ NEW_CHARS = [
 #    ⚠️ 매혹적인 인상은 sexy · seductive · revealing 같은 말로 적지 않는다.
 #       그 낱말이 들어가면 안전 검사에 걸려 **영상이 아예 안 만들어진다.**
 #       striking · fitted · glossy · polished 로 적어야 실제로 그렇게 나온다.
+#    ⚠️ 2026-08-27 — 내연녀 말고 **네 사람은 옷이 아예 안 정해져 있었다.**
+#       인물 카드에 WEARING 줄이 없으면 컷마다 옷을 새로 지어내서, 같은
+#       장면 안에서도 사람이 딴 옷을 입고 나온다. 다섯 사람 다 정해 둔다.
+#       (옷은 그 사람이 이야기 내내 입는 '그 옷' 이다 — 자주 바꾸지 않는다)
 CHAR_LOOKS = {
+    "본처": {
+        "outfit": ("a plain oatmeal knit cardigan over a soft white blouse, "
+                   "dark charcoal loose trousers and flat brown shoes, "
+                   "no jewellery and no makeup"),
+    },
+    "남편": {
+        "outfit": ("a dark navy suit with the jacket open, a white shirt with the "
+                   "top button undone and a loosened grey tie, black leather shoes"),
+    },
+    "딸": {
+        "outfit": ("a plain grey sweatshirt over a white tee, dark blue jeans and "
+                   "white canvas trainers"),
+    },
+    "변호사": {
+        "outfit": ("a charcoal grey suit with the jacket buttoned, a light blue "
+                   "shirt and a plain navy tie, black leather shoes"),
+    },
     "내연녀": {
         "flow_prompt": (
             "Korean woman, 38 years old, striking sharp V-line face, large "

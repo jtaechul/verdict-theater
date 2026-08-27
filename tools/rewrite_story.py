@@ -298,6 +298,8 @@ def main():
     chars = [c for c in chars if c.get("name") not in names]
     for c in story.NEW_CHARS:
         c = dict(c)
+        # ⚠️ 딸·변호사도 옷은 CHAR_LOOKS 가 진다 (다섯 사람이 한곳에서 정해진다)
+        c.update(story.CHAR_LOOKS.get(c.get("name"), {}))
         # ⭐ 기준 그림 프롬프트·설명은 **손으로 안 적는다.** charsheet 가
         #    배경·자세·화면잡기·빛·하지 말 것까지 한 벌로 지어 준다.
         #    (베껴 두면 문구를 고칠 때 사람마다 다른 그림체가 된다)

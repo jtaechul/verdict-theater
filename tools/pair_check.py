@@ -24,6 +24,7 @@
     ② **고정 문구** — 대본 만드는 도구가 고정 줄을 **글자로 베껴** 쓰지 않는가
        (베끼면 규격 파일만 고쳤을 때 검사기가 모르는 문장이 나간다)
     ③ **인물** — 인물 목록 · 목소리표 · 등장 차례 · 화면 이름표가 다 맞는가
+       그리고 **다섯 사람 다 입을 옷이 정해져 있는가** (없으면 컷마다 바뀐다)
     ④ **무시된 설정** — 이야기 파일에 적어 둔 것이 실제로 읽히는가
     ⑦ **다시 쓰기** — 만들어 둔 것을 다시 쓸 때 지문을 보는가
        (안 보면 재료를 고쳐도 옛것이 그대로 나온다 — 화풍 사고)
@@ -172,6 +173,24 @@ def check_people(bad, doc, order=None, voices=None):
                    f"{len(order)}명이다")
 
 
+def check_wear(bad, doc=None, chars=None):
+    """③-2 다섯 사람 다 **입을 옷이 정해져 있는가.**
+
+    ⚠️ 2026-08-27 손님: "야 다른인물 이미지 생성 프롬프트도 줘야지"
+       꺼내 보니 내연녀 말고 **네 사람은 옷이 아예 없었다.** 인물 카드에
+       WEARING 줄이 없으면 그림 만드는 쪽이 컷마다 옷을 새로 지어낸다 —
+       같은 장면 안에서도 사람이 딴 옷을 입고 나온다.
+       (옷은 인물 카드에만 적는다. 컷 프롬프트에 적으면 규격 검사가 막는다)
+    """
+    chars = (doc or {}).get("characters") if chars is None else chars
+    naked = [c.get("name", "?") for c in (chars or [])
+             if "WEARING:" not in (c.get("flow_sheet") or "")]
+    if naked:
+        bad.append(f"입을 옷이 안 정해진 사람이 있다 — {', '.join(naked)}. "
+                   f"옷이 없으면 컷마다 다른 옷을 입고 나온다 "
+                   f"(S001_story.CHAR_LOOKS 에 outfit 을 적는다)")
+
+
 def check_used(bad, keys=None, src=None):
     """④ 이야기 파일에 적어 둔 것이 실제로 읽히는가."""
     src = REWRITE.read_text(encoding="utf-8") if src is None else src
@@ -275,6 +294,7 @@ def scan(doc):
     check_style(bad)
     check_fixed(bad)
     check_people(bad, doc)
+    check_wear(bad, doc)
     check_used(bad)
     return bad
 
@@ -354,6 +374,14 @@ def selftest():
     check_people(b, doc1, order=["Ghost"], voices={"Ghost"})
     assert any("화면 이름표가 없다" in x for x in b), f"빠진 이름표를 못 잡는다: {b}"
 
+    # ③-2 옷이 안 정해진 사람 — 컷마다 옷이 바뀌던 그 사고다
+    b = []
+    check_wear(b, chars=[{"name": "남편", "flow_sheet": "FACE AND HAIR: x."}])
+    assert any("옷이 안 정해진" in x for x in b), f"옷 없는 사람을 못 잡는다: {b}"
+    b = []
+    check_wear(b, chars=[{"name": "남편", "flow_sheet": "WEARING: a navy suit."}])
+    assert not b, f"멀쩡한 것을 걸었다: {b}"
+
     # ④ 적어만 두고 아무도 안 읽는 설정 — aside 를 넣을 때 실제로 날 뻔했다
     b = []
     check_used(b, keys={"no", "aside"}, src='x = e.get("no")')
@@ -421,6 +449,7 @@ def main():
           f"({style_of(S.STYLE_FIX)})")
     print("   ✅ 대본 만드는 도구가 고정 줄을 글자로 베끼지 않는다")
     print("   ✅ 인물 목록 · 목소리표 · 등장 차례 · 화면 이름표가 다 맞는다")
+    print("   ✅ 다섯 사람 다 입을 옷이 정해져 있다 (컷마다 안 바뀐다)")
     print("   ✅ 이야기 파일에 적어 둔 설정이 전부 읽힌다")
     print("   ✅ 관리자가 재생하려는 파일을 워크플로가 실제로 올린다")
     print("   ✅ 대본 제목과 화면 제목이 같다")
