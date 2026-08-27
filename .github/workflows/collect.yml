@@ -30,9 +30,11 @@ on:
         description: '낱말 하나당 몇 쪽까지 (한 쪽 100건)'
         required: false
         default: '3'
-  schedule:
+  # ⚠️ 2026-08-27 — 지금 절차에서 안 쓰므로 자동 실행을 껐다
+  #    (매주 판례 모으기 · 값은 0원이지만 저장소에 저절로 커밋한다)
+  # schedule:
     # 매주 월요일 한국시간 오전 6시 (UTC 21:00 일요일)
-    - cron: '0 21 * * 0'
+    # - cron: '0 21 * * 0'
 
 permissions:
   contents: write

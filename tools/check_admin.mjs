@@ -103,9 +103,15 @@ globalThis.scrollTo = () => {};
 globalThis.alert = () => {};
 globalThis.confirm = () => false;
 
+// ⚠️⚠️ 2026-08-27 — 화면을 '지금 절차만' 으로 줄이면서(SIMPLE=true) 16화 쪽
+//    카드가 안 그려지자, 그 카드 속 버튼을 보던 검사들이 통째로 헛돌았다.
+//    감춘 것도 **여전히 성해야** 한다(되돌릴 때 깨져 있으면 안 된다).
+//    → 검사는 SIMPLE 을 꺼서 **모든 카드를 그려** 본다. 화면에 실제로 무엇이
+//      보이는지는 아래 'SIMPLE 검사' 가 따로 본다.
+const CLIENT = readFileSync(js, 'utf8');
 let api;
 try {
-  api = new Function(readFileSync(js, 'utf8')
+  api = new Function(CLIENT.replace('const SIMPLE = true;', 'const SIMPLE = false;')
                    + '\n;return {home, thumbCard, fillAudition, setS: (v) => { S = v; },'
                    + ' setTHUMB: (v) => { THUMB = v; }};')();
 } catch (e) {
@@ -306,4 +312,27 @@ console.log('✅ 관리자 페이지: 바깥 코드 + 브라우저 코드 둘 �
     process.exit(1);
   }
   console.log('✅ 파일을 고르는 칸은 처음부터 펴져 있다 (접혀서 못 쓰는 일이 없다)');
+}
+
+
+// ⭐⭐⭐ 2026-08-27 손님: "쓸데 없는 기능들 다 지워. 우리가 지금 절차에서 정한 거
+//   외에는 일단 다 감춰놓거나 삭제하고 돈 세는 부분 없는지도 지금 체크해."
+//   화면에 **실제로 보이는 단추**가 지금 절차뿐인지 본다.
+{
+  const list = src.match(/const WORKFLOWS = \[[\s\S]*?\n\];/)[0];
+  const shown = list.split(/\{\s*file:/).slice(1)
+    .filter((x) => !/hidden:\s*true/.test(x))
+    .map((x) => x.match(/^\s*'([^']+)'/)[1]);
+  const OK = ['keycheck.yml'];          // 지금 절차에서 보여도 되는 단추
+  const extra = shown.filter((f) => !OK.includes(f));
+  if (extra.length) {
+    console.error('❌ 지금 절차 밖인데 화면에 보이는 단추: ' + extra.join(', '));
+    console.error('   눌리면 돈이 나갈 수 있습니다 — hidden: true 를 붙이십시오');
+    process.exit(1);
+  }
+  if (!/const SIMPLE = true;/.test(src)) {
+    console.error('❌ SIMPLE 이 켜져 있지 않다 — 16화 화면이 다시 다 나옵니다');
+    process.exit(1);
+  }
+  console.log('✅ 화면에 보이는 단추는 지금 절차뿐이다 (열쇠 점검 + 90초 한 편)');
 }

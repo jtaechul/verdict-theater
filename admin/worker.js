@@ -33,7 +33,7 @@ const WORKFLOWS = [
   //    그림·소리·목소리를 우리가 만들던 카드들(에셋 만들기·효과음·목소리 오디션·
   //    목소리 바꾸기·썸네일·옛 영상 만들기)을 통째로 뺐다.
   //    남는 것은 지금도 도는 것뿐이다 — 소재 모으기 · 대본 · 성과 · 유튜브.
-  { file: 'collect.yml', name: '1. 재판 기록 모으기',
+  { file: 'collect.yml', hidden: true,   // 2026-08-27 지금 절차 밖 — 감춘다 name: '1. 재판 기록 모으기',
     desc: '판례를 모아 대기열에 쌓습니다 (0원)',
     inputs: [{ k: 'max_calls', label: '최대 요청 수', type: 'text', v: '180' },
              { k: 'topic', label: '갈래', type: 'select',
@@ -42,12 +42,12 @@ const WORKFLOWS = [
              { k: 'queries', label: '직접 검색어 (비우면 자동)', type: 'text', v: '' },
              { k: 'pages', label: '페이지 수', type: 'text', v: '3' }] },
 
-  { file: 'series.yml', name: '2. 대본 만들기 (한 판례 → 대본)',
+  { file: 'series.yml', hidden: true,   // 2026-08-27 지금 절차 밖 — 감춘다 name: '2. 대본 만들기 (한 판례 → 대본)',
     desc: '판례 하나를 30초짜리 16화로 쪼갭니다. 매일 한 편씩 내고 16일이면 '
         + '8분 롱폼이 공짜로 나옵니다 (글만 쓰므로 수백 원)',
     inputs: [{ k: 'case', label: '판례 번호 (비우면 자동)', type: 'text', v: '' }] },
 
-  { file: 'polish.yml', name: '3. 대본 다듬기',
+  { file: 'polish.yml', hidden: true,   // 2026-08-27 지금 절차 밖 — 감춘다 name: '3. 대본 다듬기',
     desc: '만든 16화를 한 번 더 읽혀 말투·앞뒤 맞음·자극성을 다듬습니다. '
         + '기계로 잡히는 것(누설·빠진 폭로·답으로 끝내기·금액 어긋남)은 이미 '
         + '0원으로 걸러지고, 여기서는 기계가 못 보는 것만 봅니다',
@@ -60,7 +60,7 @@ const WORKFLOWS = [
   // ⭐⭐⭐ 2026-08-26 운영자: "실사로 가자. 시험 만들어."
   //    루미나(손으로 만들기)에서 **구글 Veo(자동)** 로 갈아탄다.
   //    맨 먼저 할 일은 **한 컷만** 만들어 한국어 입 모양을 눈으로 보는 것이다.
-  { file: 'video.yml', name: '4. 영상 만들기 — 유료',
+  { file: 'video.yml', hidden: true,   // 2026-08-27 지금 절차 밖 — 감춘다 name: '4. 영상 만들기 — 유료',
     desc: '실사 영상을 구글 Veo 로 만듭니다. ⭐ 처음이라면 "한 컷만 시험" 칸에 '
         + '1 을 넣고 눌러 보세요 — 4초짜리 한 컷만 만들어 한국어 입 모양과 '
         + '발음을 확인할 수 있고 값은 약 500원입니다. 비우면 한 화 전체를 '
@@ -80,7 +80,7 @@ const WORKFLOWS = [
   //    → 90초 편은 아래 전용 화면(90초 한 편 ①②)에서만 시작한다.
   { file: 'short90.yml', name: '90초 한 편 만들기', desc: '', inputs: [], hidden: true },
 
-  { file: 'stats.yml', name: '5. 성과 보기',
+  { file: 'stats.yml', hidden: true,   // 2026-08-27 지금 절차 밖 — 감춘다 name: '5. 성과 보기',
     desc: '올린 영상이 얼마나 보였는지 확인합니다 (0원)',
     inputs: [] },
 
@@ -1424,17 +1424,26 @@ function home() {
   const ungated = (S.queue || []).filter(q => q.gate_score == null);
 
   let h = '';
-  h += nextCard(eps, ready, ungated);
+  // ⭐⭐⭐ 2026-08-27 손님: "쓸데 없는 기능들 다 지워."
+  //    SIMPLE 이면 **지금 절차만** 그린다 — 만든 영상 · 열쇠 점검 ·
+  //    90초 한 편 ①② 넷뿐이다. 16화 길(다음에 할 일 · 지금 상태 · 시리즈 ·
+  //    소재 대기열 · 지난 수집 결과 · 최근 실행)은 통째로 안 그린다.
+  //    지우지 않고 감추는 까닭 — 되돌릴 수 있어야 하고, 감춰 둔 것은 돈을
+  //    쓰지 않는다(눌 수가 없으므로).
+  if (!SIMPLE) {
+    h += nextCard(eps, ready, ungated);
+  }
   h += madeCard();
-  h += '<div class="card"><h2>지금 상태</h2>';
-  h += row('모아 둔 재판 기록', (S.queue||[]).length + '건');
-  h += row('대본 만들 수 있는 소재', ready.length + '건');
-  h += row('아직 안 살펴본 기록', ungated.length + '건');
-  h += row('지금까지 만든 편수', eps.length + '편');
-  h += row('그림·소리 준비', (S.assets ? S.assets.have + ' / ' + S.assets.need + ' 개' : '-'));
-  h += '</div>';
-
-  h += seriesCard();
+  if (!SIMPLE) {
+    h += '<div class="card"><h2>지금 상태</h2>';
+    h += row('모아 둔 재판 기록', (S.queue||[]).length + '건');
+    h += row('대본 만들 수 있는 소재', ready.length + '건');
+    h += row('아직 안 살펴본 기록', ungated.length + '건');
+    h += row('지금까지 만든 편수', eps.length + '편');
+    h += row('그림·소리 준비', (S.assets ? S.assets.have + ' / ' + S.assets.need + ' 개' : '-'));
+    h += '</div>';
+    h += seriesCard();
+  }
 
   // ⭐ 2026-08-23 운영자: "이건 지금 쓸데 없는거잖아 당장 메뉴에서 지워."
   //    [회차] 칸(EP001·EP002·EP003)을 뺐다. 12분짜리 롱폼을 만들던 옛 방식의
@@ -1454,7 +1463,6 @@ function home() {
      + '— 위에서부터 차례대로 누르시면 됩니다</small></h2>';
   // ⚠️ 2026-08-27 — script.yml(옛 12분 롱폼 길)을 뺐다. 2026-08-23 에 접은
   //    길인데 메뉴에 남아 있었고, series.yml 과 번호까지 '2.' 로 겹쳤다.
-  h += wfList(['collect.yml']);
   // 2026-08-18: 목소리 고르기 제거 — 소리는 구글이 영상과 함께 만든다.
   // ⚠️ 2026-08-12 — 그림 만들기가 **접힌 칸 안에 숨어 있었다.**
   //    손님: "관리자 페이지 안에 그림 소리 만들기가 없잖아."
@@ -1467,13 +1475,24 @@ function home() {
   //    그려지는 것이 따로 놀았다. 이제 tools/check_admin.mjs 가 이걸 잡는다.
   //    ⭐ 순서: 대본 → 다듬기 → **열쇠 점검 → 영상 만들기** → 성과.
   //       돈 나가기 전에 열쇠부터 보는 것이 실제 순서다.
-  h += wfList(['series.yml', 'polish.yml',
-               'keycheck.yml', 'video.yml', 'stats.yml']);
+  // ⭐⭐⭐ 2026-08-27 손님: "지금 관리자 페이지에서 쓸데 없는 기능들 다 지워.
+  //    우리가 지금 절차에서 정한 거 외에는 일단 다 감춰놓거나 삭제하고"
+  //    지금 절차 = 90초 한 편 (① 인물 그림 → ② 컷별 영상 → 만들기 → 보기).
+  //    16화 길(모으기·대본·다듬기·영상)과 성과 보기는 전부 감췄다. 지우지는
+  //    않는다 — 워크플로 파일이 그대로라 되돌릴 수 있다.
+  h += wfList(['keycheck.yml']);
   h += '</div>';
 
   h += short90Card();
   h += '<div id="s90cuts"><div class="card"><h2>90초 한 편 ② 컷별 영상</h2>'
      + '<div class="empty">컷 목록 불러오는 중…</div></div></div>';
+
+  if (SIMPLE) {
+    document.getElementById('app').innerHTML = h;
+    foldify();
+    s90Cuts();
+    return;
+  }
 
   h += collectCard();
 
@@ -1766,6 +1785,9 @@ function seekAudition(el) {
 //    2026-08-27 손님이 90초 편 칸을 열지 못해 아무것도 못 하셨다.
 // ⚠️ 새 검사가 잡아 준 것 — 16화 쪽 '③ 만든 영상 올리면…' 칸도 접혀
 //    있었다. 파일을 고르는 칸이 접혀 있으면 손님은 아무것도 못 한다.
+// ⭐ 지금 절차만 보여 준다. false 로 바꾸면 16화 길이 다시 나온다.
+const SIMPLE = true;
+
 const FOLD_OPEN = ['다음에 할 일', '지금 상태', '90초 한 편', '③ 만든 영상'];
 const foldKey = (t) => 'fold:' + t.slice(0, 24);
 

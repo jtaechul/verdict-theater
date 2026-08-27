@@ -9,9 +9,11 @@ name: 5. 성과 보기
 
 on:
   workflow_dispatch:
-  schedule:
+  # ⚠️ 2026-08-27 — 지금 절차에서 안 쓰므로 자동 실행을 껐다
+  #    (매주 성과 보기 · 값은 0원이지만 저장소에 저절로 커밋한다)
+  # schedule:
     # 매주 월요일 한국시간 오전 8시 (UTC 23:00 일요일)
-    - cron: '0 23 * * 0'
+    # - cron: '0 23 * * 0'
 
 permissions:
   contents: write
