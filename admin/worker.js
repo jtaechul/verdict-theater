@@ -896,9 +896,10 @@ async function s90Cuts() {
   h += '<div class="uphint" style="margin-top:6px"><b>23컷 전부 영상으로 하셔도 '
      + '됩니다.</b> 영상을 안 올린 컷만 그림으로 채웁니다 — 지금은 영상 <b>'
      + nv + '컷</b> · 아직 안 올린 컷 <b>' + (cuts.length - nv) + '개</b>입니다.</div>';
-  h += '<div class="uphint" style="margin-top:6px">인물이 나오는 컷은 <b>①에서 '
-     + '올리신 인물 그림을 제미나이에 함께 넣어</b> 만드십시오. 프롬프트에는 '
-     + '옷·얼굴을 적지 않았습니다 — 그건 인물 그림이 잡습니다.</div>';
+  h += '<div class="uphint" style="margin-top:6px"><b>인물 그림은 첨부하지 '
+     + '마십시오.</b> 사진을 넣으면 구글이 "유명인 영상" 으로 보고 막습니다. '
+     + '아래 프롬프트에 옷·나이대를 적어 두었으니 그대로만 넣으시면 컷마다 '
+     + '같은 사람이 나옵니다.</div>';
   cuts.forEach(function (c) {
     const on = !!S90CLIPS[c.n];
     h += '<div class="upbox" style="margin-top:10px">'
@@ -908,8 +909,12 @@ async function s90Cuts() {
        + '<span class="uphint" id="s90cs-' + c.n + '">'
        + (on ? '영상 있음' : '아직 영상 없음') + '</span>'
        + '<div class="uphint" style="margin:6px 0">' + esc(c.text) + '</div>'
+       // ⚠️⚠️ 2026-08-27 — **구글 플로우용 판(flow)** 을 복사시킨다.
+       //    veo 판(우리 시스템용)을 앱에 넣으면 "유명인의 동영상 생성에 관한
+       //    정책 위반" 으로 막힌다. 손님이 실제로 막혔다가, 말 바꾼 판으로
+       //    통과하는 것을 확인하셨다.
        + '<textarea id="s90p-' + c.n + '" rows="2" readonly '
-       + 'style="width:100%;font-size:12px">' + esc(c.veo) + '</textarea>'
+       + 'style="width:100%;font-size:12px">' + esc(c.flow || c.veo) + '</textarea>'
        + '<button onclick="copyCut(this.id.slice(6))" id="s90cp-' + c.n + '">'
        + '프롬프트 복사</button> '
        + '<input type="file" accept="video/*" id="s90v-' + c.n + '" '

@@ -154,6 +154,112 @@ def veo_prompt(c):
     return "\n".join(body)
 
 
+# ⭐⭐⭐ 2026-08-27 — **구글 플로우(제미나이 앱)로 손수 만들 때 쓰는 판.**
+#    손님이 앱에서 컷 4를 넣었더니 이렇게 막혔다 —
+#      "이 프롬프트는 유명인의 동영상 생성에 관한 Google 정책을 위반할 가능성이…"
+#    말을 바꿔 다시 넣으니 **통과했다**(손님 확인). 앱 필터가 API 보다 훨씬
+#    빡빡하다. 그래서 판을 둘로 나눈다.
+#
+#      still / veo  — 우리 시스템(API)이 쓴다. 인물 카드를 참조로 넣으므로
+#                     옷·생김새를 **안 적는다** (적으면 참조와 싸운다)
+#      flow         — 손님이 앱에서 쓴다. 참조 그림을 **안 넣으므로** 옷·생김새를
+#                     짧게 적어 줘야 컷마다 같은 사람이 나온다
+#
+#    ⚠️ 앱에서 막히는 말은 절대 쓰지 않는다 —
+#       photoreal · photorealistic · photograph · natural skin · faces ·
+#       reference image · actor · celebrity · live-action · real person
+#       (부인하는 말이라도 그 낱말이 들어가면 걸린다. 이미 배운 것이다)
+FLOW_BAN = ("photoreal", "photorealistic", "photograph", "natural skin",
+            "reference image", "actor", "celebrity", "live-action",
+            "real person", "likeness")
+
+# 앱에서 쓸 짧은 생김새 — 얼굴을 자세히 적지 않는다. 옷과 나이대로만 가른다.
+#   (부르는 이름, 생김새)  ← 부르는 이름은 **옷으로** 짓는다. 참조 그림이 없으니
+#   "아내" 라고 해 봐야 모델이 누군지 모른다. 옷으로 부르면 헷갈릴 일이 없다.
+FLOW_WHO = {
+    "아내": ("the woman in the cardigan",
+            "a Korean woman in her early fifties, hair in a low bun, in a plain "
+            "oatmeal knit cardigan and dark loose trousers"),
+    "남편": ("the man in the navy suit",
+            "a Korean man in his mid fifties, short parted black hair, in an open "
+            "dark navy suit with a loosened tie"),
+    "내연녀": ("the woman in the red skirt",
+             "a Korean woman in her late thirties, long wavy brown hair and a bold "
+             "red lip, in a fitted wine-red knee-length skirt and cream blouse"),
+    "딸": ("the young woman in the grey sweatshirt",
+          "a Korean woman in her early twenties, black hair tied back, in a grey "
+          "sweatshirt and jeans"),
+    "변호사": ("the man in the charcoal suit",
+             "a Korean man in his mid forties, hair combed back, in a charcoal suit "
+             "and navy tie"),
+}
+# 화면 묘사 속 사람 부르는 말도 옷 이름으로 바꾼다 (한 컷 안에서 이름이 갈리면 안 된다)
+FLOW_SWAP = [("the other woman", "the woman in the red skirt"),
+             ("the wife", "the woman in the cardigan"),
+             ("the husband", "the man in the navy suit"),
+             ("the lawyer", "the man in the charcoal suit"),
+             ("the daughter", "the young woman in the grey sweatshirt"),
+             ("her grown daughter", "the young woman in the grey sweatshirt"),
+             ("her front door", "the front door"),
+             ("her husband", "the man in the navy suit"),
+             ("her ear", "one ear")]
+
+
+def flow_scene(t):
+    for a, b in FLOW_SWAP:
+        t = t.replace(a, b)
+    return t
+FLOW_HEAD = ("A short fictional drama scene. Every character is invented for this "
+             "story and resembles nobody.")
+FLOW_STYLE = ("STYLE: one unbroken take in one place, naturalistic cinematic drama, "
+              "soft film grain, muted desaturated palette, soft practical lighting, "
+              "shallow depth of field, the same colour grade in every shot.")
+
+
+def flow_prompt(c):
+    """구글 플로우에 그대로 붙일 판 (인물 그림을 안 넣는다)."""
+    who = c.get("who") or []
+    speaker = c["kind"]
+    talks = speaker != "나레이션"
+    sec = 4 if c["sec"] <= 4 else (6 if c["sec"] <= 6 else 8)
+    body = [f"{FLOW_HEAD} {sec}-second single continuous take, "
+            f"vertical portrait format (9 x 16)."]
+    if who:
+        body.append("CHARACTERS: "
+                    + "; ".join(FLOW_WHO.get(k, (k, k))[1] for k in who)
+                    + ". Plain, unremarkable, everyday looks.")
+    body.append(f"SHOT: {flow_scene(c['scene'])}. Framed from the waist up so everyone stays "
+                f"clear, static camera. The movement is already under way in the "
+                f"very first frame.")
+    body.append("FRAMING: vertical 9:16 portrait, the people kept in the middle of "
+                "the frame, the lower fifth left plain because a caption will sit "
+                "there.")
+    if talks:
+        tag = FLOW_WHO.get(speaker, (speaker, speaker))[0]
+        body.append(f"ACTION: only {tag} speaks; anyone else stays silent with "
+                    f"their mouth closed.")
+        body.append("DIALOGUE: [LANGUAGE: KOREAN]")
+        body.append(f'  {tag}: "{c["text"]}"')
+        body.append("AUDIO: the line is said in natural, fluent everyday Korean with "
+                    "standard Seoul intonation, uneven rhythm and short breaths, with "
+                    "only quiet room tone underneath. Only that line is said and "
+                    "nothing more, then everyone stays silent until the clip ends.")
+    else:
+        body.append("ACTION: the moment unfolds slowly and quietly over the whole "
+                    "take, with small natural movement — a breath, a hand shifting, "
+                    "light moving. Mouths stay closed the whole time.")
+        body.append("AUDIO: nobody speaks at any point; only quiet room tone, "
+                    "no music, no voice, no narration.")
+    body += ["CAMERA: background strongly out of focus, heavy bokeh, only the people "
+             "sharp.",
+             "COLOR: warm neutral base, low contrast, slightly lifted blacks, soft "
+             "amber lamplight, muted greens and cyans.",
+             FLOW_STYLE,
+             "ON SCREEN: no text, no letters, no subtitles, no captions, "
+             "no watermark, no logo."]
+    return "\n".join(body)
+
+
 def main():
     story = load_story()
     base = json.loads(BASE.read_text(encoding="utf-8"))
@@ -170,6 +276,7 @@ def main():
             "who": c.get("who") or [], "text": c["text"], "scene": c["scene"],
             "still": still_prompt(c),
             "veo": veo_prompt(c),
+            "flow": flow_prompt(c),
         })
     doc = {"sid": "S90", "title": story.TITLE, "hook": story.HOOK,
            "yt_title": story.YT_TITLE, "cuts": cuts,

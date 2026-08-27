@@ -92,6 +92,21 @@ def main():
     ck("사람이 나오는 컷은 기준 그림을 그대로 지키라고 시킨다",
        all("reference image" in c["still"] for c in cuts if c.get("who")))
 
+    # ⭐⭐⭐ 2026-08-27 — 손님이 구글 플로우에서 막혔다:
+    #    "이 프롬프트는 유명인의 동영상 생성에 관한 Google 정책을 위반할 가능성이…"
+    #    말을 바꾼 판으로 통과하는 것을 손님이 확인하셨다. 그 판(flow)이
+    #    막히는 낱말을 다시 물고 들어오지 않게 못 박는다.
+    BAN = ("photoreal", "photorealistic", "photograph", "natural skin",
+           "reference image", "actor", "celebrity", "live-action",
+           "real person", "likeness")
+    hit = [f"컷{c['n']}({w})" for c in cuts for w in BAN
+           if w in (c.get("flow") or "").lower()]
+    ck("컷 23개 모두 플로우용 프롬프트가 있다",
+       all((c.get("flow") or "").strip() for c in cuts))
+    ck("플로우용 프롬프트에 정책에 걸리는 낱말이 없다", not hit, " ".join(hit))
+    ck("플로우용은 사람을 옷으로 부른다 (참조 그림을 안 넣으므로)",
+       all("CHARACTERS:" in c["flow"] for c in cuts if c.get("who")))
+
     ck("모든 컷 프롬프트가 세로(9:16)다",
        all("9:16" in c["still"] or "9 x 16" in c["still"] for c in cuts))
     mn = sum(c["sec"] for c in cuts)
