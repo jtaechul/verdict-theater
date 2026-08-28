@@ -81,14 +81,14 @@ CUTS = [
                "frozen with a ladle still in one hand while her husband steps past "
                "her without stopping"),
     dict(n=5, sec=8, who=["아내", "남편"],
-         turns=[("아내", "일 년…? 그럼 내가 아침마다 밥 차릴 때도."),
+         turns=[("아내", "일 년? …나만 몰랐네."),
                 ("남편", "도장이나 찍어. 애들한텐 니가 말하고.")],
          scene="the living room, the wife stands still in the middle of the room "
                "while her husband picks his car key up off the low table"),
 
     # ── 2막 기각, 그리고 그날 ────────────────────────────────────
     dict(n=6, sec=4, who=["남편"],
-         turns=[("남편", "…기각? 이게 기각이라고?")],
+         turns=[("남편", "기각? 내가 왜 져.")],
          scene="a courthouse corridor, the husband stands by a tall window and "
                "crushes a folded sheet of paper in one hand"),
     dict(n=7, sec=4, who=["남편"],
