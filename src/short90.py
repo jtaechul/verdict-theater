@@ -76,6 +76,17 @@ class Short90Error(RuntimeError):
     pass
 
 
+def turns_of(c):
+    """이 컷에서 말하는 차례. 옛 대본(turns 없음)도 받아 준다."""
+    if c.get("turns"):
+        return [(w, t) for w, t in c["turns"]]
+    return [(c.get("kind") or "나레이션", c.get("text") or "")]
+
+
+def is_narr(c):
+    return all(w == "나레이션" for w, _ in turns_of(c))
+
+
 def load():
     if not DOC.exists():
         raise Short90Error("data/series/S90.json 이 없다 — "
@@ -149,21 +160,37 @@ def voices(doc):
     made = 0
     for c in doc["cuts"]:
         out = d / f"c{c['n']:02d}.wav"
-        who = c["kind"]
-        voice = VOICE.get(who) or VOICE["나레이션"]
-        rate = NARR_RATE if who == "나레이션" else 1.0
-        sig = reuse.sig_of(c["text"], voice, rate)
+        turns = turns_of(c)
+        plan = [(w, t, VOICE.get(w) or VOICE["나레이션"],
+                 NARR_RATE if w == "나레이션" else 1.0) for w, t in turns]
+        sig = reuse.sig_of(*[f"{w}|{t}|{v}|{r}" for w, t, v, r in plan])
         ok, why = reuse.can_reuse(out, sig)
-        print(f"  컷{c['n']:>2} [{who}] {c['text'][:30]}")
+        print(f"  컷{c['n']:>2} [{'·'.join(w for w, _ in turns)}] {c['text'][:30]}")
         if ok:
             print("    (그대로다 — 건너뛴다)")
             made += 1
             continue
         if why:
             print(f"    ⚠️ {why} — 다시 만든다")
-        got = tts.say(c["text"], voice, rate, 0.0, out)
-        if not got or not Path(got).exists():
-            raise Short90Error(f"컷{c['n']} 소리를 못 만들었다")
+        # ⭐ 한 컷 안에서 두 사람이 주고받으면 목소리를 따로 만들어 이어 붙인다
+        parts = []
+        for i, (w, t, v, r) in enumerate(plan):
+            one = d / f"c{c['n']:02d}_{i}.wav"
+            got = tts.say(t, v, r, 0.0, one)
+            if not got or not Path(got).exists():
+                raise Short90Error(f"컷{c['n']} {w} 소리를 못 만들었다")
+            parts.append(Path(got))
+        if len(parts) == 1:
+            parts[0].replace(out)
+        else:
+            lst = d / f"c{c['n']:02d}.txt"
+            lst.write_text("".join(f"file '{x.name}'\n" for x in parts),
+                           encoding="utf-8")
+            run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0",
+                 "-i", str(lst), "-c", "copy", str(out)])
+            for x in parts:
+                x.unlink(missing_ok=True)
+            lst.unlink(missing_ok=True)
         reuse.stamp(out, sig)
         made += 1
         print(f"    ✅ {out.name} ({dur_of(out):.1f}초)")
@@ -197,8 +224,8 @@ def fit(d, text, size_max, max_w, max_h):
     return f, wrap(d, text, f, max_w)[:SUB_LINES], SUB_MIN
 
 
-def overlay(c, out):
-    """컷 하나의 자막·이름표·채널 이름을 투명 그림 한 장으로 그린다."""
+def overlay(c, out, turn=None):
+    """컷 하나(또는 그 안의 한 차례)의 자막·이름표를 투명 그림으로 그린다."""
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
 
     # 아래쪽 어둡게 — 그림 위에 흰 글자를 얹어도 읽히게 (서서히 진해진다)
@@ -220,13 +247,15 @@ def overlay(c, out):
     d.text((W - SIDE, MARK_Y), CHANNEL, font=mf, fill=(255, 255, 255, 168),
            anchor="ra")
 
-    # 이름표 — 대사 컷만 (나레이션은 말하는 사람이 없다)
-    if c["kind"] != "나레이션":
+    who, text = turn if turn else ("나레이션" if is_narr(c) else c["kind"], c["text"])
+
+    # 이름표 — 대사만 (나레이션은 말하는 사람이 없다)
+    if who != "나레이션":
         nf = ImageFont.truetype(str(FONT_NAME), NAME_SIZE)
-        d.text((W // 2, NAME_Y), c["kind"], font=nf, fill=GOLD, anchor="ma")
+        d.text((W // 2, NAME_Y), who, font=nf, fill=GOLD, anchor="ma")
 
     # 자막
-    f, lines, size = fit(d, c["text"], SUB_MAX, W - SIDE * 2, SUB_BOT - SUB_TOP)
+    f, lines, size = fit(d, text, SUB_MAX, W - SIDE * 2, SUB_BOT - SUB_TOP)
     step = size * SUB_GAP
     y = SUB_TOP + max(0, ((SUB_BOT - SUB_TOP) - len(lines) * step) / 2)
     for ln in lines:
@@ -239,7 +268,12 @@ def overlay(c, out):
 
 
 # ── ④ 조립 ────────────────────────────────────────────────────
-def cut_video(c, still, voice, clip, ov, out):
+def syl(t):
+    """한국어 글자 수 (자막이 떠 있을 시간을 나누는 잣대)."""
+    return max(1, len([x for x in str(t) if not x.isspace()]))
+
+
+def cut_video(c, still, voice, clip, ovs, out):
     """컷 하나 → mp4. 손으로 만든 영상(clip)이 있으면 그것을 쓰고, 없으면 그림.
 
     ⭐⭐ 2026-08-27 손님: "이미지는 중간중간 섞여 있고 동영상도 있어야 돼."
@@ -250,7 +284,7 @@ def cut_video(c, still, voice, clip, ov, out):
            (영상을 올렸어도 그 소리는 안 쓴다. 그래야 나레이션이 안 묻힌다)
     """
     clip = Path(clip) if clip and Path(clip).exists() else None
-    talks = c["kind"] != "나레이션"
+    talks = not is_narr(c)
     use_clip_audio = bool(clip and talks and has_audio(clip))
     if use_clip_audio:
         # ⚠️ 말하는 길이는 **영상이 정한다.** 대본의 초에 맞춰 늘이거나 줄이면
@@ -284,8 +318,30 @@ def cut_video(c, still, voice, clip, ov, out):
               f"crop={sw}:{sh},"
               f"zoompan=z='{z}':d={frames}:x='iw/2-(iw/zoom/2)'"
               f":y='ih/2-(ih/zoom/2)':s={W}x{H}:fps={FPS}[bg];")
-    run(["ffmpeg", "-y", "-v", "error", *src, "-i", str(ov), *snd,
-         "-filter_complex", vf + "[bg][1:v]overlay=0:0:format=auto[v]",
+    # ⭐ 한 컷 안에서 두 사람이 주고받으면 **자막도 차례대로** 바뀌어야 한다.
+    #    말한 글자 수에 맞춰 시간을 나누고, 그 동안만 그 자막을 얹는다.
+    turns = turns_of(c)
+    tot = sum(syl(t) for _, t in turns)
+    at, chain, t0 = [], "[bg]", 0.0
+    for i, (_, t) in enumerate(turns):
+        t1 = sec if i == len(turns) - 1 else t0 + sec * syl(t) / tot
+        at.append((t0, t1))
+        t0 = t1
+    for i, (a, b) in enumerate(at):
+        nxt = f"[v{i}]" if i < len(at) - 1 else "[v]"
+        chain_in = chain
+        vf += (f"{chain_in}[{i + 1}:v]overlay=0:0:format=auto"
+               f":enable='between(t,{a:.3f},{b:.3f})'{nxt};")
+        chain = nxt
+    vf = vf.rstrip(";")
+    ovin = []
+    for o in ovs:
+        ovin += ["-i", str(o)]
+    # 소리 입력 번호는 화면(0) + 자막 장수 뒤부터다
+    if amap != "0:a":
+        amap = f"{1 + len(ovs)}:a"
+    run(["ffmpeg", "-y", "-v", "error", *src, *ovin, *snd,
+         "-filter_complex", vf,
          "-map", "[v]", "-map", amap, "-af", "apad",
          "-t", f"{sec:.3f}", "-r", str(FPS),
          "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
@@ -312,14 +368,15 @@ def build(doc):
             raise Short90Error(f"컷{n} 그림이 없다 — 먼저 stills 를 돌린다")
         if not voice.exists():
             raise Short90Error(f"컷{n} 소리가 없다 — 먼저 voice 를 돌린다")
-        ov = overlay(c, OUT / "ov" / f"c{n:02d}.png")
+        ovs = [overlay(c, OUT / "ov" / f"c{n:02d}_{i}.png", t)
+               for i, t in enumerate(turns_of(c))]
         out = parts_d / f"c{n:02d}.mp4"
-        sec = cut_video(c, still, voice, clip if clip.exists() else None, ov, out)
+        sec = cut_video(c, still, voice, clip if clip.exists() else None, ovs, out)
         total += sec
         parts.append(out)
         if not clip.exists():
             mark = "그림"
-        elif c["kind"] == "나레이션":
+        elif is_narr(c):
             mark = "영상 + 우리 나레이션"
         else:
             mark = "영상 (그 안에서 말한다)" if has_audio(clip) else "영상 + 우리 목소리"

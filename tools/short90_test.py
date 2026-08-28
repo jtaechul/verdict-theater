@@ -59,20 +59,20 @@ def main():
     cuts = doc["cuts"]
 
     print("① 대본")
-    ck("컷이 23개다", len(cuts) == 23, len(cuts))
+    ck("컷이 20개다", len(cuts) == 20, len(cuts))
     ck("컷 번호가 1부터 빠짐없이 이어진다",
        [c["n"] for c in cuts] == list(range(1, len(cuts) + 1)))
     ck("컷마다 화면에 뜰 글이 있다", all(c.get("text", "").strip() for c in cuts))
     ck("컷마다 그림 프롬프트가 있다", all(c.get("still", "").strip() for c in cuts))
     # ⭐ 2026-08-27 손님: "이미지는 중간중간 섞여 있고 동영상도 있어야 돼."
     #    스물세 컷 **전부** 영상으로 올릴 수 있어야 한다
-    ck("컷 23개 모두 손으로 만들 영상 프롬프트가 있다",
+    ck("컷 전부 손으로 만들 영상 프롬프트가 있다",
        all(c.get("veo", "").strip() for c in cuts))
-    ck("대사 컷 영상 프롬프트에는 그 대사가 들어 있다",
-       all(c["text"] in c["veo"] for c in cuts if c["kind"] != "나레이션"))
+    ck("대사 컷 영상 프롬프트에 그 컷의 대사가 전부 들어 있다",
+       all(all(t in c["veo"] for _, t in c["turns"]) for c in cuts if not c["narr"]))
     ck("나레이션 컷 영상 프롬프트는 아무도 말하지 않게 시킨다",
-       all("nobody speaks" in c["veo"] for c in cuts if c["kind"] == "나레이션"))
-    say = [c for c in cuts if c["kind"] != "나레이션"]
+       all("nobody speaks" in c["veo"] for c in cuts if c["narr"]))
+    say = [c for c in cuts if not c["narr"]]
     ck("대사 컷의 말하는 사람이 목소리표에 다 있다",
        all(c["kind"] in S9.VOICE for c in say),
        {c["kind"] for c in say} - set(S9.VOICE))
@@ -101,7 +101,7 @@ def main():
            "real person", "likeness")
     hit = [f"컷{c['n']}({w})" for c in cuts for w in BAN
            if w in (c.get("flow") or "").lower()]
-    ck("컷 23개 모두 플로우용 프롬프트가 있다",
+    ck("컷 전부 플로우용 프롬프트가 있다",
        all((c.get("flow") or "").strip() for c in cuts))
     ck("플로우용 프롬프트에 정책에 걸리는 낱말이 없다", not hit, " ".join(hit))
     ck("플로우용은 사람을 옷으로 부른다 (참조 그림을 안 넣으므로)",
@@ -117,12 +117,13 @@ def main():
     d = ImageDraw.Draw(Image.new("RGBA", (S9.W, S9.H)))
     over = []
     for c in cuts:
-        f, lines, size = S9.fit(d, c["text"], S9.SUB_MAX, S9.W - S9.SIDE * 2,
+      for _, txt in c["turns"]:
+        f, lines, size = S9.fit(d, txt, S9.SUB_MAX, S9.W - S9.SIDE * 2,
                                 S9.SUB_BOT - S9.SUB_TOP)
         wide = max((d.textlength(x, font=f) for x in lines), default=0)
         if len(lines) > S9.SUB_LINES or wide > S9.W - S9.SIDE * 2 + 1:
             over.append(f"컷{c['n']}({len(lines)}줄 {wide:.0f}px)")
-    ck("컷 23개 자막이 모두 세 줄·칸 안에 들어간다", not over, ", ".join(over))
+    ck("자막이 모두 세 줄·칸 안에 들어간다", not over, ", ".join(over))
     ck("자막 칸이 쇼츠 단추 자리를 안 침범한다", S9.SUB_BOT <= 1620, S9.SUB_BOT)
 
     print("\n③ 한 편 길이가 90초 언저리인가 (붙이지 않고 셈으로 먼저)")
@@ -142,7 +143,7 @@ def main():
             fake_wav(tmp / "voice" / f"c{c['n']:02d}.wav", say_sec[c["n"]])
         # ⑤ 손으로 만든 영상이 섞인 상황 — 대사 컷(소리 있음)·나레이션 컷(소리 있음)
         (tmp / "clips").mkdir(parents=True, exist_ok=True)
-        for n, d in ((4, 6), (11, 5)):
+        for n, d in ((4, 6), (9, 5)):
             subprocess.run(["ffmpeg", "-y", "-v", "error",
                             "-f", "lavfi", "-i",
                             f"color=c=red:s=720x1280:d={d}:r={S9.FPS}",
@@ -152,7 +153,7 @@ def main():
                             str(tmp / "clips" / f"c{n:02d}.mp4")], check=True)
         hand = tmp / "clips" / "c04.mp4"
         # 붙이는 것은 컷 몇 개만 — 첫 컷·대사 컷·손영상 컷·가장 긴 컷·마지막 컷
-        pick = {1, 4, 11, 16, 23}
+        pick = {1, 4, 9, 14, 20}
         sample = dict(doc)
         sample["cuts"] = [c for c in cuts if c["n"] in pick]
         S9.build(sample)
@@ -163,7 +164,7 @@ def main():
         #    안 되니까). 셈에도 그대로 반영한다 — 안 그러면 시험이 틀린 값을 본다.
         hand_sec = {4: 6.0}
         exp = sum(hand_sec.get(c["n"]) if (c["n"] in hand_sec
-                                           and c["kind"] != "나레이션")
+                                           and not c["narr"])
                   else max(c["sec"], say_sec[c["n"]] + S9.PAD)
                   for c in sample["cuts"])
         ck("붙인 길이가 셈과 맞는다 (±1초)", abs(got - exp) <= 1.0,
@@ -181,11 +182,11 @@ def main():
            abs(S9.dur_of(tmp / "parts" / "c04.mp4") - 6.0) <= 0.35,
            f"{S9.dur_of(tmp / 'parts' / 'c04.mp4'):.2f}초")
         # 나레이션 컷은 영상을 올렸어도 **우리 나레이션** 길이로 간다
-        n11 = [c for c in cuts if c["n"] == 11][0]
-        want11 = max(n11["sec"], say_sec[11] + S9.PAD)
+        n9 = [c for c in cuts if c["n"] == 9][0]
+        want9 = max(n9["sec"], say_sec[9] + S9.PAD)
         ck("나레이션 컷은 영상을 올려도 우리 나레이션 길이를 지킨다",
-           abs(S9.dur_of(tmp / "parts" / "c11.mp4") - want11) <= 0.35,
-           f"{S9.dur_of(tmp / 'parts' / 'c11.mp4'):.2f}초 / 바람 {want11:.2f}초")
+           abs(S9.dur_of(tmp / "parts" / "c09.mp4") - want9) <= 0.35,
+           f"{S9.dur_of(tmp / 'parts' / 'c09.mp4'):.2f}초 / 바람 {want9:.2f}초")
 
     print("\n" + "─" * 60)
     if BAD:

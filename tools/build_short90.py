@@ -88,6 +88,25 @@ def who_line(names):
     return ", ".join(EN.get(k, k) for k in names)
 
 
+def veo_sec(c):
+    """Veo·플로우가 받는 길이는 4·6·8초뿐이다."""
+    return 4 if c["sec"] <= 4 else (6 if c["sec"] <= 6 else 8)
+
+
+def kind_of(c):
+    """이 컷을 대표하는 사람 (첫 번째로 말하는 사람)."""
+    return c["turns"][0][0]
+
+
+def is_narr(c):
+    return all(w == "나레이션" for w, _ in c["turns"])
+
+
+def text_of(c):
+    """화면에 뜰 글 전부 (여러 사람이면 이어 붙인다)."""
+    return " / ".join(t for _, t in c["turns"])
+
+
 def still_prompt(c):
     who = c.get("who") or []
     body = [S.HEAD_FIX.rstrip(".") + ". A single still frame, vertical 9:16 portrait."]
@@ -117,9 +136,9 @@ def veo_prompt(c):
        영상으로 올릴지는 손님이 고른다. 안 올린 컷만 그림으로 간다.
     """
     who = c.get("who") or []
-    speaker = c["kind"]
-    talks = speaker != "나레이션"
-    sec = 4 if c["sec"] <= 4 else (6 if c["sec"] <= 6 else 8)
+    talks = not is_narr(c)
+    speaker = kind_of(c)
+    sec = veo_sec(c)
     body = [f"{S.HEAD_FIX} {sec}-second single continuous take, "
             f"vertical portrait format (9 x 16)."]
     if who:
@@ -129,14 +148,17 @@ def veo_prompt(c):
                 f"first frame.")
     body.append(FRAMING)
     if talks:
-        body.append(f"ACTION: {c['scene']}. {EN.get(speaker, speaker)}'s lips move in "
-                    f"exact sync with the Korean line below; nobody else speaks or "
-                    f"moves their lips.")
-        body.append("DIALOGUE: [LANGUAGE: KOREAN] one voice only")
-        body.append(f'  {EN.get(speaker, speaker)} (in Korean): "{c["text"]}"')
-        v = VOICE_KO.get(speaker)
-        if v:
-            body.append(f"VOICE: {EN.get(speaker, speaker)} — {v}.")
+        names = " then ".join(EN.get(w, w) for w, _ in c["turns"])
+        body.append(f"ACTION: {c['scene']}. {names} speak in that order, each one's "
+                    f"lips moving only during their own line and staying closed and "
+                    f"still while the other speaks.")
+        body.append("DIALOGUE: [LANGUAGE: KOREAN] one voice at a time, in this order")
+        for w, t in c["turns"]:
+            body.append(f'  {EN.get(w, w)} (in Korean): "{t}"')
+        for w, _ in c["turns"]:
+            v = VOICE_KO.get(w)
+            if v:
+                body.append(f"VOICE: {EN.get(w, w)} — {v}.")
         body.append("AUDIO: the person in the shot says the line themselves with their "
                     "lips moving in sync, spoken in natural, fluent and highly "
                     "authentic everyday Korean by a native speaker with standard Seoul "
@@ -219,9 +241,8 @@ FLOW_STYLE = ("STYLE: one unbroken take in one place, naturalistic cinematic dra
 def flow_prompt(c):
     """구글 플로우에 그대로 붙일 판 (인물 그림을 안 넣는다)."""
     who = c.get("who") or []
-    speaker = c["kind"]
-    talks = speaker != "나레이션"
-    sec = 4 if c["sec"] <= 4 else (6 if c["sec"] <= 6 else 8)
+    talks = not is_narr(c)
+    sec = veo_sec(c)
     body = [f"{FLOW_HEAD} {sec}-second single continuous take, "
             f"vertical portrait format (9 x 16)."]
     if who:
@@ -235,11 +256,13 @@ def flow_prompt(c):
                 "the frame, the lower fifth left plain because a caption will sit "
                 "there.")
     if talks:
-        tag = FLOW_WHO.get(speaker, (speaker, speaker))[0]
-        body.append(f"ACTION: only {tag} speaks; anyone else stays silent with "
-                    f"their mouth closed.")
-        body.append("DIALOGUE: [LANGUAGE: KOREAN]")
-        body.append(f'  {tag}: "{c["text"]}"')
+        tags = [FLOW_WHO.get(w, (w, w))[0] for w, _ in c["turns"]]
+        body.append(f"ACTION: {' then '.join(tags)} speak in that order, each one's "
+                    f"mouth moving only during their own line and closed while the "
+                    f"other speaks.")
+        body.append("DIALOGUE: [LANGUAGE: KOREAN] one voice at a time, in this order")
+        for (w, t), tag in zip(c["turns"], tags):
+            body.append(f'  {tag}: "{t}"')
         body.append("AUDIO: the line is said in natural, fluent everyday Korean with "
                     "standard Seoul intonation, uneven rhythm and short breaths, with "
                     "only quiet room tone underneath. Only that line is said and "
@@ -272,8 +295,10 @@ def main():
     cuts = []
     for c in story.CUTS:
         cuts.append({
-            "n": c["n"], "kind": c["kind"], "sec": c["sec"],
-            "who": c.get("who") or [], "text": c["text"], "scene": c["scene"],
+            "n": c["n"], "kind": kind_of(c), "sec": c["sec"],
+            "narr": is_narr(c),
+            "turns": [list(t) for t in c["turns"]],
+            "who": c.get("who") or [], "text": text_of(c), "scene": c["scene"],
             "still": still_prompt(c),
             "veo": veo_prompt(c),
             "flow": flow_prompt(c),
@@ -284,7 +309,7 @@ def main():
     OUT.write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n",
                    encoding="utf-8")
 
-    narr = sum(1 for c in cuts if c["kind"] == "나레이션")
+    narr = sum(1 for c in cuts if c["narr"])
     print(f"■ {OUT.relative_to(ROOT)} — {len(cuts)}컷 "
           f"(나레이션 {narr} · 대사 {len(cuts) - narr}) · 최소 "
           f"{sum(c['sec'] for c in cuts):.0f}초")
