@@ -12,6 +12,13 @@
     ⚠️ 사람 생김새·옷은 여기 안 적는다 — build_short90.py 의 PEOPLE 한 곳이다.
        두 곳에 적으면 한쪽만 고쳐서 사람이 컷마다 달라진다.
 
+⭐⭐⭐ 대사 쓰는 법 — 네 줄 (2026-08-28 확정 · 어기면 다시 쓴다)
+    ① 그 사람이 그 순간 **아는 것만** 말한다. 모르는 걸 아는 척하는 대사를 안 쓴다
+    ② 설명하지 않고 **반응**만 한다. 숫자·날짜·사실은 나레이션이 지고 대사는 감정만
+    ③ 말을 짧게 자르고 끝을 흐린다. 문장을 다 맺지 않는 것이 실제 사람 말이다
+    ④ 사람마다 말버릇이 있다 — 아내는 되묻고, 남편은 끊어 던지고,
+       내연녀는 예의 바르게 찌른다
+
 대사 규칙 (tools/talk_check.py 가 검사한다)
     · 대사는 사실을 나르지 않는다 — 숫자·날짜는 **나레이션**이 진다
     · 토막내지 않는다. 한 사람이 두 문장 넘게 말하지 않는다
@@ -52,15 +59,17 @@ CUTS = [
          scene="the wife has just opened her front door and sees the woman standing "
                "behind her husband on the entry step"),
     dict(n=4, kind="아내", sec=3.1, who=["아내", "남편", "내연녀"],
-         text="어, 손님 오셨어? …여보. 이 사람 누구냐고.",
+         # ⚠️ 손님: "어 손님 오셨어? 이게 말이 되는 대사야?" — 맞다. 아내는 그 여자가
+         #    누군지 모른다. 모르는 걸 아는 척하는 대사는 안 쓴다.
+         text="여보… 이 사람 누구야?",
          scene="the wife stops half way through taking off one shoe and straightens up "
                "without looking away from the woman"),
     dict(n=5, kind="남편", sec=2.6, who=["남편", "내연녀"],
-         text="일 년 됐어. 숨길 생각도 없었고.",
+         text="일 년 됐어. 이제 와서 뭘 물어.",
          scene="the husband gestures the woman toward the sofa and she sits down and "
                "crosses her legs"),
     dict(n=6, kind="아내", sec=2.9, who=["아내"],
-         text="일 년? 내가 아침마다 당신 밥 차릴 때?",
+         text="일 년…? 그럼 내가 아침마다 밥 차릴 때도.",
          scene="the wife stands still in the middle of the living room, jaw tight, "
                "eyes fixed on something just off camera"),
     dict(n=7, kind="남편", sec=3.1, who=["남편"],
@@ -74,7 +83,7 @@ CUTS = [
          scene="a courthouse corridor, the husband stands by a tall window and crushes "
                "a folded sheet of paper in one hand"),
     dict(n=9, kind="남편", sec=3.8, who=["남편"],
-         text="야. 이겼다고 좋아하지 마. 나 아직 안 끝났으니까.",
+         text="좋아하지 마. 아직 안 끝났어.",
          scene="the husband stops at the top of a stone staircase and looks back down "
                "over his shoulder"),
     dict(n=10, kind="나레이션", sec=6.3, who=["남편", "내연녀"],
@@ -99,7 +108,7 @@ CUTS = [
                "her ear, the room dark except for one lamp"),
     dict(n=14, kind="내연녀", sec=3.3, who=["아내", "내연녀"],
          # ⚠️ 상주는 아내다. 내연녀는 찾아온 쪽이라 "우세요" 가 아니다 (2026-08-26 고침)
-         text="인사만 하고 갈게요. 근데 그 사람 거, 이제 다 제 거예요.",
+         text="인사만 드리고 갈게요. …나머지는 나중에 얘기해요.",
          scene="the other woman steps into the funeral hall where the wife is keeping "
                "vigil, and stops just inside the doorway"),
 
@@ -110,13 +119,13 @@ CUTS = [
          scene="a lawyer's office, the lawyer spreads several documents open on the "
                "desk while the wife leans in over them"),
     dict(n=16, kind="아내", sec=5.6, who=["아내"],
-         text="우리 애, 등록금이 없어서 휴학시켰어요. 근데 매달 이천만 원씩 부었다고요?",
+         text="우리 애 등록금이 없어서 휴학시켰는데… 매달 이천만 원씩이요?",
          scene="the wife cannot take her eyes off the papers in front of her, one hand "
                "flat on the desk"),
 
     # ── 5막 반전 ────────────────────────────────────────────────
     dict(n=17, kind="내연녀", sec=4.3, who=["내연녀"],
-         text="저는 아무것도 몰라요. 그 사람이 찍으라길래 찍은 거고요.",
+         text="전 몰라요. 찍으라니까 찍은 거예요.",
          scene="a courtroom, the other woman stands at the table and lifts her chin, "
                "looking straight ahead"),
     dict(n=18, kind="아내", sec=2.3, who=["아내"],
@@ -124,11 +133,11 @@ CUTS = [
          scene="the wife holds a single document out at arm's length across the "
                "courtroom table"),
     dict(n=19, kind="아내", sec=3.6, who=[],
-         text="이천십삼년 구월. 그 인간 이혼 재판 진 달이야.",
+         text="이 날짜… 그 사람 재판 진 날이야.",
          scene="a very close view of a printed document held in a hand, the paper "
                "filling the frame, everything soft except the paper"),
     dict(n=20, kind="아내", sec=3.4, who=["아내"],
-         text="몰랐다면서. 어떻게 진 날 바로 도장을 찍어?",
+         text="몰랐다면서. 근데 어떻게 그날 바로 찍어?",
          scene="the wife takes one step closer, still holding the document down at "
                "her side"),
     dict(n=21, kind="나레이션", sec=2.8, who=["내연녀"],
