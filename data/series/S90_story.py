@@ -81,7 +81,7 @@ CUTS = [
                "frozen with a ladle still in one hand while her husband steps past "
                "her without stopping"),
     dict(n=5, sec=8, who=["아내", "남편"],
-         turns=[("아내", "일 년? …나만 몰랐네."),
+         turns=[("아내", "지금 이게 무슨 말 같지도 않은 소리야."),
                 ("남편", "도장이나 찍어. 애들한텐 니가 말하고.")],
          scene="the living room, the wife stands still in the middle of the room "
                "while her husband picks his car key up off the low table"),
