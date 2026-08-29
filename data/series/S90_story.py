@@ -55,109 +55,100 @@ YT_TITLE = "남편이 죽고 남은 건 빚 6억, 재산 32억은 내연녀 앞�
 #    사라지고, 진짜 대화가 되고, 만들 클립도 14개에서 10개로 줄었다.
 #    그리고 나레이션이 지던 것 셋(기각·32억)을 사람 입으로 옮겨
 #    대사 비중을 36% → 52% 로 올렸다.
+# ⭐⭐⭐ 2026-08-28 — 겹치는 나레이션 컷을 뺐다 (문장은 한 글자도 안 줄였다)
+#    손님: "굳이 지금 정상적으로 멀쩡하게 있는 나레이션을 왜 빼?"
+#    빼는 것은 **대사가 이미 말한 것**뿐이다. 목소리는 겹칠 수 없으므로 같은
+#    사실을 나레이션과 대사가 두 번 말하면 그만큼 길어지기만 한다.
+#      뺀 것 — 32억(변호사가 말한다) · 병원지분 특약(변호사) ·
+#             보험 아홉 건(변호사) · "대답하지 못했습니다"(화면이 보여 준다)
+#    20컷 → 16컷 · 139초 → 약 117초.
 CUTS = [
     # ── 훅 ─────────────────────────────────────────────────────
-    dict(n=1, sec=5.6, who=["아내"],
+    dict(n=1, sec=9.3, who=["아내"],
          turns=[("나레이션", "2017년 2월, 남편이 죽었습니다. 그런데 남편 통장에 "
                             "남은 것은 빚 6억뿐이었습니다.")],
          scene="the wife sits at a bank counter and looks down at a bankbook lying "
                "open in front of her, her hand still resting on it"),
-    dict(n=2, sec=4.8, who=["내연녀"],
-         turns=[("나레이션", "남편의 재산 32억은 이미 내연녀 앞으로 전부 넘어가 "
-                            "있었습니다.")],
-         scene="the other woman stands alone in a quiet hospital corridor, half "
-               "turned toward the camera, calm and unhurried"),
 
     # ── 1막 배신 ────────────────────────────────────────────────
-    dict(n=3, sec=5.1, who=["아내", "남편", "내연녀"],
+    dict(n=2, sec=8.6, who=["아내", "남편", "내연녀"],
          turns=[("나레이션", "5년 전인 2012년 가을, 결혼 20년 된 남편이 낯선 여자를 "
                             "집으로 데려왔습니다.")],
          scene="the wife has just opened her front door and sees the woman standing "
                "behind her husband on the entry step"),
-    dict(n=4, sec=8, who=["아내", "남편", "내연녀"],
+    dict(n=3, sec=8, who=["아내", "남편", "내연녀"],
          turns=[("아내", "여보… 이 사람 누구야?"),
                 ("남편", "일 년 됐어. 이제 와서 뭘 물어.")],
          scene="just inside the apartment entrance in the evening, the wife stands "
                "frozen with a ladle still in one hand while her husband steps past "
                "her without stopping"),
-    dict(n=5, sec=8, who=["아내", "남편"],
-         turns=[("아내", "지금 이게 무슨 말 같지도 않은 소리야."),
-                ("남편", "도장이나 찍어. 애들한텐 니가 말하고.")],
+    dict(n=4, sec=8, who=["아내", "남편"],
+         # ⚠️ 8초 안에 두 사람이 다 말해야 한다 — 남편 쪽을 한 마디로 줄였다
+         turns=[("아내", "이게 무슨 말 같지도 않은 소리야."),
+                ("남편", "도장이나 찍어.")],
          scene="the living room, the wife stands still in the middle of the room "
                "while her husband picks his car key up off the low table"),
 
     # ── 2막 기각, 그리고 그날 ────────────────────────────────────
-    dict(n=6, sec=4, who=["남편"],
+    dict(n=5, sec=4, who=["남편"],
          turns=[("남편", "기각? 내가 왜 져.")],
          scene="a courthouse corridor, the husband stands by a tall window and "
                "crushes a folded sheet of paper in one hand"),
-    dict(n=7, sec=4, who=["남편"],
+    dict(n=6, sec=4, who=["남편"],
          turns=[("남편", "좋아하지 마. 아직 안 끝났어.")],
          scene="the husband stops at the top of a stone staircase and looks back "
                "down over his shoulder"),
-    dict(n=8, sec=6.3, who=["남편", "내연녀"],
+    dict(n=7, sec=9.7, who=["남편", "내연녀"],
          turns=[("나레이션", "그 판결이 난 2013년 9월, 남편은 바로 그날 자기 재산을 "
                             "내연녀 앞으로 넘기기 시작했습니다.")],
          scene="a quiet cafe table, the husband slides a thin stack of documents "
                "across the table toward the other woman"),
-    dict(n=9, sec=5.5, who=["내연녀"],
-         turns=[("나레이션", "죽으면 병원 지분 10억을 내연녀가 받도록, 계약서에 "
-                            "특약까지 넣었습니다.")],
-         scene="a close view of a woman's hand pressing a red seal onto the bottom "
-               "of a document lying on a table, the paper filling most of the frame"),
-    dict(n=10, sec=4.5, who=[],
-         turns=[("나레이션", "사망보험 아홉 건도 받을 사람을 전부 내연녀로 "
-                            "바꿨습니다.")],
-         scene="a desk with a thick stack of blank insurance policy folders squared "
-               "up under a desk lamp, nobody in frame"),
 
     # ── 3막 죽음 ────────────────────────────────────────────────
-    dict(n=11, sec=5.0, who=["아내"],
+    dict(n=8, sec=6.7, who=["아내"],
          turns=[("나레이션", "3년 뒤, 남편은 내연녀와 살던 아파트에서 떨어져 "
                             "죽었습니다.")],
          scene="before dawn, the wife sits on the edge of the bed holding a phone to "
                "her ear, the room dark except for one lamp"),
-    dict(n=12, sec=4, who=["아내", "내연녀"],
+    dict(n=9, sec=6, who=["아내", "내연녀"],
          turns=[("내연녀", "인사만 드리고 갈게요. …나머지는 나중에 얘기해요.")],
          scene="the other woman steps into the funeral hall where the wife is "
                "keeping vigil, and stops just inside the doorway"),
 
     # ── 4막 32억 ────────────────────────────────────────────────
-    dict(n=13, sec=6, who=["아내", "변호사"],
+    dict(n=10, sec=6, who=["아내", "변호사"],
          turns=[("변호사", "병원 지분에 보험금에… 다 합쳐서 삼십이억입니다.")],
-         scene="a lawyer's office, the lawyer spreads several documents open on the "
-               "desk while the wife leans in over them"),
-    dict(n=14, sec=6, who=["아내"],
+         scene="a law office, the attorney spreads several documents open on "
+               "the desk while the wife leans in over them"),
+    dict(n=11, sec=8, who=["아내"],
          turns=[("아내", "우리 애 등록금이 없어서 휴학시켰는데… 매달 이천만 "
                         "원씩이요?")],
          scene="the wife cannot take her eyes off the papers in front of her, one "
                "hand flat on the desk"),
 
     # ── 5막 반전 ────────────────────────────────────────────────
-    dict(n=15, sec=8, who=["아내", "내연녀"],
-         turns=[("내연녀", "전 몰라요. 찍으라니까 찍은 거예요."),
-                ("아내", "몰라? 그럼 이 날짜는 뭔데.")],
+    dict(n=12, sec=8, who=["아내", "내연녀"],
+         # ⚠️ 8초 안에 두 사람이 다 말해야 한다 — 두 줄 다 한 마디씩 줄였다
+         turns=[("내연녀", "전 몰라요. 찍으라니까 찍었어요."),
+                ("아내", "몰라? 이 날짜는 뭔데.")],
          scene="a courtroom, the other woman stands at the table with her chin up "
                "while the wife holds a single document out across the table"),
-    dict(n=16, sec=4, who=[],
+    dict(n=13, sec=4, who=[],
          turns=[("아내", "이 날짜… 그 사람 재판 진 날이야.")],
          scene="a very close view of a printed document held in a hand, the paper "
                "filling the frame, everything soft except the paper"),
-    dict(n=17, sec=4, who=["아내"],
+    dict(n=14, sec=6, who=["아내"],
          turns=[("아내", "몰랐다면서. 근데 어떻게 그날 바로 찍어?")],
          scene="the wife takes one step closer, still holding the document down at "
                "her side"),
-    dict(n=18, sec=2.8, who=["내연녀"],
-         turns=[("나레이션", "내연녀는 대답하지 못했습니다.")],
-         scene="the other woman lowers her eyes and looks away to one side"),
 
     # ── 결말 ────────────────────────────────────────────────────
-    dict(n=19, sec=5.8, who=[],
+    dict(n=15, sec=9.5, who=[],
          turns=[("나레이션", "2020년 7월, 법원은 내연녀에게 10억을 아내와 "
                             "아이들에게 돌려주라고 판결했습니다.")],
          scene="the wide stone front steps of a courthouse in daylight, empty, seen "
                "from below"),
-    dict(n=20, sec=5.8, who=["아내", "딸"],
+    dict(n=16, sec=8.2, who=["아내", "딸"],
          turns=[("나레이션", "아내가 떠안을 뻔했던 빚 6억도 갚지 않게 됐습니다. "
                             "실제로 있었던 사건입니다.")],
          scene="the wife and her grown daughter walk down the courthouse steps side "

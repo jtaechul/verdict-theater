@@ -31,7 +31,7 @@ OUT = ROOT / "data" / "series" / "S90.json"
 
 # 화면에 뜨는 이름표 ↔ 프롬프트에 쓰는 영어 이름
 EN = {"아내": "WIFE", "남편": "HUSBAND", "내연녀": "OTHER WOMAN",
-      "딸": "DAUGHTER", "변호사": "LAWYER"}
+      "딸": "DAUGHTER", "변호사": "ATTORNEY"}
 # 인물 카드에서는 아내를 '본처' 라고 적어 두었다
 CARD = {"아내": "본처", "남편": "남편", "내연녀": "내연녀",
         "딸": "딸", "변호사": "변호사"}
@@ -88,9 +88,30 @@ def who_line(names):
     return ", ".join(EN.get(k, k) for k in names)
 
 
+SPEAK_PER_SEC = 4.6      # 한국어는 1초에 약 4.6자
+BREATH = 0.8             # 앞뒤 숨
+TURN_GAP = 0.6           # 주고받을 때 사이
+
+
+def need_sec(c):
+    """이 컷 대사를 다 하려면 몇 초가 필요한가."""
+    import re as _re
+    x = sum(len(_re.sub(r"[\s…·/]", "", t)) / SPEAK_PER_SEC + BREATH
+            for _, t in c["turns"])
+    return x + (TURN_GAP if len(c["turns"]) > 1 else 0)
+
+
 def veo_sec(c):
-    """Veo·플로우가 받는 길이는 4·6·8초뿐이다."""
-    return 4 if c["sec"] <= 4 else (6 if c["sec"] <= 6 else 8)
+    """만들 길이 — **필요한 만큼만.** (Veo·플로우가 받는 것은 4·6·8초뿐)
+
+    ⭐ 2026-08-28 손님: "쓸데없이 영상 길게 만들지 마. 필요한 길이 만큼은
+       만들게끔. 초 똑바로 적어."
+    """
+    x = need_sec(c)
+    for s in (4, 6, 8):
+        if x <= s:
+            return s
+    return 8
 
 
 def kind_of(c):
@@ -195,42 +216,22 @@ FLOW_BAN = ("photoreal", "photorealistic", "photograph", "natural skin",
             "reference image", "actor", "celebrity", "live-action",
             "real person", "likeness")
 
-# 앱에서 쓸 짧은 생김새 — 얼굴을 자세히 적지 않는다. 옷과 나이대로만 가른다.
-#   (부르는 이름, 생김새)  ← 부르는 이름은 **옷으로** 짓는다. 참조 그림이 없으니
-#   "아내" 라고 해 봐야 모델이 누군지 모른다. 옷으로 부르면 헷갈릴 일이 없다.
-FLOW_WHO = {
-    "아내": ("the woman in the cardigan",
-            "a Korean woman in her early fifties, hair in a low bun, in a plain "
-            "oatmeal knit cardigan and dark loose trousers"),
-    "남편": ("the man in the navy suit",
-            "a Korean man in his mid fifties, short parted black hair, in an open "
-            "dark navy suit with a loosened tie"),
-    "내연녀": ("the woman in the red skirt",
-             "a Korean woman in her late thirties, long wavy brown hair and a bold "
-             "red lip, in a fitted wine-red knee-length skirt and cream blouse"),
-    "딸": ("the young woman in the grey sweatshirt",
-          "a Korean woman in her early twenties, black hair tied back, in a grey "
-          "sweatshirt and jeans"),
-    "변호사": ("the man in the charcoal suit",
-             "a Korean man in his mid forties, hair combed back, in a charcoal suit "
-             "and navy tie"),
-}
-# 화면 묘사 속 사람 부르는 말도 옷 이름으로 바꾼다 (한 컷 안에서 이름이 갈리면 안 된다)
-FLOW_SWAP = [("the other woman", "the woman in the red skirt"),
-             ("the wife", "the woman in the cardigan"),
-             ("the husband", "the man in the navy suit"),
-             ("the lawyer", "the man in the charcoal suit"),
-             ("the daughter", "the young woman in the grey sweatshirt"),
-             ("her grown daughter", "the young woman in the grey sweatshirt"),
-             ("her front door", "the front door"),
-             ("her husband", "the man in the navy suit"),
-             ("her ear", "one ear")]
+# ⭐⭐⭐ 2026-08-28 손님: "플로우에는 내가 캐릭터 등록을 미리 해놨으니깐 절대로
+#    그 캐릭터에 대한 옷이라든가 얼굴이라든가 뭐 나이라든가 이런 걸 언급하지 마."
+#    그래서 플로우 판에는 **이름만** 들어간다. 옷·얼굴·나이는 한 글자도 안 적는다.
+FLOW_WHO = {"아내": "the wife", "남편": "the husband",
+            "내연녀": "the other woman", "딸": "the daughter",
+            "변호사": "the attorney"}
+# 화면 묘사 속 사람 부르는 말도 등록한 이름으로 맞춘다
+FLOW_SWAP = [("the lawyer", "the attorney")]
 
 
 def flow_scene(t):
     for a, b in FLOW_SWAP:
         t = t.replace(a, b)
     return t
+
+
 FLOW_HEAD = ("A short fictional drama scene. Every character is invented for this "
              "story and resembles nobody.")
 FLOW_STYLE = ("STYLE: one unbroken take in one place, naturalistic cinematic drama, "
@@ -246,9 +247,8 @@ def flow_prompt(c):
     body = [f"{FLOW_HEAD} {sec}-second single continuous take, "
             f"vertical portrait format (9 x 16)."]
     if who:
-        body.append("CHARACTERS: "
-                    + "; ".join(FLOW_WHO.get(k, (k, k))[1] for k in who)
-                    + ". Plain, unremarkable, everyday looks.")
+        body.append("CAST: "
+                    + ", ".join(FLOW_WHO.get(k, k) for k in who) + ".")
     body.append(f"SHOT: {flow_scene(c['scene'])}. Framed from the waist up so everyone stays "
                 f"clear, static camera. The movement is already under way in the "
                 f"very first frame.")
@@ -256,7 +256,7 @@ def flow_prompt(c):
                 "the frame, the lower fifth left plain because a caption will sit "
                 "there.")
     if talks:
-        tags = [FLOW_WHO.get(w, (w, w))[0] for w, _ in c["turns"]]
+        tags = [FLOW_WHO.get(w, w) for w, _ in c["turns"]]
         body.append(f"ACTION: {' then '.join(tags)} speak in that order, each one's "
                     f"mouth moving only during their own line and closed while the "
                     f"other speaks.")

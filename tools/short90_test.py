@@ -59,7 +59,7 @@ def main():
     cuts = doc["cuts"]
 
     print("① 대본")
-    ck("컷이 20개다", len(cuts) == 20, len(cuts))
+    ck("컷이 16개다", len(cuts) == 16, len(cuts))
     ck("컷 번호가 1부터 빠짐없이 이어진다",
        [c["n"] for c in cuts] == list(range(1, len(cuts) + 1)))
     ck("컷마다 화면에 뜰 글이 있다", all(c.get("text", "").strip() for c in cuts))
@@ -99,18 +99,33 @@ def main():
     BAN = ("photoreal", "photorealistic", "photograph", "natural skin",
            "reference image", "actor", "celebrity", "live-action",
            "real person", "likeness")
+    # ⭐ 2026-08-28 손님: "플로우에는 캐릭터 등록을 미리 해놨으니 옷·얼굴·나이를
+    #    절대 언급하지 마." → 플로우 판에는 **이름만** 들어간다.
+    BAN = BAN + ("cardigan", "suit", "skirt", "blouse", "hair", "wearing",
+                 "years old", "fifties", "thirties", "twenties", "forties",
+                 "lawyer")
     hit = [f"컷{c['n']}({w})" for c in cuts for w in BAN
            if w in (c.get("flow") or "").lower()]
     ck("컷 전부 플로우용 프롬프트가 있다",
        all((c.get("flow") or "").strip() for c in cuts))
     ck("플로우용 프롬프트에 정책에 걸리는 낱말이 없다", not hit, " ".join(hit))
-    ck("플로우용은 사람을 옷으로 부른다 (참조 그림을 안 넣으므로)",
-       all("CHARACTERS:" in c["flow"] for c in cuts if c.get("who")))
+    ck("플로우용은 등록한 이름만 부른다 (옷·얼굴·나이를 안 적는다)",
+       all("CAST:" in c["flow"] for c in cuts if c.get("who")))
+    # ⭐ 만들 길이가 대사 길이에 맞는가 (쓸데없이 길지 않은가)
+    import importlib.util as _iu
+    _sp = _iu.spec_from_file_location("bs", ROOT / "tools" / "build_short90.py")
+    _bs = _iu.module_from_spec(_sp); _sp.loader.exec_module(_bs)
+    tooshort = [c["n"] for c in cuts if not c["narr"]
+                and _bs.need_sec(c) > _bs.veo_sec(c)]
+    ck("만들 길이가 대사를 다 담는다 (모자라지 않다)", not tooshort, tooshort)
+    toolong = [c["n"] for c in cuts if not c["narr"]
+               and _bs.veo_sec(c) - _bs.need_sec(c) > 2.2]
+    ck("만들 길이가 쓸데없이 길지 않다 (남는 시간 2.2초 이하)", not toolong, toolong)
 
     ck("모든 컷 프롬프트가 세로(9:16)다",
        all("9:16" in c["still"] or "9 x 16" in c["still"] for c in cuts))
     mn = sum(c["sec"] for c in cuts)
-    ck("대본 최소 길이가 90초 언저리다 (80~120)", 80 <= mn <= 120, f"{mn:.0f}초")
+    ck("대본 길이가 100초 언저리다 (85~130)", 85 <= mn <= 130, f"{mn:.0f}초")
 
     print("\n② 자막이 칸 안에 들어가는가")
     from PIL import Image, ImageDraw
@@ -131,7 +146,7 @@ def main():
     #    23컷을 다 붙여 보면 몇 분씩 걸리므로, 길이는 여기서 셈으로 본다.
     say_sec = {c["n"]: max(1.0, c["sec"] - 0.8) for c in cuts}   # 목소리 길이(가정)
     want = sum(max(c["sec"], say_sec[c["n"]] + S9.PAD) for c in cuts)
-    ck("셈으로 잰 길이가 90초 언저리다 (80~125)", 80 <= want <= 125, f"{want:.1f}초")
+    ck("셈으로 잰 길이가 100초 언저리다 (85~130)", 85 <= want <= 130, f"{want:.1f}초")
 
     print("\n④⑤ 실제로 조립해 본다 (그림·소리만 가짜 · 컷 몇 개만)")
     import tempfile
@@ -143,7 +158,7 @@ def main():
             fake_wav(tmp / "voice" / f"c{c['n']:02d}.wav", say_sec[c["n"]])
         # ⑤ 손으로 만든 영상이 섞인 상황 — 대사 컷(소리 있음)·나레이션 컷(소리 있음)
         (tmp / "clips").mkdir(parents=True, exist_ok=True)
-        for n, d in ((4, 6), (9, 5)):
+        for n, d in ((3, 6), (8, 5)):
             subprocess.run(["ffmpeg", "-y", "-v", "error",
                             "-f", "lavfi", "-i",
                             f"color=c=red:s=720x1280:d={d}:r={S9.FPS}",
@@ -151,9 +166,9 @@ def main():
                             "-c:v", "libx264", "-pix_fmt", "yuv420p",
                             "-c:a", "aac", "-shortest",
                             str(tmp / "clips" / f"c{n:02d}.mp4")], check=True)
-        hand = tmp / "clips" / "c04.mp4"
+        hand = tmp / "clips" / "c03.mp4"
         # 붙이는 것은 컷 몇 개만 — 첫 컷·대사 컷·손영상 컷·가장 긴 컷·마지막 컷
-        pick = {1, 4, 9, 14, 20}
+        pick = {1, 3, 8, 11, 16}
         sample = dict(doc)
         sample["cuts"] = [c for c in cuts if c["n"] in pick]
         S9.build(sample)
@@ -162,7 +177,7 @@ def main():
         got = S9.dur_of(final)
         # ⚠️ 대사 컷에 영상을 올리면 **컷 길이는 그 영상이 정한다** (말이 잘리면
         #    안 되니까). 셈에도 그대로 반영한다 — 안 그러면 시험이 틀린 값을 본다.
-        hand_sec = {4: 6.0}
+        hand_sec = {3: 6.0}
         exp = sum(hand_sec.get(c["n"]) if (c["n"] in hand_sec
                                            and not c["narr"])
                   else max(c["sec"], say_sec[c["n"]] + S9.PAD)
@@ -176,17 +191,17 @@ def main():
             capture_output=True, text=True).stdout
         ck("소리 길이 전체에 붙어 있다", "audio" in out, out.strip() or "소리 없음")
         ck("손으로 만든 영상이 있는 컷은 그 영상을 쓴다",
-           (tmp / "parts" / "c04.mp4").exists())
+           (tmp / "parts" / "c03.mp4").exists())
         # 대사 컷은 **영상 안의 말**을 쓴다 — 우리 목소리를 덮어씌우면 입이 어긋난다
         ck("대사 컷은 올린 영상 길이(6.0초)를 그대로 지킨다",
-           abs(S9.dur_of(tmp / "parts" / "c04.mp4") - 6.0) <= 0.35,
-           f"{S9.dur_of(tmp / 'parts' / 'c04.mp4'):.2f}초")
+           abs(S9.dur_of(tmp / "parts" / "c03.mp4") - 6.0) <= 0.35,
+           f"{S9.dur_of(tmp / 'parts' / 'c03.mp4'):.2f}초")
         # 나레이션 컷은 영상을 올렸어도 **우리 나레이션** 길이로 간다
-        n9 = [c for c in cuts if c["n"] == 9][0]
-        want9 = max(n9["sec"], say_sec[9] + S9.PAD)
+        n8 = [c for c in cuts if c["n"] == 8][0]
+        want8 = max(n8["sec"], say_sec[8] + S9.PAD)
         ck("나레이션 컷은 영상을 올려도 우리 나레이션 길이를 지킨다",
-           abs(S9.dur_of(tmp / "parts" / "c09.mp4") - want9) <= 0.35,
-           f"{S9.dur_of(tmp / 'parts' / 'c09.mp4'):.2f}초 / 바람 {want9:.2f}초")
+           abs(S9.dur_of(tmp / "parts" / "c08.mp4") - want8) <= 0.35,
+           f"{S9.dur_of(tmp / 'parts' / 'c08.mp4'):.2f}초 / 바람 {want8:.2f}초")
 
     print("\n" + "─" * 60)
     if BAD:
