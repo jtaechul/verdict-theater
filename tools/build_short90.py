@@ -249,18 +249,30 @@ def flow_prompt(c):
     if who:
         body.append("CAST: "
                     + ", ".join(FLOW_WHO.get(k, k) for k in who) + ".")
-    body.append(f"SHOT: {flow_scene(c['scene'])}. Framed from the waist up so everyone stays "
-                f"clear, static camera. The movement is already under way in the "
-                f"very first frame.")
-    body.append("FRAMING: vertical 9:16 portrait, the people kept in the middle of "
-                "the frame, the lower fifth left plain because a caption will sit "
-                "there.")
+    body.append(f"SHOT: {flow_scene(c['scene'])}."
+                + (" Framed from the waist up so everyone stays clear," if who
+                   else "") + " Static camera. The movement is already under way "
+                "in the very first frame.")
+    body.append("FRAMING: vertical 9:16 portrait, "
+                + ("the people" if who else "the subject")
+                + " kept in the middle of the frame, the lower fifth left plain "
+                  "because a caption will sit there.")
     if talks:
         tags = [FLOW_WHO.get(w, w) for w, _ in c["turns"]]
-        body.append(f"ACTION: {' then '.join(tags)} speak in that order, each one's "
-                    f"mouth moving only during their own line and closed while the "
-                    f"other speaks.")
-        body.append("DIALOGUE: [LANGUAGE: KOREAN] one voice at a time, in this order")
+        off = not who          # 화면에 사람이 없으면 목소리만 들린다
+        if len(tags) == 1:
+            body.append(f"ACTION: only {tags[0]} speaks"
+                        + (", from off camera; nobody's face is in frame."
+                           if off else
+                           "; anyone else stays silent with their mouth closed."))
+            body.append("DIALOGUE: [LANGUAGE: KOREAN]"
+                        + (" spoken from off camera" if off else ""))
+        else:
+            body.append(f"ACTION: {' then '.join(tags)} speak in that order, each "
+                        f"one's mouth moving only during their own line and closed "
+                        f"while the other speaks.")
+            body.append("DIALOGUE: [LANGUAGE: KOREAN] one voice at a time, "
+                        "in this order")
         for (w, t), tag in zip(c["turns"], tags):
             body.append(f'  {tag}: "{t}"')
         body.append("AUDIO: the line is said in natural, fluent everyday Korean with "
@@ -273,8 +285,8 @@ def flow_prompt(c):
                     "light moving. Mouths stay closed the whole time.")
         body.append("AUDIO: nobody speaks at any point; only quiet room tone, "
                     "no music, no voice, no narration.")
-    body += ["CAMERA: background strongly out of focus, heavy bokeh, only the people "
-             "sharp.",
+    body += ["CAMERA: background strongly out of focus, heavy bokeh, only "
+             + ("the people" if who else "the subject") + " sharp.",
              "COLOR: warm neutral base, low contrast, slightly lifted blacks, soft "
              "amber lamplight, muted greens and cyans.",
              FLOW_STYLE,
