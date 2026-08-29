@@ -250,9 +250,9 @@ def flow_prompt(c):
         body.append("CAST: "
                     + ", ".join(FLOW_WHO.get(k, k) for k in who) + ".")
     body.append(f"SHOT: {flow_scene(c['scene'])}."
-                + (" Framed from the waist up so everyone stays clear," if who
-                   else "") + " Static camera. The movement is already under way "
-                "in the very first frame.")
+                + (" Framed from the waist up so everyone stays clear, static"
+                   if who else " Static") + " camera. The movement is already "
+                "under way in the very first frame.")
     body.append("FRAMING: vertical 9:16 portrait, "
                 + ("the people" if who else "the subject")
                 + " kept in the middle of the frame, the lower fifth left plain "
