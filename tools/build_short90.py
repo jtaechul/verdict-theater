@@ -45,9 +45,13 @@ VOICE_KO = {
              "cool and unhurried, with a small lilt at the end",
 }
 
-FRAMING = ("FRAMING: vertical 9:16 portrait, the person kept in the middle of the "
-           "frame with a little room above the head, and the lower fifth of the "
-           "frame left plain and uncluttered because a caption will sit there.")
+# ⚠️⚠️⚠️ 2026-08-28 손님: "위아래 이미지는 왜 나중에 네가 크롭을 하고 검정색으로
+#    가리면 되지, 왜 프롬프트부터 위아래 그림에 생성이 안 되도록 작업을 해."
+#    맞다. 예전엔 "아래 5분의 1은 비워 둬라(자막이 앉는다)" 고 시켰는데, 그러면
+#    **화면의 20%를 버리고 그리는 것**이다. 자막은 우리가 다 만든 뒤에 어두운 띠를
+#    덮어 얹는다(src/short90.py 의 scrim). 그림은 **화면을 꽉 채워** 받는다.
+FRAMING = ("FRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, "
+           "the person kept in the middle with a little room above the head.")
 BLUR = ("The background is strongly out of focus and softly blurred, heavy bokeh, "
         "only the people are sharp and in focus.")
 COLOR = ("COLOR: warm neutral base, low overall contrast, slightly lifted blacks, "
@@ -253,10 +257,9 @@ def flow_prompt(c):
                 + (" Framed from the waist up so everyone stays clear, static"
                    if who else " Static") + " camera. The movement is already "
                 "under way in the very first frame.")
-    body.append("FRAMING: vertical 9:16 portrait, "
-                + ("the people" if who else "the subject")
-                + " kept in the middle of the frame, the lower fifth left plain "
-                  "because a caption will sit there.")
+    body.append("FRAMING: vertical 9:16 portrait, filling the whole frame edge to "
+                "edge, " + ("the people" if who else "the subject")
+                + " kept in the middle of the frame.")
     if talks:
         tags = [FLOW_WHO.get(w, w) for w, _ in c["turns"]]
         off = not who          # 화면에 사람이 없으면 목소리만 들린다

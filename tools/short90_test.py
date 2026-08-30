@@ -163,6 +163,16 @@ def main():
             over.append(f"컷{c['n']}({len(lines)}줄 {wide:.0f}px)")
     ck("자막이 모두 세 줄·칸 안에 들어간다", not over, ", ".join(over))
     ck("자막 칸이 쇼츠 단추 자리를 안 침범한다", S9.SUB_BOT <= 1620, S9.SUB_BOT)
+    # ⭐⭐⭐ 2026-08-28 손님: "왜 프롬프트부터 위아래 그림에 생성이 안 되도록 해."
+    #    자막 자리는 **우리가 나중에 덮는다.** 그림은 화면을 꽉 채워 받는다 —
+    #    비워 두라고 시키면 화면의 20%를 버리고 그리는 셈이다.
+    waste = [f"컷{c['n']}" for c in cuts
+             for k in ("still", "veo", "flow")
+             if "caption will sit" in (c.get(k) or "")
+             or "lower fifth" in (c.get(k) or "")]
+    ck("프롬프트가 화면 아래를 비우라고 시키지 않는다", not waste, " ".join(waste))
+    ck("프롬프트가 화면을 꽉 채우라고 시킨다",
+       all("filling the whole frame" in c["flow"] for c in cuts))
 
     print("\n③ 한 편 길이가 90초 언저리인가 (붙이지 않고 셈으로 먼저)")
     # ⚠️ 컷 길이는 대본의 초가 아니라 **만들어진 목소리 길이**가 정한다.
