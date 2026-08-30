@@ -172,14 +172,37 @@ def main():
     ck("컷에 나오는 사람이 모두 카드로 있다", set(need) <= have,
        f"없는 사람: {sorted(set(need) - have)}")
 
-    # 그림 만들 때 그 카드를 **참조로 진짜 넣는지** — 이름이 어긋나면 조용히 빠진다
+    # ⭐ 그림 만들 때 그 얼굴을 **참조로 진짜 넣는지** — 이름이 한 글자만 어긋나도
+    #    조용히 빠지고, 그 컷만 다른 얼굴이 나온다. 그러니 눈으로 믿지 말고
+    #    실제로 한 번 돌려 본다 (그림 만드는 자리만 가짜 · 값 0원 · 인터넷 0회).
     import still as ST                                       # noqa: E402
+    import tempfile                                          # noqa: E402
+    import subprocess as SP                                  # noqa: E402
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    SP.run([sys.executable, str(ROOT / "tools" / "repo_cards.py"), str(tmp / "cards")],
+           check=True, capture_output=True)
+    seen, real_gen, real_out = {}, ST.gen, S9.OUT
+
+    def spy(prompt, out, refs=(), **kw):
+        seen[out.name] = [pathlib.Path(r).name for r in refs]
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(b"\x00" * 20_000)
+        return 0.0
+
+    try:
+        ST.gen, S9.OUT = spy, tmp
+        S9.stills(doc)
+    finally:
+        ST.gen, S9.OUT = real_gen, real_out
+
+    wrong = [c["n"] for c in cuts
+             if seen.get(f"c{c['n']:02d}.png", []) !=
+             [S9.ST_NAME.get(w, w) + ".png" for w in (c.get("who") or [])]]
     with_ref = [c["n"] for c in cuts if c.get("who")]
-    miss = [c["n"] for c in cuts if c.get("who")
-            and any(not (RC.SRC / f"{en}.png").exists()
-                    for en, ko in RC.NAME.items()
-                    if ko in {S9.ST_NAME.get(w, w) for w in c["who"]})]
-    ck(f"사람이 나오는 {len(with_ref)}컷 모두 참조 그림이 붙는다", not miss, f"빠진 컷 {miss}")
+    ck(f"사람이 나오는 {len(with_ref)}컷에 그 사람 얼굴이 그대로 붙는다",
+       not wrong, f"어긋난 컷 {wrong}")
+    ck("그림 19장을 다 만든다 (빠지는 컷이 없다)", len(seen) == len(cuts),
+       f"{len(seen)}/{len(cuts)}")
 
     wf = (ROOT / ".github" / "workflows" / "short90.yml").read_text(encoding="utf-8")
     i_repo, i_fetch = wf.find("repo_cards.py"), wf.find("fetch_cards.py")
