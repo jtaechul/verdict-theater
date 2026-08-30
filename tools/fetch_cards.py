@@ -24,7 +24,9 @@ def main():
     raw = (sys.argv[1] if len(sys.argv) > 1 else "").strip()
     out = Path(sys.argv[2] if len(sys.argv) > 2 else "build/s90/cards")
     if not raw or raw in ("{}", "null"):
-        print("■ 올린 인물 그림이 없다 — 시스템이 그린다")
+        # ⭐ 2026-08-30 — 이제 다섯 얼굴은 저장소에 들어 있다(tools/repo_cards.py).
+        #    여기서 "시스템이 그린다" 고 적으면 로그가 거짓말이 된다.
+        print("■ 새로 올리신 인물 그림이 없다 — 넣어 둔 다섯 얼굴을 그대로 씁니다")
         return 0
     try:
         got = json.loads(raw)

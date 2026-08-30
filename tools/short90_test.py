@@ -204,6 +204,15 @@ def main():
     ck("그림 19장을 다 만든다 (빠지는 컷이 없다)", len(seen) == len(cuts),
        f"{len(seen)}/{len(cuts)}")
 
+    # ⭐ 워크플로는 저장소 그림을 놓은 **뒤에** still.py cards S001 을 부른다.
+    #    S001 에 우리가 안 넣어 둔 사람이 하나라도 있으면, 그 사람만 시스템이
+    #    새로 그려서 카드값 132원이 조용히 나간다 (게다가 다른 얼굴이 된다).
+    s001 = json.loads((ROOT / "data" / "series" / "S001.json")
+                      .read_text(encoding="utf-8"))
+    s001_who = {c.get("name") for c in (s001.get("characters") or [])}
+    ck("S001 인물이 모두 넣어 둔 그림으로 덮인다 (카드값 0원)",
+       s001_who <= have, f"그림이 없어 새로 그릴 사람: {sorted(s001_who - have)}")
+
     wf = (ROOT / ".github" / "workflows" / "short90.yml").read_text(encoding="utf-8")
     i_repo, i_fetch = wf.find("repo_cards.py"), wf.find("fetch_cards.py")
     i_draw = wf.find("still.py cards")
