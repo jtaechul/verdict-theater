@@ -2,15 +2,16 @@ name: 4. 90초 한 편 만들기
 
 # ⭐ 2026-08-27 운영자 확정 — "90초로 만들어."
 #
-#   ① 대본 짓기 (0원)            data/series/S90.json — 23컷
-#   ② 인물 카드 (5장 · 약 661원)  얼굴을 컷마다 같게 묶는 기준 그림
-#      ⭐ 관리자 페이지에서 **손수 만든 인물 그림을 올리면** 그것을 쓴다 (0원).
-#         올린 사람은 시스템이 다시 안 그린다 (.hand 표시)
-#   ③ 컷 그림 23장 (약 3,042원)   세로 9:16 · 카드를 참조로 넣어 얼굴을 묶는다
-#   ④ 나레이션·대사 소리 23줄     구글 TTS (약 100원)
-#   ⑤ 한 편으로 조립             자막·이름표·아주 느린 줌 → 약 100초
+#   ① 대본 짓기 (0원)            data/series/S90.json — 19컷
+#   ② 인물 카드 (5장 · 0원)      ⭐ assets/cards/s90/ 에 넣어 둔 손님 그림을 쓴다.
+#      (2026-08-30 손님: "무조건 등장인물은 첨부 등장인물 이미지를 참고하도록 해")
+#      관리자 페이지에서 새로 올리면 그것이 이긴다. 어느 쪽이든 시스템은
+#      그 사람을 **다시 안 그린다** (.hand 표시) — 카드값 661원이 안 나간다.
+#   ③ 컷 그림 19장 (약 2,514원)   세로 9:16 · 카드를 참조로 넣어 얼굴을 묶는다
+#   ④ 나레이션·대사 소리 19줄     구글 TTS (약 100원)
+#   ⑤ 한 편으로 조립             자막·이름표·아주 느린 줌 → 약 130초
 #
-# 값: 처음 한 번 약 3,800원. 두 번째부터는 **바뀐 것만** 다시 만든다(대개 0원).
+# 값: 처음 한 번 약 2,614원. 두 번째부터는 **바뀐 것만** 다시 만든다(대개 0원).
 #
 # ⚠️ 만든 것은 릴리스에 보관한다. 중간에 죽어도 돈이 날아가지 않는다.
 # ⚠️ 완성 영상은 저장소에 커밋하지 않는다 (지침). 릴리스에만 올린다.
@@ -57,8 +58,11 @@ jobs:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GOOGLE_TTS_KEY: ${{ secrets.GOOGLE_TTS_KEY }}
       # ⚠️ 상한이 없으면 실패가 겹칠 때 조용히 수십 번을 부른다
-      STILL_CALL_CAP: '30'     # 카드 5 + 컷 23 + 재시도 여유
+      STILL_CALL_CAP: '24'     # 컷 19 + 재시도 여유 (카드는 안 그린다)
       TTS_CALL_CAP: '40'
+      # ⭐ 한 번 눌렀을 때 나갈 돈의 뚜껑. 실제로 드는 값(약 2,614원) **바로 위**에
+      #    둔다 — 한도가 실제보다 훨씬 높으면 막는 시늉만 하는 것이다.
+      VT_RUN_KRW: '2800'
       STEP: ${{ inputs.step || 'all' }}
 
     steps:
@@ -78,7 +82,7 @@ jobs:
           python3 tools/build_short90.py
           python3 tools/short90_test.py
 
-      - name: 1) 인물 카드 (손님이 올린 얼굴이 있으면 그것을 쓴다)
+      - name: 1) 인물 카드 (손님이 고른 다섯 사람의 얼굴)
         if: env.STEP == 'all' || env.STEP == 'stills'
         env:
           CARDS: ${{ inputs.cards }}
@@ -89,7 +93,10 @@ jobs:
           python3 tools/release_file.py get cards90-S90 cards.zip build/cards90.zip \
             && unzip -q -o build/cards90.zip -d build/s90/cards \
             || echo "보관된 90초 편 카드가 없다"
-          # ⭐ 관리자 페이지에서 올리신 그림이 있으면 그것으로 덮어쓴다.
+          # ⭐⭐ 저장소에 넣어 둔 손님 그림으로 덮어쓴다 — 손님이 아무것도 안
+          #    올려도 늘 이 다섯 얼굴이 쓰인다 (2026-08-30 확정 · 0원)
+          python3 tools/repo_cards.py build/s90/cards 2>&1 | tee -a make.log
+          # ⭐ 관리자 페이지에서 새로 올리신 그림이 있으면 그것이 이긴다.
           #    옆에 .hand 표시가 남아, 아래 단계가 그 사람은 다시 안 그린다.
           python3 tools/fetch_cards.py "$CARDS" build/s90/cards 2>&1 | tee -a make.log
           # 아직 얼굴이 없는 사람만 시스템이 그린다
@@ -97,7 +104,7 @@ jobs:
           python3 -c "import shutil;shutil.make_archive('build/cards90','zip','build/s90/cards')"
           python3 tools/release_file.py put cards90-S90 cards.zip build/cards90.zip || true
 
-      - name: 2) 컷 그림 23장 (세로 9:16)
+      - name: 2) 컷 그림 19장 (세로 9:16)
         if: env.STEP == 'all' || env.STEP == 'stills'
         run: |
           set -o pipefail

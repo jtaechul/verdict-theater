@@ -150,6 +150,66 @@ def main():
     suit = next((a for a, c in tl if "소송" in c["text"]), 999)
     ck("소송 이야기가 법정 장면보다 먼저 나온다", suit < 60, f"{suit:.0f}초")
 
+    # ⭐⭐ 2026-08-30 손님: "무조건 등장인물은 첨부 등장인물 이미지를 참고하도록 해."
+    #    다섯 얼굴이 **매번** 쓰여야 한다. 하나라도 빠지면 그 사람만 시스템이
+    #    제 나름대로 그려서, 컷마다 다른 얼굴이 나온다 — 예전에 실제로 난 사고다.
+    print("\n①-3 손님이 고른 다섯 얼굴이 늘 쓰이는가")
+    sys.path.insert(0, str(ROOT / "tools"))
+    import repo_cards as RC                                  # noqa: E402
+    from PIL import Image
+
+    for en, ko in RC.NAME.items():
+        f = RC.SRC / f"{en}.png"
+        big = f.exists() and f.stat().st_size > RC.MIN_BYTES
+        ck(f"{ko} 그림이 저장소에 있다 (assets/cards/s90/{en}.png)", big,
+           "없거나 너무 작다")
+        if big:
+            w, h = Image.open(f).size
+            ck(f"{ko} 그림이 세로다", h > w, f"{w}x{h}")
+
+    need = sorted({S9.ST_NAME.get(w, w) for c in cuts for w in (c.get("who") or [])})
+    have = set(RC.NAME.values())
+    ck("컷에 나오는 사람이 모두 카드로 있다", set(need) <= have,
+       f"없는 사람: {sorted(set(need) - have)}")
+
+    # 그림 만들 때 그 카드를 **참조로 진짜 넣는지** — 이름이 어긋나면 조용히 빠진다
+    import still as ST                                       # noqa: E402
+    with_ref = [c["n"] for c in cuts if c.get("who")]
+    miss = [c["n"] for c in cuts if c.get("who")
+            and any(not (RC.SRC / f"{en}.png").exists()
+                    for en, ko in RC.NAME.items()
+                    if ko in {S9.ST_NAME.get(w, w) for w in c["who"]})]
+    ck(f"사람이 나오는 {len(with_ref)}컷 모두 참조 그림이 붙는다", not miss, f"빠진 컷 {miss}")
+
+    wf = (ROOT / ".github" / "workflows" / "short90.yml").read_text(encoding="utf-8")
+    i_repo, i_fetch = wf.find("repo_cards.py"), wf.find("fetch_cards.py")
+    i_draw = wf.find("still.py cards")
+    ck("워크플로가 저장소 그림을 먼저 놓는다", 0 < i_repo < i_fetch < i_draw,
+       f"repo={i_repo} fetch={i_fetch} draw={i_draw}")
+
+    print("\n①-4 한 번 눌렀을 때 나갈 돈")
+    import cost                                              # noqa: E402
+    one = cost.image_krw(ST.MODEL, ST.SIZE)
+    krw = one * len(cuts)
+    print(f"   그림 {len(cuts)}장 x {one:,.0f}원 = {krw:,.0f}원 "
+          f"(+ 소리 약 100원) · 한 번 한도 {cost.RUN_KRW:,.0f}원")
+    ck("한 번 실행 한도 안에 들어간다", krw + 100 <= cost.RUN_KRW,
+       f"{krw + 100:,.0f}원 > {cost.RUN_KRW:,.0f}원")
+    ck("카드값은 안 나간다 (손님 그림을 쓴다)", len(RC.NAME) == 5)
+
+    print("\n①-5 그림 프롬프트에 영상 말이 안 섞였는가")
+    vid = ["continuous take", "first frame", "seconds", "camera pans", "camera moves"]
+    for c in cuts:
+        low = c["still"].lower()
+        bad = [w for w in vid if w in low]
+        if bad:
+            ck(f"컷{c['n']} 그림 프롬프트가 깨끗하다", False, f"영상 말: {bad}")
+            break
+    else:
+        ck(f"{len(cuts)}컷 모두 그림 프롬프트에 영상 말이 없다", True)
+    ck("그림 화풍과 영상 화풍의 꼬리가 같다",
+       S.STYLE_FIX.endswith(S.STYLE_TAIL) and S.STYLE_STILL.endswith(S.STYLE_TAIL))
+
     print("\n② 자막이 칸 안에 들어가는가")
     from PIL import Image, ImageDraw
     d = ImageDraw.Draw(Image.new("RGBA", (S9.W, S9.H)))

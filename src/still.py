@@ -46,6 +46,7 @@ SIZE = os.environ.get("STILL_IMAGE_SIZE", "2K")
 CALL_CAP = int(os.environ.get("STILL_CALL_CAP", "24"))
 
 _calls = {"n": 0}
+_spent = {"krw": 0.0}       # 이번 실행에서 그림에 쓴 돈
 
 
 class StillError(RuntimeError):
@@ -75,6 +76,14 @@ def gen(prompt, out, refs=(), ratio="16:9", size=None, seed=None, label=""):
         raise StillError(f"이번 실행의 그림 만들기 상한({CALL_CAP}장)에 걸렸다.")
     size = size or SIZE
     krw = cost.image_krw(MODEL, size)
+    # ⭐ 2026-08-30 — **한 번 실행 한도가 여기엔 없었다.**
+    #    달 한도만 보고 있어서, 한 달 여유가 남아 있으면 한 번 누를 때
+    #    몇천 원이 그냥 나갈 수 있었다. 컷이 늘면 그만큼 그대로 늘어난다.
+    #    (손님: "우리가 안 쓰는 기능인데 돈이 세면 안 되잖아.")
+    if _spent["krw"] + krw > cost.RUN_KRW:
+        raise StillError(
+            f"이번 실행 한도({cost.RUN_KRW:,.0f}원)에 걸렸습니다. "
+            f"여기까지 그림에 {_spent['krw']:,.0f}원 썼고 이 그림이 약 {krw:,.0f}원입니다.")
     if cost.month_total() + krw > cost.MONTH_KRW:
         raise cost.MonthlyCapReached(
             f"이번 달 한도({cost.MONTH_KRW:,.0f}원)에 걸렸습니다. "
@@ -107,6 +116,7 @@ def gen(prompt, out, refs=(), ratio="16:9", size=None, seed=None, label=""):
             pass
         raise StillError(f"그림 만들기 실패 (HTTP {e.code}): {raw[:250]}") from None
     _calls["n"] += 1
+    _spent["krw"] += krw
     cost.record("image", krw, f"{MODEL} {size} {ratio} {out.name}")
 
     b64 = None

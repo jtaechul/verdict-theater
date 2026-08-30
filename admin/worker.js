@@ -822,9 +822,13 @@ function short90Card() {
   let h = '<div class="card"><h2>90초 한 편 ① 인물 그림 '
         + '<small style="font-weight:400;color:#9599ab">'
         + '— 제미나이에서 만드신 다섯 장</small></h2>';
-  h += '<div class="uphint">한 사람씩 골라 올리십시오. <b>올린 얼굴 그대로</b> '
-     + '23컷을 그립니다. 올리지 않은 사람은 시스템이 알아서 그립니다. '
-     + '한 번 올리면 다음에도 그대로 쓰입니다.</div>';
+  // ⭐ 2026-08-30 — 다섯 얼굴을 저장소에 넣어 두었다(assets/cards/s90/).
+  //    손님이 아무것도 안 올려도 늘 그 얼굴이 쓰인다. 여기는 '바꾸고 싶을 때만'
+  //    쓰는 칸이다. (손님: "무조건 등장인물은 첨부 등장인물 이미지를 참고하도록 해")
+  h += '<div class="uphint"><b>다섯 얼굴은 이미 들어가 있습니다.</b> '
+     + '여기서 아무것도 안 하셔도 그 얼굴 그대로 19컷을 그립니다. '
+     + '어떤 사람의 얼굴을 <b>바꾸고 싶을 때만</b> 그 사람 칸에 새 그림을 '
+     + '올리십시오.</div>';
   S90WHO.forEach(function (p) {
     h += '<div class="upbox" style="margin-top:10px">'
        + '<b>' + p[1] + '</b> '
@@ -837,8 +841,8 @@ function short90Card() {
        + 'onchange="upCard(this.id.slice(5))">'
        + '</div>';
   });
-  h += '<div class="uphint" style="margin-top:10px">다 올리셨으면 <b>아래 ②</b> 로 '
-     + '내려가 컷별 영상을 올리시고, 맨 아래 [90초 한 편 만들기] 를 누르십시오.</div>';
+  h += '<div class="uphint" style="margin-top:10px"><b>아래 ②</b> 로 내려가 '
+     + '맨 아래 [90초 한 편 만들기] 를 누르시면 됩니다.</div>';
   h += '</div>';
   return h;
 }
@@ -889,13 +893,15 @@ async function s90Cuts() {
   let h = '<div class="card"><h2>90초 한 편 ② 컷별 영상 '
         + '<small style="font-weight:400;color:#9599ab">— 올린 컷만 영상, 나머지는 그림'
         + '</small></h2>';
-  h += '<div class="uphint">컷마다 [프롬프트 복사] 를 눌러 제미나이에 붙여 영상을 '
-     + '만드시고, 만든 mp4 를 그 컷에 올리십시오. <b>말하는 컷(금색으로 이름이 '
-     + '붙은 컷)부터</b> 하시면 됩니다 — 그 컷은 영상 안의 목소리를 그대로 씁니다. '
+  h += '<div class="uphint"><b>아무것도 안 올리고 바로 만드셔도 됩니다.</b> '
+     + '그러면 ' + cuts.length + '컷 전부 그림으로 만들고, 대사와 나레이션은 '
+     + '기계 목소리가 읽습니다. 지금은 영상 <b>' + nv + '컷</b> · '
+     + '그림으로 채울 컷 <b>' + (cuts.length - nv) + '개</b>입니다.</div>';
+  h += '<div class="uphint" style="margin-top:6px">어떤 컷을 <b>진짜 영상</b>으로 '
+     + '바꾸고 싶으시면, 그 컷의 [프롬프트 복사] 를 눌러 구글 플로우에 붙여 영상을 '
+     + '만드시고 만든 mp4 를 그 컷에 올리십시오. <b>말하는 컷(금색으로 이름이 '
+     + '붙은 컷)부터</b> 하시면 좋습니다 — 그 컷은 영상 안의 목소리를 그대로 씁니다. '
      + '나레이션 컷은 올리셔도 우리 나레이션이 깔립니다.</div>';
-  h += '<div class="uphint" style="margin-top:6px"><b>23컷 전부 영상으로 하셔도 '
-     + '됩니다.</b> 영상을 안 올린 컷만 그림으로 채웁니다 — 지금은 영상 <b>'
-     + nv + '컷</b> · 아직 안 올린 컷 <b>' + (cuts.length - nv) + '개</b>입니다.</div>';
   h += '<div class="uphint" style="margin-top:6px"><b>인물 그림은 첨부하지 '
      + '마십시오.</b> 사진을 넣으면 구글이 "유명인 영상" 으로 보고 막습니다. '
      + '아래 프롬프트에 옷·나이대를 적어 두었으니 그대로만 넣으시면 컷마다 '
@@ -924,7 +930,7 @@ async function s90Cuts() {
   h += '<button class="gold" style="margin-top:14px" onclick="makeShort90()">'
      + '90초 한 편 만들기</button>'
      + '<div class="uphint" style="margin-top:8px">올린 컷은 영상으로, 나머지는 '
-     + '그림으로 이어 붙여 약 100초짜리 한 편이 나옵니다. 10~20분 걸립니다.</div>'
+     + '그림으로 이어 붙여 약 130초짜리 한 편이 나옵니다. 10~20분 걸립니다.</div>'
      + '<div id="s90msg" class="uphint"></div>';
   h += '</div>';
   box.innerHTML = h;
@@ -971,9 +977,12 @@ async function makeShort90() {
   const m = document.getElementById('s90msg');
   const n = Object.keys(S90CARDS).length;
   const v = Object.keys(S90CLIPS).length;
-  // 영상으로 올린 컷은 그림을 안 그리므로 그만큼 값이 빠진다
-  const shots = Math.max(0, 23 - v);
-  const cost = shots * 133 + 100 + (5 - n) * 133;
+  // 영상으로 올린 컷은 그림을 안 그리므로 그만큼 값이 빠진다.
+  // ⭐ 컷 수를 23으로 박아 두면 대본이 바뀔 때마다 값이 틀린다 — 대본에서 읽는다.
+  // ⭐ 인물 카드값은 이제 0원이다 (다섯 얼굴이 저장소에 들어 있다).
+  const total = ((S90DOC && S90DOC.cuts) || []).length || 19;
+  const shots = Math.max(0, total - v);
+  const cost = shots * 133 + 100;
   if (!confirm('90초 한 편을 만듭니다. 영상 ' + v + '컷 · 그림 ' + shots
                + '컷, 약 ' + cost.toLocaleString()
                + '원이 나갑니다. 계속할까요?')) return;
@@ -989,8 +998,9 @@ async function makeShort90() {
       return;
     }
     if (m) m.textContent = '시작했습니다. 10~20분 걸립니다. '
-                         + '(올리신 얼굴 ' + n + '명 · 영상 ' + v + '컷 · '
-                         + '나머지는 시스템이 그립니다)';
+                         + '(영상 ' + v + '컷 · 그림 ' + shots + '컷 · '
+                         + '얼굴은 넣어 둔 다섯 사람을 씁니다'
+                         + (n ? ', 새로 올리신 얼굴 ' + n + '명' : '') + ')';
     toast('90초 한 편을 만들기 시작했습니다');
   } catch (e) {
     showErr('시작하지 못했습니다', String(e && e.message ? e.message : e));

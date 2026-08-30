@@ -69,7 +69,7 @@ def load_story():
     return m
 
 
-def people_of(names):
+def people_of(names, still=False):
     """컷에 나오는 사람 — **이름만** 적고 생김새·옷은 안 적는다.
 
     ⚠️⚠️⚠️ 2026-08-27 손님: "wife 이미지가 있으면 와이프 옷차림 같은 건 쓰면
@@ -83,9 +83,12 @@ def people_of(names):
         return ""
     who = [EN.get(k, k) for k in names]
     lst = who[0] if len(who) == 1 else ", ".join(who[:-1]) + " and " + who[-1]
+    # 그림 한 장에는 "첫 프레임부터 끝 프레임까지" 라는 영상 말이 뜻이 없다.
+    # 대신 **이야기 내내 같은 사람** 이라고 못을 박는다 (컷마다 얼굴이 달라지면 끝이다)
+    tail = ("the same person in every shot of this story" if still
+            else "unchanged from the first frame to the last")
     return (f"PEOPLE: the reference images show, in order, {lst}. Keep each person "
-            f"exactly as they appear in their own reference image, unchanged from "
-            f"the first frame to the last.")
+            f"exactly as they appear in their own reference image, {tail}.")
 
 
 def who_line(names):
@@ -136,12 +139,12 @@ def still_prompt(c):
     who = c.get("who") or []
     body = [S.HEAD_FIX.rstrip(".") + ". A single still frame, vertical 9:16 portrait."]
     if who:
-        body.append(people_of(who))
+        body.append(people_of(who, still=True))
         body.append(f"SHOT: {c['scene']}. Framed from the waist up so every face "
-                    f"stays clear, static camera, mouths closed, holding the moment.")
+                    f"stays clear, mouths closed, holding the moment.")
     else:
-        body.append(f"SHOT: {c['scene']}. Static camera, nobody's face in frame.")
-    body += [FRAMING, "CAMERA: " + BLUR, COLOR, S.STYLE_FIX, NO_TEXT]
+        body.append(f"SHOT: {c['scene']}. Nobody's face in frame.")
+    body += [FRAMING, "CAMERA: " + BLUR, COLOR, S.STYLE_STILL, NO_TEXT]
     return "\n".join(body)
 
 

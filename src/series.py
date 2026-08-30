@@ -781,12 +781,22 @@ def looks_like_url(t):
 #    5070 시청자에게는 그림체보다 실사가 '실제 있었던 일' 로 읽힌다.
 #    ⚠️ 정책에 걸리는 말은 안 쓴다 — actor · celebrity · live-action ·
 #       real person 이 들어가면 '유명인 동영상 생성' 으로 통째로 반려된다.
+# 화풍 — **꼬리는 영상과 그림이 똑같아야 한다.** 여기가 갈라지면 그림과 영상의
+# 화풍이 달라진다 (2026-08-27 에 실제로 그 사고가 났다 — 실사로 바꿨는데 영상만
+# 그림체로 나왔다). 그래서 꼬리를 한 곳에 두고 머리만 다르게 붙인다.
+# tools/pair_check.py 가 이 둘이 같은 꼬리를 쓰는지 매번 본다.
+STYLE_TAIL = ("photoreal look with natural skin texture and true-to-life body "
+              "proportions, ordinary everyday Korean faces with unexaggerated "
+              "features, muted desaturated palette, soft practical lighting, "
+              "shallow depth of field, the same colour grade in every shot.")
+
 STYLE_FIX = ("STYLE: one single continuous take, from first frame to last in "
-             "the same place with the same people, "
-             "photoreal look with natural skin texture and true-to-life body "
-             "proportions, ordinary everyday Korean faces with unexaggerated "
-             "features, muted desaturated palette, soft practical lighting, "
-             "shallow depth of field, the same colour grade in every shot.")
+             "the same place with the same people, " + STYLE_TAIL)
+
+# ⭐ 2026-08-30 — 그림 한 장짜리 컷에는 "한 번에 끊지 않고 찍은 화면" 같은
+#    **영상 말**이 필요 없다. 그림 모델에게는 뜻이 없는 군말이라 오히려 방해다.
+#    (손님: "이미지로 19컷 전부 만들고" — 이제 전부 그림이다)
+STYLE_STILL = ("STYLE: a single photograph of one moment, " + STYLE_TAIL)
 
 # ⚠️ 영상에 글자가 나오는 가장 큰 원인은 '글자가 있는 물건'을 부른 것이다.
 #    그런데 **두 번 연속으로 지나치게 넓은 낱말이 멀쩡한 대본을 막았다.**
