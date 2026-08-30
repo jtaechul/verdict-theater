@@ -10,8 +10,21 @@
 """
 import json
 import sys
+import os
 import urllib.request
 from pathlib import Path
+
+# ⚠️⚠️ 2026-08-30 — **여기서 암호를 안 보내고 있었다.**
+#    보관함(/api/blob)은 x-vt-pass 로 암호를 받는다. shorts.yml 은 보내는데
+#    여기만 안 보내서, 손님이 올리신 그림을 받아 갈 때 통째로 튕겼다
+#    (그 한 줄 때문에 90초 편 만들기가 실패했다).
+def _open(url):
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "verdict-theater",
+        "x-vt-pass": os.environ.get("ADMIN_PASS", ""),
+    })
+    return urllib.request.urlopen(req, timeout=300)
+
 
 MIN_BYTES = 50_000
 MAX_CUT = 99
@@ -48,7 +61,7 @@ def main():
             continue
         dst = out / f"c{cut:02d}.mp4"
         try:
-            with urllib.request.urlopen(url, timeout=300) as r, open(dst, "wb") as f:
+            with _open(url) as r, open(dst, "wb") as f:
                 while True:
                     chunk = r.read(1 << 20)
                     if not chunk:

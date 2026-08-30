@@ -57,6 +57,11 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GOOGLE_TTS_KEY: ${{ secrets.GOOGLE_TTS_KEY }}
+      # ⚠️⚠️ 2026-08-30 — **이 줄이 없어서 첫 실행이 실패했다.**
+      #    관리자 페이지 보관함(/api/blob)은 x-vt-pass 로 암호를 받는다.
+      #    shorts.yml 은 보내는데 여기만 안 보내서, 손님이 올리신 인물 그림을
+      #    받아 갈 때 튕겼고 90초 편 만들기가 통째로 멈췄다.
+      ADMIN_PASS: ${{ secrets.ADMIN_PASSWORD }}
       # ⚠️ 상한이 없으면 실패가 겹칠 때 조용히 수십 번을 부른다
       STILL_CALL_CAP: '24'     # 컷 19 + 재시도 여유 (카드는 안 그린다)
       TTS_CALL_CAP: '40'

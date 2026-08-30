@@ -13,8 +13,21 @@
 """
 import json
 import sys
+import os
 import urllib.request
 from pathlib import Path
+
+# ⚠️⚠️ 2026-08-30 — **여기서 암호를 안 보내고 있었다.**
+#    보관함(/api/blob)은 x-vt-pass 로 암호를 받는다. shorts.yml 은 보내는데
+#    여기만 안 보내서, 손님이 올리신 그림을 받아 갈 때 통째로 튕겼다
+#    (그 한 줄 때문에 90초 편 만들기가 실패했다).
+def _open(url):
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "verdict-theater",
+        "x-vt-pass": os.environ.get("ADMIN_PASS", ""),
+    })
+    return urllib.request.urlopen(req, timeout=300)
+
 
 OK = ("본처", "남편", "내연녀", "딸", "변호사")
 MIN_BYTES = 10_000
@@ -39,6 +52,7 @@ def main():
 
     out.mkdir(parents=True, exist_ok=True)
     n = 0
+    warned = []
     for who, url in got.items():
         if who not in OK:
             print(f"  ⚠️ 모르는 사람이라 건너뛴다: {who}")
@@ -47,14 +61,29 @@ def main():
             print(f"  ⚠️ {who}: 주소가 이상하다 — 건너뛴다")
             continue
         dst = out / f"{who}.png"
+        # ⭐⭐ 2026-08-30 — **못 받았다고 다 죽이면 안 된다.**
+        #    저장소에 넣어 둔 다섯 얼굴이 이미 제자리에 놓여 있는데(repo_cards),
+        #    올리신 그림 한 장을 못 받았다고 여기서 죽어서 90초 편 만들기가
+        #    통째로 실패했다. 이미 얼굴이 있으면 그것으로 이어서 만든다.
+        #    ⚠️ 다만 **크게 알린다** — 새로 올리신 얼굴이 안 쓰인 것이니까.
+        have = dst.exists() and dst.stat().st_size >= MIN_BYTES
+        tmp = dst.with_suffix(".new")
         try:
-            with urllib.request.urlopen(url, timeout=120) as r, open(dst, "wb") as f:
+            with _open(url) as r, open(tmp, "wb") as f:
                 f.write(r.read())
+            if tmp.stat().st_size < MIN_BYTES:
+                raise ValueError(f"받은 그림이 너무 작다 ({tmp.stat().st_size} 바이트)")
+            tmp.replace(dst)
         except Exception as e:                                # noqa: BLE001
-            print(f"  ❌ {who}: 못 받았다 ({str(e)[:80]})")
-            return 1
-        if dst.stat().st_size < MIN_BYTES:
-            print(f"  ❌ {who}: 받은 그림이 너무 작다 ({dst.stat().st_size} 바이트)")
+            if tmp.exists():
+                tmp.unlink()
+            why = str(e)[:80]
+            if have:
+                print(f"  ⚠️ {who}: 올리신 그림을 못 받았다 ({why}) — "
+                      f"넣어 둔 얼굴로 이어서 만듭니다")
+                warned.append(who)
+                continue
+            print(f"  ❌ {who}: 못 받았고 쓸 얼굴도 없다 ({why})")
             return 1
         # 손으로 올린 것이라는 표시 — 이게 있으면 시스템이 다시 안 그린다
         dst.with_suffix(".hand").write_text("hand", encoding="utf-8")
@@ -65,6 +94,8 @@ def main():
         n += 1
         print(f"  ✅ {who} ({dst.stat().st_size / 1e6:.2f}MB) — 올리신 그림을 씁니다")
     print(f"\n■ 올리신 인물 그림 {n}장을 카드로 씁니다")
+    if warned:
+        print(f"⚠️ 못 받아서 넣어 둔 얼굴을 쓴 사람: {', '.join(warned)}")
     return 0
 
 

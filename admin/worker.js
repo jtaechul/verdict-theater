@@ -311,6 +311,12 @@ async function listDir(env, path) {
 const KV_CHUNK = 8 * 1024 * 1024;   // 조각 하나 8MB (KV 한 값 상한 25MB 안쪽)
 // 90초 편 인물 카드 이름 (그림 파일 이름과 같아야 한다 — 아내는 '본처' 다)
 const S90_CARDS = ['본처', '남편', '내연녀', '딸', '변호사'];
+// ⚠️⚠️ 2026-08-30 — 보관함 열쇠에 **한글을 넣으면 안 된다.**
+//    /api/blob 은 열쇠를 [A-Za-z0-9._-] 로만 받는다(일부러 좁게 본다).
+//    'cards/S90-본처-…' 로 올려 두었더니 워크플로가 받아 갈 때 튕겼고,
+//    그 한 줄 때문에 90초 편 만들기가 통째로 실패했다. 영문으로 적는다.
+const S90_KEY = { '본처': 'wife', '남편': 'husband', '내연녀': 'mistress',
+                  '딸': 'daughter', '변호사': 'attorney' };
 
 const KV_DAY = 60 * 60 * 24;
 const KV_MAX = 90 * 1024 * 1024;    // 한 번에 받는 최대 크기
@@ -3007,7 +3013,7 @@ export default {
           return Response.json({ ok: false, error: '파일이 90MB 를 넘습니다' },
                                { status: 400 });
         try {
-          const key = `cards/S90-${who}-${crypto.randomUUID()}`;
+          const key = `cards/S90-${S90_KEY[who]}-${crypto.randomUUID()}`;
           const size = await blobPutStream(env, req.body, key, KV_DAY);
           if (!size)
             return Response.json({ ok: false, error: '파일이 비었습니다' }, { status: 400 });
