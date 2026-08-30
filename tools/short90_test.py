@@ -59,7 +59,7 @@ def main():
     cuts = doc["cuts"]
 
     print("① 대본")
-    ck("컷이 16개다", len(cuts) == 16, len(cuts))
+    ck("컷이 19개다", len(cuts) == 19, len(cuts))
     ck("컷 번호가 1부터 빠짐없이 이어진다",
        [c["n"] for c in cuts] == list(range(1, len(cuts) + 1)))
     ck("컷마다 화면에 뜰 글이 있다", all(c.get("text", "").strip() for c in cuts))
@@ -125,7 +125,30 @@ def main():
     ck("모든 컷 프롬프트가 세로(9:16)다",
        all("9:16" in c["still"] or "9 x 16" in c["still"] for c in cuts))
     mn = sum(c["sec"] for c in cuts)
-    ck("대본 길이가 100초 언저리다 (85~130)", 85 <= mn <= 130, f"{mn:.0f}초")
+    ck("대본 길이가 130초 언저리다 (110~150)", 110 <= mn <= 150, f"{mn:.0f}초")
+
+    # ⭐⭐⭐ 2026-08-28 손님: "너무 그 사이사이에 나레이션을 너무 많이 날려먹었는데
+    #    이러면 이해가 되는 게 맞아?" — 맞다. 겹친다고 뺐다가 **언제·어디인지
+    #    알려 주는 줄**까지 뺐다. 35~43초 동안 왜 법원인지 모른 채로 있었다.
+    print("\n①-2 이야기가 끊기지 않는가")
+    PAD = S9.PAD
+    t, marks, tl = 0.0, [], []
+    for c in cuts:
+        ln = (c["sec"] + PAD) if c["narr"] else c["sec"]
+        tl.append((t, c))
+        if c["narr"]:
+            marks.append(t)
+        t += ln
+    gap = max((b - a) for a, b in zip(marks, marks[1:] + [t])) if marks else t
+    # 30초로 잡은 까닭 — 지금 가장 긴 구간은 27초(장례식장 → 사무실 → 금액)인데
+    # 장면이 이어지고 대사가 사실을 나르므로 이해가 끊기지 않는다. 그보다 길어지면
+    # 관객이 "지금 언제·어디" 를 놓친다.
+    ck("나레이션 없이 흐르는 구간이 30초를 안 넘는다", gap <= 30, f"{gap:.0f}초")
+    hook = next((a for a, c in tl if "32억" in c["text"] or "삼십이억" in c["text"]),
+                999)
+    ck("32억이 20초 안에 나온다 (제목이 32억이다)", hook <= 20, f"{hook:.0f}초")
+    suit = next((a for a, c in tl if "소송" in c["text"]), 999)
+    ck("소송 이야기가 법정 장면보다 먼저 나온다", suit < 60, f"{suit:.0f}초")
 
     print("\n② 자막이 칸 안에 들어가는가")
     from PIL import Image, ImageDraw
@@ -146,7 +169,7 @@ def main():
     #    23컷을 다 붙여 보면 몇 분씩 걸리므로, 길이는 여기서 셈으로 본다.
     say_sec = {c["n"]: max(1.0, c["sec"] - 0.8) for c in cuts}   # 목소리 길이(가정)
     want = sum(max(c["sec"], say_sec[c["n"]] + S9.PAD) for c in cuts)
-    ck("셈으로 잰 길이가 100초 언저리다 (85~130)", 85 <= want <= 130, f"{want:.1f}초")
+    ck("셈으로 잰 길이가 130초 언저리다 (110~150)", 110 <= want <= 150, f"{want:.1f}초")
 
     print("\n④⑤ 실제로 조립해 본다 (그림·소리만 가짜 · 컷 몇 개만)")
     import tempfile
@@ -158,7 +181,7 @@ def main():
             fake_wav(tmp / "voice" / f"c{c['n']:02d}.wav", say_sec[c["n"]])
         # ⑤ 손으로 만든 영상이 섞인 상황 — 대사 컷(소리 있음)·나레이션 컷(소리 있음)
         (tmp / "clips").mkdir(parents=True, exist_ok=True)
-        for n, d in ((3, 6), (8, 5)):
+        for n, d in ((4, 6), (10, 5)):
             subprocess.run(["ffmpeg", "-y", "-v", "error",
                             "-f", "lavfi", "-i",
                             f"color=c=red:s=720x1280:d={d}:r={S9.FPS}",
@@ -166,9 +189,9 @@ def main():
                             "-c:v", "libx264", "-pix_fmt", "yuv420p",
                             "-c:a", "aac", "-shortest",
                             str(tmp / "clips" / f"c{n:02d}.mp4")], check=True)
-        hand = tmp / "clips" / "c03.mp4"
+        hand = tmp / "clips" / "c04.mp4"
         # 붙이는 것은 컷 몇 개만 — 첫 컷·대사 컷·손영상 컷·가장 긴 컷·마지막 컷
-        pick = {1, 3, 8, 11, 16}
+        pick = {1, 4, 10, 13, 19}
         sample = dict(doc)
         sample["cuts"] = [c for c in cuts if c["n"] in pick]
         S9.build(sample)
@@ -177,7 +200,7 @@ def main():
         got = S9.dur_of(final)
         # ⚠️ 대사 컷에 영상을 올리면 **컷 길이는 그 영상이 정한다** (말이 잘리면
         #    안 되니까). 셈에도 그대로 반영한다 — 안 그러면 시험이 틀린 값을 본다.
-        hand_sec = {3: 6.0}
+        hand_sec = {4: 6.0}
         exp = sum(hand_sec.get(c["n"]) if (c["n"] in hand_sec
                                            and not c["narr"])
                   else max(c["sec"], say_sec[c["n"]] + S9.PAD)
@@ -191,17 +214,17 @@ def main():
             capture_output=True, text=True).stdout
         ck("소리 길이 전체에 붙어 있다", "audio" in out, out.strip() or "소리 없음")
         ck("손으로 만든 영상이 있는 컷은 그 영상을 쓴다",
-           (tmp / "parts" / "c03.mp4").exists())
+           (tmp / "parts" / "c04.mp4").exists())
         # 대사 컷은 **영상 안의 말**을 쓴다 — 우리 목소리를 덮어씌우면 입이 어긋난다
         ck("대사 컷은 올린 영상 길이(6.0초)를 그대로 지킨다",
-           abs(S9.dur_of(tmp / "parts" / "c03.mp4") - 6.0) <= 0.35,
-           f"{S9.dur_of(tmp / 'parts' / 'c03.mp4'):.2f}초")
+           abs(S9.dur_of(tmp / "parts" / "c04.mp4") - 6.0) <= 0.35,
+           f"{S9.dur_of(tmp / 'parts' / 'c04.mp4'):.2f}초")
         # 나레이션 컷은 영상을 올렸어도 **우리 나레이션** 길이로 간다
-        n8 = [c for c in cuts if c["n"] == 8][0]
-        want8 = max(n8["sec"], say_sec[8] + S9.PAD)
+        n10 = [c for c in cuts if c["n"] == 10][0]
+        want10 = max(n10["sec"], say_sec[10] + S9.PAD)
         ck("나레이션 컷은 영상을 올려도 우리 나레이션 길이를 지킨다",
-           abs(S9.dur_of(tmp / "parts" / "c08.mp4") - want8) <= 0.35,
-           f"{S9.dur_of(tmp / 'parts' / 'c08.mp4'):.2f}초 / 바람 {want8:.2f}초")
+           abs(S9.dur_of(tmp / "parts" / "c10.mp4") - want10) <= 0.35,
+           f"{S9.dur_of(tmp / 'parts' / 'c10.mp4'):.2f}초 / 바람 {want10:.2f}초")
 
     print("\n" + "─" * 60)
     if BAD:

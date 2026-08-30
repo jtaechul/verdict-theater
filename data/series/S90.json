@@ -27,6 +27,26 @@
   {
    "n": 2,
    "kind": "나레이션",
+   "sec": 6.9,
+   "narr": true,
+   "turns": [
+    [
+     "나레이션",
+     "남편의 재산 32억은 이미 내연녀 앞으로 전부 넘어가 있었습니다."
+    ]
+   ],
+   "who": [
+    "내연녀"
+   ],
+   "text": "남편의 재산 32억은 이미 내연녀 앞으로 전부 넘어가 있었습니다.",
+   "scene": "the other woman stands alone in a quiet hospital corridor, half turned toward the camera, calm and unhurried",
+   "still": "Fictional scene, invented characters, photoreal grounded drama. A single still frame, vertical 9:16 portrait.\nPEOPLE: the reference images show, in order, OTHER WOMAN. Keep each person exactly as they appear in their own reference image, unchanged from the first frame to the last.\nSHOT: the other woman stands alone in a quiet hospital corridor, half turned toward the camera, calm and unhurried. Framed from the waist up so every face stays clear, static camera, mouths closed, holding the moment.\nFRAMING: vertical 9:16 portrait, the person kept in the middle of the frame with a little room above the head, and the lower fifth of the frame left plain and uncluttered because a caption will sit there.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the people are sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones, the exact same colour grade in every shot of this story.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, photoreal look with natural skin texture and true-to-life body proportions, ordinary everyday Korean faces with unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.",
+   "veo": "Fictional scene, invented characters, photoreal grounded drama. 8-second single continuous take, vertical portrait format (9 x 16).\nPEOPLE: the reference images show, in order, OTHER WOMAN. Keep each person exactly as they appear in their own reference image, unchanged from the first frame to the last.\nSHOT: the other woman stands alone in a quiet hospital corridor, half turned toward the camera, calm and unhurried. Framed from the waist up so every face stays clear, static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, the person kept in the middle of the frame with a little room above the head, and the lower fifth of the frame left plain and uncluttered because a caption will sit there.\nACTION: the other woman stands alone in a quiet hospital corridor, half turned toward the camera, calm and unhurried, unfolding slowly and quietly over the whole take, with small natural movement — a breath, a hand shifting, light moving. Mouths stay closed the whole time.\nAUDIO: nobody speaks and nobody moves their lips at any point; only the quiet room tone of the location, no music, no voice, no narration.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the people are sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones, the exact same colour grade in every shot of this story.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, photoreal look with natural skin texture and true-to-life body proportions, ordinary everyday Korean faces with unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.",
+   "flow": "A short fictional drama scene. Every character is invented for this story and resembles nobody. 8-second single continuous take, vertical portrait format (9 x 16).\nCAST: the other woman.\nSHOT: the other woman stands alone in a quiet hospital corridor, half turned toward the camera, calm and unhurried. Framed from the waist up so everyone stays clear, static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, the people kept in the middle of the frame, the lower fifth left plain because a caption will sit there.\nACTION: the moment unfolds slowly and quietly over the whole take, with small natural movement — a breath, a hand shifting, light moving. Mouths stay closed the whole time.\nAUDIO: nobody speaks at any point; only quiet room tone, no music, no voice, no narration.\nCAMERA: background strongly out of focus, heavy bokeh, only the people sharp.\nCOLOR: warm neutral base, low contrast, slightly lifted blacks, soft amber lamplight, muted greens and cyans.\nSTYLE: one unbroken take in one place, naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo."
+  },
+  {
+   "n": 3,
+   "kind": "나레이션",
    "sec": 8.6,
    "narr": true,
    "turns": [
@@ -47,7 +67,7 @@
    "flow": "A short fictional drama scene. Every character is invented for this story and resembles nobody. 8-second single continuous take, vertical portrait format (9 x 16).\nCAST: the wife, the husband, the other woman.\nSHOT: the wife has just opened her front door and sees the woman standing behind her husband on the entry step. Framed from the waist up so everyone stays clear, static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, the people kept in the middle of the frame, the lower fifth left plain because a caption will sit there.\nACTION: the moment unfolds slowly and quietly over the whole take, with small natural movement — a breath, a hand shifting, light moving. Mouths stay closed the whole time.\nAUDIO: nobody speaks at any point; only quiet room tone, no music, no voice, no narration.\nCAMERA: background strongly out of focus, heavy bokeh, only the people sharp.\nCOLOR: warm neutral base, low contrast, slightly lifted blacks, soft amber lamplight, muted greens and cyans.\nSTYLE: one unbroken take in one place, naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo."
   },
   {
-   "n": 3,
+   "n": 4,
    "kind": "아내",
    "sec": 8,
    "narr": false,
@@ -73,7 +93,7 @@
    "flow": "A short fictional drama scene. Every character is invented for this story and resembles nobody. 8-second single continuous take, vertical portrait format (9 x 16).\nCAST: the wife, the husband, the other woman.\nSHOT: just inside the apartment entrance in the evening, the wife stands frozen with a ladle still in one hand while her husband steps past her without stopping. Framed from the waist up so everyone stays clear, static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, the people kept in the middle of the frame, the lower fifth left plain because a caption will sit there.\nACTION: the wife then the husband speak in that order, each one's mouth moving only during their own line and closed while the other speaks.\nDIALOGUE: [LANGUAGE: KOREAN] one voice at a time, in this order\n  the wife: \"여보… 이 사람 누구야?\"\n  the husband: \"일 년 됐어. 이제 와서 뭘 물어.\"\nAUDIO: the line is said in natural, fluent everyday Korean with standard Seoul intonation, uneven rhythm and short breaths, with only quiet room tone underneath. Only that line is said and nothing more, then everyone stays silent until the clip ends.\nCAMERA: background strongly out of focus, heavy bokeh, only the people sharp.\nCOLOR: warm neutral base, low contrast, slightly lifted blacks, soft amber lamplight, muted greens and cyans.\nSTYLE: one unbroken take in one place, naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo."
   },
   {
-   "n": 4,
+   "n": 5,
    "kind": "아내",
    "sec": 8,
    "narr": false,
@@ -98,7 +118,27 @@
    "flow": "A short fictional drama scene. Every character is invented for this story and resembles nobody. 8-second single continuous take, vertical portrait format (9 x 16).\nCAST: the wife, the husband.\nSHOT: the living room, the wife stands still in the middle of the room while her husband picks his car key up off the low table. Framed from the waist up so everyone stays clear, static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, the people kept in the middle of the frame, the lower fifth left plain because a caption will sit there.\nACTION: the wife then the husband speak in that order, each one's mouth moving only during their own line and closed while the other speaks.\nDIALOGUE: [LANGUAGE: KOREAN] one voice at a time, in this order\n  the wife: \"이게 무슨 말 같지도 않은 소리야.\"\n  the husband: \"도장이나 찍어.\"\nAUDIO: the line is said in natural, fluent everyday Korean with standard Seoul intonation, uneven rhythm and short breaths, with only quiet room tone underneath. Only that line is said and nothing more, then everyone stays silent until the clip ends.\nCAMERA: background strongly out of focus, heavy bokeh, only the people sharp.\nCOLOR: warm neutral base, low contrast, slightly lifted blacks, soft amber lamplight, muted greens and cyans.\nSTYLE: one unbroken take in one place, naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo."
   },
   {
-   "n": 5,
+   "n": 6,
+   "kind": "나레이션",
+   "sec": 5.2,
+   "narr": true,
+   "turns": [
+    [
+     "나레이션",
+     "이듬해 남편이 먼저 이혼 소송을 냈습니다."
+    ]
+   ],
+   "who": [
+    "남편"
+   ],
+   "text": "이듬해 남편이 먼저 이혼 소송을 냈습니다.",
+   "scene": "a courthouse filing counter, the husband slides a thick bound document across the counter and lets go of it",
+   "still": "Fictional scene, invented characters, photoreal grounded drama. A single still frame, vertical 9:16 portrait.\nPEOPLE: the reference images show, in order, HUSBAND. Keep each person exactly as they appear in their own reference image, unchanged from the first frame to the last.\nSHOT: a courthouse filing counter, the husband slides a thick bound document across the counter and lets go of it. Framed from the waist up so every face stays clear, static camera, mouths closed, holding the moment.\nFRAMING: vertical 9:16 portrait, the person kept in the middle of the frame with a little room above the head, and the lower fifth of the frame left plain and uncluttered because a caption will sit there.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the people are sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones, the exact same colour grade in every shot of this story.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, photoreal look with natural skin texture and true-to-life body proportions, ordinary everyday Korean faces with unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.",
+   "veo": "Fictional scene, invented characters, photoreal grounded drama. 6-second single continuous take, vertical portrait format (9 x 16).\nPEOPLE: the reference images show, in order, HUSBAND. Keep each person exactly as they appear in their own reference image, unchanged from the first frame to the last.\nSHOT: a courthouse filing counter, the husband slides a thick bound document across the counter and lets go of it. Framed from the waist up so every face stays clear, static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, the person kept in the middle of the frame with a little room above the head, and the lower fifth of the frame left plain and uncluttered because a caption will sit there.\nACTION: a courthouse filing counter, the husband slides a thick bound document across the counter and lets go of it, unfolding slowly and quietly over the whole take, with small natural movement — a breath, a hand shifting, light moving. Mouths stay closed the whole time.\nAUDIO: nobody speaks and nobody moves their lips at any point; only the quiet room tone of the location, no music, no voice, no narration.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the people are sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones, the exact same colour grade in every shot of this story.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, photoreal look with natural skin texture and true-to-life body proportions, ordinary everyday Korean faces with unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.",
+   "flow": "A short fictional drama scene. Every character is invented for this story and resembles nobody. 6-second single continuous take, vertical portrait format (9 x 16).\nCAST: the husband.\nSHOT: a courthouse filing counter, the husband slides a thick bound document across the counter and lets go of it. Framed from the waist up so everyone stays clear, static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, the people kept in the middle of the frame, the lower fifth left plain because a caption will sit there.\nACTION: the moment unfolds slowly and quietly over the whole take, with small natural movement — a breath, a hand shifting, light moving. Mouths stay closed the whole time.\nAUDIO: nobody speaks at any point; only quiet room tone, no music, no voice, no narration.\nCAMERA: background strongly out of focus, heavy bokeh, only the people sharp.\nCOLOR: warm neutral base, low contrast, slightly lifted blacks, soft amber lamplight, muted greens and cyans.\nSTYLE: one unbroken take in one place, naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo."
+  },
+  {
+   "n": 7,
    "kind": "남편",
    "sec": 4,
    "narr": false,
@@ -118,7 +158,7 @@
    "flow": "A short fictional drama scene. Every character is invented for this story and resembles nobody. 4-second single continuous take, vertical portrait format (9 x 16).\nCAST: the husband.\nSHOT: a courthouse corridor, the husband stands by a tall window and crushes a folded sheet of paper in one hand. Framed from the waist up so everyone stays clear, static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, the people kept in the middle of the frame, the lower fifth left plain because a caption will sit there.\nACTION: only the husband speaks; anyone else stays silent with their mouth closed.\nDIALOGUE: [LANGUAGE: KOREAN]\n  the husband: \"기각? 내가 왜 져.\"\nAUDIO: the line is said in natural, fluent everyday Korean with standard Seoul intonation, uneven rhythm and short breaths, with only quiet room tone underneath. Only that line is said and nothing more, then everyone stays silent until the clip ends.\nCAMERA: background strongly out of focus, heavy bokeh, only the people sharp.\nCOLOR: warm neutral base, low contrast, slightly lifted blacks, soft amber lamplight, muted greens and cyans.\nSTYLE: one unbroken take in one place, naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo."
   },
   {
-   "n": 6,
+   "n": 8,
    "kind": "남편",
    "sec": 4,
    "narr": false,
@@ -138,28 +178,28 @@
    "flow": "A short fictional drama scene. Every character is invented for this story and resembles nobody. 4-second single continuous take, vertical portrait format (9 x 16).\nCAST: the husband.\nSHOT: the husband stops at the top of a stone staircase and looks back down over his shoulder. Framed from the waist up so everyone stays clear, static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, the people kept in the middle of the frame, the lower fifth left plain because a caption will sit there.\nACTION: only the husband speaks; anyone else stays silent with their mouth closed.\nDIALOGUE: [LANGUAGE: KOREAN]\n  the husband: \"좋아하지 마. 아직 안 끝났어.\"\nAUDIO: the line is said in natural, fluent everyday Korean with standard Seoul intonation, uneven rhythm and short breaths, with only quiet room tone underneath. Only that line is said and nothing more, then everyone stays silent until the clip ends.\nCAMERA: background strongly out of focus, heavy bokeh, only the people sharp.\nCOLOR: warm neutral base, low contrast, slightly lifted blacks, soft amber lamplight, muted greens and cyans.\nSTYLE: one unbroken take in one place, naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo."
   },
   {
-   "n": 7,
+   "n": 9,
    "kind": "나레이션",
    "sec": 9.7,
    "narr": true,
    "turns": [
     [
      "나레이션",
-     "그 판결이 난 2013년 9월, 남편은 바로 그날 자기 재산을 내연녀 앞으로 넘기기 시작했습니다."
+     "기각 판결이 난 2013년 9월, 남편은 바로 그날 자기 재산을 내연녀 앞으로 넘기기 시작했습니다."
     ]
    ],
    "who": [
     "남편",
     "내연녀"
    ],
-   "text": "그 판결이 난 2013년 9월, 남편은 바로 그날 자기 재산을 내연녀 앞으로 넘기기 시작했습니다.",
+   "text": "기각 판결이 난 2013년 9월, 남편은 바로 그날 자기 재산을 내연녀 앞으로 넘기기 시작했습니다.",
    "scene": "a quiet cafe table, the husband slides a thin stack of documents across the table toward the other woman",
    "still": "Fictional scene, invented characters, photoreal grounded drama. A single still frame, vertical 9:16 portrait.\nPEOPLE: the reference images show, in order, HUSBAND and OTHER WOMAN. Keep each person exactly as they appear in their own reference image, unchanged from the first frame to the last.\nSHOT: a quiet cafe table, the husband slides a thin stack of documents across the table toward the other woman. Framed from the waist up so every face stays clear, static camera, mouths closed, holding the moment.\nFRAMING: vertical 9:16 portrait, the person kept in the middle of the frame with a little room above the head, and the lower fifth of the frame left plain and uncluttered because a caption will sit there.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the people are sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones, the exact same colour grade in every shot of this story.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, photoreal look with natural skin texture and true-to-life body proportions, ordinary everyday Korean faces with unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.",
    "veo": "Fictional scene, invented characters, photoreal grounded drama. 8-second single continuous take, vertical portrait format (9 x 16).\nPEOPLE: the reference images show, in order, HUSBAND and OTHER WOMAN. Keep each person exactly as they appear in their own reference image, unchanged from the first frame to the last.\nSHOT: a quiet cafe table, the husband slides a thin stack of documents across the table toward the other woman. Framed from the waist up so every face stays clear, static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, the person kept in the middle of the frame with a little room above the head, and the lower fifth of the frame left plain and uncluttered because a caption will sit there.\nACTION: a quiet cafe table, the husband slides a thin stack of documents across the table toward the other woman, unfolding slowly and quietly over the whole take, with small natural movement — a breath, a hand shifting, light moving. Mouths stay closed the whole time.\nAUDIO: nobody speaks and nobody moves their lips at any point; only the quiet room tone of the location, no music, no voice, no narration.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the people are sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones, the exact same colour grade in every shot of this story.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, photoreal look with natural skin texture and true-to-life body proportions, ordinary everyday Korean faces with unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.",
    "flow": "A short fictional drama scene. Every character is invented for this story and resembles nobody. 8-second single continuous take, vertical portrait format (9 x 16).\nCAST: the husband, the other woman.\nSHOT: a quiet cafe table, the husband slides a thin stack of documents across the table toward the other woman. Framed from the waist up so everyone stays clear, static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, the people kept in the middle of the frame, the lower fifth left plain because a caption will sit there.\nACTION: the moment unfolds slowly and quietly over the whole take, with small natural movement — a breath, a hand shifting, light moving. Mouths stay closed the whole time.\nAUDIO: nobody speaks at any point; only quiet room tone, no music, no voice, no narration.\nCAMERA: background strongly out of focus, heavy bokeh, only the people sharp.\nCOLOR: warm neutral base, low contrast, slightly lifted blacks, soft amber lamplight, muted greens and cyans.\nSTYLE: one unbroken take in one place, naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo."
   },
   {
-   "n": 8,
+   "n": 10,
    "kind": "나레이션",
    "sec": 6.7,
    "narr": true,
@@ -179,7 +219,7 @@
    "flow": "A short fictional drama scene. Every character is invented for this story and resembles nobody. 8-second single continuous take, vertical portrait format (9 x 16).\nCAST: the wife.\nSHOT: before dawn, the wife sits on the edge of the bed holding a phone to her ear, the room dark except for one lamp. Framed from the waist up so everyone stays clear, static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, the people kept in the middle of the frame, the lower fifth left plain because a caption will sit there.\nACTION: the moment unfolds slowly and quietly over the whole take, with small natural movement — a breath, a hand shifting, light moving. Mouths stay closed the whole time.\nAUDIO: nobody speaks at any point; only quiet room tone, no music, no voice, no narration.\nCAMERA: background strongly out of focus, heavy bokeh, only the people sharp.\nCOLOR: warm neutral base, low contrast, slightly lifted blacks, soft amber lamplight, muted greens and cyans.\nSTYLE: one unbroken take in one place, naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo."
   },
   {
-   "n": 9,
+   "n": 11,
    "kind": "내연녀",
    "sec": 6,
    "narr": false,
@@ -200,7 +240,7 @@
    "flow": "A short fictional drama scene. Every character is invented for this story and resembles nobody. 6-second single continuous take, vertical portrait format (9 x 16).\nCAST: the wife, the other woman.\nSHOT: the other woman steps into the funeral hall where the wife is keeping vigil, and stops just inside the doorway. Framed from the waist up so everyone stays clear, static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, the people kept in the middle of the frame, the lower fifth left plain because a caption will sit there.\nACTION: only the other woman speaks; anyone else stays silent with their mouth closed.\nDIALOGUE: [LANGUAGE: KOREAN]\n  the other woman: \"인사만 드리고 갈게요. …나머지는 나중에 얘기해요.\"\nAUDIO: the line is said in natural, fluent everyday Korean with standard Seoul intonation, uneven rhythm and short breaths, with only quiet room tone underneath. Only that line is said and nothing more, then everyone stays silent until the clip ends.\nCAMERA: background strongly out of focus, heavy bokeh, only the people sharp.\nCOLOR: warm neutral base, low contrast, slightly lifted blacks, soft amber lamplight, muted greens and cyans.\nSTYLE: one unbroken take in one place, naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo."
   },
   {
-   "n": 10,
+   "n": 12,
    "kind": "변호사",
    "sec": 6,
    "narr": false,
@@ -221,7 +261,7 @@
    "flow": "A short fictional drama scene. Every character is invented for this story and resembles nobody. 6-second single continuous take, vertical portrait format (9 x 16).\nCAST: the wife, the attorney.\nSHOT: a law office, the attorney spreads several documents open on the desk while the wife leans in over them. Framed from the waist up so everyone stays clear, static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, the people kept in the middle of the frame, the lower fifth left plain because a caption will sit there.\nACTION: only the attorney speaks; anyone else stays silent with their mouth closed.\nDIALOGUE: [LANGUAGE: KOREAN]\n  the attorney: \"병원 지분에 보험금에… 다 합쳐서 삼십이억입니다.\"\nAUDIO: the line is said in natural, fluent everyday Korean with standard Seoul intonation, uneven rhythm and short breaths, with only quiet room tone underneath. Only that line is said and nothing more, then everyone stays silent until the clip ends.\nCAMERA: background strongly out of focus, heavy bokeh, only the people sharp.\nCOLOR: warm neutral base, low contrast, slightly lifted blacks, soft amber lamplight, muted greens and cyans.\nSTYLE: one unbroken take in one place, naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo."
   },
   {
-   "n": 11,
+   "n": 13,
    "kind": "아내",
    "sec": 8,
    "narr": false,
@@ -241,7 +281,28 @@
    "flow": "A short fictional drama scene. Every character is invented for this story and resembles nobody. 8-second single continuous take, vertical portrait format (9 x 16).\nCAST: the wife.\nSHOT: the wife cannot take her eyes off the papers in front of her, one hand flat on the desk. Framed from the waist up so everyone stays clear, static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, the people kept in the middle of the frame, the lower fifth left plain because a caption will sit there.\nACTION: only the wife speaks; anyone else stays silent with their mouth closed.\nDIALOGUE: [LANGUAGE: KOREAN]\n  the wife: \"우리 애 등록금이 없어서 휴학시켰는데… 매달 이천만 원씩이요?\"\nAUDIO: the line is said in natural, fluent everyday Korean with standard Seoul intonation, uneven rhythm and short breaths, with only quiet room tone underneath. Only that line is said and nothing more, then everyone stays silent until the clip ends.\nCAMERA: background strongly out of focus, heavy bokeh, only the people sharp.\nCOLOR: warm neutral base, low contrast, slightly lifted blacks, soft amber lamplight, muted greens and cyans.\nSTYLE: one unbroken take in one place, naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo."
   },
   {
-   "n": 12,
+   "n": 14,
+   "kind": "나레이션",
+   "sec": 5.4,
+   "narr": true,
+   "turns": [
+    [
+     "나레이션",
+     "아내는 그 돈을 되찾겠다며 소송을 냈습니다."
+    ]
+   ],
+   "who": [
+    "아내",
+    "변호사"
+   ],
+   "text": "아내는 그 돈을 되찾겠다며 소송을 냈습니다.",
+   "scene": "the wife signs the last page of a thick document at a desk while the attorney sets the next page in front of her",
+   "still": "Fictional scene, invented characters, photoreal grounded drama. A single still frame, vertical 9:16 portrait.\nPEOPLE: the reference images show, in order, WIFE and ATTORNEY. Keep each person exactly as they appear in their own reference image, unchanged from the first frame to the last.\nSHOT: the wife signs the last page of a thick document at a desk while the attorney sets the next page in front of her. Framed from the waist up so every face stays clear, static camera, mouths closed, holding the moment.\nFRAMING: vertical 9:16 portrait, the person kept in the middle of the frame with a little room above the head, and the lower fifth of the frame left plain and uncluttered because a caption will sit there.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the people are sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones, the exact same colour grade in every shot of this story.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, photoreal look with natural skin texture and true-to-life body proportions, ordinary everyday Korean faces with unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.",
+   "veo": "Fictional scene, invented characters, photoreal grounded drama. 6-second single continuous take, vertical portrait format (9 x 16).\nPEOPLE: the reference images show, in order, WIFE and ATTORNEY. Keep each person exactly as they appear in their own reference image, unchanged from the first frame to the last.\nSHOT: the wife signs the last page of a thick document at a desk while the attorney sets the next page in front of her. Framed from the waist up so every face stays clear, static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, the person kept in the middle of the frame with a little room above the head, and the lower fifth of the frame left plain and uncluttered because a caption will sit there.\nACTION: the wife signs the last page of a thick document at a desk while the attorney sets the next page in front of her, unfolding slowly and quietly over the whole take, with small natural movement — a breath, a hand shifting, light moving. Mouths stay closed the whole time.\nAUDIO: nobody speaks and nobody moves their lips at any point; only the quiet room tone of the location, no music, no voice, no narration.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the people are sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones, the exact same colour grade in every shot of this story.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, photoreal look with natural skin texture and true-to-life body proportions, ordinary everyday Korean faces with unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.",
+   "flow": "A short fictional drama scene. Every character is invented for this story and resembles nobody. 6-second single continuous take, vertical portrait format (9 x 16).\nCAST: the wife, the attorney.\nSHOT: the wife signs the last page of a thick document at a desk while the attorney sets the next page in front of her. Framed from the waist up so everyone stays clear, static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, the people kept in the middle of the frame, the lower fifth left plain because a caption will sit there.\nACTION: the moment unfolds slowly and quietly over the whole take, with small natural movement — a breath, a hand shifting, light moving. Mouths stay closed the whole time.\nAUDIO: nobody speaks at any point; only quiet room tone, no music, no voice, no narration.\nCAMERA: background strongly out of focus, heavy bokeh, only the people sharp.\nCOLOR: warm neutral base, low contrast, slightly lifted blacks, soft amber lamplight, muted greens and cyans.\nSTYLE: one unbroken take in one place, naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo."
+  },
+  {
+   "n": 15,
    "kind": "내연녀",
    "sec": 8,
    "narr": false,
@@ -266,7 +327,7 @@
    "flow": "A short fictional drama scene. Every character is invented for this story and resembles nobody. 8-second single continuous take, vertical portrait format (9 x 16).\nCAST: the wife, the other woman.\nSHOT: a courtroom, the other woman stands at the table with her chin up while the wife holds a single document out across the table. Framed from the waist up so everyone stays clear, static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, the people kept in the middle of the frame, the lower fifth left plain because a caption will sit there.\nACTION: the other woman then the wife speak in that order, each one's mouth moving only during their own line and closed while the other speaks.\nDIALOGUE: [LANGUAGE: KOREAN] one voice at a time, in this order\n  the other woman: \"전 몰라요. 찍으라니까 찍었어요.\"\n  the wife: \"몰라? 이 날짜는 뭔데.\"\nAUDIO: the line is said in natural, fluent everyday Korean with standard Seoul intonation, uneven rhythm and short breaths, with only quiet room tone underneath. Only that line is said and nothing more, then everyone stays silent until the clip ends.\nCAMERA: background strongly out of focus, heavy bokeh, only the people sharp.\nCOLOR: warm neutral base, low contrast, slightly lifted blacks, soft amber lamplight, muted greens and cyans.\nSTYLE: one unbroken take in one place, naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo."
   },
   {
-   "n": 13,
+   "n": 16,
    "kind": "아내",
    "sec": 4,
    "narr": false,
@@ -284,7 +345,7 @@
    "flow": "A short fictional drama scene. Every character is invented for this story and resembles nobody. 4-second single continuous take, vertical portrait format (9 x 16).\nSHOT: a very close view of a printed document held in a hand, the paper filling the frame, everything soft except the paper. Static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, the subject kept in the middle of the frame, the lower fifth left plain because a caption will sit there.\nACTION: only the wife speaks, from off camera; nobody's face is in frame.\nDIALOGUE: [LANGUAGE: KOREAN] spoken from off camera\n  the wife: \"이 날짜… 그 사람 재판 진 날이야.\"\nAUDIO: the line is said in natural, fluent everyday Korean with standard Seoul intonation, uneven rhythm and short breaths, with only quiet room tone underneath. Only that line is said and nothing more, then everyone stays silent until the clip ends.\nCAMERA: background strongly out of focus, heavy bokeh, only the subject sharp.\nCOLOR: warm neutral base, low contrast, slightly lifted blacks, soft amber lamplight, muted greens and cyans.\nSTYLE: one unbroken take in one place, naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo."
   },
   {
-   "n": 14,
+   "n": 17,
    "kind": "아내",
    "sec": 6,
    "narr": false,
@@ -304,7 +365,7 @@
    "flow": "A short fictional drama scene. Every character is invented for this story and resembles nobody. 6-second single continuous take, vertical portrait format (9 x 16).\nCAST: the wife.\nSHOT: the wife takes one step closer, still holding the document down at her side. Framed from the waist up so everyone stays clear, static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, the people kept in the middle of the frame, the lower fifth left plain because a caption will sit there.\nACTION: only the wife speaks; anyone else stays silent with their mouth closed.\nDIALOGUE: [LANGUAGE: KOREAN]\n  the wife: \"몰랐다면서. 근데 어떻게 그날 바로 찍어?\"\nAUDIO: the line is said in natural, fluent everyday Korean with standard Seoul intonation, uneven rhythm and short breaths, with only quiet room tone underneath. Only that line is said and nothing more, then everyone stays silent until the clip ends.\nCAMERA: background strongly out of focus, heavy bokeh, only the people sharp.\nCOLOR: warm neutral base, low contrast, slightly lifted blacks, soft amber lamplight, muted greens and cyans.\nSTYLE: one unbroken take in one place, naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo."
   },
   {
-   "n": 15,
+   "n": 18,
    "kind": "나레이션",
    "sec": 9.5,
    "narr": true,
@@ -322,7 +383,7 @@
    "flow": "A short fictional drama scene. Every character is invented for this story and resembles nobody. 8-second single continuous take, vertical portrait format (9 x 16).\nSHOT: the wide stone front steps of a courthouse in daylight, empty, seen from below. Static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, the subject kept in the middle of the frame, the lower fifth left plain because a caption will sit there.\nACTION: the moment unfolds slowly and quietly over the whole take, with small natural movement — a breath, a hand shifting, light moving. Mouths stay closed the whole time.\nAUDIO: nobody speaks at any point; only quiet room tone, no music, no voice, no narration.\nCAMERA: background strongly out of focus, heavy bokeh, only the subject sharp.\nCOLOR: warm neutral base, low contrast, slightly lifted blacks, soft amber lamplight, muted greens and cyans.\nSTYLE: one unbroken take in one place, naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo."
   },
   {
-   "n": 16,
+   "n": 19,
    "kind": "나레이션",
    "sec": 8.2,
    "narr": true,
