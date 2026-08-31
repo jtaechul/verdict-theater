@@ -227,18 +227,23 @@ def voice_route_ok(tts, need):
        영상은 멀쩡히 나오므로 눈으로는 안 보인다 — 그게 제일 나쁘다.
        → 돈 쓰기 전에 미리 보고, 안 되면 **아예 시작하지 않는다.**
     """
+    # ⭐ 목소리가 중간에 바뀌는 것을 막는다 (tts.NO_FALLBACK 설명 참조).
+    #   막히면 옛 목소리로 물러서지 않고 **거기서 멈춘다.** 만든 데까지는
+    #   보관되므로 다음 날 눌러 이어서 만들 수 있다.
+    tts.NO_FALLBACK = True
     if str(os.environ.get("SKIP_VOICE_ROUTE", "")).strip() == "1":
         return
     note = tts.route_note()
     print(f"■ 목소리 길: {note}")
     if "하루 10번" in note and need > 10:
-        raise Short90Error(
-            f"이 길로는 {need}줄을 못 만듭니다 (하루 10번까지).\n"
-            f"   지금 길: {note}\n"
-            f"   → 구글 클라우드 콘솔에서 **Vertex AI API"
-            f"(aiplatform.googleapis.com)** 를 [사용] 하면 열립니다.\n"
-            f"   그냥 밀어붙이면 열한 번째 줄부터 옛 목소리로 바뀌어 "
-            f"한 편 안에서 사람 목소리가 달라집니다.")
+        # ⚠️ 막지는 않는다 — 오늘 열 줄은 진짜로 만들어지고 보관된다.
+        #    사흘에 걸쳐 누르면 완성된다. 대신 **크게 알린다.**
+        print(f"  ⚠️⚠️ 이 창구는 하루 10번까지인데 {need}줄이 필요합니다.\n"
+              f"     오늘 만들 수 있는 데까지 만들고 보관합니다 — 내일 다시\n"
+              f"     누르시면 이어서 만듭니다 (사흘이면 끝납니다).\n"
+              f"     한 번에 끝내시려면 구글 클라우드 콘솔에서\n"
+              f"     **Vertex AI API(aiplatform.googleapis.com)** 를 켜십시오.\n"
+              f"     ⭐ 목소리가 중간에 바뀌는 일은 없습니다 — 막히면 멈춥니다.")
 
 
 def voices(doc):

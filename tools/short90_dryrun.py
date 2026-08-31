@@ -116,26 +116,33 @@ def main():
     # ⭐ 길목 검사가 **진짜로 막아 주는지** 먼저 본다 (하루 10번 길이면 스물세
     #    줄을 못 만드는데, 그냥 밀어붙이면 열한 번째부터 목소리가 바뀐다)
     class Ten:
+        NO_FALLBACK = False
+
         @staticmethod
         def route_note():
             return "AI 스튜디오 — 무료 등급은 하루 10번뿐"
 
-    try:
+    import io, contextlib
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
         S9.voice_route_ok(Ten, 23)
-        ck("좁은 길이면 아예 시작하지 않는다", False, "그냥 지나갔다")
-    except S9.Short90Error as e:
-        ck("좁은 길이면 아예 시작하지 않는다", "하루 10번" in str(e))
+    ck("좁은 창구면 크게 알린다", "하루 10번까지인데" in buf.getvalue(),
+       buf.getvalue()[:80])
+    ck("좁은 창구여도 막지는 않는다 (오늘 만들 데까지 만든다)", True)
+    ck("목소리가 중간에 바뀌지 못하게 잠갔다", Ten.NO_FALLBACK is True,
+       "잠금이 안 걸렸다 — 열한 번째 줄부터 딴 사람 목소리가 된다")
 
     class Wide:
+        NO_FALLBACK = False
+
         @staticmethod
         def route_note():
             return "구글 클라우드 (gemini-2.5-flash-tts) — 하루 횟수 제한 없음"
 
-    try:
+    buf2 = io.StringIO()
+    with contextlib.redirect_stdout(buf2):
         S9.voice_route_ok(Wide, 23)
-        ck("넓은 길이면 그냥 간다", True)
-    except S9.Short90Error as e:
-        ck("넓은 길이면 그냥 간다", False, str(e)[:60])
+    ck("넓은 창구면 경고 없이 그냥 간다", "하루 10번까지인데" not in buf2.getvalue())
 
     FakeTTS.route_note = staticmethod(lambda: "구글 클라우드 — 하루 횟수 제한 없음")
     S9.voices(doc)
