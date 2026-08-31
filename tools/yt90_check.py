@@ -54,8 +54,16 @@ def main():
     ck("관리자 페이지가 90초 편 글을 따로 지어내지 않는다",
        not re.search(r"function\s+yt90\s*\(", js),
        "worker.js 에 글 만드는 함수가 생겼다 — 언젠가 두 글이 갈라진다")
-    ck("관리자 페이지는 보관된 meta.json 을 읽는다",
-       "releases/tags/short90-S90" in js and "meta.json" in js)
+    ck("관리자 페이지는 지어 둔 글을 읽는다",
+       "data/series/S90.meta.json" in js)
+    # ⚠️ 영상을 만들기 전에도 칸이 떠야 한다. 릴리스에만 기대면 처음 쓰는
+    #    손님에게는 유튜브 칸이 아예 안 보인다 (실제로 그랬다).
+    made = ROOT / "data" / "series" / "S90.meta.json"
+    ck("올릴 글이 저장소에 지어져 있다 (영상 안 만들어도 뜬다)", made.exists())
+    if made.exists():
+        got = json.loads(made.read_text(encoding="utf-8"))
+        ck("지어 둔 글이 지금 대본과 같다", got.get("title") == m["title"],
+           "python3 tools/build_short90.py 를 다시 돌리십시오")
 
     print("\n③ 만들 때 글도 같이 보관하는가")
     mk = (ROOT / ".github" / "workflows" / "short90.yml").read_text(encoding="utf-8")

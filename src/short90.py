@@ -26,6 +26,7 @@
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -103,6 +104,19 @@ WHITE = (255, 255, 255, 255)
 PAD = 0.40                       # 말이 끝난 뒤 남기는 여운(초)
 MIN_CUT = 2.2                    # 아무리 짧아도 이만큼은 보여 준다(깜빡임 방지)
 SPEED = 1.08                     # 말 빠르기 (1.28 을 넘기면 발음이 뭉개진다)
+
+# ⭐⭐ 2026-08-31 손님: "배경음악이 좀 하나 깔려야 될 거 같거든? 우리 만들어
+#    놓은 게 있으니까 그거 하나를 좀 깔도록 하고."
+#    assets/bgm/ 에 여덟 곡이 이미 있다. 새로 만들 것이 없다(0원).
+#    ⚠️ 왜 verdict 인가 — 우리 편이 129초인데 이 곡이 166초라 **한 바퀴로
+#       끝까지 덮는다.** 짧은 곡을 쓰면 도는 자리에서 이음매가 들린다.
+#       (그래도 어떤 곡을 골라도 되게 -stream_loop 로 돌려 둔다)
+#    ⚠️ 말소리를 덮으면 안 된다. 그냥 볼륨만 낮추면 조용한 대목에서는 너무
+#       작고 큰 대목에서는 여전히 방해가 된다. 그래서 **말이 나올 때만 음악을
+#       눌러 주는**(사이드체인) 방식을 쓴다 — 말 없는 자리에서만 올라온다.
+BGM = os.environ.get("S90_BGM", "verdict").strip()
+BGM_VOL = 0.42                   # 눌리기 전 기본 크기
+BGM_IN, BGM_OUT = 1.5, 3.0       # 시작에 서서히 들어오고, 끝에 서서히 빠진다
 ZOOM_SRC = 1.4                   # 움직이기 전에 그림을 키워 두는 배수 (떨림 방지)
 
 # ⭐⭐ 2026-08-31 손님: "줌인 줌아웃 등이 조금 더 있어서 생동감이 조금 더
@@ -708,6 +722,51 @@ def cut_video(c, still, voice, clip, ovs, out):
     return sec
 
 
+def bgm_path():
+    """깔 배경음악 파일. 없으면 None (그때는 음악 없이 그냥 간다)."""
+    f = ROOT / "assets" / "bgm" / f"{BGM}.mp3"
+    return f if f.exists() else None
+
+
+def music(src, out):
+    """말소리 아래에 배경음악을 깐다. 음악이 없으면 그대로 옮긴다.
+
+    ⚠️ 음악이 말을 덮으면 아무 소용이 없다. **말이 나오는 동안에는 음악을
+       눌러 준다**(sidechaincompress). 사람이 라디오에서 하는 그 일이다.
+    ⚠️ 화면은 다시 만들지 않는다(-c:v copy) — 다시 만들면 화질이 한 번 더
+       깎이고 시간도 오래 걸린다. 소리만 새로 얹는다.
+    """
+    b = bgm_path()
+    sec = dur_of(src)
+    if not b or sec <= 0:
+        if b is None:
+            print(f"  ⚠️ 배경음악 assets/bgm/{BGM}.mp3 이 없다 — 음악 없이 간다")
+        shutil.copyfile(src, out)
+        return out
+    fade = max(0.0, sec - BGM_OUT)
+    vf = (
+        # 말소리를 둘로 나눈다 — 하나는 그대로 쓰고, 하나는 음악을 누르는 데 쓴다
+        f"[0:a]asplit=2[voice][key];"
+        f"[1:a]volume={BGM_VOL},atrim=0:{sec:.3f},asetpts=PTS-STARTPTS,"
+        f"afade=t=in:st=0:d={BGM_IN},afade=t=out:st={fade:.3f}:d={BGM_OUT}[bed];"
+        # 말이 나오면 음악을 눌러 준다 (말 없는 자리에서만 올라온다)
+        f"[bed][key]sidechaincompress=threshold=0.02:ratio=12:attack=15:"
+        f"release=450[duck];"
+        # ⚠️⚠️ amix 는 기본으로 **입력 수만큼 나눈다** — 그냥 섞으면 말소리가
+        #    5.5dB 작아진다(실측). 음악을 깔았더니 말이 더 안 들리면 거꾸로다.
+        #    normalize=0 으로 끄고, 넘치는 봉우리는 alimiter 가 잡는다.
+        f"[voice][duck]amix=inputs=2:duration=first:dropout_transition=0:"
+        f"normalize=0,alimiter=limit=0.95[a]"
+    )
+    run(["ffmpeg", "-y", "-v", "error", "-i", str(src),
+         "-stream_loop", "-1", "-i", str(b),
+         "-filter_complex", vf, "-map", "0:v", "-c:v", "copy",
+         "-map", "[a]", "-c:a", "aac", "-b:a", "160k", "-ar", "48000",
+         "-t", f"{sec:.3f}", str(out)])
+    print(f"  ♪ 배경음악 {b.name} — 말이 나오면 저절로 눌린다")
+    return out
+
+
 def build(doc):
     stills_d, voice_d = OUT / "stills", OUT / "voice"
     clips_d = OUT / "clips"
@@ -747,9 +806,11 @@ def build(doc):
     lst = OUT / "parts.txt"
     lst.write_text("".join(f"file '{p.relative_to(OUT)}'\n" for p in parts),
                    encoding="utf-8")
-    final = OUT / "S90_short.mp4"
+    joined = OUT / "S90_joined.mp4"
     run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0",
-         "-i", str(lst), "-c", "copy", str(final)])
+         "-i", str(lst), "-c", "copy", str(joined)])
+    final = OUT / "S90_short.mp4"
+    music(joined, final)
     got = dur_of(final)
     try:
         name = final.relative_to(ROOT)

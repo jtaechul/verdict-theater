@@ -28,6 +28,7 @@ import series as S                                           # noqa: E402
 STORY = ROOT / "data" / "series" / "S90_story.py"
 BASE = ROOT / "data" / "series" / "S001.json"
 OUT = ROOT / "data" / "series" / "S90.json"
+META = ROOT / "data" / "series" / "S90.meta.json"   # 유튜브에 올릴 글
 
 # 화면에 뜨는 이름표 ↔ 프롬프트에 쓰는 영어 이름
 EN = {"아내": "WIFE", "남편": "HUSBAND", "내연녀": "OTHER WOMAN",
@@ -356,6 +357,16 @@ def main():
            "characters": base.get("characters") or []}
     OUT.write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n",
                    encoding="utf-8")
+
+    # ⭐⭐ 2026-08-31 손님: "유튜브 업로드 버튼이 아직도 없어."
+    #    만들어 두긴 했는데 **릴리스에 있는 meta.json 이 있어야만** 칸이
+    #    떴다. 아직 그 파일이 없으니 손님 화면에는 계속 안 보였다.
+    #    → 올릴 글을 **대본 옆에 같이 둔다.** 영상을 안 만들어도 늘 있다.
+    #    ⚠️ 셈법은 여전히 src/ytmeta.py 한 곳뿐이다 (여기서 부르기만 한다).
+    sys.path.insert(0, str(ROOT / "src"))
+    import ytmeta                                            # noqa: E402
+    META.write_text(json.dumps(ytmeta.meta90(doc), ensure_ascii=False,
+                               indent=1) + "\n", encoding="utf-8")
 
     narr = sum(1 for c in cuts if c["narr"])
     print(f"■ {OUT.relative_to(ROOT)} — {len(cuts)}컷 "

@@ -193,6 +193,50 @@ def main():
 
     # ⭐⭐ 2026-08-31 손님: "줌인 줌아웃 등이 조금 더 있어서 생동감이 조금 더
     #    넘쳤으면 좋겠어." 예전에는 가운데서 커지는 것 하나뿐이었다.
+    # ⭐⭐ 2026-08-31 손님: "배경음악이 좀 하나 깔려야 될 거 같거든?"
+    #    ⚠️ 음악을 깔았는데 **말이 더 안 들리면 거꾸로다.** 그래서 귀로
+    #       믿지 않고, 말하는 동안과 조용한 동안의 크기를 각각 재서 본다.
+    print("\n⑧ 배경음악이 말을 안 덮는가")
+    ck(f"배경음악 파일이 있다 (assets/bgm/{S9.BGM}.mp3)", S9.bgm_path() is not None)
+    if S9.bgm_path():
+        import math, struct, wave as _w
+        td4 = pathlib.Path(tempfile.mkdtemp())
+        vw = td4 / "v.wav"
+        with _w.open(str(vw), "w") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(48000)
+            fr = [struct.pack("<h", int(9000 * math.sin(2 * math.pi * 220 * i / 48000)))
+                  for i in range(48000 * 4)]                 # 앞 4초 = 말
+            fr.append(b"\x00\x00" * 48000 * 4)               # 뒤 4초 = 조용함
+            w.writeframes(b"".join(fr))
+        sv = td4 / "src.mp4"
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i",
+                        "color=c=black:s=270x480:d=8", "-i", str(vw),
+                        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac",
+                        "-shortest", str(sv)], check=True)
+        ov = td4 / "out.mp4"
+        S9.music(sv, ov)
+
+        def vol(f, ss, t):
+            r = subprocess.run(["ffmpeg", "-v", "info", "-ss", str(ss), "-t", str(t),
+                                "-i", str(f), "-af", "volumedetect", "-f", "null", "-"],
+                               capture_output=True, text=True)
+            for l in r.stderr.splitlines():
+                if "mean_volume" in l:
+                    return float(l.split(":")[-1].replace("dB", "").strip())
+            return -99.0
+
+        v0, v1 = vol(sv, 0.5, 3), vol(ov, 0.5, 3)
+        q0, q1 = vol(sv, 5, 2.5), vol(ov, 5, 2.5)
+        ck(f"말소리가 안 작아진다 ({v0:.1f} → {v1:.1f} dB)", v1 >= v0 - 1.0,
+           "음악을 깔았더니 말이 더 안 들린다 — 거꾸로다")
+        ck(f"조용한 자리에서 음악이 들린다 ({q1:.1f} dB)", q1 > -45,
+           "음악이 너무 작아 없는 것과 같다")
+        ck(f"음악이 말보다 확실히 작다 ({v1 - q1:.1f} dB 차이)", v1 - q1 >= 6,
+           "음악이 말을 덮는다")
+        ck("길이가 안 바뀐다", abs(S9.dur_of(ov) - S9.dur_of(sv)) < 0.15,
+           f"{S9.dur_of(sv):.2f} → {S9.dur_of(ov):.2f}초")
+        shutil.rmtree(td4, ignore_errors=True)
+
     print("\n⑦ 카메라가 컷마다 다르게 움직이는가")
     moves = [S9.move_of(c) for c in cuts]
     same = [c["n"] for c, m, m2 in zip(cuts[1:], moves[1:], moves) if m == m2]

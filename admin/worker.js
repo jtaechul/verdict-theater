@@ -3103,23 +3103,18 @@ export default {
           try { return Response.json({ meta: JSON.parse(kept), saved: true }); }
           catch (e) { /* 깨졌으면 아래에서 다시 만든다 */ }
         }
-        // ⭐ 셈법을 여기에 옮겨 적지 않는다. 영상을 만들 때 src/ytmeta.py 가
-        //   만들어 릴리스에 함께 넣어 둔 meta.json 을 **그대로** 읽는다.
+        // ⭐ 셈법을 여기에 옮겨 적지 않는다. 대본을 지을 때 src/ytmeta.py 가
+        //   함께 지어 **대본 옆에 둔** 글을 그대로 읽는다.
         //   (자바스크립트로 다시 짜면 언젠가 두 글이 갈라진다)
-        try {
-          const rel = await gh(env, `/repos/${REPO}/releases/tags/short90-S90`);
-          const a = (rel.assets || []).find((x) => x.name === 'meta.json');
-          if (a) {
-            const r0 = await fetch(`${GH}/repos/${REPO}/releases/assets/${a.id}`, {
-              headers: { 'Authorization': `Bearer ${env.GH_TOKEN}`,
-                         'Accept': 'application/octet-stream',
-                         'User-Agent': 'verdict-theater-admin' } });
-            return Response.json({ meta: await r0.json(), saved: false });
-          }
-        } catch (e) { /* 아직 안 만들었다 — 아래에서 알려 준다 */ }
+        //   ⚠️⚠️ 2026-08-31 — 예전에는 **릴리스**에 있는 meta.json 만 봤다.
+        //      영상을 한 번 만들기 전에는 그 파일이 없어서, 손님 화면에는
+        //      유튜브 칸이 계속 안 보였다("업로드 버튼이 아직도 없어").
+        //      이제 저장소에 늘 있는 파일을 본다 — 영상을 안 만들어도 뜬다.
+        const made = await getJson(env, 'data/series/S90.meta.json');
+        if (made) return Response.json({ meta: made, saved: false });
         return Response.json({ meta: null,
-          why: '먼저 [90초 한 편 만들기] 를 눌러 주십시오. '
-             + '영상을 만들 때 올릴 글도 같이 만들어집니다.' });
+          why: '올릴 글을 아직 못 지었습니다. '
+             + '대본(data/series/S90.meta.json)이 있는지 확인해 주십시오.' });
       }
 
       // 고친 글을 담아 두고 유튜브 올리기를 시킨다
