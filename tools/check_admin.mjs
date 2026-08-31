@@ -323,7 +323,11 @@ console.log('✅ 관리자 페이지: 바깥 코드 + 브라우저 코드 둘 �
   const shown = list.split(/\{\s*file:/).slice(1)
     .filter((x) => !/hidden:\s*true/.test(x))
     .map((x) => x.match(/^\s*'([^']+)'/)[1]);
-  const OK = ['keycheck.yml'];          // 지금 절차에서 보여도 되는 단추
+  // 지금 절차에서 보여도 되는 단추
+  //   voice-route.yml — 2026-08-31 손님: "지금 어느 창구인지 확인해서
+  //   알려줘." 목소리를 하루 몇 번까지 만들어 주는지 보는 단추다.
+  //   1원 미만이고, 돈 쓰기 전에 이걸 봐야 한 편이 중간에 망가지지 않는다.
+  const OK = ['keycheck.yml', 'voice-route.yml'];
   const extra = shown.filter((f) => !OK.includes(f));
   if (extra.length) {
     console.error('❌ 지금 절차 밖인데 화면에 보이는 단추: ' + extra.join(', '));
