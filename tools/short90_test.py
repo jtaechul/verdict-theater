@@ -59,7 +59,9 @@ def main():
     cuts = doc["cuts"]
 
     print("① 대본")
-    ck("컷이 19개다", len(cuts) == 19, len(cuts))
+    # ⚠️ 숫자를 박아 두면 컷을 끼워 넣을 때마다 여기서 걸린다. 범위로 본다 —
+    #    "컷이 갑자기 사라지거나 두 배가 되지 않았나" 만 보면 된다.
+    ck(f"컷이 알맞게 있다 ({len(cuts)}개)", 15 <= len(cuts) <= 26, len(cuts))
     ck("컷 번호가 1부터 빠짐없이 이어진다",
        [c["n"] for c in cuts] == list(range(1, len(cuts) + 1)))
     ck("컷마다 화면에 뜰 글이 있다", all(c.get("text", "").strip() for c in cuts))
@@ -201,7 +203,7 @@ def main():
     with_ref = [c["n"] for c in cuts if c.get("who")]
     ck(f"사람이 나오는 {len(with_ref)}컷에 그 사람 얼굴이 그대로 붙는다",
        not wrong, f"어긋난 컷 {wrong}")
-    ck("그림 19장을 다 만든다 (빠지는 컷이 없다)", len(seen) == len(cuts),
+    ck(f"그림 {len(cuts)}장을 다 만든다 (빠지는 컷이 없다)", len(seen) == len(cuts),
        f"{len(seen)}/{len(cuts)}")
 
     # ⭐ 워크플로는 저장소 그림을 놓은 **뒤에** still.py cards S001 을 부른다.
@@ -298,6 +300,30 @@ def main():
     #    그대로 묻혔다. 눈으로 보고 "괜찮네" 하면 또 놓친다 — **그려 놓고
     #    화소를 세어** 막대가 있는지, 글자가 왼쪽에 붙었는지, 자막 칸을
     #    안 침범하는지 확인한다.
+    # ⭐⭐ 2026-08-31 손님 확정: "갈아탄다" (제미나이 + 연기 지시)
+    #    한 줄이라도 지시가 비면 그 줄만 밋밋하게 읽히는데 **화면으로는 안 보인다.**
+    #    그리고 목소리 이름이 ko-KR- 로 시작하면 옛 엔진으로 새어 나가 지시가
+    #    통째로 버려진다 — 그게 원래 밋밋했던 까닭이다.
+    print("\n①-7 목소리에 연기 지시가 붙는가")
+    bad_say = [(c["n"], i) for c in cuts
+               for i in range(len(c["turns"]))
+               if not (c.get("say") or [""] * len(c["turns"]))[i].strip()]
+    ck("모든 줄에 연기 지시가 붙어 있다", not bad_say, f"빠진 줄 {bad_say}")
+    old_eng = [w for w, v in S9.VOICE.items() if str(v).startswith("ko-KR-")]
+    ck("옛 엔진으로 새는 목소리가 없다", not old_eng,
+       f"{old_eng} — ko-KR- 이름은 연기 지시를 못 받는다")
+    ck("사람마다 목소리가 다르다",
+       len(set(S9.VOICE.values())) == len(S9.VOICE), "겹치면 누가 말하는지 안 갈린다")
+    said = [c["kind"] for c in cuts if c["kind"] != "나레이션"]
+    ck("말하는 사람이 모두 목소리표에 있다",
+       all(w in S9.VOICE for w in said), f"{[w for w in said if w not in S9.VOICE]}")
+    # 나레이션은 손님이 **빠른 쪽**을 고르셨다 — 느리게 만드는 말이 섞이면 안 된다
+    slow = [w for w in ("한 박자 쉬고", "서두르지 않고", "느리게", "천천히")
+            for c in cuts for h in (c.get("say") or [])
+            if c["kind"] == "나레이션" and w in h]
+    ck("나레이션 지시에 느려지는 말이 없다 (손님이 빠른 쪽을 고르셨다)",
+       not slow, f"{sorted(set(slow))}")
+
     print("\n②-2 이름표가 잘 보이는가 (왼쪽 세로 막대 + 왼쪽 맞춤)")
     import tempfile as _tf2
     td2 = pathlib.Path(_tf2.mkdtemp())

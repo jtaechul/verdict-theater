@@ -64,18 +64,23 @@ YT_TITLE = "남편이 죽고 남은 건 빚 6억, 재산 32억은 내연녀 앞�
 #    20컷 → 16컷 · 139초 → 약 117초.
 CUTS = [
     # ── 훅 ─────────────────────────────────────────────────────
-    dict(n=1, sec=9.3, who=["아내"],
-         turns=[("나레이션", "2017년 2월, 남편이 죽었습니다. 그런데 남편 통장에 "
-                            "남은 것은 빚 6억뿐이었습니다.")],
+    # ⭐⭐ 2026-08-31 손님: "갑자기 32억이 나와서 내용 이해가 안 돼."
+    #    맞다. 남편이 **뭐 하는 사람인지** 한 줄도 없어서 32억이 어디서 난
+    #    돈인지 알 길이 없었다 ('병원 지분' 은 76초에 가서야 처음 나온다).
+    #    빚 6억이 왜 아내에게 오는지도 없었다.
+    #    → 「병원을 하던」 「물려받은」 두 낱말로 둘 다 푼다. 그림은 그대로다.
+    dict(n=1, sec=10.4, who=["아내"],
+         turns=[("나레이션", "2017년 2월, 병원을 하던 남편이 죽었습니다. "
+                            "아내가 물려받은 것은 빚 6억뿐이었습니다.")],
          scene="the wife sits at a bank counter and looks down at a bankbook lying "
                "open in front of her, her hand still resting on it"),
 
     # ⚠️⚠️ 2026-08-28 — 이 컷을 "변호사가 나중에 말하니 겹친다" 며 뺐다가
     #    되살렸다. 변호사 대사는 **66초 뒤**에 나온다 — 겹치는 게 아니라
     #    훅을 죽인 것이었다. 제목이 「32억」인데 훅에 32억이 없었다.
-    dict(n=2, sec=6.9, who=["내연녀"],
-         turns=[("나레이션", "남편의 재산 32억은 이미 내연녀 앞으로 전부 넘어가 "
-                            "있었습니다.")],
+    dict(n=2, sec=8.2, who=["내연녀"],
+         turns=[("나레이션", "남편이 평생 모은 재산 32억은, 죽기 전에 이미 "
+                            "내연녀 앞으로 전부 넘어가 있었습니다.")],
          scene="the other woman stands alone in a quiet hospital corridor, half "
                "turned toward the camera, calm and unhurried"),
 
@@ -136,7 +141,18 @@ CUTS = [
          turns=[("변호사", "병원 지분에 보험금에… 다 합쳐서 삼십이억입니다.")],
          scene="a law office, the attorney spreads several documents open on "
                "the desk while the wife leans in over them"),
-    dict(n=13, sec=8, who=["아내"],
+    # ⭐⭐ 2026-08-31 손님: "갑자기 대출 이자가 나와서 내용 이해가 안 돼."
+    #    맞다. 「매달 이천만 원」 은 앞에 한 번도 안 나온 숫자인데 아내 대사에서
+    #    불쑥 튀어나왔다. 그 돈이 무엇인지 먼저 알려 준다 — 그래야 다음 컷이 꽂힌다.
+    #    ⚠️ 사람이 없는 컷이다(서류 클로즈업). 16컷과 같은 꼴이라 낯선 사람이
+    #       들어올 자리가 없다.
+    dict(n=13, sec=7.2, who=[],
+         turns=[("나레이션", "남편은 죽기 전 3년 동안, 내연녀에게 매달 "
+                            "이천만 원을 보내고 있었습니다.")],
+         scene="a bank statement lying on a desk under a lamp, one column of "
+               "identical monthly transfers running down the page, the paper "
+               "filling the frame"),
+    dict(n=14, sec=8, who=["아내"],
          turns=[("아내", "우리 애 등록금이 없어서 휴학시켰는데… 매달 이천만 "
                         "원씩이요?")],
          scene="the wife cannot take her eyes off the papers in front of her, one "
@@ -144,29 +160,29 @@ CUTS = [
 
     # ⚠️⚠️ 2026-08-28 — 사무실에서 곧바로 법정으로 넘어가, 아내가 소송을
     #    냈다는 말이 한 번도 없었다.
-    dict(n=14, sec=5.4, who=["아내", "변호사"],
+    dict(n=15, sec=5.4, who=["아내", "변호사"],
          turns=[("나레이션", "아내는 그 돈을 되찾겠다며 소송을 냈습니다.")],
          scene="the wife signs the last page of a thick document at a desk while "
                "the attorney sets the next page in front of her"),
 
     # ── 5막 반전 ────────────────────────────────────────────────
-    dict(n=15, sec=8, who=["아내", "내연녀"],
+    dict(n=16, sec=8, who=["아내", "내연녀"],
          # ⚠️ 8초 안에 두 사람이 다 말해야 한다 — 두 줄 다 한 마디씩 줄였다
          turns=[("내연녀", "전 몰라요. 찍으라니까 찍었어요."),
                 ("아내", "몰라? 이 날짜는 뭔데.")],
          scene="a courtroom, the other woman stands at the table with her chin up "
                "while the wife holds a single document out across the table"),
-    dict(n=16, sec=4, who=[],
+    dict(n=17, sec=4, who=[],
          turns=[("아내", "이 날짜… 그 사람 재판 진 날이야.")],
          scene="a very close view of a printed document held in a hand, the paper "
                "filling the frame, everything soft except the paper"),
-    dict(n=17, sec=6, who=["아내"],
+    dict(n=18, sec=6, who=["아내"],
          turns=[("아내", "몰랐다면서. 근데 어떻게 그날 바로 찍어?")],
          scene="the wife takes one step closer, still holding the document down at "
                "her side"),
 
     # ── 결말 ────────────────────────────────────────────────────
-    dict(n=18, sec=9.5, who=[],
+    dict(n=19, sec=9.5, who=[],
          # ⚠️ 2026-08-31 손님: "아이들이 아니라 딸 하나잖아."
          #    맞다. 13컷은 "우리 애", 19컷은 아내와 딸 둘뿐인데 여기만
          #    '아이들' 이라 이야기가 어긋났다.
@@ -181,9 +197,50 @@ CUTS = [
          scene="the inside of an empty courtroom in the morning, rows of empty wooden "
                "benches and the raised bench at the front, quiet light through tall "
                "windows"),
-    dict(n=19, sec=8.2, who=["아내", "딸"],
+    dict(n=20, sec=8.2, who=["아내", "딸"],
          turns=[("나레이션", "아내가 떠안을 뻔했던 빚 6억도 갚지 않게 됐습니다. "
                             "실제로 있었던 사건입니다.")],
          scene="the wife and her grown daughter walk down the courthouse steps side "
                "by side in daylight"),
 ]
+
+# ⭐⭐⭐ 연기 지시 (2026-08-31 손님 확정: "갈아탄다")
+#
+#   제미나이 목소리는 대사와 함께 **"어떻게 읽어라"** 를 말로 받는다.
+#   자동 규칙(tts.MOOD)은 물음표만 보고 "날카롭게 되묻듯" 으로 읽는데,
+#   컷4 "여보… 이 사람 누구야?" 는 날카로우면 안 되고 **떨려야** 한다.
+#   스무 컷 스물세 줄뿐이라 **한 줄씩 손으로** 적는 것이 가능하고, 그게 제일 좋다.
+#
+#   ⚠️ 지시에 대사를 넣지 않는다. 지시는 '어떻게', 대사는 turns 가 진다.
+#   ⚠️ 나레이션은 손님이 **빠른 쪽(②)** 을 고르셨다 — "쇼츠 속도에 맞춰".
+#      느리게 읽히는 말('한 박자 쉬고' 같은)은 넣지 않는다.
+#   ⚠️ 키는 (컷 번호, 줄 번호). 컷을 끼워 넣으면 번호가 밀리므로
+#      tools/build_short90.py 가 **줄 수와 맞는지 검사**한다.
+
+NARR = ("사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게")
+
+SAY = {
+    (1, 0): NARR,
+    (2, 0): NARR,
+    (3, 0): NARR,
+    (4, 0): "50대 여성이, 숨이 막혀 말이 잘 안 나오는 채로 아주 작게 떨면서",
+    (4, 1): "50대 남성이, 귀찮다는 듯 무심하게 툭 던지듯",
+    (5, 0): "50대 여성이, 믿기지 않아 목소리가 확 올라가며 분노가 터져 나오듯",
+    (5, 1): "50대 남성이, 감정 없이 차갑게 끊어서 명령하듯",
+    (6, 0): NARR,
+    (7, 0): "50대 남성이, 어이없다는 듯 코웃음을 치고 곧 서늘하게 낮추어",
+    (8, 0): "50대 남성이, 이를 악물고 화를 눌러 담아 낮지만 서슬 퍼렇게",
+    (9, 0): NARR,
+    (10, 0): NARR,
+    (11, 0): "30대 여성이, 예의 바른 존댓말 뒤에 여유를 감추고 차분하게",
+    (12, 0): "40대 남성이, 사무적으로 담담하게 숫자를 읽어 주듯",
+    (13, 0): NARR,
+    (14, 0): "50대 여성이, 울음을 삼키느라 목이 메어 끝을 떨면서 힘겹게",
+    (15, 0): NARR,
+    (16, 0): "30대 여성이, 억울한 척 또박또박 존댓말로 잡아떼듯",
+    (16, 1): "50대 여성이, 낮게 몰아붙이며 되묻듯 날카롭게",
+    (17, 0): "50대 여성이, 혼잣말처럼 아주 작게, 알아차린 순간의 서늘함으로",
+    (18, 0): "50대 여성이, 확인 사살하듯 한 마디씩 눌러서 조용하고 단단하게",
+    (19, 0): NARR,
+    (20, 0): NARR,
+}

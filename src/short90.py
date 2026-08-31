@@ -81,13 +81,25 @@ ZOOM_TO = 1.10                   # 컷 하나 도는 동안 커지는 정도
 ZOOM_SRC = 1.4                   # 줌 전에 그림을 키워 두는 배수 (떨림 방지)
 
 # 목소리 — 사람마다 고정한다 (컷마다 달라지면 딴 사람이 된다)
+# ⭐⭐⭐ 2026-08-31 손님 확정: "갈아탄다."
+#
+#   ⚠️ 여기가 목소리가 밋밋했던 **까닭 그 자체**였다. 이름이 `ko-KR-…` 이면
+#      tts.say() 가 곧장 옛 구글 엔진으로 보낸다. 그 엔진에는 연기 지시를
+#      받는 자리가 아예 없다. 16화 쪽에는 지시를 보내는 길이 다 만들어져
+#      있는데 90초 편만 그 길을 안 쓰고 있었다.
+#      → 제미나이 목소리 이름으로 바꾸면 그 길이 열린다.
+#
+#   나이에 맞춰 고른다 (tts.MATURE_F / MATURE_M 과 같은 결) —
+#     아내 52세·남편 55세 → 연륜 있는 목소리
+#     내연녀 30대·딸 20대 → 젊은 목소리
+#     나레이션은 **누구와도 안 겹치는** 목소리여야 한다
 VOICE = {
-    "나레이션": "ko-KR-Neural2-C",
-    "아내": "ko-KR-Neural2-A",
-    "내연녀": "ko-KR-Neural2-B",
-    "남편": "ko-KR-Wavenet-C",
-    "변호사": "ko-KR-Wavenet-D",
-    "딸": "ko-KR-Wavenet-A",
+    "나레이션": "Alnilam",       # 낮고 묵직 — 사건을 전하는 소리
+    "아내": "Gacrux",            # 연륜 — 50대 여성
+    "내연녀": "Erinome",         # 젊다 — 30대 여성
+    "남편": "Algenib",           # 거칠다 — 50대 남성
+    "변호사": "Iapetus",         # 사무적 — 40대 남성
+    "딸": "Leda",                # 어리다 — 20대 여성
 }
 NARR_RATE = 1.02                 # 나레이션은 아주 조금 빠르게 (또박또박은 유지)
 
@@ -144,9 +156,31 @@ def cards_dir():
     return OUT / "cards"
 
 
+def salvage(d, suffix=".png"):
+    """이미 만들어 둔 것을 **지문으로** 찾아 둔다 — {지문: 파일 내용}.
+
+    ⚠️⚠️ 2026-08-31 — 컷 하나를 중간에 끼워 넣었더니 뒤 컷 번호가 전부 하나씩
+       밀렸다. 파일 이름이 컷 번호(c13.png)라, 내용은 그대로인데 **이름이
+       어긋나** 여덟 장을 다시 그릴 뻔했다 (1,056원).
+       → 이름이 아니라 **지문**으로 찾는다. 앞으로 컷을 끼워 넣어도 값이 안 든다.
+       ⚠️ 먼저 통째로 읽어 두고 나서 쓴다. 하나씩 옮기면 아직 안 옮긴 것을
+          덮어써 버린다 (13→14 를 쓰는 순간 원래 14 가 사라진다).
+    """
+    have = {}
+    for f in sorted(Path(d).glob(f"*{suffix}")):
+        sg = reuse.sig_file(f)
+        if not sg.exists():
+            continue
+        key = sg.read_text(encoding="utf-8").strip()
+        if key and key not in have:
+            have[key] = f.read_bytes()
+    return have
+
+
 def stills(doc):
     d = OUT / "stills"
     d.mkdir(parents=True, exist_ok=True)
+    kept = salvage(d)
     print(f"■ 컷 그림 {len(doc['cuts'])}장 (세로 9:16 · 약 "
           f"{cost.image_krw(ST.MODEL, ST.SIZE) * len(doc['cuts']):,.0f}원)")
     made = 0
@@ -159,6 +193,14 @@ def stills(doc):
         print(f"  컷{c['n']:>2} {'·'.join(c.get('who') or []) or '—'}")
         if ok:
             print("    (그대로다 — 건너뛴다)")
+            made += 1
+            continue
+        # ⭐ 이름은 어긋났어도 **같은 지문**의 그림이 있으면 그것을 옮겨 쓴다
+        #    (컷을 끼워 넣어 번호가 밀렸을 때 — 값이 안 든다)
+        if sig in kept:
+            out.write_bytes(kept[sig])
+            reuse.stamp(out, sig)
+            print("    (이름만 밀렸다 — 그대로 옮겨 쓴다 · 0원)")
             made += 1
             continue
         if why:
@@ -181,9 +223,15 @@ def voices(doc):
     for c in doc["cuts"]:
         out = d / f"c{c['n']:02d}.wav"
         turns = turns_of(c)
+        # ⭐ 줄마다 **어떻게 읽을지**(say)를 같이 들고 간다. 이게 이번 바꿈의
+        #   핵심 — 같은 글자라도 어떻게 읽으라고 말해 주면 낭독이 연기가 된다.
+        says = c.get("say") or [""] * len(turns)
         plan = [(w, t, VOICE.get(w) or VOICE["나레이션"],
-                 NARR_RATE if w == "나레이션" else 1.0) for w, t in turns]
-        sig = reuse.sig_of(*[f"{w}|{t}|{v}|{r}" for w, t, v, r in plan])
+                 NARR_RATE if w == "나레이션" else 1.0,
+                 says[i] if i < len(says) else "")
+                for i, (w, t) in enumerate(turns)]
+        # ⚠️ 지문에 지시도 넣는다 — 지시를 고치면 그 줄만 다시 만들어야 한다
+        sig = reuse.sig_of(*[f"{w}|{t}|{v}|{r}|{h}" for w, t, v, r, h in plan])
         ok, why = reuse.can_reuse(out, sig)
         # ⚠️ 길이 기록이 없으면 자막을 맞출 수가 없다 → 그 컷만 다시 만든다
         if ok and not lens_of(out).exists():
@@ -197,9 +245,11 @@ def voices(doc):
             print(f"    ⚠️ {why} — 다시 만든다")
         # ⭐ 한 컷 안에서 두 사람이 주고받으면 목소리를 따로 만들어 이어 붙인다
         parts = []
-        for i, (w, t, v, r) in enumerate(plan):
+        for i, (w, t, v, r, how) in enumerate(plan):
             one = d / f"c{c['n']:02d}_{i}.wav"
-            got = tts.say(t, v, r, 0.0, one)
+            # 지시가 있으면 구글이 권하는 모양 그대로 (지시 → 쌍점 → 큰따옴표)
+            style = f'{how} 다음 큰따옴표 안의 말만 그대로: "{t}"' if how else None
+            got = tts.say(t, v, r, 0.0, one, style=style)
             if not got or not Path(got).exists():
                 raise Short90Error(f"컷{c['n']} {w} 소리를 못 만들었다")
             parts.append(Path(got))

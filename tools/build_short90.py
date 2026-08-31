@@ -135,6 +135,27 @@ def text_of(c):
     return " / ".join(t for _, t in c["turns"])
 
 
+def say_of(story, c, i):
+    """그 줄을 **어떻게 읽어야 하는지** (data/series/S90_story.py 의 SAY).
+
+    ⚠️ 빠뜨리면 그 줄만 밋밋하게 읽힌다 — 그런데 화면으로는 안 보인다.
+       그래서 아래 check_say() 가 한 줄이라도 비면 아예 못 만들게 막는다.
+    """
+    return (getattr(story, "SAY", {}) or {}).get((c["n"], i), "")
+
+
+def check_say(story):
+    """연기 지시가 **한 줄도 안 빠졌는지**. 컷을 끼워 넣으면 번호가 밀린다."""
+    need = [(c["n"], i) for c in story.CUTS for i in range(len(c["turns"]))]
+    have = getattr(story, "SAY", {}) or {}
+    miss = [k for k in need if not have.get(k)]
+    extra = [k for k in have if k not in need]
+    if miss or extra:
+        raise SystemExit(
+            f"❌ 연기 지시가 안 맞습니다 (S90_story.py 의 SAY)\n"
+            f"   빠진 줄: {miss}\n   쓸데없는 줄: {extra}")
+
+
 def still_prompt(c):
     who = c.get("who") or []
     body = [S.HEAD_FIX.rstrip(".") + ". A single still frame, vertical 9:16 portrait."]
@@ -316,6 +337,7 @@ def main():
         print(f"❌ 인물 카드가 없다: {', '.join(missing)}")
         return 1
 
+    check_say(story)
     cuts = []
     for c in story.CUTS:
         cuts.append({
@@ -323,6 +345,8 @@ def main():
             "narr": is_narr(c),
             "turns": [list(t) for t in c["turns"]],
             "who": c.get("who") or [], "text": text_of(c), "scene": c["scene"],
+            # ⭐ 줄마다 **어떻게 읽을지** (2026-08-31). 목소리 만들 때 같이 보낸다
+            "say": [say_of(story, c, i) for i in range(len(c["turns"]))],
             "still": still_prompt(c),
             "veo": veo_prompt(c),
             "flow": flow_prompt(c),
