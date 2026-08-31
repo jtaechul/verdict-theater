@@ -193,6 +193,52 @@ def main():
                 holes.append((c["n"], f"{i}번째에서 끊긴다"))
     ck("스무 컷 모두 자막이 처음부터 끝까지 이어진다", not holes, f"{holes[:4]}")
 
+    # ⭐⭐ 2026-08-31 손님: "줌인 줌아웃 등이 조금 더 있어서 생동감이 조금 더
+    #    넘쳤으면 좋겠어." 예전에는 가운데서 커지는 것 하나뿐이었다.
+    print("\n⑦ 카메라가 컷마다 다르게 움직이는가")
+    moves = [S9.move_of(c) for c in cuts]
+    same = [c["n"] for c, m, m2 in zip(cuts[1:], moves[1:], moves) if m == m2]
+    ck("이웃한 컷이 같은 움직임을 되풀이하지 않는다", len(same) <= len(cuts) // 3,
+       f"이어서 같은 컷 {same}")
+    ck(f"움직임이 여러 가지다 ({len({m[6] for m in moves})}가지)",
+       len({m[6] for m in moves}) >= 3)
+    # 줌이 너무 크면 1.4배로 키워 둔 그림의 화소를 넘어 흐려진다
+    bad_z = [m[6] for m in moves if not (1.0 < m[0] <= 1.30 and 1.0 < m[1] <= 1.30)]
+    ck("줌이 흐려지지 않는 범위 안이다 (1.0~1.30)", not bad_z, f"{bad_z}")
+    # 대사 컷에서 옆으로 크게 훑으면 얼굴이 잘린다
+    pan_talk = [c["n"] for c, m in zip(cuts, moves)
+                if c["kind"] != "나레이션" and (abs(m[3] - m[2]) > 0.05
+                                             or abs(m[5] - m[4]) > 0.05)]
+    ck("대사 컷은 얼굴이 잘리게 훑지 않는다", not pan_talk, f"컷 {pan_talk}")
+
+    # 진짜로 움직이는지 한 컷만 찍어서 본다 (정지 그림이면 화면이 안 바뀐다)
+    from PIL import Image as _I, ImageDraw as _D
+    grid = tmp2 = pathlib.Path(tempfile.mkdtemp())
+    gi = _I.new("RGB", (S9.W, S9.H), (30, 30, 40))
+    gd = _D.Draw(gi)
+    for i in range(0, S9.W, 40):
+        gd.line([(i, 0), (i, S9.H)], fill=(200, 170, 90), width=3)
+    for j in range(0, S9.H, 40):
+        gd.line([(0, j), (S9.W, j)], fill=(90, 160, 200), width=3)
+    gp = tmp2 / "grid.png"; gi.save(gp)
+    gw = tmp2 / "g.wav"; fake_wav(gw, 4.0)
+    S9.lens_of(gw).write_text("[4.0]", encoding="utf-8")
+    c0 = cuts[0]
+    ovs0 = S9.karaoke(c0, 4.0, gw, tmp2 / "ov", 1)
+    mp4 = tmp2 / "m.mp4"
+    S9.cut_video(c0, gp, gw, None, ovs0, mp4)
+    for k, t in ((0, 0.1), (1, 3.8)):
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss", str(t), "-i", str(mp4),
+                        "-frames:v", "1", str(tmp2 / f"f{k}.png")], check=True)
+    a, b = (_I.open(tmp2 / f"f{k}.png").convert("L") for k in (0, 1))
+    pa, pb = a.load(), b.load()
+    gap = sum(abs(pa[x, y] - pb[x, y])
+              for y in range(0, a.height, 16) for x in range(0, a.width, 16))
+    gap /= (a.height // 16) * (a.width // 16)
+    ck(f"화면이 실제로 움직인다 (차이 {gap:.1f})", gap > 5,
+       "처음과 끝이 거의 같다 — 정지 그림이나 다름없다")
+    shutil.rmtree(tmp2, ignore_errors=True)
+
     print("\n⑥ 소리가 영상 끝까지 붙어 있는가")
     quiet = []
     for c in cuts[:6]:                   # 앞 여섯 컷만 (시간이 걸린다)

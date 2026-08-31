@@ -5,6 +5,7 @@
     python3 src/short90.py voice           컷마다 소리 (나레이션·대사)
     python3 src/short90.py build           한 편으로 조립 → build/s90/S90_short.mp4
     python3 src/short90.py all             위 셋을 차례로
+    python3 src/short90.py meta            유튜브에 올릴 제목·설명·해시태그 (0원)
 
 왜 16화가 아니라 한 편인가
     운영자 확정 — "90초로 만들어." 16화는 한 화에 사건이 하나뿐이라 "그래서
@@ -77,8 +78,31 @@ SUB_NOW = (245, 205, 116, 255)
 SUB_TODO = (255, 255, 255, 112)
 WHITE = (255, 255, 255, 255)
 PAD = 0.55                       # 말이 끝난 뒤 남기는 여운(초)
-ZOOM_TO = 1.10                   # 컷 하나 도는 동안 커지는 정도
-ZOOM_SRC = 1.4                   # 줌 전에 그림을 키워 두는 배수 (떨림 방지)
+ZOOM_SRC = 1.4                   # 움직이기 전에 그림을 키워 두는 배수 (떨림 방지)
+
+# ⭐⭐ 2026-08-31 손님: "줌인 줌아웃 등이 조금 더 있어서 생동감이 조금 더
+#    넘쳤으면 좋겠어."
+#    예전에는 **가운데서 1.10배까지 커지는 것 하나**뿐이었다. 방향만 컷마다
+#    뒤집었을 뿐이라, 스무 컷을 이어 붙이면 같은 움직임이 계속 반복됐다.
+#    → 카메라 움직임을 여섯 가지로 늘리고 **옆으로도 훑게** 한다.
+#
+#    한 줄은 (줌 시작, 줌 끝, 가로 시작, 가로 끝, 세로 시작, 세로 끝, 이름).
+#    가로·세로는 0=왼쪽/위, 1=오른쪽/아래, 0.5=한가운데다.
+#    ⚠️ 줌이 1.0 이면 옆으로 훑을 자리가 없다(화면이 딱 맞는다). 그래서
+#       가장 작은 값도 1.04 로 둔다 — 늘 조금은 여유를 남긴다.
+#    ⚠️ 1.30 을 넘기면 1.4배로 키워 둔 그림의 화소를 넘어서 흐려진다.
+MOVES = [
+    (1.04, 1.22, 0.50, 0.50, 0.50, 0.50, "천천히 다가간다"),
+    (1.24, 1.06, 0.50, 0.50, 0.50, 0.50, "천천히 물러선다"),
+    (1.06, 1.20, 0.62, 0.40, 0.48, 0.52, "다가가며 왼쪽으로"),
+    (1.06, 1.20, 0.38, 0.60, 0.52, 0.48, "다가가며 오른쪽으로"),
+    (1.16, 1.16, 0.50, 0.50, 0.34, 0.64, "위에서 아래로 훑는다"),
+    (1.24, 1.08, 0.44, 0.56, 0.62, 0.42, "물러서며 위로"),
+]
+# 대사 컷은 사람 얼굴이 주인공이다 — 옆으로 크게 훑으면 얼굴이 잘린다.
+# 그래서 대사 컷은 **다가가고 물러서는 것만**, 나레이션 컷은 훑는 것까지 쓴다.
+MOVES_TALK = (0, 1)
+MOVES_NARR = (0, 2, 4, 1, 3, 5)
 
 # 목소리 — 사람마다 고정한다 (컷마다 달라지면 딴 사람이 된다)
 # ⭐⭐⭐ 2026-08-31 손님 확정: "갈아탄다."
@@ -412,6 +436,27 @@ def overlay(c, out, turn=None, now=None):
     return out
 
 
+def meta(doc):
+    """⭐ 유튜브에 올릴 **제목·설명·해시태그**를 파일로 뽑는다 (0원).
+
+    ⚠️ 화면에서 본 것과 실제로 올라가는 것이 **반드시 같아야** 한다.
+       그래서 관리자 페이지도 이 파일을 보여 주고, 올릴 때도 이 파일을 쓴다.
+       두 곳에서 따로 만들면 언젠가 갈라진다.
+    """
+    import ytmeta                                            # 늦게 부른다
+    m = ytmeta.meta90(doc)
+    OUT.mkdir(parents=True, exist_ok=True)
+    f = OUT / "meta.json"
+    f.write_text(json.dumps(m, ensure_ascii=False, indent=1) + "\n",
+                 encoding="utf-8")
+    print(f"■ {f}")
+    print(f"\n  제목 ({len(m['title'])}자)\n    {m['title']}")
+    print(f"\n  해시태그 {len(m['tags'])}개\n    "
+          + " ".join("#" + t for t in m["tags"]))
+    print("\n  설명\n" + "\n".join("    " + l for l in m["description"].split("\n")))
+    return 0
+
+
 # ── ④ 조립 ────────────────────────────────────────────────────
 def lens_of(wav):
     """그 컷의 **줄마다 소리 길이**를 적어 둔 자리 (자막을 맞추는 데 쓴다)."""
@@ -460,6 +505,17 @@ def sub_windows(c, sec, voice):
             at.append((t0, t1))
             t0 = t1
     return at
+
+
+def move_of(c):
+    """이 컷의 카메라 움직임 (MOVES 한 줄).
+
+    ⚠️ 컷 번호로 **돌려 가며** 고른다 — 이웃한 컷이 같은 움직임이면 이어
+       붙였을 때 안 움직이는 것처럼 보인다. 같은 컷은 늘 같은 움직임이라
+       다시 만들어도 화면이 안 달라진다(무작위로 하면 매번 달라진다).
+    """
+    ring = MOVES_TALK if not is_narr(c) else MOVES_NARR
+    return MOVES[ring[(int(c["n"]) - 1) % len(ring)]]
 
 
 def cut_sec(c, voice, clip):
@@ -542,18 +598,22 @@ def cut_video(c, still, voice, clip, ovs, out):
               f"crop={W}:{H},fps={FPS},trim=0:{sec:.3f},setpts=PTS-STARTPTS[bg];")
     else:
         src = ["-loop", "1", "-i", str(still)]
-        # 조금 키운 뒤 아주 느리게 줌 — 원본 크기에서 바로 줌하면 덜덜 떨린다.
-        # ⚠️ 2배로 키우면 컷 하나에 6초씩 걸려 23컷이 너무 느리다. 1.4배면
-        #    1.10 배 줌까지 또렷하고 속도는 3분의 2다.
+        # 조금 키운 뒤 천천히 움직인다 — 원본 크기에서 바로 줌하면 덜덜 떨린다.
+        # ⚠️ 2배로 키우면 컷 하나에 6초씩 걸려 너무 느리다. 1.4배면 또렷하고
+        #    속도는 3분의 2다.
         sw, sh = int(W * ZOOM_SRC), int(H * ZOOM_SRC)
-        step = (ZOOM_TO - 1) / frames
-        # 컷마다 줌 방향을 바꾼다 — 스물세 컷이 다 같은 쪽으로 커지면 지겹다
-        z = (f"min(1+{step:.6f}*on,{ZOOM_TO})" if c["n"] % 2 else
-             f"max({ZOOM_TO}-{step:.6f}*on,1.0)")
+        z0, z1, x0, x1, y0, y1, _nm = move_of(c)
+        # on = 지금 몇 번째 프레임인가. 0 에서 frames 까지 고르게 간다.
+        t = f"(on/{max(1, frames - 1)})"
+        z = f"{z0:.4f}+({z1 - z0:.4f})*{t}"
+        # 가로·세로는 **남는 자리 안에서** 움직인다. 줌이 클수록 자리가 넓다.
+        px = f"{x0:.4f}+({x1 - x0:.4f})*{t}"
+        py = f"{y0:.4f}+({y1 - y0:.4f})*{t}"
         vf = (f"[0:v]scale={sw}:{sh}:force_original_aspect_ratio=increase,"
               f"crop={sw}:{sh},"
-              f"zoompan=z='{z}':d={frames}:x='iw/2-(iw/zoom/2)'"
-              f":y='ih/2-(ih/zoom/2)':s={W}x{H}:fps={FPS}[bg];")
+              f"zoompan=z='{z}':d={frames}"
+              f":x='(iw-iw/zoom)*({px})'"
+              f":y='(ih-ih/zoom)*({py})':s={W}x{H}:fps={FPS}[bg];")
     # ⭐ 한 컷 안에서 두 사람이 주고받으면 **자막도 차례대로** 바뀌어야 한다.
     #
     # ⭐⭐ 2026-08-31 손님: "대사 목소리와 자막이 시간차가 발생."
@@ -645,10 +705,14 @@ def build(doc):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("what", choices=["stills", "voice", "build", "all"])
+    ap.add_argument("what", choices=["stills", "voice", "build", "all", "meta"])
     a = ap.parse_args()
     try:
         doc = load()
+        # ⭐ meta 는 돈이 안 나간다 — 만들기와 따로 부를 수 있어야 한다
+        #   (관리자 페이지가 올릴 글을 미리 보여 줄 때 이것만 부른다)
+        if a.what == "meta":
+            return meta(doc)
         if a.what in ("stills", "all"):
             if stills(doc):
                 return 1
@@ -656,7 +720,10 @@ def main():
             if voices(doc):
                 return 1
         if a.what in ("build", "all"):
-            return build(doc)
+            if build(doc):
+                return 1
+            # 영상이 나왔으면 올릴 글도 같이 만들어 둔다 (0원)
+            meta(doc)
         return 0
     except (Short90Error, ST.StillError, cost.MonthlyCapReached) as e:
         print(f"❌ {e}")

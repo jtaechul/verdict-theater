@@ -154,6 +154,9 @@ jobs:
           # ⚠️ 2026-08-31 — 컷 다섯 개짜리 시험은 통과하는데 스무 컷에서
           #    죽는 것들이 있다(카라오케·번호 밀림). 진짜 크기로 돌려 본다.
           python3 tools/short90_dryrun.py
+          # ⚠️ 2026-08-31 — 화면에서 본 글과 올라가는 글이 갈라지면
+          #    무엇이 올라갔는지 아무도 모른다. 그 묶음을 매번 본다.
+          python3 tools/yt90_check.py
 
       - name: 지어낸 말을 잘라 내는가
         run: python3 tools/extra_speech_test.py

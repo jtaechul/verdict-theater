@@ -173,6 +173,11 @@ jobs:
           test -f "$OUT" || { echo "❌ 만들어진 영상이 없습니다"; exit 1; }
           python3 tools/release_file.py put short90-S90 short.mp4 "$OUT"
           python3 tools/release_file.py prune short90-S90 short.mp4 || true
+          # ⭐ 유튜브에 올릴 제목·설명·해시태그도 같이 보관한다 (0원).
+          #    관리자 페이지가 이것을 읽어 보여 주고, 올릴 때도 이것을 쓴다 —
+          #    화면에서 본 글과 올라가는 글이 갈라지지 않게 **한 곳**에 둔다.
+          test -f build/s90/meta.json && \
+            python3 tools/release_file.py put short90-S90 meta.json build/s90/meta.json || true
 
       - name: 쓴 돈 장부 남기기
         if: always()

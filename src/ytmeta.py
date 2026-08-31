@@ -162,3 +162,62 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+# ── ⭐ 90초 한 편 (2026-08-31) ─────────────────────────────
+#
+#   16화짜리와 대본 모양이 다르다 — episodes 도 없고 몇 화도 없다.
+#   그래서 위의 build() 를 그대로 못 쓴다. 다만 **한도·기본 태그·주제 태그**는
+#   같은 것을 쓴다 (두 곳에 따로 적으면 언젠가 갈라진다).
+def narr_lines(doc, n=3):
+    """나레이션 컷에서 줄거리 몇 줄. 대본이 바뀌면 설명도 저절로 바뀐다."""
+    out = []
+    for c in doc.get("cuts") or []:
+        if c.get("kind") == "나레이션" and clean(c.get("text")):
+            out.append(clean(c["text"]))
+        if len(out) >= n:
+            break
+    return out
+
+
+def meta90(doc):
+    """90초 한 편의 **제목·설명·해시태그**. 0원 (모델을 안 부른다)."""
+    series = clean(doc.get("title"))
+    hook = clean(doc.get("hook"))
+
+    # ── 제목 ──────────────────────────────────────────
+    title = clean(doc.get("yt_title")) or hook or series
+    if "#shorts" not in title.lower() and len(title) + 8 <= TITLE_MAX:
+        title += " #shorts"
+    title = title[:TITLE_MAX]
+
+    # ── 해시태그 ──────────────────────────────────────
+    #   ⚠️ 설명란 해시태그는 **앞 3개만** 제목 위에 뜬다 → 중요한 것을 앞에
+    tags = [clean(x).lstrip("#") for x in (doc.get("yt_tags") or []) if clean(x)]
+    if not tags:
+        tags = topic_tags(series, hook, " ".join(narr_lines(doc, 4)))
+    for b in BASE_TAGS:
+        if b not in tags:
+            tags.append(b)
+    tags = tags[:TAG_MAX]
+
+    # ── 설명 ──────────────────────────────────────────
+    #   ⚠️ "매일 한 편씩 올라갑니다" 는 16화짜리 문구다. 한 편짜리에 붙이면
+    #      거짓말이 된다 — 그래서 여기서는 안 쓴다.
+    #   ⚠️ 나레이션 세 줄을 그대로 붙였더니 셋째 줄이 "5년 전인 2012년…" 이라
+    #      설명 한복판에서 시간이 거꾸로 갔다. 두 줄만 쓰고 **궁금하게** 끝낸다.
+    body = [hook or series, ""]
+    body += narr_lines(doc, 2)
+    body += ["", "법원은 어떻게 판단했을까요."]
+    body += [
+        "",
+        "실제 판결을 바탕으로 각색한 이야기입니다.",
+        "등장인물의 이름과 지명은 바꾸었고, 판사의 실명은 밝히지 않습니다.",
+        "",
+        " ".join("#" + t for t in tags),
+    ]
+    desc = "\n".join(body)[:DESC_MAX]
+
+    return {"sid": doc.get("sid") or "S90", "ep": 0,
+            "title": title, "description": desc, "tags": tags,
+            "privacy": "private"}

@@ -89,6 +89,11 @@ const WORKFLOWS = [
   // ⭐ 2026-08-31 손님: "지금 어느 창구인지 확인해서 알려줘."
   //    목소리를 하루 몇 번까지 만들어 주는 창구인지 본다. 23줄이 필요한데
   //    좁은 창구(하루 10번)면 한 편 안에서 목소리가 바뀐다.
+  // ⭐ 90초 한 편을 유튜브에 올린다. 화면(④ 칸)의 [유튜브에 올리기] 가 부른다.
+  //    목록에는 두되 단추로는 안 보인다 — 글을 고치는 칸과 같이 있어야
+  //    무엇이 올라가는지 보고 누를 수 있기 때문이다.
+  { file: 'short90-upload.yml', name: '4-2. 90초 한 편 유튜브에 올리기',
+    desc: '', inputs: [], hidden: true },
   { file: 'voice-route.yml', name: '0-2. 목소리 창구 확인 (1원 미만)',
     desc: '지금 목소리를 어느 창구로 부르는지 봅니다. 하루 10번짜리 좁은 '
         + '창구면 한 편(23줄)을 못 만듭니다.', inputs: [] },
@@ -948,6 +953,110 @@ async function s90Cuts() {
   box.innerHTML = h;
 }
 
+// ⭐⭐ 2026-08-31 — 유튜브에 올릴 제목·설명·해시태그.
+//   ⚠️ **화면에서 본 글과 올라가는 글이 반드시 같아야 한다.** 그래서 여기서
+//      고친 것은 보관함에 담아 두고, 올릴 때 워크플로가 그것을 받아 간다.
+//      고친 것이 없으면 대본에서 만든 것이 그대로 올라간다.
+let S90META = null;
+
+async function s90Yt() {
+  const box = document.getElementById('s90yt');
+  if (!box) return;
+  let why = '';
+  if (!S90META) {
+    try {
+      const j = await (await fetch('/api/yt90')).json();
+      S90META = j.meta; why = j.why || '';
+    } catch (e) { S90META = null; }
+  }
+  if (!S90META) {
+    // ⚠️ 조용히 사라지면 손님은 "칸이 왜 없지" 하신다 — 까닭을 적어 둔다
+    box.innerHTML = '<div class="card"><h2>90초 한 편 ④ 유튜브에 올리기</h2>'
+      + '<div class="empty">' + esc(why || '올릴 글이 아직 없습니다.')
+      + '</div></div>';
+    return;
+  }
+  const m = S90META;
+  let h = '<div class="card"><h2>90초 한 편 ④ 유튜브에 올리기</h2>';
+  h += '<div class="uphint">아래 글이 그대로 유튜브에 올라갑니다. '
+     + '고치시면 고친 대로 올라갑니다.</div>';
+  h += '<div style="margin-top:12px"><b>제목</b> '
+     + '<span class="uphint" id="ytlen">' + esc(String(m.title || '').length)
+     + '/100자</span>'
+     + '<input id="yttitle" value="' + esc(m.title || '') + '" '
+     + 'oninput="ytLen()" style="width:100%;font-size:14px;margin-top:4px"></div>';
+  h += '<div style="margin-top:12px"><b>설명</b>'
+     + '<textarea id="ytdesc" rows="9" style="width:100%;font-size:12px;'
+     + 'margin-top:4px">' + esc(m.description || '') + '</textarea></div>';
+  h += '<div style="margin-top:12px"><b>해시태그</b> '
+     + '<span class="uphint">쉼표로 나눕니다 (# 은 빼고)</span>'
+     + '<input id="yttags" value="' + esc((m.tags || []).join(', ')) + '" '
+     + 'style="width:100%;font-size:13px;margin-top:4px"></div>';
+  h += '<div style="margin-top:12px"><b>어떻게 올릴까요</b>'
+     + '<select id="ytpriv" style="width:100%;font-size:14px;margin-top:4px">'
+     + '<option>비공개 (나만 보기)</option>'
+     + '<option>일부공개 (링크 아는 사람만)</option>'
+     + '<option>공개 (모두에게)</option></select></div>';
+  h += '<div class="btns" style="margin-top:14px">'
+     + mini('연습 (올리지 않고 확인만)', 'ytGo(1)')
+     + '<button class="gold" onclick="ytGo(0)">유튜브에 올리기</button></div>';
+  h += '<div id="ytmsg" class="uphint"></div>';
+  h += '</div>';
+  box.innerHTML = h;
+}
+
+function ytLen() {
+  const t = document.getElementById('yttitle');
+  const l = document.getElementById('ytlen');
+  if (t && l) {
+    l.textContent = t.value.length + '/100자';
+    l.style.color = t.value.length > 100 ? '#e06c6c' : '#9599ab';
+  }
+}
+
+async function ytGo(dry) {
+  const msg = document.getElementById('ytmsg');
+  const title = (document.getElementById('yttitle') || {}).value || '';
+  const desc = (document.getElementById('ytdesc') || {}).value || '';
+  const tags = ((document.getElementById('yttags') || {}).value || '')
+    .split(',').map(function (x) { return x.trim().replace(/^#/, ''); })
+    .filter(function (x) { return x; });
+  const priv = (document.getElementById('ytpriv') || {}).value || '비공개 (나만 보기)';
+  if (!title.trim()) { showErr('제목이 비었습니다', '제목을 적어 주십시오'); return; }
+  if (title.length > 100) {
+    showErr('제목이 깁니다', '유튜브 제목은 100자까지입니다'); return;
+  }
+  // ⚠️ 되돌릴 수 없는 일이다 — 무엇이 어떻게 올라가는지 한 번 더 보여 준다
+  // ⚠️⚠️ 이 코드는 통째로 템플릿 문자열 안이다. 여기서 역슬래시 n 을 그냥
+  //    쓰면 **진짜 줄바꿈**으로 풀려 문자열이 깨진다 — 저장소에 이미 적혀
+  //    있던 함정인데 또 걸렸다. 줄바꿈은 배열로 만들어 잇는다.
+  const ask = ['유튜브에 올립니다.', '', '제목: ' + title,
+               '공개 범위: ' + priv, '', '계속할까요?']
+              .join(String.fromCharCode(10));
+  if (!dry && !confirm(ask)) return;
+  if (msg) msg.textContent = '시작하는 중…';
+  try {
+    const r = await fetch('/api/upload-short90',
+                          { method: 'POST',
+                            body: JSON.stringify({ title: title, description: desc,
+                                                   tags: tags, privacy: priv,
+                                                   dry: dry ? 1 : 0 }) });
+    const j = await r.json();
+    if (!j.ok) {
+      showErr('시작하지 못했습니다', (j.error || '') + ' ' + (j.detail || ''));
+      if (msg) msg.textContent = '';
+      return;
+    }
+    if (msg) msg.textContent = dry
+      ? '연습으로 시작했습니다. 올리지는 않고 되는지만 봅니다 (2~3분).'
+      : '올리기 시작했습니다. 3~10분 걸립니다.';
+    toast(dry ? '연습을 시작했습니다' : '유튜브에 올리기 시작했습니다');
+  } catch (e) {
+    showErr('시작하지 못했습니다', String(e && e.message ? e.message : e));
+    if (msg) msg.textContent = '';
+  }
+}
+
 function copyCut(n) {
   const t = document.getElementById('s90p-' + n);
   const b = document.getElementById('s90cp-' + n);
@@ -1513,11 +1622,17 @@ function home() {
   h += short90Card();
   h += '<div id="s90cuts"><div class="card"><h2>90초 한 편 ② 컷별 영상</h2>'
      + '<div class="empty">컷 목록 불러오는 중…</div></div></div>';
+  // ⭐ 2026-08-31 손님: "유튜브 업로드를 위한 제목 설명란, 그리고 해시태그
+  //    유튜브 업로드 버튼까지 생성해줘."
+  h += '<div id="s90yt"><div class="card"><h2>90초 한 편 ④ 유튜브에 올리기</h2>'
+     + '<div class="empty">올릴 글 불러오는 중…</div></div></div>';
 
   if (SIMPLE) {
     document.getElementById('app').innerHTML = h;
     foldify();
     s90Cuts();
+  s90Yt();
+    s90Yt();
     return;
   }
 
@@ -2974,6 +3089,78 @@ export default {
       if (url.pathname === '/api/short90') {
         const doc = await getJson(env, 'data/series/S90.json');
         return Response.json({ doc });
+      }
+
+      // ⭐⭐ 2026-08-31 — 유튜브에 올릴 제목·설명·해시태그.
+      //   ⚠️ 셈법을 **여기에 새로 적지 않는다.** src/ytmeta.py 의 meta90 이
+      //      진짜이고, 워크플로도 그것을 쓴다. 여기서 따로 만들면 화면에서
+      //      본 글과 올라가는 글이 갈라진다 — 그게 제일 나쁜 고장이다.
+      //      그래서 저장소에 보관된 meta.json 이 있으면 그것을 주고,
+      //      없으면 대본에서 **같은 규칙으로** 만들어 준다.
+      if (url.pathname === '/api/yt90') {
+        const kept = await blobText(env, 'meta/S90');
+        if (kept) {
+          try { return Response.json({ meta: JSON.parse(kept), saved: true }); }
+          catch (e) { /* 깨졌으면 아래에서 다시 만든다 */ }
+        }
+        // ⭐ 셈법을 여기에 옮겨 적지 않는다. 영상을 만들 때 src/ytmeta.py 가
+        //   만들어 릴리스에 함께 넣어 둔 meta.json 을 **그대로** 읽는다.
+        //   (자바스크립트로 다시 짜면 언젠가 두 글이 갈라진다)
+        try {
+          const rel = await gh(env, `/repos/${REPO}/releases/tags/short90-S90`);
+          const a = (rel.assets || []).find((x) => x.name === 'meta.json');
+          if (a) {
+            const r0 = await fetch(`${GH}/repos/${REPO}/releases/assets/${a.id}`, {
+              headers: { 'Authorization': `Bearer ${env.GH_TOKEN}`,
+                         'Accept': 'application/octet-stream',
+                         'User-Agent': 'verdict-theater-admin' } });
+            return Response.json({ meta: await r0.json(), saved: false });
+          }
+        } catch (e) { /* 아직 안 만들었다 — 아래에서 알려 준다 */ }
+        return Response.json({ meta: null,
+          why: '먼저 [90초 한 편 만들기] 를 눌러 주십시오. '
+             + '영상을 만들 때 올릴 글도 같이 만들어집니다.' });
+      }
+
+      // 고친 글을 담아 두고 유튜브 올리기를 시킨다
+      if (url.pathname === '/api/upload-short90' && req.method === 'POST') {
+        let body = {};
+        try { body = await req.json(); } catch (e) { body = {}; }
+        const title = String((body && body.title) || '').trim();
+        const desc = String((body && body.description) || '');
+        const tags = Array.isArray(body && body.tags)
+          ? body.tags.map((x) => String(x).replace(/^#/, '').trim()).filter(Boolean)
+          : [];
+        if (!title)
+          return Response.json({ ok: false, error: '제목이 비었습니다' },
+                               { status: 400 });
+        if (title.length > 100)
+          return Response.json({ ok: false, error: '제목이 100자를 넘습니다' },
+                               { status: 400 });
+        const PRIV = ['비공개 (나만 보기)', '일부공개 (링크 아는 사람만)',
+                      '공개 (모두에게)'];
+        const priv = PRIV.indexOf(String((body && body.privacy) || '')) >= 0
+          ? String(body.privacy) : PRIV[0];
+        const mode = (body && body.dry)
+          ? '연습 (올리지 않고 확인만)' : '진짜로 올리기';
+        // ⚠️ 고친 글은 **보관함에 담고 주소만** 넘긴다. 글을 워크플로 입력에
+        //    직접 넣으면 실행 기록에 통째로 남고 길이 제한에도 걸린다.
+        const key = 'meta/S90';
+        const saved = JSON.stringify({ sid: 'S90', ep: 0, title: title,
+                                       description: desc, tags: tags });
+        await blobPutText(env, key, saved, KV_DAY);
+        const fresh = await blobPin(env, req, key, 'meta');
+        try {
+          await gh(env, `/repos/${REPO}/actions/workflows/short90-upload.yml/dispatches`, {
+            method: 'POST', body: JSON.stringify({ ref: BRANCH,
+              inputs: { privacy: priv, mode: mode, meta: fresh || '' } }),
+          });
+          return Response.json({ ok: true, privacy: priv, dry: mode });
+        } catch (e) {
+          const m = String(e && e.message ? e.message : e);
+          return Response.json({ ok: false, error: '시작하지 못했습니다',
+            detail: m.slice(0, 220) }, { status: 502 });
+        }
       }
 
       // ⭐⭐⭐ 2026-08-27 손님: "이미지는 중간중간 섞여 있고 동영상도 있어야 돼."
