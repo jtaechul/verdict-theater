@@ -340,3 +340,46 @@ console.log('✅ 관리자 페이지: 바깥 코드 + 브라우저 코드 둘 �
   }
   console.log('✅ 화면에 보이는 단추는 지금 절차뿐이다 (열쇠 점검 + 90초 한 편)');
 }
+
+// ⭐⭐⭐ 2026-08-31 — **한 칸 안에서 같은 id 를 두 번 쓰면 안 된다.**
+//   90초 편 유튜브 칸을 만들면서 16화 칸과 같은 id(ytmsg)를 썼다가 알아챘다.
+//   한 화면에 같은 id 가 둘이면 getElementById 는 **앞의 것만** 집는다 —
+//   알림이 엉뚱한 칸에 뜨고, 값을 읽으면 남의 칸 값을 읽는다.
+//
+//   ⚠️ 다만 **저장소 전체에서 유일할 필요는 없다.** 화면은 한 번에 하나만
+//      그려지므로(innerHTML 로 통째로 갈아 끼운다) 다른 화면끼리는 안 겹친다.
+//      전체를 유일하게 하라고 하면 ytbox·pl 같은 멀쩡한 것까지 빨간불이 나고,
+//      애먼 빨간불은 검사를 못 믿게 만든다.
+//      → **한 함수 안**에서 같은 id 를 두 번 그리는 것만 잡는다. 그건 무조건
+//        고장이다.
+{
+  const bad = [];
+  // 함수 하나하나를 잘라서 그 안만 본다
+  // ⚠️ src(바깥 파일)를 보면 안 된다 — 브라우저 코드가 통째로 들어 있는
+  //    appHtml() 하나로 잡혀 화면이 다른 것끼리도 겹쳤다고 나온다.
+  //    **브라우저 코드(CLIENT)** 를 함수별로 잘라서 본다.
+  for (const m of CLIENT.matchAll(/\n(?:async )?function (\w+)\s*\([^)]*\)\s*\{/g)) {
+    const name = m[1];
+    let depth = 0, j = m.index + m[0].length - 1, end = j;
+    for (; j < CLIENT.length; j += 1) {
+      if (CLIENT[j] === '{') depth += 1;
+      else if (CLIENT[j] === '}') { depth -= 1; if (depth === 0) { end = j; break; } }
+    }
+    const body = CLIENT.slice(m.index, end);
+    const seen = {};
+    for (const g of body.matchAll(/id="([A-Za-z][\w-]*)"/g)) {
+      const id = g[1];
+      if (/-$/.test(id)) continue;      // 만들 때 번호가 붙는 것(s90f-'+who)
+      seen[id] = (seen[id] || 0) + 1;
+    }
+    for (const [id, n] of Object.entries(seen))
+      if (n > 1) bad.push(`${name}() 안에서 ${id} 를 ${n}번`);
+  }
+  if (bad.length) {
+    console.error('❌ 한 칸 안에서 같은 id 를 여러 번 씁니다:');
+    for (const b of bad) console.error('   ' + b);
+    console.error('   getElementById 가 앞의 것만 집습니다 — 이름을 나누십시오');
+    process.exit(1);
+  }
+  console.log('✅ 한 칸 안에서 같은 id 를 두 번 쓰지 않는다');
+}

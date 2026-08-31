@@ -392,8 +392,22 @@ def wrap(d, text, font, max_w):
     return lines
 
 
-def fit(d, text, size_max, max_w, max_h):
-    """칸에 들어갈 때까지 글자를 줄인다. 어르신용이라 SUB_MIN 아래로는 안 줄인다."""
+ONE_LINE_MIN = 70                # 한 줄로 만들려고 여기까지는 줄여 본다
+
+
+def fit(d, text, size_max, max_w, max_h, one_line=False):
+    """칸에 들어갈 때까지 글자를 줄인다. 어르신용이라 SUB_MIN 아래로는 안 줄인다.
+
+    ⭐ one_line — **한 토막은 한 줄이 훨씬 낫다.** 두 줄로 접히면 한 박자가
+       두 덩어리로 보여 툭툭 끊긴다. 그래서 토막 자막은 조금 작아지더라도
+       (ONE_LINE_MIN 까지) 한 줄에 넣는 쪽을 먼저 찾는다. 그래도 안 되면
+       아래의 보통 방식으로 내려간다.
+    """
+    if one_line:
+        for size in range(size_max, ONE_LINE_MIN - 1, -2):
+            f = ImageFont.truetype(str(FONT_SUB), size)
+            if d.textlength(text, font=f) <= max_w and size * SUB_GAP <= max_h:
+                return f, [text], size
     for size in range(size_max, SUB_MIN - 1, -2):
         f = ImageFont.truetype(str(FONT_SUB), size)
         lines = wrap(d, text, f, max_w)
@@ -447,10 +461,12 @@ def overlay(c, out, turn=None, now=None):
     # 자막 — **그 토막만** 그린다 (2026-08-31 손님 확정)
     #   now 가 숫자면 그 토막 하나만 화면에 뜬다. 짧으니 글자가 훨씬 크다.
     #   now 가 None 이면 문장 전체 (검사·미리보기용)
-    if now is not None:
+    solo = now is not None
+    if solo:
         ch = chunks_of(text)
         text = ch[now] if 0 <= now < len(ch) else text
-    f, lines, size = fit(d, text, SUB_MAX, W - SIDE * 2, SUB_BOT - SUB_TOP)
+    f, lines, size = fit(d, text, SUB_MAX, W - SIDE * 2, SUB_BOT - SUB_TOP,
+                         one_line=solo)
     step = size * SUB_GAP
     y = SUB_TOP + max(0, ((SUB_BOT - SUB_TOP) - len(lines) * step) / 2)
     k = 0                                    # 몇 번째 낱말까지 그렸나
@@ -811,6 +827,7 @@ def build(doc):
          "-i", str(lst), "-c", "copy", str(joined)])
     final = OUT / "S90_short.mp4"
     music(joined, final)
+    joined.unlink(missing_ok=True)       # 음악 얹기 전 판은 남길 까닭이 없다
     got = dur_of(final)
     try:
         name = final.relative_to(ROOT)

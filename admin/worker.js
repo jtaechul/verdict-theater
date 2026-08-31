@@ -959,6 +959,10 @@ async function s90Cuts() {
 //      고친 것이 없으면 대본에서 만든 것이 그대로 올라간다.
 let S90META = null;
 
+// ⚠️⚠️ 2026-08-31 — 16화용 유튜브 칸이 **이미 있다**(ytSave·ytUp·ytmsg).
+//    처음엔 같은 이름(ytmsg 등)을 써 버렸다. 한 화면에 같은 id 가 둘이면
+//    getElementById 는 앞의 것만 집어, 알림이 엉뚱한 칸에 뜬다.
+//    → 90초 편 것은 전부 s90yt- 로 이름을 따로 준다.
 async function s90Yt() {
   const box = document.getElementById('s90yt');
   if (!box) return;
@@ -981,47 +985,47 @@ async function s90Yt() {
   h += '<div class="uphint">아래 글이 그대로 유튜브에 올라갑니다. '
      + '고치시면 고친 대로 올라갑니다.</div>';
   h += '<div style="margin-top:12px"><b>제목</b> '
-     + '<span class="uphint" id="ytlen">' + esc(String(m.title || '').length)
+     + '<span class="uphint" id="s90yt-len">' + esc(String(m.title || '').length)
      + '/100자</span>'
-     + '<input id="yttitle" value="' + esc(m.title || '') + '" '
-     + 'oninput="ytLen()" style="width:100%;font-size:14px;margin-top:4px"></div>';
+     + '<input id="s90yt-title" value="' + esc(m.title || '') + '" '
+     + 'oninput="s90YtLen()" style="width:100%;font-size:14px;margin-top:4px"></div>';
   h += '<div style="margin-top:12px"><b>설명</b>'
-     + '<textarea id="ytdesc" rows="9" style="width:100%;font-size:12px;'
+     + '<textarea id="s90yt-desc" rows="9" style="width:100%;font-size:12px;'
      + 'margin-top:4px">' + esc(m.description || '') + '</textarea></div>';
   h += '<div style="margin-top:12px"><b>해시태그</b> '
      + '<span class="uphint">쉼표로 나눕니다 (# 은 빼고)</span>'
-     + '<input id="yttags" value="' + esc((m.tags || []).join(', ')) + '" '
+     + '<input id="s90yt-tags" value="' + esc((m.tags || []).join(', ')) + '" '
      + 'style="width:100%;font-size:13px;margin-top:4px"></div>';
   h += '<div style="margin-top:12px"><b>어떻게 올릴까요</b>'
-     + '<select id="ytpriv" style="width:100%;font-size:14px;margin-top:4px">'
+     + '<select id="s90yt-priv" style="width:100%;font-size:14px;margin-top:4px">'
      + '<option>비공개 (나만 보기)</option>'
      + '<option>일부공개 (링크 아는 사람만)</option>'
      + '<option>공개 (모두에게)</option></select></div>';
   h += '<div class="btns" style="margin-top:14px">'
-     + mini('연습 (올리지 않고 확인만)', 'ytGo(1)')
-     + '<button class="gold" onclick="ytGo(0)">유튜브에 올리기</button></div>';
-  h += '<div id="ytmsg" class="uphint"></div>';
+     + mini('연습 (올리지 않고 확인만)', 's90YtGo(1)')
+     + '<button class="gold" onclick="s90YtGo(0)">유튜브에 올리기</button></div>';
+  h += '<div id="s90yt-msg" class="uphint"></div>';
   h += '</div>';
   box.innerHTML = h;
 }
 
-function ytLen() {
-  const t = document.getElementById('yttitle');
-  const l = document.getElementById('ytlen');
+function s90YtLen() {
+  const t = document.getElementById('s90yt-title');
+  const l = document.getElementById('s90yt-len');
   if (t && l) {
     l.textContent = t.value.length + '/100자';
     l.style.color = t.value.length > 100 ? '#e06c6c' : '#9599ab';
   }
 }
 
-async function ytGo(dry) {
-  const msg = document.getElementById('ytmsg');
-  const title = (document.getElementById('yttitle') || {}).value || '';
-  const desc = (document.getElementById('ytdesc') || {}).value || '';
-  const tags = ((document.getElementById('yttags') || {}).value || '')
+async function s90YtGo(dry) {
+  const msg = document.getElementById('s90yt-msg');
+  const title = (document.getElementById('s90yt-title') || {}).value || '';
+  const desc = (document.getElementById('s90yt-desc') || {}).value || '';
+  const tags = ((document.getElementById('s90yt-tags') || {}).value || '')
     .split(',').map(function (x) { return x.trim().replace(/^#/, ''); })
     .filter(function (x) { return x; });
-  const priv = (document.getElementById('ytpriv') || {}).value || '비공개 (나만 보기)';
+  const priv = (document.getElementById('s90yt-priv') || {}).value || '비공개 (나만 보기)';
   if (!title.trim()) { showErr('제목이 비었습니다', '제목을 적어 주십시오'); return; }
   if (title.length > 100) {
     showErr('제목이 깁니다', '유튜브 제목은 100자까지입니다'); return;
