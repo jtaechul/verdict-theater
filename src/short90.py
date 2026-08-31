@@ -64,6 +64,17 @@ MARK_SIZE, MARK_Y = 34, 44
 CHANNEL = "판결극장"
 GOLD = (198, 160, 74, 255)
 GOLD_BRIGHT = (232, 197, 112, 255)   # 이름표 글자 — 밝은 그림 위에서도 읽히게
+
+# ⭐⭐ 2026-08-31 손님: "카라오케 자막으로 변경하자."
+#    한 낱말씩 불이 들어온다 — 지금 말하는 낱말이 금색으로 도드라진다.
+#    ① 이미 말한 낱말  흰색 그대로
+#    ② 지금 말하는 낱말 금색 (여기가 카라오케다)
+#    ③ 아직 안 한 낱말 흰색을 흐리게
+#    ⚠️ 흐린 글자도 **읽을 수는 있어야** 한다. 너무 흐리면 다음 말을 눈으로
+#       못 좇는다 — 40% 아래로는 내리지 않는다.
+SUB_DONE = (255, 255, 255, 255)
+SUB_NOW = (245, 205, 116, 255)
+SUB_TODO = (255, 255, 255, 112)
 WHITE = (255, 255, 255, 255)
 PAD = 0.55                       # 말이 끝난 뒤 남기는 여운(초)
 ZOOM_TO = 1.10                   # 컷 하나 도는 동안 커지는 정도
@@ -245,8 +256,11 @@ def fit(d, text, size_max, max_w, max_h):
     return f, wrap(d, text, f, max_w)[:SUB_LINES], SUB_MIN
 
 
-def overlay(c, out, turn=None):
-    """컷 하나(또는 그 안의 한 차례)의 자막·이름표를 투명 그림으로 그린다."""
+def overlay(c, out, turn=None, now=None):
+    """컷 하나(또는 그 안의 한 차례)의 자막·이름표를 투명 그림으로 그린다.
+
+    now — 지금 말하고 있는 **낱말 번호** (0부터). None 이면 전부 흰색.
+    """
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
 
     # 아래쪽 어둡게 — 그림 위에 흰 글자를 얹어도 읽히게 (서서히 진해진다)
@@ -283,14 +297,32 @@ def overlay(c, out, turn=None):
         d.text((tx, NAME_Y), who, font=nf, fill=GOLD_BRIGHT, anchor="la",
                stroke_width=3, stroke_fill=(0, 0, 0, 205))
 
-    # 자막
+    # 자막 — **낱말 하나씩** 그린다 (카라오케)
+    #   now 가 None 이면 옛날처럼 전부 흰색 (자막 한 장짜리)
+    #   now 가 숫자면 그 낱말이 지금 말하는 것 — 금색으로 도드라진다
     f, lines, size = fit(d, text, SUB_MAX, W - SIDE * 2, SUB_BOT - SUB_TOP)
     step = size * SUB_GAP
     y = SUB_TOP + max(0, ((SUB_BOT - SUB_TOP) - len(lines) * step) / 2)
+    k = 0                                    # 몇 번째 낱말까지 그렸나
+    space = d.textlength(" ", font=f)
     for ln in lines:
-        # 얇은 검은 테두리 — 밝은 그림 위에서도 글자가 안 묻힌다
-        d.text((W // 2, y), ln, font=f, fill=WHITE, anchor="ma",
-               stroke_width=4, stroke_fill=(0, 0, 0, 210))
+        ws = ln.split()
+        wide = sum(d.textlength(w, font=f) for w in ws) + space * (len(ws) - 1)
+        x = (W - wide) / 2                   # 줄 전체를 가운데에 놓는다
+        for w in ws:
+            if now is None:
+                fill = WHITE
+            elif k < now:
+                fill = SUB_DONE
+            elif k == now:
+                fill = SUB_NOW
+            else:
+                fill = SUB_TODO
+            # 얇은 검은 테두리 — 밝은 그림 위에서도 글자가 안 묻힌다
+            d.text((x, y), w, font=f, fill=fill, anchor="la",
+                   stroke_width=4, stroke_fill=(0, 0, 0, 210))
+            x += d.textlength(w, font=f) + space
+            k += 1
         y += step
     img.save(out)
     return out
@@ -346,6 +378,51 @@ def sub_windows(c, sec, voice):
     return at
 
 
+def cut_sec(c, voice, clip):
+    """이 컷이 몇 초짜리인가, 그리고 소리를 올린 영상에서 가져오는가.
+
+    ⚠️ 자막 장을 만들려면 컷 길이를 **먼저** 알아야 한다. 그래서 길이 셈을
+       cut_video 밖으로 꺼내 두 곳이 같은 값을 쓰게 한다 (따로 세면 어긋난다).
+    """
+    clip = Path(clip) if clip and Path(clip).exists() else None
+    talks = not is_narr(c)
+    if clip and talks and has_audio(clip):
+        return dur_of(clip), True
+    return max(float(c["sec"]), dur_of(voice) + PAD), False
+
+
+def karaoke(c, sec, voice, d, n):
+    """카라오케 자막 장들 — [(그림, 언제부터, 언제까지), …].
+
+    ⭐⭐ 2026-08-31 손님: "카라오케 자막으로 변경하자."
+       한 낱말씩 불이 들어오게 하려면 낱말마다 자막 장이 한 장씩 필요하다.
+       낱말이 언제 나오는지는 **그 줄의 진짜 소리 길이**(.len.json)를
+       글자 수로 나눠 잡는다 — 컷 안에서 자막이 목소리를 따라가게 한 것과
+       같은 잣대다.
+
+    ⚠️ 낱말 시간은 **재는 것이 아니라 나누는 것**이다. 구글 목소리는 낱말이
+       언제 나오는지 안 알려 준다. 그래서 글자 수로 고르게 나눈다 — 한 줄
+       안에서는 오차가 크지 않다(줄 자체는 진짜 길이에 맞춰 놓았기 때문).
+    """
+    turns = turns_of(c)
+    wins = sub_windows(c, sec, voice)
+    out = []
+    for i, ((who, text), (a, b)) in enumerate(zip(turns, wins)):
+        words = str(text).split()
+        if not words:
+            continue
+        span = max(0.05, b - a)
+        tot = sum(syl(w) for w in words)
+        t0 = a
+        for k, w in enumerate(words):
+            t1 = b if k == len(words) - 1 else t0 + span * syl(w) / tot
+            png = d / f"c{n:02d}_{i}_{k:02d}.png"
+            overlay(c, png, (who, text), now=k)
+            out.append((png, t0, t1))
+            t0 = t1
+    return out
+
+
 def cut_video(c, still, voice, clip, ovs, out):
     """컷 하나 → mp4. 손으로 만든 영상(clip)이 있으면 그것을 쓰고, 없으면 그림.
 
@@ -357,19 +434,16 @@ def cut_video(c, still, voice, clip, ovs, out):
            (영상을 올렸어도 그 소리는 안 쓴다. 그래야 나레이션이 안 묻힌다)
     """
     clip = Path(clip) if clip and Path(clip).exists() else None
-    talks = not is_narr(c)
-    use_clip_audio = bool(clip and talks and has_audio(clip))
+    # ⚠️ 길이는 cut_sec 한 곳에서만 센다. 자막 장을 만드는 쪽도 같은 값을 쓴다.
+    sec, use_clip_audio = cut_sec(c, voice, clip)
     if use_clip_audio:
         # ⚠️ 말하는 길이는 **영상이 정한다.** 대본의 초에 맞춰 늘이거나 줄이면
         #    말이 잘리거나 같은 말이 두 번 나온다. 컷 길이 = 영상 길이.
-        sec = dur_of(clip)
         snd = []                      # 소리는 영상(0번) 안에 있다
         amap = "0:a"
         loop = []                     # 늘일 일이 없으니 되돌려 잇지 않는다
     else:
-        sec = max(float(c["sec"]), dur_of(voice) + PAD)
-        snd = ["-i", str(voice)]      # 0=화면 · 1=자막 · 2=우리 목소리
-        amap = "2:a"
+        snd = ["-i", str(voice)]      # 0=화면 · 자막들 · 마지막이 우리 목소리
         loop = ["-stream_loop", "-1"] if clip else []
     frames = max(2, int(round(sec * FPS)))
     if clip:
@@ -401,21 +475,21 @@ def cut_video(c, still, voice, clip, ovs, out):
     #         → 첫 줄이 오래 남고, 둘째 줄이 목소리보다 **늦게** 뜬다.
     #    이제 소리를 만들 때 적어 둔 **줄마다 진짜 길이**로 나눈다.
     #    (올린 영상의 소리를 쓰는 컷은 우리 목소리가 아니므로 옛 방식 그대로)
-    turns = turns_of(c)
-    at = sub_windows(c, sec, None if use_clip_audio else voice)
+    #    이제 자막 장은 **낱말마다 한 장**이고, 각자 자기 시간대를 달고 온다
+    #    (karaoke 가 만들어 준다). 여기서는 그 시간대에만 얹어 주면 된다.
     chain = "[bg]"
-    for i, (a, b) in enumerate(at):
-        nxt = f"[v{i}]" if i < len(at) - 1 else "[v]"
+    for i, (_png, a, b) in enumerate(ovs):
+        nxt = f"[v{i}]" if i < len(ovs) - 1 else "[v]"
         chain_in = chain
         vf += (f"{chain_in}[{i + 1}:v]overlay=0:0:format=auto"
                f":enable='between(t,{a:.3f},{b:.3f})'{nxt};")
         chain = nxt
     vf = vf.rstrip(";")
     ovin = []
-    for o in ovs:
+    for o, _a, _b in ovs:
         ovin += ["-i", str(o)]
     # 소리 입력 번호는 화면(0) + 자막 장수 뒤부터다
-    if amap != "0:a":
+    if not use_clip_audio:
         amap = f"{1 + len(ovs)}:a"
     run(["ffmpeg", "-y", "-v", "error", *src, *ovin, *snd,
          "-filter_complex", vf,
@@ -445,8 +519,10 @@ def build(doc):
             raise Short90Error(f"컷{n} 그림이 없다 — 먼저 stills 를 돌린다")
         if not voice.exists():
             raise Short90Error(f"컷{n} 소리가 없다 — 먼저 voice 를 돌린다")
-        ovs = [overlay(c, OUT / "ov" / f"c{n:02d}_{i}.png", t)
-               for i, t in enumerate(turns_of(c))]
+        # ⭐ 카라오케 — 낱말마다 자막 장 한 장. 컷 길이를 먼저 알아야 하므로
+        #    길이 셈(cut_sec)을 여기서 한 번 하고, cut_video 도 같은 값을 쓴다.
+        sec0, uca = cut_sec(c, voice, clip if clip.exists() else None)
+        ovs = karaoke(c, sec0, None if uca else voice, OUT / "ov", n)
         out = parts_d / f"c{n:02d}.mp4"
         sec = cut_video(c, still, voice, clip if clip.exists() else None, ovs, out)
         total += sec

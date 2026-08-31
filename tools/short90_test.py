@@ -341,6 +341,51 @@ def main():
                    and px2[x, y][2] < 170)
     ck("나레이션 컷에는 이름표가 없다", none_bar == 0, f"{none_bar}칸이 칠해져 있다")
 
+    # ⭐⭐ 2026-08-31 손님: "카라오케 자막으로 변경하자."
+    #    낱말마다 자막 장이 한 장씩 있고, 그 시간대가 **끊김 없이 이어져**
+    #    컷 끝까지 덮어야 한다. 한 칸이라도 비면 그 순간 자막이 사라진다.
+    print("\n②-3 카라오케 자막 (낱말마다 불이 들어오는가)")
+    import tempfile as _tf3
+    td3 = pathlib.Path(_tf3.mkdtemp())
+    kc = next(c for c in cuts if len(c.get("turns") or []) > 1)
+    kwav = td3 / "k.wav"
+    fake_wav(kwav, 6.0)
+    S9.lens_of(kwav).write_text(
+        json.dumps([3.0, 3.0]), encoding="utf-8")
+    ksec = 7.0
+    ko = S9.karaoke(kc, ksec, kwav, td3, kc["n"])
+    nwords = sum(len(t.split()) for _, t in S9.turns_of(kc))
+    ck(f"낱말 수만큼 자막 장을 만든다 ({nwords}장)", len(ko) == nwords,
+       f"{len(ko)}장")
+    ck("첫 자막이 0초에 시작한다", abs(ko[0][1]) < 0.01, f"{ko[0][1]:.2f}초")
+    ck("마지막 자막이 컷 끝까지 남는다", abs(ko[-1][2] - ksec) < 0.01,
+       f"{ko[-1][2]:.2f}초")
+    gap = [i for i in range(len(ko) - 1) if abs(ko[i][2] - ko[i + 1][1]) > 0.01]
+    ck("자막 사이에 빈 순간이 없다", not gap, f"끊긴 자리 {gap}")
+    back = [i for i in range(len(ko)) if ko[i][2] < ko[i][1] - 1e-9]
+    ck("시간이 거꾸로 가지 않는다", not back, f"거꾸로 {back}")
+    # 두 사람이 주고받는 컷이면 **말하는 사람이 바뀌는 자리**가 소리 길이와 맞아야
+    first_n = len(S9.turns_of(kc)[0][1].split())
+    ck("말하는 사람이 바뀌는 때가 소리 길이와 맞는다",
+       abs(ko[first_n - 1][2] - 3.0) < 0.01, f"{ko[first_n - 1][2]:.2f}초 (3.00초여야)")
+
+    # 불이 **실제로 옮겨 붙는가** — 첫 장과 끝 장의 금색 자리가 달라야 한다
+    from PIL import Image as _Im
+
+    def gold_x(png):
+        im = _Im.open(png).convert("RGBA"); px = im.load()
+        xs = [x for y in range(S9.SUB_TOP, S9.SUB_BOT, 4)
+              for x in range(0, S9.W, 4)
+              if px[x, y][3] > 150 and px[x, y][0] > 200
+              and 170 < px[x, y][1] < 235 and px[x, y][2] < 170]
+        return (min(xs), max(xs)) if xs else None
+
+    a0, a1 = gold_x(ko[0][0]), gold_x(ko[-1][0])
+    ck("첫 낱말에 불이 들어온다", a0 is not None)
+    ck("마지막 낱말에 불이 들어온다", a1 is not None)
+    if a0 and a1:
+        ck("불이 옮겨 붙는다 (자리가 다르다)", a0 != a1, f"{a0} → {a1}")
+
     print("\n③ 한 편 길이가 90초 언저리인가 (붙이지 않고 셈으로 먼저)")
     # ⚠️ 컷 길이는 대본의 초가 아니라 **만들어진 목소리 길이**가 정한다.
     #    23컷을 다 붙여 보면 몇 분씩 걸리므로, 길이는 여기서 셈으로 본다.
