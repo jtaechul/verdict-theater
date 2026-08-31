@@ -51,6 +51,12 @@ jobs:
     timeout-minutes: 30
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # ⚠️⚠️ 2026-08-31 — **이 줄이 없어서 첫 실행이 401 로 죽었다.**
+      #    관리자 페이지에서 고치신 글은 보관함에 있고, 보관함은 x-vt-pass 로
+      #    암호를 받는다. 이틀 전 short90.yml 에서 똑같은 실수를 하고 고쳤는데,
+      #    새 워크플로를 만들면서 **또 빠뜨렸다.** 검사가 fetch_cards/clips 만
+      #    보고 있어서 못 잡았다 — 그 검사도 같이 넓힌다.
+      ADMIN_PASS: ${{ secrets.ADMIN_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

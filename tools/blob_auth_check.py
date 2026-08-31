@@ -32,8 +32,14 @@ def main():
     print("⭐ 보관함에서 받아 가는 길 점검 (값 0원)\n")
     w = (ROOT / "admin" / "worker.js").read_text(encoding="utf-8")
 
+    # ⚠️⚠️ 2026-08-31 — 이 목록을 **손으로 적어 두었더니** 새로 만든
+    #    tools/fetch_meta90.py 가 빠졌고, 유튜브 올리기가 401 로 죽었다.
+    #    똑같은 실수를 이틀 만에 두 번 했다. → 이제 **찾아서** 본다.
+    #    보관함 주소를 받아 가는 파일이 새로 생기면 저절로 검사에 들어온다.
     print("① 받아 갈 때 암호를 보내는가")
-    for f in ("tools/fetch_cards.py", "tools/fetch_clips.py"):
+    grab = sorted(str(f.relative_to(ROOT)) for f in (ROOT / "tools").glob("fetch_*.py"))
+    print(f"      보관함에서 받아 가는 파일 {len(grab)}개: {', '.join(grab)}")
+    for f in grab:
         t = (ROOT / f).read_text(encoding="utf-8")
         # ⚠️ 주석에 적힌 것은 안 센다. "설명만 남고 코드가 빠진" 꼴을 잡아야 한다
         code = "\n".join(l for l in t.splitlines() if not l.lstrip().startswith("#"))
@@ -44,7 +50,8 @@ def main():
     print("\n② 돈 쓰는 워크플로가 그 암호를 넘기는가")
     for y in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
         t = y.read_text(encoding="utf-8")
-        if "fetch_cards.py" not in t and "fetch_clips.py" not in t:
+        # 위에서 찾은 파일 중 **하나라도** 부르는 워크플로면 암호가 있어야 한다
+        if not any(Path(g).name in t for g in grab):
             continue
         ck(f"{y.name} 가 ADMIN_PASS 를 넘긴다",
            "ADMIN_PASS" in t, "받아 가는 단계가 암호 없이 돈다")

@@ -79,6 +79,18 @@ def main():
         ck("단추로만 돈다 (밀기만 해도 올라가면 큰일이다)",
            "workflow_dispatch" in t and "\n  push:" not in t)
         ck("고치신 글을 먼저 쓴다 (fetch_meta90)", "fetch_meta90.py" in t)
+        # ⚠️ 2026-08-31 — 글 한 장 만들자고 영상 만드는 모듈(PIL 이 필요하다)을
+        #    통째로 불렀다가 죽었다. 올릴 글은 이미 지어져 있으니 그냥 읽는다.
+        fm = (ROOT / "tools" / "fetch_meta90.py").read_text(encoding="utf-8")
+        # ⚠️ 주석에 적힌 것은 안 센다. 예전에 blob_auth_check 에서 똑같이
+        #    "설명만 남고 코드가 빠진" 꼴을 놓쳤다 — 그때 배운 것을 여기도 쓴다.
+        code = "\n".join(l for l in fm.splitlines()
+                         if not l.lstrip().startswith("#"))
+        code = re.sub(r'"""[\s\S]*?"""', "", code)          # 머리말도 뺀다
+        ck("올릴 글을 만들려고 영상 모듈을 부르지 않는다",
+           "src/short90.py" not in code and "import short90" not in code,
+           "PIL 이 없는 자리에서 죽는다 — 지어 둔 글을 읽으십시오")
+        ck("지어 둔 글을 읽는다", "S90.meta.json" in fm)
         ck("영상을 보관함에서 꺼내 온다", "short90-S90 short.mp4" in t)
         ck("upload.py series 로 올린다", "upload.py series S90" in t)
         ck("기본값이 비공개다", "default: '비공개 (나만 보기)'" in t)

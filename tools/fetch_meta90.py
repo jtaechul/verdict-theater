@@ -6,11 +6,10 @@
 ⚠️⚠️ 화면에서 본 글과 실제로 올라가는 글이 **반드시 같아야 한다.**
    손님이 관리자 페이지에서 제목을 고쳤는데 다른 글이 올라가면, 무엇이
    올라갔는지 아무도 모른다. 그래서 고친 글이 있으면 **그것이 이긴다.**
-   없을 때만 대본에서 만든다 (src/short90.py meta · 0원).
+   없을 때만 대본과 함께 지어 둔 글(data/series/S90.meta.json)을 쓴다.
 """
 import json
 import os
-import subprocess
 import sys
 import urllib.request
 from pathlib import Path
@@ -65,16 +64,19 @@ def main():
         show(out)
         return 0
 
-    print("■ 고치신 글이 없어 대본에서 만듭니다 (0원)")
-    r = subprocess.run([sys.executable, str(ROOT / "src" / "short90.py"), "meta"],
-                       capture_output=True, text=True)
-    print(r.stdout[-800:] or r.stderr[-400:])
-    made = ROOT / "build" / "s90" / "meta.json"
+    # ⚠️⚠️ 2026-08-31 — 여기서 src/short90.py 를 불렀다가 **PIL 이 없어 죽었다.**
+    #    글 한 장 만들자고 **영상 만드는 모듈을 통째로** 부른 것이 잘못이다
+    #    (short90.py 는 맨 윗줄에서 그림 라이브러리를 부른다).
+    #    이제 올릴 글은 대본을 지을 때 **미리 지어 저장소에 들어 있다.**
+    #    그 파일을 그대로 쓴다 — 아무것도 안 깔아도 되고, 화면에 보이는
+    #    글과 똑같은 글이 올라간다.
+    made = ROOT / "data" / "series" / "S90.meta.json"
     if not made.exists():
-        print("❌ 올릴 글을 못 만들었습니다")
+        print("❌ 올릴 글이 없습니다 (data/series/S90.meta.json)\n"
+              "   python3 tools/build_short90.py 로 대본을 다시 지으면 생깁니다")
         return 1
-    if made.resolve() != out.resolve():
-        out.write_text(made.read_text(encoding="utf-8"), encoding="utf-8")
+    print("■ 고치신 글이 없어 대본과 함께 지어 둔 글을 씁니다 (0원)")
+    out.write_text(made.read_text(encoding="utf-8"), encoding="utf-8")
     show(out)
     return 0
 
