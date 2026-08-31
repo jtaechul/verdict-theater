@@ -120,15 +120,18 @@ def main():
 
         @staticmethod
         def route_note():
-            return "AI 스튜디오 — 무료 등급은 하루 10번뿐"
+            return ("AI 스튜디오 — 하루 한도는 열쇠 등급에 달렸다 "
+                    "(무료 등급이면 10번, 결제가 붙어 있으면 훨씬 많다)")
 
     import io, contextlib
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         S9.voice_route_ok(Ten, 23)
-    ck("좁은 창구면 크게 알린다", "하루 10번까지인데" in buf.getvalue(),
+    ck("좁은 창구면 무슨 일이 생길지 알려 준다", "만든 데까지 보관" in buf.getvalue(),
        buf.getvalue()[:80])
-    ck("좁은 창구여도 막지는 않는다 (오늘 만들 데까지 만든다)", True)
+    ck("좁은 창구여도 막지는 않는다 (만들 데까지 만든다)", True)
+    ck("재 보지도 않고 '하루 10번' 이라고 단정하지 않는다",
+       "하루 10번까지인데" not in buf.getvalue(), "단정하고 있다")
     ck("목소리가 중간에 바뀌지 못하게 잠갔다", Ten.NO_FALLBACK is True,
        "잠금이 안 걸렸다 — 열한 번째 줄부터 딴 사람 목소리가 된다")
 
@@ -142,7 +145,7 @@ def main():
     buf2 = io.StringIO()
     with contextlib.redirect_stdout(buf2):
         S9.voice_route_ok(Wide, 23)
-    ck("넓은 창구면 경고 없이 그냥 간다", "하루 10번까지인데" not in buf2.getvalue())
+    ck("넓은 창구면 조용히 그냥 간다", "만든 데까지 보관" not in buf2.getvalue())
 
     FakeTTS.route_note = staticmethod(lambda: "구글 클라우드 — 하루 횟수 제한 없음")
     S9.voices(doc)
