@@ -293,6 +293,54 @@ def main():
     ck("프롬프트가 화면을 꽉 채우라고 시킨다",
        all("filling the whole frame" in c["flow"] for c in cuts))
 
+    # ⭐⭐ 2026-08-31 손님: "등장인물 소개 문구는 잘 보이게, 왼쪽에 세로 바."
+    #    예전 이름표는 가운데 정렬 + 옅은 금색 + 테두리 없음이라 밝은 옷 위에서
+    #    그대로 묻혔다. 눈으로 보고 "괜찮네" 하면 또 놓친다 — **그려 놓고
+    #    화소를 세어** 막대가 있는지, 글자가 왼쪽에 붙었는지, 자막 칸을
+    #    안 침범하는지 확인한다.
+    print("\n②-2 이름표가 잘 보이는가 (왼쪽 세로 막대 + 왼쪽 맞춤)")
+    import tempfile as _tf2
+    td2 = pathlib.Path(_tf2.mkdtemp())
+    dia = next(c for c in cuts if c["kind"] != "나레이션")
+    narr = next(c for c in cuts if c["kind"] == "나레이션")
+    png = td2 / "name.png"
+    S9.overlay(dia, png, turn=(dia["kind"], dia["text"]))
+    from PIL import Image
+    im = Image.open(png).convert("RGBA")
+    px = im.load()
+
+    def gold_rows(x0, x1):
+        rows = []
+        for y in range(S9.NAME_Y - 60, S9.SUB_TOP):
+            for x in range(x0, x1):
+                r, g, b, a = px[x, y]
+                if a > 120 and r > 150 and g > 110 and b < 170 and r > b + 50:
+                    rows.append(y)
+                    break
+        return rows
+
+    bar = gold_rows(S9.SIDE, S9.SIDE + S9.NAME_BAR_W)
+    ck("왼쪽에 세로 막대가 그어져 있다", len(bar) > 30, f"{len(bar)}줄")
+    ck("막대가 자막 칸을 안 넘는다", (max(bar) if bar else 0) < S9.SUB_TOP,
+       f"막대 끝 {max(bar) if bar else 0} · 자막 시작 {S9.SUB_TOP}")
+
+    # 글자가 왼쪽에 붙었는가 — 오른쪽 절반에는 이름표 잉크가 없어야 한다
+    ink = [x for x in range(S9.W)
+           for y in (S9.NAME_Y + S9.NAME_SIZE // 2,)
+           if px[x, y][3] > 120]
+    ck("이름표가 왼쪽에 붙어 있다", bool(ink) and max(ink) < S9.W // 2,
+       f"오른쪽 끝 {max(ink) if ink else '-'}")
+
+    # 나레이션 컷에는 이름표가 없어야 한다 (말하는 사람이 없다)
+    png2 = td2 / "narr.png"
+    S9.overlay(narr, png2, turn=("나레이션", narr["text"]))
+    px2 = Image.open(png2).convert("RGBA").load()
+    none_bar = sum(1 for y in range(S9.NAME_Y - 60, S9.SUB_TOP)
+                   for x in range(S9.SIDE, S9.SIDE + S9.NAME_BAR_W)
+                   if px2[x, y][3] > 120 and px2[x, y][0] > 150
+                   and px2[x, y][2] < 170)
+    ck("나레이션 컷에는 이름표가 없다", none_bar == 0, f"{none_bar}칸이 칠해져 있다")
+
     print("\n③ 한 편 길이가 90초 언저리인가 (붙이지 않고 셈으로 먼저)")
     # ⚠️ 컷 길이는 대본의 초가 아니라 **만들어진 목소리 길이**가 정한다.
     #    23컷을 다 붙여 보면 몇 분씩 걸리므로, 길이는 여기서 셈으로 본다.

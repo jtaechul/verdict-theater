@@ -49,12 +49,21 @@ SUB_TOP, SUB_BOT = 1300, 1620    # 자막 칸 (아래 300px 은 쇼츠 단추 �
 SUB_MAX, SUB_MIN, SUB_LINES = 84, 58, 3
 SUB_GAP = 1.24
 SIDE = 60
-NAME_Y, NAME_SIZE = 1218, 46
+# ⭐⭐ 2026-08-31 손님: "등장인물 소개 문구는 잘 보이게 바꿔 주고 왼쪽에
+#    세로로 된 바(bar)를 그어 줘."
+#    예전 이름표는 **가운데 정렬 + 옅은 금색 + 테두리 없음**이라, 아내의 밝은
+#    가디건 위에서 글자가 그대로 묻혔다. 방송 자막처럼 바꾼다 —
+#    왼쪽에 금색 세로 막대를 세우고, 그 옆에 왼쪽 맞춤으로 크게 적는다.
+NAME_Y, NAME_SIZE = 1214, 54
+NAME_BAR_W = 7          # 왼쪽 세로 막대 두께
+NAME_BAR_GAP = 20       # 막대와 글자 사이
+NAME_BAR_PAD = 7        # 막대가 글자 위아래로 더 뻗는 정도
 SCRIM_TOP = 1080                 # 여기부터 아래로 서서히 어두워진다
 SCRIM_MAX = 0.88                 # 맨 아래 어두움 (0~1)
 MARK_SIZE, MARK_Y = 34, 44
 CHANNEL = "판결극장"
 GOLD = (198, 160, 74, 255)
+GOLD_BRIGHT = (232, 197, 112, 255)   # 이름표 글자 — 밝은 그림 위에서도 읽히게
 WHITE = (255, 255, 255, 255)
 PAD = 0.55                       # 말이 끝난 뒤 남기는 여운(초)
 ZOOM_TO = 1.10                   # 컷 하나 도는 동안 커지는 정도
@@ -262,9 +271,17 @@ def overlay(c, out, turn=None):
     who, text = turn if turn else ("나레이션" if is_narr(c) else c["kind"], c["text"])
 
     # 이름표 — 대사만 (나레이션은 말하는 사람이 없다)
+    #   ⭐ 왼쪽 금색 세로 막대 + 왼쪽 맞춤 글자 + 검은 테두리.
+    #     막대 높이는 **글자가 실제로 차지하는 높이**를 재서 맞춘다 —
+    #     이름이 두 글자든 세 글자든 늘 글자와 나란하다.
     if who != "나레이션":
         nf = ImageFont.truetype(str(FONT_NAME), NAME_SIZE)
-        d.text((W // 2, NAME_Y), who, font=nf, fill=GOLD, anchor="ma")
+        tx = SIDE + NAME_BAR_W + NAME_BAR_GAP
+        box = d.textbbox((tx, NAME_Y), who, font=nf, anchor="la")
+        d.rectangle([SIDE, box[1] - NAME_BAR_PAD,
+                     SIDE + NAME_BAR_W, box[3] + NAME_BAR_PAD], fill=GOLD)
+        d.text((tx, NAME_Y), who, font=nf, fill=GOLD_BRIGHT, anchor="la",
+               stroke_width=3, stroke_fill=(0, 0, 0, 205))
 
     # 자막
     f, lines, size = fit(d, text, SUB_MAX, W - SIDE * 2, SUB_BOT - SUB_TOP)
