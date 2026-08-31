@@ -165,6 +165,9 @@ def voices(doc):
                  NARR_RATE if w == "나레이션" else 1.0) for w, t in turns]
         sig = reuse.sig_of(*[f"{w}|{t}|{v}|{r}" for w, t, v, r in plan])
         ok, why = reuse.can_reuse(out, sig)
+        # ⚠️ 길이 기록이 없으면 자막을 맞출 수가 없다 → 그 컷만 다시 만든다
+        if ok and not lens_of(out).exists():
+            ok, why = False, "줄마다 길이 기록이 없다 — 자막을 못 맞춘다"
         print(f"  컷{c['n']:>2} [{'·'.join(w for w, _ in turns)}] {c['text'][:30]}")
         if ok:
             print("    (그대로다 — 건너뛴다)")
@@ -180,6 +183,15 @@ def voices(doc):
             if not got or not Path(got).exists():
                 raise Short90Error(f"컷{c['n']} {w} 소리를 못 만들었다")
             parts.append(Path(got))
+        # ⭐⭐ 2026-08-31 손님: "대사 목소리와 자막이 시간차가 발생."
+        #    자막 바뀌는 때를 **글자 수로 짐작**하고 있었다. 그런데 실제로
+        #    말하는 데 걸리는 시간은 글자 수와 안 맞는다(사람마다 속도가
+        #    다르고 쉼도 있다). 게다가 컷 길이에는 여운(PAD)까지 들어 있어
+        #    자막이 통째로 늘어났다 — 그래서 첫 줄이 오래 남고 둘째 줄이
+        #    목소리보다 늦게 떴다.
+        #    → 여기서 **줄마다 진짜 길이**를 재서 적어 둔다. 짐작을 없앤다.
+        lens_of(out).write_text(
+            json.dumps([round(dur_of(x), 3) for x in parts]), encoding="utf-8")
         if len(parts) == 1:
             parts[0].replace(out)
         else:
@@ -268,9 +280,53 @@ def overlay(c, out, turn=None):
 
 
 # ── ④ 조립 ────────────────────────────────────────────────────
+def lens_of(wav):
+    """그 컷의 **줄마다 소리 길이**를 적어 둔 자리 (자막을 맞추는 데 쓴다)."""
+    return Path(wav).with_suffix(".len.json")
+
+
 def syl(t):
     """한국어 글자 수 (자막이 떠 있을 시간을 나누는 잣대)."""
     return max(1, len([x for x in str(t) if not x.isspace()]))
+
+
+def sub_windows(c, sec, voice):
+    """자막 한 줄씩 **언제부터 언제까지** 떠 있을지.
+
+    ⭐⭐ 2026-08-31 손님: "대사 목소리와 자막이 시간차가 발생."
+       예전에는 **글자 수로 짐작**해 컷 길이를 나눴다. 두 군데가 어긋난다 —
+         ① 글자 수와 실제 말하는 시간은 안 맞는다 (속도·쉼이 사람마다 다르다)
+         ② 컷 길이(sec)에는 말이 끝난 뒤의 여운(PAD)과 대본에 적힌 넉넉한
+            초까지 들어 있다. 그 비율로 나누면 자막이 **통째로 늘어나서**
+            첫 줄이 오래 남고 둘째 줄이 목소리보다 늦게 뜬다.
+       이제 소리를 만들 때 적어 둔 **줄마다 진짜 길이**로 나눈다.
+       (voice 가 None 이면 — 올린 영상의 소리를 쓰는 컷 — 옛 방식으로 돌아간다)
+    """
+    turns = turns_of(c)
+    real = []
+    if voice:
+        f = lens_of(voice)
+        if f.exists():
+            try:
+                got = json.loads(f.read_text(encoding="utf-8"))
+                if isinstance(got, list) and len(got) == len(turns):
+                    real = [float(x) for x in got]
+            except Exception:                                # noqa: BLE001
+                real = []
+    at, t0 = [], 0.0
+    if real:
+        for i, d in enumerate(real):
+            # 마지막 줄은 여운까지 끌고 간다 (말이 끝나도 글은 남아 있어야 한다)
+            t1 = sec if i == len(real) - 1 else min(sec, t0 + d)
+            at.append((t0, t1))
+            t0 = t1
+    else:
+        tot = sum(syl(t) for _, t in turns)
+        for i, (_, t) in enumerate(turns):
+            t1 = sec if i == len(turns) - 1 else t0 + sec * syl(t) / tot
+            at.append((t0, t1))
+            t0 = t1
+    return at
 
 
 def cut_video(c, still, voice, clip, ovs, out):
@@ -319,14 +375,18 @@ def cut_video(c, still, voice, clip, ovs, out):
               f"zoompan=z='{z}':d={frames}:x='iw/2-(iw/zoom/2)'"
               f":y='ih/2-(ih/zoom/2)':s={W}x{H}:fps={FPS}[bg];")
     # ⭐ 한 컷 안에서 두 사람이 주고받으면 **자막도 차례대로** 바뀌어야 한다.
-    #    말한 글자 수에 맞춰 시간을 나누고, 그 동안만 그 자막을 얹는다.
+    #
+    # ⭐⭐ 2026-08-31 손님: "대사 목소리와 자막이 시간차가 발생."
+    #    예전에는 **글자 수로 짐작**해 컷 길이를 나눴다. 두 군데가 어긋난다 —
+    #      ① 글자 수와 실제 말하는 시간은 안 맞는다 (사람마다 속도·쉼이 다르다)
+    #      ② 컷 길이(sec)에는 말이 끝난 뒤의 여운(PAD)과 대본에 적힌 넉넉한
+    #         초까지 들어 있어, 그 비율로 나누면 자막이 통째로 늘어난다.
+    #         → 첫 줄이 오래 남고, 둘째 줄이 목소리보다 **늦게** 뜬다.
+    #    이제 소리를 만들 때 적어 둔 **줄마다 진짜 길이**로 나눈다.
+    #    (올린 영상의 소리를 쓰는 컷은 우리 목소리가 아니므로 옛 방식 그대로)
     turns = turns_of(c)
-    tot = sum(syl(t) for _, t in turns)
-    at, chain, t0 = [], "[bg]", 0.0
-    for i, (_, t) in enumerate(turns):
-        t1 = sec if i == len(turns) - 1 else t0 + sec * syl(t) / tot
-        at.append((t0, t1))
-        t0 = t1
+    at = sub_windows(c, sec, None if use_clip_audio else voice)
+    chain = "[bg]"
     for i, (a, b) in enumerate(at):
         nxt = f"[v{i}]" if i < len(at) - 1 else "[v]"
         chain_in = chain

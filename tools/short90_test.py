@@ -242,6 +242,33 @@ def main():
     ck("그림 화풍과 영상 화풍의 꼬리가 같다",
        S.STYLE_FIX.endswith(S.STYLE_TAIL) and S.STYLE_STILL.endswith(S.STYLE_TAIL))
 
+    # ⭐⭐ 2026-08-31 손님: "대사 목소리와 대본 자막이 시간차가 발생."
+    #    자막 바뀌는 때를 글자 수로 짐작하고 있었다. 짐작이 맞는지 눈으로는
+    #    못 본다 — **일부러 어긋나게** 만들어 놓고 셈이 소리를 따라가는지 본다.
+    print("\n①-6 자막이 목소리를 따라가는가")
+    two = next((c for c in cuts if len(c.get("turns") or []) > 1), None)
+    ck("두 사람이 주고받는 컷이 있다", bool(two))
+    if two:
+        import tempfile as _tf
+        td = pathlib.Path(_tf.mkdtemp())
+        wav = td / "c.wav"
+        fake_wav(wav, 7.0)
+        # 첫 줄은 **짧게 말하고** 글자는 길게 — 글자 수로 짐작하면 크게 틀린다
+        S9.lens_of(wav).write_text("[2.0, 5.0]", encoding="utf-8")
+        sec = 8.0
+        at = S9.sub_windows(two, sec, wav)
+        ck("첫 줄이 목소리가 끝나는 그때 바뀐다",
+           abs(at[0][1] - 2.0) < 0.01, f"{at[0][1]:.2f}초에 바뀐다 (2.00초여야 한다)")
+        ck("둘째 줄이 바로 이어 받는다", abs(at[1][0] - 2.0) < 0.01, f"{at[1][0]:.2f}초")
+        ck("마지막 줄은 컷 끝까지 남는다", abs(at[1][1] - sec) < 0.01, f"{at[1][1]:.2f}초")
+        # 글자 수로 짐작하던 옛 셈과 **실제로 달라야** 뜻이 있다
+        guess = S9.sub_windows(two, sec, None)
+        ck("옛 짐작과 다르다 (고친 값이다)", abs(guess[0][1] - at[0][1]) > 0.2,
+           f"짐작 {guess[0][1]:.2f}초 · 진짜 {at[0][1]:.2f}초")
+        # 올린 영상의 소리를 쓰는 컷은 우리 길이를 쓰면 안 된다
+        ck("올린 영상 컷은 옛 방식 그대로다",
+           S9.sub_windows(two, sec, None) == guess)
+
     print("\n② 자막이 칸 안에 들어가는가")
     from PIL import Image, ImageDraw
     d = ImageDraw.Draw(Image.new("RGBA", (S9.W, S9.H)))
