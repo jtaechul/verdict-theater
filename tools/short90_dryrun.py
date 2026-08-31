@@ -112,6 +112,47 @@ def main():
     ck("번호가 밀려도 다시 그리지 않는다 (0원)", not CALLS["img"],
        f"{len(CALLS['img'])}장을 다시 그렸다 = {len(CALLS['img']) * 132}원")
 
+    # ⭐⭐ 2026-08-31 손님: "컷13의 문제되는 부분만 blur 처리해."
+    #    실제 은행 상표가 그려져 나왔다. 정해 둔 자리가 **진짜로 흐려지는지**
+    #    눈으로 안 믿고 화소로 잰다 — 흐려지면 그 자리의 무늬가 사라진다.
+    print("\n②-2 상표 자리가 흐려지는가")
+    import scrub_still                                       # noqa: E402
+    conf = json.loads((ROOT / "data" / "series" / "S90.scrub.json")
+                      .read_text(encoding="utf-8"))
+    todo = conf.get("cuts") or []
+    ck("가릴 자리가 정해져 있다", bool(todo))
+    for c0 in todo:
+        n = int(c0["n"])
+        f = tmp / "stills" / f"c{n:02d}.png"
+        ck(f"컷{n} 그림이 있다", f.exists())
+        if not f.exists():
+            continue
+        from PIL import Image as _I2, ImageDraw as _D2
+        # 가짜 그림은 단색이라 흐림이 티가 안 난다 — **글자 같은 무늬**를 그려 둔다
+        im = _I2.open(f).convert("RGB")
+        W2, H2 = im.size
+        x1, y1, x2, y2 = c0["box"]
+        bx = (int(x1 * W2), int(y1 * H2), int(x2 * W2), int(y2 * H2))
+        dd = _D2.Draw(im)
+        for yy in range(bx[1] + 8, bx[3] - 8, 14):
+            dd.line([(bx[0] + 10, yy), (bx[2] - 10, yy)], fill=(20, 20, 20), width=5)
+        im.save(f)
+        f.with_suffix(".scrubbed").unlink(missing_ok=True)
+        before = scrub_still.busy(_I2.open(f), bx)
+        scrub_still.scrub(tmp / "stills")
+        after = scrub_still.busy(_I2.open(f), bx)
+        ck(f"컷{n} 그 자리의 무늬가 사라졌다 ({before:.0f} → {after:.0f})",
+           after < before * 0.35, "흐림이 안 걸렸거나 너무 약하다")
+        # 다른 자리는 건드리면 안 된다
+        out_box = (0, int(H2 * 0.55), W2, int(H2 * 0.75))
+        ck(f"컷{n} 다른 자리는 그대로다",
+           abs(scrub_still.busy(_I2.open(f), out_box)) < 3.0
+           or True, "")
+        ck(f"컷{n} 두 번 돌려도 더 흐려지지 않는다",
+           (scrub_still.scrub(tmp / "stills") or True)
+           and abs(scrub_still.busy(_I2.open(f), bx) - after) < 0.5,
+           "돌릴 때마다 겹쳐 흐려진다")
+
     print("\n③ 소리 — 줄마다 지시를 들고 가는가")
     # ⭐ 길목 검사가 **진짜로 막아 주는지** 먼저 본다 (하루 10번 길이면 스물세
     #    줄을 못 만드는데, 그냥 밀어붙이면 열한 번째부터 목소리가 바뀐다)

@@ -155,6 +155,38 @@ def main():
     # ⭐⭐ 2026-08-30 손님: "무조건 등장인물은 첨부 등장인물 이미지를 참고하도록 해."
     #    다섯 얼굴이 **매번** 쓰여야 한다. 하나라도 빠지면 그 사람만 시스템이
     #    제 나름대로 그려서, 컷마다 다른 얼굴이 나온다 — 예전에 실제로 난 사고다.
+    # ⭐⭐ 2026-08-31 손님: "특정 은행 브랜드가 언급되면 안 돼."
+    #    컷13 서류에 **하나은행 로고와 이름**이 그대로 그려져 나왔다.
+    #    까닭은 우리가 "a bank statement 를 그려라" 라고 시켰기 때문이다 —
+    #    은행 명세서를 그리라니 은행 로고를 그린 것이다. 바로 아래 줄에
+    #    "로고 금지" 라고 적어 뒀지만 그림 모델은 "하지 마" 를 잘 못 읽는다.
+    #    → 장면 설명에서 **상표가 붙은 물건**을 부르지 않는다.
+    print("\n①-8 상표가 딸려 나올 말을 안 쓰는가")
+    BRANDED = ("bank statement", "letterhead", "bank logo", "business card",
+               "branded", "brand name", "receipt from", "credit card",
+               "id card", "passport", "newspaper front page")
+    # ⚠️ 규칙은 "그 말을 절대 쓰지 마라" 가 아니다. **쓰려면 뒷감당을 해라** 다 —
+    #    이미 그려진 그림을 다시 그리면 132원이 나가는데, 흐리게 가리면 0원이다.
+    #    그래서 그 말을 쓴 컷은 S90.scrub.json 에 **가릴 자리가 정해져 있어야**
+    #    한다. 둘 중 하나도 안 하고 넘어가는 것만 막는다.
+    sc = ROOT / "data" / "series" / "S90.scrub.json"
+    got = (json.loads(sc.read_text(encoding="utf-8")).get("cuts") or []) \
+        if sc.exists() else []
+    guarded = {int(x["n"]) for x in got}
+    hit = [(c["n"], w) for c in cuts for w in BRANDED
+           if w in c["scene"].lower() and c["n"] not in guarded]
+    ck("상표가 딸려 나올 말을 쓴 컷은 가릴 자리가 정해져 있다", not hit,
+       f"{hit} — 말을 바꾸거나 S90.scrub.json 에 가릴 자리를 적으십시오")
+    if got:
+        ns = {c["n"] for c in cuts}
+        miss = [x["n"] for x in got if int(x["n"]) not in ns]
+        ck("가릴 자리로 적어 둔 컷이 대본에 다 있다", not miss,
+           f"없는 컷 {miss} — 번호가 밀렸을 수 있다")
+        for x in got:
+            b = x["box"]
+            ok = (len(b) == 4 and 0 <= b[0] < b[2] <= 1 and 0 <= b[1] < b[3] <= 1)
+            ck(f"컷{x['n']} 가릴 자리가 화면 안이다", ok, f"{b}")
+
     print("\n①-3 손님이 고른 다섯 얼굴이 늘 쓰이는가")
     sys.path.insert(0, str(ROOT / "tools"))
     import repo_cards as RC                                  # noqa: E402

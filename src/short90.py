@@ -270,9 +270,19 @@ def stills(doc):
             print(f"    ⚠️ {why} — 다시 만든다")
         ST.gen(c["still"], out, refs=refs, ratio="9:16",
                seed=ST.seed_of("S90", c["n"]))
+        # ⚠️ 새로 그렸으면 **가린 표시를 지운다.** 안 지우면 "이미 가렸다" 며
+        #    건너뛰는데, 새 그림에서는 상표가 다른 자리에 있을 수 있다.
+        out.with_suffix(".scrubbed").unlink(missing_ok=True)
         reuse.stamp(out, sig)
         made += 1
     print(f"\n■ 그림 {made}/{len(doc['cuts'])}장")
+    # ⭐⭐ 2026-08-31 손님: "특정 은행 브랜드가 언급되면 안 돼."
+    #    그림 모델이 실제 상표(하나은행)를 그려 넣은 적이 있다. 정해 둔 자리를
+    #    흐리게 만든다 (값 0원). 영상이 아니라 **그림**에 걸어야 카메라가
+    #    움직여도 자국이 함께 따라간다.
+    sys.path.insert(0, str(ROOT / "tools"))
+    import scrub_still                                       # noqa: E402
+    scrub_still.scrub(d)
     return 0 if made == len(doc["cuts"]) else 1
 
 
