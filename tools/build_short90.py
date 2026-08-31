@@ -143,6 +143,12 @@ def still_prompt(c):
         body.append(f"SHOT: {c['scene']}. Framed from the waist up so every face "
                     f"stays clear, mouths closed, holding the moment.")
     else:
+        # ⚠️ 2026-08-31 — 이 줄은 "Nobody's face in frame" 이라는 **부정문**이다.
+        #    우리 규칙에 이미 적혀 있듯(series.RISKY 주석) 그림 모델은 "하지 마"
+        #    를 잘 못 읽고 오히려 그 낱말을 그려 넣는다. 18컷에 낯선 남녀가
+        #    들어간 원인 중 하나로 의심된다.
+        #    ⚠️ 다만 지금 고치지 않는다 — 이 줄을 바꾸면 멀쩡한 16컷까지 지문이
+        #       달라져 다시 그려지고 132원이 더 나간다. 손님 확인 뒤에 함께 고친다.
         body.append(f"SHOT: {c['scene']}. Nobody's face in frame.")
     body += [FRAMING, "CAMERA: " + BLUR, COLOR, S.STYLE_STILL, NO_TEXT]
     return "\n".join(body)

@@ -169,8 +169,15 @@ CUTS = [
     dict(n=18, sec=9.5, who=[],
          turns=[("나레이션", "2020년 7월, 법원은 내연녀에게 10억을 아내와 "
                             "아이들에게 돌려주라고 판결했습니다.")],
-         scene="the wide stone front steps of a courthouse in daylight, empty, seen "
-               "from below"),
+         # ⚠️⚠️ 2026-08-31 손님: "전혀 다른 사람이 들어가 있음."
+         #    여기는 사람이 없어야 하는 컷인데 낯선 남녀가 그려져 나왔다.
+         #    까닭 둘 — ① '법원 앞 계단' 은 **사람이 지나다니는 자리**라
+         #    그림 모델이 저절로 사람을 세운다. ② 바로 다음 19컷이 그 계단에
+         #    아내와 딸을 세우는 컷이라 장면까지 겹쳤다.
+         #    → 사람이 있을 수 없는 자리로 바꾼다 (빈 법정 안).
+         scene="the inside of an empty courtroom in the morning, rows of empty wooden "
+               "benches and the raised bench at the front, quiet light through tall "
+               "windows"),
     dict(n=19, sec=8.2, who=["아내", "딸"],
          turns=[("나레이션", "아내가 떠안을 뻔했던 빚 6억도 갚지 않게 됐습니다. "
                             "실제로 있었던 사건입니다.")],
