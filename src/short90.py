@@ -214,10 +214,39 @@ def stills(doc):
 
 
 # ── ② 소리 ────────────────────────────────────────────────────
+def voice_route_ok(tts, need):
+    """이 길로 **필요한 줄 수만큼** 만들 수 있는가 — 만들기 **전에** 본다.
+
+    ⚠️⚠️ 2026-08-31 — 여기가 조용히 망가지는 자리다.
+       제미나이 목소리는 두 길이 있는데 한도가 하늘과 땅 차이다.
+         구글 클라우드 길 — 하루 횟수 제한 없음
+         AI 스튜디오 길   — **무료 등급 하루 10번**
+       우리는 스물세 줄이 필요하다. 스튜디오 길로 가면 열한 번째 줄부터
+       막히고, tts.say() 가 조용히 옛 구글 목소리로 물러선다. 그러면
+       **한 편 안에서 아내 목소리가 중간에 바뀌고 감정이 사라진다.**
+       영상은 멀쩡히 나오므로 눈으로는 안 보인다 — 그게 제일 나쁘다.
+       → 돈 쓰기 전에 미리 보고, 안 되면 **아예 시작하지 않는다.**
+    """
+    if str(os.environ.get("SKIP_VOICE_ROUTE", "")).strip() == "1":
+        return
+    note = tts.route_note()
+    print(f"■ 목소리 길: {note}")
+    if "하루 10번" in note and need > 10:
+        raise Short90Error(
+            f"이 길로는 {need}줄을 못 만듭니다 (하루 10번까지).\n"
+            f"   지금 길: {note}\n"
+            f"   → 구글 클라우드 콘솔에서 **Vertex AI API"
+            f"(aiplatform.googleapis.com)** 를 [사용] 하면 열립니다.\n"
+            f"   그냥 밀어붙이면 열한 번째 줄부터 옛 목소리로 바뀌어 "
+            f"한 편 안에서 사람 목소리가 달라집니다.")
+
+
 def voices(doc):
     import tts                                               # 늦게 부른다(열쇠 필요)
     d = OUT / "voice"
     d.mkdir(parents=True, exist_ok=True)
+    need = sum(len(turns_of(c)) for c in doc["cuts"])
+    voice_route_ok(tts, need)
     print(f"■ 소리 {len(doc['cuts'])}줄")
     made = 0
     for c in doc["cuts"]:
@@ -454,6 +483,11 @@ def karaoke(c, sec, voice, d, n):
        언제 나오는지 안 알려 준다. 그래서 글자 수로 고르게 나눈다 — 한 줄
        안에서는 오차가 크지 않다(줄 자체는 진짜 길이에 맞춰 놓았기 때문).
     """
+    # ⚠️ 2026-08-31 진짜 크기 시험이 잡았다 — 여기서 폴더를 안 만들고 있었다.
+    #    build() 가 미리 만들어 줘서 안 드러났을 뿐, 다른 데서 부르면 죽는다.
+    #    "부르는 쪽이 챙겨 주겠지" 는 언젠가 반드시 어긋난다.
+    d = Path(d)
+    d.mkdir(parents=True, exist_ok=True)
     turns = turns_of(c)
     wins = sub_windows(c, sec, voice)
     out = []

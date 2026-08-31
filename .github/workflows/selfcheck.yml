@@ -151,6 +151,9 @@ jobs:
           # ⚠️ 2026-08-31 — 만들기는 성공했는데 화면에 안 떴다.
           #    워크플로가 붙이는 이름과 화면이 찾는 이름을 맞춰 본다.
           python3 tools/made_tag_check.py
+          # ⚠️ 2026-08-31 — 컷 다섯 개짜리 시험은 통과하는데 스무 컷에서
+          #    죽는 것들이 있다(카라오케·번호 밀림). 진짜 크기로 돌려 본다.
+          python3 tools/short90_dryrun.py
 
       - name: 지어낸 말을 잘라 내는가
         run: python3 tools/extra_speech_test.py

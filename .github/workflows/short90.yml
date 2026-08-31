@@ -105,9 +105,11 @@ jobs:
           #    옆에 .hand 표시가 남아, 아래 단계가 그 사람은 다시 안 그린다.
           python3 tools/fetch_cards.py "$CARDS" build/s90/cards 2>&1 | tee -a make.log
           # 아직 얼굴이 없는 사람만 시스템이 그린다
-          python3 src/still.py cards S001 --out build/s90/cards 2>&1 | tee -a make.log
-          python3 -c "import shutil;shutil.make_archive('build/cards90','zip','build/s90/cards')"
+          FAIL=0
+          python3 src/still.py cards S001 --out build/s90/cards 2>&1 | tee -a make.log || FAIL=1
+          python3 -c "import shutil;shutil.make_archive('build/cards90','zip','build/s90/cards')" || true
           python3 tools/release_file.py put cards90-S90 cards.zip build/cards90.zip || true
+          [ "$FAIL" = 0 ] || { echo "❌ 인물 카드 단계 실패 — 만든 데까지는 보관했습니다"; exit 1; }
 
       - name: 2) 컷 그림 19장 (세로 9:16)
         if: env.STEP == 'all' || env.STEP == 'stills'
@@ -116,9 +118,15 @@ jobs:
           python3 tools/release_file.py get stills-S90 stills.zip build/stills.zip \
             && unzip -q -o build/stills.zip -d build/s90/stills \
             || echo "받아 둔 컷 그림이 없다 — 새로 만든다"
-          python3 src/short90.py stills 2>&1 | tee -a make.log
-          python3 -c "import shutil;shutil.make_archive('build/stills','zip','build/s90/stills')"
+          # ⚠️⚠️ 2026-08-31 — 여기서 죽으면 **이미 돈 주고 만든 것이 날아갔다.**
+          #    중간에 실패하면 아래 보관 두 줄까지 통째로 건너뛰기 때문이다.
+          #    ("중간에 죽어도 돈이 날아가지 않는다" 고 위에 적어 놓고 안 지켰다)
+          #    → 실패해도 **만든 데까지는 반드시 보관**하고, 그다음에 실패시킨다.
+          FAIL=0
+          python3 src/short90.py stills 2>&1 | tee -a make.log || FAIL=1
+          python3 -c "import shutil;shutil.make_archive('build/stills','zip','build/s90/stills')" || true
           python3 tools/release_file.py put stills-S90 stills.zip build/stills.zip || true
+          [ "$FAIL" = 0 ] || { echo "❌ 컷 그림 단계 실패 — 만든 데까지는 보관했습니다"; exit 1; }
 
       - name: 3) 나레이션·대사 소리
         if: env.STEP == 'all' || env.STEP == 'voice'
@@ -127,9 +135,12 @@ jobs:
           python3 tools/release_file.py get voice-S90 voice.zip build/voice.zip \
             && unzip -q -o build/voice.zip -d build/s90/voice \
             || echo "받아 둔 소리가 없다 — 새로 만든다"
-          python3 src/short90.py voice 2>&1 | tee -a make.log
-          python3 -c "import shutil;shutil.make_archive('build/voice','zip','build/s90/voice')"
+          # ⚠️ 그림과 같은 까닭 — 만든 데까지는 반드시 보관하고 나서 실패시킨다
+          FAIL=0
+          python3 src/short90.py voice 2>&1 | tee -a make.log || FAIL=1
+          python3 -c "import shutil;shutil.make_archive('build/voice','zip','build/s90/voice')" || true
           python3 tools/release_file.py put voice-S90 voice.zip build/voice.zip || true
+          [ "$FAIL" = 0 ] || { echo "❌ 소리 단계 실패 — 만든 데까지는 보관했습니다"; exit 1; }
 
       - name: 4) 한 편으로 조립
         env:
