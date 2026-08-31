@@ -259,9 +259,11 @@ def main():
         S9.lens_of(wav).write_text("[2.0, 5.0]", encoding="utf-8")
         sec = 8.0
         at = S9.sub_windows(two, sec, wav)
-        ck("첫 줄이 목소리가 끝나는 그때 바뀐다",
-           abs(at[0][1] - 2.0) < 0.01, f"{at[0][1]:.2f}초에 바뀐다 (2.00초여야 한다)")
-        ck("둘째 줄이 바로 이어 받는다", abs(at[1][0] - 2.0) < 0.01, f"{at[1][0]:.2f}초")
+        # ⚠️ 소리를 SPEED 배로 빨리 감으므로 자막도 그만큼 당겨져야 한다
+        want = 2.0 / S9.SPEED
+        ck("첫 줄이 목소리가 끝나는 그때 바뀐다", abs(at[0][1] - want) < 0.01,
+           f"{at[0][1]:.2f}초에 바뀐다 ({want:.2f}초여야 한다)")
+        ck("둘째 줄이 바로 이어 받는다", abs(at[1][0] - want) < 0.01, f"{at[1][0]:.2f}초")
         ck("마지막 줄은 컷 끝까지 남는다", abs(at[1][1] - sec) < 0.01, f"{at[1][1]:.2f}초")
         # 글자 수로 짐작하던 옛 셈과 **실제로 달라야** 뜻이 있다
         guess = S9.sub_windows(two, sec, None)
@@ -380,9 +382,8 @@ def main():
         json.dumps([3.0, 3.0]), encoding="utf-8")
     ksec = 7.0
     ko = S9.karaoke(kc, ksec, kwav, td3, kc["n"])
-    nwords = sum(len(t.split()) for _, t in S9.turns_of(kc))
-    ck(f"낱말 수만큼 자막 장을 만든다 ({nwords}장)", len(ko) == nwords,
-       f"{len(ko)}장")
+    nch = sum(len(S9.chunks_of(t)) for _, t in S9.turns_of(kc))
+    ck(f"토막 수만큼 자막 장을 만든다 ({nch}장)", len(ko) == nch, f"{len(ko)}장")
     ck("첫 자막이 0초에 시작한다", abs(ko[0][1]) < 0.01, f"{ko[0][1]:.2f}초")
     ck("마지막 자막이 컷 끝까지 남는다", abs(ko[-1][2] - ksec) < 0.01,
        f"{ko[-1][2]:.2f}초")
@@ -391,26 +392,42 @@ def main():
     back = [i for i in range(len(ko)) if ko[i][2] < ko[i][1] - 1e-9]
     ck("시간이 거꾸로 가지 않는다", not back, f"거꾸로 {back}")
     # 두 사람이 주고받는 컷이면 **말하는 사람이 바뀌는 자리**가 소리 길이와 맞아야
-    first_n = len(S9.turns_of(kc)[0][1].split())
+    first_n = len(S9.chunks_of(S9.turns_of(kc)[0][1]))
+    want2 = 3.0 / S9.SPEED
     ck("말하는 사람이 바뀌는 때가 소리 길이와 맞는다",
-       abs(ko[first_n - 1][2] - 3.0) < 0.01, f"{ko[first_n - 1][2]:.2f}초 (3.00초여야)")
+       abs(ko[first_n - 1][2] - want2) < 0.01,
+       f"{ko[first_n - 1][2]:.2f}초 ({want2:.2f}초여야)")
 
     # 불이 **실제로 옮겨 붙는가** — 첫 장과 끝 장의 금색 자리가 달라야 한다
     from PIL import Image as _Im
 
-    def gold_x(png):
+    # ⭐ 2026-08-31 손님 확정 — 전체가 떠 있고 색만 바뀌는 것이 아니라
+    #   **그 토막만 떴다 사라진다.** 그러니 자막 칸의 글자 넓이가 토막마다
+    #   달라야 하고, 문장 전체를 그린 것보다 좁아야 한다.
+    # ⚠️ 글자 **넓이**로는 못 가른다 — 토막이든 문장이든 칸을 꽉 채우게
+    #    글자 크기가 맞춰지기 때문이다. **글자가 칠한 넓이(화소 수)**로 센다.
+    def ink(png):
         im = _Im.open(png).convert("RGBA"); px = im.load()
-        xs = [x for y in range(S9.SUB_TOP, S9.SUB_BOT, 4)
-              for x in range(0, S9.W, 4)
-              if px[x, y][3] > 150 and px[x, y][0] > 200
-              and 170 < px[x, y][1] < 235 and px[x, y][2] < 170]
-        return (min(xs), max(xs)) if xs else None
+        return sum(1 for y in range(S9.SUB_TOP, S9.SUB_BOT, 3)
+                   for x in range(0, S9.W, 3) if px[x, y][3] > 150)
 
-    a0, a1 = gold_x(ko[0][0]), gold_x(ko[-1][0])
-    ck("첫 낱말에 불이 들어온다", a0 is not None)
-    ck("마지막 낱말에 불이 들어온다", a1 is not None)
-    if a0 and a1:
-        ck("불이 옮겨 붙는다 (자리가 다르다)", a0 != a1, f"{a0} → {a1}")
+    w_all = td3 / "all.png"
+    S9.overlay(two, w_all, S9.turns_of(two)[0])          # now 없음 = 문장 전체
+    a0, a1, aw = ink(ko[0][0]), ink(ko[-1][0]), ink(w_all)
+    ck("첫 토막이 화면에 있다", a0 > 0)
+    ck("마지막 토막이 화면에 있다", a1 > 0)
+    ck("토막마다 화면이 바뀐다", a0 != a1, f"{a0} == {a1}")
+    # ⚠️ 화소 수로도 못 가른다 — 토막은 글자가 훨씬 커져서 칠하는 넓이가
+    #    비슷해진다. **그 토막만 따로 그린 그림과 똑같은지**를 곧바로 본다.
+    #    이것이 "그 토막만 뜬다" 는 말의 정확한 뜻이다.
+    who0, txt0 = S9.turns_of(two)[0]
+    solo = td3 / "solo.png"
+    S9.overlay(two, solo, (who0, S9.chunks_of(txt0)[0]))     # 그 토막만 넣어 그린다
+    same = (_Im.open(solo).tobytes() == _Im.open(ko[0][0]).tobytes())
+    ck("첫 장이 '그 토막만' 그린 것과 똑같다", same,
+       "문장이 통째로 남아 있거나 다른 것이 섞였다")
+    ck("문장 전체를 그린 것과는 다르다",
+       _Im.open(w_all).tobytes() != _Im.open(ko[0][0]).tobytes())
 
     print("\n③ 한 편 길이가 90초 언저리인가 (붙이지 않고 셈으로 먼저)")
     # ⚠️ 컷 길이는 대본의 초가 아니라 **만들어진 목소리 길이**가 정한다.
@@ -449,9 +466,12 @@ def main():
         # ⚠️ 대사 컷에 영상을 올리면 **컷 길이는 그 영상이 정한다** (말이 잘리면
         #    안 되니까). 셈에도 그대로 반영한다 — 안 그러면 시험이 틀린 값을 본다.
         hand_sec = {4: 6.0}
+        # ⚠️ 셈법을 여기에 **다시 적지 않는다.** 예전엔 max(c["sec"], …) 를
+        #    베껴 놨다가, 길이 규칙을 바꾸자 시험만 옛 셈으로 남아 틀렸다.
+        #    진짜 셈(S9.cut_sec)을 그대로 부른다.
         exp = sum(hand_sec.get(c["n"]) if (c["n"] in hand_sec
                                            and not c["narr"])
-                  else max(c["sec"], say_sec[c["n"]] + S9.PAD)
+                  else S9.cut_sec(c, tmp / "voice" / f"c{c['n']:02d}.wav", None)[0]
                   for c in sample["cuts"])
         ck("붙인 길이가 셈과 맞는다 (±1초)", abs(got - exp) <= 1.0,
            f"{got:.1f}초 / 셈 {exp:.1f}초")
@@ -469,7 +489,7 @@ def main():
            f"{S9.dur_of(tmp / 'parts' / 'c04.mp4'):.2f}초")
         # 나레이션 컷은 영상을 올렸어도 **우리 나레이션** 길이로 간다
         n10 = [c for c in cuts if c["n"] == 10][0]
-        want10 = max(n10["sec"], say_sec[10] + S9.PAD)
+        want10 = S9.cut_sec(n10, tmp / "voice" / "c10.wav", None)[0]
         ck("나레이션 컷은 영상을 올려도 우리 나레이션 길이를 지킨다",
            abs(S9.dur_of(tmp / "parts" / "c10.mp4") - want10) <= 0.35,
            f"{S9.dur_of(tmp / 'parts' / 'c10.mp4'):.2f}초 / 바람 {want10:.2f}초")

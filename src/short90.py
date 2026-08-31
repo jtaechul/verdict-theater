@@ -47,7 +47,22 @@ FONT_SUB = ROOT / "assets" / "fonts" / "NanumGothic_ExtraBold.ttf"
 FONT_NAME = ROOT / "assets" / "fonts" / "KoPub_Batang_Pro_Bold.otf"
 
 SUB_TOP, SUB_BOT = 1300, 1620    # 자막 칸 (아래 300px 은 쇼츠 단추 자리라 비운다)
-SUB_MAX, SUB_MIN, SUB_LINES = 84, 58, 3
+SUB_MAX, SUB_MIN, SUB_LINES = 104, 58, 3
+
+# ⭐⭐ 2026-08-31 손님: "카라오케라면 전체 대사가 다 떠 있는 상태에서 색깔만
+#    바뀌는 게 아니라 **해당 대사만 나타났다가 사라지게끔** 하는 걸 원한 거야."
+#    맞다. 앞의 것은 노래방 자막이고, 손님이 원하신 것은 쇼츠에서 흔한
+#    **한 토막씩 떴다 사라지는** 자막이다.
+#    → 이제 한 번에 **한 토막만** 화면에 있다. 짧으니 글자도 훨씬 크게 나온다.
+#
+#    ⚠️ 낱말 하나씩 끊으면 너무 잘게 튄다("몰랐다면서." "근데" "어떻게" …).
+#       숨 쉬는 단위로 묶는다 — 낱말 세 개까지, 글자 아홉 자까지.
+CHUNK_CHARS = 9                  # 한 토막에 담을 글자 수 (띄어쓰기 뺀 것)
+CHUNK_WORDS = 3                  # 한 토막에 담을 낱말 수
+# 숫자 뒤에 붙는 단위 — 이 앞에서는 끊지 않는다 ("이천만 / 원을" 방지)
+UNIT = ("원", "억", "만", "천", "명", "년", "월", "일", "시", "분", "개", "배", "%")
+NUMWORD = ("일", "이", "삼", "사", "오", "육", "칠", "팔", "구", "십",
+           "백", "천", "만", "억", "조")
 SUB_GAP = 1.24
 SIDE = 60
 # ⭐⭐ 2026-08-31 손님: "등장인물 소개 문구는 잘 보이게 바꿔 주고 왼쪽에
@@ -77,7 +92,17 @@ SUB_DONE = (255, 255, 255, 255)
 SUB_NOW = (245, 205, 116, 255)
 SUB_TODO = (255, 255, 255, 112)
 WHITE = (255, 255, 255, 255)
-PAD = 0.55                       # 말이 끝난 뒤 남기는 여운(초)
+# ⭐⭐ 2026-08-31 손님: "속도가 조금 느린 거 같은데 조금만 더 빠르게 가능한가?"
+#    재 보니 147초 가운데 **말이 없는 자리가 17초(11%)** 였다. 두 군데다 —
+#      ① 대본에 적어 둔 최소 길이(sec)가 실제 말보다 길어서 남는 시간
+#         — 그 숫자는 Veo 영상(4·6·8초)에 맞춘 것이라 그림 컷에는 뜻이 없다
+#      ② 말이 끝난 뒤 여운 0.55초 × 스무 컷 = 11초
+#    → 최소 길이를 안 쓰고, 여운을 줄이고, 말 자체도 조금 빠르게 한다.
+#    ⚠️ 말을 빠르게 하는 것은 **조립할 때** 한다(atempo). 목소리를 다시
+#       만들면 750원이 또 나가는데, 조립은 0원이기 때문이다.
+PAD = 0.40                       # 말이 끝난 뒤 남기는 여운(초)
+MIN_CUT = 2.2                    # 아무리 짧아도 이만큼은 보여 준다(깜빡임 방지)
+SPEED = 1.08                     # 말 빠르기 (1.28 을 넘기면 발음이 뭉개진다)
 ZOOM_SRC = 1.4                   # 움직이기 전에 그림을 키워 두는 배수 (떨림 방지)
 
 # ⭐⭐ 2026-08-31 손님: "줌인 줌아웃 등이 조금 더 있어서 생동감이 조금 더
@@ -405,9 +430,12 @@ def overlay(c, out, turn=None, now=None):
         d.text((tx, NAME_Y), who, font=nf, fill=GOLD_BRIGHT, anchor="la",
                stroke_width=3, stroke_fill=(0, 0, 0, 205))
 
-    # 자막 — **낱말 하나씩** 그린다 (카라오케)
-    #   now 가 None 이면 옛날처럼 전부 흰색 (자막 한 장짜리)
-    #   now 가 숫자면 그 낱말이 지금 말하는 것 — 금색으로 도드라진다
+    # 자막 — **그 토막만** 그린다 (2026-08-31 손님 확정)
+    #   now 가 숫자면 그 토막 하나만 화면에 뜬다. 짧으니 글자가 훨씬 크다.
+    #   now 가 None 이면 문장 전체 (검사·미리보기용)
+    if now is not None:
+        ch = chunks_of(text)
+        text = ch[now] if 0 <= now < len(ch) else text
     f, lines, size = fit(d, text, SUB_MAX, W - SIDE * 2, SUB_BOT - SUB_TOP)
     step = size * SUB_GAP
     y = SUB_TOP + max(0, ((SUB_BOT - SUB_TOP) - len(lines) * step) / 2)
@@ -418,16 +446,8 @@ def overlay(c, out, turn=None, now=None):
         wide = sum(d.textlength(w, font=f) for w in ws) + space * (len(ws) - 1)
         x = (W - wide) / 2                   # 줄 전체를 가운데에 놓는다
         for w in ws:
-            if now is None:
-                fill = WHITE
-            elif k < now:
-                fill = SUB_DONE
-            elif k == now:
-                fill = SUB_NOW
-            else:
-                fill = SUB_TODO
             # 얇은 검은 테두리 — 밝은 그림 위에서도 글자가 안 묻힌다
-            d.text((x, y), w, font=f, fill=fill, anchor="la",
+            d.text((x, y), w, font=f, fill=WHITE, anchor="la",
                    stroke_width=4, stroke_fill=(0, 0, 0, 210))
             x += d.textlength(w, font=f) + space
             k += 1
@@ -463,6 +483,36 @@ def lens_of(wav):
     return Path(wav).with_suffix(".len.json")
 
 
+def chunks_of(text):
+    """한 줄을 **숨 쉬는 토막**으로 나눈다 (한 번에 한 토막만 화면에 뜬다).
+
+    ⚠️ 낱말 하나씩이면 너무 잘게 튀고, 문장 통째면 예전과 똑같아진다.
+       그 사이 — 낱말 세 개까지, 글자 아홉 자까지 묶는다.
+    ⚠️ 문장이 끝나는 자리(. ? !)에서는 반드시 끊는다. 다음 문장이 딸려
+       붙으면 읽는 호흡이 어긋난다.
+    """
+    ws = str(text).split()
+    out, cur = [], []
+    for i, w in enumerate(ws):
+        cur.append(w)
+        n = sum(syl(x) for x in cur)
+        # ⚠️ 쉼표에서도 끊는다. 안 그러면 "2017년 2월, 병원을 / 하던 남편이"
+        #    처럼 한 낱말 한복판에서 잘려 읽기가 어긋난다.
+        end = w.endswith((".", "?", "!", "…", ",", "—"))
+        full = len(cur) >= CHUNK_WORDS or n >= CHUNK_CHARS
+        # ⚠️ 숫자와 단위는 절대 떼지 않는다 — "이천만 / 원을" 처럼 잘리면
+        #    돈이 얼마인지가 두 화면에 걸쳐 버린다. 이 편은 숫자가 핵심이다.
+        nxt = ws[i + 1] if i + 1 < len(ws) else ""
+        glue = (not end and nxt.startswith(UNIT)
+                and (w[-1:].isdigit() or w.endswith(NUMWORD)))
+        if (end or full) and not glue:
+            out.append(" ".join(cur))
+            cur = []
+    if cur:
+        out.append(" ".join(cur))
+    return out or [str(text)]
+
+
 def syl(t):
     """한국어 글자 수 (자막이 떠 있을 시간을 나누는 잣대)."""
     return max(1, len([x for x in str(t) if not x.isspace()]))
@@ -488,7 +538,9 @@ def sub_windows(c, sec, voice):
             try:
                 got = json.loads(f.read_text(encoding="utf-8"))
                 if isinstance(got, list) and len(got) == len(turns):
-                    real = [float(x) for x in got]
+                    # ⚠️ 소리를 SPEED 배로 빨리 감으므로 자막도 그만큼 당긴다.
+                    #    안 그러면 자막만 원래 속도로 남아 말과 어긋난다.
+                    real = [float(x) / SPEED for x in got]
             except Exception:                                # noqa: BLE001
                 real = []
     at, t0 = [], 0.0
@@ -528,7 +580,10 @@ def cut_sec(c, voice, clip):
     talks = not is_narr(c)
     if clip and talks and has_audio(clip):
         return dur_of(clip), True
-    return max(float(c["sec"]), dur_of(voice) + PAD), False
+    # ⚠️ 예전에는 대본에 적힌 sec 과 견줘 **큰 쪽**을 썼다. 그런데 그 숫자는
+    #    Veo 영상 길이(4·6·8초)라 그림 컷에는 뜻이 없고, 말보다 길면 그만큼
+    #    화면이 멈춰 있다. 이제 **말 길이가 정한다.**
+    return max(MIN_CUT, dur_of(voice) / SPEED + PAD), False
 
 
 def karaoke(c, sec, voice, d, n):
@@ -553,14 +608,14 @@ def karaoke(c, sec, voice, d, n):
     wins = sub_windows(c, sec, voice)
     out = []
     for i, ((who, text), (a, b)) in enumerate(zip(turns, wins)):
-        words = str(text).split()
-        if not words:
+        parts = chunks_of(text)
+        if not parts:
             continue
         span = max(0.05, b - a)
-        tot = sum(syl(w) for w in words)
+        tot = sum(syl(w) for w in parts)
         t0 = a
-        for k, w in enumerate(words):
-            t1 = b if k == len(words) - 1 else t0 + span * syl(w) / tot
+        for k, w in enumerate(parts):
+            t1 = b if k == len(parts) - 1 else t0 + span * syl(w) / tot
             png = d / f"c{n:02d}_{i}_{k:02d}.png"
             overlay(c, png, (who, text), now=k)
             out.append((png, t0, t1))
@@ -642,7 +697,10 @@ def cut_video(c, still, voice, clip, ovs, out):
         amap = f"{1 + len(ovs)}:a"
     run(["ffmpeg", "-y", "-v", "error", *src, *ovin, *snd,
          "-filter_complex", vf,
-         "-map", "[v]", "-map", amap, "-af", "apad",
+         # ⭐ 소리를 여기서 빨리 감는다 (atempo). 목소리를 다시 만들면 값이
+         #   나가지만 조립은 0원이다. 올린 영상의 소리는 손대지 않는다.
+         "-map", "[v]", "-map", amap,
+         "-af", ("apad" if use_clip_audio else f"atempo={SPEED:.3f},apad"),
          "-t", f"{sec:.3f}", "-r", str(FPS),
          "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
          "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k", "-ar", "48000",

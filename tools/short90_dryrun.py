@@ -169,16 +169,14 @@ def main():
     final = tmp / "S90_short.mp4"
     ck("한 편이 나왔다", final.exists() and final.stat().st_size > 100_000)
     got = dur(final)
-    want = sum(max(float(c["sec"]),
-                   dur(tmp / "voice" / f"c{c['n']:02d}.wav") + S9.PAD)
+    want = sum(S9.cut_sec(c, tmp / "voice" / f"c{c['n']:02d}.wav", None)[0]
                for c in cuts)
     ck(f"길이가 셈과 맞는다 ({got:.1f}초)", abs(got - want) < 1.5,
        f"셈 {want:.1f}초 · 실제 {got:.1f}초")
-    ck("길이가 2~3분 안에 있다", 120 <= got <= 190, f"{got:.0f}초")
+    ck("길이가 2~3분 안에 있다", 100 <= got <= 190, f"{got:.0f}초")
     ov = list((tmp / "ov").glob("*.png"))
-    words = sum(len(t.split()) for c in cuts for _, t in c["turns"])
-    ck(f"자막 장을 낱말 수만큼 만들었다 ({words}장)", len(ov) == words,
-       f"{len(ov)}장")
+    n_ch = sum(len(S9.chunks_of(t)) for c in cuts for _, t in c["turns"])
+    ck(f"자막 장을 토막 수만큼 만들었다 ({n_ch}장)", len(ov) == n_ch, f"{len(ov)}장")
 
     print("\n⑤ 컷마다 자막이 끊기지 않는가 (진짜 소리 길이로)")
     holes = []
