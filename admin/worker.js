@@ -2019,6 +2019,8 @@ function madeCard() {
 }
 
 function madeName(x) {
+  // ⭐ 90초 한 편은 회차가 없다 — '0화' 로 적히면 손님이 못 알아보신다
+  if (x.s90) return (x.title ? x.title + ' ' : '') + '90초 한 편';
   return (x.title ? x.title + ' ' : '') + x.ep + '화'
     + (x.cut ? ' (' + x.cut + '컷 시험본)' : '');
 }
@@ -2057,7 +2059,7 @@ function madeDraw() {
       + '<video id="pl" controls playsinline preload="metadata" '
       + 'style="width:100%;max-height:70vh;border-radius:12px;background:#000;'
       + 'display:block" src="/api/short?sid=' + encodeURIComponent(v.sid)
-      + '&ep=' + v.ep + (v.cut ? '&cut=' + v.cut : '')
+      + '&ep=' + v.ep + (v.cut ? '&cut=' + v.cut : '') + (v.s90 ? '&s90=1' : '')
       + '&name=' + encodeURIComponent(PICK) + '&play=1"></video>'
       + (((v.names || []).filter(function (n) { return n !== 'short.mp4'; }).length > 1)
          ? '<div style="color:#9599ab;font-size:13px;margin:10px 0 4px">'
@@ -2074,8 +2076,9 @@ function madeDraw() {
       + esc(v.sid) + ' · ' + mb(v.size) + ' · '
       + esc(String(v.at || '').slice(0, 10)) + ' 만듦</div>'
       + '<div class="btns">'
-      + mini('이 회차 열기 (유튜브에 올리기)',
-             'seriesView(\\'' + v.sid + '\\',' + v.ep + ')', 'gold')
+      + (v.s90 ? ''
+               : mini('이 회차 열기 (유튜브에 올리기)',
+                      'seriesView(\\'' + v.sid + '\\',' + v.ep + ')', 'gold'))
       + mini('영상 받기 (기기에 저장)', 'madeDl(' + SHOWN + ')')
       + '</div></div>';
   }
@@ -2112,7 +2115,8 @@ function madeDl(k) {
   const v = SHORTS[k];
   if (!v) return;
   window.open('/api/short?sid=' + encodeURIComponent(v.sid) + '&ep=' + v.ep
-              + (v.cut ? '&cut=' + v.cut : '') + '&play=1&dl=1', '_blank');
+              + (v.cut ? '&cut=' + v.cut : '') + (v.s90 ? '&s90=1' : '')
+              + '&play=1&dl=1', '_blank');
   toast('내려받기를 시작했습니다');
 }
 
@@ -3144,6 +3148,19 @@ export default {
                        size: a.size, names,
                        at: a.updated_at || r.published_at || '' });
         }
+        // ⭐⭐ 2026-08-31 — **90초 한 편이 목록에 안 떴다.**
+        //    손님: "영상 관리자 페이지에 안 뜨는데?" 만들기는 성공했는데
+        //    여기가 'short-S001-ep01' 같은 16화 이름만 찾고 있었다.
+        //    90초 편은 'short90-S90' 이라는 다른 이름으로 올라간다.
+        for (const r of rels || []) {
+          const m90 = String(r.tag_name || '').match(/^short90-(S\d+)$/);
+          if (!m90) continue;
+          const a = (r.assets || []).find((x) => x.name === 'short.mp4');
+          if (!a) continue;
+          items.push({ sid: m90[1], ep: 0, cut: 0, s90: 1,
+                       size: a.size, names: ['short.mp4'],
+                       at: a.updated_at || r.published_at || '' });
+        }
         // 새로 만든 것이 위로
         items.sort((x, y) => String(y.at).localeCompare(String(x.at)));
         // 시리즈 제목을 붙여 준다 — 'S001 3화' 보다 '바람난 남편이…' 가 낫다
@@ -3158,10 +3175,15 @@ export default {
       if (url.pathname === '/api/short') {
         const sid = url.searchParams.get('sid') || '';
         const ep = String(parseInt(url.searchParams.get('ep') || '0', 10) || 0);
-        if (!/^S\d{3}$/.test(sid)) return new Response('bad', { status: 400 });
-        const cut = cutOf(url);
-        const tag = `short-${sid}-ep${String(ep).padStart(2, '0')}`
-                  + (cut ? `-cut${cut}` : '');
+        // ⭐ 90초 한 편은 이름이 다르다 ('short90-S90'). 16화 규칙으로 막으면
+        //    화면에 뜨기만 하고 눌러도 안 나온다.
+        const s90 = url.searchParams.get('s90') === '1';
+        if (s90 ? !/^S\d+$/.test(sid) : !/^S\d{3}$/.test(sid))
+          return new Response('bad', { status: 400 });
+        const cut = s90 ? '' : cutOf(url);
+        const tag = s90 ? `short90-${sid}`
+                        : `short-${sid}-ep${String(ep).padStart(2, '0')}`
+                          + (cut ? `-cut${cut}` : '');
         let rel = null;
         try { rel = await gh(env, `/repos/${REPO}/releases/tags/${tag}`); } catch { rel = null; }
         // 아무 이름이나 받지 않는다 — 미리 정해 둔 것만.
@@ -3175,8 +3197,9 @@ export default {
         // ⭐ 2026-08-23 — dl=1 이면 재생이 아니라 **내려받기**로 준다.
         //    파일 이름은 영문으로 (한글 이름은 올리기에서 한 번 죽었다).
         const dl = url.searchParams.get('dl') === '1'
-          ? `${sid}_ep${String(ep).padStart(2, '0')}${cut ? '_cut' + cut : ''}`
-            + `${want === 'short.mp4' ? '' : '_' + want.replace('.mp4', '')}.mp4`
+          ? (s90 ? `${sid}_short90.mp4`
+                 : `${sid}_ep${String(ep).padStart(2, '0')}${cut ? '_cut' + cut : ''}`
+                   + `${want === 'short.mp4' ? '' : '_' + want.replace('.mp4', '')}.mp4`)
           : null;
         return streamAsset(env, req, a.id, dl);
       }

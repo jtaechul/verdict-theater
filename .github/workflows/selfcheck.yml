@@ -148,6 +148,9 @@ jobs:
           # ⚠️ 2026-08-30 — 보관함에서 받아 가는 길이 막혀 첫 실행이
           #    통째로 실패했다. 그 길을 글자로 맞춰 본다.
           python3 tools/blob_auth_check.py
+          # ⚠️ 2026-08-31 — 만들기는 성공했는데 화면에 안 떴다.
+          #    워크플로가 붙이는 이름과 화면이 찾는 이름을 맞춰 본다.
+          python3 tools/made_tag_check.py
 
       - name: 지어낸 말을 잘라 내는가
         run: python3 tools/extra_speech_test.py
