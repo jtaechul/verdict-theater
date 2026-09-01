@@ -1,0 +1,100 @@
+name: 2-3. 이 사건으로 쇼츠 대본 만들기
+
+# ⭐⭐⭐ 2026-09-01 손님: "앞으로 영상을 계속 만들어나가고 계속 올려야 되는데
+#    이런 식으로 관리자 페이지를 구성하면 지속 가능하지 않거든."
+#
+#   그때까지 90초 대본은 **사람이 손으로 쓴 파이썬 파일**이었다. 손님은
+#   파이썬을 못 쓰시니 사건 2번째를 혼자서는 시작조차 못 하셨다.
+#   심사를 통과한 재판 기록이 165건이나 쌓여 있는데 길이 없었던 것이다.
+#   → 이 단추가 그 길이다. 대기열에서 사건 하나를 고르면
+#     컷 · 편 나누기 · 편별 제목까지 한 번에 나온다.
+#
+# 값: 대본 한 편 약 2,100원 (제미나이 pro). 그림·목소리 값은 여기서 안 나간다.
+#
+# ⚠️ 단추로만 돈다 (tools/auto_spend_check.py 규칙).
+# ⚠️ 규격에 안 맞으면 저장하지 않는다 (src/story90.py 의 check).
+#    특히 편당 글자 수 — 넘으면 60초를 넘고, 60초를 넘으면 쇼츠 피드가
+#    안 태운다 (2026-09-01 에 실제로 겪었다: 127초 편이 조회수 0).
+
+on:
+  workflow_dispatch:
+    inputs:
+      case_id:
+        description: '판례 번호 (비우면 점수가 제일 높은 것)'
+        required: false
+        default: ''
+      sid:
+        description: '사건 번호 (비우면 다음 번호를 저절로 붙입니다)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: story90
+  cancel-in-progress: false
+
+jobs:
+  story:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      VT_RUN_KRW: '2800'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 열쇠 확인
+        run: |
+          set -uo pipefail
+          [ -n "${GEMINI_API_KEY:-}" ] || {
+            echo "::error::제미나이 열쇠(GEMINI_API_KEY)가 없습니다."
+            exit 1
+          }
+          echo "열쇠 있습니다."
+
+      - name: 대본 짓기
+        env:
+          CASE: ${{ inputs.case_id }}
+          SID: ${{ inputs.sid }}
+        run: |
+          set -o pipefail
+          ARGS=""
+          [ -n "$CASE" ] && ARGS="$ARGS --case $CASE"
+          [ -n "$SID" ] && ARGS="$ARGS --sid $SID"
+          python3 src/story90.py $ARGS 2>&1 | tee story.log
+
+      - name: 프롬프트까지 붙이기 (0원)
+        run: |
+          set -euo pipefail
+          # 방금 지은 대본이 어느 사건인지 로그에서 꺼낸다
+          SID=$(sed -n 's/^■ \(S[0-9]*\) 대본 짓는 중.*/\1/p' story.log | head -1)
+          [ -n "$SID" ] || { echo "::error::사건 번호를 못 찾았습니다"; exit 1; }
+          echo "사건 $SID"
+          python3 tools/build_short90.py "$SID" 2>&1 | tee -a story.log
+
+      - name: 저장소에 적어 두기
+        run: |
+          set -euo pipefail
+          git config user.name "verdict-theater-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add data/series state 2>/dev/null || true
+          git diff --cached --quiet && { echo "적을 것이 없다."; exit 0; }
+          git commit -m "쇼츠 대본 [skip ci]"
+          bash tools/push.sh "쇼츠 대본 [skip ci]" data/series state
+
+      - name: 결과 화면
+        if: always()
+        run: |
+          {
+            echo "## 쇼츠 대본 만들기"
+            echo ""
+            echo '```'
+            cat story.log 2>/dev/null || echo "(못 만들었습니다)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

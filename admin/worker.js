@@ -78,7 +78,14 @@ const WORKFLOWS = [
   //    보이고, 누르면 **올리신 인물 그림도 컷 영상도 안 쓰고** 그냥 돕니다.
   //    손님: "여기서 뭘 어떻게 넣으라는거야. 아무것도할수없잖아."
   //    → 90초 편은 아래 전용 화면(90초 한 편 ①②)에서만 시작한다.
-  { file: 'short90.yml', name: '90초 한 편 만들기', desc: '', inputs: [], hidden: true },
+  { file: 'short90.yml', name: '쇼츠 만들기 (편마다)', desc: '', inputs: [], hidden: true },
+
+  // ⭐⭐⭐ 2026-09-01 — 새 사건의 쇼츠 대본을 짓는다.
+  //    화면(다음 사건 고르기)의 [이 사건으로 쇼츠 만들기] 가 부른다.
+  //    목록에는 두되 단추로는 안 보인다 — 어느 사건인지 고른 자리에서
+  //    눌러야 무엇에 돈을 쓰는지 보고 누를 수 있기 때문이다.
+  { file: 'story90.yml', name: '2-3. 이 사건으로 쇼츠 대본 만들기',
+    desc: '', inputs: [], hidden: true },
 
   { file: 'stats.yml', hidden: true,   // 2026-08-27 지금 절차 밖 — 감춘다 name: '5. 성과 보기',
     desc: '올린 영상이 얼마나 보였는지 확인합니다 (0원)',
@@ -92,7 +99,7 @@ const WORKFLOWS = [
   // ⭐ 90초 한 편을 유튜브에 올린다. 화면(④ 칸)의 [유튜브에 올리기] 가 부른다.
   //    목록에는 두되 단추로는 안 보인다 — 글을 고치는 칸과 같이 있어야
   //    무엇이 올라가는지 보고 누를 수 있기 때문이다.
-  { file: 'short90-upload.yml', name: '4-2. 90초 한 편 유튜브에 올리기',
+  { file: 'short90-upload.yml', name: '4-2. 쇼츠 유튜브에 올리기 (편마다)',
     desc: '', inputs: [], hidden: true },
   { file: 'voice-route.yml', name: '0-2. 목소리 창구 확인 (1원 미만)',
     desc: '지금 목소리를 어느 창구로 부르는지 봅니다. 하루 10번짜리 좁은 '
@@ -279,6 +286,21 @@ async function streamAsset(env, req, id, fname) {
 function cutOf(url) {
   const n = parseInt(url.searchParams.get('cut') || '', 10);
   return Number.isInteger(n) && n >= 1 && n <= 9 ? String(n) : '';
+}
+
+// ⭐ 2026-09-01 — 사건 번호. 사건이 여럿이 되면서 주소로 받는다.
+//    ⚠️ 아무 글자나 받으면 저장소의 엉뚱한 파일을 읽게 된다 — 모양을 좁게 본다.
+function sidOf(url) {
+  const v = String(url.searchParams.get('sid') || '').trim().toUpperCase();
+  return /^S\d{1,4}$/.test(v) ? v : 'S90';
+}
+
+// ⭐ 몇 편인가. 'all' 이면 전부(예약 공개로 한 번에 올릴 때).
+function partOf(url, allowAll) {
+  const raw = String(url.searchParams.get('part') || '').trim();
+  if (allowAll && raw === 'all') return 'all';
+  const n = parseInt(raw, 10);
+  return Number.isInteger(n) && n >= 1 && n <= 20 ? String(n) : '';
 }
 
 function b64utf8(b64) {
@@ -616,6 +638,7 @@ async function load() {
   const r = await fetch('/api/state');
   if (r.status === 401) { location.href = '/'; return; }
   S = await r.json();
+  await loadWorks(true);        // 사건 목록 — 홈이 이것으로 그려진다
   home();
 }
 
@@ -836,7 +859,7 @@ const S90WHO = [['본처', '아내'], ['남편', '남편'], ['내연녀', '내�
 let S90CARDS = {};
 
 function short90Card() {
-  let h = '<div class="card"><h2>90초 한 편 ① 인물 그림 '
+  let h = '<div class="card"><h2>① 인물 그림 '
         + '<small style="font-weight:400;color:#9599ab">'
         + '— 제미나이에서 만드신 다섯 장</small></h2>';
   // ⭐ 2026-08-30 — 다섯 얼굴을 저장소에 넣어 두었다(assets/cards/s90/).
@@ -858,8 +881,8 @@ function short90Card() {
        + 'onchange="upCard(this.id.slice(5))">'
        + '</div>';
   });
-  h += '<div class="uphint" style="margin-top:10px"><b>아래 ②</b> 로 내려가 '
-     + '맨 아래 [90초 한 편 만들기] 를 누르시면 됩니다.</div>';
+  h += '<div class="uphint" style="margin-top:10px"><b>아래 ②</b> 를 지나 '
+     + '<b>③ 세 편 만들기</b> 를 누르시면 됩니다.</div>';
   h += '</div>';
   return h;
 }
@@ -901,13 +924,16 @@ async function s90Cuts() {
   const box = document.getElementById('s90cuts');
   if (!box) return;
   if (!S90DOC) {
-    try { S90DOC = (await (await fetch('/api/short90')).json()).doc; }
-    catch (e) { S90DOC = null; }
+    // ⭐ 2026-09-01 — 어느 사건인지 주소로 넘긴다 (사건이 여럿이다)
+    try {
+      const u = '/api/short90?sid=' + encodeURIComponent(WORK || 'S90');
+      S90DOC = (await (await fetch(u)).json()).doc;
+    } catch (e) { S90DOC = null; }
   }
   const cuts = (S90DOC && S90DOC.cuts) || [];
   if (!cuts.length) { box.innerHTML = ''; return; }
   const nv = Object.keys(S90CLIPS).length;
-  let h = '<div class="card"><h2>90초 한 편 ② 컷별 영상 '
+  let h = '<div class="card"><h2>② 컷별 영상 '
         + '<small style="font-weight:400;color:#9599ab">— 올린 컷만 영상, 나머지는 그림'
         + '</small></h2>';
   h += '<div class="uphint"><b>아무것도 안 올리고 바로 만드셔도 됩니다.</b> '
@@ -944,121 +970,394 @@ async function s90Cuts() {
        + 'onchange="upCut(this.id.slice(5))">'
        + '</div>';
   });
-  h += '<button class="gold" style="margin-top:14px" onclick="makeShort90()">'
-     + '90초 한 편 만들기</button>'
-     + '<div class="uphint" style="margin-top:8px">올린 컷은 영상으로, 나머지는 '
-     + '그림으로 이어 붙여 약 130초짜리 한 편이 나옵니다. 10~20분 걸립니다.</div>'
-     + '<div id="s90msg" class="uphint"></div>';
+  // ⚠️ 만들기 단추는 **아래 ③ 칸**으로 옮겼다 (2026-09-01). 편마다 따로
+  //    만들 수 있어야 해서, 만들기와 올리기를 편 목록 옆에 나란히 둔다.
+  h += '<div class="uphint" style="margin-top:10px">다 고르셨으면 '
+     + '<b>아래 ③ 세 편 만들기</b> 로 내려가십시오.</div>';
   h += '</div>';
   box.innerHTML = h;
 }
 
-// ⭐⭐ 2026-08-31 — 유튜브에 올릴 제목·설명·해시태그.
-//   ⚠️ **화면에서 본 글과 올라가는 글이 반드시 같아야 한다.** 그래서 여기서
-//      고친 것은 보관함에 담아 두고, 올릴 때 워크플로가 그것을 받아 간다.
-//      고친 것이 없으면 대본에서 만든 것이 그대로 올라간다.
-let S90META = null;
+// ⭐⭐⭐ 2026-09-01 손님: "각각 만들어서 각각 올릴 수 있어야 되는데 지금은
+//    영상 제작이 구분되어 있지 않으니까 이 부분도 관리자 페이지에서 구분해서
+//    영상 시작하기 누르고 영상 올리기 누를 수 있게끔 분리하는 체계로."
+//    그리고 "앞으로 계속 만들어나가야 하는데 지속 가능하지 않거든."
+//
+//    → 화면을 두 단으로 나눈다.
+//        ① 홈        — 사건 목록 (state/shorts.json 만 읽는다)
+//        ② 작품 화면 — 그 사건의 인물 그림 · 컷 · **편마다** 만들기/올리기
+//      편 수는 대본이 정한다(2편이든 4편이든). 사건이 늘어도 여기는 안 고친다.
+//
+// ⚠️ 이름(id)은 전부 w- 로 시작한다. 16화 칸(ytmsg 등)과 겹치면
+//    getElementById 가 앞의 것만 집어 알림이 엉뚱한 칸에 뜬다 (실제로 겪었다).
+let WORKS = null;      // 사건 목록
+let WORK = '';         // 지금 열어 본 사건
+let WMETA = null;      // 그 사건의 올릴 글 (편마다)
+let WBUSY = {};        // 지금 누른 단추 (두 번 눌리는 것을 막는다)
 
-// ⚠️⚠️ 2026-08-31 — 16화용 유튜브 칸이 **이미 있다**(ytSave·ytUp·ytmsg).
-//    처음엔 같은 이름(ytmsg 등)을 써 버렸다. 한 화면에 같은 id 가 둘이면
-//    getElementById 는 앞의 것만 집어, 알림이 엉뚱한 칸에 뜬다.
-//    → 90초 편 것은 전부 s90yt- 로 이름을 따로 준다.
-async function s90Yt() {
-  const box = document.getElementById('s90yt');
-  if (!box) return;
-  let why = '';
-  if (!S90META) {
-    try {
-      const j = await (await fetch('/api/yt90')).json();
-      S90META = j.meta; why = j.why || '';
-    } catch (e) { S90META = null; }
+async function loadWorks(force) {
+  if (WORKS && !force) return WORKS;
+  try {
+    const j = await (await fetch('/api/works?t=' + Date.now(),
+                                 { cache: 'no-store' })).json();
+    WORKS = j.works || {};
+  } catch (e) { WORKS = {}; }
+  return WORKS;
+}
+
+function partList(w) {
+  const ps = (w && w.parts) || {};
+  return Object.keys(ps).map(Number).sort((x, y) => x - y).map((k) => ps[String(k)]);
+}
+
+// 홈에 그리는 **사건 목록**. 사건이 늘면 줄이 하나 늘 뿐이다.
+function worksCard() {
+  const ks = Object.keys(WORKS || {}).sort();
+  let h = '<div class="card"><h2>내 쇼츠 작품 '
+        + '<small style="font-weight:400;color:#9599ab">— 사건 하나가 여러 편입니다'
+        + '</small></h2>';
+  if (!ks.length) {
+    h += '<div class="empty">아직 만든 사건이 없습니다.<br>'
+       + '아래 <b>소재 대기열</b>에서 사건을 하나 골라 '
+       + '<b>[이 사건으로 쇼츠 만들기]</b> 를 누르십시오.</div></div>';
+    return h;
   }
-  if (!S90META) {
-    // ⚠️ 조용히 사라지면 손님은 "칸이 왜 없지" 하신다 — 까닭을 적어 둔다
-    box.innerHTML = '<div class="card"><h2>90초 한 편 ④ 유튜브에 올리기</h2>'
-      + '<div class="empty">' + esc(why || '올릴 글이 아직 없습니다.')
-      + '</div></div>';
-    return;
+  ks.forEach((sid) => {
+    const w = WORKS[sid] || {};
+    const ps = partList(w);
+    const up = ps.filter((x) => x && x.uploaded).length;
+    const made = ps.filter((x) => x && x.sec).length;
+    const state = !ps.length ? '대본만'
+      : (up >= ps.length ? '다 올림'
+      : (made >= ps.length ? '만들어짐 · 올림 ' + up + '편'
+      : '만드는 중 ' + made + '/' + ps.length + '편'));
+    h += '<div class="ep"><div class="ep-top"><div><b>'
+       + esc(w.label || w.title || sid) + '</b>'
+       + '<small>' + esc(sid) + ' · ' + ps.length + '편 · '
+       + (w.cuts || 0) + '컷</small></div>'
+       + '<span class="pill ' + (up >= ps.length && ps.length ? 'ok' : 'go') + '">'
+       + esc(state) + '</span></div>'
+       + '<div class="btns">'
+       + mini('열기', "openWork('" + sid + "')", 'gold')
+       + '</div></div>';
+  });
+  h += '</div>';
+  return h;
+}
+
+async function openWork(sid) {
+  VIEW = 'work';
+  WORK = String(sid || 'S90');
+  S90DOC = null; WMETA = null; WBUSY = {};
+  document.getElementById('app').innerHTML = '<div class="empty">여는 중…</div>';
+  scrollTo(0, 0);
+  await loadWorks(true);
+  try {
+    const j = await (await fetch('/api/yt90?sid=' + encodeURIComponent(WORK)
+                                 + '&t=' + Date.now(), { cache: 'no-store' })).json();
+    WMETA = j.meta || null;
+  } catch (e) { WMETA = null; }
+  workDraw();
+  s90Cuts();
+}
+
+function workDraw() {
+  if (VIEW !== 'work') return;
+  const w = (WORKS || {})[WORK] || {};
+  let h = '<button class="ghost" onclick="home()">← 목록으로</button>'
+        + '<div style="height:12px"></div>'
+        + '<div class="card"><h2>' + esc(w.label || w.title || WORK)
+        + ' <small style="font-weight:400;color:#9599ab">— ' + esc(WORK)
+        + ' · ' + (w.cuts || 0) + '컷</small></h2></div>';
+  h += short90Card();
+  h += '<div id="s90cuts"><div class="card"><h2>② 컷별 영상</h2>'
+     + '<div class="empty">컷 목록 불러오는 중…</div></div></div>';
+  h += partsCard(w);
+  document.getElementById('app').innerHTML = h;
+  foldify();
+}
+
+// ③④ 편마다 — 만들기 단추와 올리기 단추가 **따로** 있다
+function partsCard(w) {
+  const ps = partList(w);
+  let h = '<div class="card"><h2>③ 세 편 만들기</h2>'
+        + '<div class="uphint">그림과 목소리를 편들이 함께 씁니다. '
+        + '<b>한 번에 만드는 쪽이 빠르고 돈이 덜 듭니다.</b> '
+        + '처음에는 아래 단추 하나만 누르시면 됩니다.</div>'
+        + '<div class="btns" style="margin-top:12px">'
+        + '<button class="gold" id="w-make-all" onclick="workMake(0)">'
+        + '전체 만들기 (' + (ps.length || 3) + '편)</button></div>'
+        + '<div id="w-make-msg" class="uphint"></div></div>';
+  if (!ps.length) {
+    h += '<div class="card"><h2>④ 편</h2><div class="empty">'
+       + '아직 편이 나뉘지 않았습니다. 대본을 먼저 지어 주십시오.</div></div>';
+    return h;
   }
-  const m = S90META;
-  let h = '<div class="card"><h2>90초 한 편 ④ 유튜브에 올리기</h2>';
-  h += '<div class="uphint">아래 글이 그대로 유튜브에 올라갑니다. '
-     + '고치시면 고친 대로 올라갑니다.</div>';
-  h += '<div style="margin-top:12px"><b>제목</b> '
-     + '<span class="uphint" id="s90yt-len">' + esc(String(m.title || '').length)
-     + '/100자</span>'
-     + '<input id="s90yt-title" value="' + esc(m.title || '') + '" '
-     + 'oninput="s90YtLen()" style="width:100%;font-size:14px;margin-top:4px"></div>';
-  h += '<div style="margin-top:12px"><b>설명</b>'
-     + '<textarea id="s90yt-desc" rows="9" style="width:100%;font-size:12px;'
-     + 'margin-top:4px">' + esc(m.description || '') + '</textarea></div>';
-  h += '<div style="margin-top:12px"><b>해시태그</b> '
-     + '<span class="uphint">쉼표로 나눕니다 (# 은 빼고)</span>'
-     + '<input id="s90yt-tags" value="' + esc((m.tags || []).join(', ')) + '" '
-     + 'style="width:100%;font-size:13px;margin-top:4px"></div>';
-  h += '<div style="margin-top:12px"><b>어떻게 올릴까요</b>'
-     + '<select id="s90yt-priv" style="width:100%;font-size:14px;margin-top:4px">'
+  ps.forEach((p) => {
+    const no = p.no;
+    const m = ((WMETA && WMETA.parts) || []).filter(
+      (x) => Number(x.part) === Number(no))[0] || {};
+    const u = p.uploaded || null;
+    const madeTxt = p.sec ? (Math.round(p.sec) + '초') : '아직 안 만듦';
+    const long = p.sec && p.sec > 59.5;
+    h += '<div class="card"><h2 data-t="쇼츠 ' + no + '편">' + no + '편 '
+       + '<small style="font-weight:400;color:#9599ab">— '
+       + esc((p.card || [])[0] || '') + ' / ' + esc((p.card || [])[1] || '')
+       + '</small></h2>';
+    h += '<div class="row"><span class="k">상태</span><span>'
+       + esc(madeTxt) + ' · ' + (u ? '올림 (' + esc(u.privacy || '') + ')'
+                                  : '아직 안 올림') + '</span></div>';
+    if (long)
+      h += '<div class="uphint" style="color:#e0a33c"><b>60초를 넘었습니다.</b> '
+         + '이 채널은 60초 이하만 조회수가 나왔습니다(127초 편은 0회였습니다). '
+         + '컷을 옮겨 나누는 것이 좋습니다.</div>';
+    if (u && u.publish_at)
+      h += '<div class="uphint">예약 공개: ' + esc(u.publish_at) + '</div>';
+    h += '<div class="btns" style="margin-top:10px">'
+       + (p.sec ? mini('영상 보기', 'workPlay(' + no + ')') : '')
+       + mini(no + '편만 다시 만들기', 'workMake(' + no + ')')
+       + (u ? mini('유튜브에서 보기', "openYt('" + esc(u.video_id || '') + "')")
+            : '')
+       + '</div>';
+    h += '<div id="w-play-' + no + '"></div>';
+    // 올릴 글 — 접어 둔다. 고치고 싶을 때만 편다.
+    h += fold('제목 · 설명 · 해시태그 고치기',
+        '<div style="margin-top:8px"><b>제목</b> '
+      + '<span class="uphint" id="w-len-' + no + '">'
+      + esc(String(m.title || '').length) + '/100자</span>'
+      + '<input id="w-title-' + no + '" value="' + esc(m.title || '') + '" '
+      + 'oninput="workLen(' + no + ')" style="width:100%;font-size:14px;'
+      + 'margin-top:4px"></div>'
+      + '<div style="margin-top:10px"><b>설명</b>'
+      + '<textarea id="w-desc-' + no + '" rows="8" style="width:100%;'
+      + 'font-size:12px;margin-top:4px">' + esc(m.description || '')
+      + '</textarea></div>'
+      + '<div style="margin-top:10px"><b>해시태그</b> '
+      + '<span class="uphint">쉼표로 나눕니다 (# 은 빼고)</span>'
+      + '<input id="w-tags-' + no + '" value="'
+      + esc((m.tags || []).join(', ')) + '" style="width:100%;font-size:13px;'
+      + 'margin-top:4px"></div>');
+    h += '<div style="margin-top:12px"><b>어떻게 올릴까요</b>'
+       + '<select id="w-priv-' + no + '" style="width:100%;font-size:14px;'
+       + 'margin-top:4px">'
+       + '<option>비공개 (나만 보기)</option>'
+       + '<option>일부공개 (링크 아는 사람만)</option>'
+       + '<option>공개 (모두에게)</option></select></div>';
+    h += '<div class="btns" style="margin-top:12px">'
+       + mini('연습 (올리지 않고 확인만)', 'workUp(' + no + ',1)')
+       + '<button class="gold" id="w-up-' + no + '" onclick="workUp(' + no + ',0)">'
+       + (u ? no + '편 다시 올리기' : no + '편 유튜브에 올리기') + '</button></div>';
+    h += '<div id="w-msg-' + no + '" class="uphint"></div></div>';
+  });
+  // 세 편을 한 번에 — 2·3편은 예약 공개로 하루씩 띄운다
+  h += '<div class="card"><h2>한 번에 올리기 (예약 공개)</h2>'
+     + '<div class="uphint">첫 편은 지금 올리고, 나머지는 <b>하루 간격으로 저절로 '
+     + '공개</b>됩니다. 사흘 동안 다시 안 들어오셔도 됩니다.<br>'
+     + '같은 날 몰아 올리면 서로 조회수를 깎아먹습니다.</div>'
+     + '<div style="margin-top:10px"><b>몇 시간 간격</b>'
+     + '<select id="w-every" style="width:100%;font-size:14px;margin-top:4px">'
+     + '<option value="24">하루 (24시간) — 권장</option>'
+     + '<option value="12">반나절 (12시간)</option>'
+     + '<option value="48">이틀 (48시간)</option></select></div>'
+     + '<div style="margin-top:10px"><b>어떻게 올릴까요</b>'
+     + '<select id="w-priv-all" style="width:100%;font-size:14px;margin-top:4px">'
+     + '<option>공개 (모두에게)</option>'
      + '<option>비공개 (나만 보기)</option>'
-     + '<option>일부공개 (링크 아는 사람만)</option>'
-     + '<option>공개 (모두에게)</option></select></div>';
-  h += '<div class="btns" style="margin-top:14px">'
-     + mini('연습 (올리지 않고 확인만)', 's90YtGo(1)')
-     + '<button class="gold" onclick="s90YtGo(0)">유튜브에 올리기</button></div>';
-  h += '<div id="s90yt-msg" class="uphint"></div>';
-  h += '</div>';
-  box.innerHTML = h;
+     + '<option>일부공개 (링크 아는 사람만)</option></select></div>'
+     + '<div class="btns" style="margin-top:12px">'
+     + mini('연습 (올리지 않고 확인만)', 'workUpAll(1)')
+     + '<button class="gold" id="w-up-all" onclick="workUpAll(0)">'
+     + '세 편 예약 공개로 올리기</button></div>'
+     + '<div id="w-msg-all" class="uphint"></div></div>';
+  return h;
 }
 
-function s90YtLen() {
-  const t = document.getElementById('s90yt-title');
-  const l = document.getElementById('s90yt-len');
+function workLen(no) {
+  const t = document.getElementById('w-title-' + no);
+  const l = document.getElementById('w-len-' + no);
   if (t && l) {
     l.textContent = t.value.length + '/100자';
-    l.style.color = t.value.length > 100 ? '#e06c6c' : '#9599ab';
+    l.style.color = t.value.length > 100 ? '#e06c5c' : '#9599ab';
   }
 }
 
-async function s90YtGo(dry) {
-  const msg = document.getElementById('s90yt-msg');
-  const title = (document.getElementById('s90yt-title') || {}).value || '';
-  const desc = (document.getElementById('s90yt-desc') || {}).value || '';
-  const tags = ((document.getElementById('s90yt-tags') || {}).value || '')
-    .split(',').map(function (x) { return x.trim().replace(/^#/, ''); })
-    .filter(function (x) { return x; });
-  const priv = (document.getElementById('s90yt-priv') || {}).value || '비공개 (나만 보기)';
-  if (!title.trim()) { showErr('제목이 비었습니다', '제목을 적어 주십시오'); return; }
-  if (title.length > 100) {
-    showErr('제목이 깁니다', '유튜브 제목은 100자까지입니다'); return;
-  }
-  // ⚠️ 되돌릴 수 없는 일이다 — 무엇이 어떻게 올라가는지 한 번 더 보여 준다
-  // ⚠️⚠️ 이 코드는 통째로 템플릿 문자열 안이다. 여기서 역슬래시 n 을 그냥
-  //    쓰면 **진짜 줄바꿈**으로 풀려 문자열이 깨진다 — 저장소에 이미 적혀
-  //    있던 함정인데 또 걸렸다. 줄바꿈은 배열로 만들어 잇는다.
-  const ask = ['유튜브에 올립니다.', '', '제목: ' + title,
-               '공개 범위: ' + priv, '', '계속할까요?']
-              .join(String.fromCharCode(10));
-  if (!dry && !confirm(ask)) return;
+function openYt(id) {
+  if (id) open('https://youtu.be/' + id, '_blank');
+}
+
+function workPlay(no) {
+  const box = document.getElementById('w-play-' + no);
+  if (!box) return;
+  if (box.innerHTML) { box.innerHTML = ''; return; }
+  box.innerHTML = '<video controls playsinline preload="metadata" '
+    + 'style="width:100%;max-height:70vh;border-radius:12px;background:#000;'
+    + 'display:block;margin-top:10px" src="/api/short?s90=1&sid='
+    + encodeURIComponent(WORK) + '&part=' + no + '&play=1"></video>';
+}
+
+// ⚠️⚠️ 단추가 두 번 눌려 같은 영상이 두 번 올라갈 뻔한 적이 있다.
+//    누르는 즉시 잠근다 — 손가락이 두 번 닿아도 한 번만 간다.
+function lock(id, on, text) {
+  const b = document.getElementById(id);
+  if (!b) return;
+  b.disabled = !!on;
+  b.style.opacity = on ? '0.5' : '';
+  if (text) b.textContent = text;
+}
+
+async function workMake(no) {
+  const id = no ? 'w-make-' + no : 'w-make-all';
+  if (WBUSY[id]) return;
+  const msg = document.getElementById('w-make-msg');
+  const what = no ? (no + '편만 다시 만들기') : '전체 만들기';
+  if (!confirm([what + ' 를 시작할까요?',
+                '',
+                '그림과 목소리는 이미 만든 것을 그대로 씁니다 (0원).',
+                '10~20분 걸립니다.'].join(String.fromCharCode(10)))) return;
+  WBUSY[id] = 1;
+  lock('w-make-all', 1);
   if (msg) msg.textContent = '시작하는 중…';
   try {
-    const r = await fetch('/api/upload-short90',
-                          { method: 'POST',
-                            body: JSON.stringify({ title: title, description: desc,
-                                                   tags: tags, privacy: priv,
-                                                   dry: dry ? 1 : 0 }) });
+    const r = await fetch('/api/make-short90', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sid: WORK, part: no ? String(no) : '',
+                             cards: S90CARDS, clips: S90CLIPS }),
+    });
     const j = await r.json();
     if (!j.ok) {
-      showErr('시작하지 못했습니다', (j.error || '') + ' ' + (j.detail || ''));
+      showErr('만들기를 시작하지 못했습니다',
+              (j.error || '') + ' ' + (j.detail || ''));
       if (msg) msg.textContent = '';
-      return;
+    } else if (msg) {
+      msg.textContent = '시작했습니다. 10~20분 뒤에 이 화면을 새로 고쳐 주십시오.';
     }
-    if (msg) msg.textContent = dry
-      ? '연습으로 시작했습니다. 올리지는 않고 되는지만 봅니다 (2~3분).'
-      : '올리기 시작했습니다. 3~10분 걸립니다.';
-    toast(dry ? '연습을 시작했습니다' : '유튜브에 올리기 시작했습니다');
   } catch (e) {
-    showErr('시작하지 못했습니다', String(e && e.message ? e.message : e));
+    showErr('만들기를 시작하지 못했습니다', String(e && e.message ? e.message : e));
     if (msg) msg.textContent = '';
   }
+  WBUSY[id] = 0;
+  lock('w-make-all', 0);
+}
+
+function partBody(no) {
+  const t = (document.getElementById('w-title-' + no) || {}).value || '';
+  const d = (document.getElementById('w-desc-' + no) || {}).value || '';
+  const g = ((document.getElementById('w-tags-' + no) || {}).value || '')
+    .split(',').map(function (x) { return x.replace(/^#/, '').trim(); })
+    .filter(Boolean);
+  return { part: no, title: t.trim(), description: d, tags: g };
+}
+
+async function workUp(no, dry) {
+  const id = 'w-up-' + no;
+  if (WBUSY[id]) return;
+  const w = (WORKS || {})[WORK] || {};
+  const p = ((w.parts || {})[String(no)]) || {};
+  const priv = (document.getElementById('w-priv-' + no) || {}).value
+             || '비공개 (나만 보기)';
+  const body = partBody(no);
+  if (!body.title) { showErr('제목이 비었습니다', no + '편 제목을 적어 주십시오.'); return; }
+  if (!dry) {
+    const lines = [no + '편을 유튜브에 올릴까요?', '', body.title, '', '공개 범위: ' + priv];
+    if (p.uploaded)
+      lines.push('', '⚠️ 이 편은 이미 올렸습니다 (' + (p.uploaded.privacy || '') + ').',
+                 '누르면 같은 영상이 하나 더 올라갑니다.');
+    // 앞 편을 안 올렸는데 뒤 편을 올리려 하면 짚어 준다
+    const before = partList(w).filter(function (x) {
+      return x.no < no && !x.uploaded; });
+    if (before.length)
+      lines.push('', '⚠️ 아직 안 올린 앞 편이 있습니다: '
+                 + before.map(function (x) { return x.no + '편'; }).join(', '));
+    // 하루가 안 지났으면 알려 준다 (막지는 않는다)
+    const last = partList(w).map(function (x) {
+      return (x.uploaded || {}).at || ''; }).filter(Boolean).sort().pop();
+    if (last && (Date.now() - new Date(last).getTime()) < 20 * 3600 * 1000)
+      lines.push('', '⚠️ 앞 편을 올린 지 하루가 안 됐습니다.',
+                 '같은 날 몰아 올리면 서로 조회수를 깎아먹습니다.');
+    if (!confirm(lines.join(String.fromCharCode(10)))) return;
+  }
+  WBUSY[id] = 1;
+  lock(id, 1, '올리는 중…');
+  const msg = document.getElementById('w-msg-' + no);
+  if (msg) msg.textContent = dry ? '확인하는 중…' : '올리는 중…';
+  try {
+    const r = await fetch('/api/upload-short90', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sid: WORK, part: String(no), privacy: priv,
+                             dry: !!dry, parts: [body] }),
+    });
+    const j = await r.json();
+    if (!j.ok) {
+      showErr('올리기를 시작하지 못했습니다',
+              (j.error || '') + ' ' + (j.detail || ''));
+      if (msg) msg.textContent = '';
+    } else if (msg) {
+      msg.textContent = dry
+        ? '연습으로 확인 중입니다. 몇 분 뒤 결과를 보십시오.'
+        : '올리는 중입니다. 3~5분 뒤에 이 화면을 새로 고쳐 주십시오.';
+    }
+  } catch (e) {
+    showErr('올리기를 시작하지 못했습니다', String(e && e.message ? e.message : e));
+    if (msg) msg.textContent = '';
+  }
+  WBUSY[id] = 0;
+  lock(id, 0, (p.uploaded ? no + '편 다시 올리기' : no + '편 유튜브에 올리기'));
+}
+
+async function workUpAll(dry) {
+  const id = 'w-up-all';
+  if (WBUSY[id]) return;
+  const w = (WORKS || {})[WORK] || {};
+  const ps = partList(w);
+  if (!ps.length) return;
+  const priv = (document.getElementById('w-priv-all') || {}).value
+             || '공개 (모두에게)';
+  const every = (document.getElementById('w-every') || {}).value || '24';
+  const parts = ps.map(function (x) { return partBody(x.no); });
+  const bad = parts.filter(function (x) { return !x.title; });
+  if (bad.length) {
+    showErr('제목이 빈 편이 있습니다',
+            bad.map(function (x) { return x.part + '편'; }).join(', '));
+    return;
+  }
+  if (!dry) {
+    const done = ps.filter(function (x) { return x.uploaded; });
+    const lines = [ps.length + '편을 한 번에 올릴까요?', '',
+                   '첫 편은 지금 공개되고,',
+                   '나머지는 ' + every + '시간 간격으로 저절로 공개됩니다.',
+                   '', '공개 범위: ' + priv];
+    if (done.length)
+      lines.push('', '⚠️ 이미 올린 편이 있습니다: '
+                 + done.map(function (x) { return x.no + '편'; }).join(', '),
+                 '그 편은 건너뜁니다.');
+    if (!confirm(lines.join(String.fromCharCode(10)))) return;
+  }
+  WBUSY[id] = 1;
+  lock(id, 1, '올리는 중…');
+  const msg = document.getElementById('w-msg-all');
+  if (msg) msg.textContent = dry ? '확인하는 중…' : '올리는 중…';
+  try {
+    const r = await fetch('/api/upload-short90', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sid: WORK, part: 'all', privacy: priv,
+                             every_hours: every, dry: !!dry, parts: parts }),
+    });
+    const j = await r.json();
+    if (!j.ok) {
+      showErr('올리기를 시작하지 못했습니다',
+              (j.error || '') + ' ' + (j.detail || ''));
+      if (msg) msg.textContent = '';
+    } else if (msg) {
+      msg.textContent = dry
+        ? '연습으로 확인 중입니다. 몇 분 뒤 결과를 보십시오.'
+        : '올리는 중입니다. 5~10분 뒤에 이 화면을 새로 고쳐 주십시오.';
+    }
+  } catch (e) {
+    showErr('올리기를 시작하지 못했습니다', String(e && e.message ? e.message : e));
+    if (msg) msg.textContent = '';
+  }
+  WBUSY[id] = 0;
+  lock(id, 0, '세 편 예약 공개로 올리기');
 }
 
 function copyCut(n) {
@@ -1098,45 +1397,6 @@ async function upCut(n) {
   }
 }
 
-async function makeShort90() {
-  const m = document.getElementById('s90msg');
-  const n = Object.keys(S90CARDS).length;
-  const v = Object.keys(S90CLIPS).length;
-  // 영상으로 올린 컷은 그림을 안 그리므로 그만큼 값이 빠진다.
-  // ⭐ 컷 수를 23으로 박아 두면 대본이 바뀔 때마다 값이 틀린다 — 대본에서 읽는다.
-  // ⭐ 인물 카드값은 이제 0원이다 (다섯 얼굴이 저장소에 들어 있다).
-  const total = ((S90DOC && S90DOC.cuts) || []).length || 19;
-  const shots = Math.max(0, total - v);
-  const cost = shots * 133 + 100;
-  if (!confirm('90초 한 편을 만듭니다. 영상 ' + v + '컷 · 그림 ' + shots
-               + '컷, 약 ' + cost.toLocaleString()
-               + '원이 나갑니다. 계속할까요?')) return;
-  if (m) m.textContent = '시작하는 중…';
-  try {
-    const r = await fetch('/api/make-short90',
-                          { method: 'POST',
-                            body: JSON.stringify({ cards: S90CARDS, clips: S90CLIPS }) });
-    const j = await r.json();
-    if (!j.ok) {
-      showErr('시작하지 못했습니다', (j.error || '') + ' ' + (j.detail || ''));
-      if (m) m.textContent = '';
-      return;
-    }
-    if (m) m.textContent = '시작했습니다. 10~20분 걸립니다. '
-                         + '(영상 ' + v + '컷 · 그림 ' + shots + '컷 · '
-                         + '얼굴은 넣어 둔 다섯 사람을 씁니다'
-                         + (n ? ', 새로 올리신 얼굴 ' + n + '명' : '') + ')';
-    toast('90초 한 편을 만들기 시작했습니다');
-  } catch (e) {
-    showErr('시작하지 못했습니다', String(e && e.message ? e.message : e));
-    if (m) m.textContent = '';
-  }
-}
-
-// 다 만들어졌는지 30초마다 들여다본다
-// ⭐ 유튜브에 올릴 글 (2026-08-20 운영자: "제목·설명·해시태그 아무것도 안 들어가
-//    있어. 업로드 설정도 같이 추가해 줘.")
-//    대본에서 만들어 보여 주고, **고친 그대로** 올린다.
 async function ytLoad() {
   const b = document.getElementById('ytbox');
   if (!b) return;
@@ -1623,20 +1883,20 @@ function home() {
   h += wfList(['keycheck.yml', 'voice-route.yml']);
   h += '</div>';
 
-  h += short90Card();
-  h += '<div id="s90cuts"><div class="card"><h2>90초 한 편 ② 컷별 영상</h2>'
-     + '<div class="empty">컷 목록 불러오는 중…</div></div></div>';
-  // ⭐ 2026-08-31 손님: "유튜브 업로드를 위한 제목 설명란, 그리고 해시태그
-  //    유튜브 업로드 버튼까지 생성해줘."
-  h += '<div id="s90yt"><div class="card"><h2>90초 한 편 ④ 유튜브에 올리기</h2>'
-     + '<div class="empty">올릴 글 불러오는 중…</div></div></div>';
+  // ⭐⭐⭐ 2026-09-01 손님: "앞으로 계속 만들어나가야 하는데 이런 식으로
+  //    관리자 페이지를 구성하면 한 편 만들고 올리고 나면 또 뜯어야 될 걸로
+  //    보여져. 지속 가능하지 않거든."
+  //    맞다. 여기에 **S90 전용 칸 넷**을 박아 두었었다. 사건이 둘이 되는
+  //    순간 화면을 또 만들어야 했다.
+  //    → 이제 **사건 목록**만 그린다. 사건 하나를 열면 그 안에서 편마다
+  //      만들고 올린다(openWork → workDraw). 사건이 백 개가 돼도 여기는
+  //      한 줄도 안 고친다.
+  h += worksCard();
+  h += queueCard(ready);
 
   if (SIMPLE) {
     document.getElementById('app').innerHTML = h;
     foldify();
-    s90Cuts();
-  s90Yt();
-    s90Yt();
     return;
   }
 
@@ -1835,6 +2095,92 @@ function collectCard() {
 }
 
 // 접었다 폈다 하는 묶음. 기본은 **접힌 채**로 둔다 (화면이 짧아야 찾기 쉽다).
+// ⭐⭐⭐ 2026-09-01 — **새 사건을 시작하는 입구.**
+//    그전까지는 90초 대본이 손으로 쓴 파이썬 파일이라, 사건 2번째를 손님
+//    혼자서는 시작조차 못 하셨다(손님은 파이썬을 못 쓰신다).
+//    이제 대기열에서 사건을 하나 골라 단추 한 번이면 대본이 나온다.
+// ⚠️ 값이 나가는 단추다(약 2,100원). 누르기 전에 값을 화면에 적고 묻는다.
+function queueCard(ready) {
+  const all = (ready || []).slice();
+  // 이미 쇼츠로 만든 사건은 목록에서 뺀다 — 같은 사건을 두 번 짓지 않게
+  const used = {};
+  Object.keys(WORKS || {}).forEach(function (k) {
+    const c = (WORKS[k] || {}).case_id; if (c) used[String(c)] = k;
+  });
+  let h = '<div class="card"><h2>다음 사건 고르기 '
+        + '<small style="font-weight:400;color:#9599ab">— 심사를 통과한 재판 기록 '
+        + all.length + '건</small></h2>';
+  if (!all.length) {
+    h += '<div class="empty">쓸 만한 재판 기록이 없습니다.<br>'
+       + '<b>1. 재판 기록 모으기</b> 를 먼저 누르십시오.</div></div>';
+    return h;
+  }
+  h += '<div class="uphint">하나를 고르면 <b>쇼츠 대본</b>(컷·편 나누기·편별 제목)이 '
+     + '한 번에 나옵니다. 대본 한 편에 <b>약 2,100원</b>이 듭니다.</div>';
+  const shown = all.slice(0, QMAX);
+  shown.forEach(function (q) {
+    const nm = q.case_type || q['사건명'] || ('판례 ' + q.case_id);
+    const done = used[String(q.case_id || '')];
+    h += '<div class="q"><b>' + (q.gate_score == null ? '-' : q.gate_score) + '점</b>'
+      + esc(nm)
+      + (q.amount_label ? ' <span class="pill">' + esc(q.amount_label) + '</span>' : '')
+      + (done ? ' <span class="pill ok">이미 만듦</span>' : '')
+      + '<div style="color:#9599ab;font-size:13px;margin-top:3px">'
+      + esc(q.one_line || '') + '</div>'
+      + (done
+         ? '<div class="btns" style="margin-top:6px">'
+           + mini('열기', "openWork('" + done + "')") + '</div>'
+         : '<div class="btns" style="margin-top:6px">'
+           + '<button class="mini" data-cid="' + esc(String(q.case_id || '')) + '" '
+           + 'data-nm="' + esc(nm) + '" onclick="makeStory(this)">'
+           + '이 사건으로 쇼츠 만들기</button></div>')
+      + '</div>';
+  });
+  if (all.length > QMAX)
+    h += '<div class="btns" style="margin-top:8px">'
+       + mini('더 보기', 'moreQueue()') + '</div>';
+  h += '<div id="w-story-msg" class="uphint"></div></div>';
+  return h;
+}
+
+// ⚠️ 사건 이름을 onclick 글자에 직접 끼우지 않는다 — 따옴표가 들어 있으면
+//    페이지가 통째로 깨진다 (8월 7일 무한로딩 사고와 같은 유형). data- 로 받는다.
+async function makeStory(btn) {
+  const cid = (btn && btn.dataset && btn.dataset.cid) || '';
+  const nm = (btn && btn.dataset && btn.dataset.nm) || '';
+  if (!cid) return;
+  if (WBUSY['story']) return;
+  if (!confirm(['이 사건으로 쇼츠 대본을 지을까요?', '', nm, '',
+                '값 약 2,100원이 듭니다.',
+                '5~10분 걸리고, 끝나면 목록에 새 작품이 생깁니다.'
+               ].join(String.fromCharCode(10)))) return;
+  WBUSY['story'] = 1;
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+  const msg = document.getElementById('w-story-msg');
+  if (msg) msg.textContent = '대본을 짓는 중…';
+  try {
+    const r = await fetch('/api/make-story', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ case_id: cid }),
+    });
+    const j = await r.json();
+    if (!j.ok) {
+      showErr('대본 만들기를 시작하지 못했습니다',
+              (j.error || '') + ' ' + (j.detail || ''));
+      if (msg) msg.textContent = '';
+      if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+    } else if (msg) {
+      msg.textContent = '시작했습니다. 5~10분 뒤에 이 화면을 새로 고쳐 주십시오.';
+    }
+  } catch (e) {
+    showErr('대본 만들기를 시작하지 못했습니다',
+            String(e && e.message ? e.message : e));
+    if (msg) msg.textContent = '';
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+  }
+  WBUSY['story'] = 0;
+}
+
 function fold(title, inner) {
   return '<details style="margin-top:6px"><summary style="cursor:pointer;'
        + 'color:#9599ab;font-size:14px;padding:8px 0">' + esc(title) + '</summary>'
@@ -1934,7 +2280,13 @@ function seekAudition(el) {
 // ⭐ 지금 절차만 보여 준다. false 로 바꾸면 16화 길이 다시 나온다.
 const SIMPLE = true;
 
-const FOLD_OPEN = ['다음에 할 일', '지금 상태', '90초 한 편', '③ 만든 영상'];
+// ⭐ 2026-09-01 — 작품 화면의 칸 이름이 ①②③④ 로 바뀌었다.
+//    파일을 고르는 칸(①②)이 접혀 있으면 손님이 아무것도 못 하신다.
+// ⚠️ '쇼츠 ' 하나로 편 칸(쇼츠 1편·2편…)과 예약 공개 칸을 한꺼번에 편다.
+//    편 수는 사건마다 다르므로 번호를 하나씩 적어 두지 않는다.
+const FOLD_OPEN = ['다음에 할 일', '지금 상태', '90초 한 편', '③ 만든 영상',
+                   '① 인물 그림', '② 컷별 영상', '③ 세 편 만들기', '④ 편',
+                   '쇼츠 ', '내 쇼츠 작품', '다음 사건 고르기'];
 const foldKey = (t) => 'fold:' + t.slice(0, 24);
 
 function setFold(h, body, caret, open) {
@@ -2144,8 +2496,10 @@ function madeCard() {
 }
 
 function madeName(x) {
-  // ⭐ 90초 한 편은 회차가 없다 — '0화' 로 적히면 손님이 못 알아보신다
-  if (x.s90) return (x.title ? x.title + ' ' : '') + '90초 한 편';
+  // ⭐ 쇼츠는 회차가 없다 — '0화' 로 적히면 손님이 못 알아보신다
+  // ⭐ 2026-09-01 — 한 사건이 여러 편이 되었다. 몇 편인지 적어 준다.
+  if (x.s90) return (x.title ? x.title + ' ' : '')
+    + (x.part ? x.part + '편' : '옛 한 편짜리');
   return (x.title ? x.title + ' ' : '') + x.ep + '화'
     + (x.cut ? ' (' + x.cut + '컷 시험본)' : '');
 }
@@ -2185,6 +2539,7 @@ function madeDraw() {
       + 'style="width:100%;max-height:70vh;border-radius:12px;background:#000;'
       + 'display:block" src="/api/short?sid=' + encodeURIComponent(v.sid)
       + '&ep=' + v.ep + (v.cut ? '&cut=' + v.cut : '') + (v.s90 ? '&s90=1' : '')
+      + (v.part ? '&part=' + v.part : '')
       + '&name=' + encodeURIComponent(PICK) + '&play=1"></video>'
       + (((v.names || []).filter(function (n) { return n !== 'short.mp4'; }).length > 1)
          ? '<div style="color:#9599ab;font-size:13px;margin:10px 0 4px">'
@@ -2241,6 +2596,7 @@ function madeDl(k) {
   if (!v) return;
   window.open('/api/short?sid=' + encodeURIComponent(v.sid) + '&ep=' + v.ep
               + (v.cut ? '&cut=' + v.cut : '') + (v.s90 ? '&s90=1' : '')
+              + (v.part ? '&part=' + v.part : '')
               + '&play=1&dl=1', '_blank');
   toast('내려받기를 시작했습니다');
 }
@@ -3090,9 +3446,20 @@ export default {
       }
 
       // ⭐ 90초 편 대본 — 컷마다 붙여 넣을 영상 프롬프트가 들어 있다
+      // ⭐⭐⭐ 2026-09-01 손님: "앞으로 영상을 계속 만들어나가고 계속 올려야
+      //    되는데 이런 식으로 관리자 페이지를 구성하면 지속 가능하지 않거든."
+      //    맞다. 그전까지는 화면이 **S90 한 사건에 못이 박혀** 있었다.
+      //    이제 사건 목록을 한 파일(state/shorts.json)에서 읽어 그린다 —
+      //    사건이 백 개가 돼도 화면 코드는 그대로다.
+      if (url.pathname === '/api/works') {
+        const works = (await getJson(env, 'state/shorts.json')) || {};
+        return Response.json({ works });
+      }
+
       if (url.pathname === '/api/short90') {
-        const doc = await getJson(env, 'data/series/S90.json');
-        return Response.json({ doc });
+        const sid = sidOf(url);
+        const doc = await getJson(env, 'data/series/' + sid + '.json');
+        return Response.json({ sid, doc });
       }
 
       // ⭐⭐ 2026-08-31 — 유튜브에 올릴 제목·설명·해시태그.
@@ -3102,9 +3469,10 @@ export default {
       //      그래서 저장소에 보관된 meta.json 이 있으면 그것을 주고,
       //      없으면 대본에서 **같은 규칙으로** 만들어 준다.
       if (url.pathname === '/api/yt90') {
-        const kept = await blobText(env, 'meta/S90');
+        const sid = sidOf(url);
+        const kept = await blobText(env, 'meta/' + sid);
         if (kept) {
-          try { return Response.json({ meta: JSON.parse(kept), saved: true }); }
+          try { return Response.json({ sid, meta: JSON.parse(kept), saved: true }); }
           catch (e) { /* 깨졌으면 아래에서 다시 만든다 */ }
         }
         // ⭐ 셈법을 여기에 옮겨 적지 않는다. 대본을 지을 때 src/ytmeta.py 가
@@ -3114,47 +3482,79 @@ export default {
         //      영상을 한 번 만들기 전에는 그 파일이 없어서, 손님 화면에는
         //      유튜브 칸이 계속 안 보였다("업로드 버튼이 아직도 없어").
         //      이제 저장소에 늘 있는 파일을 본다 — 영상을 안 만들어도 뜬다.
-        const made = await getJson(env, 'data/series/S90.meta.json');
-        if (made) return Response.json({ meta: made, saved: false });
-        return Response.json({ meta: null,
+        const made = await getJson(env, 'data/series/' + sid + '.meta.json');
+        if (made) return Response.json({ sid, meta: made, saved: false });
+        return Response.json({ sid, meta: null,
           why: '올릴 글을 아직 못 지었습니다. '
-             + '대본(data/series/S90.meta.json)이 있는지 확인해 주십시오.' });
+             + '먼저 [이 사건으로 쇼츠 만들기] 로 대본을 지어 주십시오.' });
       }
 
       // 고친 글을 담아 두고 유튜브 올리기를 시킨다
+      //
+      // ⭐⭐ 2026-09-01 — 한 사건이 여러 편이 되었다. 편마다 따로 올린다.
+      //    part='all' 이면 첫 편은 지금, 나머지는 **예약 공개**로 하루씩 띄운다.
+      // ⚠️ 화면에서 고친 글이 그대로 올라가야 한다. 그래서 **사건 전체 글**을
+      //    보관함에 담고 주소만 넘긴다 (워크플로 입력에 글을 직접 넣으면
+      //    실행 기록에 통째로 남고 길이 제한에도 걸린다).
       if (url.pathname === '/api/upload-short90' && req.method === 'POST') {
         let body = {};
         try { body = await req.json(); } catch (e) { body = {}; }
-        const title = String((body && body.title) || '').trim();
-        const desc = String((body && body.description) || '');
-        const tags = Array.isArray(body && body.tags)
-          ? body.tags.map((x) => String(x).replace(/^#/, '').trim()).filter(Boolean)
-          : [];
-        if (!title)
-          return Response.json({ ok: false, error: '제목이 비었습니다' },
+        const sid = /^S\d{1,4}$/.test(String((body && body.sid) || '').toUpperCase())
+          ? String(body.sid).toUpperCase() : 'S90';
+        const rawPart = String((body && body.part) || '').trim();
+        const pn = parseInt(rawPart, 10);
+        const part = rawPart === 'all' ? 'all'
+          : ((Number.isInteger(pn) && pn >= 1 && pn <= 20) ? String(pn) : '');
+        if (!part)
+          return Response.json({ ok: false, error: '몇 편인지 알 수 없습니다' },
                                { status: 400 });
-        if (title.length > 100)
-          return Response.json({ ok: false, error: '제목이 100자를 넘습니다' },
+
+        // 편별 글 — 화면이 보내 준 그대로 담는다
+        const parts = [];
+        for (const x of (Array.isArray(body && body.parts) ? body.parts : [])) {
+          const no = parseInt((x && x.part) || '', 10);
+          const title = String((x && x.title) || '').trim();
+          const desc = String((x && x.description) || '');
+          const tags = Array.isArray(x && x.tags)
+            ? x.tags.map((t) => String(t).replace(/^#/, '').trim()).filter(Boolean)
+            : [];
+          if (!Number.isInteger(no) || no < 1 || no > 20) continue;
+          if (!title)
+            return Response.json({ ok: false,
+              error: no + '편 제목이 비었습니다' }, { status: 400 });
+          if (title.length > 100)
+            return Response.json({ ok: false,
+              error: no + '편 제목이 100자를 넘습니다' }, { status: 400 });
+          parts.push({ part: no, title: title, description: desc, tags: tags,
+                       privacy: 'private' });
+        }
+        if (!parts.length)
+          return Response.json({ ok: false, error: '올릴 글이 없습니다' },
                                { status: 400 });
+
         const PRIV = ['비공개 (나만 보기)', '일부공개 (링크 아는 사람만)',
                       '공개 (모두에게)'];
         const priv = PRIV.indexOf(String((body && body.privacy) || '')) >= 0
           ? String(body.privacy) : PRIV[0];
         const mode = (body && body.dry)
           ? '연습 (올리지 않고 확인만)' : '진짜로 올리기';
-        // ⚠️ 고친 글은 **보관함에 담고 주소만** 넘긴다. 글을 워크플로 입력에
-        //    직접 넣으면 실행 기록에 통째로 남고 길이 제한에도 걸린다.
-        const key = 'meta/S90';
-        const saved = JSON.stringify({ sid: 'S90', ep: 0, title: title,
-                                       description: desc, tags: tags });
+        // 예약 간격 — all 일 때만 쓴다. 기본 하루.
+        const eh = parseInt((body && body.every_hours) || '', 10);
+        const every = (Number.isInteger(eh) && eh >= 1 && eh <= 168)
+          ? String(eh) : '24';
+
+        const key = 'meta/' + sid;
+        const saved = JSON.stringify({ sid: sid, parts: parts });
         await blobPutText(env, key, saved, KV_DAY);
         const fresh = await blobPin(env, req, key, 'meta');
         try {
           await gh(env, `/repos/${REPO}/actions/workflows/short90-upload.yml/dispatches`, {
             method: 'POST', body: JSON.stringify({ ref: BRANCH,
-              inputs: { privacy: priv, mode: mode, meta: fresh || '' } }),
+              inputs: { sid: sid, part: part, privacy: priv, mode: mode,
+                        every_hours: every, meta: fresh || '' } }),
           });
-          return Response.json({ ok: true, privacy: priv, dry: mode });
+          return Response.json({ ok: true, sid: sid, part: part,
+                                 privacy: priv, dry: mode });
         } catch (e) {
           const m = String(e && e.message ? e.message : e);
           return Response.json({ ok: false, error: '시작하지 못했습니다',
@@ -3222,6 +3622,29 @@ export default {
       }
 
       // 올린 얼굴로 90초 한 편을 만들라고 시킨다
+      // ⭐⭐⭐ 2026-09-01 — **새 사건의 쇼츠 대본을 짓는다.**
+      //    그전까지 90초 대본은 손으로 쓴 파이썬 파일이라 사건 2번째를
+      //    손님 혼자서는 시작할 수가 없었다. 이제 단추 한 번이면 된다.
+      if (url.pathname === '/api/make-story' && req.method === 'POST') {
+        let body = {};
+        try { body = await req.json(); } catch (e) { body = {}; }
+        const cid = String((body && body.case_id) || '').trim();
+        if (!/^\d{1,12}$/.test(cid))
+          return Response.json({ ok: false, error: '판례 번호가 이상합니다' },
+                               { status: 400 });
+        try {
+          await gh(env, `/repos/${REPO}/actions/workflows/story90.yml/dispatches`, {
+            method: 'POST', body: JSON.stringify({ ref: BRANCH,
+              inputs: { case_id: cid } }),
+          });
+          return Response.json({ ok: true, case_id: cid });
+        } catch (e) {
+          const m = String(e && e.message ? e.message : e);
+          return Response.json({ ok: false, error: '시작하지 못했습니다',
+            detail: m.slice(0, 220) }, { status: 502 });
+        }
+      }
+
       if (url.pathname === '/api/make-short90' && req.method === 'POST') {
         let body = {};
         try { body = await req.json(); } catch (e) { body = {}; }
@@ -3245,12 +3668,21 @@ export default {
         const step = 'all';
         const payload = JSON.stringify(cards);
         const shots = JSON.stringify(clips);
+        // ⭐ 2026-09-01 — 어느 사건의 어느 편을 만들 것인가.
+        //    편을 비우면 전부 만든다(처음 만들 때). 한 편만 주면 그 편만
+        //    다시 조립한다 — 그림·목소리는 이미 있는 것을 그대로 쓴다(0원).
+        const sid = /^S\d{1,4}$/.test(String((body && body.sid) || '').toUpperCase())
+          ? String(body.sid).toUpperCase() : 'S90';
+        const pn = parseInt((body && body.part) || '', 10);
+        const part = (Number.isInteger(pn) && pn >= 1 && pn <= 20) ? String(pn) : '';
         try {
           await gh(env, `/repos/${REPO}/actions/workflows/short90.yml/dispatches`, {
             method: 'POST', body: JSON.stringify({ ref: BRANCH,
-              inputs: { step: step, cards: payload, clips: shots } }),
+              inputs: { step: step, sid: sid, part: part,
+                        cards: payload, clips: shots } }),
           });
-          return Response.json({ ok: true, n: Object.keys(cards).length,
+          return Response.json({ ok: true, sid: sid, part: part,
+                                 n: Object.keys(cards).length,
                                  clips: Object.keys(clips).length });
         } catch (e) {
           const m = String(e && e.message ? e.message : e);
@@ -3344,14 +3776,23 @@ export default {
         //    손님: "영상 관리자 페이지에 안 뜨는데?" 만들기는 성공했는데
         //    여기가 'short-S001-ep01' 같은 16화 이름만 찾고 있었다.
         //    90초 편은 'short90-S90' 이라는 다른 이름으로 올라간다.
+        // ⭐ 2026-09-01 — 한 사건이 여러 편이 되었다. 편마다 파일이 하나씩
+        //    (part1.mp4 · part2.mp4 …). 옛 한 편짜리(short.mp4)도 그대로 둔다.
         for (const r of rels || []) {
           const m90 = String(r.tag_name || '').match(/^short90-(S\d+)$/);
           if (!m90) continue;
-          const a = (r.assets || []).find((x) => x.name === 'short.mp4');
-          if (!a) continue;
-          items.push({ sid: m90[1], ep: 0, cut: 0, s90: 1,
-                       size: a.size, names: ['short.mp4'],
-                       at: a.updated_at || r.published_at || '' });
+          for (const a of (r.assets || [])) {
+            const mp = String(a.name || '').match(/^part(\d+)\.mp4$/);
+            if (mp) {
+              items.push({ sid: m90[1], ep: 0, cut: 0, s90: 1, part: +mp[1],
+                           size: a.size, names: [a.name],
+                           at: a.updated_at || r.published_at || '' });
+            } else if (a.name === 'short.mp4') {
+              items.push({ sid: m90[1], ep: 0, cut: 0, s90: 1, part: 0,
+                           size: a.size, names: ['short.mp4'],
+                           at: a.updated_at || r.published_at || '' });
+            }
+          }
         }
         // 새로 만든 것이 위로
         items.sort((x, y) => String(y.at).localeCompare(String(x.at)));
@@ -3373,14 +3814,17 @@ export default {
         if (s90 ? !/^S\d+$/.test(sid) : !/^S\d{3}$/.test(sid))
           return new Response('bad', { status: 400 });
         const cut = s90 ? '' : cutOf(url);
+        const part = s90 ? partOf(url, false) : '';
         const tag = s90 ? `short90-${sid}`
                         : `short-${sid}-ep${String(ep).padStart(2, '0')}`
                           + (cut ? `-cut${cut}` : '');
         let rel = null;
         try { rel = await gh(env, `/repos/${REPO}/releases/tags/${tag}`); } catch { rel = null; }
         // 아무 이름이나 받지 않는다 — 미리 정해 둔 것만.
-        const want = PLAYABLE.includes(url.searchParams.get('name') || '')
-          ? url.searchParams.get('name') : 'short.mp4';
+        // ⭐ 2026-09-01 — 편이 있으면 그 편 파일(part2.mp4)을 튼다.
+        const want = part ? `part${part}.mp4`
+          : (PLAYABLE.includes(url.searchParams.get('name') || '')
+             ? url.searchParams.get('name') : 'short.mp4');
         const a = (rel && (rel.assets || []).find((x) => x.name === want)) || null;
         if (!a) return Response.json({ ready: false });
         if (url.searchParams.get('play') !== '1')
@@ -3389,7 +3833,7 @@ export default {
         // ⭐ 2026-08-23 — dl=1 이면 재생이 아니라 **내려받기**로 준다.
         //    파일 이름은 영문으로 (한글 이름은 올리기에서 한 번 죽었다).
         const dl = url.searchParams.get('dl') === '1'
-          ? (s90 ? `${sid}_short90.mp4`
+          ? (s90 ? (part ? `${sid}_part${part}.mp4` : `${sid}_short90.mp4`)
                  : `${sid}_ep${String(ep).padStart(2, '0')}${cut ? '_cut' + cut : ''}`
                    + `${want === 'short.mp4' ? '' : '_' + want.replace('.mp4', '')}.mp4`)
           : null;

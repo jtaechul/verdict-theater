@@ -27,7 +27,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -215,8 +215,19 @@ def build_srt(doc, durs, path):
 
 # ── 업로드 ──────────────────────────────────────────────
 def upload_video(token, path, title, description, tags, vertical=False,
-                 privacy="private"):
-    """재개 가능 업로드. 큰 파일이라 한 번에 밀어 넣지 않는다."""
+                 privacy="private", publish_at=None):
+    """재개 가능 업로드. 큰 파일이라 한 번에 밀어 넣지 않는다.
+
+    publish_at — **예약 공개** 시각 (2026-09-01T10:00:00Z 꼴). 주면 그때 저절로
+      공개된다. 한 사건을 세 편으로 나눠 올릴 때, 손님이 사흘 동안 다시
+      들어오지 않아도 하루 간격으로 공개되게 하려고 쓴다.
+
+      ⚠️ 유튜브 규칙 — 예약을 걸려면 **지금은 비공개(private)** 여야 한다.
+         공개로 두고 예약을 걸면 유튜브가 통째로 거절한다. 그래서 여기서
+         강제로 private 으로 바꾼다. 부르는 쪽이 실수해도 안 죽게.
+    """
+    if publish_at:
+        privacy = "private"
     meta = {
         "snippet": {
             "title": title[:100],
@@ -234,6 +245,8 @@ def upload_video(token, path, title, description, tags, vertical=False,
             "embeddable": True,
         },
     }
+    if publish_at:
+        meta["status"]["publishAt"] = publish_at
     size = path.stat().st_size
     req = urllib.request.Request(
         f"{UPLOAD}/videos?" + urllib.parse.urlencode(
@@ -638,17 +651,42 @@ def cmd_publish(args):
 
 
 def cmd_series(args):
-    """⭐ 시리즈 쇼츠 한 편을 올린다 (2026-08-20 운영자 지시).
+    """⭐ 사건 하나의 **한 편**을 올린다 (2026-09-01 개편).
 
     옛 회차(EP001) 방식과 달리 **대본 파일에 기대지 않는다.** 올릴 글은
     관리자 페이지에서 확인·수정한 그대로 meta.json 에 담겨 온다 —
     화면에서 본 것과 실제로 올라가는 것이 반드시 같아야 하기 때문이다.
+
+    ⭐⭐ 2026-09-01 손님: "각각 만들어서 각각 올릴 수 있어야 되는데."
+       그래서 **편 번호(--part)** 를 받는다. meta.json 은 사건 전체 것이고,
+       그 안에서 그 편의 글만 골라 쓴다.
+
+    ⚠️⚠️ **같은 편을 두 번 올리지 않는다.** 지난번에 관리자 페이지의 단추가
+       두 번 눌려 같은 영상이 두 번 올라갈 뻔했다. 여기서도 한 번 더 막는다 —
+       화면 쪽 잠금만 믿으면 언젠가 새어 나간다.
     """
+    sys.path.insert(0, str(ROOT / "src"))
+    import shortstate                                        # noqa: E402
+
     video = Path(args.video)
     if not video.exists():
         print(f"❌ 영상이 없다: {video}")
         return 2
-    meta = json.loads(Path(args.meta).read_text(encoding="utf-8"))
+    raw = json.loads(Path(args.meta).read_text(encoding="utf-8"))
+    sid = raw.get("sid") or args.sid
+
+    # 편별 글에서 그 편을 고른다. 옛 모양(낱개)도 받아 준다.
+    no = int(args.part or 1)
+    if isinstance(raw, dict) and raw.get("parts"):
+        got = [x for x in raw["parts"] if int(x.get("part", 0)) == no]
+        if not got:
+            have = [x.get("part") for x in raw["parts"]]
+            print(f"❌ {no}편 글이 없다 (있는 편: {have})")
+            return 2
+        meta = got[0]
+    else:
+        meta = raw
+
     title = (meta.get("title") or "").strip()
     desc = meta.get("description") or ""
     tags = [t for t in (meta.get("tags") or []) if t]
@@ -660,21 +698,43 @@ def cmd_series(args):
         print("❌ 제목이 비었다")
         return 2
 
-    print(f"올릴 것 — {video.name} ({video.stat().st_size / 1048576:.1f}MB)")
+    at = (args.publish_at or "").strip() or None
+    if at:
+        # 유튜브는 Z 로 끝나는 UTC 만 받는다. 모양이 틀리면 한참 뒤에 죽는다.
+        try:
+            datetime.strptime(at, "%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            print(f"❌ 예약 시각 모양이 틀렸다: {at} "
+                  f"(2026-09-02T10:00:00Z 처럼 적는다)")
+            return 2
+
+    was = shortstate.uploaded(sid, no)
+    if was and not args.again:
+        print(f"❌ {sid} {no}편은 이미 올렸다 — "
+              f"https://youtu.be/{was.get('video_id')} ({was.get('privacy')})\n"
+              f"   정말 또 올리려면 --again 을 준다.")
+        return 2
+
+    print(f"올릴 것 — {sid} {no}편 · {video.name} "
+          f"({video.stat().st_size / 1048576:.1f}MB)")
     print(f"  제목: {title}")
     print(f"  해시태그: {' '.join('#' + t for t in tags)}")
-    print(f"  공개 범위: {privacy}")
+    print(f"  공개 범위: {privacy}" + (f" · 예약 공개 {at}" if at else ""))
     if args.dry:
         print("\n(연습이라 실제로는 올리지 않았다)")
         return 0
 
     token = access_token()
     vid = upload_video(token, video, title, desc, tags,
-                       vertical=True, privacy=privacy)
+                       vertical=True, privacy=privacy, publish_at=at)
     print(f"\n✅ 올렸다 — https://youtu.be/{vid}")
+    shortstate.mark_uploaded(sid, no, vid, "private" if at else privacy, at)
+
+    # ⚠️ 옛 화면(state/series.json)도 아직 이것을 본다 — 같이 적어 둔다.
+    #    한쪽만 적으면 화면이 '안 올림' 으로 보여 두 번 올리게 된다.
     st = _load(ROOT / "state" / "series.json", {})
-    row = st.setdefault(meta.get("sid") or args.sid, {})
-    row.setdefault("uploaded", {})[str(meta.get("ep") or args.ep)] = {
+    row = st.setdefault(sid, {})
+    row.setdefault("uploaded", {})[str(no)] = {
         "video_id": vid, "privacy": privacy, "title": title}
     (ROOT / "state" / "series.json").write_text(
         json.dumps(st, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -718,12 +778,17 @@ def main():
     u.add_argument("--dry", action="store_true",
                    help="연습 — 올리기 직전까지만 해 보고 실제로는 올리지 않는다")
 
-    r = sub.add_parser("series", help="시리즈 쇼츠 한 편을 올린다")
+    r = sub.add_parser("series", help="사건 하나의 한 편을 올린다")
     r.add_argument("sid")
-    r.add_argument("ep")
+    r.add_argument("ep", nargs="?", default="1")     # 옛 부름 자리 (안 쓴다)
+    r.add_argument("--part", default="", help="몇 편인가 (1/2/3…)")
     r.add_argument("--video", required=True)
     r.add_argument("--meta", required=True)
     r.add_argument("--privacy", default="", help="private / unlisted / public")
+    r.add_argument("--publish-at", dest="publish_at", default="",
+                   help="예약 공개 시각 (2026-09-02T10:00:00Z)")
+    r.add_argument("--again", action="store_true",
+                   help="이미 올린 편을 **일부러** 다시 올린다")
     r.add_argument("--dry", action="store_true",
                    help="연습 — 올리기 직전까지만 해 보고 실제로는 올리지 않는다")
 

@@ -180,35 +180,44 @@ def narr_lines(doc, n=3):
     return out
 
 
-def meta90(doc):
-    """90초 한 편의 **제목·설명·해시태그**. 0원 (모델을 안 부른다)."""
-    series = clean(doc.get("title"))
-    hook = clean(doc.get("hook"))
+def cuts_of(doc, part):
+    """그 편에 들어가는 컷만."""
+    a, b = part["cuts"]
+    return [c for c in (doc.get("cuts") or []) if a <= c["n"] <= b]
 
-    # ── 제목 ──────────────────────────────────────────
-    title = clean(doc.get("yt_title")) or hook or series
+
+def part_meta(doc, part):
+    """한 **편**의 제목·설명·해시태그. 0원 (모델을 안 부른다).
+
+    ⭐⭐ 2026-09-01 — 한 사건을 여러 편으로 나눠 올린다. 편마다 제목·설명이
+       달라야 한다. 특히 **설명은 그 편에 나오는 나레이션**으로 짓는다 —
+       3편 설명에 1편 줄거리가 붙으면 사람이 "이건 봤는데" 하고 넘긴다.
+    ⚠️ 제목에 "2편" 을 안 쓴다. 제목은 *볼지 말지 정하는 자리*라, 번호가
+       보이면 "1편부터 봐야 하나" 하고 넘긴다 (2026-09-01 손님과 확정).
+       편 번호는 **영상 화면 안**에만 넣는다 — 거기는 이미 보는 사람만 본다.
+    """
+    series = clean(doc.get("title"))
+    label = clean(doc.get("series_label")) or series
+    sub = {"cuts": cuts_of(doc, part)}
+
+    title = clean(part.get("yt_title")) or clean(doc.get("yt_title")) or series
     if "#shorts" not in title.lower() and len(title) + 8 <= TITLE_MAX:
         title += " #shorts"
     title = title[:TITLE_MAX]
 
-    # ── 해시태그 ──────────────────────────────────────
-    #   ⚠️ 설명란 해시태그는 **앞 3개만** 제목 위에 뜬다 → 중요한 것을 앞에
-    tags = [clean(x).lstrip("#") for x in (doc.get("yt_tags") or []) if clean(x)]
+    tags = [clean(x).lstrip("#") for x in (part.get("tags")
+                                          or doc.get("yt_tags") or []) if clean(x)]
     if not tags:
-        tags = topic_tags(series, hook, " ".join(narr_lines(doc, 4)))
+        tags = topic_tags(series, clean(doc.get("hook")),
+                          " ".join(narr_lines(sub, 4)))
     for b in BASE_TAGS:
         if b not in tags:
             tags.append(b)
     tags = tags[:TAG_MAX]
 
-    # ── 설명 ──────────────────────────────────────────
-    #   ⚠️ "매일 한 편씩 올라갑니다" 는 16화짜리 문구다. 한 편짜리에 붙이면
-    #      거짓말이 된다 — 그래서 여기서는 안 쓴다.
-    #   ⚠️ 나레이션 세 줄을 그대로 붙였더니 셋째 줄이 "5년 전인 2012년…" 이라
-    #      설명 한복판에서 시간이 거꾸로 갔다. 두 줄만 쓰고 **궁금하게** 끝낸다.
-    body = [hook or series, ""]
-    body += narr_lines(doc, 2)
-    body += ["", "법원은 어떻게 판단했을까요."]
+    body = [clean(part["card"][0]) + ", " + clean(part["card"][1]), ""]
+    body += narr_lines(sub, 2)
+    body += ["", "법원은 어떻게 판단했을까요.", "", f"「{label}」"]
     body += [
         "",
         "실제 판결을 바탕으로 각색한 이야기입니다.",
@@ -218,6 +227,18 @@ def meta90(doc):
     ]
     desc = "\n".join(body)[:DESC_MAX]
 
-    return {"sid": doc.get("sid") or "S90", "ep": 0,
+    return {"sid": doc.get("sid") or "S90", "part": part["no"],
             "title": title, "description": desc, "tags": tags,
+            "card": list(part["card"]), "label": label,
             "privacy": "private"}
+
+
+def meta90(doc):
+    """사건 하나의 **편별** 올릴 글. 편 수는 대본이 정한다 (2편이든 4편이든).
+
+    ⚠️ 예전에는 한 편짜리라 낱개(dict)를 냈다. 지금은 편이 여럿이라 목록을
+       내되, 모양을 알아보기 쉽게 {sid, parts:[...]} 로 감싼다.
+    """
+    return {"sid": doc.get("sid") or "S90",
+            "label": clean(doc.get("series_label")) or clean(doc.get("title")),
+            "parts": [part_meta(doc, p) for p in (doc.get("parts") or [])]}

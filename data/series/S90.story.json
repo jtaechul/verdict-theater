@@ -1,0 +1,506 @@
+{
+ "sid": "S90",
+ "case_id": "230761",
+ "title": "바람난 남편이 빼돌린 32억",
+ "hook": "남편이 죽고, 남은 건 빚 6억이었습니다",
+ "series_label": "32억 상속 사건",
+ "narr": "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게",
+ "parts": [
+  {
+   "no": 1,
+   "cuts": [
+    1,
+    8
+   ],
+   "yt_title": "아내에겐 빚 6억, 내연녀에겐 32억. 20년 결혼 생활의 끝이었습니다",
+   "card": [
+    "아내에겐 빚 6억",
+    "그 여자에겐 32억"
+   ]
+  },
+  {
+   "no": 2,
+   "cuts": [
+    9,
+    16
+   ],
+   "yt_title": "매달 2천만 원이 그 여자에게 가는 동안, 딸은 등록금이 없어 휴학했습니다",
+   "card": [
+    "딸은 등록금이 없어 휴학",
+    "그 여자는 매달 2천만 원"
+   ]
+  },
+  {
+   "no": 3,
+   "cuts": [
+    17,
+    24
+   ],
+   "yt_title": "\"전 아무것도 몰라요\" 끝까지 잡아떼던 여자를 무너뜨린 건 날짜 하나였습니다",
+   "card": [
+    "몰랐다던 여자를 무너뜨린",
+    "날짜 하나"
+   ]
+  }
+ ],
+ "cuts": [
+  {
+   "n": 1,
+   "sec": 10.4,
+   "who": [
+    "아내"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "2017년 2월, 병원을 하던 남편이 죽었습니다. 아내가 물려받은 것은 빚 6억뿐이었습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the wife sits at a bank counter and looks down at a bankbook lying open in front of her, her hand still resting on it"
+  },
+  {
+   "n": 2,
+   "sec": 8.2,
+   "who": [
+    "내연녀"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "남편이 평생 모은 재산 32억은, 죽기 전에 이미 내연녀 앞으로 전부 넘어가 있었습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the other woman stands alone in a quiet hospital corridor, half turned toward the camera, calm and unhurried"
+  },
+  {
+   "n": 3,
+   "sec": 8.6,
+   "who": [
+    "아내",
+    "남편",
+    "내연녀"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "5년 전인 2012년 가을, 결혼 20년 된 남편이 낯선 여자를 집으로 데려왔습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the wife has just opened her front door and sees the woman standing behind her husband on the entry step"
+  },
+  {
+   "n": 4,
+   "sec": 8,
+   "who": [
+    "아내",
+    "남편",
+    "내연녀"
+   ],
+   "turns": [
+    [
+     "아내",
+     "여보… 이 사람 누구야?"
+    ],
+    [
+     "남편",
+     "일 년 됐어. 이제 와서 뭘 물어."
+    ]
+   ],
+   "say": [
+    "50대 여성이, 숨이 막혀 말이 잘 안 나오는 채로 아주 작게 떨면서",
+    "50대 남성이, 귀찮다는 듯 무심하게 툭 던지듯"
+   ],
+   "scene": "just inside the apartment entrance in the evening, the wife stands frozen with a ladle still in one hand while her husband steps past her without stopping"
+  },
+  {
+   "n": 5,
+   "sec": 8,
+   "who": [
+    "아내",
+    "남편"
+   ],
+   "turns": [
+    [
+     "아내",
+     "이게 무슨 말 같지도 않은 소리야."
+    ],
+    [
+     "남편",
+     "도장이나 찍어."
+    ]
+   ],
+   "say": [
+    "50대 여성이, 믿기지 않아 목소리가 확 올라가며 분노가 터져 나오듯",
+    "50대 남성이, 감정 없이 차갑게 끊어서 명령하듯"
+   ],
+   "scene": "the living room, the wife stands still in the middle of the room while her husband picks his car key up off the low table"
+  },
+  {
+   "n": 6,
+   "sec": 5.2,
+   "who": [
+    "남편"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "이듬해 남편이 먼저 이혼 소송을 냈습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "a courthouse filing counter, the husband slides a thick bound document across the counter and lets go of it"
+  },
+  {
+   "n": 7,
+   "sec": 4,
+   "who": [
+    "남편"
+   ],
+   "turns": [
+    [
+     "남편",
+     "기각? 내가 왜 져."
+    ]
+   ],
+   "say": [
+    "50대 남성이, 어이없다는 듯 코웃음을 치고 곧 서늘하게 낮추어"
+   ],
+   "scene": "a courthouse corridor, the husband stands by a tall window and crushes a folded sheet of paper in one hand"
+  },
+  {
+   "n": 8,
+   "sec": 4,
+   "who": [
+    "남편"
+   ],
+   "turns": [
+    [
+     "남편",
+     "좋아하지 마. 아직 안 끝났어."
+    ]
+   ],
+   "say": [
+    "50대 남성이, 이를 악물고 화를 눌러 담아 낮지만 서슬 퍼렇게"
+   ],
+   "scene": "the husband stops at the top of a stone staircase and looks back down over his shoulder"
+  },
+  {
+   "n": 9,
+   "sec": 9.0,
+   "who": [
+    "남편"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "이혼 소송에서 진 남편은, 판결이 난 그날 움직이기 시작했습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "a courthouse corridor, the husband stands by a tall window and crushes a folded sheet of paper in one hand",
+   "still_of": 7
+  },
+  {
+   "n": 10,
+   "sec": 6.0,
+   "who": [
+    "아내",
+    "남편",
+    "내연녀"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "20년을 함께 산 아내를 두고서였습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the wife has just opened her front door and sees the woman standing behind her husband on the entry step",
+   "still_of": 3
+  },
+  {
+   "n": 11,
+   "sec": 9.7,
+   "who": [
+    "남편",
+    "내연녀"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "기각 판결이 난 2013년 9월, 남편은 바로 그날 자기 재산을 내연녀 앞으로 넘기기 시작했습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "a quiet cafe table, the husband slides a thin stack of documents across the table toward the other woman"
+  },
+  {
+   "n": 12,
+   "sec": 6.7,
+   "who": [
+    "아내"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "3년 뒤, 남편은 내연녀와 살던 아파트에서 떨어져 죽었습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "before dawn, the wife sits on the edge of the bed holding a phone to her ear, the room dark except for one lamp"
+  },
+  {
+   "n": 13,
+   "sec": 6,
+   "who": [
+    "아내",
+    "내연녀"
+   ],
+   "turns": [
+    [
+     "내연녀",
+     "인사만 드리고 갈게요. …나머지는 나중에 얘기해요."
+    ]
+   ],
+   "say": [
+    "30대 여성이, 예의 바른 존댓말 뒤에 여유를 감추고 차분하게"
+   ],
+   "scene": "the other woman steps into the funeral hall where the wife is keeping vigil, and stops just inside the doorway"
+  },
+  {
+   "n": 14,
+   "sec": 6,
+   "who": [
+    "아내",
+    "변호사"
+   ],
+   "turns": [
+    [
+     "변호사",
+     "병원 지분에 보험금에… 다 합쳐서 삼십이억입니다."
+    ]
+   ],
+   "say": [
+    "40대 남성이, 사무적으로 담담하게 숫자를 읽어 주듯"
+   ],
+   "scene": "a law office, the attorney spreads several documents open on the desk while the wife leans in over them"
+  },
+  {
+   "n": 15,
+   "sec": 7.2,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "남편은 죽기 전 3년 동안, 내연녀에게 매달 이천만 원을 보내고 있었습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "a bank statement lying on a desk under a lamp, one column of identical monthly transfers running down the page, the paper filling the frame",
+   "scrub": {
+    "box": [
+     0.083,
+     0.277,
+     0.544,
+     0.361
+    ],
+    "why": "하나은행 마크·이름 + Bank Statement (실제 은행 상표)"
+   }
+  },
+  {
+   "n": 16,
+   "sec": 8,
+   "who": [
+    "아내"
+   ],
+   "turns": [
+    [
+     "아내",
+     "우리 애 등록금이 없어서 휴학시켰는데… 매달 이천만 원씩이요?"
+    ]
+   ],
+   "say": [
+    "50대 여성이, 울음을 삼키느라 목이 메어 끝을 떨면서 힘겹게"
+   ],
+   "scene": "the wife cannot take her eyes off the papers in front of her, one hand flat on the desk"
+  },
+  {
+   "n": 17,
+   "sec": 9.7,
+   "who": [
+    "내연녀"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "법정에 선 여자 앞으로, 죽은 남편의 재산 32억이 넘어가 있었습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the other woman stands alone in a quiet hospital corridor, half turned toward the camera, calm and unhurried",
+   "still_of": 2
+  },
+  {
+   "n": 18,
+   "sec": 6.0,
+   "who": [
+    "아내"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "아내에게 남은 것은 빚 6억뿐이었습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the wife sits at a bank counter and looks down at a bankbook lying open in front of her, her hand still resting on it",
+   "still_of": 1
+  },
+  {
+   "n": 19,
+   "sec": 5.4,
+   "who": [
+    "아내",
+    "변호사"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "아내는 그 돈을 되찾겠다며 소송을 냈습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the wife signs the last page of a thick document at a desk while the attorney sets the next page in front of her"
+  },
+  {
+   "n": 20,
+   "sec": 8,
+   "who": [
+    "아내",
+    "내연녀"
+   ],
+   "turns": [
+    [
+     "내연녀",
+     "전 몰라요. 찍으라니까 찍었어요."
+    ],
+    [
+     "아내",
+     "몰라? 이 날짜는 뭔데."
+    ]
+   ],
+   "say": [
+    "30대 여성이, 억울한 척 또박또박 존댓말로 잡아떼듯",
+    "50대 여성이, 낮게 몰아붙이며 되묻듯 날카롭게"
+   ],
+   "scene": "a courtroom, the other woman stands at the table with her chin up while the wife holds a single document out across the table"
+  },
+  {
+   "n": 21,
+   "sec": 4,
+   "who": [],
+   "turns": [
+    [
+     "아내",
+     "이 날짜… 그 사람 재판 진 날이야."
+    ]
+   ],
+   "say": [
+    "50대 여성이, 혼잣말처럼 아주 작게, 알아차린 순간의 서늘함으로"
+   ],
+   "scene": "a very close view of a printed document held in a hand, the paper filling the frame, everything soft except the paper"
+  },
+  {
+   "n": 22,
+   "sec": 6,
+   "who": [
+    "아내"
+   ],
+   "turns": [
+    [
+     "아내",
+     "몰랐다면서. 근데 어떻게 그날 바로 찍어?"
+    ]
+   ],
+   "say": [
+    "50대 여성이, 확인 사살하듯 한 마디씩 눌러서 조용하고 단단하게"
+   ],
+   "scene": "the wife takes one step closer, still holding the document down at her side"
+  },
+  {
+   "n": 23,
+   "sec": 9.5,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "2020년 7월, 법원은 내연녀에게 10억을 아내와 딸에게 돌려주라고 판결했습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the inside of an empty courtroom in the morning, rows of empty wooden benches and the raised bench at the front, quiet light through tall windows"
+  },
+  {
+   "n": 24,
+   "sec": 8.2,
+   "who": [
+    "아내",
+    "딸"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "아내가 떠안을 뻔했던 빚 6억도 갚지 않게 됐습니다. 실제로 있었던 사건입니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the wife and her grown daughter walk down the courthouse steps side by side in daylight"
+  }
+ ],
+ "_가리기": [
+  "2026-08-31 손님: '특정 은행 브랜드가 언급되면 안 돼. 실제로 있는 은행이라",
+  "삭제 조치가 필요하다. 문제되는 부분만 blur 처리해.'",
+  "",
+  "⚠️ 왜 영상이 아니라 **그림**에 거는가 — 그 컷은 카메라가 다가가는 컷이라",
+  "   로고가 화면에서 커지고 자리도 옮겨진다. 영상에 고정 사각형(delogo)을",
+  "   걸면 따라가지 못해 끝에 가면 엉뚱한 데를 문지른다. 그림에 걸면 자국이",
+  "   그림에 붙어 함께 움직인다 — 따라갈 필요가 아예 없어진다.",
+  "",
+  "⚠️⚠️ 2026-09-01 — 예전엔 이 자리를 **컷 번호**로 따로 적어 두었다",
+  "   (data/series/S90.scrub.json 의 'n': 13). 그런데 편을 나누면서 앞머리",
+  "   나레이션이 끼어들어 번호가 밀렸고, 13번은 **조문 장면**이 되어 버렸다.",
+  "   엉뚱한 컷을 문지르고 은행 로고는 그대로 나갈 뻔했다.",
+  "   → 자리를 **그 컷 안에** 적는다. 컷이 어디로 밀려도 같이 따라간다."
+ ]
+}

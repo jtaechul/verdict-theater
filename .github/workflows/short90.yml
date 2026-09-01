@@ -1,4 +1,4 @@
-name: 4. 90초 한 편 만들기
+name: 4. 쇼츠 만들기 (사건 하나 · 편마다)
 
 # ⭐ 2026-08-27 운영자 확정 — "90초로 만들어."
 #
@@ -33,6 +33,14 @@ on:
         description: '어디까지 (all / stills / voice / build)'
         required: true
         default: 'all'
+      sid:
+        description: '어느 사건 (비우면 S90)'
+        required: false
+        default: ''
+      part:
+        description: '어느 편만 다시 만들까요 (예: 2 · 비우면 전부)'
+        required: false
+        default: ''
       cards:
         description: '손님이 올린 인물 그림 (관리자 페이지가 넣는다 · 손대지 마십시오)'
         required: false
@@ -57,6 +65,9 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GOOGLE_TTS_KEY: ${{ secrets.GOOGLE_TTS_KEY }}
+      # ⭐ 2026-09-01 — 어느 사건을 만드는가. 비우면 S90.
+      #    src/short90.py 가 이 값으로 대본을 고른다.
+      VT_SID: ${{ inputs.sid }}
       # ⚠️⚠️ 2026-08-30 — **이 줄이 없어서 첫 실행이 실패했다.**
       #    관리자 페이지 보관함(/api/blob)은 x-vt-pass 로 암호를 받는다.
       #    shorts.yml 은 보내는데 여기만 안 보내서, 손님이 올리신 인물 그림을
@@ -164,20 +175,47 @@ jobs:
             python3 -c "import shutil;shutil.make_archive('build/clips90','zip','build/s90/clips')"
             python3 tools/release_file.py put clips90-S90 clips.zip build/clips90.zip || true
           fi
-          python3 src/short90.py build 2>&1 | tee -a make.log
+          # ⭐ 2026-09-01 — 편마다 따로 만들 수 있다. 비우면 전부.
+          #   그림·목소리는 편이 함께 쓰므로 늘 통째로 본다(나눠도 값이 같다).
+          python3 src/short90.py build --part "${{ inputs.part }}" 2>&1 | tee -a make.log
 
       - name: 릴리스에 올리기 (저장소에는 안 넣는다)
         run: |
           set -euo pipefail
-          OUT=build/s90/S90_short.mp4
-          test -f "$OUT" || { echo "❌ 만들어진 영상이 없습니다"; exit 1; }
-          python3 tools/release_file.py put short90-S90 short.mp4 "$OUT"
-          python3 tools/release_file.py prune short90-S90 short.mp4 || true
+          # ⭐ 2026-09-01 — 편마다 파일이 하나씩 나온다. 있는 것만 올린다
+          #   (한 편만 다시 만들었으면 그 편만 새로 올라간다).
+          # ⚠️ 보관함 이름에 **사건 번호**가 들어가야 한다. 안 넣으면 두 번째
+          #    사건이 첫 사건 영상을 덮어써 버린다.
+          S="${VT_SID:-S90}"
+          N=0
+          for F in build/s90/*_part*.mp4; do
+            [ -f "$F" ] || continue
+            K=$(basename "$F" | sed 's/.*_part\([0-9]*\)\.mp4/\1/')
+            python3 tools/release_file.py put "short90-$S" "part$K.mp4" "$F"
+            python3 tools/release_file.py prune "short90-$S" "part$K.mp4" || true
+            echo "  보관: $K편 ($F)"
+            N=$((N+1))
+          done
+          [ "$N" -gt 0 ] || { echo "❌ 만들어진 영상이 없습니다"; exit 1; }
           # ⭐ 유튜브에 올릴 제목·설명·해시태그도 같이 보관한다 (0원).
           #    관리자 페이지가 이것을 읽어 보여 주고, 올릴 때도 이것을 쓴다 —
           #    화면에서 본 글과 올라가는 글이 갈라지지 않게 **한 곳**에 둔다.
           test -f build/s90/meta.json && \
-            python3 tools/release_file.py put short90-S90 meta.json build/s90/meta.json || true
+            python3 tools/release_file.py put "short90-${VT_SID:-S90}" meta.json \
+              build/s90/meta.json || true
+
+      - name: 만든 사실 적어 두기
+        if: always()
+        continue-on-error: true
+        run: |
+          # ⭐ 관리자 페이지는 state/shorts.json 만 읽고 화면을 그린다.
+          #    여기서 안 적으면 만들어 놓고도 화면에 '아직' 으로 남는다.
+          git config user.name "verdict-theater-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add state/shorts.json data/series 2>/dev/null || true
+          git diff --cached --quiet && { echo "적을 것이 없다."; exit 0; }
+          git commit -m "쇼츠: 만든 사실 적기 [skip ci]"
+          bash tools/push.sh "쇼츠: 만든 사실 적기 [skip ci]" state data/series
 
       - name: 쓴 돈 장부 남기기
         if: always()

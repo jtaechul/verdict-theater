@@ -13,12 +13,21 @@
     진짜 코드로 돌려 본다. 돈 나가는 자리는 아예 부르지 않는다.
 """
 import json
+import os
 import pathlib
 import shutil
 import subprocess
 import sys
 import tempfile
 import wave
+
+
+# ⚠️ 시험은 **진짜 상태 파일을 건드리지 않는다.** 가짜 길이가
+#    화면에 "만들어짐" 으로 떠 버리면 손님이 만들지도 않은 것을
+#    만든 줄 아신다 — 화면이 거짓말하는 것이 제일 나쁜 고장이다.
+# ⚠️ 여기는 pathlib 을 아직 안 불렀을 수도 있다 — os.path 로만 쓴다
+os.environ.setdefault("VT_SHORTS_STATE",
+                      os.path.join(tempfile.gettempdir(), "vt_shorts_test.json"))
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
@@ -117,9 +126,9 @@ def main():
     #    눈으로 안 믿고 화소로 잰다 — 흐려지면 그 자리의 무늬가 사라진다.
     print("\n②-2 상표 자리가 흐려지는가")
     import scrub_still                                       # noqa: E402
-    conf = json.loads((ROOT / "data" / "series" / "S90.scrub.json")
-                      .read_text(encoding="utf-8"))
-    todo = conf.get("cuts") or []
+    # ⚠️ 가릴 자리는 **대본의 그 컷 안**에 있다 (2026-09-01). 따로 둔 파일에
+    #    컷 번호로 적어 두었더니 편을 나눌 때 번호가 밀려 엉뚱한 컷을 가리켰다.
+    todo = [{"n": c["n"], **c["scrub"]} for c in doc["cuts"] if c.get("scrub")]
     ck("가릴 자리가 정해져 있다", bool(todo))
     for c0 in todo:
         n = int(c0["n"])
@@ -205,19 +214,46 @@ def main():
     ck(f"줄마다 길이 기록을 남겼다 ({len(cuts)}개)", len(lens) == len(cuts),
        f"{len(lens)}개")
 
-    print("\n④ 조립 — 스무 컷을 진짜로 붙인다 (카라오케 자막)")
+    print("\n④ 조립 — 컷을 진짜로 붙인다 (편마다 · 카라오케 자막)")
     S9.build(doc)
-    final = tmp / "S90_short.mp4"
-    ck("한 편이 나왔다", final.exists() and final.stat().st_size > 100_000)
-    got = dur(final)
-    want = sum(S9.cut_sec(c, tmp / "voice" / f"c{c['n']:02d}.wav", None)[0]
-               for c in cuts)
-    ck(f"길이가 셈과 맞는다 ({got:.1f}초)", abs(got - want) < 1.5,
-       f"셈 {want:.1f}초 · 실제 {got:.1f}초")
-    ck("길이가 2~3분 안에 있다", 100 <= got <= 190, f"{got:.0f}초")
+    parts = S9.parts_of(doc)
+    ck(f"편이 나뉘어 있다 ({len(parts)}편)", len(parts) >= 2, f"{len(parts)}편")
+    for p in parts:
+        no = p["no"]
+        f = S9.part_file(doc, no)
+        ck(f"{no}편이 나왔다", f.exists() and f.stat().st_size > 100_000)
+        if not f.exists():
+            continue
+        got = dur(f)
+        mine = S9.part_cuts(doc, p)
+        want = sum(S9.cut_sec(c, tmp / "voice" / f"c{c['n']:02d}.wav", None)[0]
+                   for c in mine)
+        ck(f"{no}편 길이가 셈과 맞는다 ({got:.1f}초)", abs(got - want) < 1.5,
+           f"셈 {want:.1f}초 · 실제 {got:.1f}초")
+        # ⚠️⚠️ 이 채널이 실제로 겪은 일 — 60초 이하 6편은 전부 1,200회 넘게
+        #    나왔는데 127초 한 편은 5시간 반 동안 **조회수 0** 이었다.
+        #    쇼츠 피드가 아예 안 태운 것이다. 그래서 여기서 못을 박는다.
+        ck(f"{no}편이 60초를 안 넘는다 ({got:.0f}초)", got <= S9.PART_MAX_SEC,
+           f"{got:.0f}초 — 넘으면 쇼츠 피드가 안 태운다")
+        ck(f"{no}편이 너무 짧지 않다 ({got:.0f}초)", got >= 20, f"{got:.0f}초")
     ov = list((tmp / "ov").glob("*.png"))
     n_ch = sum(len(S9.chunks_of(t)) for c in cuts for _, t in c["turns"])
-    ck(f"자막 장을 토막 수만큼 만들었다 ({n_ch}장)", len(ov) == n_ch, f"{len(ov)}장")
+    # ⭐ 편마다 첫 컷에 **제목 카드**가 세 장 더 붙는다 (옅어지며 사라진다)
+    n_title = len(parts) * len(S9.TITLE_FADE)
+    ck(f"자막 장을 토막 수 + 제목 장만큼 만들었다 ({n_ch}+{n_title}장)",
+       len(ov) == n_ch + n_title, f"{len(ov)}장")
+
+    print("\n④-2 편마다 화면 위 제목이 붙는가")
+    for p in parts:
+        first = S9.part_cuts(doc, p)[0]["n"]
+        got = sorted((tmp / "ov").glob(f"c{first:02d}_title*.png"))
+        ck(f"{p['no']}편 첫 컷에 제목 장이 있다 ({len(got)}장)",
+           len(got) == len(S9.TITLE_FADE), f"{len(got)}장")
+    # 편이 아닌 컷에는 제목이 붙으면 안 된다 (붙으면 화면이 계속 가려진다)
+    firsts = {S9.part_cuts(doc, p)[0]["n"] for p in parts}
+    stray = [f.name for f in (tmp / "ov").glob("*_title*.png")
+             if int(f.name[1:3]) not in firsts]
+    ck("편 첫 컷이 아닌 곳에는 제목이 안 붙는다", not stray, f"{stray[:4]}")
 
     print("\n⑤ 컷마다 자막이 끊기지 않는가 (진짜 소리 길이로)")
     holes = []

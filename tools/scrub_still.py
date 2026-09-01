@@ -30,7 +30,7 @@ from pathlib import Path
 from PIL import Image, ImageFilter
 
 ROOT = Path(__file__).resolve().parent.parent
-CONF = ROOT / "data" / "series" / "S90.scrub.json"
+SERIES = ROOT / "data" / "series"
 BLUR = 26                 # 흐림 세기 (글자가 완전히 풀릴 만큼)
 FEATHER = 18              # 가장자리를 부드럽게 (네모 자국이 안 보이게)
 
@@ -45,14 +45,25 @@ def busy(im, box):
     return (sum((p - m) ** 2 for p in px) / len(px)) ** 0.5
 
 
-def scrub(out):
-    """정해 둔 자리를 흐리게 만든다. short90.stills() 가 부른다."""
+def scrub(out, doc=None, sid="S90"):
+    """정해 둔 자리를 흐리게 만든다. short90.stills() 가 부른다.
+
+    ⚠️⚠️ 2026-09-01 — 가릴 자리를 **대본의 그 컷 안**에서 읽는다.
+       예전에는 따로 둔 파일(S90.scrub.json)에 컷 번호로 적어 두었는데,
+       편을 나누며 앞머리 나레이션이 끼어들어 번호가 하나씩 밀렸다.
+       13번은 조문 장면이 되었고, 그대로 두었으면 **엉뚱한 컷을 문지르고
+       은행 로고는 그대로 나갈** 뻔했다. 컷에 붙여 두면 컷이 어디로 밀려도
+       자리가 함께 따라간다.
+    """
     out = Path(out)
-    if not CONF.exists():
-        print("■ 가릴 자리가 정해진 것이 없다")
-        return 0
-    conf = json.loads(CONF.read_text(encoding="utf-8"))
-    todo = conf.get("cuts") or []
+    if doc is None:
+        f = SERIES / f"{sid}.json"
+        if not f.exists():
+            print("■ 가릴 자리가 정해진 것이 없다")
+            return 0
+        doc = json.loads(f.read_text(encoding="utf-8"))
+    todo = [{"n": c["n"], **c["scrub"]}
+            for c in (doc.get("cuts") or []) if c.get("scrub")]
     if not todo:
         print("■ 가릴 자리가 정해진 것이 없다")
         return 0

@@ -16,10 +16,20 @@
     ⑥ 손으로 만든 영상(clips/cNN.mp4)이 있으면 그 컷만 영상으로 바뀌는가
 """
 import json
+import os
+import tempfile
 import pathlib
 import subprocess
 import sys
 import wave
+
+
+# ⚠️ 시험은 **진짜 상태 파일을 건드리지 않는다.** 가짜 길이가
+#    화면에 "만들어짐" 으로 떠 버리면 손님이 만들지도 않은 것을
+#    만든 줄 아신다 — 화면이 거짓말하는 것이 제일 나쁜 고장이다.
+# ⚠️ 여기는 pathlib 을 아직 안 불렀을 수도 있다 — os.path 로만 쓴다
+os.environ.setdefault("VT_SHORTS_STATE",
+                      os.path.join(tempfile.gettempdir(), "vt_shorts_test.json"))
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
@@ -126,8 +136,26 @@ def main():
 
     ck("모든 컷 프롬프트가 세로(9:16)다",
        all("9:16" in c["still"] or "9 x 16" in c["still"] for c in cuts))
+    # ⚠️⚠️ 2026-09-01 — 예전에는 **한 편 전체**가 130초 언저리인지 봤다.
+    #    그런데 이 채널이 실제로 겪은 일은 이렇다 —
+    #      60초 이하 쇼츠 6편 → 전부 1,209~1,554회
+    #      127초 쇼츠 1편     → 5시간 반 동안 **조회수 0**
+    #    쇼츠 피드가 아예 안 태운 것이다. 그래서 이제 **편마다** 60초 아래인지
+    #    본다. 전체 길이는 이제 아무 뜻이 없다 (편으로 나눠 올리므로).
     mn = sum(c["sec"] for c in cuts)
-    ck("대본 길이가 130초 언저리다 (110~150)", 110 <= mn <= 150, f"{mn:.0f}초")
+    print(f"   전체 {mn:.0f}초 · {len(doc['parts'])}편")
+    for _p in doc["parts"]:
+        _a, _b = _p["cuts"]
+        _mine = [c for c in cuts if _a <= c["n"] <= _b]
+        _sec = sum(c["sec"] for c in _mine)
+        # ⚠️ 대본의 sec 은 **어림값**이고 실제 영상은 이보다 짧다.
+        #    소리를 1.08배로 빨리 감고(SPEED) 붙이기 때문이다 — 실측하면
+        #    대본 56·59·57초가 영상 50·53·49초로 나왔다(약 0.9배).
+        #    그러니 여기서는 60 ÷ 0.9 ≈ 66 을 상한으로 잡되, 목소리가 날마다
+        #    조금씩 달라지므로 64 로 여유를 둔다.
+        ck(f"{_p['no']}편이 60초 아래다 (대본 {_sec:.0f}초 ≈ 영상 "
+           f"{_sec * 0.9:.0f}초 · {len(_mine)}컷)", 25 <= _sec <= 64,
+           f"대본 {_sec:.0f}초 — 60초를 넘으면 쇼츠 피드가 안 태운다")
 
     # ⭐⭐⭐ 2026-08-28 손님: "너무 그 사이사이에 나레이션을 너무 많이 날려먹었는데
     #    이러면 이해가 되는 게 맞아?" — 맞다. 겹친다고 뺐다가 **언제·어디인지
@@ -167,25 +195,29 @@ def main():
                "id card", "passport", "newspaper front page")
     # ⚠️ 규칙은 "그 말을 절대 쓰지 마라" 가 아니다. **쓰려면 뒷감당을 해라** 다 —
     #    이미 그려진 그림을 다시 그리면 132원이 나가는데, 흐리게 가리면 0원이다.
-    #    그래서 그 말을 쓴 컷은 S90.scrub.json 에 **가릴 자리가 정해져 있어야**
-    #    한다. 둘 중 하나도 안 하고 넘어가는 것만 막는다.
-    sc = ROOT / "data" / "series" / "S90.scrub.json"
-    got = (json.loads(sc.read_text(encoding="utf-8")).get("cuts") or []) \
-        if sc.exists() else []
+    #    그래서 그 말을 쓴 컷은 **그 컷 안에** 가릴 자리가 적혀 있어야 한다.
+    #    둘 중 하나도 안 하고 넘어가는 것만 막는다.
+    #    ⚠️⚠️ 2026-09-01 — 예전에는 가릴 자리를 따로 둔 파일에 **컷 번호**로
+    #       적었다. 편을 나누며 번호가 밀리자 13번이 조문 장면이 되어, 엉뚱한
+    #       컷을 문지르고 로고는 그대로 나갈 뻔했다. 이제 컷에 붙어 있어
+    #       번호가 밀려도 따라간다 — 그래서 이 검사도 컷에서 읽는다.
+    got = [{"n": c["n"], **c["scrub"]} for c in cuts if c.get("scrub")]
     guarded = {int(x["n"]) for x in got}
     hit = [(c["n"], w) for c in cuts for w in BRANDED
            if w in c["scene"].lower() and c["n"] not in guarded]
     ck("상표가 딸려 나올 말을 쓴 컷은 가릴 자리가 정해져 있다", not hit,
-       f"{hit} — 말을 바꾸거나 S90.scrub.json 에 가릴 자리를 적으십시오")
-    if got:
-        ns = {c["n"] for c in cuts}
-        miss = [x["n"] for x in got if int(x["n"]) not in ns]
-        ck("가릴 자리로 적어 둔 컷이 대본에 다 있다", not miss,
-           f"없는 컷 {miss} — 번호가 밀렸을 수 있다")
-        for x in got:
-            b = x["box"]
-            ok = (len(b) == 4 and 0 <= b[0] < b[2] <= 1 and 0 <= b[1] < b[3] <= 1)
-            ck(f"컷{x['n']} 가릴 자리가 화면 안이다", ok, f"{b}")
+       f"{hit} — 말을 바꾸거나 그 컷에 scrub 을 적으십시오")
+    # ⭐ 가릴 자리가 **그 상표 말을 쓴 컷에 붙어 있는지**까지 본다.
+    #    엉뚱한 컷에 붙어 있으면 로고는 그대로 나간다 (예전에 그럴 뻔했다)
+    stray = [x["n"] for x in got
+             if not any(w in c["scene"].lower() for w in BRANDED
+                        for c in cuts if c["n"] == x["n"])]
+    ck("가릴 자리가 상표가 나올 컷에 붙어 있다", not stray,
+       f"컷 {stray} 는 상표가 나올 만한 장면이 아니다 — 자리가 밀렸다")
+    for x in got:
+        b = x["box"]
+        ok = (len(b) == 4 and 0 <= b[0] < b[2] <= 1 and 0 <= b[1] < b[3] <= 1)
+        ck(f"컷{x['n']} 가릴 자리가 화면 안이다", ok, f"{b}")
 
     print("\n①-3 손님이 고른 다섯 얼굴이 늘 쓰이는가")
     sys.path.insert(0, str(ROOT / "tools"))
@@ -256,9 +288,16 @@ def main():
     print("\n①-4 한 번 눌렀을 때 나갈 돈")
     import cost                                              # noqa: E402
     one = cost.image_krw(ST.MODEL, ST.SIZE)
-    krw = one * len(cuts)
-    print(f"   그림 {len(cuts)}장 x {one:,.0f}원 = {krw:,.0f}원 "
-          f"(+ 소리 약 100원) · 한 번 한도 {cost.RUN_KRW:,.0f}원")
+    # ⚠️⚠️ 2026-09-01 — 컷 수로 곱하면 **틀린 값**이 나온다. 편 앞머리
+    #    나레이션처럼 **다른 컷과 지문이 똑같은 컷**은 그림을 다시 안 그리고
+    #    옮겨 쓴다(short90.salvage · 0원). 지문 가짓수로 세야 진짜 값이다.
+    #    (컷 수로 세면 실제로는 통과할 것을 "한도 초과" 라고 잘못 막는다)
+    uniq = len({c["still"] for c in cuts})
+    krw = one * uniq
+    free = len(cuts) - uniq
+    print(f"   그림 {uniq}장 x {one:,.0f}원 = {krw:,.0f}원"
+          + (f" (컷 {len(cuts)}개 가운데 {free}개는 같은 그림 · 0원)" if free else "")
+          + f" (+ 소리 약 100원) · 한 번 한도 {cost.RUN_KRW:,.0f}원")
     ck("한 번 실행 한도 안에 들어간다", krw + 100 <= cost.RUN_KRW,
        f"{krw + 100:,.0f}원 > {cost.RUN_KRW:,.0f}원")
     ck("카드값은 안 나간다 (손님 그림을 쓴다)", len(RC.NAME) == 5)
@@ -465,8 +504,12 @@ def main():
     # ⚠️ 컷 길이는 대본의 초가 아니라 **만들어진 목소리 길이**가 정한다.
     #    23컷을 다 붙여 보면 몇 분씩 걸리므로, 길이는 여기서 셈으로 본다.
     say_sec = {c["n"]: max(1.0, c["sec"] - 0.8) for c in cuts}   # 목소리 길이(가정)
-    want = sum(max(c["sec"], say_sec[c["n"]] + S9.PAD) for c in cuts)
-    ck("셈으로 잰 길이가 130초 언저리다 (110~150)", 110 <= want <= 150, f"{want:.1f}초")
+    for _p in doc["parts"]:
+        _a, _b = _p["cuts"]
+        want = sum(max(c["sec"], say_sec[c["n"]] + S9.PAD)
+                   for c in cuts if _a <= c["n"] <= _b)
+        ck(f"셈으로 잰 {_p['no']}편이 60초 아래다 ({want:.1f}초)",
+           want <= S9.PART_MAX_SEC, f"{want:.1f}초")
 
     print("\n④⑤ 실제로 조립해 본다 (그림·소리만 가짜 · 컷 몇 개만)")
     import tempfile
@@ -491,8 +534,13 @@ def main():
         pick = {1, 4, 10, 13, 19}
         sample = dict(doc)
         sample["cuts"] = [c for c in cuts if c["n"] in pick]
+        # ⚠️ 2026-09-01 — 이제 편마다 파일이 하나씩 나온다. 여기서는 고른 컷
+        #    몇 개만 붙여 보는 것이므로 **한 편으로 묶어** 준다. 대본의 편
+        #    나누기를 그대로 두면 컷 하나짜리 편이 셋 나와 셈이 안 맞는다.
+        sample["parts"] = [{"no": 1, "cuts": [min(pick), max(pick)],
+                            "yt_title": "시험", "card": ["시험", "붙이기"]}]
         S9.build(sample)
-        final = tmp / "S90_short.mp4"
+        final = S9.part_file(sample, 1)
         ck("mp4 한 편이 나왔다", final.exists() and final.stat().st_size > 50_000)
         got = S9.dur_of(final)
         # ⚠️ 대사 컷에 영상을 올리면 **컷 길이는 그 영상이 정한다** (말이 잘리면

@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
-"""⭐ 90초 한 편 대본을 짓는다 — data/series/S90.json (0원 · 인터넷 0회)
+"""⭐ 쇼츠 한 사건 대본을 짓는다 — data/series/<SID>.json (0원 · 인터넷 0회)
 
-    python3 tools/build_short90.py
+    python3 tools/build_short90.py          (S90)
+    python3 tools/build_short90.py S91      (다른 사건)
+
+⭐⭐ 2026-09-01 손님: "앞으로 영상을 계속 만들어나가고 계속 올려야 되는데
+   이런 식으로 관리자 페이지를 구성하면 지속 가능하지 않거든."
+   맞다. 예전엔 대본이 **손으로 쓴 파이썬 파일**(S90_story.py)이라 사건이
+   늘 때마다 사람이 파이썬을 써야 했다 — 손님은 파이썬을 못 쓰신다.
+   → 대본을 **데이터 파일**(data/series/<SID>.story.json)로 옮겼다.
+     기계가 지을 수 있고(src/story90.py), 사건이 늘어도 이 도구는 그대로다.
 
 무엇을 짓나
-    data/series/S90_story.py 의 23컷에 **컷마다 완결된 프롬프트 두 벌**을 붙인다.
+    data/series/<SID>.story.json 의 컷들에 **컷마다 완결된 프롬프트 두 벌**을 붙인다.
       still — 그림 한 장 (세로 9:16). 우리 시스템이 이걸로 만든다
       veo   — 영상 한 컷 (세로 9:16). 손님이 제미나이에서 손으로 만들 때 쓴다.
               **스물세 컷 전부** 만들어 둔다 — 어느 컷을 영상으로 할지는 손님이
@@ -15,7 +23,6 @@
    사람이 컷마다 달라진다 — 실제로 화풍이 그렇게 갈렸다.
 ⚠️ 화풍 문구도 글자로 안 베낀다. src/series.py 의 고정 줄을 가져다 쓴다.
 """
-import importlib.util
 import json
 import re
 import sys
@@ -25,10 +32,15 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 import series as S                                           # noqa: E402
 
-STORY = ROOT / "data" / "series" / "S90_story.py"
-BASE = ROOT / "data" / "series" / "S001.json"
-OUT = ROOT / "data" / "series" / "S90.json"
-META = ROOT / "data" / "series" / "S90.meta.json"   # 유튜브에 올릴 글
+SERIES = ROOT / "data" / "series"
+BASE = SERIES / "S001.json"          # 인물 카드 글은 여기 한 곳뿐이다
+
+
+def paths(sid):
+    """사건 하나가 쓰는 파일 세 벌."""
+    return (SERIES / f"{sid}.story.json",     # 손으로/기계가 쓴 대본
+            SERIES / f"{sid}.json",           # 프롬프트까지 붙인 것
+            SERIES / f"{sid}.meta.json")      # 유튜브에 올릴 글 (편마다)
 
 # 화면에 뜨는 이름표 ↔ 프롬프트에 쓰는 영어 이름
 EN = {"아내": "WIFE", "남편": "HUSBAND", "내연녀": "OTHER WOMAN",
@@ -63,11 +75,12 @@ NO_TEXT = ("ON SCREEN: no text, no letters, no subtitles, no captions, no waterm
            "no logo, no speech bubbles, no typography anywhere on screen.")
 
 
-def load_story():
-    spec = importlib.util.spec_from_file_location("s90", STORY)
-    m = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(m)
-    return m
+def load_story(path):
+    if not path.exists():
+        raise SystemExit(f"❌ 대본이 없습니다: {path.relative_to(ROOT)}\n"
+                         f"   관리자 페이지에서 [이 사건으로 쇼츠 만들기] 를 "
+                         f"먼저 누르십시오.")
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def people_of(names, still=False):
@@ -136,25 +149,62 @@ def text_of(c):
     return " / ".join(t for _, t in c["turns"])
 
 
-def say_of(story, c, i):
-    """그 줄을 **어떻게 읽어야 하는지** (data/series/S90_story.py 의 SAY).
+def check_say(story):
+    """연기 지시(say)가 **한 줄도 안 빠졌는지**.
 
     ⚠️ 빠뜨리면 그 줄만 밋밋하게 읽힌다 — 그런데 화면으로는 안 보인다.
-       그래서 아래 check_say() 가 한 줄이라도 비면 아예 못 만들게 막는다.
+       그래서 한 줄이라도 비면 아예 못 만들게 막는다.
     """
-    return (getattr(story, "SAY", {}) or {}).get((c["n"], i), "")
+    bad = []
+    for c in story["cuts"]:
+        say = c.get("say") or []
+        if len(say) != len(c["turns"]) or any(not str(x).strip() for x in say):
+            bad.append(c["n"])
+    if bad:
+        raise SystemExit(f"❌ 연기 지시(say)가 대사 줄 수와 안 맞습니다: 컷 {bad}")
 
 
-def check_say(story):
-    """연기 지시가 **한 줄도 안 빠졌는지**. 컷을 끼워 넣으면 번호가 밀린다."""
-    need = [(c["n"], i) for c in story.CUTS for i in range(len(c["turns"]))]
-    have = getattr(story, "SAY", {}) or {}
-    miss = [k for k in need if not have.get(k)]
-    extra = [k for k in have if k not in need]
-    if miss or extra:
-        raise SystemExit(
-            f"❌ 연기 지시가 안 맞습니다 (S90_story.py 의 SAY)\n"
-            f"   빠진 줄: {miss}\n   쓸데없는 줄: {extra}")
+def check_scrub(story):
+    """가릴 자리가 성한지 — 네 값이 0~1 사이여야 하고 거꾸로면 안 된다."""
+    for c in story["cuts"]:
+        b = (c.get("scrub") or {}).get("box")
+        if b is None:
+            continue
+        if len(b) != 4 or not all(0.0 <= float(x) <= 1.0 for x in b):
+            raise SystemExit(f"❌ 컷{c['n']} 가릴 자리가 0~1 밖입니다: {b}")
+        if not (b[0] < b[2] and b[1] < b[3]):
+            raise SystemExit(f"❌ 컷{c['n']} 가릴 자리가 거꾸로입니다: {b}")
+
+
+def check_parts(story):
+    """편 나누기가 성한지 — 컷을 빠뜨리거나 겹치면 여기서 막는다.
+
+    ⚠️ 이걸 안 보면 '2편에 컷이 하나 빠진 영상' 이 조용히 나온다.
+       영상은 멀쩡해 보이고 이야기만 끊긴다 — 눈으로는 못 잡는다.
+    """
+    parts = story.get("parts") or []
+    if not parts:
+        raise SystemExit("❌ 편 나누기(parts)가 없습니다")
+    ns = [c["n"] for c in story["cuts"]]
+    seen, out = [], []
+    for p in parts:
+        a, b = p["cuts"]
+        if a > b:
+            raise SystemExit(f"❌ {p['no']}편 컷 범위가 거꾸로입니다: {a}~{b}")
+        got = [n for n in ns if a <= n <= b]
+        if not got:
+            raise SystemExit(f"❌ {p['no']}편에 컷이 하나도 없습니다: {a}~{b}")
+        seen += got
+        for k in ("yt_title", "card"):
+            if not p.get(k):
+                raise SystemExit(f"❌ {p['no']}편에 {k} 가 없습니다")
+        if len(p["card"]) != 2:
+            raise SystemExit(f"❌ {p['no']}편 화면 제목(card)은 두 줄이어야 합니다")
+    if sorted(seen) != sorted(ns):
+        miss = sorted(set(ns) - set(seen))
+        dup = sorted(n for n in set(seen) if seen.count(n) > 1)
+        raise SystemExit(f"❌ 편 나누기가 컷을 놓쳤습니다 — 빠진 컷 {miss} · "
+                         f"겹친 컷 {dup}")
 
 
 def still_prompt(c):
@@ -329,8 +379,16 @@ def flow_prompt(c):
     return "\n".join(body)
 
 
-def main():
-    story = load_story()
+def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    sid = (argv[0] if argv else "S90").strip().upper()
+    # ⚠️ 모양을 좁게 본다. 엉뚱한 글자가 사건 이름으로 들어오면 저장소의
+    #    엉뚱한 자리를 읽거나 알 수 없는 오류로 죽는다.
+    if not re.fullmatch(r"S\d{1,4}", sid):
+        raise SystemExit(f"❌ 사건 번호가 이상합니다: {sid!r} (S90 처럼 적습니다)")
+    story_p, out_p, meta_p = paths(sid)
+    story = load_story(story_p)
+
     base = json.loads(BASE.read_text(encoding="utf-8"))
     have = {c.get("name") for c in (base.get("characters") or [])}
     missing = [k for k in set(CARD.values()) if k not in have]
@@ -339,43 +397,68 @@ def main():
         return 1
 
     check_say(story)
+    check_parts(story)
+    check_scrub(story)
     cuts = []
-    for c in story.CUTS:
+    for c in story["cuts"]:
+        c = dict(c)
+        c["turns"] = [tuple(t) for t in c["turns"]]
         cuts.append({
             "n": c["n"], "kind": kind_of(c), "sec": c["sec"],
             "narr": is_narr(c),
             "turns": [list(t) for t in c["turns"]],
             "who": c.get("who") or [], "text": text_of(c), "scene": c["scene"],
             # ⭐ 줄마다 **어떻게 읽을지** (2026-08-31). 목소리 만들 때 같이 보낸다
-            "say": [say_of(story, c, i) for i in range(len(c["turns"]))],
+            "say": list(c.get("say") or []),
+            # ⭐ 2026-09-01 — 앞머리 나레이션은 **다른 컷 그림을 그대로 쓴다**.
+            #    화면 묘사(scene)와 나오는 사람(who)이 똑같으므로 지문도 똑같아지고,
+            #    src/short90.py 의 salvage 가 그것을 알아보고 옮겨 쓴다 → 0원.
+            "still_of": c.get("still_of"),
+            # ⭐ 상표를 흐리게 가릴 자리 — **컷에 붙여 둔다**(2026-09-01).
+            #    예전엔 따로 파일(S90.scrub.json)에 컷 번호로 적어 두었는데,
+            #    편을 나누며 번호가 밀리자 엉뚱한 컷을 가리킬 뻔했다.
+            "scrub": c.get("scrub"),
             "still": still_prompt(c),
             "veo": veo_prompt(c),
             "flow": flow_prompt(c),
         })
-    doc = {"sid": "S90", "title": story.TITLE, "hook": story.HOOK,
-           "yt_title": story.YT_TITLE, "cuts": cuts,
+    doc = {"sid": sid, "case_id": story.get("case_id", ""),
+           "title": story["title"], "hook": story.get("hook", ""),
+           "series_label": story.get("series_label") or story["title"],
+           "parts": [dict(x) for x in story["parts"]],
+           "cuts": cuts,
            "characters": base.get("characters") or []}
-    OUT.write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n",
-                   encoding="utf-8")
+    out_p.write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n",
+                     encoding="utf-8")
 
     # ⭐⭐ 2026-08-31 손님: "유튜브 업로드 버튼이 아직도 없어."
     #    만들어 두긴 했는데 **릴리스에 있는 meta.json 이 있어야만** 칸이
-    #    떴다. 아직 그 파일이 없으니 손님 화면에는 계속 안 보였다.
-    #    → 올릴 글을 **대본 옆에 같이 둔다.** 영상을 안 만들어도 늘 있다.
+    #    떴다. → 올릴 글을 **대본 옆에 같이 둔다.** 영상을 안 만들어도 늘 있다.
     #    ⚠️ 셈법은 여전히 src/ytmeta.py 한 곳뿐이다 (여기서 부르기만 한다).
     sys.path.insert(0, str(ROOT / "src"))
     import ytmeta                                            # noqa: E402
-    META.write_text(json.dumps(ytmeta.meta90(doc), ensure_ascii=False,
-                               indent=1) + "\n", encoding="utf-8")
+    meta_p.write_text(json.dumps(ytmeta.meta90(doc), ensure_ascii=False,
+                                 indent=1) + "\n", encoding="utf-8")
+
+    # ⭐ 사건·편 칸을 상태 파일에 만들어 둔다 — 관리자 페이지가 이것만 읽는다.
+    #   (올린 기록은 건드리지 않는다. 지우면 같은 영상을 두 번 올리게 된다)
+    import shortstate                                        # noqa: E402
+    shortstate.from_doc(doc)
 
     narr = sum(1 for c in cuts if c["narr"])
-    print(f"■ {OUT.relative_to(ROOT)} — {len(cuts)}컷 "
-          f"(나레이션 {narr} · 대사 {len(cuts) - narr}) · 최소 "
-          f"{sum(c['sec'] for c in cuts):.0f}초")
-    for c in cuts:
-        who = "·".join(c["who"]) or "—"
-        print(f"  {c['n']:>2} [{c['kind']:<4}] {c['sec']:>4.1f}초 {who:<14} "
-              f"{c['text'][:34]}")
+    print(f"■ {out_p.relative_to(ROOT)} — {len(cuts)}컷 "
+          f"(나레이션 {narr} · 대사 {len(cuts) - narr}) · {len(doc['parts'])}편")
+    for p in doc["parts"]:
+        a, b = p["cuts"]
+        mine = [c for c in cuts if a <= c["n"] <= b]
+        print(f"\n  ── {p['no']}편 · 컷{a}~{b} ({len(mine)}컷) "
+              f"— {p['card'][0]} / {p['card'][1]}")
+        print(f"     제목: {p['yt_title']}")
+        for c in mine:
+            who = "·".join(c["who"]) or "—"
+            tag = " (그림 재사용)" if c.get("still_of") else ""
+            print(f"     {c['n']:>2} [{c['kind']:<4}] {who:<12} "
+                  f"{c['text'][:30]}{tag}")
     return 0
 
 

@@ -39,7 +39,12 @@ import reuse                                                 # noqa: E402
 import still as ST                                           # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-DOC = ROOT / "data" / "series" / "S90.json"
+# ⭐⭐ 2026-09-01 — 사건이 여럿이 되었다. 어느 사건인지는 --sid 로 받는다.
+#    ⚠️ 만드는 자리(build/s90)는 **한 곳으로 둔다.** 사건마다 폴더를 나누면
+#       워크플로·보관함·관리자 페이지 세 곳의 길을 다 고쳐야 하는데, 어차피
+#       한 번에 한 사건만 만든다(concurrency group 이 하나다).
+SID = os.environ.get("VT_SID", "S90").strip().upper() or "S90"
+DOC = ROOT / "data" / "series" / f"{SID}.json"
 OUT = ROOT / "build" / "s90"
 
 W, H = 1080, 1920
@@ -75,6 +80,28 @@ NAME_Y, NAME_SIZE = 1214, 54
 NAME_BAR_W = 7          # 왼쪽 세로 막대 두께
 NAME_BAR_GAP = 20       # 막대와 글자 사이
 NAME_BAR_PAD = 7        # 막대가 글자 위아래로 더 뻗는 정도
+# ⭐⭐⭐ 2026-09-01 손님: "영상 상단에는 1편 제목, 2편 제목이 하나 들어가
+#    줘야 되는 거 아니야?"
+#    맞다. 그리고 자리가 중요하다 —
+#      · 유튜브 **제목**은 *볼지 말지 정하는* 사람이 본다. 거기 "2편" 이 보이면
+#        "1편부터 봐야 하나" 하고 넘긴다 → 제목에는 번호를 안 쓴다.
+#      · **화면 안**은 *이미 보고 있는* 사람만 본다. 번호가 이탈을 안 만들고
+#        오히려 "시리즈구나" 가 된다 → 번호는 여기 넣는다.
+#    ⚠️ 끝까지 띄우지 않는다. 위에 제목 아래에 자막이면 그림이 가운데 좁은
+#       띠만 남아 답답하고, 드라마가 아니라 정보 영상처럼 보인다.
+#       쇼츠에서 첫 화면은 썸네일 노릇을 하므로 **처음 2.5초만** 띄운다.
+#    ⚠️ 맨 위 180px 은 유튜브 앱이 제 것으로 덮을 수 있어 피한다.
+TITLE_SEC = 2.5                  # 떠 있는 시간
+TITLE_Y = 208                    # 작은 줄(시리즈·편)이 시작하는 자리
+TITLE_LABEL = 40                 # 작은 줄 글자 크기
+TITLE_MAX, TITLE_MIN = 84, 52    # 큰 두 줄 글자 크기
+TITLE_GAP = 1.30
+TITLE_BAR_W, TITLE_BAR_GAP, TITLE_BAR_PAD = 9, 26, 12
+# 사라질 때 세 단계로 옅어진다 — 뚝 끊기면 눈에 걸린다
+TITLE_FADE = (1.0, 0.55, 0.22)
+TITLE_SCRIM = 560                # 위에서 여기까지 서서히 어두워진다
+TITLE_SCRIM_MAX = 0.62
+
 SCRIM_TOP = 1080                 # 여기부터 아래로 서서히 어두워진다
 SCRIM_MAX = 0.88                 # 맨 아래 어두움 (0~1)
 MARK_SIZE, MARK_Y = 34, 44
@@ -184,8 +211,8 @@ def is_narr(c):
 
 def load():
     if not DOC.exists():
-        raise Short90Error("data/series/S90.json 이 없다 — "
-                           "python3 tools/build_short90.py 를 먼저 돌린다.")
+        raise Short90Error(f"data/series/{SID}.json 이 없다 — "
+                           f"python3 tools/build_short90.py {SID} 를 먼저 돌린다.")
     return json.loads(DOC.read_text(encoding="utf-8"))
 
 
@@ -244,8 +271,13 @@ def stills(doc):
     d = OUT / "stills"
     d.mkdir(parents=True, exist_ok=True)
     kept = salvage(d)
-    print(f"■ 컷 그림 {len(doc['cuts'])}장 (세로 9:16 · 약 "
-          f"{cost.image_krw(ST.MODEL, ST.SIZE) * len(doc['cuts']):,.0f}원)")
+    # ⚠️ 컷 수로 곱하면 값을 부풀려 적게 된다. 편 앞머리 나레이션처럼
+    #    **다른 컷과 지문이 똑같은 컷**은 다시 안 그리고 옮겨 쓴다(0원).
+    uniq = len({c["still"] for c in doc["cuts"]})
+    free = len(doc["cuts"]) - uniq
+    print(f"■ 컷 그림 {len(doc['cuts'])}장 (세로 9:16 · 새로 그릴 것 {uniq}장 "
+          f"· 약 {cost.image_krw(ST.MODEL, ST.SIZE) * uniq:,.0f}원"
+          + (f" · 같은 그림 {free}장은 0원)" if free else ")"))
     made = 0
     for c in doc["cuts"]:
         out = d / f"c{c['n']:02d}.png"
@@ -269,7 +301,7 @@ def stills(doc):
         if why:
             print(f"    ⚠️ {why} — 다시 만든다")
         ST.gen(c["still"], out, refs=refs, ratio="9:16",
-               seed=ST.seed_of("S90", c["n"]))
+               seed=ST.seed_of(doc.get("sid") or SID, c["n"]))
         # ⚠️ 새로 그렸으면 **가린 표시를 지운다.** 안 지우면 "이미 가렸다" 며
         #    건너뛰는데, 새 그림에서는 상표가 다른 자리에 있을 수 있다.
         out.with_suffix(".scrubbed").unlink(missing_ok=True)
@@ -282,7 +314,7 @@ def stills(doc):
     #    움직여도 자국이 함께 따라간다.
     sys.path.insert(0, str(ROOT / "tools"))
     import scrub_still                                       # noqa: E402
-    scrub_still.scrub(d)
+    scrub_still.scrub(d, doc)
     return 0 if made == len(doc["cuts"]) else 1
 
 
@@ -325,6 +357,18 @@ def voices(doc):
     d.mkdir(parents=True, exist_ok=True)
     need = sum(len(turns_of(c)) for c in doc["cuts"])
     voice_route_ok(tts, need)
+    # ⭐⭐ 2026-09-01 — **그림에만 있던 안전장치를 소리에도 단다.**
+    #    컷을 끼워 넣으면 뒤 번호가 밀린다. 그림은 지문으로 찾아 옮겨 쓰는데
+    #    (salvage) 소리는 그게 없어서, 편을 나누느라 컷 넷을 끼워 넣자
+    #    **멀쩡한 목소리 스무 줄을 다시 만들 뻔했다.** 소리는 그림보다 비싸다.
+    kept = salvage(d, ".wav")
+    kept_len = {}
+    for f in sorted(d.glob("*.wav")):
+        sg = reuse.sig_file(f)
+        ln = lens_of(f)
+        if sg.exists() and ln.exists():
+            kept_len.setdefault(sg.read_text(encoding="utf-8").strip(),
+                                ln.read_bytes())
     print(f"■ 소리 {len(doc['cuts'])}줄")
     made = 0
     for c in doc["cuts"]:
@@ -346,6 +390,17 @@ def voices(doc):
         print(f"  컷{c['n']:>2} [{'·'.join(w for w, _ in turns)}] {c['text'][:30]}")
         if ok:
             print("    (그대로다 — 건너뛴다)")
+            made += 1
+            continue
+        # ⭐ 이름은 어긋났어도 **같은 지문**의 소리가 있으면 그것을 옮겨 쓴다
+        #    (컷을 끼워 넣어 번호가 밀렸을 때 — 값이 안 든다)
+        #    ⚠️ 줄마다 길이를 적어 둔 쪽지(.len.json)도 **같이** 옮긴다.
+        #       안 옮기면 자막을 못 맞춰 그 컷만 다시 만들게 된다.
+        if sig in kept and sig in kept_len:
+            out.write_bytes(kept[sig])
+            lens_of(out).write_bytes(kept_len[sig])
+            reuse.stamp(out, sig)
+            print("    (이름만 밀렸다 — 그대로 옮겨 쓴다 · 0원)")
             made += 1
             continue
         if why:
@@ -496,6 +551,78 @@ def overlay(c, out, turn=None, now=None):
     return out
 
 
+def title_size(parts):
+    """편 제목 글자 크기 — **모든 편이 같은 크기**여야 한 시리즈로 보인다.
+
+    ⚠️ 편마다 따로 재면 짧은 편은 크고 긴 편은 작아져, 이어 봤을 때
+       세 편이 남남처럼 보인다. 제일 긴 줄에 맞춰 하나로 정한다.
+    """
+    d = ImageDraw.Draw(Image.new("RGBA", (8, 8)))
+    max_w = W - (SIDE + TITLE_BAR_W + TITLE_BAR_GAP) - SIDE
+    lines = [str(x) for p in parts for x in (p.get("card") or [])]
+    size = TITLE_MAX
+    while size > TITLE_MIN:
+        f = ImageFont.truetype(str(FONT_SUB), size)
+        if not lines or max(d.textlength(x, font=f) for x in lines) <= max_w:
+            break
+        size -= 2
+    return size
+
+
+def title_card(part, out, alpha=1.0, size=None):
+    """편 제목을 화면 **위쪽**에 그린다 — 쇼츠에서는 이것이 썸네일 노릇을 한다.
+
+    모양은 인물 이름표와 같은 문법이다(왼쪽 금색 세로 막대 + 왼쪽 맞춤).
+    새 디자인을 만들지 않고 이미 쓰는 것을 그대로 써야 세 편이 한 시리즈로
+    보인다.
+
+    part — {"no": 2, "label": "32억 상속 사건", "card": ["윗줄", "아랫줄"]}
+    alpha — 1.0 이면 또렷하게, 낮을수록 옅게 (사라질 때 쓴다)
+    """
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+
+    # 위쪽을 살짝 어둡게 — 밝은 그림 위에서도 흰 글자가 읽힌다
+    scrim = Image.new("RGBA", (W, TITLE_SCRIM), (0, 0, 0, 0))
+    sd = ImageDraw.Draw(scrim)
+    for y in range(TITLE_SCRIM):
+        a = int(255 * TITLE_SCRIM_MAX * max(0.0, 1 - y / TITLE_SCRIM) ** 1.4)
+        sd.line([(0, y), (W, y)], fill=(0, 0, 0, a))
+    img.alpha_composite(scrim, (0, 0))
+
+    d = ImageDraw.Draw(img)
+    tx = SIDE + TITLE_BAR_W + TITLE_BAR_GAP
+    max_w = W - tx - SIDE
+
+    lf = ImageFont.truetype(str(FONT_NAME), TITLE_LABEL)
+    label = f"{part['label']} · {part['no']}"
+    d.text((tx, TITLE_Y), label, font=lf, fill=GOLD_BRIGHT, anchor="la",
+           stroke_width=3, stroke_fill=(0, 0, 0, 200))
+
+    # 큰 두 줄 — 크기는 **시리즈 전체가 같은 값**을 쓴다(title_size).
+    #   안 주면 이 편만 보고 잡는다(혼자 그려 볼 때).
+    lines = [str(x) for x in part["card"]][:2]
+    if size is None:
+        size = title_size([part])
+    bf = ImageFont.truetype(str(FONT_SUB), size)
+
+    y = TITLE_Y + TITLE_LABEL * 1.55
+    top = TITLE_Y
+    for ln in lines:
+        d.text((tx, y), ln, font=bf, fill=WHITE, anchor="la",
+               stroke_width=5, stroke_fill=(0, 0, 0, 215))
+        y += size * TITLE_GAP
+    # 금색 세로 막대는 작은 줄부터 마지막 줄까지 한 번에 세운다
+    d.rectangle([SIDE, top - TITLE_BAR_PAD,
+                 SIDE + TITLE_BAR_W, y - size * (TITLE_GAP - 1) + TITLE_BAR_PAD],
+                fill=GOLD)
+
+    if alpha < 1.0:
+        a = img.split()[3].point(lambda v: int(v * alpha))
+        img.putalpha(a)
+    img.save(out)
+    return out
+
+
 def meta(doc):
     """⭐ 유튜브에 올릴 **제목·설명·해시태그**를 파일로 뽑는다 (0원).
 
@@ -509,11 +636,14 @@ def meta(doc):
     f = OUT / "meta.json"
     f.write_text(json.dumps(m, ensure_ascii=False, indent=1) + "\n",
                  encoding="utf-8")
-    print(f"■ {f}")
-    print(f"\n  제목 ({len(m['title'])}자)\n    {m['title']}")
-    print(f"\n  해시태그 {len(m['tags'])}개\n    "
-          + " ".join("#" + t for t in m["tags"]))
-    print("\n  설명\n" + "\n".join("    " + l for l in m["description"].split("\n")))
+    print(f"■ {f} — {len(m['parts'])}편")
+    for x in m["parts"]:
+        print(f"\n  ── {x['part']}편 ──")
+        print(f"  제목 ({len(x['title'])}자)\n    {x['title']}")
+        print(f"  화면 위\n    {x['card'][0]} / {x['card'][1]}")
+        print("  해시태그\n    " + " ".join("#" + t for t in x["tags"]))
+        print("  설명\n" + "\n".join("    " + l
+                                    for l in x["description"].split("\n")))
     return 0
 
 
@@ -626,7 +756,7 @@ def cut_sec(c, voice, clip):
     return max(MIN_CUT, dur_of(voice) / SPEED + PAD), False
 
 
-def karaoke(c, sec, voice, d, n):
+def karaoke(c, sec, voice, d, n, title=None):
     """카라오케 자막 장들 — [(그림, 언제부터, 언제까지), …].
 
     ⭐⭐ 2026-08-31 손님: "카라오케 자막으로 변경하자."
@@ -647,6 +777,18 @@ def karaoke(c, sec, voice, d, n):
     turns = turns_of(c)
     wins = sub_windows(c, sec, voice)
     out = []
+    # ⭐ 편의 **첫 컷**이면 화면 위에 편 제목을 얹는다 (2026-09-01).
+    #    세 단계로 옅어지며 사라진다 — 뚝 끊기면 눈에 걸린다.
+    if title:
+        span = min(TITLE_SEC, max(0.6, sec))
+        edges = [span * x for x in (0.0, 0.80, 0.90, 1.0)]
+        for k, al in enumerate(TITLE_FADE):
+            a, b = edges[k], edges[k + 1]
+            if b - a < 0.02:
+                continue
+            png = d / f"c{n:02d}_title{k}.png"
+            title_card(title, png, alpha=al, size=title.get("size"))
+            out.append((png, a, b))
     for i, ((who, text), (a, b)) in enumerate(zip(turns, wins)):
         parts = chunks_of(text)
         if not parts:
@@ -793,16 +935,50 @@ def music(src, out):
     return out
 
 
-def build(doc):
-    stills_d, voice_d = OUT / "stills", OUT / "voice"
-    clips_d = OUT / "clips"
-    parts_d = OUT / "parts"
-    parts_d.mkdir(parents=True, exist_ok=True)
-    (OUT / "ov").mkdir(parents=True, exist_ok=True)
+def parts_of(doc):
+    """편 목록. 편 수는 **대본이 정한다** — 2편이든 4편이든 여기는 안 고친다.
 
-    total, parts = 0.0, []
-    print(f"■ 「{doc['title']}」 {len(doc['cuts'])}컷 조립")
-    for c in doc["cuts"]:
+    ⚠️ 편 나누기가 없는 옛 대본도 돌아가야 한다 → 통째로 한 편으로 본다.
+    """
+    ps = [dict(x) for x in (doc.get("parts") or [])]
+    if ps:
+        return ps
+    ns = [c["n"] for c in doc["cuts"]]
+    return [{"no": 1, "cuts": [min(ns), max(ns)],
+             "yt_title": doc.get("yt_title") or doc.get("title") or "",
+             "card": [doc.get("title") or "", doc.get("hook") or ""]}]
+
+
+def part_cuts(doc, part):
+    a, b = part["cuts"]
+    return [c for c in doc["cuts"] if a <= c["n"] <= b]
+
+
+def part_file(doc, no):
+    """그 편의 완성 영상 자리. 이름에 편 번호가 들어가야 따로 올릴 수 있다."""
+    return OUT / f"{doc.get('sid', 'S90')}_part{int(no)}.mp4"
+
+
+# ⚠️⚠️⚠️ 이 채널이 실제로 겪은 일이다 (2026-09-01) —
+#    60초 이하로 만든 쇼츠 여섯 편은 **전부** 1,209~1,554회가 나왔는데,
+#    127초짜리 한 편은 5시간 반 동안 **조회수 0** 이었다. 쇼츠 피드가 아예
+#    안 태운 것이다. 규정상 3분까지 쇼츠지만, 이 채널에서 검증된 것은
+#    60초 이하뿐이다. 그래서 넘으면 **크게** 알린다.
+PART_MAX_SEC = 59.5
+
+
+def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
+    """한 편을 조립한다 → build/s90/<SID>_part<N>.mp4"""
+    cuts = part_cuts(doc, part)
+    label = doc.get("series_label") or doc.get("title") or ""
+    # ⚠️ 크기는 **편 하나가 아니라 전체**를 보고 정한다 — 그래야 세 편이 같다.
+    #    only 로 한 편만 다시 만들어도 나머지 편과 크기가 어긋나지 않는다.
+    head = {"no": part["no"], "label": label, "card": part["card"],
+            "size": title_size(parts_of(doc))}
+    print(f"\n■ {part['no']}편 — {part['card'][0]} / {part['card'][1]} "
+          f"({len(cuts)}컷)")
+    total, made = 0.0, []
+    for i, c in enumerate(cuts):
         n = c["n"]
         still = stills_d / f"c{n:02d}.png"
         voice = voice_d / f"c{n:02d}.wav"
@@ -814,45 +990,87 @@ def build(doc):
         # ⭐ 카라오케 — 낱말마다 자막 장 한 장. 컷 길이를 먼저 알아야 하므로
         #    길이 셈(cut_sec)을 여기서 한 번 하고, cut_video 도 같은 값을 쓴다.
         sec0, uca = cut_sec(c, voice, clip if clip.exists() else None)
-        ovs = karaoke(c, sec0, None if uca else voice, OUT / "ov", n)
+        ovs = karaoke(c, sec0, None if uca else voice, OUT / "ov", n,
+                      title=head if i == 0 else None)
         out = parts_d / f"c{n:02d}.mp4"
         sec = cut_video(c, still, voice, clip if clip.exists() else None, ovs, out)
         total += sec
-        parts.append(out)
+        made.append(out)
         if not clip.exists():
             mark = "그림"
         elif is_narr(c):
             mark = "영상 + 우리 나레이션"
         else:
             mark = "영상 (그 안에서 말한다)" if has_audio(clip) else "영상 + 우리 목소리"
-        print(f"  컷{n:>2} [{c['kind']:<4}] {sec:>5.2f}초 ({mark})")
+        print(f"  컷{n:>2} [{c['kind']:<4}] {sec:>5.2f}초 ({mark})"
+              + ("  ← 편 제목" if i == 0 else ""))
 
     # ⚠️ concat 목록 안의 경로는 **목록 파일이 있는 자리 기준**이다. 파일 이름만
     #    적으면 옆 폴더에 있는 컷을 못 찾는다 (시험이 바로 잡아 줬다).
-    lst = OUT / "parts.txt"
-    lst.write_text("".join(f"file '{p.relative_to(OUT)}'\n" for p in parts),
+    lst = OUT / f"parts{part['no']}.txt"
+    lst.write_text("".join(f"file '{x.relative_to(OUT)}'\n" for x in made),
                    encoding="utf-8")
-    joined = OUT / "S90_joined.mp4"
+    joined = OUT / f"joined{part['no']}.mp4"
     run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0",
          "-i", str(lst), "-c", "copy", str(joined)])
-    final = OUT / "S90_short.mp4"
+    final = part_file(doc, part["no"])
     music(joined, final)
     joined.unlink(missing_ok=True)       # 음악 얹기 전 판은 남길 까닭이 없다
     got = dur_of(final)
-    try:
-        name = final.relative_to(ROOT)
-    except ValueError:                     # 시험처럼 저장소 밖에 만들 때
-        name = final
-    print(f"\n■ {name} — {got:.1f}초 ({final.stat().st_size / 1e6:.1f}MB)")
-    if got < 60 or got > 130:
-        print(f"  ⚠️ 90초 편인데 {got:.0f}초다 — 대본 길이를 손봐야 한다")
+    # ⭐ 만든 사실을 상태 파일에 적는다 — 관리자 페이지가 여기서 길이를 읽는다
+    import shortstate                                        # noqa: E402
+    shortstate.mark_made(doc.get("sid") or "S90", part["no"], got)
+    print(f"  ▶ {final.name} — {got:.1f}초 "
+          f"({final.stat().st_size / 1e6:.1f}MB)")
+    if got > PART_MAX_SEC:
+        print(f"  ⚠️⚠️ {got:.0f}초 — **60초를 넘었다.** 이 채널은 60초 이하만"
+              f" 조회수가 나왔다(127초 편은 0회였다). 컷을 옮겨 나누십시오.")
+    elif got < 15:
+        print(f"  ⚠️ {got:.0f}초 — 너무 짧다. 컷이 빠지지 않았는지 보십시오.")
+    return got
+
+
+def build(doc, only=None):
+    """편마다 하나씩 만든다. only 를 주면 그 편만 (나머지는 손대지 않는다)."""
+    stills_d, voice_d = OUT / "stills", OUT / "voice"
+    clips_d = OUT / "clips"
+    parts_d = OUT / "parts"
+    parts_d.mkdir(parents=True, exist_ok=True)
+    (OUT / "ov").mkdir(parents=True, exist_ok=True)
+
+    ps = parts_of(doc)
+    if only:
+        want = {int(x) for x in only}
+        bad = want - {int(x["no"]) for x in ps}
+        if bad:
+            raise Short90Error(f"그런 편이 없다: {sorted(bad)}")
+        ps = [x for x in ps if int(x["no"]) in want]
+    print(f"■ 「{doc['title']}」 {len(doc['cuts'])}컷 · "
+          f"{len(ps)}편 조립" + (" (고른 편만)" if only else ""))
+    secs = [build_part(doc, x, stills_d, voice_d, clips_d, parts_d) for x in ps]
+    print("\n■ 다 됐다 — " + " · ".join(
+        f"{x['no']}편 {t:.0f}초" for x, t in zip(ps, secs)))
     return 0
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("what", choices=["stills", "voice", "build", "all", "meta"])
+    # ⭐ 2026-09-01 — 편마다 따로 만들 수 있어야 한다. 안 주면 전부 만든다.
+    #    (그림·목소리는 편이 함께 쓰므로 늘 통째로 본다 — 나눠도 값이 같다)
+    ap.add_argument("--part", default="",
+                    help="만들 편 (예: 2 또는 1,3). 비우면 전부")
+    # ⚠️ 사건은 프로그램이 뜰 때 정해진다(DOC 를 그때 잡기 때문이다).
+    #    그래서 여기서는 **받은 값이 다르면 알려만** 주고, 진짜 지정은
+    #    VT_SID 환경값으로 한다 — 워크플로가 그렇게 넘긴다.
+    ap.add_argument("--sid", default="",
+                    help="어느 사건인가 (환경값 VT_SID 와 같아야 한다)")
     a = ap.parse_args()
+    if a.sid and a.sid.strip().upper() != SID:
+        print(f"❌ 사건이 어긋난다 — 받은 것 {a.sid.upper()} · 지금 쓰는 것 {SID}\n"
+              f"   VT_SID={a.sid.upper()} 로 넘겨 주십시오")
+        return 2
+    only = [int(x) for x in a.part.replace(" ", "").split(",") if x] or None
     try:
         doc = load()
         # ⭐ meta 는 돈이 안 나간다 — 만들기와 따로 부를 수 있어야 한다
@@ -866,7 +1084,7 @@ def main():
             if voices(doc):
                 return 1
         if a.what in ("build", "all"):
-            if build(doc):
+            if build(doc, only=only):
                 return 1
             # 영상이 나왔으면 올릴 글도 같이 만들어 둔다 (0원)
             meta(doc)

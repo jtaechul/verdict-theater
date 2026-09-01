@@ -18,6 +18,20 @@ ROOT = Path(__file__).resolve().parent.parent
 NEED = ("title", "description", "tags")
 
 
+def sane(m):
+    """올릴 글이 성한가 — 낱개 한 편이든, 편 여럿을 담은 것이든.
+
+    ⭐ 2026-09-01 — 한 사건이 여러 편이 되면서 모양이 {sid, parts:[…]} 로
+       바뀌었다. 옛 낱개 모양도 계속 받아 준다(예전에 보관해 둔 것들).
+    """
+    if not isinstance(m, dict):
+        return False
+    if m.get("parts"):
+        return all(isinstance(x, dict) and all(x.get(k) for k in NEED)
+                   for x in m["parts"])
+    return all(m.get(k) for k in NEED)
+
+
 def _open(url):
     # 보관함은 암호를 받는다 (tools/fetch_cards.py 와 같은 길)
     req = urllib.request.Request(url, headers={
@@ -33,9 +47,11 @@ def show(out):
         m = json.loads(Path(out).read_text(encoding="utf-8"))
     except Exception:                                        # noqa: BLE001
         return
-    print(f"\n  제목     {m.get('title', '')}")
-    print("  해시태그 " + " ".join("#" + t for t in (m.get("tags") or [])))
-    print(f"  설명     {len(m.get('description') or '')}자")
+    for x in (m.get("parts") or [m]):
+        head = f"{x['part']}편 " if x.get("part") else ""
+        print(f"\n  {head}제목     {x.get('title', '')}")
+        print("  해시태그 " + " ".join("#" + t for t in (x.get("tags") or [])))
+        print(f"  설명     {len(x.get('description') or '')}자")
 
 
 def main():
@@ -55,9 +71,8 @@ def main():
             print(f"  ⚠️ 고치신 글을 못 읽었다 ({str(e)[:80]}) — 대본에서 만든다")
             got = None
 
-    if isinstance(got, dict) and all(got.get(k) for k in NEED):
+    if sane(got):
         got.setdefault("sid", "S90")
-        got.setdefault("ep", 0)
         out.write_text(json.dumps(got, ensure_ascii=False, indent=1) + "\n",
                        encoding="utf-8")
         print("■ 관리자 페이지에서 고치신 글을 그대로 씁니다")
@@ -70,9 +85,10 @@ def main():
     #    이제 올릴 글은 대본을 지을 때 **미리 지어 저장소에 들어 있다.**
     #    그 파일을 그대로 쓴다 — 아무것도 안 깔아도 되고, 화면에 보이는
     #    글과 똑같은 글이 올라간다.
-    made = ROOT / "data" / "series" / "S90.meta.json"
+    sid = (os.environ.get("VT_SID") or "S90").strip().upper()
+    made = ROOT / "data" / "series" / f"{sid}.meta.json"
     if not made.exists():
-        print("❌ 올릴 글이 없습니다 (data/series/S90.meta.json)\n"
+        print(f"❌ 올릴 글이 없습니다 ({made.relative_to(ROOT)})\n"
               "   python3 tools/build_short90.py 로 대본을 다시 지으면 생깁니다")
         return 1
     print("■ 고치신 글이 없어 대본과 함께 지어 둔 글을 씁니다 (0원)")

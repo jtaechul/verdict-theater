@@ -9,6 +9,10 @@
 #   쓰기: bash tools/checkall.sh
 set -uo pipefail
 cd "$(dirname "$0")/.."
+# ⚠️ 2026-09-01 — 임시 파일 이름이 /tmp/_chk.txt 로 **고정**이었다. 두 번을
+#    겹쳐 돌리면 서로 덮어써서 남의 실패 글이 내 결과로 보인다. 실행마다 따로.
+LOG=$(mktemp -t vtchk.XXXXXX)
+trap 'rm -f "$LOG"' EXIT
 LIST=$(python3 - <<'PY'
 import re, yaml
 w = yaml.safe_load(open(".github/workflows/selfcheck.yml", encoding="utf-8"))
@@ -29,11 +33,16 @@ while IFS= read -r c <&3; do
     *tts_live_check*|*voice_route*)
       echo "⏭  $c  (열쇠가 있어야 한다 — 깃허브에서 돈다)"; continue;;
   esac
-  if timeout 500 $c >/tmp/_chk.txt 2>&1 </dev/null; then
+  # ⚠️⚠️ 2026-09-01 — 예전에는 `timeout 500 $c` 였다. 그러면 줄 안의
+  #    `>/dev/null` 이 **셸 기호가 아니라 글자**로 넘어가, 검사 프로그램이
+  #    그것을 인자로 받는다. build_short90.py 가 사건 번호를 인자로 받게
+  #    되면서 ">/DEV/NULL" 을 사건 이름으로 읽고 죽었다.
+  #    워크플로는 이 줄을 **셸로** 돌린다 — 여기도 똑같이 셸로 돌린다.
+  if timeout 500 bash -c "$c" >"$LOG" 2>&1 </dev/null; then
     echo "✅ $c"
   else
     bad=1; FAILED="$FAILED $c"; echo "❌ $c"
-    tail -6 /tmp/_chk.txt | sed 's/^/      /'
+    tail -6 "$LOG" | sed 's/^/      /'
   fi
 done 3<<< "$LIST"
 echo "────────────────────────────────────────────────────"
