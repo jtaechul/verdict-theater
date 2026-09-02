@@ -346,9 +346,19 @@ def main():
     ovs0 = S9.karaoke(c0, 4.0, gw, tmp2 / "ov", 1)
     mp4 = tmp2 / "m.mp4"
     S9.cut_video(c0, gp, gw, None, ovs0, mp4)
-    for k, t in ((0, 0.1), (1, 3.8)):
-        subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss", str(t), "-i", str(mp4),
-                        "-frames:v", "1", str(tmp2 / f"f{k}.png")], check=True)
+    # ⚠️⚠️ 2026-09-02 — 끝 프레임을 **3.8초로 박아** 두었다가 깨졌다.
+    #    말 빠르기(SPEED)를 1.08 → 1.20 으로 올리자 이 컷이 4.10초에서
+    #    3.73초로 줄어, 3.8초 자리에는 프레임이 아예 없다.
+    #    이 저장소에 이미 적힌 교훈이다 — **셈을 시험에 베껴 적지 않는다.**
+    #    진짜 길이를 재서 그 끝자락을 찍는다.
+    vlen = S9.dur_of(mp4)
+    for k, t in ((0, 0.1), (1, max(0.2, vlen - 0.15))):
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss", f"{t:.3f}",
+                        "-i", str(mp4), "-frames:v", "1",
+                        str(tmp2 / f"f{k}.png")], check=True)
+        if not (tmp2 / f"f{k}.png").exists():
+            raise SystemExit(f"❌ {t:.2f}초에서 프레임을 못 뽑았다 "
+                             f"(영상 {vlen:.2f}초) — 뽑는 자리가 영상 밖이다")
     a, b = (_I.open(tmp2 / f"f{k}.png").convert("L") for k in (0, 1))
     pa, pb = a.load(), b.load()
     gap = sum(abs(pa[x, y] - pb[x, y])
