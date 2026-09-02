@@ -102,6 +102,24 @@ TITLE_FADE = (1.0, 0.55, 0.22)
 TITLE_SCRIM = 560                # 위에서 여기까지 서서히 어두워진다
 TITLE_SCRIM_MAX = 0.62
 
+# ⭐⭐ 2026-09-02 손님: "좌측 상단에 아주 작게(판결극장과 같은 글씨 크기로)
+#    드라마 제목과 몇화인지 들어가는게 좋을 것 같아."
+#    큰 제목 카드는 첫 2.5초만 뜨고 사라진다. 중간에 들어온 사람은 이것이
+#    무슨 이야기의 몇 번째인지 알 길이 없다. → 오른쪽 위 채널 이름과
+#    **같은 크기로 왼쪽 위에 늘 띄운다.** 조용히 있고 그림을 안 가린다.
+#    ⚠️ 큰 제목 카드의 작은 금색 줄은 뺀다 — 같은 말이 두 번 보이면 지저분하다.
+SERIES_ALPHA = 190               # 채널 이름(168)보다 아주 조금 또렷하게
+
+# ⭐⭐ 2026-09-02 손님: "끝날 때 다음화에 계속이 들어가야 하는거 아니야?"
+#    맞다. 앞서 "영상 끝에 다음 편 안내를 넣겠다" 고 해 놓고 빠뜨렸다.
+#    ⚠️ 끝까지 본 사람에게만 보인다 — 그래서 여기가 다음 편으로 잇는 자리다.
+TAIL_SEC = 1.7                   # 끝 알림이 떠 있는 시간
+TAIL_Y = 900                     # 자막(1300~)과 이름표(1214)를 안 건드리는 자리
+TAIL_SIZE = 78
+TAIL_FADE = (0.30, 0.70, 1.0)    # 나타날 때 세 단계 (뚝 튀어나오면 눈에 걸린다)
+TAIL_NEXT = "다음 편에 계속"
+TAIL_LAST = "완결"
+
 SCRIM_TOP = 1080                 # 여기부터 아래로 서서히 어두워진다
 SCRIM_MAX = 0.88                 # 맨 아래 어두움 (0~1)
 MARK_SIZE, MARK_Y = 34, 44
@@ -486,10 +504,12 @@ def fit(d, text, size_max, max_w, max_h, one_line=False):
     return f, wrap(d, text, f, max_w)[:SUB_LINES], SUB_MIN
 
 
-def overlay(c, out, turn=None, now=None):
+def overlay(c, out, turn=None, now=None, mark=""):
     """컷 하나(또는 그 안의 한 차례)의 자막·이름표를 투명 그림으로 그린다.
 
-    now — 지금 말하고 있는 **낱말 번호** (0부터). None 이면 전부 흰색.
+    now  — 지금 말하고 있는 **낱말 번호** (0부터). None 이면 전부 흰색.
+    mark — 왼쪽 위에 늘 띄울 작은 글 ("32억 상속 사건 · 1편"). 큰 제목 카드는
+           첫 2.5초만 뜨므로, 중간에 들어온 사람을 위해 이것을 계속 둔다.
     """
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
 
@@ -511,6 +531,12 @@ def overlay(c, out, turn=None, now=None):
     mf = ImageFont.truetype(str(FONT_NAME), MARK_SIZE)
     d.text((W - SIDE, MARK_Y), CHANNEL, font=mf, fill=(255, 255, 255, 168),
            anchor="ra")
+    # ⭐ 드라마 이름과 몇 편인지 (왼쪽 위, 채널 이름과 같은 크기로 늘)
+    #   ⚠️ 밝은 그림 위에서도 읽히게 얇은 검은 테두리를 준다.
+    if mark:
+        d.text((SIDE, MARK_Y), str(mark), font=mf,
+               fill=GOLD_BRIGHT[:3] + (SERIES_ALPHA,), anchor="la",
+               stroke_width=3, stroke_fill=(0, 0, 0, 170))
 
     who, text = turn if turn else ("나레이션" if is_narr(c) else c["kind"], c["text"])
 
@@ -551,6 +577,36 @@ def overlay(c, out, turn=None, now=None):
             x += d.textlength(w, font=f) + space
             k += 1
         y += step
+    img.save(out)
+    return out
+
+
+def end_card(text, out, alpha=1.0):
+    """영상 끝에 뜨는 알림 — "다음 편에 계속" / "완결".
+
+    ⭐⭐ 2026-09-02 손님: "끝날 때 다음화에 계속이 들어가야 하는거 아니야?"
+       맞다. 끝까지 본 사람에게만 보이므로, 다음 편으로 잇기에 가장 좋은 자리다.
+    ⚠️ 자막(1300~)과 이름표(1214)를 안 건드리는 높이에 둔다. 가운데 정렬.
+    """
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    f = ImageFont.truetype(str(FONT_NAME), TAIL_SIZE)
+    x1, y1, x2, y2 = d.textbbox((W / 2, TAIL_Y), str(text), font=f, anchor="ma")
+    pad_x, pad_y = 46, 26
+    # 글자 뒤에 어두운 판을 깔아 밝은 그림 위에서도 읽히게 한다
+    plate = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ImageDraw.Draw(plate).rounded_rectangle(
+        [x1 - pad_x, y1 - pad_y, x2 + pad_x, y2 + pad_y],
+        radius=18, fill=(0, 0, 0, 168))
+    img.alpha_composite(plate)
+    d = ImageDraw.Draw(img)
+    # 금색 가는 줄 — 위아래로 짧게 (시리즈라는 느낌을 준다)
+    d.line([(x1 - pad_x + 18, y1 - pad_y + 2), (x2 + pad_x - 18, y1 - pad_y + 2)],
+           fill=GOLD, width=3)
+    d.text((W / 2, TAIL_Y), str(text), font=f, fill=GOLD_BRIGHT, anchor="ma",
+           stroke_width=4, stroke_fill=(0, 0, 0, 210))
+    if alpha < 1.0:
+        img.putalpha(img.split()[3].point(lambda v: int(v * alpha)))
     img.save(out)
     return out
 
@@ -597,11 +653,8 @@ def title_card(part, out, alpha=1.0, size=None):
     tx = SIDE + TITLE_BAR_W + TITLE_BAR_GAP
     max_w = W - tx - SIDE
 
-    lf = ImageFont.truetype(str(FONT_NAME), TITLE_LABEL)
-    label = f"{part['label']} · {part['no']}"
-    d.text((tx, TITLE_Y), label, font=lf, fill=GOLD_BRIGHT, anchor="la",
-           stroke_width=3, stroke_fill=(0, 0, 0, 200))
-
+    # ⚠️ 2026-09-02 — 여기 있던 작은 금색 줄("32억 상속 사건 · 1")을 뺐다.
+    #    같은 말이 **왼쪽 위에 늘** 떠 있게 되어(overlay 의 mark) 두 번 보였다.
     # 큰 두 줄 — 크기는 **시리즈 전체가 같은 값**을 쓴다(title_size).
     #   안 주면 이 편만 보고 잡는다(혼자 그려 볼 때).
     lines = [str(x) for x in part["card"]][:2]
@@ -609,7 +662,7 @@ def title_card(part, out, alpha=1.0, size=None):
         size = title_size([part])
     bf = ImageFont.truetype(str(FONT_SUB), size)
 
-    y = TITLE_Y + TITLE_LABEL * 1.55
+    y = TITLE_Y
     top = TITLE_Y
     for ln in lines:
         d.text((tx, y), ln, font=bf, fill=WHITE, anchor="la",
@@ -760,7 +813,7 @@ def cut_sec(c, voice, clip):
     return max(MIN_CUT, dur_of(voice) / SPEED + PAD), False
 
 
-def karaoke(c, sec, voice, d, n, title=None):
+def karaoke(c, sec, voice, d, n, title=None, mark='', tail=''):
     """카라오케 자막 장들 — [(그림, 언제부터, 언제까지), …].
 
     ⭐⭐ 2026-08-31 손님: "카라오케 자막으로 변경하자."
@@ -793,6 +846,19 @@ def karaoke(c, sec, voice, d, n, title=None):
             png = d / f"c{n:02d}_title{k}.png"
             title_card(title, png, alpha=al, size=title.get("size"))
             out.append((png, a, b))
+    # ⭐ 편의 **마지막 컷**이면 끝에 "다음 편에 계속" / "완결" 을 띄운다
+    if tail:
+        span = min(TAIL_SEC, max(0.5, sec * 0.5))
+        t0 = max(0.0, sec - span)
+        step = span * 0.18
+        for k, al in enumerate(TAIL_FADE):
+            a = t0 + step * k
+            b = (t0 + step * (k + 1)) if k < len(TAIL_FADE) - 1 else sec
+            if b - a < 0.02:
+                continue
+            png = d / f"c{n:02d}_tail{k}.png"
+            end_card(tail, png, alpha=al)
+            out.append((png, a, b))
     for i, ((who, text), (a, b)) in enumerate(zip(turns, wins)):
         parts = chunks_of(text)
         if not parts:
@@ -803,7 +869,7 @@ def karaoke(c, sec, voice, d, n, title=None):
         for k, w in enumerate(parts):
             t1 = b if k == len(parts) - 1 else t0 + span * syl(w) / tot
             png = d / f"c{n:02d}_{i}_{k:02d}.png"
-            overlay(c, png, (who, text), now=k)
+            overlay(c, png, (who, text), now=k, mark=mark)
             out.append((png, t0, t1))
             t0 = t1
     return out
@@ -979,6 +1045,12 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
     #    only 로 한 편만 다시 만들어도 나머지 편과 크기가 어긋나지 않는다.
     head = {"no": part["no"], "label": label, "card": part["card"],
             "size": title_size(parts_of(doc))}
+    # ⭐ 왼쪽 위에 늘 뜨는 작은 표시 — 중간에 들어온 사람도 무슨 이야기의
+    #    몇 번째인지 안다 (큰 제목 카드는 첫 2.5초만 뜨고 사라진다)
+    mark = f"{label} · {part['no']}편"
+    # ⭐ 마지막 편이면 "완결", 아니면 "다음 편에 계속"
+    nos = [int(x["no"]) for x in parts_of(doc)]
+    tail = TAIL_LAST if int(part["no"]) == max(nos) else TAIL_NEXT
     print(f"\n■ {part['no']}편 — {part['card'][0]} / {part['card'][1]} "
           f"({len(cuts)}컷)")
     total, made = 0.0, []
@@ -995,19 +1067,21 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
         #    길이 셈(cut_sec)을 여기서 한 번 하고, cut_video 도 같은 값을 쓴다.
         sec0, uca = cut_sec(c, voice, clip if clip.exists() else None)
         ovs = karaoke(c, sec0, None if uca else voice, OUT / "ov", n,
-                      title=head if i == 0 else None)
+                      title=head if i == 0 else None, mark=mark,
+                      tail=tail if i == len(cuts) - 1 else "")
         out = parts_d / f"c{n:02d}.mp4"
         sec = cut_video(c, still, voice, clip if clip.exists() else None, ovs, out)
         total += sec
         made.append(out)
         if not clip.exists():
-            mark = "그림"
+            how = "그림"
         elif is_narr(c):
-            mark = "영상 + 우리 나레이션"
+            how = "영상 + 우리 나레이션"
         else:
-            mark = "영상 (그 안에서 말한다)" if has_audio(clip) else "영상 + 우리 목소리"
-        print(f"  컷{n:>2} [{c['kind']:<4}] {sec:>5.2f}초 ({mark})"
-              + ("  ← 편 제목" if i == 0 else ""))
+            how = "영상 (그 안에서 말한다)" if has_audio(clip) else "영상 + 우리 목소리"
+        print(f"  컷{n:>2} [{c['kind']:<4}] {sec:>5.2f}초 ({how})"
+              + ("  ← 편 제목" if i == 0 else "")
+              + (f"  ← {tail}" if i == len(cuts) - 1 else ""))
 
     # ⚠️ concat 목록 안의 경로는 **목록 파일이 있는 자리 기준**이다. 파일 이름만
     #    적으면 옆 폴더에 있는 컷을 못 찾는다 (시험이 바로 잡아 줬다).

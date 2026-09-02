@@ -238,10 +238,12 @@ def main():
         ck(f"{no}편이 너무 짧지 않다 ({got:.0f}초)", got >= 20, f"{got:.0f}초")
     ov = list((tmp / "ov").glob("*.png"))
     n_ch = sum(len(S9.chunks_of(t)) for c in cuts for _, t in c["turns"])
-    # ⭐ 편마다 첫 컷에 **제목 카드**가 세 장 더 붙는다 (옅어지며 사라진다)
+    # ⭐ 편마다 첫 컷에 **제목 카드**, 마지막 컷에 **끝 알림**이 더 붙는다
     n_title = len(parts) * len(S9.TITLE_FADE)
-    ck(f"자막 장을 토막 수 + 제목 장만큼 만들었다 ({n_ch}+{n_title}장)",
-       len(ov) == n_ch + n_title, f"{len(ov)}장")
+    n_tail = len(parts) * len(S9.TAIL_FADE)
+    ck(f"자막 장을 토막 수 + 제목 + 끝 알림만큼 만들었다 "
+       f"({n_ch}+{n_title}+{n_tail}장)",
+       len(ov) == n_ch + n_title + n_tail, f"{len(ov)}장")
 
     print("\n④-2 편마다 화면 위 제목이 붙는가")
     for p in parts:
@@ -254,6 +256,30 @@ def main():
     stray = [f.name for f in (tmp / "ov").glob("*_title*.png")
              if int(f.name[1:3]) not in firsts]
     ck("편 첫 컷이 아닌 곳에는 제목이 안 붙는다", not stray, f"{stray[:4]}")
+
+    print("\n④-3 끝에 '다음 편에 계속' 이 붙는가")
+    lasts = {S9.part_cuts(doc, p)[0 - 1]["n"]: int(p["no"]) for p in parts}
+    last_no = max(int(p["no"]) for p in parts)
+    for n, no in sorted(lasts.items()):
+        got = sorted((tmp / "ov").glob(f"c{n:02d}_tail*.png"))
+        ck(f"{no}편 마지막 컷(컷{n})에 끝 알림이 있다 ({len(got)}장)",
+           len(got) == len(S9.TAIL_FADE), f"{len(got)}장")
+    stray2 = [f.name for f in (tmp / "ov").glob("*_tail*.png")
+              if int(f.name[1:3]) not in lasts]
+    ck("편 마지막 컷이 아닌 곳에는 안 붙는다", not stray2, f"{stray2[:4]}")
+    # ⚠️ 마지막 편에 "다음 편에 계속" 이 붙으면 있지도 않은 편을 기다리게 된다
+    from PIL import Image as _I3
+    import hashlib as _h
+    def _sig(png):
+        return _h.sha1(_I3.open(png).convert("RGBA").tobytes()).hexdigest()
+    ends = {no: _sig(sorted((tmp / "ov").glob(f"c{n:02d}_tail*.png"))[-1])
+            for n, no in lasts.items() if list((tmp / "ov").glob(f"c{n:02d}_tail*.png"))}
+    if len(ends) >= 2:
+        others = [v for k, v in ends.items() if k != last_no]
+        ck("마지막 편만 다른 글이 뜬다 (완결)",
+           ends.get(last_no) not in others,
+           "마지막 편에도 '다음 편에 계속' 이 붙었다 — 없는 편을 기다리게 된다")
+        ck("마지막이 아닌 편들은 같은 글이다", len(set(others)) == 1)
 
     print("\n⑤ 컷마다 자막이 끊기지 않는가 (진짜 소리 길이로)")
     holes = []
