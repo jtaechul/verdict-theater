@@ -219,6 +219,19 @@ jobs:
             meta.json part1.mp4 part2.mp4 part3.mp4 part4.mp4 part5.mp4 \
             part6.mp4 part7.mp4 part8.mp4 part9.mp4 || true
 
+          # ⭐⭐⭐ 2026-09-02 — **올렸다는 것과 남아 있다는 것은 다르다.**
+          #    위 사고 때 워크플로는 초록불이었다 — 올리는 것도 지우는 것도
+          #    각각은 성공했으니까. 그런데 손님 화면에서는 재생이 안 됐다.
+          #    마지막에 한 번 더 물어보고, 없으면 여기서 빨간불을 낸다.
+          echo "■ 보관함에 진짜로 들어갔는지 확인"
+          WANT=""
+          for F in build/s90/*_part*.mp4; do
+            [ -f "$F" ] || continue
+            K=$(basename "$F" | sed 's/.*_part\([0-9]*\)\.mp4/\1/')
+            WANT="$WANT part$K.mp4"
+          done
+          python3 tools/release_verify.py "short90-${VT_SID:-S90}" $WANT
+
       - name: 만든 사실 적어 두기
         if: always()
         continue-on-error: true
