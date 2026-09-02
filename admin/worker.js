@@ -1185,14 +1185,32 @@ function openYt(id) {
   if (id) open('https://youtu.be/' + id, '_blank');
 }
 
-function workPlay(no) {
+// ⚠️⚠️ 2026-09-02 — 영상이 보관함에 **없을 때** 화면이 조용했다. 재생기에
+//    주소만 꽂아 두니 빈 검은 상자만 뜨고 까닭을 아무도 몰랐다. 게다가 상태는
+//    "만들어짐" 이라고 적혀 있어서 더 헷갈렸다(만들기는 됐고 보관에서 지워졌다).
+//    → 틀기 전에 **있는지 먼저 묻고**, 없으면 왜 없는지 글로 적는다.
+async function workPlay(no) {
   const box = document.getElementById('w-play-' + no);
   if (!box) return;
   if (box.innerHTML) { box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="uphint" style="margin-top:10px">영상 찾는 중…</div>';
+  const q = '/api/short?s90=1&sid=' + encodeURIComponent(WORK) + '&part=' + no;
+  let j = {};
+  try { j = await (await fetch(q + '&t=' + Date.now(),
+                               { cache: 'no-store' })).json(); }
+  catch (e) { j = {}; }
+  if (!j.ready) {
+    box.innerHTML = '<div class="uphint" style="margin-top:10px;color:#e0a33c">'
+      + '<b>보관함에 ' + no + '편 영상이 없습니다.</b><br>'
+      + '만들기는 됐지만 보관 단계에서 빠졌습니다. '
+      + '위 <b>[' + no + '편만 다시 만들기]</b> 를 누르시면 다시 올라갑니다 (0원).'
+      + '</div>';
+    return;
+  }
   box.innerHTML = '<video controls playsinline preload="metadata" '
     + 'style="width:100%;max-height:70vh;border-radius:12px;background:#000;'
-    + 'display:block;margin-top:10px" src="/api/short?s90=1&sid='
-    + encodeURIComponent(WORK) + '&part=' + no + '&play=1"></video>';
+    + 'display:block;margin-top:10px" src="' + q + '&play=1"></video>'
+    + '<div class="uphint">' + mb(j.size) + '</div>';
 }
 
 // ⚠️⚠️ 단추가 두 번 눌려 같은 영상이 두 번 올라갈 뻔한 적이 있다.

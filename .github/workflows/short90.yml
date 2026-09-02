@@ -192,7 +192,6 @@ jobs:
             [ -f "$F" ] || continue
             K=$(basename "$F" | sed 's/.*_part\([0-9]*\)\.mp4/\1/')
             python3 tools/release_file.py put "short90-$S" "part$K.mp4" "$F"
-            python3 tools/release_file.py prune "short90-$S" "part$K.mp4" || true
             echo "  보관: $K편 ($F)"
             N=$((N+1))
           done
@@ -203,6 +202,22 @@ jobs:
           test -f build/s90/meta.json && \
             python3 tools/release_file.py put "short90-${VT_SID:-S90}" meta.json \
               build/s90/meta.json || true
+
+          # ⚠️⚠️⚠️ 2026-09-02 — **여기서 1편·2편을 지워 먹었다.**
+          #    prune 은 "남길 것만 두고 나머지를 전부 지운다" 는 명령인데,
+          #    그것을 위 반복문 **안에서 편마다** 돌렸다. 그래서
+          #      part1 올림 → part1만 남기고 지움
+          #      part2 올림 → part2만 남기고 지움 (part1 사라짐)
+          #      part3 올림 → part3만 남기고 지움 (part2 사라짐)
+          #    세 편을 다 만들어 놓고 마지막 한 편만 남았다. 손님 화면에서
+          #    1·2편이 재생되지 않은 원인이 이것이다.
+          #
+          #    → prune 은 **반복문 밖에서 딱 한 번**, 그리고 **편 파일은 전부
+          #      남긴다**. 한 편만 다시 만들었을 때도 나머지 편이 안 지워진다.
+          #      치우는 것은 옛 한 편짜리(short.mp4) 같은 남은 것들뿐이다.
+          python3 tools/release_file.py prune "short90-${VT_SID:-S90}" \
+            meta.json part1.mp4 part2.mp4 part3.mp4 part4.mp4 part5.mp4 \
+            part6.mp4 part7.mp4 part8.mp4 part9.mp4 || true
 
       - name: 만든 사실 적어 두기
         if: always()

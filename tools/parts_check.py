@@ -111,7 +111,30 @@ def main():
     ck("올리는 쪽에서도 두 번 올리기를 막는다", "이미 올렸다" in upy,
        "화면 잠금만 믿으면 언젠가 새어 나갑니다")
 
-    print("\n⑥ 시험이 진짜 상태 파일을 안 건드리는가")
+    print("\n⑥ 보관할 때 앞 편을 지우지 않는가")
+    # ⚠️⚠️⚠️ 2026-09-02 — 실제로 지워 먹었다. prune 은 "남길 것만 두고
+    #    나머지를 전부 지운다" 는 명령인데 그것을 **편마다** 돌렸다.
+    #      part1 올림 → part1만 남김 / part2 올림 → part2만 남김(part1 사라짐)
+    #    세 편을 다 만들고도 마지막 한 편만 남아, 손님 화면에서 1·2편이
+    #    재생되지 않았다. 화면은 "만들어짐" 이라고 적혀 있으니 더 헷갈린다.
+    mk_t = (ROOT / ".github" / "workflows" / "short90.yml").read_text(encoding="utf-8")
+    lines = [l for l in mk_t.splitlines() if "release_file.py prune" in l
+             and not l.lstrip().startswith("#")]
+    ck(f"치우는 줄이 딱 하나다 ({len(lines)}개)", len(lines) == 1,
+       f"{len(lines)}개 — 편마다 치우면 앞 편이 지워진다")
+    # 반복문 **안**에서 돌면 안 된다 — 편 번호 변수가 들어 있으면 그 안이다
+    ck("치우는 줄에 편 번호 변수가 없다",
+       all("$K" not in l for l in lines),
+       "반복문 안에서 치우고 있다 — 앞 편이 지워진다")
+    # 남길 목록에 편 파일이 넉넉히 들어 있어야 한다
+    keep = mk_t[mk_t.find("release_file.py prune"):][:400] if lines else ""
+    import re as _re
+    n_keep = len(_re.findall(r"part\d+\.mp4", keep))
+    ck(f"남길 목록에 편 파일이 넉넉하다 ({n_keep}개)", n_keep >= 5,
+       f"{n_keep}개 — 편이 더 늘면 그 편이 지워진다")
+    ck("남길 목록에 올릴 글(meta.json)이 있다", "meta.json" in keep)
+
+    print("\n⑦ 시험이 진짜 상태 파일을 안 건드리는가")
     # ⚠️⚠️ 2026-09-01 — 예행연습이 **가짜 소리로 잰 길이**를 진짜 상태 파일에
     #    적어, 화면에 "만들어짐 50초" 로 떠 버렸다. 손님은 화면밖에 못 보시니
     #    만들지도 않은 것을 만든 줄 아신다. 화면이 거짓말하는 것이 제일 나쁘다.
@@ -124,7 +147,7 @@ def main():
            "VT_SHORTS_STATE" in (ROOT / "tools" / f).read_text(encoding="utf-8"),
            "시험이 진짜 화면을 거짓말하게 만듭니다")
 
-    print("\n⑦ 60초 못을 네 곳이 다 박고 있는가")
+    print("\n⑧ 60초 못을 네 곳이 다 박고 있는가")
     # ⚠️⚠️ 이 채널이 실제로 겪은 일 — 60초 이하 6편은 전부 1,209~1,554회,
     #    127초 한 편은 5시간 반 동안 **조회수 0**. 쇼츠 피드가 안 태운 것이다.
     ck("조립할 때 본다 (short90.PART_MAX_SEC)",
