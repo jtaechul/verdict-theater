@@ -33,12 +33,20 @@ const WORKFLOWS = [
   //    그림·소리·목소리를 우리가 만들던 카드들(에셋 만들기·효과음·목소리 오디션·
   //    목소리 바꾸기·썸네일·옛 영상 만들기)을 통째로 뺐다.
   //    남는 것은 지금도 도는 것뿐이다 — 소재 모으기 · 대본 · 성과 · 유튜브.
-  { file: 'collect.yml', hidden: true,   // 2026-08-27 지금 절차 밖 — 감춘다 name: '1. 재판 기록 모으기',
-    desc: '판례를 모아 대기열에 쌓습니다 (0원)',
-    inputs: [{ k: 'max_calls', label: '최대 요청 수', type: 'text', v: '180' },
-             { k: 'topic', label: '갈래', type: 'select',
-               opts: ['전부', '불륜', '상속', '재산', '부양', '노년',
+  // ⭐⭐⭐ 2026-09-02 손님: "지금 사건이 다 유류분이나 상속 이런 거밖에 없어.
+  //    내가 분명히 불륜이나 이런 것들도 수집하라고 했잖아."
+  //    2026-08-27 에 "지금 절차 밖" 이라고 **감춰 버린 것이 잘못**이었다.
+  //    감추는 순간 손님은 새 소재를 모을 길이 없어진다 — 화면이 유일한 조작
+  //    수단이기 때문이다. 다시 꺼낸다. 그리고 **심사까지 한 번에** 돈다.
+  { file: 'collect.yml', name: '1. 재판 기록 모으기 (+ 심사)',
+    desc: '판례를 모아 대기열에 쌓고, 이어서 드라마성을 심사합니다. '
+        + '심사를 해야 [다음 사건 고르기] 에 뜹니다 (모으기 0원 · 심사 한 건 약 30원)',
+    inputs: [{ k: 'topic', label: '어떤 갈래를 모을까요', type: 'select',
+               opts: ['불륜', '전부', '상속', '재산', '부양', '노년',
                       '가업', '혼외자', '제사', '빚'] },
+             { k: 'judge', label: '몇 건을 심사할까요 (0이면 안 함)',
+               type: 'text', v: '20' },
+             { k: 'max_calls', label: '최대 요청 수 (하루 200회)', type: 'text', v: '180' },
              { k: 'queries', label: '직접 검색어 (비우면 자동)', type: 'text', v: '' },
              { k: 'pages', label: '페이지 수', type: 'text', v: '3' }] },
 
@@ -348,8 +356,27 @@ const S90_CARDS = ['본처', '남편', '내연녀', '딸', '변호사'];
 //    /api/blob 은 열쇠를 [A-Za-z0-9._-] 로만 받는다(일부러 좁게 본다).
 //    'cards/S90-본처-…' 로 올려 두었더니 워크플로가 받아 갈 때 튕겼고,
 //    그 한 줄 때문에 90초 편 만들기가 통째로 실패했다. 영문으로 적는다.
-const S90_KEY = { '본처': 'wife', '남편': 'husband', '내연녀': 'mistress',
-                  '딸': 'daughter', '변호사': 'attorney' };
+// ⭐⭐⭐ 2026-09-02 손님: "지금 만들고 있는 것만 볼 수 있게끔 되어 있어서
+//    문제가 좀 있고."
+//    맞다. 겉만 사건별로 나눴고 **속은 아직 S90 에 묶여 있었다** —
+//    보관 자리가 'cards/S90-…' · 'clips/S90-…' 로 박혀 있어서, 새 사건을
+//    열어 얼굴을 올려도 **S90 자리에 덮어쓰였다.**
+//    → 사건 번호를 자리 이름에 넣는다. 인물 이름도 코드에 박지 않고
+//      대본에서 읽는다 (사건마다 나오는 사람이 다르다).
+// 한글 이름을 자리 이름에 그대로 쓸 수 없다(보관함이 영문만 받는다).
+// 아는 이름은 정해 둔 영문으로, 모르는 이름은 글자에서 만들어 낸다.
+const S90_KEY = { '본처': 'wife', '아내': 'wife', '남편': 'husband',
+                  '내연녀': 'mistress', '딸': 'daughter', '아들': 'son',
+                  '변호사': 'attorney', '어머니': 'mother', '아버지': 'father',
+                  '장남': 'eldest', '며느리': 'inlaw', '형제': 'sibling' };
+
+// 모르는 이름은 글자 코드로 짧은 영문 딱지를 만든다 (자리 이름은 영문만 된다).
+function whoKey(who) {
+  if (S90_KEY[who]) return S90_KEY[who];
+  let h = 0;
+  for (const ch of String(who)) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  return 'p' + h.toString(36).slice(0, 6);
+}
 
 const KV_DAY = 60 * 60 * 24;
 const KV_MAX = 90 * 1024 * 1024;    // 한 번에 받는 최대 크기
@@ -858,18 +885,31 @@ const S90WHO = [['본처', '아내'], ['남편', '남편'], ['내연녀', '내�
                 ['딸', '딸'], ['변호사', '변호사']];
 let S90CARDS = {};
 
+// ⭐⭐⭐ 2026-09-02 — 인물 이름을 **대본에서 읽는다.** 코드에 다섯을 박아
+//    두었더니 다른 사건에서는 엉뚱한 사람 칸이 떴다. 사건마다 나오는 사람이
+//    다르다 (어떤 사건은 장남·며느리, 어떤 사건은 아내·내연녀).
+function castOf() {
+  const seen = [];
+  for (const c of ((S90DOC && S90DOC.cuts) || []))
+    for (const w of (c.who || []))
+      if (seen.indexOf(w) < 0) seen.push(w);
+  // 대본을 아직 못 읽었으면 옛 다섯으로 (화면이 비지 않게)
+  return seen.length ? seen.map(function (w) { return [w, w]; }) : S90WHO;
+}
+
 function short90Card() {
-  let h = '<div class="card"><h2>① 인물 그림 '
+  const cast = castOf();
+  let h = '<div class="card"><h2 data-t="① 인물 그림">① 인물 그림 '
         + '<small style="font-weight:400;color:#9599ab">'
-        + '— 제미나이에서 만드신 다섯 장</small></h2>';
-  // ⭐ 2026-08-30 — 다섯 얼굴을 저장소에 넣어 두었다(assets/cards/s90/).
+        + '— 안 하셔도 됩니다</small></h2>';
+  // ⭐ 2026-08-30 — 얼굴을 저장소에 넣어 두었다(assets/cards/s90/).
   //    손님이 아무것도 안 올려도 늘 그 얼굴이 쓰인다. 여기는 '바꾸고 싶을 때만'
   //    쓰는 칸이다. (손님: "무조건 등장인물은 첨부 등장인물 이미지를 참고하도록 해")
-  h += '<div class="uphint"><b>다섯 얼굴은 이미 들어가 있습니다.</b> '
-     + '여기서 아무것도 안 하셔도 그 얼굴 그대로 19컷을 그립니다. '
+  h += '<div class="uphint"><b>얼굴은 이미 들어가 있습니다.</b> '
+     + '여기서 아무것도 안 하셔도 그 얼굴 그대로 그립니다. '
      + '어떤 사람의 얼굴을 <b>바꾸고 싶을 때만</b> 그 사람 칸에 새 그림을 '
      + '올리십시오.</div>';
-  S90WHO.forEach(function (p) {
+  cast.forEach(function (p) {
     h += '<div class="upbox" style="margin-top:10px">'
        + '<b>' + p[1] + '</b> '
        + '<span class="uphint" id="s90st-' + p[0] + '">' 
@@ -896,7 +936,8 @@ async function upCard(who) {
   if (mb > 90) { st.textContent = '너무 큽니다 (' + Math.round(mb) + 'MB)'; return; }
   st.textContent = '올리는 중…';
   try {
-    const r = await fetch('/api/upload-card?who=' + encodeURIComponent(who),
+    const r = await fetch('/api/upload-card?sid=' + encodeURIComponent(WORK || 'S90')
+                          + '&who=' + encodeURIComponent(who),
                           { method: 'POST', body: f });
     const j = await r.json();
     if (!j.ok) {
@@ -933,22 +974,19 @@ async function s90Cuts() {
   const cuts = (S90DOC && S90DOC.cuts) || [];
   if (!cuts.length) { box.innerHTML = ''; return; }
   const nv = Object.keys(S90CLIPS).length;
-  let h = '<div class="card"><h2>② 컷별 영상 '
-        + '<small style="font-weight:400;color:#9599ab">— 올린 컷만 영상, 나머지는 그림'
+  let h = '<div class="card"><h2 data-t="② 컷별 영상">② 컷별 영상 '
+        + '<small style="font-weight:400;color:#9599ab">— 안 하셔도 됩니다'
         + '</small></h2>';
-  h += '<div class="uphint"><b>아무것도 안 올리고 바로 만드셔도 됩니다.</b> '
-     + '그러면 ' + cuts.length + '컷 전부 그림으로 만들고, 대사와 나레이션은 '
-     + '기계 목소리가 읽습니다. 지금은 영상 <b>' + nv + '컷</b> · '
-     + '그림으로 채울 컷 <b>' + (cuts.length - nv) + '개</b>입니다.</div>';
-  h += '<div class="uphint" style="margin-top:6px">어떤 컷을 <b>진짜 영상</b>으로 '
-     + '바꾸고 싶으시면, 그 컷의 [프롬프트 복사] 를 눌러 구글 플로우에 붙여 영상을 '
-     + '만드시고 만든 mp4 를 그 컷에 올리십시오. <b>말하는 컷(금색으로 이름이 '
-     + '붙은 컷)부터</b> 하시면 좋습니다 — 그 컷은 영상 안의 목소리를 그대로 씁니다. '
-     + '나레이션 컷은 올리셔도 우리 나레이션이 깔립니다.</div>';
-  h += '<div class="uphint" style="margin-top:6px"><b>인물 그림은 첨부하지 '
-     + '마십시오.</b> 사진을 넣으면 구글이 "유명인 영상" 으로 보고 막습니다. '
-     + '아래 프롬프트에 옷·나이대를 적어 두었으니 그대로만 넣으시면 컷마다 '
-     + '같은 사람이 나옵니다.</div>';
+  // ⭐ 2026-09-03 — 안내가 네 문단이었다. 안 하셔도 되는 일에 네 문단은 많다.
+  //    꼭 알아야 할 것만 두 줄로 줄인다.
+  h += '<div class="uphint"><b>아무것도 안 올리셔도 됩니다.</b> 그러면 '
+     + cuts.length + '컷 전부 그림으로 만들고 기계 목소리가 읽습니다. '
+     + '지금 영상 <b>' + nv + '컷</b> · 그림 <b>' + (cuts.length - nv) + '컷</b>.</div>';
+  h += '<div class="uphint" style="margin-top:6px">어떤 컷을 진짜 영상으로 바꾸고 '
+     + '싶으시면 [프롬프트 복사] 를 눌러 구글 플로우에 붙여 만드시고, 그 mp4 를 '
+     + '그 컷에 올리십시오. <b>사람 사진은 붙이지 마십시오</b> — 구글이 '
+     + '"유명인 영상" 으로 보고 막습니다(옷·나이대는 프롬프트에 이미 적혀 있습니다).'
+     + '</div>';
   cuts.forEach(function (c) {
     const on = !!S90CLIPS[c.n];
     h += '<div class="upbox" style="margin-top:10px">'
@@ -962,8 +1000,10 @@ async function s90Cuts() {
        //    veo 판(우리 시스템용)을 앱에 넣으면 "유명인의 동영상 생성에 관한
        //    정책 위반" 으로 막힌다. 손님이 실제로 막혔다가, 말 바꾼 판으로
        //    통과하는 것을 확인하셨다.
-       + '<textarea id="s90p-' + c.n + '" rows="2" readonly '
-       + 'style="width:100%;font-size:12px">' + esc(c.flow || c.veo) + '</textarea>'
+       // ⭐⭐⭐ 2026-09-03 손님: "막 쓸데없이 프롬프트나 이런 것 너무 많이
+       //    들어가 있어." 프롬프트 상자 스무 개가 화면에 3만 자를 깔고 있었다.
+       //    상자를 없애고 [프롬프트 복사] 단추만 남긴다. 복사할 글은 화면이
+       //    아니라 **대본(S90DOC)** 에서 꺼내므로 화면에 없어도 그대로 복사된다.
        + '<button onclick="copyCut(this.id.slice(6))" id="s90cp-' + c.n + '">'
        + '프롬프트 복사</button> '
        + '<input type="file" accept="video/*" id="s90v-' + c.n + '" '
@@ -976,6 +1016,7 @@ async function s90Cuts() {
      + '<b>아래 ③ 세 편 만들기</b> 로 내려가십시오.</div>';
   h += '</div>';
   box.innerHTML = h;
+  foldify();   // ⭐ 새로 그린 칸에도 접기를 걸어 준다
 }
 
 // ⭐⭐⭐ 2026-09-01 손님: "각각 만들어서 각각 올릴 수 있어야 되는데 지금은
@@ -1070,7 +1111,8 @@ function workDraw() {
         + ' <small style="font-weight:400;color:#9599ab">— ' + esc(WORK)
         + ' · ' + (w.cuts || 0) + '컷</small></h2></div>';
   h += short90Card();
-  h += '<div id="s90cuts"><div class="card"><h2>② 컷별 영상</h2>'
+  h += '<div id="s90cuts"><div class="card">'
+     + '<h2 data-t="② 컷별 영상">② 컷별 영상</h2>'
      + '<div class="empty">컷 목록 불러오는 중…</div></div></div>';
   h += partsCard(w);
   document.getElementById('app').innerHTML = h;
@@ -1378,14 +1420,33 @@ async function workUpAll(dry) {
   lock(id, 0, '세 편 예약 공개로 올리기');
 }
 
+// ⭐ 2026-09-03 — 프롬프트 상자를 화면에서 없앴으므로, 복사할 글은
+//    **대본에서 직접** 꺼낸다. 화면에 안 보여도 복사는 똑같이 된다.
+function cutPrompt(n) {
+  const cuts = (S90DOC && S90DOC.cuts) || [];
+  for (let i = 0; i < cuts.length; i++)
+    if (String(cuts[i].n) === String(n))
+      return cuts[i].flow || cuts[i].veo || '';
+  return '';
+}
+
 function copyCut(n) {
-  const t = document.getElementById('s90p-' + n);
   const b = document.getElementById('s90cp-' + n);
-  if (!t) return;
-  t.removeAttribute('readonly'); t.select(); t.setSelectionRange(0, 999999);
-  try { document.execCommand('copy'); } catch (e) { }
-  if (navigator.clipboard) { try { navigator.clipboard.writeText(t.value); } catch (e) { } }
+  const s = cutPrompt(n);
+  if (!s) return;
+  // 아이폰 사파리는 눌린 그 순간에만 복사를 허락한다. 두 길을 다 쓴다 —
+  // 안 보이는 상자에 담아 옛 방식으로 한 번, 새 방식으로 한 번.
+  const t = document.createElement('textarea');
+  t.value = s;
   t.setAttribute('readonly', 'readonly');
+  t.style.position = 'fixed'; t.style.top = '0'; t.style.left = '-9999px';
+  document.body.appendChild(t);
+  t.select(); t.setSelectionRange(0, 999999);
+  try { document.execCommand('copy'); } catch (e) { }
+  document.body.removeChild(t);
+  if (navigator.clipboard) {
+    try { navigator.clipboard.writeText(s); } catch (e) { }
+  }
   if (b) { b.textContent = '복사했습니다'; setTimeout(function () {
     b.textContent = '프롬프트 복사'; }, 2000); }
 }
@@ -1399,7 +1460,8 @@ async function upCut(n) {
   if (mb > 90) { st.textContent = '너무 큽니다 (' + Math.round(mb) + 'MB)'; return; }
   st.textContent = '올리는 중…';
   try {
-    const r = await fetch('/api/upload-cut?n=' + encodeURIComponent(n),
+    const r = await fetch('/api/upload-cut?sid=' + encodeURIComponent(WORK || 'S90')
+                          + '&n=' + encodeURIComponent(n),
                           { method: 'POST', body: f });
     const j = await r.json();
     if (!j.ok) {
@@ -1898,7 +1960,7 @@ function home() {
   //    지금 절차 = 90초 한 편 (① 인물 그림 → ② 컷별 영상 → 만들기 → 보기).
   //    16화 길(모으기·대본·다듬기·영상)과 성과 보기는 전부 감췄다. 지우지는
   //    않는다 — 워크플로 파일이 그대로라 되돌릴 수 있다.
-  h += wfList(['keycheck.yml', 'voice-route.yml']);
+  h += wfList(['collect.yml', 'keycheck.yml', 'voice-route.yml']);
   h += '</div>';
 
   // ⭐⭐⭐ 2026-09-01 손님: "앞으로 계속 만들어나가야 하는데 이런 식으로
@@ -2299,11 +2361,15 @@ function seekAudition(el) {
 const SIMPLE = true;
 
 // ⭐ 2026-09-01 — 작품 화면의 칸 이름이 ①②③④ 로 바뀌었다.
-//    파일을 고르는 칸(①②)이 접혀 있으면 손님이 아무것도 못 하신다.
+// ⭐⭐⭐ 2026-09-03 손님: "그 안에 들어가 보면은 막 쓸데없이 프롬프트나 이런 것
+//    너무 많이 들어가 있어. 감추기를 하거나 하게 해야 될 거 같고. 불필요한 것들."
+//    → ① 인물 그림 · ② 컷별 영상 을 **접힌 채로** 연다. 둘 다 제목에
+//      '안 하셔도 됩니다' 라고 적어 두었다. 안 하셔도 되는 일이 화면을 덮고
+//      있을 이유가 없다. 필요하실 때 제목을 누르면 펴진다.
 // ⚠️ '쇼츠 ' 하나로 편 칸(쇼츠 1편·2편…)과 예약 공개 칸을 한꺼번에 편다.
 //    편 수는 사건마다 다르므로 번호를 하나씩 적어 두지 않는다.
 const FOLD_OPEN = ['다음에 할 일', '지금 상태', '90초 한 편', '③ 만든 영상',
-                   '① 인물 그림', '② 컷별 영상', '③ 세 편 만들기', '④ 편',
+                   '③ 세 편 만들기', '④ 편',
                    '쇼츠 ', '내 쇼츠 작품', '다음 사건 고르기'];
 const foldKey = (t) => 'fold:' + t.slice(0, 24);
 
@@ -2314,7 +2380,9 @@ function setFold(h, body, caret, open) {
 }
 
 function foldify() {
-  document.querySelectorAll('#app > .card').forEach(card => {
+  // ⚠️ ② 컷별 영상 칸은 #s90cuts 봉지 **안**에 들어 있다. '#app > .card' 만
+  //    보면 그 칸은 영영 접히지 않는다 (2026-09-03 에 알았다).
+  document.querySelectorAll('#app > .card, #s90cuts > .card').forEach(card => {
     const h = card.querySelector('h2');
     if (!h || h.dataset.ft || h.parentElement !== card) return;
     h.dataset.ft = '1';
@@ -3584,6 +3652,7 @@ export default {
       //    맞다. 전부 그림이면 슬라이드쇼다. 컷마다 만든 영상을 여기서 받는다.
       //    올린 컷만 영상이 되고 나머지는 그림으로 간다.
       if (url.pathname === '/api/upload-cut' && req.method === 'POST') {
+        const sid = sidOf(url);
         const n = parseInt(url.searchParams.get('n') || '0', 10) || 0;
         if (n < 1 || n > 99)
           return Response.json({ ok: false, error: '컷 번호가 이상합니다' },
@@ -3596,7 +3665,7 @@ export default {
           return Response.json({ ok: false, error: '파일이 90MB 를 넘습니다' },
                                { status: 400 });
         try {
-          const key = `clips/S90-c${n}-${crypto.randomUUID()}`;
+          const key = `clips/${sid}-c${n}-${crypto.randomUUID()}`;
           const size = await blobPutStream(env, req.body, key, KV_DAY);
           if (!size)
             return Response.json({ ok: false, error: '파일이 비었습니다' }, { status: 400 });
@@ -3615,10 +3684,20 @@ export default {
       //    한 장씩 받아 보관함에 두고 **주소만** 워크플로에 넘긴다
       //    (압축파일 올리기와 같은 길 — 깃허브에 직접 올리지 않는다).
       if (url.pathname === '/api/upload-card' && req.method === 'POST') {
+        const sid = sidOf(url);
         const who = url.searchParams.get('who') || '';
-        if (S90_CARDS.indexOf(who) < 0)
-          return Response.json({ ok: false, error: '누구 그림인지 알 수 없습니다' },
-                               { status: 400 });
+        // ⚠️ 인물 이름을 코드에 박아 두면 다른 사건에서 다 막힌다.
+        //    그 사건 대본에 실제로 나오는 사람인지로 본다.
+        const doc0 = await getJson(env, 'data/series/' + sid + '.json');
+        const cast = new Set();
+        for (const c of ((doc0 && doc0.cuts) || []))
+          for (const w of (c.who || [])) cast.add(String(w));
+        for (const w of S90_CARDS) cast.add(w);   // 옛 이름도 받아 준다
+        if (!cast.has(who))
+          return Response.json({ ok: false,
+            error: '누구 그림인지 알 수 없습니다',
+            detail: sid + ' 대본에 나오는 사람: '
+                  + [...cast].join(', ') }, { status: 400 });
         if (!bin(env) || !req.body)
           return Response.json({ ok: false, error: '보관함이 아직 없습니다',
             detail: '[영상 보관함 준비하기] 를 한 번 누르시고 1~2분 뒤에 다시 '
@@ -3627,7 +3706,7 @@ export default {
           return Response.json({ ok: false, error: '파일이 90MB 를 넘습니다' },
                                { status: 400 });
         try {
-          const key = `cards/S90-${S90_KEY[who]}-${crypto.randomUUID()}`;
+          const key = `cards/${sid}-${whoKey(who)}-${crypto.randomUUID()}`;
           const size = await blobPutStream(env, req.body, key, KV_DAY);
           if (!size)
             return Response.json({ ok: false, error: '파일이 비었습니다' }, { status: 400 });

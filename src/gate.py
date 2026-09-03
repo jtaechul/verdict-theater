@@ -95,6 +95,15 @@ def case_for_prompt(case):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=10, help="이번에 평가할 판례 수")
+    # ⭐⭐ 2026-09-02 손님: "지금 사건이 다 유류분이나 상속 이런 거밖에 없어.
+    #    내가 분명히 불륜이나 이런 것들도 수집하라고 했잖아."
+    #    맞다. 그런데 원인은 모으기가 아니었다 — **심사가 아예 안 돌고 있었다.**
+    #    대기열 165건 가운데 152건이 점수 없이 쌓여 있었고, 점수 없는 것은
+    #    화면 목록에서 고를 수가 없다. 그래서 손님 눈에는 옛날에 심사한
+    #    상속 13건만 보였다.
+    #    → 갈래를 골라 심사할 수 있게 한다. 불륜부터 매기면 바로 쓸 수 있다.
+    ap.add_argument("--topic", default="",
+                    help="이 갈래만 심사 (불륜·상속·재산…). 비우면 전부")
     ap.add_argument("--max-calls", type=int, default=0, help="모델 호출 상한 (기본: limit + 2)")
     ap.add_argument("--writer", choices=["gemini"], default=None,
                     help="심사할 곳. 비우면 값싼 쪽(Gemini)으로 채점한다")
@@ -110,11 +119,21 @@ def main():
           f"(한 달 {cost.MONTH_KRW:,.0f}원)")
 
     queue = load_queue()
-    todo = [c for c in queue if c.get("gate_score") is None][:args.limit]
+    want = (args.topic or "").strip()
+    rest = [c for c in queue if c.get("gate_score") is None]
+    if want:
+        rest = [c for c in rest if (c.get("topic") or "") == want]
+    # ⭐ 점수 높은 것부터 매긴다 — 예산이 모자라도 쓸 만한 것이 먼저 걸린다
+    rest.sort(key=lambda c: -(c.get("machine_score") or 0))
+    todo = rest[:args.limit]
     if not todo:
-        print("평가할 판례가 없다. 먼저 src/collect.py 로 수집하라.")
-        print(f"대기열 {len(queue)}건 (전부 평가 완료)")
+        left = sum(1 for c in queue if c.get("gate_score") is None)
+        print(f"평가할 판례가 없다{f' ({want} 갈래에는)' if want else ''}.")
+        print(f"대기열 {len(queue)}건 · 아직 안 매긴 것 {left}건")
         return 0
+    print(f"■ 심사할 것 {len(todo)}건"
+          + (f" ({want} 갈래)" if want else "")
+          + f" · 아직 안 매긴 것 {len(rest)}건")
 
     # ⭐ 심사는 **채점**이다. 글을 쓰는 일이 아니므로 값싼 쪽(Gemini)으로 보낸다.
     #    (2026-08-10 손님: "채점은 Gemini api로 하고, 대본 생성만 Claude api로")

@@ -292,26 +292,43 @@ console.log('✅ 관리자 페이지: 바깥 코드 + 브라우저 코드 둘 �
 //   손이 필요한 칸(파일을 고르는 칸)이 **접힌 채로** 나왔다. 제목 한 줄만 보이고
 //   안이 안 보이니 아무것도 못 하신다. 접기 목록(FOLD_OPEN)에 없으면 접힌다.
 //   → 파일 고르는 칸이 있는 카드는 **처음부터 펴져 있어야** 한다.
+// ⭐⭐⭐ 2026-09-03 손님: "막 쓸데없이 프롬프트나 이런 것 너무 많이 들어가 있어.
+//   감추기를 하거나 하게 해야 될 거 같고. 불필요한 것들."
+//   두 말이 부딪히는 것 같지만 아니다. 손님이 못 견디는 것은 **꼭 해야 하는 일이
+//   숨어 있는 것**이지, 안 해도 되는 일이 접혀 있는 것이 아니다. 그래서 규칙을
+//   하나로 합친다 —
+//     · 안 해도 되는 칸이면 → 제목에 '안 하셔도 됩니다' 라고 **적어 두고** 접는다
+//     · 그 말이 없으면 → 꼭 해야 하는 칸이니 처음부터 펴져 있어야 한다
+//   즉 접으려면 화면에 "안 하셔도 된다"고 말해야 한다. 말없이 감추는 것은 막는다.
 {
   const open = (src.match(/const FOLD_OPEN = \[([^\]]*)\]/) || [, ''])[1];
   const opens = [...open.matchAll(/'([^']+)'/g)].map((m) => m[1]);
-  const MARK = "<div class=\"card\"><h2>";
+  // ⚠️ 칸 제목에 data-t="..." 가 붙기도 한다(접기 열쇠를 못 박으려고).
+  //    <h2> 만 찾으면 그런 칸을 통째로 못 보고 지나쳐 검사가 헛돈다.
+  const RE = /<div class="card">\s*'?\s*\+?\s*'?<h2([^>]*)>/g;
   const at = [];
-  for (let i = src.indexOf(MARK); i >= 0; i = src.indexOf(MARK, i + 1)) at.push(i);
+  for (let m; (m = RE.exec(src)); ) at.push([m.index, m[1], m.index + m[0].length]);
   const bad = [];
-  at.forEach((p, k) => {
-    const rest = src.slice(p + MARK.length);
-    const title = (rest.match(/^([^'<]+)/) || [, ''])[1].trim();
-    const body = src.slice(p, at[k + 1] ?? src.length);
+  at.forEach((t, k) => {
+    const [p, attr, end] = t;
+    const body = src.slice(p, at[k + 1] ? at[k + 1][0] : src.length);
     if (!/type="file"/.test(body)) return;
-    if (!opens.some((x) => title.indexOf(x) === 0)) bad.push(title || '(이름 없음)');
+    const dt = (attr.match(/data-t="([^"]*)"/) || [, ''])[1];
+    const title = (dt || (src.slice(end).match(/^([^'<]+)/) || [, ''])[1]).trim();
+    if (opens.some((x) => title.indexOf(x) === 0)) return;   // 펴져 있다 — 됐다
+    const hEnd = body.indexOf('</h2>');
+    const head = hEnd < 0 ? '' : body.slice(0, hEnd);
+    if (/안 하셔도 됩니다/.test(head)) return;                // 접어도 된다고 적었다
+    bad.push(title || '(이름 없음)');
   });
   if (bad.length) {
-    console.error('❌ 파일을 고르는 칸인데 처음에 접혀 있다: ' + bad.join(' · '));
-    console.error('   제목 한 줄만 보여 손님이 아무것도 못 합니다 — FOLD_OPEN 에 넣으십시오');
+    console.error('❌ 파일을 고르는 칸인데 말없이 접혀 있다: ' + bad.join(' · '));
+    console.error('   제목 한 줄만 보여 손님이 아무것도 못 합니다.');
+    console.error('   꼭 해야 하는 칸이면 FOLD_OPEN 에 넣어 펴 두고,');
+    console.error('   안 하셔도 되는 칸이면 제목에 "안 하셔도 됩니다" 라고 적으십시오.');
     process.exit(1);
   }
-  console.log('✅ 파일을 고르는 칸은 처음부터 펴져 있다 (접혀서 못 쓰는 일이 없다)');
+  console.log('✅ 파일 고르는 칸: 꼭 할 것은 펴져 있고, 접힌 것은 안 해도 된다고 적혀 있다');
 }
 
 
@@ -327,8 +344,34 @@ console.log('✅ 관리자 페이지: 바깥 코드 + 브라우저 코드 둘 �
   //   voice-route.yml — 2026-08-31 손님: "지금 어느 창구인지 확인해서
   //   알려줘." 목소리를 하루 몇 번까지 만들어 주는지 보는 단추다.
   //   1원 미만이고, 돈 쓰기 전에 이걸 봐야 한 편이 중간에 망가지지 않는다.
-  const OK = ['keycheck.yml', 'voice-route.yml'];
+  //
+  //   ⭐⭐⭐ collect.yml — 2026-09-02 손님: "지금 사건이 다 유류분이나 상속
+  //   이런 거밖에 없어. 내가 분명히 불륜이나 이런 것들도 수집하라고 했잖아."
+  //   맞다. 그리고 그 원인이 **바로 이 검사**였다. 2026-08-27 에 "지금 절차
+  //   밖" 이라며 모으기 단추를 감췄고, 이 검사가 그것을 못으로 박아 두었다.
+  //   그런데 화면은 손님의 **유일한 조작 수단**이다 — 감추는 순간 새 소재를
+  //   모을 길이 사라지고, 대기열은 옛날에 모은 상속만 남는다.
+  //   "쓸데없는 것을 감춘다" 는 규칙이 **일을 못 하게 만드는 데까지** 갔다.
+  //   → 절차에 꼭 필요한 단추는 보여야 한다. 값이 드는 단추는 화면에
+  //     값을 적어 두고(desc), 누르기 전에 얼마인지 보이게 하는 것으로 막는다.
+  const OK = ['keycheck.yml', 'voice-route.yml', 'collect.yml'];
   const extra = shown.filter((f) => !OK.includes(f));
+  // ⭐ 값이 드는 단추는 **화면에 얼마인지 적혀 있어야** 한다.
+  //    감추는 대신 이것으로 막는다 — 손님은 누르기 전에 값을 보신다.
+  const PAID = ['collect.yml'];
+  const noPrice = PAID.filter((f) => {
+    const blk = list.split(/\{\s*file:/).slice(1)
+      .find((x) => (x.match(/^\s*'([^']+)'/) || [])[1] === f) || '';
+    return !/원/.test(blk);
+  });
+  if (noPrice.length) {
+    console.error('❌ 값이 드는 단추인데 화면에 값이 안 적혀 있다: '
+                  + noPrice.join(', '));
+    console.error('   desc 에 "약 ○○원" 을 적으십시오 — 누르기 전에 보이게');
+    bad = 1;
+  } else {
+    console.log('✅ 값이 드는 단추는 화면에 값이 적혀 있다');
+  }
   if (extra.length) {
     console.error('❌ 지금 절차 밖인데 화면에 보이는 단추: ' + extra.join(', '));
     console.error('   눌리면 돈이 나갈 수 있습니다 — hidden: true 를 붙이십시오');
@@ -382,4 +425,47 @@ console.log('✅ 관리자 페이지: 바깥 코드 + 브라우저 코드 둘 �
     process.exit(1);
   }
   console.log('✅ 한 칸 안에서 같은 id 를 두 번 쓰지 않는다');
+}
+
+// ⭐⭐⭐ 2026-09-03 손님: "막 쓸데없이 프롬프트나 이런 것 너무 많이 들어가 있어."
+//   컷마다 프롬프트를 통째로 적은 상자(textarea)가 스무 개 깔려 있었다. 화면에
+//   3만 자다. 상자를 없애고 [프롬프트 복사] 단추만 남겼는데, 그러면 복사할 글을
+//   **화면이 아니라 대본에서** 꺼내야 한다. 이 세 가지가 같이 지켜져야 한다 —
+//     ① 프롬프트 상자를 다시 깔지 않는다
+//     ② 복사 단추는 남아 있다 (없애면 손님이 프롬프트를 못 가져가신다)
+//     ③ 복사할 글을 대본(S90DOC)에서 꺼낸다 (화면에서 꺼내면 상자가 없어 빈손이다)
+{
+  const bad = [];
+  if (/id="s90p-/.test(src))
+    bad.push('컷 프롬프트 상자(s90p-)가 화면에 다시 깔려 있다');
+  if (!/id="s90cp-/.test(src) || !/프롬프트 복사/.test(src))
+    bad.push('[프롬프트 복사] 단추가 사라졌다');
+  const cp = (src.match(/function copyCut\([\s\S]*?\n}/) || [''])[0];
+  if (!/function cutPrompt/.test(src) || !/cutPrompt\(/.test(cp))
+    bad.push('복사할 글을 대본에서 안 꺼낸다 (cutPrompt)');
+  if (/getElementById\('s90p-/.test(cp))
+    bad.push('복사할 글을 아직 화면 상자에서 꺼낸다 — 상자가 없으니 빈손이 된다');
+  if (bad.length) {
+    console.error('❌ 컷 프롬프트: ' + bad.join(' · '));
+    process.exit(1);
+  }
+  console.log('✅ 컷 프롬프트: 상자는 없고 단추만 있다 (복사할 글은 대본에서 꺼낸다)');
+}
+
+// ⭐ 접기는 #app 바로 아래 칸에만 걸린다. ② 컷별 영상 칸은 #s90cuts 봉지 안에
+//   있어서, 그 봉지를 안 보면 아무리 FOLD_OPEN 에서 빼도 영영 안 접힌다.
+//   게다가 그 칸은 화면을 그린 **뒤에** 새로 그려지므로 그때 다시 걸어야 한다.
+{
+  const bad = [];
+  const fy = (src.match(/function foldify\(\)[\s\S]*?\n}/) || [''])[0];
+  if (!/#s90cuts > \.card/.test(fy))
+    bad.push('접기가 #s90cuts 안을 안 본다 — ② 칸이 영영 안 접힌다');
+  const sc = (src.match(/async function s90Cuts\(\)[\s\S]*?\n}/) || [''])[0];
+  if (!/box\.innerHTML = h;[\s\S]*foldify\(\)/.test(sc))
+    bad.push('컷 목록을 새로 그린 뒤 접기를 다시 안 건다');
+  if (bad.length) {
+    console.error('❌ 접기: ' + bad.join(' · '));
+    process.exit(1);
+  }
+  console.log('✅ 접기가 컷 칸에도 걸린다 (다시 그려도 접힌 채로 남는다)');
 }

@@ -1,4 +1,4 @@
-name: 1. 판례 수집
+name: 1. 재판 기록 모으기 (+ 심사)
 
 # 판례를 받아와 기계가 1·2차로 걸러낸다.
 #
@@ -30,6 +30,10 @@ on:
         description: '낱말 하나당 몇 쪽까지 (한 쪽 100건)'
         required: false
         default: '3'
+      judge:
+        description: '모은 뒤 몇 건을 심사할까요 (0이면 안 함 · 한 건에 약 30원)'
+        required: false
+        default: '20'
   # ⚠️ 2026-08-27 — 지금 절차에서 안 쓰므로 자동 실행을 껐다
   #    (매주 판례 모으기 · 값은 0원이지만 저장소에 저절로 커밋한다)
   # schedule:
@@ -99,6 +103,26 @@ jobs:
       # 판결문은 이미 저장소에 있으므로 다시 받을 필요 없이 다시 채점만 한다. 값 0원.
       - name: 갈래 다시 매기기 (값 0원)
         run: python3 tools/queue_retopic.py 2>&1 | tee -a collect.log
+
+      # ⭐⭐⭐ 2026-09-02 손님: "지금 사건이 다 유류분이나 상속 이런 거밖에 없어.
+      #    내가 분명히 불륜이나 이런 것들도 수집하라고 했잖아."
+      #    까닭은 모으기가 아니었다 — **심사(드라마성 채점)가 아예 안 돌고
+      #    있었다.** src/gate.py 를 부르는 워크플로가 하나도 없었고, 손으로
+      #    돌리는 프로그램인데 손님은 터미널이 없으시다. 그래서 대기열
+      #    165건 가운데 152건이 점수 없이 쌓였고(불륜 5건 포함), 점수 없는
+      #    것은 화면에서 고를 수가 없다 — 손님 눈에는 옛날에 매긴 상속
+      #    13건만 보였다.
+      #    → 모은 김에 여기서 이어서 매긴다. 갈래를 고르면 그 갈래만.
+      - name: 모은 것 심사하기 (한 건에 약 30원)
+        if: ${{ inputs.judge != '0' && inputs.judge != '' }}
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          set -o pipefail
+          T="${{ inputs.topic }}"
+          if [ "$T" = "전부" ] || [ -z "$T" ]; then T=""; fi
+          python3 src/gate.py --limit "${{ inputs.judge }}" --topic "$T" \
+            2>&1 | tee -a collect.log
 
       - name: 결과 요약 (아이폰에서 읽는 화면)
         if: always()
