@@ -286,6 +286,44 @@ def check_reuse(bad, srcs=None):
                        f"({f}:{line}) — reuse.can_reuse 로 바꿔야 한다")
 
 
+# ⭐⭐⭐ 2026-09-04 — 해시태그가 **두 곳에 따로** 적혀 있다.
+#   · src/ytmeta.py  BASE_TAGS    → 실제로 유튜브에 올라가는 글
+#   · admin/worker.js YT_BASE_TAGS → 손님이 화면에서 보는 글
+#   한쪽만 고치면 "화면에서 본 것" 과 "올라간 것" 이 갈라진다. 그러면 무엇이
+#   올라갔는지 아무도 모른다 — 이 저장소가 가장 자주 겪은 사고 유형이다.
+#   손님이 태그를 더 넣어 달라고 하실 때마다 되풀이될 자리라 못을 박는다.
+def check_tags(bad):
+    py = (ROOT / "src" / "ytmeta.py").read_text(encoding="utf-8")
+    js = (ROOT / "admin" / "worker.js").read_text(encoding="utf-8")
+
+    def grab(src, name, quote):
+        m = re.search(name + r"\s*=\s*\[(.*?)\]", src, re.S)
+        if not m:
+            return None
+        return re.findall(quote + r"([^" + quote + r"]+)" + quote, m.group(1))
+
+    a = grab(py, "BASE_TAGS", '"')
+    b = grab(js, "YT_BASE_TAGS", "'")
+    if a is None:
+        bad.append("src/ytmeta.py 에서 BASE_TAGS 를 못 찾았다")
+        return
+    if b is None:
+        bad.append("admin/worker.js 에서 YT_BASE_TAGS 를 못 찾았다")
+        return
+    if a != b:
+        only_py = [t for t in a if t not in b]
+        only_js = [t for t in b if t not in a]
+        why = []
+        if only_py:
+            why.append("올라가지만 화면엔 없다: " + " ".join("#" + t for t in only_py))
+        if only_js:
+            why.append("화면엔 있지만 안 올라간다: " + " ".join("#" + t for t in only_js))
+        if not why:
+            why.append("차례가 다르다")
+        bad.append("해시태그가 한쪽만 고쳐졌다 (ytmeta.BASE_TAGS ↔ "
+                   "worker.js YT_BASE_TAGS) — " + " · ".join(why))
+
+
 def scan(doc):
     bad = []
     check_playable(bad)
@@ -296,6 +334,7 @@ def scan(doc):
     check_people(bad, doc)
     check_wear(bad, doc)
     check_used(bad)
+    check_tags(bad)
     return bad
 
 
@@ -455,6 +494,7 @@ def main():
     print("   ✅ 대본 제목과 화면 제목이 같다")
     print("   ✅ 만들어 둔 것(카드·컷 그림·컷 영상)을 다시 쓸 때 "
           "지문을 본다")
+    print("   ✅ 화면에서 본 해시태그와 올라가는 해시태그가 같다")
     print("\n" + "─" * 60)
     print("✅ 짝 검사: 전부 통과")
     return 0

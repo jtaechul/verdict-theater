@@ -129,24 +129,48 @@ with env(GEMINI_API_KEY="x", GOOGLE_TTS_KEY=None, VOICE_ENGINE=None):
 
 # ── ④ 연기 지시 (이번 바꿈의 핵심) ───────────────────
 print("\n④ 연기 지시")
-CASES = [
-    ("여보, 미안해. 내가 잘못했어.", "울음"),
-    ("당신 진짜 미쳤어!", "이를 악물"),
-    ("그래서 뭐 어쩌라고. 잘났다 정말.", "코웃음"),
-    ("지금 그걸 말이라고 해?", "되묻"),
-    ("그 사람 이름은 내가 안다.", "차분"),
-]
+# ⭐⭐ 2026-09-04 — 판이 **둘**이 되었다. 손님이 "대사 목소리 감정이 너무
+#    격하게 표현되지 않도록" 하라고 하셔서, 눌러 담은 판(calm)을 기본으로
+#    삼고 격한 판(fierce)은 되돌릴 수 있게 남겨 두었다.
+#    → 두 판을 **다 걸어 본다.** 한쪽만 재면 결을 바꿨을 때 시험이 헛돈다.
+CASES = {
+    "calm": [
+        ("여보, 미안해. 내가 잘못했어.", "목이 메어"),
+        ("당신 진짜 미쳤어!", "서늘"),
+        ("그래서 뭐 어쩌라고. 잘났다 정말.", "비꼬"),
+        ("지금 그걸 말이라고 해?", "되묻"),
+        ("그 사람 이름은 내가 안다.", "담담"),
+    ],
+    "fierce": [
+        ("여보, 미안해. 내가 잘못했어.", "울음"),
+        ("당신 진짜 미쳤어!", "이를 악물"),
+        ("그래서 뭐 어쩌라고. 잘났다 정말.", "코웃음"),
+        ("지금 그걸 말이라고 해?", "되묻"),
+        ("그 사람 이름은 내가 안다.", "차분"),
+    ],
+}
 # ⚠️ 줄마다 달라지는 결은 mood() 가 정한다. direct() 로 재면 안 된다 —
 #    작품 전체 결(STYLES)이 정해져 있으면 그것이 mood() 를 눌러 이기기
 #    때문이다. 층을 섞어 재면 결을 바꿀 때마다 시험이 헛돈다.
-seen = set()
-for line, want in CASES:
-    m = T.mood(line)
-    seen.add(m)
-    ck(want in m, f"「{line[:12]}」 → 「{want}」 쪽으로 읽힌다", m)
-
-ck(len(seen) == len(CASES), "다섯 가지 말투가 서로 다르게 나온다",
-   f"나온 말투 {len(seen)}가지")
+_keep0 = os.environ.get("VOICE_STYLE")
+for _sty, _rows in CASES.items():
+    os.environ["VOICE_STYLE"] = _sty
+    seen = set()
+    for line, want in _rows:
+        m = T.mood(line)
+        seen.add(m)
+        ck(want in m, f"[{_sty}] 「{line[:12]}」 → 「{want}」 쪽으로 읽힌다", m)
+    ck(len(seen) == len(_rows), f"[{_sty}] 다섯 가지 말투가 서로 다르게 나온다",
+       f"나온 말투 {len(seen)}가지")
+# 눌러 담은 판이 **정말로 더 순한지** — 격한 낱말이 하나도 없어야 한다
+os.environ["VOICE_STYLE"] = "calm"
+HOTW = r"목소리를 높|터져|몰아붙이|서슬|날카|악물|내지르|소리치"
+_hot = [T.mood(l) for l, _ in CASES["calm"] if re.search(HOTW, T.mood(l))]
+ck(not _hot, "기본 판에는 격한 말이 하나도 없다", " · ".join(_hot[:2]))
+if _keep0 is None:
+    os.environ.pop("VOICE_STYLE", None)
+else:
+    os.environ["VOICE_STYLE"] = _keep0
 
 # 아래 꼴 검사는 **결을 안 정한 상태(drama)** 에서 본다
 _style_keep = os.environ.get("VOICE_STYLE")

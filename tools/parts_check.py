@@ -60,7 +60,10 @@ def main():
     for f in stories:
         d = json.loads(f.read_text(encoding="utf-8"))
         sid = d.get("sid") or f.name.split(".")[0]
-        bad = story90.check(d)
+        # ⚠️ 이미 만들어 둔 대본이다. 연기 지시가 격한지는 안 본다 —
+        #    고치면 목소리 스무 줄을 다시 만들어야 하고, 이미 올라간 편과
+        #    소리가 달라진다 (손님: "다음번부터"). 새 대본은 story90.py 가 막는다.
+        bad = story90.check(d, new=False)
         ck(f"{sid} 대본이 규격에 맞는다", not bad, "; ".join(bad[:3]))
         built = series / f"{sid}.json"
         ck(f"{sid} 프롬프트까지 지어져 있다", built.exists(),

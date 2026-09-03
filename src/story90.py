@@ -55,6 +55,88 @@ BRANDED = ("bank statement", "letterhead", "bank logo", "business card",
            "id card", "passport", "newspaper front page")
 
 
+# ── ⭐⭐⭐ 2026-09-04 손님: "대사 목소리 감정이 너무 격하게 표현되지
+#    않도록 코드에도 반영해줘." ────────────────────────────────────
+#
+#    기계 목소리는 "세게 읽어라" 하면 연기가 되는 게 아니라 **소리만 커진다.**
+#    그러면 싸구려 더빙처럼 들린다. 한국 드라마의 싸움은 내지르지 않는다 —
+#    낮게, 조용하게, 그래서 더 서늘하다.
+#
+#    막는 자리를 **두 겹**으로 둔다.
+#      ① prompts/story90_gen.md 가 애초에 그렇게 쓰라고 시킨다 (예방)
+#      ② 그래도 격한 말이 오면 여기서 **조용한 말로 바꿔 끼운다** (수선 · 0원)
+#    ②가 있어야 하는 까닭: 대본 한 편이 약 2,100원이다. 격한 말 하나 때문에
+#    통째로 물리면 손님이 단추를 또 눌러 2,100원을 더 쓰셔야 한다.
+#    바꿔 끼우는 것은 0원이고, 무엇을 바꿨는지 화면에 적어 드린다.
+HOT = [
+    # ⚠️ 말끝은 여러 가지로 온다 — 듯 / 며 / 면서 / 고. 하나만 적으면
+    #    "소리치듯" 은 잡고 "소리치며" 는 그대로 지나간다(실제로 겪었다).
+    (r"목소리가\s*확?\s*올라가(?:며|고|면서|는)", "목소리를 낮게 눌러"),
+    (r"목소리를\s*(?:확\s*)?높(?:여|이며|이면서|이고)", "목소리를 낮게 눌러"),
+    (r"(?:분노|감정|울분|화)(?:가|이)?\s*터져\s*나오(?:듯|며|면서|고)",
+     "속으로 삼키듯"),
+    (r"터뜨리(?:듯|며|면서)|폭발하(?:듯|며|면서)", "속으로 삼키듯"),
+    (r"(?:소리치|내지르|악을\s*쓰|울부짖|절규하|오열하)(?:듯|며|면서|고|으며|으면서)",
+     "낮게 눌러 말하듯"),
+    (r"비명을?\s*지르(?:듯|며|면서)", "숨을 삼키듯"),
+    (r"이를\s*악물(?:고|며|면서)", "턱에 힘을 준 채"),
+    (r"서슬\s*퍼렇게", "서늘하게"),
+    (r"몰아붙이(?:며|면서|고)", "차분하게"),
+    (r"몰아붙이듯", "차분히 짚어 가듯"),
+    (r"쏘아붙이(?:듯|며|면서|고)", "짧게 끊어 말하듯"),
+    (r"다그치(?:듯|며|면서|고)", "조용히 되묻듯"),
+    (r"날카롭게|앙칼지게", "조용하고 단단하게"),
+    (r"격앙되어|격정적으로|격하게", "담담하게"),
+    (r"끝을\s*떨(?:면서|며|고)\s*힘겹게", "말끝이 조금 흔들리게"),
+    (r"(?<![가-힣])세게(?![가-힣])|(?<![가-힣])강하게(?![가-힣])", "또렷하게"),
+]
+
+
+def soften(say):
+    """연기 지시 한 줄에서 **격한 말을 조용한 말로** 바꿔 끼운다.
+
+    바꾼 것이 있으면 (바뀐 줄, 바꾼 내역) 을 돌려준다. 0원.
+    """
+    out, hit = str(say or ""), []
+    for pat, calm in HOT:
+        m = re.search(pat, out)
+        if m:
+            hit.append(f"{m.group(0)} → {calm}")
+            out = re.sub(pat, calm, out)
+    # ⚠️ 한 줄에 격한 말이 둘이면 같은 조용한 말이 두 번 들어간다
+    #    ("낮게 눌러 말하듯 낮게 눌러 말하듯"). 뒤엣것을 지운다.
+    for _, calm in HOT:
+        while out.count(calm) > 1:
+            i = out.index(calm, out.index(calm) + len(calm))
+            out = out[:i] + out[i + len(calm):]
+    out = re.sub(r"\s{2,}", " ", out)
+    out = re.sub(r"\s*,\s*(?=,|$)", "", out).strip(" ,")
+    return out, hit
+
+
+def cool_all(doc):
+    """대본 전체의 연기 지시를 훑어 격한 말을 눌러 준다."""
+    log = []
+    for c in doc.get("cuts") or []:
+        says = c.get("say") or []
+        for i, one in enumerate(says):
+            new, hit = soften(one)
+            if hit:
+                says[i] = new
+                log.append(f"컷{c.get('n')}: " + " · ".join(hit))
+        c["say"] = says
+    return log
+
+
+def too_hot(say):
+    """아직도 격한 말이 남아 있으면 그 말을 돌려준다 (없으면 '')."""
+    for pat, _ in HOT:
+        m = re.search(pat, str(say or ""))
+        if m:
+            return m.group(0)
+    return ""
+
+
 def load(p, dflt):
     try:
         return json.loads(Path(p).read_text(encoding="utf-8"))
@@ -110,8 +192,15 @@ def case_json(row):
     return json.dumps(d, ensure_ascii=False, indent=2)
 
 
-def check(doc):
-    """규격에 맞는지 다 본다. 한 군데라도 어긋나면 저장하지 않는다."""
+def check(doc, new=True):
+    """규격 검사. `new=False` 면 **이미 만들어 둔 대본**을 보는 것이다.
+
+    ⚠️ 연기 지시(say)가 격한지 보는 못은 `new=True` 일 때만 박는다.
+       이미 만든 대본은 그 지시로 **목소리가 이미 나와 있다.** 지시를 고치면
+       지문이 달라져 스무 줄을 다시 만들게 되는데, 값이 들 뿐 아니라 이미
+       올라간 편과 소리가 달라진다. 손님도 "**다음번부터**" 라고 하셨다
+       (2026-09-04). 그래서 옛 대본은 그대로 두고, 새로 짓는 것부터 막는다.
+    """
     bad = []
     cuts = doc.get("cuts") or []
     parts = doc.get("parts") or []
@@ -138,6 +227,12 @@ def check(doc):
         say = c.get("say") or []
         if len(say) != len(turns) or any(not str(x).strip() for x in say):
             bad.append(f"컷{n}: 연기 지시(say)가 대사 줄 수와 안 맞는다")
+        # ⭐ 감정을 격하게 시키는 말이 남아 있으면 안 된다 (cool_all 이 눌러 준다)
+        for one in (say if new else []):
+            hot = too_hot(one)
+            if hot:
+                bad.append(f"컷{n}: 연기 지시가 너무 격하다 — '{hot}' "
+                           f"(감정은 속으로 눌러 담는 말로 적는다)")
         sc = str(c.get("scene") or "")
         if not sc.strip():
             bad.append(f"컷{n}: 화면 묘사(scene)가 비었다")
@@ -239,6 +334,14 @@ def main():
         c["turns"] = [list(t) for t in c["turns"]]
         c["who"] = list(c.get("who") or [])
         c["sec"] = round(chars(c) / 4.6 + 1.2, 1)
+
+    # ⭐ 검사하기 **전에** 격한 연기 지시를 눌러 준다. 0원이고, 여기서
+    #    안 눌러 주면 대본 한 편(2,100원)을 통째로 물리게 된다.
+    cooled = cool_all(doc)
+    if cooled:
+        print(f"\n■ 연기 지시를 눌러 담았다 ({len(cooled)}줄) — 값 0원")
+        for line in cooled[:8]:
+            print(f"  · {line}")
 
     bad = check(doc)
     if bad:
