@@ -49,6 +49,12 @@ on:
         description: '손님이 올린 컷 영상 (관리자 페이지가 넣는다 · 손대지 마십시오)'
         required: false
         default: ''
+      open_video:
+        description: '편 첫 장면을 진짜 영상으로 (+약 1,400원)'
+        required: false
+        default: '아니요'
+        type: choice
+        options: ['아니요', '예']
 
 permissions:
   contents: write
@@ -78,7 +84,14 @@ jobs:
       TTS_CALL_CAP: '40'
       # ⭐ 한 번 눌렀을 때 나갈 돈의 뚜껑. 실제로 드는 값(약 2,614원) **바로 위**에
       #    둔다 — 한도가 실제보다 훨씬 높으면 막는 시늉만 하는 것이다.
-      VT_RUN_KRW: '2800'
+      # ⚠️ 편 첫 장면 영상을 켜면 1,411원이 더 든다(4초 × 3편). 그때만 뚜껑을
+      #    올린다 — 늘 올려 두면 안 켠 날에도 막는 시늉만 하게 된다.
+      VT_RUN_KRW: ${{ inputs.open_video == '예' && '4300' || '2800' }}
+      # ⭐⭐ 2026-09-04 손님: "각 편당 첫번째 씬만 영상으로."
+      #    켰을 때만 Veo 를 부른다. 안 켜면 지금까지처럼 전부 그림이다.
+      VT_OPEN_VIDEO: ${{ inputs.open_video == '예' && '1' || '' }}
+      # 편이 넷이어도 넉넉하다. 실패가 겹쳐도 조용히 수십 번 부르지 못하게.
+      VEO_CALL_CAP: '6'
       STEP: ${{ inputs.step || 'all' }}
 
     steps:

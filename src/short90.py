@@ -311,6 +311,67 @@ def salvage(d, suffix=".png"):
     return have
 
 
+def open_cuts(doc):
+    """편마다 **첫 컷** 번호. 여기만 진짜 영상으로 만든다."""
+    return [part_cuts(doc, p)[0]["n"] for p in parts_of(doc) if part_cuts(doc, p)]
+
+
+def open_dir():
+    return OUT / "open"
+
+
+def openers(doc):
+    """편 첫 컷을 Veo 로 4초짜리 영상으로 만든다 (image-to-video).
+
+    ⚠️ 값이 나간다. 그래서 —
+       · 켜야만 돈다 (VT_OPEN_VIDEO)
+       · 만들기 **전에** 얼마인지 적어 준다
+       · 지문이 같으면 다시 안 만든다 (0원). 그림이 바뀌면 다시 만든다.
+    """
+    import veo                                              # 늦게 부른다(열쇠 필요)
+    d = open_dir()
+    d.mkdir(parents=True, exist_ok=True)
+    ns = open_cuts(doc)
+    st = OUT / "stills"
+    krw1 = cost.video_krw(veo.MODEL, OPEN_SEC)
+    print(f"■ 편 첫 장면 영상 {len(ns)}개 "
+          f"({OPEN_SEC:g}초씩 · 한 개 약 {krw1:,.0f}원 · 최대 "
+          f"{krw1 * len(ns):,.0f}원)")
+    made = 0
+    for n in ns:
+        out = d / f"c{n:02d}.mp4"
+        still = st / f"c{n:02d}.png"
+        if not still.exists():
+            raise Short90Error(f"컷{n} 그림이 없다 — 먼저 stills 를 돌린다")
+        c = [x for x in doc["cuts"] if x["n"] == n][0]
+        # ⚠️ 우리 시스템용 판(veo)을 쓴다. 앱용 판(flow)이 아니다.
+        prompt = str(c.get("veo") or c.get("still") or "")
+        # ⚠️ 지문에 **그림 내용까지** 넣는다. 그림이 바뀌면 영상도 바뀌어야 한다.
+        sig = reuse.sig_of(prompt, f"{OPEN_SEC:g}", OPEN_RATIO,
+                           reuse.sig_of(still.read_bytes().hex()[:4096]))
+        ok, why = reuse.can_reuse(out, sig)
+        print(f"  컷{n:>2} 편 첫 장면")
+        if ok:
+            print("    (그대로다 — 건너뛴다 · 0원)")
+            made += 1
+            continue
+        if why:
+            print(f"    ⚠️ {why} — 다시 만든다")
+        try:
+            veo.make_clip(prompt, int(OPEN_SEC), out, ratio=OPEN_RATIO,
+                          seed=veo._seed(doc.get("sid"), n), start=still)
+        except Exception as e:                               # noqa: BLE001
+            # ⚠️ 첫 장면 하나가 안 나왔다고 편 전체를 못 만들면 안 된다.
+            #    그 컷은 **그림으로** 간다 — 지금까지 하던 그대로다.
+            print(f"    ⚠️ 못 만들었다 ({e}) — 이 컷은 그림으로 갑니다")
+            out.unlink(missing_ok=True)
+            continue
+        reuse.stamp(out, sig)
+        made += 1
+    print(f"\n■ 편 첫 장면 {made}/{len(ns)}개")
+    return 0
+
+
 def stills(doc):
     d = OUT / "stills"
     d.mkdir(parents=True, exist_ok=True)
@@ -897,7 +958,43 @@ def karaoke(c, sec, voice, d, n, title=None, mark='', tail=''):
     return out
 
 
-def cut_video(c, still, voice, clip, ovs, out):
+def open_bg(c, opener, still, sec, frames):
+    """편 첫 컷 배경 — 앞 4초는 Veo 영상, 그 뒤는 그림으로 넘어간다.
+
+    ⚠️ 되돌려 잇지(loop) 않는다. 4초 지점에서 처음으로 툭 튀어 눈에 걸린다.
+       그림 쪽 첫 장이 영상의 끝 장과 거의 같으므로(그 그림으로 만든 영상이다)
+       0.5초만 겹쳐 넘기면 한 장면처럼 이어진다.
+    돌려주는 것: (ffmpeg 입력 조각, 필터 글, 배경 입력 개수)
+    """
+    olen = min(OPEN_SEC, max(0.4, sec))
+    tail = sec - olen + OPEN_XFADE          # 겹치는 만큼 그림을 길게 뽑는다
+    src = ["-i", str(opener)]
+    vf = (f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,"
+          f"crop={W}:{H},fps={FPS},trim=0:{olen:.3f},"
+          f"setpts=PTS-STARTPTS[ov];")
+    if tail <= OPEN_XFADE + 0.05:
+        # 컷이 짧아 그림이 나올 자리가 없다 — 영상만으로 채운다
+        return src, vf.replace("[ov];", "[bg];"), 1
+    sw, sh = int(W * ZOOM_SRC), int(H * ZOOM_SRC)
+    z0, z1, x0, x1, y0, y1, _nm = move_of(c)
+    tf = max(2, int(round(tail * FPS)))
+    t = f"(on/{max(1, tf - 1)})"
+    z = f"{z0:.4f}+({z1 - z0:.4f})*{t}"
+    px = f"{x0:.4f}+({x1 - x0:.4f})*{t}"
+    py = f"{y0:.4f}+({y1 - y0:.4f})*{t}"
+    src += ["-loop", "1", "-i", str(still)]
+    vf += (f"[1:v]scale={sw}:{sh}:force_original_aspect_ratio=increase,"
+           f"crop={sw}:{sh},"
+           f"zoompan=z='{z}':d={tf}"
+           f":x='(iw-iw/zoom)*({px})'"
+           f":y='(ih-ih/zoom)*({py})':s={W}x{H}:fps={FPS},"
+           f"trim=0:{tail:.3f},setpts=PTS-STARTPTS[st];"
+           f"[ov][st]xfade=transition=fade:duration={OPEN_XFADE:.3f}"
+           f":offset={max(0.0, olen - OPEN_XFADE):.3f}[bg];")
+    return src, vf, 2
+
+
+def cut_video(c, still, voice, clip, ovs, out, opener=None):
     """컷 하나 → mp4. 손으로 만든 영상(clip)이 있으면 그것을 쓰고, 없으면 그림.
 
     ⭐⭐ 2026-08-27 손님: "이미지는 중간중간 섞여 있고 동영상도 있어야 돼."
@@ -920,7 +1017,13 @@ def cut_video(c, still, voice, clip, ovs, out):
         snd = ["-i", str(voice)]      # 0=화면 · 자막들 · 마지막이 우리 목소리
         loop = ["-stream_loop", "-1"] if clip else []
     frames = max(2, int(round(sec * FPS)))
-    if clip:
+    nbg = 1
+    if opener:
+        # ⭐ 편 첫 컷 — 앞 4초만 진짜 영상, 그 뒤는 그림으로 이어진다.
+        #    ⚠️ Veo 가 만든 소리는 안 쓴다. 첫 컷은 나레이션 컷이라 우리
+        #       나레이션이 깔려야 한다 (겹치면 둘 다 안 들린다).
+        src, vf, nbg = open_bg(c, opener, still, sec, frames)
+    elif clip:
         # ⚠️ 올린 영상이 컷보다 짧으면 마지막 그림이 얼어붙는다 — 되돌려 잇는다
         src = [*loop, "-i", str(clip)]
         vf = (f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,"
@@ -959,7 +1062,9 @@ def cut_video(c, still, voice, clip, ovs, out):
     for i, (_png, a, b) in enumerate(ovs):
         nxt = f"[v{i}]" if i < len(ovs) - 1 else "[v]"
         chain_in = chain
-        vf += (f"{chain_in}[{i + 1}:v]overlay=0:0:format=auto"
+        # ⚠️ 배경이 둘일 수도 있다(영상 + 그림). 자막 장 번호는 그만큼 민다 —
+        #    안 밀면 자막이 배경 그림 위에 얹히는 게 아니라 배경을 밀어낸다.
+        vf += (f"{chain_in}[{i + nbg}:v]overlay=0:0:format=auto"
                f":enable='between(t,{a:.3f},{b:.3f})'{nxt};")
         chain = nxt
     vf = vf.rstrip(";")
@@ -968,7 +1073,7 @@ def cut_video(c, still, voice, clip, ovs, out):
         ovin += ["-i", str(o)]
     # 소리 입력 번호는 화면(0) + 자막 장수 뒤부터다
     if not use_clip_audio:
-        amap = f"{1 + len(ovs)}:a"
+        amap = f"{nbg + len(ovs)}:a"
     run(["ffmpeg", "-y", "-v", "error", *src, *ovin, *snd,
          "-filter_complex", vf,
          # ⭐ 소리를 여기서 빨리 감는다 (atempo). 목소리를 다시 만들면 값이
@@ -1058,6 +1163,24 @@ def part_file(doc, no):
 #    60초 이하뿐이다. 그래서 넘으면 **크게** 알린다.
 PART_MAX_SEC = 59.5
 
+# ── ⭐⭐⭐ 편 첫 장면만 진짜 영상으로 (2026-09-04 손님 지시) ──────
+#    손님: "각 편당 첫번째 씬만 영상으로 나오고 그 다음씬부터는 이미지로."
+#    맞는 자리다. 편이 셋이면 **독립된 스와이프 판정이 셋**이고, 그 판정은
+#    첫 1~2초에 갈린다. 게다가 2·3편의 첫 컷은 지금 앞 컷 그림을 옮겨 쓰고
+#    있어(0원 아끼려고) 1편을 본 사람에게는 "봤던 화면"으로 시작한다.
+#
+#    ⚠️ 반드시 **그 컷 그림을 넣어 움직이게 한다**(image-to-video).
+#       글로만 새로 그리면 인물 얼굴이 컷2부터와 달라져 오히려 싸구려가 된다.
+#    ⚠️ 4초면 된다. 스와이프 판정 구간을 다 덮는다. 8초는 값만 두 배고
+#       (편당 940원) 판정이 이미 끝난 구간을 산다.
+#    ⚠️ 첫 컷은 9~10초라 4초로는 다 못 채운다. 되돌려 잇지(loop) 않는다 —
+#       4초 지점에서 화면이 튀어 눈에 걸린다. 그림으로 **부드럽게 넘긴다**.
+OPEN_SEC = 4.0                   # Veo 에게 살 길이 (초)
+OPEN_XFADE = 0.5                 # 영상 → 그림으로 넘어가는 시간
+OPEN_RATIO = "9:16"              # 화면이 세로로 꽉 차므로 세로로 받는다
+# 값이 나가는 일이라 **꺼진 채로** 둔다. 관리자 화면에서 켜야 돈다.
+OPEN_VIDEO = os.environ.get("VT_OPEN_VIDEO", "").strip() in ("1", "예", "on")
+
 
 def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
     """한 편을 조립한다 → build/s90/<SID>_part<N>.mp4"""
@@ -1087,15 +1210,21 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
             raise Short90Error(f"컷{n} 소리가 없다 — 먼저 voice 를 돌린다")
         # ⭐ 카라오케 — 낱말마다 자막 장 한 장. 컷 길이를 먼저 알아야 하므로
         #    길이 셈(cut_sec)을 여기서 한 번 하고, cut_video 도 같은 값을 쓴다.
+        # ⭐ 편 첫 컷이면 앞 4초를 Veo 영상으로 연다 (있을 때만 · 2026-09-04)
+        opener = open_dir() / f"c{n:02d}.mp4"
+        opener = opener if (i == 0 and opener.exists()) else None
         sec0, uca = cut_sec(c, voice, clip if clip.exists() else None)
         ovs = karaoke(c, sec0, None if uca else voice, OUT / "ov", n,
                       title=head if i == 0 else None, mark=mark,
                       tail=tail if i == len(cuts) - 1 else "")
         out = parts_d / f"c{n:02d}.mp4"
-        sec = cut_video(c, still, voice, clip if clip.exists() else None, ovs, out)
+        sec = cut_video(c, still, voice, clip if clip.exists() else None, ovs,
+                        out, opener=opener)
         total += sec
         made.append(out)
-        if not clip.exists():
+        if opener:
+            how = f"편 첫 장면 영상 {OPEN_SEC:g}초 → 그림"
+        elif not clip.exists():
             how = "그림"
         elif is_narr(c):
             how = "영상 + 우리 나레이션"
@@ -1155,7 +1284,8 @@ def build(doc, only=None):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("what", choices=["stills", "voice", "build", "all", "meta"])
+    ap.add_argument("what",
+                    choices=["stills", "open", "voice", "build", "all", "meta"])
     # ⭐ 2026-09-01 — 편마다 따로 만들 수 있어야 한다. 안 주면 전부 만든다.
     #    (그림·목소리는 편이 함께 쓰므로 늘 통째로 본다 — 나눠도 값이 같다)
     ap.add_argument("--part", default="",
@@ -1180,6 +1310,13 @@ def main():
         if a.what in ("stills", "all"):
             if stills(doc):
                 return 1
+        # ⭐ 편 첫 장면 영상 — **켰을 때만** 돈다 (값이 나간다).
+        #    그림 다음, 목소리 앞이다: 그림을 넣어 움직이게 하기 때문이다.
+        if a.what == "open" or (a.what == "all" and OPEN_VIDEO):
+            if openers(doc):
+                return 1
+        elif a.what == "all":
+            print("■ 편 첫 장면 영상 — 끔 (그림으로 갑니다 · 0원)")
         if a.what in ("voice", "all"):
             if voices(doc):
                 return 1

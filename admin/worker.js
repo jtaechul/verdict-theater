@@ -1126,10 +1126,23 @@ function workDraw() {
 // ③④ 편마다 — 만들기 단추와 올리기 단추가 **따로** 있다
 function partsCard(w) {
   const ps = partList(w);
+  const n = ps.length || 3;
   let h = '<div class="card"><h2>③ 세 편 만들기</h2>'
         + '<div class="uphint">그림과 목소리를 편들이 함께 씁니다. '
         + '<b>한 번에 만드는 쪽이 빠르고 돈이 덜 듭니다.</b> '
         + '처음에는 아래 단추 하나만 누르시면 됩니다.</div>'
+        // ⭐⭐⭐ 2026-09-04 손님: "각 편당 첫번째 씬만 영상으로 나오고
+        //    그 다음씬부터는 이미지로 나오는거지."
+        //    편이 셋이면 스와이프 판정도 셋이고, 그 판정은 첫 1~2초에 갈린다.
+        //    ⚠️ 값이 나가는 일이라 **끈 채로** 두고, 켤 때 값이 보이게 한다.
+        + '<label class="upbox" style="margin-top:10px;display:block">'
+        + '<input type="checkbox" id="w-open"> '
+        + '<b>편 첫 장면을 진짜 영상으로</b> '
+        + '<span class="uphint">(+약 ' + (470 * n).toLocaleString() + '원 · '
+        + n + '편 × 4초)</span>'
+        + '<div class="uphint" style="margin-top:6px">편마다 첫 4초만 움직이고 '
+        + '그 뒤는 지금처럼 그림입니다. 그 컷 그림을 그대로 움직이게 하므로 '
+        + '얼굴이 바뀌지 않습니다.</div></label>'
         + '<div class="btns" style="margin-top:12px">'
         + '<button class="gold" id="w-make-all" onclick="workMake(0)">'
         + '전체 만들기 (' + (ps.length || 3) + '편)</button></div>'
@@ -1274,10 +1287,20 @@ async function workMake(no) {
   if (WBUSY[id]) return;
   const msg = document.getElementById('w-make-msg');
   const what = no ? (no + '편만 다시 만들기') : '전체 만들기';
-  if (!confirm([what + ' 를 시작할까요?',
-                '',
-                '그림과 목소리는 이미 만든 것을 그대로 씁니다 (0원).',
-                '10~20분 걸립니다.'].join(String.fromCharCode(10)))) return;
+  // ⚠️ 값이 나가는 일은 **누르기 전에** 얼마인지 보여 드린다.
+  const box = document.getElementById('w-open');
+  const open = !!(box && box.checked);
+  const nps = (partList((WORKS || {})[WORK] || {}) || []).length || 3;
+  const lines = [what + ' 를 시작할까요?', '',
+                 '그림과 목소리는 이미 만든 것을 그대로 씁니다 (0원).'];
+  if (open) {
+    lines.push('편 첫 장면 영상: 켬 — ' + nps + '편 × 4초 = 약 '
+               + (470 * nps).toLocaleString() + '원이 나갑니다.');
+  } else {
+    lines.push('편 첫 장면 영상: 끔 (전부 그림 · 0원)');
+  }
+  lines.push('10~20분 걸립니다.');
+  if (!confirm(lines.join(String.fromCharCode(10)))) return;
   WBUSY[id] = 1;
   lock('w-make-all', 1);
   if (msg) msg.textContent = '시작하는 중…';
@@ -1285,6 +1308,7 @@ async function workMake(no) {
     const r = await fetch('/api/make-short90', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sid: WORK, part: no ? String(no) : '',
+                             open_video: open ? '예' : '아니요',
                              cards: S90CARDS, clips: S90CLIPS }),
     });
     const j = await r.json();
@@ -3834,13 +3858,18 @@ export default {
           ? String(body.sid).toUpperCase() : 'S90';
         const pn = parseInt((body && body.part) || '', 10);
         const part = (Number.isInteger(pn) && pn >= 1 && pn <= 20) ? String(pn) : '';
+        // ⭐ 2026-09-04 — 편 첫 장면 영상. 값이 나가므로 **'예' 라고 정확히
+        //    보냈을 때만** 켠다 (빈 값·이상한 값은 전부 끔으로 본다).
+        const openv = ((body && body.open_video) === '예') ? '예' : '아니요';
         try {
           await gh(env, `/repos/${REPO}/actions/workflows/short90.yml/dispatches`, {
             method: 'POST', body: JSON.stringify({ ref: BRANCH,
               inputs: { step: step, sid: sid, part: part,
+                        open_video: openv,
                         cards: payload, clips: shots } }),
           });
           return Response.json({ ok: true, sid: sid, part: part,
+                                 open_video: openv,
                                  n: Object.keys(cards).length,
                                  clips: Object.keys(clips).length });
         } catch (e) {

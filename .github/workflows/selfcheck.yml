@@ -180,6 +180,11 @@ jobs:
           #    제목이 25자·통과선이 26자 — 딱 한 글자였다.
           #    조용히 실패하는 길이 다시 생기지 않았는지 매번 본다.
           python3 tools/story_flow_check.py
+          # ⚠️ 2026-09-04 손님 지시로 **편 첫 4초만** 진짜 영상이 된다.
+          #    값이 나가는 길이라 — 켜야만 돌고 · 그림을 넣어 움직이게 하고
+          #    (얼굴이 안 바뀌게) · 다시 누르면 0원인지 매번 본다.
+          #    가짜 4초 영상으로 진짜 조립까지 해 본다 (Veo 는 안 부른다).
+          python3 tools/open_check.py
 
       - name: 지어낸 말을 잘라 내는가
         run: python3 tools/extra_speech_test.py
