@@ -70,13 +70,49 @@ def rules():
        "opener" not in (re.search(r"def cut_sec\([\s\S]*?\n\ndef ",
                                   src) or [""])[0])
 
-    print("\n③ 하나 실패해도 편 전체가 사는가")
+    print("\n③-2 하나 실패해도 편 전체가 사는가")
     ck("못 만들면 그 컷은 그림으로 간다",
        "이 컷은 그림으로 갑니다" in op and "continue" in op)
     ck("실패한 찌꺼기 파일을 지운다", "out.unlink(missing_ok=True)" in op)
     bp = (re.search(r"def build_part\([\s\S]*?\n\ndef ", src) or [""])[0]
     ck("영상이 있을 때만 쓴다 (없으면 그냥 그림)", "opener.exists()" in bp)
     ck("편의 **첫 컷**만 연다", "i == 0 and opener.exists()" in bp)
+
+
+def lips():
+    """⭐ 2026-09-04 손님: "동영상에서 입은 안움직여도 될 것 같아."
+
+    편 첫 컷은 나레이션 컷이라 화면에서는 아무도 말하지 않는다. 입이 움직이면
+    우리 나레이션과 어긋나 곧바로 가짜처럼 보인다.
+    ⚠️ 이 저장소의 오랜 규칙 — **금지형으로 적지 않는다.** 모델은 부정을
+       흘려듣고 오히려 그대로 한다. 입을 다물게 하려고 적은 줄이 입을
+       움직이게 만들 수 있다.
+    """
+    print("\n③ 첫 장면에서 입이 안 움직이는가")
+    doc = json.loads((ROOT / "data" / "series" / "S90.json")
+                     .read_text(encoding="utf-8"))
+    n = S.open_cuts(doc)[0]
+    c = [x for x in doc["cuts"] if x["n"] == n][0]
+    t = S.open_prompt(c)
+    ck("입을 다물라고 **바라는 것만**으로 적었다",
+       "mouth closed" in t and "jaw relaxed" in t)
+    ck("말하는 게 아니라 생각하는 얼굴이라고 적었다", "thinking rather than" in t)
+    ck("움직임을 무엇으로 채울지 적었다 (숨·눈깜빡임·머리카락)",
+       "calm breath" in t and "slow blink" in t)
+    # 입·소리를 **금지형**으로 적은 줄이 남아 있으면 안 된다
+    hot = [ln for ln in t.splitlines()
+           if re.search(r"nobody|never|\bdo(es)? not\b|\bdon't\b", ln)
+           or (re.search(r"\bno \w", ln) and not ln.startswith("ON SCREEN:"))]
+    ck("입·소리를 금지형으로 적은 줄이 없다", not hot, " | ".join(hot)[:120])
+    ck(f"우리가 사는 길이와 프롬프트가 맞는다 ({S.OPEN_SEC:g}초)",
+       f"{S.OPEN_SEC:g}-second" in t and "8-second" not in t)
+    ck("원본 대본은 안 건드린다 (손보기는 첫 장면에만)",
+       "8-second" in str(c.get("veo") or ""))
+    # ⚠️ 손본 글을 **실제로 쓰는지**까지 본다. 손보는 함수만 있고 안 쓰면
+    #    시험은 통과하는데 진짜 영상에는 옛 글이 들어간다.
+    src = (ROOT / "src" / "short90.py").read_text(encoding="utf-8")
+    op = (re.search(r"def openers\(doc\)[\s\S]*?\n\ndef ", src) or [""])[0]
+    ck("만들 때 그 손본 글을 쓴다", "prompt = open_prompt(c)" in op)
 
 
 def wiring():
@@ -159,6 +195,7 @@ def live():
 def main():
     print("⭐ 편 첫 장면 영상 (값 0원 — Veo 를 안 부른다)\n")
     rules()
+    lips()
     wiring()
     live()
     print("\n" + "─" * 60)

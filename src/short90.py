@@ -311,6 +311,42 @@ def salvage(d, suffix=".png"):
     return have
 
 
+# ── ⭐⭐⭐ 첫 장면은 **입이 안 움직인다** (2026-09-04 손님 지시) ──────
+#    손님: "동영상에서 입은 안움직여도 될 것 같아."
+#    맞다. 편 첫 컷은 **나레이션 컷**이라 화면에서는 아무도 말하지 않는다.
+#    입이 움직이면 우리 나레이션과 어긋나 곧바로 가짜처럼 보인다.
+#
+#    그런데 지금 프롬프트에 두 가지가 걸려 있었다 —
+#      ① "8-second" 라고 적혀 있다. 우리는 4초를 산다. 8초에 맞춰 움직임을
+#         짜면 4초에서 잘려 어정쩡하게 끝난다.
+#      ② "nobody speaks and nobody moves their lips" — **금지형**이다.
+#         이 저장소의 오랜 규칙: 모델은 부정을 흘려듣고 오히려 그대로 한다.
+#         입을 다물게 하려고 적은 줄이 입을 움직이게 만들 수 있다.
+#    → 둘 다 고친다. **바라는 것만** 적는다.
+OPEN_LIPS = (
+    "MOTION: every person keeps their mouth closed and their jaw relaxed for "
+    "the entire take, holding a quiet inward expression, thinking rather than "
+    "talking. The only movement is one calm breath, a single slow blink, a "
+    "small shift of the head or hand, hair and fabric drifting slightly, and "
+    "light shifting softly across the scene. The camera holds still.")
+OPEN_AUDIO = "AUDIO: only the quiet room tone of the location."
+
+
+def open_prompt(c):
+    """편 첫 장면(4초)용 프롬프트 — 길이를 맞추고 입을 다물게 한다."""
+    txt = str(c.get("veo") or c.get("still") or "")
+    out = []
+    for line in txt.splitlines():
+        if line.startswith("AUDIO:"):
+            # 금지형 줄을 통째로 **바라는 것만** 적은 줄로 바꾼다
+            out.append(OPEN_AUDIO)
+            continue
+        # 8초짜리로 짜라는 말을 우리가 사는 길이로 맞춘다
+        out.append(line.replace("8-second", f"{OPEN_SEC:g}-second"))
+    out.append(OPEN_LIPS)
+    return "\n".join(out)
+
+
 def open_cuts(doc):
     """편마다 **첫 컷** 번호. 여기만 진짜 영상으로 만든다."""
     return [part_cuts(doc, p)[0]["n"] for p in parts_of(doc) if part_cuts(doc, p)]
@@ -345,7 +381,8 @@ def openers(doc):
             raise Short90Error(f"컷{n} 그림이 없다 — 먼저 stills 를 돌린다")
         c = [x for x in doc["cuts"] if x["n"] == n][0]
         # ⚠️ 우리 시스템용 판(veo)을 쓴다. 앱용 판(flow)이 아니다.
-        prompt = str(c.get("veo") or c.get("still") or "")
+        #    ⭐ 첫 장면용으로 손본다 — 4초에 맞추고, 입을 다물게 한다.
+        prompt = open_prompt(c)
         # ⚠️ 지문에 **그림 내용까지** 넣는다. 그림이 바뀌면 영상도 바뀌어야 한다.
         sig = reuse.sig_of(prompt, f"{OPEN_SEC:g}", OPEN_RATIO,
                            reuse.sig_of(still.read_bytes().hex()[:4096]))
