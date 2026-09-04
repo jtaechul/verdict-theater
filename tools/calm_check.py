@@ -74,8 +74,15 @@ def main():
     # ── ② 그래도 오면 바꿔 끼우는가 ───────────────────────────
     print("\n② 격한 말이 와도 눌러 주는가 (src/story90.py)")
     src = (ROOT / "src" / "story90.py").read_text(encoding="utf-8")
+    # ⚠️ 2026-09-04 — 누르는 일이 autofix() 안으로 들어갔다. 이름만 보지 말고
+    #    **누르는 자리가 검사보다 앞인지**를 본다.
+    ck("자동 손보기가 격한 말을 누른다",
+       re.search(r"def autofix\(doc\)[\s\S]*?cool_all\(doc\)", src) is not None)
     ck("검사하기 전에 눌러 준다 (2,100원짜리 대본을 안 물린다)",
-       re.search(r"cool_all\(doc\)[\s\S]{0,400}?bad = check\(doc\)", src) is not None)
+       re.search(r"fixed = autofix\(doc\)[\s\S]{0,600}?bad = check\(doc\)",
+                 src) is not None)
+    ck("되받아 고친 뒤에도 다시 누른다",
+       re.search(r"def repair\([\s\S]*?autofix\(doc\)", src) is not None)
     ck("눌렀는데도 남으면 규격 위반으로 잡는다", "too_hot(one)" in src)
     miss = []
     for t in CASES:

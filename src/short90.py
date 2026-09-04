@@ -215,6 +215,28 @@ VOICE = {
 }
 NARR_RATE = 1.02                 # 나레이션은 아주 조금 빠르게 (또박또박은 유지)
 
+# ⭐⭐⭐ 2026-09-04 — 사건마다 사람이 다르다(장남·며느리·시어머니…). 위 표에
+#    없는 사람은 여태 **나레이션 목소리**로 말했다 — 30대 며느리가 낮고 묵직한
+#    남자 소리로 말하는 셈이다. 대본이 적어 준 나이대·성별로 골라 준다.
+VOICE_BY = {
+    ("여", "10대"): "Leda",      ("남", "10대"): "Puck",
+    ("여", "20대"): "Leda",      ("남", "20대"): "Puck",
+    ("여", "30대"): "Erinome",   ("남", "30대"): "Iapetus",
+    ("여", "40대"): "Kore",      ("남", "40대"): "Iapetus",
+    ("여", "50대"): "Gacrux",    ("남", "50대"): "Algenib",
+    ("여", "60대"): "Gacrux",    ("남", "60대"): "Alnilam",
+    ("여", "70대"): "Gacrux",    ("남", "70대"): "Alnilam",
+}
+
+
+def voice_of(who, doc):
+    """그 사람의 목소리. 표에 없으면 대본이 적은 나이대·성별로 고른다."""
+    if who in VOICE:
+        return VOICE[who]
+    v = ((doc.get("people") or {}).get(who) or {})
+    got = VOICE_BY.get((str(v.get("sex") or "여"), str(v.get("age") or "40대")))
+    return got or VOICE["나레이션"]
+
 
 class Short90Error(RuntimeError):
     pass
@@ -399,7 +421,7 @@ def voices(doc):
         # ⭐ 줄마다 **어떻게 읽을지**(say)를 같이 들고 간다. 이게 이번 바꿈의
         #   핵심 — 같은 글자라도 어떻게 읽으라고 말해 주면 낭독이 연기가 된다.
         says = c.get("say") or [""] * len(turns)
-        plan = [(w, t, VOICE.get(w) or VOICE["나레이션"],
+        plan = [(w, t, voice_of(w, doc),
                  NARR_RATE if w == "나레이션" else 1.0,
                  says[i] if i < len(says) else "")
                 for i, (w, t) in enumerate(turns)]

@@ -59,6 +59,7 @@ jobs:
           echo "열쇠 있습니다."
 
       - name: 대본 짓기
+        id: make
         env:
           CASE: ${{ inputs.case_id }}
           SID: ${{ inputs.sid }}
@@ -67,9 +68,16 @@ jobs:
           ARGS=""
           [ -n "$CASE" ] && ARGS="$ARGS --case $CASE"
           [ -n "$SID" ] && ARGS="$ARGS --sid $SID"
+          # ⚠️ 여기서 바로 죽으면 아래 '적어 두기' 가 건너뛰어져, 무엇이 왜
+          #    안 됐는지 화면이 영영 모른다 (2026-09-03 에 실제로 그랬다:
+          #    손님 "왜 아무것도 안떠?"). 실패해도 **적어 두기까지 간 다음에**
+          #    맨 마지막 단계에서 빨간불을 낸다.
+          set +e
           python3 src/story90.py $ARGS 2>&1 | tee story.log
+          echo "code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
       - name: 프롬프트까지 붙이기 (0원)
+        if: steps.make.outputs.code == '0'
         run: |
           set -euo pipefail
           # 방금 지은 대본이 어느 사건인지 로그에서 꺼낸다
@@ -78,7 +86,12 @@ jobs:
           echo "사건 $SID"
           python3 tools/build_short90.py "$SID" 2>&1 | tee -a story.log
 
+      # ⭐⭐⭐ 2026-09-04 — 되든 안 되든 **반드시** 적어 둔다.
+      #    · state/story_last.json  화면이 읽는 결과표 (무엇이 왜 안 됐는지)
+      #    · data/series/*.broken.json  받은 대본 (2,100원어치를 안 버린다)
+      #    예전에는 실패하면 이 단계가 통째로 건너뛰어져 둘 다 사라졌다.
       - name: 저장소에 적어 두기
+        if: always()
         run: |
           set -euo pipefail
           git config user.name "verdict-theater-bot"
@@ -98,3 +111,11 @@ jobs:
             cat story.log 2>/dev/null || echo "(못 만들었습니다)"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # ⚠️ 빨간불은 **적어 둔 뒤에** 낸다. 순서를 바꾸면 결과표가 안 올라간다.
+      - name: 못 만들었으면 빨간불
+        if: steps.make.outputs.code != '0'
+        run: |
+          echo "::error::대본을 규격에 맞게 못 만들었습니다. "\
+               "관리자 페이지에 까닭이 뜹니다."
+          exit 1

@@ -2241,7 +2241,13 @@ async function makeStory(btn) {
   WBUSY['story'] = 1;
   if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
   const msg = document.getElementById('w-story-msg');
-  if (msg) msg.textContent = '대본을 짓는 중…';
+  const free = () => {
+    WBUSY['story'] = 0;
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+  };
+  if (msg) msg.textContent = '대본을 짓는 중… (3~10분) 이 화면을 켜 두시면 '
+                           + '끝나는 대로 여기에 알려드립니다.';
+  const since = Date.now();
   try {
     const r = await fetch('/api/make-story', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2252,17 +2258,59 @@ async function makeStory(btn) {
       showErr('대본 만들기를 시작하지 못했습니다',
               (j.error || '') + ' ' + (j.detail || ''));
       if (msg) msg.textContent = '';
-      if (btn) { btn.disabled = false; btn.style.opacity = ''; }
-    } else if (msg) {
-      msg.textContent = '시작했습니다. 5~10분 뒤에 이 화면을 새로 고쳐 주십시오.';
+      free();
+      return;
     }
   } catch (e) {
     showErr('대본 만들기를 시작하지 못했습니다',
             String(e && e.message ? e.message : e));
     if (msg) msg.textContent = '';
-    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+    free();
+    return;
   }
-  WBUSY['story'] = 0;
+  // ⭐⭐⭐ 2026-09-04 손님: "눌렀는데 왜 아무것도 안떠?"
+  //    실제로는 돌았고 46초 만에 규격 검사에서 반려됐다. 그런데 화면은
+  //    "5~10분 뒤 새로고침" 하고 끝냈으니, 새로 고쳐도 아무것도 없었다.
+  //    → 끝까지 지켜보다가 **되든 안 되든** 결과를 여기에 적는다.
+  //    (지켜보는 장치 watchRun 은 이미 있었다. 유튜브 올리기에만 붙어
+  //     있었고 이 단추에는 안 붙어 있었다.)
+  watchRun('story90.yml', since, async (r) => {
+    free();
+    await storySay(r, msg);
+  }, 15, 20);
+}
+
+// 대본 짓기 결과를 **한국어 한 문단**으로 적어 준다.
+async function storySay(r, msg) {
+  if (!msg) return;
+  if (r.conclusion === 'timeout') {
+    msg.textContent = '아직 끝나지 않았습니다. 잠시 뒤 이 화면을 새로 고쳐 '
+                    + '주십시오.';
+    return;
+  }
+  let last = null;
+  try {
+    last = (await (await fetch('/api/story-last?t=' + Date.now(),
+                               { cache: 'no-store' })).json()).last;
+  } catch (e) { last = null; }
+  const won = last && last.krw ? ' (값 약 ' + Number(last.krw).toLocaleString()
+                                 + '원)' : '';
+  if (r.conclusion === 'success' && last && last.state === '됨') {
+    msg.innerHTML = '<b>대본이 나왔습니다</b> — 「' + esc(last.title || '')
+                  + '」 ' + (last.parts || 0) + '편 · ' + (last.cuts || 0)
+                  + '컷' + esc(won) + '. 위 <b>내 쇼츠 작품</b> 에 새로 생겼습니다.';
+    WORKS = null;
+    await loadWorks(true);
+    if (VIEW !== 'work') load();
+    return;
+  }
+  // 실패 — 무엇이 왜 안 됐는지 그대로 적는다. 짐작해서 적지 않는다.
+  let why = (last && last.why || []).slice(0, 6)
+              .map((x) => '<div>· ' + esc(x) + '</div>').join('');
+  if (!why) why = '<div>· 까닭을 아직 못 읽었습니다. 잠시 뒤 새로 고쳐 주십시오.</div>';
+  msg.innerHTML = '<b>대본을 규격에 맞게 못 만들었습니다</b>' + esc(won)
+                + '. 아래가 걸린 곳입니다 — 다시 누르시면 새로 짓습니다.'
+                + '<div style="margin-top:6px">' + why + '</div>';
 }
 
 function fold(title, inner) {
@@ -3544,6 +3592,16 @@ export default {
       if (url.pathname === '/api/works') {
         const works = (await getJson(env, 'state/shorts.json')) || {};
         return Response.json({ works });
+      }
+
+      // ⭐⭐⭐ 2026-09-04 손님: "이 사건으로 쇼츠 만들기 눌렀는데 왜
+      //    아무것도 안떠?" — 실제로는 돌았고 46초 만에 규격 검사에서
+      //    반려됐는데, 화면이 그 사실을 알 길이 아예 없었다.
+      //    → 대본 짓기가 끝나면(되든 안 되든) state/story_last.json 에
+      //      결과가 적힌다. 화면은 이것만 읽으면 된다.
+      if (url.pathname === '/api/story-last') {
+        const r = (await getJson(env, 'state/story_last.json')) || null;
+        return Response.json({ last: r });
       }
 
       if (url.pathname === '/api/short90') {

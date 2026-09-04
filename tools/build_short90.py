@@ -426,6 +426,10 @@ def main(argv=None):
            "title": story["title"], "hook": story.get("hook", ""),
            "series_label": story.get("series_label") or story["title"],
            "parts": [dict(x) for x in story["parts"]],
+           # ⭐ 2026-09-04 — 사건마다 사람이 다르다. 이 사건이 더 세운 사람
+           #    (장남·며느리 등)의 나이대·성별을 조립 쪽으로 넘긴다.
+           #    안 넘기면 그 사람이 나레이션 목소리로 말한다.
+           "people": dict(story.get("people") or {}),
            "cuts": cuts,
            "characters": base.get("characters") or []}
     out_p.write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n",

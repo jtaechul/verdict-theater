@@ -36,8 +36,24 @@ QUEUE = ROOT / "state" / "queue.json"
 CASES = ROOT / "data" / "cases"
 SERIES = ROOT / "data" / "series"
 
-# 사람은 관계로만 부른다 — 인물 카드(assets/cards/s90)에 있는 다섯이 전부다
-WHO_OK = ("아내", "남편", "내연녀", "딸", "변호사", "나레이션")
+# ⭐ 기본 다섯 — 얼굴 그림(assets/cards/s90)이 있어 늘 같은 얼굴로 나온다
+BASE_WHO = ("아내", "남편", "내연녀", "딸", "변호사")
+WHO_OK = BASE_WHO + ("나레이션",)
+
+# ⭐⭐⭐ 2026-09-04 — S91(상간자위자료)이 여기서 걸렸다.
+#    AI 가 판결을 전할 사람으로 '법원' 을 썼는데 목록에 없어 대본 전체가
+#    버려졌다(2,100원). 그리고 앞으로 장남·며느리·시어머니 사건이 오면
+#    같은 일이 또 난다 — 다섯으로는 상속 이야기를 못 쓴다.
+#    → 사건마다 **인물을 늘릴 수 있게** 한다. 늘릴 때는 나이대·성별을 함께
+#      적게 해서, 얼굴 그림이 없어도 목소리를 제대로 골라 줄 수 있게 한다.
+#    ⚠️ 사람이 아닌 것(법원·재판부·판사)은 화자로 못 쓴다 — 판결은 나레이션이
+#      전한다. 이건 autofix() 가 0원으로 고쳐 준다.
+AGES = ("10대", "20대", "30대", "40대", "50대", "60대", "70대")
+SEXES = ("남", "여")
+# 사람이 아니거나, 드라마에 세우면 안 되는 화자 → 나레이션으로 돌린다
+NOT_PEOPLE = ("법원", "재판부", "판사", "법관", "검사", "기자", "앵커",
+              "내레이션", "내래이션", "해설", "자막", "화면")
+PEOPLE_MAX = 4          # 기본 다섯 말고 더 세울 수 있는 사람 수
 
 # 한 편 글자 수 상한. 1자당 0.248초는 실측값이다(127초 영상 ÷ 513자).
 #   225자 ≈ 55.8초 — 60초까지 4초쯤 여유를 둔다. 목소리는 매번 조금씩
@@ -45,7 +61,12 @@ WHO_OK = ("아내", "남편", "내연녀", "딸", "변호사", "나레이션")
 PART_CHARS = 225
 SEC_PER_CHAR = 0.248
 PART_MIN_CUTS, PART_MAX_CUTS = 6, 10
-TITLE_MIN, TITLE_MAX = 26, 48
+# ⭐ 2026-09-04 — 아래 선이 26자였다. 그런데 S91 이 **25자** 하나로 통째로
+#    버려졌고(2,100원), 더 나쁜 것은 이 채널에서 **가장 잘된 제목 셋이
+#    22~24자**였다는 점이다. 검사가 검증된 길이를 막고 있었던 셈이다.
+#    → 22자부터 통과. 프롬프트는 30~45자를 겨냥하라고 시키되(잘리는 자리를
+#      고려한 값), 짧게 잘 뽑힌 것을 버리지는 않는다.
+TITLE_MIN, TITLE_MAX = 22, 48
 CARD_MAX = 16
 LABEL_MAX = 12
 
@@ -137,6 +158,77 @@ def too_hot(say):
     return ""
 
 
+# ── ⭐⭐⭐ 자동 손보기 (0원) ──────────────────────────────────
+#    2026-09-04 — S91 이 세 군데로 반려되며 2,100원이 통째로 날아갔다.
+#    그중 둘은 **기계가 확실히 아는 잘못**이었다(사람 아닌 화자, 겹쳐 센 것).
+#    이런 것까지 사람에게 물리면 손님이 단추를 또 눌러 2,100원을 더 쓰신다.
+#    → 확실한 것만 여기서 조용히 고치고, 무엇을 고쳤는지 화면에 적어 드린다.
+#    ⚠️ **애매한 것은 안 고친다.** 제목을 기계가 늘리면 밋밋해진다 —
+#       그런 것은 되받아 고치기(repair)로 AI 에게 다시 시킨다.
+def autofix(doc):
+    log = []
+
+    # ① 사람이 아닌 화자(법원·판사·해설…) → 나레이션으로 돌린다
+    #    판결은 원래 나레이션이 전해야 한다. 드라마에 법원을 세우지 않는다.
+    for c in doc.get("cuts") or []:
+        turns = c.get("turns") or []
+        for i, t in enumerate(turns):
+            w = str((t or ["", ""])[0]).strip()
+            if w in NOT_PEOPLE:
+                turns[i] = ["나레이션", t[1]]
+                log.append(f"컷{c.get('n')}: 화자 '{w}' → 나레이션")
+        c["turns"] = turns
+        # 화면에 세울 사람 목록에서도 뺀다 (나레이션은 화면에 안 세운다)
+        who = [w for w in (c.get("who") or [])
+               if w not in NOT_PEOPLE and w != "나레이션"]
+        if who != (c.get("who") or []):
+            c["who"] = who
+
+    # ② 대본이 더 세운 사람 중 사람이 아닌 것은 목록에서 뺀다
+    ppl = doc.get("people") or {}
+    for nm in [k for k in ppl if str(k).strip() in NOT_PEOPLE]:
+        ppl.pop(nm, None)
+        log.append(f"사람 목록에서 '{nm}' 을(를) 뺐다")
+    if ppl or "people" in doc:
+        doc["people"] = ppl
+
+    # ③ 화면에 세운 사람이 그 사건 사람 목록에 없으면 뺀다
+    #    (그림에 못 넣을 뿐, 대사는 ①에서 이미 정리됐다)
+    OK = set(who_ok(doc))
+    for c in doc.get("cuts") or []:
+        who = [w for w in (c.get("who") or []) if w in OK and w != "나레이션"]
+        if who != (c.get("who") or []):
+            gone = [w for w in (c.get("who") or []) if w not in who]
+            if gone:
+                log.append(f"컷{c.get('n')}: 화면에서 {', '.join(gone)} 을(를) 뺐다")
+            c["who"] = who
+
+    # ④ 격한 연기 지시를 눌러 담는다 (2026-09-04 에 넣은 것)
+    log += cool_all(doc)
+    return log
+
+
+def people_of(doc):
+    """그 사건에 나오는 사람들 — {이름: {age, sex}}. 기본 다섯도 넣어 준다."""
+    out = {"아내": {"age": "50대", "sex": "여"},
+           "남편": {"age": "50대", "sex": "남"},
+           "내연녀": {"age": "30대", "sex": "여"},
+           "딸": {"age": "20대", "sex": "여"},
+           "변호사": {"age": "40대", "sex": "남"}}
+    for name, v in (doc.get("people") or {}).items():
+        nm = str(name).strip()
+        if not nm or nm in out:
+            continue
+        out[nm] = {"age": str((v or {}).get("age") or "40대"),
+                   "sex": str((v or {}).get("sex") or "여")}
+    return out
+
+
+def who_ok(doc):
+    """그 대본에서 화자로 쓸 수 있는 이름들."""
+    return tuple(people_of(doc)) + ("나레이션",)
+
+
 def load(p, dflt):
     try:
         return json.loads(Path(p).read_text(encoding="utf-8"))
@@ -204,6 +296,20 @@ def check(doc, new=True):
     bad = []
     cuts = doc.get("cuts") or []
     parts = doc.get("parts") or []
+    OK = who_ok(doc)                      # 기본 다섯 + 이 사건이 더 세운 사람
+    extra = [w for w in people_of(doc) if w not in BASE_WHO]
+    if len(extra) > PEOPLE_MAX:
+        bad.append(f"사람을 {len(extra)}명 더 세웠다 — {PEOPLE_MAX}명까지다 "
+                   f"({', '.join(extra)})")
+    for nm in extra:
+        v = people_of(doc)[nm]
+        if v["age"] not in AGES or v["sex"] not in SEXES:
+            bad.append(f"'{nm}' 의 나이대·성별이 이상하다 "
+                       f"({v['age']}·{v['sex']}) — 나이대는 {AGES[0]}~{AGES[-1]}, "
+                       f"성별은 남/여")
+        if nm in NOT_PEOPLE:
+            bad.append(f"'{nm}' 은(는) 화면에 세울 사람이 아니다 — "
+                       f"판결·해설은 나레이션이 전한다")
     if not cuts:
         return ["컷이 하나도 없다"]
     if not (2 <= len(parts) <= 4):
@@ -219,9 +325,9 @@ def check(doc, new=True):
         if not turns or len(turns) > 2:
             bad.append(f"컷{n}: 대사 줄이 {len(turns)}개다 (1~2개여야 한다)")
         for w, t in turns:
-            if w not in WHO_OK:
+            if w not in OK:
                 bad.append(f"컷{n}: 모르는 사람 '{w}' (쓸 수 있는 것: "
-                           f"{', '.join(WHO_OK)})")
+                           f"{', '.join(OK)})")
             if not str(t).strip():
                 bad.append(f"컷{n}: 빈 대사")
         say = c.get("say") or []
@@ -245,8 +351,11 @@ def check(doc, new=True):
                 if w in sc.lower():
                     bad.append(f"컷{n}: 화면 묘사에 '{w}' — 실제 상표가 그려져 "
                                f"나온다 (말을 바꾸거나 그 컷에 scrub 을 적는다)")
+        # ⚠️ 2026-09-04 — 예전에는 여기서 '모르는 사람' 을 **또** 셌다.
+        #    한 잘못이 두 줄로 나와 "3군데" 처럼 보였다(실제로는 2군데).
+        #    여기서는 **아는 사람인데 화면엔 못 세우는 경우**만 본다.
         for w in c.get("who") or []:
-            if w not in WHO_OK or w == "나레이션":
+            if w == "나레이션":
                 bad.append(f"컷{n}: 화면에 못 넣는 사람 '{w}'")
 
     seen = []
@@ -292,6 +401,72 @@ def check(doc, new=True):
     return bad
 
 
+# ── ⭐⭐⭐ 되받아 고치기 ────────────────────────────────────────
+#    2026-09-04 — 규격에 걸리면 대본을 통째로 버리고 있었다. S91 은 세 군데가
+#    걸렸는데 그중 하나는 **제목이 25자, 통과선이 26자** — 딱 한 글자였다.
+#    잘 쓴 대본을 한 글자 때문에 버리고 손님이 2,100원을 또 쓰시게 했다.
+#    → 틀린 곳만 AI 에게 돌려주고 **그 자리만** 고쳐 받는다. 판결문을 다시
+#      안 보내므로 한 번에 약 100~300원이다.
+FIX_ROUNDS = 2          # 두 번까지만. 그래도 안 되면 사람이 봐야 할 일이다
+
+
+def apply_fix(doc, fix):
+    """AI 가 돌려준 '고친 자리' 를 대본에 끼워 넣는다. 무엇이 바뀌었는지 적어 준다."""
+    log = []
+    if not isinstance(fix, dict):
+        return ["고친 것을 못 알아봤다 (JSON 이 아니다)"]
+
+    for k in ("title", "series_label", "hook"):
+        v = fix.get(k)
+        if isinstance(v, str) and v.strip() and v.strip() != doc.get(k):
+            doc[k] = v.strip()
+            log.append(f"{k} → {v.strip()[:30]}")
+
+    ppl = fix.get("people")
+    if isinstance(ppl, dict):
+        doc["people"] = {**(doc.get("people") or {}), **ppl}
+        log.append("사람 목록을 고쳤다")
+
+    by_no = {p.get("no"): p for p in (doc.get("parts") or [])}
+    for one in (fix.get("parts") or []):
+        tgt = by_no.get(one.get("no"))
+        if not tgt:
+            continue
+        for k, v in one.items():
+            if k == "no" or v in (None, "", []):
+                continue
+            tgt[k] = v
+            log.append(f"{one['no']}편 {k} → {str(v)[:34]}")
+
+    by_n = {c.get("n"): c for c in (doc.get("cuts") or [])}
+    for one in (fix.get("cuts") or []):
+        tgt = by_n.get(one.get("n"))
+        if not tgt:
+            continue
+        for k, v in one.items():
+            if k == "n" or v is None:
+                continue
+            if k == "turns":
+                v = [list(t) for t in v]
+            tgt[k] = v
+            log.append(f"컷{one['n']} {k} 고침")
+        tgt["sec"] = round(chars(tgt) / 4.6 + 1.2, 1)
+    return log
+
+
+def repair(llm, doc, bad):
+    """틀린 곳만 AI 에게 돌려주고 고쳐 받는다. (고친 내역, 남은 잘못)"""
+    body = prompts.build(
+        "story90_fix",
+        BAD="\n".join("· " + b for b in bad[:20]),
+        DOC=json.dumps(doc, ensure_ascii=False, indent=1))
+    fix = llm.json(body, tier="pro", max_output_tokens=8192, temperature=0.6,
+                   label="대본 고치기", effort="low")
+    log = apply_fix(doc, fix)
+    log += autofix(doc)                      # 고친 자리도 다시 손본다 (0원)
+    return log, check(doc)
+
+
 def summary(doc):
     print(f"\n■ 「{doc['title']}」 — {doc['series_label']} · "
           f"{len(doc['cuts'])}컷 · {len(doc['parts'])}편")
@@ -308,6 +483,20 @@ def summary(doc):
             print(f"     {c['n']:>2} [{who:<4}] {c['turns'][0][1][:34]}")
 
 
+# ⭐ 화면이 결과를 읽을 자리. 워크플로가 **실패해도** 이 파일을 저장소에
+#    올린다 — 관리자 페이지는 이것만 읽으면 무엇이 어떻게 됐는지 안다.
+#    (2026-09-04 손님: "왜 아무것도 안떠?" — 실패를 알릴 길이 아예 없었다)
+REPORT = ROOT / "state" / "story_last.json"
+
+
+def report(**kw):
+    REPORT.parent.mkdir(parents=True, exist_ok=True)
+    kw.setdefault("at", __import__("datetime").datetime.now(
+        __import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+    REPORT.write_text(json.dumps(kw, ensure_ascii=False, indent=1) + "\n",
+                      encoding="utf-8")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--case", default="", help="판례 번호 (비우면 점수 1등)")
@@ -316,11 +505,21 @@ def main():
 
     row = pick_case(a.case or None)
     sid = (a.sid or next_sid()).upper()
+    name = str(row.get("one_line") or "")[:70]
     print(f"■ {sid} 대본 짓는 중 — 판례 {row['case_id']} · "
           f"{row.get('case_type', '')}")
-    print(f"  {row.get('one_line', '')[:70]}")
+    print(f"  {name}")
+    report(sid=sid, case_id=str(row["case_id"]), name=name,
+           state="짓는 중", why=[], krw=0)
 
     llm, _who = claude.writer(max_calls=4, prefer="gemini")
+
+    def spent():
+        try:
+            return round(float(llm.spent_krw() or 0))
+        except Exception:                                    # noqa: BLE001
+            return 0
+
     body = prompts.build("story90_gen", CASE_JSON=case_json(row))
     doc = llm.json(body, tier="pro", max_output_tokens=32768, temperature=0.85,
                    label="쇼츠 대본", effort="high")
@@ -335,30 +534,54 @@ def main():
         c["who"] = list(c.get("who") or [])
         c["sec"] = round(chars(c) / 4.6 + 1.2, 1)
 
-    # ⭐ 검사하기 **전에** 격한 연기 지시를 눌러 준다. 0원이고, 여기서
-    #    안 눌러 주면 대본 한 편(2,100원)을 통째로 물리게 된다.
-    cooled = cool_all(doc)
-    if cooled:
-        print(f"\n■ 연기 지시를 눌러 담았다 ({len(cooled)}줄) — 값 0원")
-        for line in cooled[:8]:
+    # ── ① 자동 손보기 (0원) ────────────────────────────────────
+    fixed = autofix(doc)
+    if fixed:
+        print(f"\n■ 기계가 손봤다 ({len(fixed)}군데) — 값 0원")
+        for line in fixed[:10]:
             print(f"  · {line}")
 
+    # ── ② 검사 → ③ 걸리면 되받아 고치기 (최대 두 번) ───────────
     bad = check(doc)
+    for r in range(1, FIX_ROUNDS + 1):
+        if not bad:
+            break
+        print(f"\n■ 규격에 안 맞는 곳 {len(bad)}군데 — AI 에게 그 자리만 "
+              f"고쳐 달라고 한다 ({r}/{FIX_ROUNDS}번째 · 약 100~300원)")
+        for b in bad[:10]:
+            print(f"  · {b}")
+        try:
+            log, bad = repair(llm, doc, bad)
+        except Exception as e:                               # noqa: BLE001
+            print(f"  ⚠️ 고치기를 못 했다: {e}")
+            break
+        for line in log[:10]:
+            print(f"    → {line}")
+
+    # ── ④ 그래도 안 되면: 받은 것을 남기고 까닭을 적는다 ────────
     if bad:
         broken = SERIES / f"{sid}.broken.json"
-        broken.write_text(json.dumps(doc, ensure_ascii=False, indent=1),
+        broken.write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n",
                           encoding="utf-8")
-        print(f"\n❌ 규격에 안 맞는 곳 {len(bad)}군데 — 저장하지 않았다")
+        print(f"\n❌ 아직 {len(bad)}군데가 안 맞는다 — 저장하지 않았다 "
+              f"(값 약 {spent():,}원)")
         for b in bad[:20]:
             print(f"  · {b}")
-        print(f"  (받은 것은 {broken.name} 에 남겨 뒀다)")
+        print(f"  (받은 대본은 {broken.name} 에 남겨 뒀습니다 — 버리지 않았습니다)")
+        report(sid=sid, case_id=str(row["case_id"]), name=name,
+               state="실패", why=bad[:20], krw=spent(),
+               broken=f"data/series/{broken.name}")
         return 1
 
     out = SERIES / f"{sid}.story.json"
     out.write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n",
                    encoding="utf-8")
     summary(doc)
-    print(f"\n✅ {out.relative_to(ROOT)}")
+    print(f"\n✅ {out.relative_to(ROOT)} (값 약 {spent():,}원)")
+    report(sid=sid, case_id=str(row["case_id"]), name=name,
+           state="됨", why=[], krw=spent(),
+           title=doc.get("title"), parts=len(doc.get("parts") or []),
+           cuts=len(doc.get("cuts") or []))
     return 0
 
 
