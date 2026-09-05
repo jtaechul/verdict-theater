@@ -1109,11 +1109,27 @@ async function openWork(sid) {
 function workDraw() {
   if (VIEW !== 'work') return;
   const w = (WORKS || {})[WORK] || {};
+  // ⭐⭐⭐ 2026-09-05 손님: "야 대본 다시 만들기가 없잖아. 이거 메뉴를
+  //    추가해 줘야 내가 만들지."
+  //    맞다. 대본이 한 번 나오면 다시 지을 길이 화면에 없었다. 대기열은
+  //    이미 쓴 사건을 빼고 보여 주므로, 거기로 돌아가도 그 사건이 없다.
+  const parts0 = partList(w);
+  const up = parts0.filter((p) => p && p.uploaded).length;
   let h = '<button class="ghost" onclick="home()">← 목록으로</button>'
         + '<div style="height:12px"></div>'
         + '<div class="card"><h2>' + esc(w.label || w.title || WORK)
         + ' <small style="font-weight:400;color:#9599ab">— ' + esc(WORK)
-        + ' · ' + (w.cuts || 0) + '컷</small></h2></div>';
+        + ' · ' + (w.cuts || 0) + '컷</small></h2>'
+        + '<div class="btns" style="margin-top:10px">'
+        // ⚠️ mini() 는 id 를 안 붙인다 — lock() 이 못 찾아 단추가 안 잠기고,
+        //    두 번 눌리면 값이 두 번 나간다. id 를 붙여 직접 그린다.
+        + '<button class="mini" id="w-restory" onclick="workStory()">'
+        + '대본 다시 짓기</button></div>'
+        + (up ? '<div class="uphint" style="color:#e0a33c;margin-top:6px">'
+              + '<b>이 사건은 이미 ' + up + '편을 유튜브에 올렸습니다.</b> '
+              + '대본을 다시 지으면 올라간 영상과 내용이 달라집니다.</div>'
+              : '')
+        + '<div id="w-restory-msg" class="uphint"></div></div>';
   h += short90Card();
   h += '<div id="s90cuts"><div class="card">'
      + '<h2 data-t="② 컷별 영상">② 컷별 영상</h2>'
@@ -1121,6 +1137,77 @@ function workDraw() {
   h += partsCard(w);
   document.getElementById('app').innerHTML = h;
   foldify();
+}
+
+// ⭐⭐⭐ 2026-09-05 — 대본 다시 짓기. 손님이 화면에서 누를 수 있어야 한다.
+//    ⚠️ 값이 나가고, 이미 만든 것과 어긋날 수 있는 일이다. 그래서 누르기
+//       전에 무슨 일이 벌어지는지 다 적어 드린다.
+async function workStory() {
+  if (!WORK) return;
+  if (WBUSY['restory']) return;
+  const w = (WORKS || {})[WORK] || {};
+  const cid = String(w.case_id || '');
+  if (!cid) {
+    showErr('대본을 다시 지을 수 없습니다',
+            '이 사건의 판례 번호를 모릅니다. 목록에서 다시 열어 주십시오.');
+    return;
+  }
+  const ps = partList(w);
+  const up = ps.filter((p) => p && p.uploaded).length;
+  const made = ps.filter((p) => p && p.sec).length;
+  const L = [];
+  L.push('「' + (w.label || w.title || WORK) + '」 대본을 다시 지을까요?');
+  L.push('');
+  L.push('· 같은 사건 번호(' + WORK + ')로 덮어씁니다.');
+  L.push('· 값은 약 300원 안팎입니다 (끝나면 실제 값을 적어 드립니다).');
+  if (made) {
+    L.push('· 컷이 바뀌면 그 컷의 그림과 목소리를 다시 만들어야 합니다');
+    L.push('  (안 바뀐 컷은 그대로 씁니다 — 0원).');
+  }
+  if (up) {
+    L.push('');
+    L.push('⚠️ 이 사건은 이미 ' + up + '편을 유튜브에 올렸습니다.');
+    L.push('   다시 지으면 올라간 영상과 내용이 달라집니다.');
+  }
+  L.push('');
+  L.push('3~10분 걸립니다. 이 화면을 켜 두시면 결과를 알려드립니다.');
+  if (!confirm(L.join(String.fromCharCode(10)))) return;
+
+  WBUSY['restory'] = 1;
+  lock('w-restory', 1, '대본 다시 짓기');
+  const msg = document.getElementById('w-restory-msg');
+  const free = () => { WBUSY['restory'] = 0; lock('w-restory', 0, '대본 다시 짓기'); };
+  if (msg) msg.textContent = '대본을 짓는 중… (3~10분)';
+  const since = Date.now();
+  try {
+    const r = await fetch('/api/make-story', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ case_id: cid }),
+    });
+    const j = await r.json();
+    if (!j.ok) {
+      showErr('대본 다시 짓기를 시작하지 못했습니다',
+              (j.error || '') + ' ' + (j.detail || ''));
+      if (msg) msg.textContent = '';
+      free();
+      return;
+    }
+  } catch (e) {
+    showErr('대본 다시 짓기를 시작하지 못했습니다',
+            String(e && e.message ? e.message : e));
+    if (msg) msg.textContent = '';
+    free();
+    return;
+  }
+  // ⚠️ 시작만 시키고 끝내지 않는다 — 되든 안 되든 결과를 알려 준다
+  //    (2026-09-04 손님: "눌렀는데 왜 아무것도 안떠?")
+  watchRun('story90.yml', since, async (r) => {
+    free();
+    await storySay(r, msg);
+    if (r.conclusion === 'success') {
+      await openWork(WORK);          // 새 대본으로 화면을 다시 그린다
+    }
+  }, 15, 20);
 }
 
 // ③④ 편마다 — 만들기 단추와 올리기 단추가 **따로** 있다

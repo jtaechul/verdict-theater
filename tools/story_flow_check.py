@@ -124,6 +124,32 @@ def main():
        re.search(r"function storySay[\s\S]*?loadWorks\(true\)", js) is not None)
 
     # ── ② 실패해도 남기는가 ───────────────────────────────────
+    # ⭐⭐⭐ 2026-09-05 손님: "야 대본 다시 만들기가 없잖아. 이거 메뉴를
+    #    추가해 줘야 내가 만들지."
+    #    맞다. 대본이 한 번 나오면 다시 지을 길이 화면에 없었다. 대기열은
+    #    이미 쓴 사건을 빼고 보여 주므로 거기로 돌아가도 그 사건이 없다.
+    print("\n①-2 대본을 다시 지을 수 있는가")
+    wd = (re.search(r"function workDraw\(\)[\s\S]*?\n}", js) or [""])[0]
+    ws = (re.search(r"async function workStory\(\)[\s\S]*?\n}", js) or [""])[0]
+    ck("작품 화면에 [대본 다시 짓기] 단추가 있다",
+       'id="w-restory"' in wd and "workStory()" in wd)
+    ck("그 단추가 실제로 도는 함수를 부른다", bool(ws) and "/api/make-story" in ws)
+    ck("그 사건의 판례 번호로 부른다", "case_id: cid" in ws and "w.case_id" in ws)
+    ck("두 번 눌려도 한 번만 돈다", "WBUSY['restory']" in ws)
+    ck("도는 동안 단추가 잠긴다", "lock('w-restory'" in ws)
+    # 값이 나가고 되돌리기 어려운 일 — 누르기 전에 다 알려 줘야 한다
+    ck("누르기 전에 값을 알려 준다", "약 300원" in ws)
+    ck("같은 번호로 덮어쓴다고 알려 준다", "덮어씁니다" in ws)
+    ck("이미 올린 편이 있으면 경고한다",
+       "유튜브에 올렸습니다" in ws and "유튜브에 올렸습니다" in wd,
+       "올라간 영상과 내용이 달라지는 것을 모르고 누르면 안 된다")
+    ck("끝까지 지켜보고 결과를 알려 준다",
+       "watchRun('story90.yml'" in ws and "storySay(" in ws)
+    ck("다 되면 새 대본으로 화면을 다시 그린다", "openWork(WORK)" in ws)
+    # 알림 자리가 다른 화면과 겹치면 엉뚱한 칸에 뜬다 (실제로 겪은 사고)
+    ck("알림 자리 이름이 다른 화면과 안 겹친다",
+       js.count('id="w-restory-msg"') == 1)
+
     print("\n② 실패해도 결과를 남기는가")
     ck("적어 두기가 실패해도 돈다 (if: always())",
        re.search(r"name: 저장소에 적어 두기\s*\n\s*if: always\(\)", yml) is not None)
