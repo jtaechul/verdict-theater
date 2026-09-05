@@ -75,6 +75,23 @@ SEC_PER_CHAR = 0.248
 PART_MIN_CUTS, PART_MAX_CUTS = 8, 11
 PARTS_MIN, PARTS_MAX = 3, 5      # 2편은 안 된다 (손님 지시)
 ELLIPSIS_MAX = 3                 # 편당 말줄임표 — 넘으면 분량만 먹는다
+
+# ⭐⭐⭐ 2026-09-05 손님: "단순히 짧아서 길게 늘리는 게 아니라, 이 이야기를
+#    충분히 이해할 수 있게끔 나레이션이라던가 대사들로 조금 더 풍부하게.
+#    극적으로 몰입을 할 수 있게 하는 게 목적이야."
+#
+#    맞는 지적이고, 내가 만든 것을 그 잣대로 보니 **거꾸로 되어 있었다.**
+#    내가 넣은 못은 대부분 '분량 하한'(185자·3편·8컷)인데, 그것은 AI 에게
+#    **"채워라"** 라고 시키는 것이다. 채우라고 하면 같은 말을 늘여 쓰거나
+#    빈 대사("이거... 진짜야...?")를 더 넣는다 — 손님이 하지 말라신 바로 그것.
+#
+#    → 짧은 것은 **증상**이고 병은 **걸음이 빠진 것**이다. 그래서 아래 셋을
+#      더 본다. 셋 다 '길이'가 아니라 '따라갈 수 있는가'를 재는 것이다.
+#        ① 새 인물이 **말하기 전에 화면에 먼저** 나오는가
+#           (S91 은 남편·내연녀가 얼굴 없이 목소리부터 나왔다)
+#        ② 편마다 **맥락을 나르는 나레이션**이 있는가 (반응만으로는 못 따라간다)
+#        ③ 같은 말을 **되풀이해 분량만 채우지** 않았는가
+NARR_MIN_PER_PART = 3            # 편마다 맥락을 나르는 나레이션 최소 줄 수
 # ⭐ 2026-09-04 — 아래 선이 26자였다. 그런데 S91 이 **25자** 하나로 통째로
 #    버려졌고(2,100원), 더 나쁜 것은 이 채널에서 **가장 잘된 제목 셋이
 #    22~24자**였다는 점이다. 검사가 검증된 길이를 막고 있었던 셈이다.
@@ -411,15 +428,28 @@ def check(doc, new=True):
                        f"{PART_CHARS}자를 넘으면 쇼츠 피드가 안 태운다")
         # ⭐ 하한 — 짧게 써도 아무도 안 잡아서 1편이 43초로 나왔다(12초를 버렸다)
         if new and ch < PART_CHARS_MIN:
+            # ⚠️ 이 말을 "글자를 채워라" 로 읽으면 안 된다. 짧은 것은 증상이고
+            #    병은 **걸음이 빠진 것**이다. 늘릴 자리에는 빠진 걸음을 넣는다.
             bad.append(f"{no}편이 {ch}자({ch * SEC_PER_CHAR:.0f}초)뿐이다 — "
-                       f"{PART_CHARS_MIN}자({PART_CHARS_MIN * SEC_PER_CHAR:.0f}초) "
-                       f"이상 써라. 쓸 수 있는 시간을 버리고 있다")
+                       f"이야기가 껑충 뛰고 있다는 뜻이다. 같은 말을 늘여 쓰지 "
+                       f"말고, 빠진 걸음(왜 그랬는지 · 그래서 어떻게 됐는지)을 "
+                       f"컷으로 넣어 {PART_CHARS_MIN}자 이상으로 만들어라")
         # ⭐ 말줄임표는 분량만 먹고 뜻이 없다 ("이거... 진짜야...?")
         ell = sum(str(t).count("...") + str(t).count("…")
                   for c in mine for _, t in c["turns"])
         if new and ell > ELLIPSIS_MAX:
             bad.append(f"{no}편에 말줄임표가 {ell}개다 — {ELLIPSIS_MAX}개까지다. "
                        f"자리만 먹고 뜻은 안 나른다")
+        # ② 편마다 맥락을 나르는 나레이션이 있어야 한다. 반응(대사)만
+        #    이어지면 보는 사람은 무슨 일이 왜 벌어졌는지 못 따라간다.
+        nn = sum(1 for c in mine for w, _ in c["turns"] if w == "나레이션")
+        if new and nn < NARR_MIN_PER_PART:
+            bad.append(f"{no}편에 나레이션이 {nn}줄뿐이다 — {NARR_MIN_PER_PART}줄 "
+                       f"이상 두어라. 무슨 일이 왜 벌어졌는지는 나레이션이 나른다")
+        # ③ 편은 상황을 세우고 시작한다 (첫 컷이 반응이면 맥락 없이 튄다)
+        if new and mine[0]["turns"][0][0] != "나레이션":
+            bad.append(f"{no}편이 대사로 시작한다 — 첫 컷은 나레이션으로 "
+                       f"'지금 어떤 상황인지'를 세워라")
         t = str(p.get("yt_title") or "")
         if not (TITLE_MIN <= len(t) <= TITLE_MAX):
             bad.append(f"{no}편 제목이 {len(t)}자다 "
@@ -434,6 +464,42 @@ def check(doc, new=True):
             if len(str(x)) > CARD_MAX:
                 bad.append(f"{no}편 화면 제목이 {len(str(x))}자다 "
                            f"({CARD_MAX}자 이내여야 한다): {x}")
+    # ── ⭐ 새 인물은 **말하기 전에 화면에 먼저** 나와야 한다 ──────────
+    #    S91 은 남편이 컷4, 내연녀가 컷7 에서 얼굴 한 번 없이 목소리부터
+    #    나왔다. 보는 사람은 누가 말하는지 모른 채 대사를 듣는다.
+    if new:
+        met = set()
+        # ⚠️ 그 사건 사람 목록에 아예 없는 이름은 위에서 이미 잡았다.
+        #    여기서 또 세면 한 잘못이 두 줄로 나온다 (2026-09-04 에 같은
+        #    실수를 한 번 고쳤다 — 되풀이하지 않는다).
+        for c in cuts:
+            for w, _ in (c.get("turns") or []):
+                if w != "나레이션" and w in OK and w not in met:
+                    bad.append(f"컷{c.get('n')}: '{w}' 가 화면에 한 번도 안 "
+                               f"나온 채 말을 한다 — 말하기 전에 그 사람이 "
+                               f"나오는 컷을 먼저 두어라")
+                    met.add(w)                    # 한 번만 알린다
+            for w in (c.get("who") or []):
+                met.add(w)
+            for w, _ in (c.get("turns") or []):
+                met.add(w)
+
+    # ── ⭐ 같은 말을 되풀이해 분량만 채우지 않았는가 ─────────────────
+    #    ⚠️ 분량 하한(PART_CHARS_MIN)을 두면 AI 가 채우려 든다. 채우는 가장
+    #       쉬운 길이 **같은 말 다시 쓰기**다. 그 길을 막아 둔다.
+    if new:
+        norm = {}
+        for c in cuts:
+            for _, t in (c.get("turns") or []):
+                k = re.sub(r"[\s…·.,!?\"'\u2018\u2019\u201c\u201d]", "", str(t))
+                if len(k) < 8:
+                    continue
+                if k in norm:
+                    bad.append(f"컷{c.get('n')}: 컷{norm[k]} 과 같은 말을 다시 "
+                               f"한다 — 분량은 빠진 걸음으로 채운다: {str(t)[:24]}")
+                else:
+                    norm[k] = c.get("n")
+
     if sorted(seen) != sorted(ns):
         miss = sorted(set(ns) - set(seen))
         bad.append(f"편 나누기가 컷을 놓쳤다 — 빠진 컷 {miss}")
