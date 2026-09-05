@@ -108,6 +108,32 @@ def main():
         ck("없는 사건은 기본 얼굴로 돌아간다고 말해 준다",
            "기본 얼굴" in r.stdout, r.stdout.strip()[:80])
 
+    print("\n⑥ 만들어 둔 것도 사건마다 따로인가")
+    # ⭐⭐⭐ 2026-09-05 — 얼굴만 사건별로 고치고 **그림·목소리·컷 영상은
+    #    stills-S90 처럼 고정**으로 남겨 뒀다. 그래서 S91 을 만들 때 S90 의
+    #    그림 60MB 를 받아 왔고(전부 다시 그렸다), 끝나고 S91 그림을
+    #    stills-S90 에 덮어써 **S90 의 그림을 날렸다.**
+    for t in ("stills", "voice", "clips90", "open"):
+        ck(f"{t} 을 사건마다 따로 보관한다",
+           f'"{t}-$S"' in yml and f"{t}-S90 " not in yml,
+           f"{t}-S90 로 고정이면 앞 사건 것을 받아 오고 덮어쓴다")
+    ck("보관 이름에 쓸 사건 번호를 job 에서 한 번만 정한다",
+       re.search(r"^      S: \$\{\{ inputs\.sid", yml, re.M) is not None,
+       "단계마다 셸이 달라 한 단계에서 S= 로 정해도 다음 단계는 모른다")
+
+    print("\n⑦ 상한을 손으로 적어 두지 않았는가")
+    # ⭐⭐⭐ 2026-09-05 손님: "야 전체 만들기 눌렀는데 왜 아무것도 안 나와."
+    #    STILL_CALL_CAP 이 '24' 로 **손으로 적혀** 있었다. 대본 규격을 넓혀
+    #    컷이 27장이 되자 24장을 그린 뒤 상한에 걸려 통째로 멈췄다.
+    for k in ("STILL_CALL_CAP", "TTS_CALL_CAP", "VEO_CALL_CAP", "VT_RUN_KRW"):
+        ck(f"{k} 를 손으로 안 적는다",
+           not re.search(rf"^      {k}: ", yml, re.M),
+           "손으로 적은 숫자는 대본이 커지면 반드시 어긋난다")
+    ck("대본을 보고 셈해서 넣는다",
+       "tools/plan_cost.py --env" in yml and '>> "$GITHUB_ENV"' in yml)
+    ck("셈하는 단계가 돈 쓰는 단계보다 앞이다",
+       yml.index("plan_cost.py --env") < yml.index("short90.py stills"))
+
     print("\n" + "─" * 60)
     if BAD:
         print("❌ 걸린 것:")

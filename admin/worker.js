@@ -1418,6 +1418,7 @@ async function workMake(no) {
   WBUSY[id] = 1;
   lock('w-make-all', 1);
   if (msg) msg.textContent = '시작하는 중…';
+  const since = Date.now();
   try {
     const r = await fetch('/api/make-short90', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1430,8 +1431,36 @@ async function workMake(no) {
       showErr('만들기를 시작하지 못했습니다',
               (j.error || '') + ' ' + (j.detail || ''));
       if (msg) msg.textContent = '';
-    } else if (msg) {
-      msg.textContent = '시작했습니다. 10~20분 뒤에 이 화면을 새로 고쳐 주십시오.';
+    } else {
+      if (msg) msg.textContent = '만드는 중… (10~20분) 이 화면을 켜 두시면 '
+                               + '끝나는 대로 여기에 알려드립니다.';
+      // ⭐⭐⭐ 2026-09-05 손님: "야 전체 만들기 눌렀는데 왜 아무것도 안 나와."
+      //    실제로는 돌았고 그림 24장을 그린 뒤 상한에 걸려 멈췄다. 그런데
+      //    화면은 "10~20분 뒤 새로 고쳐 주십시오" 하고 끝냈으니, 새로 고쳐도
+      //    아무것도 없었다. 대본 짓기에는 붙인 지켜보기를 여기엔 안 붙였다.
+      //    → 되든 안 되든 결과를 여기에 적는다.
+      watchRun('short90.yml', since, async (r) => {
+        WBUSY[id] = 0;
+        lock('w-make-all', 0);
+        if (!msg) return;
+        if (r.conclusion === 'timeout') {
+          msg.textContent = '아직 끝나지 않았습니다. 잠시 뒤 새로 고쳐 주십시오.';
+          return;
+        }
+        if (r.conclusion === 'success') {
+          msg.textContent = '다 만들었습니다. 아래에서 [영상 보기] 를 눌러 보십시오.';
+          WORKS = null;
+          await loadWorks(true);
+          if (VIEW === 'work') await openWork(WORK);
+          return;
+        }
+        msg.innerHTML = '<b>만들다 멈췄습니다.</b> 만든 데까지는 보관해 뒀으니 '
+                      + '다시 누르시면 이어서 만듭니다. '
+                      + (r.url ? '<a href="' + esc(r.url) + '" target="_blank" '
+                               + 'style="color:#5b7fd4">무엇이 걸렸는지 보기</a>'
+                               : '');
+      }, 20, 40);
+      return;
     }
   } catch (e) {
     showErr('만들기를 시작하지 못했습니다', String(e && e.message ? e.message : e));

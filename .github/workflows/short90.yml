@@ -74,24 +74,22 @@ jobs:
       # ⭐ 2026-09-01 — 어느 사건을 만드는가. 비우면 S90.
       #    src/short90.py 가 이 값으로 대본을 고른다.
       VT_SID: ${{ inputs.sid }}
+      # ⚠️ 단계마다 셸이 다르다. 한 단계에서 S= 로 정해도 다음 단계는 모른다.
+      #    보관 이름(stills-$S 등)을 쓰는 단계가 여럿이라 여기서 한 번 정한다.
+      S: ${{ inputs.sid || 'S90' }}
       # ⚠️⚠️ 2026-08-30 — **이 줄이 없어서 첫 실행이 실패했다.**
       #    관리자 페이지 보관함(/api/blob)은 x-vt-pass 로 암호를 받는다.
       #    shorts.yml 은 보내는데 여기만 안 보내서, 손님이 올리신 인물 그림을
       #    받아 갈 때 튕겼고 90초 편 만들기가 통째로 멈췄다.
       ADMIN_PASS: ${{ secrets.ADMIN_PASSWORD }}
-      # ⚠️ 상한이 없으면 실패가 겹칠 때 조용히 수십 번을 부른다
-      STILL_CALL_CAP: '24'     # 컷 19 + 재시도 여유 (카드는 안 그린다)
-      TTS_CALL_CAP: '40'
-      # ⭐ 한 번 눌렀을 때 나갈 돈의 뚜껑. 실제로 드는 값(약 2,614원) **바로 위**에
-      #    둔다 — 한도가 실제보다 훨씬 높으면 막는 시늉만 하는 것이다.
-      # ⚠️ 편 첫 장면 영상을 켜면 1,411원이 더 든다(4초 × 3편). 그때만 뚜껑을
-      #    올린다 — 늘 올려 두면 안 켠 날에도 막는 시늉만 하게 된다.
-      VT_RUN_KRW: ${{ inputs.open_video == '예' && '4300' || '2800' }}
+      # ⚠️⚠️ 2026-09-05 — 여기에 **손으로 적어 둔 상한**(그림 24번)이 있었다.
+      #    대본 규격을 3~5편·편당 8~11컷으로 넓히자 컷이 27장이 됐고, 24장을
+      #    그린 뒤 상한에 걸려 [전체 만들기] 가 통째로 멈췄다(손님: "왜
+      #    아무것도 안 나와"). 손으로 적은 숫자는 언젠가 반드시 어긋난다.
+      #    → 아래 '이번 값 셈하기' 단계가 **대본을 보고** 정해 준다.
       # ⭐⭐ 2026-09-04 손님: "각 편당 첫번째 씬만 영상으로."
       #    켰을 때만 Veo 를 부른다. 안 켜면 지금까지처럼 전부 그림이다.
       VT_OPEN_VIDEO: ${{ inputs.open_video == '예' && '1' || '' }}
-      # 편이 넷이어도 넉넉하다. 실패가 겹쳐도 조용히 수십 번 부르지 못하게.
-      VEO_CALL_CAP: '6'
       STEP: ${{ inputs.step || 'all' }}
 
     steps:
@@ -110,6 +108,15 @@ jobs:
         run: |
           python3 tools/build_short90.py
           python3 tools/short90_test.py
+
+      # ⭐⭐⭐ 2026-09-05 — 이번에 얼마 들고 몇 번 부를지 **대본에서 셈한다.**
+      #    손으로 적어 둔 상한이 대본이 커지면서 어긋나 [전체 만들기] 가
+      #    통째로 멈췄다. 셈은 한 곳(tools/plan_cost.py)에서만 한다.
+      - name: 이번 값 셈하기 (값 0원)
+        run: |
+          set -euo pipefail
+          python3 tools/plan_cost.py | tee -a make.log
+          python3 tools/plan_cost.py --env >> "$GITHUB_ENV"
 
       - name: 1) 인물 카드 (손님이 고른 다섯 사람의 얼굴)
         if: env.STEP == 'all' || env.STEP == 'stills'
@@ -140,11 +147,11 @@ jobs:
           python3 tools/release_file.py put "cards90-$S" cards.zip build/cards90.zip || true
           [ "$FAIL" = 0 ] || { echo "❌ 인물 카드 단계 실패 — 만든 데까지는 보관했습니다"; exit 1; }
 
-      - name: 2) 컷 그림 19장 (세로 9:16)
+      - name: 2) 컷 그림 (세로 9:16 · 장수는 대본이 정한다)
         if: env.STEP == 'all' || env.STEP == 'stills'
         run: |
           set -o pipefail
-          python3 tools/release_file.py get stills-S90 stills.zip build/stills.zip \
+          python3 tools/release_file.py get "stills-$S" stills.zip build/stills.zip \
             && unzip -q -o build/stills.zip -d build/s90/stills \
             || echo "받아 둔 컷 그림이 없다 — 새로 만든다"
           # ⚠️⚠️ 2026-08-31 — 여기서 죽으면 **이미 돈 주고 만든 것이 날아갔다.**
@@ -154,21 +161,40 @@ jobs:
           FAIL=0
           python3 src/short90.py stills 2>&1 | tee -a make.log || FAIL=1
           python3 -c "import shutil;shutil.make_archive('build/stills','zip','build/s90/stills')" || true
-          python3 tools/release_file.py put stills-S90 stills.zip build/stills.zip || true
+          python3 tools/release_file.py put "stills-$S" stills.zip build/stills.zip || true
           [ "$FAIL" = 0 ] || { echo "❌ 컷 그림 단계 실패 — 만든 데까지는 보관했습니다"; exit 1; }
+
+      # ⭐⭐⭐ 2026-09-05 — 이 단계가 **없어서** 편 첫 장면 영상이 한 번도
+      #    안 돌았다. src/short90.py 는 stills/voice/build 를 따로 부르는데,
+      #    첫 장면은 'all' 일 때만 돌게 걸어 뒀다. 손님이 체크하고 값까지
+      #    각오하셨는데 기능이 통째로 안 돈 것이다.
+      #    ⚠️ 여기서 실패해도 **편 전체를 죽이지 않는다** — 첫 장면은 덤이고,
+      #       없으면 지금까지처럼 그림으로 간다.
+      - name: 2-2) 편 첫 장면 영상 (켰을 때만)
+        if: env.VT_OPEN_VIDEO == '1' && (env.STEP == 'all' || env.STEP == 'stills')
+        run: |
+          set -o pipefail
+          mkdir -p build/s90/open
+          python3 tools/release_file.py get "open-$S" open.zip build/open.zip \
+            && unzip -q -o build/open.zip -d build/s90/open \
+            || echo "보관된 첫 장면 영상이 없다"
+          python3 src/short90.py open 2>&1 | tee -a make.log \
+            || echo "⚠️ 첫 장면 영상을 못 만들었습니다 — 그림으로 갑니다"
+          python3 -c "import shutil;shutil.make_archive('build/open','zip','build/s90/open')" || true
+          python3 tools/release_file.py put "open-$S" open.zip build/open.zip || true
 
       - name: 3) 나레이션·대사 소리
         if: env.STEP == 'all' || env.STEP == 'voice'
         run: |
           set -o pipefail
-          python3 tools/release_file.py get voice-S90 voice.zip build/voice.zip \
+          python3 tools/release_file.py get "voice-$S" voice.zip build/voice.zip \
             && unzip -q -o build/voice.zip -d build/s90/voice \
             || echo "받아 둔 소리가 없다 — 새로 만든다"
           # ⚠️ 그림과 같은 까닭 — 만든 데까지는 반드시 보관하고 나서 실패시킨다
           FAIL=0
           python3 src/short90.py voice 2>&1 | tee -a make.log || FAIL=1
           python3 -c "import shutil;shutil.make_archive('build/voice','zip','build/s90/voice')" || true
-          python3 tools/release_file.py put voice-S90 voice.zip build/voice.zip || true
+          python3 tools/release_file.py put "voice-$S" voice.zip build/voice.zip || true
           [ "$FAIL" = 0 ] || { echo "❌ 소리 단계 실패 — 만든 데까지는 보관했습니다"; exit 1; }
 
       - name: 4) 한 편으로 조립
@@ -177,21 +203,21 @@ jobs:
         run: |
           set -o pipefail
           # 앞 단계를 건너뛴 실행에서도 만들어 둔 것을 받아 온다
-          for T in stills voice; do
+          for T in stills voice open; do
             [ -d "build/s90/$T" ] || { \
-              python3 tools/release_file.py get "$T-S90" "$T.zip" "build/$T.zip" \
+              python3 tools/release_file.py get "$T-$S" "$T.zip" "build/$T.zip" \
               && unzip -q -o "build/$T.zip" -d "build/s90/$T" || true; }
           done
           # ⭐⭐ 손으로 만든 컷 영상 — 있는 컷만 영상이 되고 나머지는 그림이다
           #    (2026-08-27 손님: "이미지는 중간중간 섞여 있고 동영상도 있어야 돼")
           mkdir -p build/s90/clips
-          python3 tools/release_file.py get clips90-S90 clips.zip build/clips90.zip \
+          python3 tools/release_file.py get "clips90-$S" clips.zip build/clips90.zip \
             && unzip -q -o build/clips90.zip -d build/s90/clips \
             || echo "보관된 컷 영상이 없다"
           python3 tools/fetch_clips.py "$CLIPS" build/s90/clips 2>&1 | tee -a make.log
           if [ -n "$(ls -A build/s90/clips 2>/dev/null)" ]; then
             python3 -c "import shutil;shutil.make_archive('build/clips90','zip','build/s90/clips')"
-            python3 tools/release_file.py put clips90-S90 clips.zip build/clips90.zip || true
+            python3 tools/release_file.py put "clips90-$S" clips.zip build/clips90.zip || true
           fi
           # ⭐ 2026-09-01 — 편마다 따로 만들 수 있다. 비우면 전부.
           #   그림·목소리는 편이 함께 쓰므로 늘 통째로 본다(나눠도 값이 같다).

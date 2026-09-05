@@ -15,6 +15,7 @@
    갈림·자막을 잰다 (Veo 는 안 부르므로 0원).
 """
 import json
+import os
 import re
 import subprocess
 import sys
@@ -139,9 +140,36 @@ def wiring():
     ck("워크플로가 프로그램 스위치로 바꾼다", "VT_OPEN_VIDEO:" in yml)
     # ⚠️ 돈 뚜껑을 안 올리면 켠 날에 한도에 걸려 멈춘다. 늘 올려 두면
     #    안 켠 날에 막는 시늉만 하게 된다 — **켤 때만** 올려야 한다.
-    ck("켤 때만 돈 뚜껑을 올린다",
-       "inputs.open_video == '예' && '4300' || '2800'" in yml)
-    ck("Veo 부르는 횟수에도 뚜껑이 있다", "VEO_CALL_CAP:" in yml)
+    # ⭐ 2026-09-05 — 뚜껑을 손으로 안 적고 대본에서 셈한다(plan_cost.py).
+    #    그러니 "켰을 때만 영상값이 더해지는가" 를 **진짜 돌려서** 본다.
+    import subprocess as _sp
+    def _cap(on):
+        e = dict(os.environ, VT_SID="S91", VT_OPEN_VIDEO=("1" if on else ""))
+        out = _sp.run([sys.executable, str(ROOT / "tools" / "plan_cost.py"),
+                       "--env"], capture_output=True, text=True, env=e).stdout
+        return int([x for x in out.splitlines()
+                    if x.startswith("VT_RUN_KRW=")][0].split("=")[1])
+    off, on = _cap(False), _cap(True)
+    ck(f"켤 때만 돈 뚜껑이 올라간다 (끔 {off:,}원 → 켬 {on:,}원)", on > off + 800)
+    ck("Veo 부르는 횟수에도 뚜껑이 있다", "VEO_CALL_CAP=" in
+       (ROOT / "tools" / "plan_cost.py").read_text(encoding="utf-8"))
+    # ⭐⭐⭐ 2026-09-05 — **이 단계가 없어서 한 번도 안 돌았다.**
+    #    src/short90.py 는 stills/voice/build 를 따로 부르는데, 첫 장면은
+    #    'all' 일 때만 돌게 걸어 뒀다. 손님이 체크하고 값까지 각오하셨는데
+    #    기능이 통째로 안 돈 것이다. 표만 보고 "붙였다" 고 믿으면 안 된다.
+    ck("워크플로에 첫 장면 단계가 **있다**",
+       "short90.py open" in yml,
+       "만드는 자리가 없으면 켜도 아무 일이 안 일어난다")
+    ck("그 단계가 그림 다음 · 소리 앞이다",
+       yml.index("short90.py stills") < yml.index("short90.py open")
+       < yml.index("short90.py voice"),
+       "그림을 넣어 움직이게 하므로 그림이 먼저다")
+    ck("켰을 때만 그 단계가 돈다", "env.VT_OPEN_VIDEO == '1'" in yml)
+    ck("첫 장면이 실패해도 편 전체가 안 죽는다",
+       "그림으로 갑니다" in yml and "exit 1" not in
+       yml[yml.index("2-2) 편 첫 장면"):yml.index("3) 나레이션")])
+    ck("만든 첫 장면을 사건마다 따로 보관한다", '"open-$S"' in yml)
+    ck("조립 단계가 첫 장면을 받아 온다", "for T in stills voice open" in yml)
 
 
 def live():
