@@ -457,6 +457,13 @@ def stills(doc):
     sys.path.insert(0, str(ROOT / "tools"))
     import scrub_still                                       # noqa: E402
     scrub_still.scrub(d, doc)
+    # ⭐⭐⭐ 2026-09-05 손님: "이미지 우측 하단에 재미난 워터마크가 살짝
+    #    보이거든? 지금 화면이 어두워도 살짝 보여."
+    #    그림 모델이 오른쪽 아래에 자기 표시를 찍는다. 영상으로 만들면 그대로
+    #    따라 들어간다. 여기서 지운다 — **그림 단계에서** 지워야 편 첫 장면
+    #    영상(그 그림을 넣어 움직이게 한다)에도 안 딸려 간다.
+    import wipe_mark                                         # noqa: E402
+    wipe_mark.main_dir(d)
     return 0 if made == len(doc["cuts"]) else 1
 
 

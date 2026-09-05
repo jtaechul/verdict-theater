@@ -67,6 +67,19 @@ FRAMING = ("FRAMING: vertical 9:16 portrait, filling the whole frame edge to edg
            "the person kept in the middle with a little room above the head.")
 BLUR = ("The background is strongly out of focus and softly blurred, heavy bokeh, "
         "only the people are sharp and in focus.")
+# ⭐⭐⭐ 2026-09-05 손님(화면 캡처): "1화에 관련 없는 등장인물의 이미지가
+#    들어가 있어." 컷6 은 who 가 비어 있고 장면이 "a car is parked on a dark
+#    street at night" 인데, 낯선 남녀 두 사람이 그려져 나왔다.
+#    까닭은 **프롬프트가 세 줄에 걸쳐 사람을 그리라고 시키고** 있었기 때문이다 —
+#      SHOT:    …. Nobody's face in frame.        ← 금지형. 모델은 흘려듣는다
+#      FRAMING: … the person kept in the middle…  ← 사람을 가운데 두라고 시킴
+#      CAMERA:  … only the people are sharp…      ← 또 사람을 요구
+#    → 사람이 없는 컷에는 **사람이라는 낱말이 한 번도 안 나오는** 판을 쓴다.
+FRAMING_NOBODY = ("FRAMING: vertical 9:16 portrait, filling the whole frame edge "
+                  "to edge, the subject kept in the middle with a little room "
+                  "above it.")
+BLUR_NOBODY = ("The background is strongly out of focus and softly blurred, heavy "
+               "bokeh, only the subject is sharp and in focus.")
 COLOR = ("COLOR: warm neutral base, low overall contrast, slightly lifted blacks, "
          "soft amber light from the practical lamps, muted greens and cyans, "
          "natural unsaturated skin tones, the exact same colour grade in every shot "
@@ -214,15 +227,16 @@ def still_prompt(c):
         body.append(people_of(who, still=True))
         body.append(f"SHOT: {c['scene']}. Framed from the waist up so every face "
                     f"stays clear, mouths closed, holding the moment.")
+        body += [FRAMING, "CAMERA: " + BLUR]
     else:
-        # ⚠️ 2026-08-31 — 이 줄은 "Nobody's face in frame" 이라는 **부정문**이다.
-        #    우리 규칙에 이미 적혀 있듯(series.RISKY 주석) 그림 모델은 "하지 마"
-        #    를 잘 못 읽고 오히려 그 낱말을 그려 넣는다. 18컷에 낯선 남녀가
-        #    들어간 원인 중 하나로 의심된다.
-        #    ⚠️ 다만 지금 고치지 않는다 — 이 줄을 바꾸면 멀쩡한 16컷까지 지문이
-        #       달라져 다시 그려지고 132원이 더 나간다. 손님 확인 뒤에 함께 고친다.
-        body.append(f"SHOT: {c['scene']}. Nobody's face in frame.")
-    body += [FRAMING, "CAMERA: " + BLUR, COLOR, S.STYLE_STILL, NO_TEXT]
+        # ⚠️ 2026-08-31 에 "이 줄이 낯선 남녀를 부르는 것 같다" 고 적어 두고
+        #    **미뤘다.** 2026-09-05 에 손님이 실제로 그 화면을 보내 주셨다.
+        #    이제 사람이라는 낱말이 한 번도 안 나오는 판으로 바꾼다 —
+        #    "그리지 마" 가 아니라 **무엇을 그릴지만** 적는다.
+        body.append(f"SHOT: {c['scene']}. The place itself is the subject: "
+                    f"the objects and the light fill the frame.")
+        body += [FRAMING_NOBODY, "CAMERA: " + BLUR_NOBODY]
+    body += [COLOR, S.STYLE_STILL, NO_TEXT]
     return "\n".join(body)
 
 
