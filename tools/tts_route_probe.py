@@ -17,6 +17,7 @@
 """
 import json
 import os
+import pathlib
 import sys
 import urllib.error
 import urllib.request
@@ -114,12 +115,25 @@ SHAPES = [
             "audioConfig": {"audioEncoding": "LINEAR16"}}),
 ]
 won = []
+paid = 0
 for name, ver, body in SHAPES:
     ok, why = call(f"https://texttospeech.googleapis.com/{ver}/text:synthesize"
                    f"?key={K}", body)
     print(f"   {'✅' if ok else '❌'} {name}\n      {why}")
     if ok:
         won.append(name)
+        paid += len(LINE)
+# ⚠️⚠️ 2026-09-05 — 여기가 장부에 한 줄도 안 적고 있었다. 한 번에 몇 원이지만
+#    **적히지 않는 돈은 한 달 한도도 못 본다** (tools/ledger_check.py 가 본다).
+if paid:
+    try:
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent
+                               / "src"))
+        import cost                                          # noqa: E402
+        cost.record("목소리", cost.voice_krw("google-tts", paid),
+                    f"길 확인 {len(won)}개 · {paid}자")
+    except Exception:                                        # noqa: BLE001
+        pass
 
 print("\n" + "─" * 56)
 if won:

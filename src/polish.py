@@ -32,6 +32,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
+import cost
 import series as S                                           # noqa: E402
 from claude import grader                                    # noqa: E402
 
@@ -119,6 +120,11 @@ def review(sid):
     body = PROMPT.replace("{SCRIPT}", script_text(doc))
     got = llm.json(body, tier="pro", max_output_tokens=16384, temperature=0.5,
                    label="대본 다듬기")
+    # ⚠️⚠️ 2026-09-05 — 여기가 장부에 한 줄도 안 적고 있었다 (돈은 이미 나갔다).
+    try:
+        cost.record("대본 다듬기", getattr(llm, "spent_krw", lambda: 0)(), sid)
+    except Exception:                                        # noqa: BLE001
+        pass
     issues = [i for i in (got.get("issues") or []) if i.get("before") and i.get("after")]
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps({"sid": sid, "by": who,

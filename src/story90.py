@@ -29,6 +29,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 import claude                                                # noqa: E402
+import cost                                                  # noqa: E402
 import prompts                                               # noqa: E402
 import shortstate                                            # noqa: E402
 
@@ -836,6 +837,9 @@ def main():
         for b in bad[:20]:
             print(f"  · {b}")
         print(f"  (받은 대본은 {broken.name} 에 남겨 뒀습니다 — 버리지 않았습니다)")
+        # ⚠️⚠️⚠️ 2026-09-05 — **여기가 비어 있었다.** 반려돼도 돈은 이미 나갔는데
+        #    장부에 한 줄도 안 적혔다. 아래 성공 자리도 마찬가지였다.
+        cost.record("대본 만들기", spent(), f"{sid} 판례{row['case_id']} (반려)")
         report(sid=sid, case_id=str(row["case_id"]), name=name,
                state="실패", why=bad[:20], krw=spent(),
                broken=f"data/series/{broken.name}")
@@ -845,6 +849,11 @@ def main():
     out.write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n",
                    encoding="utf-8")
     summary(doc)
+    # ⚠️⚠️⚠️ 2026-09-05 — 대본 짓기는 **한 번에 약 2,100원**인데 장부에 한 줄도
+    #    안 적히고 있었다. 그래서 손님 장부에는 그림·영상값만 보이고, 한 달
+    #    한도(MONTH_KRW)도 이 돈을 못 봤다. 실제로 9월 5일 두 번 지어 약
+    #    4,200원이 장부 밖에 있었다. 성공·실패 **양쪽 다** 적는다.
+    cost.record("대본 만들기", spent(), f"{sid} 판례{row['case_id']}")
     print(f"\n✅ {out.relative_to(ROOT)} (값 약 {spent():,}원)")
     report(sid=sid, case_id=str(row["case_id"]), name=name,
            state="됨", why=[], krw=spent(),

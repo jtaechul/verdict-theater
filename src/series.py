@@ -29,6 +29,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
+import cost
 import prompts                                              # noqa: E402
 from claude import writer                                   # noqa: E402
 import charsheet                                            # noqa: E402
@@ -2224,6 +2225,14 @@ def main():
     #    이면 5만 토큰쯤 된다. 넉넉히 잡는다 — 안 쓰면 값도 안 나간다.
     doc = llm.json(body, tier="pro", max_output_tokens=65536, temperature=0.85,
                    label="시리즈", effort="high")
+
+    # ⚠️⚠️ 2026-09-05 — 여기가 장부에 한 줄도 안 적고 있었다. 돈은 위 llm.json
+    #    에서 이미 나갔다 (tools/ledger_check.py 가 이제 매번 본다).
+    try:
+        cost.record("시리즈 대본", getattr(llm, "spent_krw", lambda: 0)(),
+                    f"{sid} 판례{row.get('case_id')}")
+    except Exception:                                        # noqa: BLE001
+        pass
 
     doc = normalize(doc)
     doc["case_id"] = row["case_id"]
