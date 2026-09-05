@@ -128,27 +128,49 @@ def main():
     #    추가해 줘야 내가 만들지."
     #    맞다. 대본이 한 번 나오면 다시 지을 길이 화면에 없었다. 대기열은
     #    이미 쓴 사건을 빼고 보여 주므로 거기로 돌아가도 그 사건이 없다.
-    print("\n①-2 대본을 다시 지을 수 있는가")
+    # ⭐⭐⭐ 2026-09-05 손님: "야 대본 다시 만들기가 없잖아." → 작품 화면에
+    #    달았더니 "이렇게 열기 밖에 안떠서 쇼츠 대본을 다시 만들수 없어."
+    #    대기열에서 그 사건을 **보고 있는데** 다시 지으려면 한 화면 더 들어가야
+    #    했다. 보고 있는 자리에서 눌릴 수 있어야 한다 → 두 자리 다 본다.
+    print("\n①-2 대본을 다시 지을 수 있는가 (두 자리에서 다)")
     wd = (re.search(r"function workDraw\(\)[\s\S]*?\n}", js) or [""])[0]
-    ws = (re.search(r"async function workStory\(\)[\s\S]*?\n}", js) or [""])[0]
-    ck("작품 화면에 [대본 다시 짓기] 단추가 있다",
+    qc = (re.search(r"function queueCard\([\s\S]*?\n}", js) or [""])[0]
+    rs = (re.search(r"async function restory\([\s\S]*?\n}\n", js) or [""])[0]
+
+    ck("작품 화면에 단추가 있다",
        'id="w-restory"' in wd and "workStory()" in wd)
-    ck("그 단추가 실제로 도는 함수를 부른다", bool(ws) and "/api/make-story" in ws)
-    ck("그 사건의 판례 번호로 부른다", "case_id: cid" in ws and "w.case_id" in ws)
-    ck("두 번 눌려도 한 번만 돈다", "WBUSY['restory']" in ws)
-    ck("도는 동안 단추가 잠긴다", "lock('w-restory'" in ws)
-    # 값이 나가고 되돌리기 어려운 일 — 누르기 전에 다 알려 줘야 한다
-    ck("누르기 전에 값을 알려 준다", "약 300원" in ws)
-    ck("같은 번호로 덮어쓴다고 알려 준다", "덮어씁니다" in ws)
+    ck("대기열 줄에도 단추가 있다",
+       "againStory(this)" in qc and "대본 다시 짓기" in qc)
+    ck("대기열 줄이 사건 번호를 data- 로 넘긴다 (따옴표로 안 끼운다)",
+       'data-sid="' in qc,
+       "onclick 글자에 끼우면 따옴표 하나로 페이지가 통째로 깨진다")
+    # ⚠️ 셈이 두 벌이면 한쪽만 고쳐 놓고 고쳤다고 믿게 된다
+    # ⚠️ '/api/make-story' 를 세면 안 된다 — **새 사건 만들기**(makeStory)도
+    #    같은 창구를 쓴다. 그건 다른 일이라 두 곳인 게 맞다.
+    #    여기서 볼 것은 **다시 짓기 셈이 두 벌이 아닌가** 이다.
+    ck("다시 짓기 셈은 한 곳에만 있다 (두 단추가 같은 것을 부른다)",
+       bool(rs) and "restory(WORK" in js and "restory(btn" in js
+       and js.count("덮어씁니다") == 1 and js.count("약 300원") == 1
+       and js.count("유튜브에 올렸습니다") == 2,   # 확인 글 1 + 화면 경고 1
+       "확인 글·값·경고가 두 벌이 되면 한쪽만 낡는다")
+
+    ck("그 사건의 판례 번호로 부른다", "case_id: cid" in rs and "w.case_id" in rs)
+    ck("두 번 눌려도 한 번만 돈다", "WBUSY['restory']" in rs)
+    ck("도는 동안 단추가 잠긴다", "btn.disabled = true" in rs)
+    ck("누르기 전에 값을 알려 준다", "약 300원" in rs)
+    ck("같은 번호로 덮어쓴다고 알려 준다", "덮어씁니다" in rs)
     ck("이미 올린 편이 있으면 경고한다",
-       "유튜브에 올렸습니다" in ws and "유튜브에 올렸습니다" in wd,
+       "유튜브에 올렸습니다" in rs and "유튜브에 올렸습니다" in wd,
        "올라간 영상과 내용이 달라지는 것을 모르고 누르면 안 된다")
     ck("끝까지 지켜보고 결과를 알려 준다",
-       "watchRun('story90.yml'" in ws and "storySay(" in ws)
-    ck("다 되면 새 대본으로 화면을 다시 그린다", "openWork(WORK)" in ws)
+       "watchRun('story90.yml'" in rs and "storySay(" in rs)
+    ck("다 되면 화면을 새 대본으로 다시 그린다",
+       "openWork(sid)" in rs and "loadWorks(true)" in rs)
+    ck("어느 화면에서 눌러도 그 화면이 갱신된다",
+       "VIEW === 'work'" in rs and "else load();" in rs)
     # 알림 자리가 다른 화면과 겹치면 엉뚱한 칸에 뜬다 (실제로 겪은 사고)
     ck("알림 자리 이름이 다른 화면과 안 겹친다",
-       js.count('id="w-restory-msg"') == 1)
+       js.count('id="w-restory-msg"') == 1 and js.count('id="w-story-msg"') == 1)
 
     print("\n② 실패해도 결과를 남기는가")
     ck("적어 두기가 실패해도 돈다 (if: always())",

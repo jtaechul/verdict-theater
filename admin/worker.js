@@ -1142,23 +1142,31 @@ function workDraw() {
 // ⭐⭐⭐ 2026-09-05 — 대본 다시 짓기. 손님이 화면에서 누를 수 있어야 한다.
 //    ⚠️ 값이 나가고, 이미 만든 것과 어긋날 수 있는 일이다. 그래서 누르기
 //       전에 무슨 일이 벌어지는지 다 적어 드린다.
-async function workStory() {
-  if (!WORK) return;
+// ⭐⭐⭐ 2026-09-05 손님: "이렇게 열기 밖에 안떠서 쇼츠 대본을 다시 만들수
+//    없어." — 처음엔 작품 화면 **안쪽**에만 달았다. 대기열에서 그 사건을
+//    보고 있는데 다시 지으려면 [열기] 로 한 화면 더 들어가야 했다.
+//    보고 있는 자리에서 바로 누를 수 있어야 한다.
+//    → 셈은 여기 한 곳에 두고, **대기열 줄과 작품 화면 둘 다** 이것을 부른다.
+//      (두 벌로 나눠 적으면 한쪽만 고쳐 놓고 고쳤다고 믿게 된다)
+async function restory(sid, btn, msg) {
+  if (!sid) return;
   if (WBUSY['restory']) return;
-  const w = (WORKS || {})[WORK] || {};
+  await loadWorks();
+  const w = (WORKS || {})[sid] || {};
   const cid = String(w.case_id || '');
   if (!cid) {
     showErr('대본을 다시 지을 수 없습니다',
-            '이 사건의 판례 번호를 모릅니다. 목록에서 다시 열어 주십시오.');
+            '이 사건(' + sid + ')의 판례 번호를 모릅니다. '
+            + '화면을 새로 고쳐 주십시오.');
     return;
   }
   const ps = partList(w);
   const up = ps.filter((p) => p && p.uploaded).length;
   const made = ps.filter((p) => p && p.sec).length;
   const L = [];
-  L.push('「' + (w.label || w.title || WORK) + '」 대본을 다시 지을까요?');
+  L.push('「' + (w.label || w.title || sid) + '」 대본을 다시 지을까요?');
   L.push('');
-  L.push('· 같은 사건 번호(' + WORK + ')로 덮어씁니다.');
+  L.push('· 같은 사건 번호(' + sid + ')로 덮어씁니다.');
   L.push('· 값은 약 300원 안팎입니다 (끝나면 실제 값을 적어 드립니다).');
   if (made) {
     L.push('· 컷이 바뀌면 그 컷의 그림과 목소리를 다시 만들어야 합니다');
@@ -1174,10 +1182,14 @@ async function workStory() {
   if (!confirm(L.join(String.fromCharCode(10)))) return;
 
   WBUSY['restory'] = 1;
-  lock('w-restory', 1, '대본 다시 짓기');
-  const msg = document.getElementById('w-restory-msg');
-  const free = () => { WBUSY['restory'] = 0; lock('w-restory', 0, '대본 다시 짓기'); };
-  if (msg) msg.textContent = '대본을 짓는 중… (3~10분)';
+  // ⚠️ 단추를 **직접** 잠근다. lock() 은 id 로 찾는데, 대기열 줄의 단추는
+  //    사건마다 있어 id 를 붙이기 번거롭다. 안 잠기면 두 번 눌려 값이 두 번 나간다.
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+  const free = () => {
+    WBUSY['restory'] = 0;
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+  };
+  if (msg) msg.textContent = '「' + (w.label || sid) + '」 대본을 짓는 중… (3~10분)';
   const since = Date.now();
   try {
     const r = await fetch('/api/make-story', {
@@ -1204,11 +1216,26 @@ async function workStory() {
   watchRun('story90.yml', since, async (r) => {
     free();
     await storySay(r, msg);
-    if (r.conclusion === 'success') {
-      await openWork(WORK);          // 새 대본으로 화면을 다시 그린다
-    }
+    if (r.conclusion !== 'success') return;
+    WORKS = null;
+    await loadWorks(true);
+    if (VIEW === 'work' && WORK === sid) await openWork(sid);
+    else load();
   }, 15, 20);
 }
+
+// 작품 화면에서 (맨 위 칸)
+async function workStory() {
+  return restory(WORK, document.getElementById('w-restory'),
+                 document.getElementById('w-restory-msg'));
+}
+
+// 대기열 줄에서 — 보고 있는 자리에서 바로 누른다
+async function againStory(btn) {
+  return restory(btn && btn.dataset ? btn.dataset.sid : '', btn,
+                 document.getElementById('w-story-msg'));
+}
+
 
 // ③④ 편마다 — 만들기 단추와 올리기 단추가 **따로** 있다
 function partsCard(w) {
@@ -2324,7 +2351,13 @@ function queueCard(ready) {
       + esc(q.one_line || '') + '</div>'
       + (done
          ? '<div class="btns" style="margin-top:6px">'
-           + mini('열기', "openWork('" + done + "')") + '</div>'
+           + mini('열기', "openWork('" + done + "')")
+           // ⭐ 2026-09-05 — 보고 있는 자리에서 바로 다시 지을 수 있게 한다.
+           //    ⚠️ 사건 번호를 onclick 글자에 끼우지 않는다 — data- 로 넘긴다
+           //    (따옴표가 들어가면 페이지가 통째로 깨진다. 실제로 겪었다)
+           + '<button class="mini" data-sid="' + esc(String(done)) + '" '
+           + 'onclick="againStory(this)">대본 다시 짓기</button>'
+           + '</div>'
          : '<div class="btns" style="margin-top:6px">'
            + '<button class="mini" data-cid="' + esc(String(q.case_id || '')) + '" '
            + 'data-nm="' + esc(nm) + '" onclick="makeStory(this)">'
