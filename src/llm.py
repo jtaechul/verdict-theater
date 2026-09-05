@@ -234,11 +234,18 @@ class Gemini:
                 self.last_model = res.get("modelVersion") or model
                 u = res.get("usageMetadata", {})
                 self.tokens_in += u.get("promptTokenCount", 0)
-                self.tokens_out += u.get("candidatesTokenCount", 0)
+                # ⚠️⚠️ 2026-09-05 — **생각한 만큼(thinking)을 안 세고 있었다.**
+                #    제미나이는 생각한 토큰도 나가는 값에 넣는데, 여기서는
+                #    candidatesTokenCount 만 셌다. 그래서 화면에 56원이라고
+                #    찍혔지만 실제로는 더 나갔다. 값을 적게 세면 한도(RUN_KRW)가
+                #    막는 시늉만 하게 된다.
+                self.tokens_out += (u.get("candidatesTokenCount", 0)
+                                    + u.get("thoughtsTokenCount", 0))
                 try:
                     one = cost.krw(self.last_model,
                                    u.get("promptTokenCount", 0),
-                                   u.get("candidatesTokenCount", 0)) or 0.0
+                                   u.get("candidatesTokenCount", 0)
+                                   + u.get("thoughtsTokenCount", 0)) or 0.0
                     row = self.by_stage.setdefault(label or "이름 없음", [0, 0.0])
                     row[0] += 1
                     row[1] += one

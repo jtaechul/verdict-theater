@@ -42,14 +42,18 @@ class FakeLLM:
 
 
 def fake_s91():
-    """2026-09-03 에 반려된 그 모양 — 사람 아닌 화자 + 25자 제목."""
+    """2026-09-03 에 반려된 그 모양 — 사람 아닌 화자 + 짧은 제목.
+
+    ⚠️ 나머지는 **지금 규격에 맞게** 채운다 (3편 · 편당 9컷 · 편당 195~215자).
+       그래야 시험이 재려는 것 — 손보기와 되받아 고치기 — 만 남는다.
+    """
+    LINE = "그 여자의 이름을 알아낸 것은 그로부터 사흘 뒤였습니다"   # 24자
     def cut(n, who, text):
         return {"n": n, "who": [] if who == "나레이션" else [who],
                 "turns": [[who, text]], "say": ["담담하게 낮은 목소리로"],
                 "scene": "a woman sits alone in a dim room"}
-    cuts = [cut(i, "아내" if i % 2 else "남편", "짧은 대사 " + str(i))
-            for i in range(1, 17)]
-    cuts[12] = cut(13, "법원", "원고의 청구를 기각한다")   # ← 여기서 걸렸다
+    cuts = [cut(i, "아내" if i % 2 else "남편", LINE) for i in range(1, 28)]
+    cuts[12] = cut(13, "법원", "원고의 청구를 기각한다")            # ← 여기서 걸렸다
     cuts[12]["who"] = ["법원"]
     return {
         "title": "녹음기 사건", "series_label": "녹음기 사건",
@@ -57,15 +61,18 @@ def fake_s91():
         "people": {},
         "cuts": cuts,
         "parts": [
-            {"no": 1, "cuts": [1, 8], "card": ["남편 차에서", "소리가 났다"],
+            {"no": 1, "cuts": [1, 9], "card": ["남편 차에서", "소리가 났다"],
              "yt_title": "남편 차에 녹음기를 숨긴 아내가 들은 것은 충격이었다"},
-            # ⚠️ 짧은 제목 — 이런 것이 실제로 2,100원을 통째로 날렸다.
+            # ⚠️ 짧은 제목 — 이런 것이 실제로 대본 한 편을 통째로 날렸다.
             #    (그때는 25자였고 통과선이 26자, 딱 한 글자 차이였다. 지금은
             #     아래 선을 22자로 내렸으므로 시험은 그보다 더 짧게 둔다.)
-            {"no": 2, "cuts": [9, 16], "card": ["증거를 들이대자", "돌아온 맞소송"],
+            {"no": 2, "cuts": [10, 18], "card": ["증거를 들이대자", "돌아온 맞소송"],
              "yt_title": "불륜 들키자 되레 고소한 상간녀"},
+            {"no": 3, "cuts": [19, 27], "card": ["법정에 선 두 사람", "판결이 났다"],
+             "yt_title": "법원이 상간녀에게 물린 위자료 삼천만 원의 근거"},
         ],
     }
+
 
 bad = []
 
@@ -136,10 +143,13 @@ def main():
     #    (안쪽을 겨냥해야 실수로 넘지 않는다). 막아야 하는 것은 그 반대 —
     #    **프롬프트가 검사기보다 헐겁게 시키는 것**이다. 그러면 모델은 시킨
     #    대로 썼는데 검사에서 반려돼 2,100원이 날아간다.
-    ch = re.search(r"글자 수 합계가 (\d+)자를 넘지 않는다", md)
-    ck(f"편당 글자 수를 검사기({ST.PART_CHARS}자) 안쪽으로 시킨다",
-       bool(ch) and int(ch.group(1)) <= ST.PART_CHARS,
-       (ch.group(1) + "자를 시킨다") if ch else "프롬프트에 글자 수가 없다")
+    ch = re.search(r"글자 수 합계는 (\d+)~(\d+)자", md)
+    ck(f"편당 글자 수를 검사기({ST.PART_CHARS_MIN}~{ST.PART_CHARS}자) "
+       f"안쪽으로 시킨다",
+       bool(ch) and ST.PART_CHARS_MIN <= int(ch.group(1))
+       and int(ch.group(2)) <= ST.PART_CHARS,
+       (ch.group(1) + "~" + ch.group(2) + "자를 시킨다") if ch
+       else "프롬프트에 글자 수 범위가 없다")
     cu = re.search(r"한 편은 컷 \*\*(\d+)~(\d+)개\*\*", md)
     ck(f"한 편 컷 수를 검사기({ST.PART_MIN_CUTS}~{ST.PART_MAX_CUTS}컷) "
        f"안쪽으로 시킨다",
@@ -149,9 +159,49 @@ def main():
        else "프롬프트에 컷 수가 없다")
     ck(f"화면 제목 길이가 프롬프트와 같다 ({ST.CARD_MAX}자)",
        f"{ST.CARD_MAX}자" in md)
-    ck(f"편 수가 프롬프트와 같다 (2~4편)", "2~4편" in md)
+    pa = re.search(r"전체는 \*\*(\d+)~(\d+)편\*\*", md)
+    ck(f"편 수를 검사기({ST.PARTS_MIN}~{ST.PARTS_MAX}편) 안쪽으로 시킨다",
+       bool(pa) and ST.PARTS_MIN <= int(pa.group(1))
+       and int(pa.group(2)) <= ST.PARTS_MAX,
+       (pa.group(1) + "~" + pa.group(2) + "편을 시킨다") if pa
+       else "프롬프트에 편 수가 없다")
+
+    # ⭐⭐⭐ 2026-09-05 손님: "두편이야? 세 편 이상 나오게 해야지.
+    #    너무 빠르게 본론으로 들어가 버리니까 내용이 이해가 안 돼."
+    #    S91 을 재 보니 2편 15컷 389자 — S90(3편 24컷 607자)보다 36% 얇았다.
+    #    같은 일이 다시 나지 않게, 얇게 만드는 길을 하나씩 막았는지 본다.
+    print("\n④-2 대본이 다시 얇아지지 않는가")
+    ck("2편은 못 나온다", ST.PARTS_MIN >= 3)
+    ck("짧게 써도 잡힌다 (글자 하한이 있다)", ST.PART_CHARS_MIN >= 180)
+    ck("말줄임표에 상한이 있다", ST.ELLIPSIS_MAX <= 3)
+    ck("'단순하면 2편' 같은 쉬운 길을 안 열어 준다",
+       "단순하면 2편" not in md and "최소 3편" in md)
+    ck("한 컷에 한 걸음만 나가라고 적었다", "한 컷은 한 걸음만" in md)
+    ck("대사에 손에 잡히는 것을 담으라고 적었다",
+       "손에 잡히는 것 하나" in md)
+    ck("나레이션이 신문 기사가 되지 말라고 적었다", "신문 기사가 아니라 장면" in md)
+    # 진짜로 잡는지 — S91(2편·짧음·말줄임표 많음)을 새것으로 쳐서 재 본다
+    s91 = json.loads((ROOT / "data" / "series" / "S91.story.json")
+                     .read_text(encoding="utf-8"))
+    b91 = ST.check(s91, new=True)
+    for want in ("편이 2개다", "185자", "말줄임표", "컷이다"):
+        ck(f"S91 의 문제를 잡는다 ({want})",
+           any(want in x for x in b91), str(b91[:2]))
+    ck("이미 만들어 둔 대본은 그대로 둔다 (뒤늦게 빨간불이 안 난다)",
+       not ST.check(s91, new=False))
 
     # ── ⑤ 사람을 늘릴 수 있는가 ──────────────────────────────
+    print("\n④-3 값과 번호가 어긋나지 않는가")
+    llm = (ROOT / "src" / "llm.py").read_text(encoding="utf-8")
+    # ⚠️ 제미나이는 **생각한 토큰**도 값에 넣는다. 그것을 안 세면 화면에 찍힌
+    #    값이 실제보다 적고, 한도(RUN_KRW)가 막는 시늉만 하게 된다.
+    ck("생각한 만큼도 값에 센다 (thoughtsTokenCount)",
+       llm.count("thoughtsTokenCount") >= 2,
+       "안 세면 화면 값이 실제보다 적게 찍힌다")
+    ck("같은 판례로 다시 지으면 그 번호를 다시 쓴다", "def sid_for(" in src
+       and "again or next_sid()" in src,
+       "안 그러면 한 사건이 목록에 둘로 뜬다")
+
     print("\n⑤ 사람을 사건마다 늘릴 수 있는가")
     d = {"people": {"며느리": {"age": "30대", "sex": "여"}}}
     ck("대본이 세운 사람을 화자로 쓸 수 있다", "며느리" in ST.who_ok(d))

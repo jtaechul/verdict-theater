@@ -59,8 +59,22 @@ PEOPLE_MAX = 4          # 기본 다섯 말고 더 세울 수 있는 사람 수
 #   225자 ≈ 55.8초 — 60초까지 4초쯤 여유를 둔다. 목소리는 매번 조금씩
 #   달라지므로 상한에 딱 붙여 두면 어느 날 60초를 넘는다.
 PART_CHARS = 225
+# ⭐⭐⭐ 2026-09-05 손님: "영상이 너무 짧은데? 두편이야? 세 편 이상 나오게
+#    해야지. 너무 빠르게 본론으로 들어가 버리니까 내용이 이해가 안 돼."
+#    S91 을 재 보니 그대로였다 — 2편 15컷 389자. S90(3편 24컷 607자)보다
+#    **36% 얇다.** 게다가 1편이 43초로 12초를 그냥 버렸다.
+#    까닭은 셋이다.
+#      ① 프롬프트가 "사건이 단순하면 2편" 이라고 **쉬운 길을 열어 줬다**
+#      ② 상한(225자)만 있고 **하한이 없어** 짧게 써도 아무도 안 잡았다
+#      ③ "말을 짧게 자르고 끝을 흐린다" 를 AI 가 **말줄임표 남발**로 풀었다
+#         (S91 에 15개 · S90 은 5개). 글자 수만 먹고 뜻이 없다.
+#    → 편을 늘리면 총 분량이 늘어난다: 2편 450자 → 4편 900자. 두 배 자세해진다.
+#      게다가 편 하나가 업로드 하나라 피드 진입도 늘어난다.
+PART_CHARS_MIN = 185             # 46초. 이보다 짧으면 쓸 수 있는 시간을 버린 것
 SEC_PER_CHAR = 0.248
-PART_MIN_CUTS, PART_MAX_CUTS = 6, 10
+PART_MIN_CUTS, PART_MAX_CUTS = 8, 11
+PARTS_MIN, PARTS_MAX = 3, 5      # 2편은 안 된다 (손님 지시)
+ELLIPSIS_MAX = 3                 # 편당 말줄임표 — 넘으면 분량만 먹는다
 # ⭐ 2026-09-04 — 아래 선이 26자였다. 그런데 S91 이 **25자** 하나로 통째로
 #    버려졌고(2,100원), 더 나쁜 것은 이 채널에서 **가장 잘된 제목 셋이
 #    22~24자**였다는 점이다. 검사가 검증된 길이를 막고 있었던 셈이다.
@@ -241,6 +255,23 @@ def chars(c):
     return sum(len(re.sub(r"[\s…·]", "", t)) for _, t in c["turns"])
 
 
+def sid_for(case_id):
+    """그 판례로 이미 지은 대본이 있으면 **그 번호를 다시 쓴다.**
+
+    ⚠️⚠️ 2026-09-05 — 없으면 같은 사건으로 다시 지을 때마다 번호가 늘어난다.
+       손님이 "대본이 얇다, 다시 지어" 하고 단추를 또 누르시면 S91 은 그대로
+       남고 S92 가 새로 생겨, 한 사건이 목록에 둘로 뜬다.
+    """
+    for f in SERIES.glob("S*.story.json"):
+        try:
+            d = json.loads(f.read_text(encoding="utf-8"))
+        except Exception:                                    # noqa: BLE001
+            continue
+        if str(d.get("case_id") or "") == str(case_id):
+            return f.name.split(".")[0].upper()
+    return ""
+
+
 def next_sid():
     """다음 사건 번호. 이미 있는 대본을 덮어쓰지 않는다."""
     n = 0
@@ -312,8 +343,11 @@ def check(doc, new=True):
                        f"판결·해설은 나레이션이 전한다")
     if not cuts:
         return ["컷이 하나도 없다"]
-    if not (2 <= len(parts) <= 4):
-        bad.append(f"편이 {len(parts)}개다 — 2~4편이어야 한다")
+    # ⚠️ 편 수·글자 하한·말줄임표는 **새로 짓는 것**에만 건다. 이미 만들어 둔
+    #    대본을 뒤늦게 규격 위반으로 만들면, 손대지도 않은 사건이 빨간불이 난다.
+    if new and not (PARTS_MIN <= len(parts) <= PARTS_MAX):
+        bad.append(f"편이 {len(parts)}개다 — {PARTS_MIN}~{PARTS_MAX}편이어야 한다 "
+                   f"(편을 늘리면 그만큼 자세히 쓸 수 있다)")
 
     ns = [c.get("n") for c in cuts]
     if ns != list(range(1, len(cuts) + 1)):
@@ -367,13 +401,25 @@ def check(doc, new=True):
         if not mine:
             bad.append(f"{no}편에 컷이 없다")
             continue
-        if not (PART_MIN_CUTS <= len(mine) <= PART_MAX_CUTS):
+        if new and not (PART_MIN_CUTS <= len(mine) <= PART_MAX_CUTS):
             bad.append(f"{no}편이 {len(mine)}컷이다 "
-                       f"({PART_MIN_CUTS}~{PART_MAX_CUTS}컷이어야 한다)")
+                       f"({PART_MIN_CUTS}~{PART_MAX_CUTS}컷이어야 한다 — "
+                       f"컷이 적으면 이야기가 껑충 뛴다)")
         ch = sum(chars(c) for c in mine)
         if ch > PART_CHARS:
             bad.append(f"{no}편이 {ch}자({ch * SEC_PER_CHAR:.0f}초)다 — "
                        f"{PART_CHARS}자를 넘으면 쇼츠 피드가 안 태운다")
+        # ⭐ 하한 — 짧게 써도 아무도 안 잡아서 1편이 43초로 나왔다(12초를 버렸다)
+        if new and ch < PART_CHARS_MIN:
+            bad.append(f"{no}편이 {ch}자({ch * SEC_PER_CHAR:.0f}초)뿐이다 — "
+                       f"{PART_CHARS_MIN}자({PART_CHARS_MIN * SEC_PER_CHAR:.0f}초) "
+                       f"이상 써라. 쓸 수 있는 시간을 버리고 있다")
+        # ⭐ 말줄임표는 분량만 먹고 뜻이 없다 ("이거... 진짜야...?")
+        ell = sum(str(t).count("...") + str(t).count("…")
+                  for c in mine for _, t in c["turns"])
+        if new and ell > ELLIPSIS_MAX:
+            bad.append(f"{no}편에 말줄임표가 {ell}개다 — {ELLIPSIS_MAX}개까지다. "
+                       f"자리만 먹고 뜻은 안 나른다")
         t = str(p.get("yt_title") or "")
         if not (TITLE_MIN <= len(t) <= TITLE_MAX):
             bad.append(f"{no}편 제목이 {len(t)}자다 "
@@ -504,7 +550,11 @@ def main():
     a = ap.parse_args()
 
     row = pick_case(a.case or None)
-    sid = (a.sid or next_sid()).upper()
+    # ⭐ 같은 판례로 다시 지으면 **그 번호를 다시 쓴다** (목록에 둘로 안 뜨게)
+    again = sid_for(row["case_id"])
+    sid = (a.sid or again or next_sid()).upper()
+    if again and not a.sid:
+        print(f"■ 이 판례로 지은 대본({again})이 이미 있습니다 — 다시 짓습니다")
     name = str(row.get("one_line") or "")[:70]
     print(f"■ {sid} 대본 짓는 중 — 판례 {row['case_id']} · "
           f"{row.get('case_type', '')}")
