@@ -63,6 +63,16 @@ def rules():
     print("\n② 화면이 망가지지 않는가")
     ck("**그림을 넣어** 움직이게 한다 (image-to-video)", "start=still" in op)
     ck("세로로 받는다 (위아래가 안 잘리게)", S.OPEN_RATIO == "9:16")
+    # ⚠️⚠️ 2026-09-05 실측 — 1080p 는 4초를 안 받는다 (HTTP 400).
+    #    이것 때문에 편 첫 장면 세 개가 다 실패했다. 값은 0원이었지만
+    #    손님은 켰다고 믿고 계셨다. 길이에 맞는 화질을 골라야 한다.
+    import veo as V                                          # noqa: E402
+    ck(f"그 길이에 쓸 수 있는 화질을 고른다 "
+       f"({S.OPEN_SEC:g}초 → {V.res_for(S.OPEN_SEC)})",
+       V.res_for(S.OPEN_SEC) == "720p",
+       "1080p 는 4초를 안 받는다 — 400 으로 통째로 실패한다")
+    ck("긴 것은 여전히 선명하게 받는다 (8초 → 1080p)",
+       V.res_for(8) == "1080p")
     ob = (re.search(r"def open_bg\([\s\S]*?\n\ndef ", src) or [""])[0]
     ck("되돌려 잇지 않는다 (4초에서 화면이 안 튄다)",
        "stream_loop" not in ob and "xfade" in ob)

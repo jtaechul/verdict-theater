@@ -134,6 +134,31 @@ def main():
     ck("셈하는 단계가 돈 쓰는 단계보다 앞이다",
        yml.index("plan_cost.py --env") < yml.index("short90.py stills"))
 
+    print("\n⑧ 올린 얼굴이 새로고침에도 남는가")
+    # ⭐⭐⭐ 2026-09-05 손님: "새로고침 할 때마다 아예 없어져버려. 그래서
+    #    반영되고 있는지 안 되고 있는지 난 알 수가 없으니까."
+    #    올린 기록이 화면 메모리에만 있었고, 열쇠에 임의 번호가 붙어 되찾을
+    #    길도 없었고, 보관함은 하루짜리였다. 그 상태로 [전체 만들기] 를
+    #    누르면 **옛 얼굴로 조용히** 그려졌다.
+    ck("보관함에 물어보는 창구가 있다", "'/api/cards'" in js)
+    ck("누구 얼굴인지 적어 두고 올린다", "who: who, at: Date.now()" in js)
+    ck("목록이 그 쪽지를 읽는다", "k.metadata" in js and "m.who" in js)
+    ck("조각(.0 .1)을 얼굴로 세지 않는다", "\\.\\d+$/.test(k.name)" in js)
+    ck("사람별로 **가장 최근** 것을 고른다", "at > best[who].at" in js)
+    ck("얼굴은 하루가 아니라 오래 둔다 (KV_MONTH)",
+       "KV_MONTH" in js and "blobPutStream(env, req.body, key, KV_MONTH" in js)
+    ck("작품 화면을 열 때 되찾아 온다", "await loadCards(WORK)" in js)
+    sc = (re.search(r"function short90Card\(\)[\s\S]*?\n}", js) or [""])[0]
+    ck("올리신 얼굴을 화면에 띄운다", "s90im-" in sc and "S90CARDS[p[0]]" in sc)
+    ck("무엇을 쓰는지 글로도 적는다",
+       "올리신 얼굴을 씁니다" in sc and "기본 얼굴을 씁니다" in sc)
+    ck("언제 올렸는지 적는다", "function whenTxt" in js and "S90CARDW" in sc)
+    mk = (re.search(r"async function workMake\([\s\S]*?if \(!confirm", js)
+          or [""])[0]
+    ck("만들기 확인 창에도 이번에 쓸 얼굴을 적는다",
+       "이번에 쓸 얼굴" in mk and "기본 얼굴" in mk,
+       "값이 나가기 직전 마지막 문이다")
+
     print("\n" + "─" * 60)
     if BAD:
         print("❌ 걸린 것:")

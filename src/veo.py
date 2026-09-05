@@ -45,6 +45,20 @@ CALL_CAP = int(os.environ.get("VEO_CALL_CAP", "8"))
 # 실측: 720p·1080p 둘 다 받는다. 최종 화면 가로가 1080px 이므로
 # 1080p 로 받아 잘라야 선이 흐려지지 않는다.
 RESOLUTION = os.environ.get("VEO_RESOLUTION", "1080p")
+# ⚠️⚠️ 2026-09-05 실측 — **1080p 는 4초를 안 받는다.**
+#      HTTP 400: "1080p is not supported for a duration of 4 seconds."
+#      편 첫 장면(4초)이 이것으로 세 개 다 실패했다(값은 0원 — 거절당했다).
+#      길이에 맞는 화질로 저절로 내린다. 720p 로 받아 1080 으로 조금 늘리면
+#      살짝 덜 선명하지만, 4초만 나오고 곧 그림으로 넘어가 티가 적다.
+#      8초로 올리면 선명하지만 값이 두 배이고 스와이프 판정 구간 밖이다.
+RES_MIN_SEC_1080 = 6             # 이보다 짧으면 1080p 를 못 쓴다
+
+
+def res_for(sec):
+    """그 길이에 쓸 수 있는 화질. 짧으면 720p 로 내린다."""
+    if RESOLUTION == "1080p" and float(sec) < RES_MIN_SEC_1080:
+        return "720p"
+    return RESOLUTION
 POLL_SEC, POLL_MAX = 10, 60           # 10초마다 · 최대 10분
 
 _calls = {"n": 0}
@@ -132,7 +146,7 @@ def make_clip(prompt, sec, out, ratio="16:9", seed=None, start=None, end=None):
             f"이번 달 한도({cost.MONTH_KRW:,.0f}원)에 걸렸습니다. "
             f"지금까지 {cost.month_total():,.0f}원 썼고 이 컷이 약 {krw:,.0f}원입니다.")
 
-    print(f"    영상 만드는 중… ({sec}초 · 약 {krw:,.0f}원)")
+    print(f"    영상 만드는 중… ({sec}초 · {res_for(sec)} · 약 {krw:,.0f}원)")
     inst = {"prompt": prompt}
     if start:
         # ⚠️ 실측: image 에는 bytesBase64Encoded 와 mimeType 이 **둘 다** 있어야
@@ -156,7 +170,7 @@ def make_clip(prompt, sec, out, ratio="16:9", seed=None, start=None, end=None):
         #       16:9 는 좌우만 12.5%씩 잘리지만, 9:16 은 위아래를 58% 잘라야 해
         #       머리·턱이 날아간다.
         "parameters": {"aspectRatio": ratio, "durationSeconds": int(sec),
-                       "resolution": RESOLUTION, "personGeneration": "ALLOW_ALL",
+                       "resolution": res_for(sec), "personGeneration": "ALLOW_ALL",
                        **({"seed": int(seed)} if seed is not None else {})},
     })
     _calls["n"] += 1

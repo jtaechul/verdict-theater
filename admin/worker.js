@@ -383,6 +383,9 @@ function whoKey(who) {
 }
 
 const KV_DAY = 60 * 60 * 24;
+// ⚠️ 인물 그림은 하루면 사라졌다. 한 사건을 며칠에 걸쳐 만드시는데
+//    다음 날 눌러 보면 옛 얼굴로 조용히 그려졌다. 얼굴만 오래 둔다.
+const KV_MONTH = 60 * 60 * 24 * 30;
 const KV_MAX = 90 * 1024 * 1024;    // 한 번에 받는 최대 크기
 
 // 보관함이 붙어 있나. 배포가 오래됐으면 없을 수 있어 옛 길로 되돌아간다.
@@ -390,7 +393,7 @@ function bin(env) { return env && env.BLOB ? env.BLOB : null; }
 
 // 흘러 들어오는 것을 조각내어 넣는다.
 // ⚠️ 통째로 메모리에 올리지 않는다 — 90MB 를 한 손에 들면 워커가 죽는다.
-async function blobPutStream(env, body, key, ttl) {
+async function blobPutStream(env, body, key, ttl, meta) {
   const kv = bin(env);
   const rd = body.getReader();
   let hold = [], held = 0, part = 0, total = 0;
@@ -408,8 +411,14 @@ async function blobPutStream(env, body, key, ttl) {
     if (held >= KV_CHUNK) await flush();
   }
   await flush();
+  // ⭐⭐⭐ 2026-09-05 손님: "새로고침 할 때마다 아예 없어져버려. 반영되고
+  //    있는지 안 되고 있는지 난 알 수가 없으니까."
+  //    맞다. 올린 기록이 **화면 메모리에만** 있었고 열쇠에 임의 번호가 붙어
+  //    되찾을 길도 없었다. → 머리쪽지에 **누구·언제** 를 같이 적어 둔다.
+  //      (KV 목록은 이 metadata 를 같이 돌려준다 — 파일을 안 열어도 안다)
   await kv.put(key, JSON.stringify({ parts: part, size: total,
-    type: 'application/zip' }), { expirationTtl: ttl });
+    type: 'application/zip' }),
+    { expirationTtl: ttl, metadata: { ...(meta || {}), size: total } });
   return total;
 }
 
@@ -888,6 +897,35 @@ async function upClips() {
 const S90WHO = [['본처', '아내'], ['남편', '남편'], ['내연녀', '내연녀'],
                 ['딸', '딸'], ['변호사', '변호사']];
 let S90CARDS = {};
+let S90CARDW = {};        // 사람별 "언제 올렸나" (화면에 적어 드린다)
+
+// ⭐⭐⭐ 2026-09-05 — 올린 얼굴을 **보관함에서 되찾는다.**
+//    예전에는 S90CARDS 가 화면 메모리에만 있어, 새로고침하면 통째로 비었다.
+//    그 상태로 [전체 만들기] 를 누르면 **옛 얼굴로 조용히** 그려졌다.
+async function loadCards(sid) {
+  S90CARDS = {}; S90CARDW = {};
+  try {
+    const j = await (await fetch('/api/cards?sid=' + encodeURIComponent(sid)
+                                 + '&t=' + Date.now(),
+                                 { cache: 'no-store' })).json();
+    for (const who in (j.cards || {})) {
+      S90CARDS[who] = j.cards[who].url;
+      S90CARDW[who] = whenTxt(j.cards[who].at);
+    }
+  } catch (e) { /* 못 물어봤으면 기본 얼굴로 보인다 */ }
+}
+
+// "9월 5일 14:20" 처럼 적어 준다 (오늘이면 "오늘 14:20")
+function whenTxt(ms) {
+  const t = Number(ms || 0);
+  if (!t) return '';
+  const d = new Date(t), n = new Date();
+  const hm = String(d.getHours()).padStart(2, '0') + ':'
+           + String(d.getMinutes()).padStart(2, '0');
+  return (d.toDateString() === n.toDateString())
+    ? '오늘 ' + hm
+    : (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ' + hm;
+}
 
 // ⭐⭐⭐ 2026-09-02 — 인물 이름을 **대본에서 읽는다.** 코드에 다섯을 박아
 //    두었더니 다른 사건에서는 엉뚱한 사람 칸이 떴다. 사건마다 나오는 사람이
@@ -914,16 +952,29 @@ function short90Card() {
      + '어떤 사람의 얼굴을 <b>바꾸고 싶을 때만</b> 그 사람 칸에 새 그림을 '
      + '올리십시오.</div>';
   cast.forEach(function (p) {
+    // ⭐⭐⭐ 2026-09-05 손님: "반영되고 있는지 안 되고 있는지 난 알 수가
+    //    없으니까 … 새로운 이미지를 띄우던 '적용되었음' 이라고 하든
+    //    '기존 이미지 활용' 이라고 써있든 간에 알아볼 수 있게."
+    //    → 올리신 얼굴이 있으면 **그 얼굴을 그대로 띄우고** 언제 올렸는지
+    //      적는다. 없으면 **기본 얼굴 쓰는 중** 이라고 적는다.
+    const got = S90CARDS[p[0]];
     h += '<div class="upbox" style="margin-top:10px">'
+       + '<div style="display:flex;gap:10px;align-items:flex-start">'
+       + '<img id="s90im-' + p[0] + '" src="' + esc(got || '') + '" alt="" '
+       + 'style="width:54px;height:72px;object-fit:cover;border-radius:6px;'
+       + 'background:#2c2f3d;border:1px solid #3a3e4f'
+       + (got ? '' : ';display:none') + '">'
+       + '<div style="flex:1">'
        + '<b>' + p[1] + '</b> '
-       + '<span class="uphint" id="s90st-' + p[0] + '">' 
-       + (S90CARDS[p[0]] ? '올렸습니다' : '') + '</span>'
+       + '<span class="uphint" id="s90st-' + p[0] + '">'
+       + (got ? '올리신 얼굴을 씁니다' + (S90CARDW[p[0]] ? ' · ' + esc(S90CARDW[p[0]]) : '')
+              : '기본 얼굴을 씁니다') + '</span>'
        // ⚠️ 여기서 따옴표로 이름을 넘기면 안 된다 — 이 코드는 통째로 템플릿
        //    문자열 안이라 \' 가 ' 로 풀려 버려 줄이 깨진다 (한 번 깨뜨렸다).
        //    칸 이름(id)에서 이름을 꺼내 쓰면 따옴표가 아예 필요 없다.
        + '<input type="file" accept="image/*" id="s90f-' + p[0] + '" '
        + 'onchange="upCard(this.id.slice(5))">'
-       + '</div>';
+       + '</div></div></div>';
   });
   h += '<div class="uphint" style="margin-top:10px"><b>아래 ②</b> 를 지나 '
      + '<b>③ 세 편 만들기</b> 를 누르시면 됩니다.</div>';
@@ -950,7 +1001,12 @@ async function upCard(who) {
       return;
     }
     S90CARDS[who] = j.url;
-    st.textContent = '올렸습니다 (' + mb.toFixed(1) + 'MB)';
+    S90CARDW[who] = '방금 올림';
+    st.textContent = '올리신 얼굴을 씁니다 · 방금 올림 ('
+                   + mb.toFixed(1) + 'MB)';
+    // 올리자마자 그 얼굴을 띄운다 — 눈으로 확인하시게
+    const im = document.getElementById('s90im-' + who);
+    if (im) { im.src = j.url + '&t=' + Date.now(); im.style.display = ''; }
   } catch (e) {
     st.textContent = '못 올렸습니다';
     showErr('인물 그림을 못 올렸습니다', String(e && e.message ? e.message : e));
@@ -1102,6 +1158,7 @@ async function openWork(sid) {
                                  + '&t=' + Date.now(), { cache: 'no-store' })).json();
     WMETA = j.meta || null;
   } catch (e) { WMETA = null; }
+  await loadCards(WORK);      // ⭐ 올리신 얼굴을 보관함에서 되찾아 온다
   workDraw();
   s90Cuts();
 }
@@ -1413,6 +1470,21 @@ async function workMake(no) {
   } else {
     lines.push('편 첫 장면 영상: 끔 (전부 그림 · 0원)');
   }
+  // ⭐⭐⭐ 2026-09-05 — 값이 나가기 직전 **마지막 문**이다.
+  //    올린 얼굴이 화면 새로고침으로 사라져, 옛 얼굴로 조용히 그려진 적이
+  //    있다. 어떤 얼굴로 그릴지 여기서 한 번 더 눈으로 보시게 한다.
+  const cast = castOf();
+  if (cast.length) {
+    lines.push('');
+    lines.push('이번에 쓸 얼굴:');
+    cast.forEach(function (p) {
+      lines.push('  · ' + p[1] + ' = '
+                 + (S90CARDS[p[0]]
+                    ? '올리신 얼굴' + (S90CARDW[p[0]] ? ' (' + S90CARDW[p[0]] + ')' : '')
+                    : '기본 얼굴'));
+    });
+  }
+  lines.push('');
   lines.push('10~20분 걸립니다.');
   if (!confirm(lines.join(String.fromCharCode(10)))) return;
   WBUSY[id] = 1;
@@ -3777,6 +3849,34 @@ export default {
         return Response.json({ last: r });
       }
 
+      // ⭐⭐⭐ 2026-09-05 손님: "새로고침 할 때마다 아예 없어져버려."
+      //    보관함을 훑어 **사람별로 가장 최근에 올린 얼굴**을 돌려준다.
+      //    화면은 이것으로 얼굴을 띄우고, 만들기에도 이것을 넘긴다.
+      if (url.pathname === '/api/cards') {
+        const kv = bin(env);
+        const sid = sidOf(url);
+        if (!kv) return Response.json({ sid, cards: {} });
+        const best = {};
+        let cursor = undefined;
+        for (let i = 0; i < 10; i++) {          // 넉넉히 열 쪽까지
+          const r = await kv.list({ prefix: `cards/${sid}-`, cursor });
+          for (const k of (r.keys || [])) {
+            // ⚠️ 조각(.0 .1 …)은 건너뛴다 — 머리쪽지만 본다
+            if (/\.\d+$/.test(k.name)) continue;
+            const m = k.metadata || {};
+            const who = m.who;
+            if (!who) continue;                 // 옛 것(누구인지 안 적힌 것)
+            const at = Number(m.at || 0);
+            if (!best[who] || at > best[who].at)
+              best[who] = { at, size: Number(m.size || 0),
+                            url: blobUrl(req, k.name) };
+          }
+          if (!r.list_complete && r.cursor) cursor = r.cursor;
+          else break;
+        }
+        return Response.json({ sid, cards: best });
+      }
+
       if (url.pathname === '/api/short90') {
         const sid = sidOf(url);
         const doc = await getJson(env, 'data/series/' + sid + '.json');
@@ -3942,7 +4042,11 @@ export default {
                                { status: 400 });
         try {
           const key = `cards/${sid}-${whoKey(who)}-${crypto.randomUUID()}`;
-          const size = await blobPutStream(env, req.body, key, KV_DAY);
+          // ⭐ 누구 얼굴인지·언제 올렸는지를 같이 적어 둔다. 열쇠에는 임의
+          //    번호가 들어 있어, 이것이 없으면 화면이 되찾을 길이 없다.
+          //    ⚠️ 하루가 아니라 서른 날 둔다 (KV_MONTH).
+          const size = await blobPutStream(env, req.body, key, KV_MONTH,
+                                           { who: who, at: Date.now() });
           if (!size)
             return Response.json({ ok: false, error: '파일이 비었습니다' }, { status: 400 });
           return Response.json({ ok: true, url: blobUrl(req, key), size });
