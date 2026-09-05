@@ -502,7 +502,11 @@ def main():
     #    이것이 "그 토막만 뜬다" 는 말의 정확한 뜻이다.
     who0, txt0 = S9.turns_of(two)[0]
     solo = td3 / "solo.png"
-    S9.overlay(two, solo, (who0, S9.chunks_of(txt0)[0]))     # 그 토막만 넣어 그린다
+    # ⚠️ 2026-09-05 — 여기서 `now` 를 안 주고 그렸었다. 그러면 **문장 전체를
+    #    그리는 길**(크기를 칸에 맞춰 줄이는 길)로 들어간다. 자막 크기를
+    #    SUB_FIXED 로 고정한 뒤로는 두 길의 글씨 크기가 달라져(104 vs 96)
+    #    같은 글인데도 그림이 어긋났다. **같은 길로** 그려서 견준다.
+    S9.overlay(two, solo, (who0, S9.chunks_of(txt0)[0]), now=0)
     same = (_Im.open(solo).tobytes() == _Im.open(ko[0][0]).tobytes())
     ck("첫 장이 '그 토막만' 그린 것과 똑같다", same,
        "문장이 통째로 남아 있거나 다른 것이 섞였다")

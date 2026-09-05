@@ -239,6 +239,37 @@ def autofix(doc):
     return log
 
 
+# ── ⭐⭐⭐ 나레이션은 **주어를 밝힌다** (2026-09-05 손님 지시) ──────
+#    손님: "나레이션에서는 말 줄이지 말고 친절하게 풀어서 설명을 해.
+#           불륜의 대가를 치렀다고 쓰는 거면 그 주체를 누가 치렀는지를
+#           주어를 쓰고 그다음에 서술을 해야지.
+#           '내연녀는 결국 불륜의 대가를 치렀습니다.' 가 맞잖아."
+#    맞다. 주어를 빼면 **누구 이야기인지 모른 채** 결말만 듣게 된다.
+#
+#    ⚠️ 다만 **모든 문장에 주어를 요구하면 안 된다.** 「…소리였습니다」 처럼
+#       무엇인지를 밝히는 문장(이다/였다)은 주어 없이도 자연스럽다.
+#       → **동작·결과를 서술하는 문장**에만 주어를 요구한다.
+SUBJ = re.compile(r"[가-힣]+(?:은|는|이|가)(?=\s|,|$)")
+# 무엇인지를 밝히는 맺음 — 주어가 없어도 된다
+COPULA = ("입니다", "였습니다", "이었습니다", "이다", "였다", "이었다",
+          "겁니다", "것입니다", "뿐입니다")
+
+
+def sentences(t):
+    """한 줄을 문장으로 쪼갠다 (한 줄에 두 문장이 들어 있을 수 있다)."""
+    return [x.strip() for x in re.split(r"(?<=[.?!])\s+", str(t or "")) if x.strip()]
+
+
+def needs_subject(one):
+    """이 문장이 **주어를 밝혀야 하는데 안 밝혔는가**."""
+    t = one.strip()
+    if len(re.sub(r"[^가-힣]", "", t)) < 6:      # 아주 짧은 말은 안 본다
+        return False
+    if t.rstrip(".!?").endswith(COPULA):         # 무엇인지를 밝히는 문장
+        return False
+    return not SUBJ.search(t + " ")
+
+
 def people_of(doc):
     """그 사건에 나오는 사람들 — {이름: {age, sex}}. 기본 다섯도 넣어 준다."""
     out = {"아내": {"age": "50대", "sex": "여"},
@@ -440,6 +471,17 @@ def check(doc, new=True):
         if new and ell > ELLIPSIS_MAX:
             bad.append(f"{no}편에 말줄임표가 {ell}개다 — {ELLIPSIS_MAX}개까지다. "
                        f"자리만 먹고 뜻은 안 나른다")
+        # ⭐ 나레이션은 주어를 밝힌다 — 누구 이야기인지 모른 채 결말만
+        #    듣게 되면 안 된다 (손님: "주어를 쓰고 그다음에 서술을 해야지")
+        if new:
+            for c in mine:
+                for w, t in c["turns"]:
+                    if w != "나레이션":
+                        continue
+                    for one in sentences(t):
+                        if needs_subject(one):
+                            bad.append(f"컷{c['n']} 나레이션에 주어가 없다 — "
+                                       f"누가 그랬는지 밝혀라: 「{one[:26]}」")
         # ② 편마다 맥락을 나르는 나레이션이 있어야 한다. 반응(대사)만
         #    이어지면 보는 사람은 무슨 일이 왜 벌어졌는지 못 따라간다.
         nn = sum(1 for c in mine for w, _ in c["turns"] if w == "나레이션")

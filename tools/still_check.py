@@ -98,6 +98,9 @@ def main():
             ck(f"{nm}: 경계선이 안 보인다 (밝기 차 {abs(e1 - e2):.1f})",
                abs(e1 - e2) < 8)
 
+    # ⭐ 자막이 갈리는 것·글씨 크기가 튀는 것·나레이션 주어는
+    #    tools/sub_check.py 가 본다 (여기는 **컷 그림**만 본다).
+
     print("\n" + "─" * 60)
     if bad:
         print(f"❌ 컷 그림: {len(bad)}군데")

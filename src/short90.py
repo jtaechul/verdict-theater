@@ -63,8 +63,22 @@ SUB_MAX, SUB_MIN, SUB_LINES = 104, 58, 3
 #
 #    ⚠️ 낱말 하나씩 끊으면 너무 잘게 튄다("몰랐다면서." "근데" "어떻게" …).
 #       숨 쉬는 단위로 묶는다 — 낱말 세 개까지, 글자 아홉 자까지.
-CHUNK_CHARS = 9                  # 한 토막에 담을 글자 수 (띄어쓰기 뺀 것)
-CHUNK_WORDS = 3                  # 한 토막에 담을 낱말 수
+# ⭐⭐⭐ 2026-09-05 손님: "자막이 단어 단위로 안 끊기고 말이 중간에 끊기는
+#    경우가 부분적으로 있고, 글씨 크기가 갑자기 작아지거나 하는 상황이 발생해.
+#    글씨 크기 변동이 없도록 유지해주고, 글씨가 많을 경우에는 중간에 문장을
+#    끌어서 다음 자막으로 띄우면 되잖아."
+#    맞다. 실측하면 한 컷 안에서 104 → 96 → 102 로 크기가 튀었고,
+#    「당신 차에서 관계 / 맺는 소리가」 처럼 말 한복판이 갈렸다.
+#    까닭 둘 —
+#      ① **낱말 3개**로 못을 박아, 자리가 남아도 거기서 끊었다
+#      ② 토막마다 **들어갈 때까지 글자를 줄여서**(fit) 크기가 달라졌다
+#    → 크기를 하나로 고정하고, **그 크기로 한 줄에 들어가는 만큼** 담는다.
+#      넘치면 줄이지 말고 **다음 자막으로 넘긴다.**
+SUB_FIXED = 96                   # 자막 글씨 크기 — 토막마다 안 바뀐다
+# ⚠️ 2026-09-05 — 여기 있던 CHUNK_CHARS(9자) · CHUNK_WORDS(3낱말) 를 **지웠다.**
+#    토막을 글자·낱말 수로 못 박고 넘치면 글씨를 줄이던 옛 셈이다. 그것 때문에
+#    말이 한복판에서 갈리고 크기가 튀었다. 이제 크기를 고정하고 **들어가는
+#    만큼** 담는다(chunks_of). 쓰지 않는 값을 남겨 두면 언젠가 되살아난다.
 # 숫자 뒤에 붙는 단위 — 이 앞에서는 끊지 않는다 ("이천만 / 원을" 방지)
 UNIT = ("원", "억", "만", "천", "명", "년", "월", "일", "시", "분", "개", "배", "%")
 NUMWORD = ("일", "이", "삼", "사", "오", "육", "칠", "팔", "구", "십",
@@ -687,8 +701,20 @@ def overlay(c, out, turn=None, now=None, mark=""):
     if solo:
         ch = chunks_of(text)
         text = ch[now] if 0 <= now < len(ch) else text
-    f, lines, size = fit(d, text, SUB_MAX, W - SIDE * 2, SUB_BOT - SUB_TOP,
-                         one_line=solo)
+    if solo:
+        # ⭐⭐⭐ 2026-09-05 — 토막은 **크기를 안 줄인다.** 토막을 만들 때
+        #    이미 한 줄에 들어가게 잘라 두었기 때문이다(chunks_of).
+        #    줄이면 토막마다 크기가 튀어 손님이 "글씨가 갑자기 작아진다" 고
+        #    하셨다. 낱말 하나가 화면보다 긴 아주 드문 경우에만 줄인다.
+        f = ImageFont.truetype(str(FONT_SUB), SUB_FIXED)
+        if d.textlength(text, font=f) <= W - SIDE * 2:
+            lines, size = [text], SUB_FIXED
+        else:
+            f, lines, size = fit(d, text, SUB_FIXED, W - SIDE * 2,
+                                 SUB_BOT - SUB_TOP, one_line=True)
+    else:
+        f, lines, size = fit(d, text, SUB_MAX, W - SIDE * 2,
+                             SUB_BOT - SUB_TOP, one_line=False)
     step = size * SUB_GAP
     y = SUB_TOP + max(0, ((SUB_BOT - SUB_TOP) - len(lines) * step) / 2)
     k = 0                                    # 몇 번째 낱말까지 그렸나
@@ -837,34 +863,83 @@ def lens_of(wav):
     return Path(wav).with_suffix(".len.json")
 
 
-def chunks_of(text):
-    """한 줄을 **숨 쉬는 토막**으로 나눈다 (한 번에 한 토막만 화면에 뜬다).
+# 끊어도 좋은 자리 — 조사·어미로 끝나는 낱말 뒤. 여기서 끊으면 말이 안 갈린다.
+BREAK_END = ("은", "는", "이", "가", "을", "를", "에", "서", "로", "와", "과",
+             "도", "만", "께", "요", "다", "죠", "군", "네", "까", "지", "터",
+             "고", "며", "면", "야", "어", "아", "해", "죄", "라")
+# 다음 낱말에 붙어야 하는 꼬리 — 이걸로 끝나면 혼자 두지 않고 같이 넘긴다
+#   (관형형: 「헛소리한 / 거야」 「벌인 / 짓이」 처럼 갈리는 것을 막는다)
+HANG_END = ("는", "한", "던", "될", "할", "인", "온", "간", "린", "운", "른")
 
-    ⚠️ 낱말 하나씩이면 너무 잘게 튀고, 문장 통째면 예전과 똑같아진다.
-       그 사이 — 낱말 세 개까지, 글자 아홉 자까지 묶는다.
-    ⚠️ 문장이 끝나는 자리(. ? !)에서는 반드시 끊는다. 다음 문장이 딸려
-       붙으면 읽는 호흡이 어긋난다.
+
+def merge_units(ws):
+    """숫자와 단위를 **한 덩어리로 붙인다** — 「삼천만 / 원짜리」로 갈리면
+    돈이 얼마인지가 두 화면에 걸친다. 이 채널은 금액이 핵심이다."""
+    out = []
+    for w in ws:
+        if out and w.startswith(UNIT) and (out[-1][-1:].isdigit()
+                                           or out[-1].endswith(NUMWORD)):
+            out[-1] = out[-1] + " " + w
+        else:
+            out.append(w)
+    return out
+
+
+def chunks_of(text, max_w=None):
+    """한 줄을 **한 화면에 들어가는 토막**으로 나눈다.
+
+    ⭐⭐⭐ 2026-09-05 손님 지시로 셈을 바꿨다.
+       옛 방식: 낱말 3개 · 글자 9자로 못을 박고, 넘치면 **글씨를 줄였다.**
+                → 자리가 남아도 거기서 끊겨 말이 갈리고, 크기가 토막마다 튀었다.
+                  (실측: 한 컷 안에서 104 → 96 → 102)
+       새 방식: 글씨 크기는 **고정**(SUB_FIXED). 그 크기로 **한 줄에 들어가는
+                만큼** 담고, 넘치면 다음 토막으로 넘긴다.
+
+    ⚠️ 끊는 자리는 **조사·어미 뒤**를 먼저 찾는다. 그냥 넘치는 데서 끊으면
+       「당신 차에서 관계 / 맺는 소리가」 처럼 말 한복판이 갈린다.
+    ⚠️ 문장 끝(. ? !)에서는 반드시 끊는다. 다음 문장이 딸려 붙으면 호흡이 어긋난다.
     """
-    ws = str(text).split()
-    out, cur = [], []
-    for i, w in enumerate(ws):
+    if max_w is None:
+        max_w = W - SIDE * 2
+    f = ImageFont.truetype(str(FONT_SUB), SUB_FIXED)
+    ws = merge_units(str(text).split())
+    if not ws:
+        return [str(text)]
+    sp = f.getlength(" ")
+
+    def wide(items):
+        return sum(f.getlength(x) for x in items) + sp * max(0, len(items) - 1)
+
+    # ① 문장 단위로 먼저 자른다
+    sents, cur = [], []
+    for w in ws:
         cur.append(w)
-        n = sum(syl(x) for x in cur)
-        # ⚠️ 쉼표에서도 끊는다. 안 그러면 "2017년 2월, 병원을 / 하던 남편이"
-        #    처럼 한 낱말 한복판에서 잘려 읽기가 어긋난다.
-        end = w.endswith((".", "?", "!", "…", ",", "—"))
-        full = len(cur) >= CHUNK_WORDS or n >= CHUNK_CHARS
-        # ⚠️ 숫자와 단위는 절대 떼지 않는다 — "이천만 / 원을" 처럼 잘리면
-        #    돈이 얼마인지가 두 화면에 걸쳐 버린다. 이 편은 숫자가 핵심이다.
-        nxt = ws[i + 1] if i + 1 < len(ws) else ""
-        glue = (not end and nxt.startswith(UNIT)
-                and (w[-1:].isdigit() or w.endswith(NUMWORD)))
-        if (end or full) and not glue:
-            out.append(" ".join(cur))
+        if w.endswith((".", "?", "!", "…")):
+            sents.append(cur)
             cur = []
     if cur:
-        out.append(" ".join(cur))
-    return out or [str(text)]
+        sents.append(cur)
+
+    # ② 문장마다 **들어가는 만큼** 담는다
+    out = []
+    for sent in sents:
+        i = 0
+        while i < len(sent):
+            j = i + 1
+            while j < len(sent) and wide(sent[i:j + 1]) <= max_w:
+                j += 1
+            if j < len(sent):                # 더 담을 것이 남았다 — 끊는 자리를 고른다
+                for k in range(j - 1, i, -1):
+                    t = sent[k].rstrip(",")
+                    if t.endswith(BREAK_END) and not t.endswith(HANG_END):
+                        j = k + 1
+                        break
+                # 관형형으로 끝나면 혼자 두지 않고 다음 토막에 딸려 보낸다
+                while j - 1 > i and sent[j - 1].rstrip(",").endswith(HANG_END):
+                    j -= 1
+            out.append(" ".join(sent[i:j]))
+            i = j
+    return [x for x in out if x] or [str(text)]
 
 
 def syl(t):
