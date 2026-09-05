@@ -243,20 +243,29 @@ ck("lastFrame 없이 image 만 보낸다 (단독 lastFrame 은 400)",
    "lastFrame" not in b2["instances"][0] and "image" in b2["instances"][0])
 
 print("⑦ 안전필터에 걸린 것을 알아채는가")
-def blocked(req, timeout=None):
-    u = req.full_url
-    if ":predictLongRunning" in u:
-        return Fake(json.dumps({"name": "models/veo/operations/op9"}).encode())
-    return Fake(json.dumps({"done": True, "response": {
-        "raiFilteredReason": "blocked by safety"}}).encode())
-urllib.request.urlopen = blocked
-d5 = pathlib.Path(tempfile.mkdtemp(prefix="veo-safe-"))
-veo._calls["n"] = 0
-with redirect_stdout(io.StringIO()) as log:
-    veo.episode("S001", 1, d5, only_cut=1)
-out5 = log.getvalue()
-ck("영상이 없다는 것을 알아챈다", "영상이 없다" in out5, out5[-160:])
-ck("안전필터라고 알려 준다", "안전필터" in out5, out5[-160:])
+# ⚠️⚠️ 2026-09-05 — 실제로 걸렸는데 "까닭을 모르겠다" 라고 적혔다. 구글이 보낸
+#    열쇳말은 `raiMediaFilteredCount` 였는데 우리가 찾던 것은 `raiFilteredReason`
+#    과 소문자 `filtered` 라 **둘 다 안 맞았다.** 진짜로 온 그 꼴까지 넣어 본다.
+for tag, body in (("raiFilteredReason", {"raiFilteredReason": "blocked by safety"}),
+                  ("raiMediaFilteredCount(진짜로 온 꼴)",
+                   {"generateVideoResponse": {"raiMediaFilteredCount": 1}})):
+    def blocked(req, timeout=None, _b=body):
+        u = req.full_url
+        if ":predictLongRunning" in u:
+            return Fake(json.dumps({"name": "models/veo/operations/op9"}).encode())
+        return Fake(json.dumps({"done": True, "response": _b}).encode())
+    urllib.request.urlopen = blocked
+    d5 = pathlib.Path(tempfile.mkdtemp(prefix="veo-safe-"))
+    veo._calls["n"] = 0
+    with redirect_stdout(io.StringIO()) as log:
+        veo.episode("S001", 1, d5, only_cut=1)
+    out5 = log.getvalue()
+    ck(f"[{tag}] 안전 필터라고 알려 준다 (까닭을 모르겠다고 하지 않는다)",
+       "안전 필터에 걸렸다" in out5 and "까닭을 모르겠다" not in out5,
+       out5[-160:])
+# ⭐ 갈래가 따로 있어야 부르는 쪽이 "한 번 더 해 볼까" 를 정할 수 있다
+ck("안전 필터는 따로 잡을 수 있는 갈래다",
+   issubclass(veo.RaiFiltered, veo.VeoError))
 urllib.request.urlopen = fake_urlopen
 
 print("-" * 62)

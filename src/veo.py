@@ -68,6 +68,12 @@ class VeoError(RuntimeError):
     pass
 
 
+class RaiFiltered(VeoError):
+    """안전 필터에 걸렸다 — **고장이 아니다.** 같은 지문이라도 씨앗을 바꾸면
+    통과하는 일이 잦다. 부르는 쪽이 이것만 따로 잡아 한 번 더 해 볼 수 있게
+    갈래를 나눠 둔다 (2026-09-05: 1편 첫 장면이 여기 걸려 그림으로 갔다)."""
+
+
 def _key():
     k = os.environ.get("GEMINI_API_KEY", "").strip()
     if not k:
@@ -191,11 +197,20 @@ def make_clip(prompt, sec, out, ratio="16:9", seed=None, start=None, end=None):
             if not uri:
                 # ⚠️ 안전필터에 걸리면 **오류가 아니라 성공**으로 온다 — done 은
                 #    true 인데 영상이 없다. 왜 없는지 알려 줘야 고칠 수 있다.
+                # ⚠️⚠️ 2026-09-05 — 실제로 걸렸는데 "까닭을 모르겠다" 고 적었다.
+                #    구글이 보낸 열쇳말은 `raiMediaFilteredCount` 였는데, 우리가
+                #    찾던 것은 소문자 `filtered` 와 `raiFilteredReason` 이라
+                #    **둘 다 안 맞았다.** 대소문자를 안 가리고 `rai` 도 본다.
                 blob = json.dumps(st, ensure_ascii=False)
-                why = "안전필터에 걸린 듯하다" if any(
-                    k in blob for k in ("SAFETY", "raiFilteredReason", "blocked",
-                                        "filtered")) else "까닭을 모르겠다"
-                raise VeoError(f"다 됐다는데 영상이 없다 ({why}): {blob[:250]}")
+                low = blob.lower()
+                rai = any(k in low for k in ("safety", "rai", "blocked",
+                                             "filtered"))
+                if rai:
+                    raise RaiFiltered(
+                        f"안전 필터에 걸렸다 (구글이 만든 영상을 돌려주지 "
+                        f"않았다): {blob[:250]}")
+                raise VeoError(f"다 됐다는데 영상이 없다 (까닭을 모르겠다): "
+                               f"{blob[:250]}")
             _download(uri, out)
             print(f"    ✅ {out.name}  ({out.stat().st_size / 1e6:.1f}MB)")
             return krw

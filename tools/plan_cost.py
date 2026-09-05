@@ -41,14 +41,16 @@ def plan(sid, open_video):
     vid_krw = 0.0
     if open_video:
         import short90 as S9                                 # noqa: E402
-        vid_krw = cost.video_krw("veo-3.1-lite", S9.OPEN_SEC) * parts
+        # ⚠️ 2026-09-05 — 안전 필터에 걸리면 **한 번 더** 부른다(씨앗만 바꿔).
+        #    한 번분을 미리 넣어 둔다. 안 걸리면 그만큼은 안 쓴다.
+        vid_krw = cost.video_krw("veo-3.1-lite", S9.OPEN_SEC) * (parts + 1)
 
     return {
         "sid": sid, "cuts": len(cuts), "uniq": uniq, "lines": lines,
         "parts": parts,
         "still_cap": uniq + SPARE_CALLS,
         "tts_cap": lines + SPARE_CALLS,
-        "veo_cap": parts + 2,
+        "veo_cap": parts + 2,          # 편마다 하나 + 안전 필터 재시도 두 번
         "img_krw": img_krw, "vid_krw": vid_krw,
         "run_krw": round((img_krw + vid_krw) * SPARE_KRW + 200),
     }

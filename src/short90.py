@@ -26,6 +26,7 @@
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -346,6 +347,12 @@ OPEN_LIPS = (
 OPEN_AUDIO = "AUDIO: only the quiet room tone of the location."
 
 
+# ⭐ 첫 장면은 **첫 프레임부터** 움직여야 한다. 영상 모델은 긴 take 로 알면
+#    앞머리를 정지 화면처럼 천천히 연다 — 손님: "이미지 나온후 영상 나왔다가".
+OPEN_START = ("MOTION START: the movement is already under way in the very first "
+              "frame and continues without pause to the last frame.")
+
+
 def open_prompt(c):
     """편 첫 장면(4초)용 프롬프트 — 길이를 맞추고 입을 다물게 한다."""
     txt = str(c.get("veo") or c.get("still") or "")
@@ -355,8 +362,16 @@ def open_prompt(c):
             # 금지형 줄을 통째로 **바라는 것만** 적은 줄로 바꾼다
             out.append(OPEN_AUDIO)
             continue
-        # 8초짜리로 짜라는 말을 우리가 사는 길이로 맞춘다
-        out.append(line.replace("8-second", f"{OPEN_SEC:g}-second"))
+        # ⚠️⚠️ 2026-09-05 — 여기가 `"8-second"` 로 **박혀 있었다.** 그런데
+        #    지문이 실제로 적어 오는 말은 `6-second` 였다(veo_sec 이 정한다).
+        #    그래서 바꾸는 일이 **한 번도 일어나지 않았고**, 4초를 사면서
+        #    모델에게는 6초짜리로 짜라고 시키고 있었다. 6초용 움직임을 4초에
+        #    맞춰 잘라 내니 앞머리가 정지 화면처럼 열렸다.
+        #    → 몇 초라고 적혀 있든 **우리가 사는 길이**로 바꾼다
+        #      (src/vprompt.py 가 쓰는 것과 같은 방식).
+        out.append(re.sub(r"\b\d+(?:\.\d+)?-second single continuous take",
+                          f"{OPEN_SEC:g}-second single continuous take", line))
+    out.append(OPEN_START)
     out.append(OPEN_LIPS)
     return "\n".join(out)
 
@@ -387,7 +402,7 @@ def openers(doc):
     print(f"■ 편 첫 장면 영상 {len(ns)}개 "
           f"({OPEN_SEC:g}초씩 · 한 개 약 {krw1:,.0f}원 · 최대 "
           f"{krw1 * len(ns):,.0f}원)")
-    made = 0
+    made, miss = 0, []
     for n in ns:
         out = d / f"c{n:02d}.mp4"
         still = st / f"c{n:02d}.png"
@@ -411,15 +426,38 @@ def openers(doc):
         try:
             veo.make_clip(prompt, int(OPEN_SEC), out, ratio=OPEN_RATIO,
                           seed=veo._seed(doc.get("sid"), n), start=still)
+        except veo.RaiFiltered:
+            # ⭐⭐⭐ 2026-09-05 손님: "1화는 앞에 영상이 아닌 이미지야."
+            #    까닭은 구글 **안전 필터**였다. 고장이 아니라 그때그때 걸리는
+            #    것이라, 씨앗만 바꿔 한 번 더 부르면 통과하는 일이 잦다.
+            #    ⚠️ 한 번 더 부르면 값이 또 나간다 — **딱 한 번만** 한다.
+            print(f"    ⚠️ 안전 필터에 걸렸다 — 씨앗을 바꿔 **한 번만** "
+                  f"다시 해 본다 (약 {krw1:,.0f}원)")
+            try:
+                veo.make_clip(prompt, int(OPEN_SEC), out, ratio=OPEN_RATIO,
+                              seed=veo._seed(doc.get("sid"), n, "2"),
+                              start=still)
+            except Exception as e2:                          # noqa: BLE001
+                print(f"    ⚠️ 두 번째도 못 만들었다 ({e2}) — 이 컷은 그림으로 갑니다")
+                out.unlink(missing_ok=True)
+                miss.append(n)
+                continue
         except Exception as e:                               # noqa: BLE001
             # ⚠️ 첫 장면 하나가 안 나왔다고 편 전체를 못 만들면 안 된다.
             #    그 컷은 **그림으로** 간다 — 지금까지 하던 그대로다.
             print(f"    ⚠️ 못 만들었다 ({e}) — 이 컷은 그림으로 갑니다")
             out.unlink(missing_ok=True)
+            miss.append(n)
             continue
         reuse.stamp(out, sig)
         made += 1
     print(f"\n■ 편 첫 장면 {made}/{len(ns)}개")
+    # ⚠️ 조용히 그림으로 넘어가면 손님은 "왜 1화만 영상이 아니지?" 만 알게 된다.
+    #    어느 편이 그림으로 열리는지 **크게** 적는다.
+    if miss:
+        no = {c: i + 1 for i, c in enumerate(ns)}
+        print("  ⚠️⚠️ 첫 장면이 그림으로 열리는 편: "
+              + " · ".join(f"{no[n]}편(컷{n})" for n in miss))
     return 0
 
 
@@ -1108,11 +1146,19 @@ def open_bg(c, opener, still, sec, frames):
        0.5초만 겹쳐 넘기면 한 장면처럼 이어진다.
     돌려주는 것: (ffmpeg 입력 조각, 필터 글, 배경 입력 개수)
     """
-    olen = min(OPEN_SEC, max(0.4, sec))
-    tail = sec - olen + OPEN_XFADE          # 겹치는 만큼 그림을 길게 뽑는다
+    vlen = max(0.4, dur_of(opener) or OPEN_SEC)
     src = ["-i", str(opener)]
-    vf = (f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,"
-          f"crop={W}:{H},fps={FPS},trim=0:{olen:.3f},"
+    scale = (f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H}")
+    # ⭐ 그림이 제대로 보일 만큼 안 남으면 — 영상 하나로 컷 전체를 덮는다.
+    #    (0.2초짜리 그림은 "영상이 끝나고 사진으로 얼어붙는" 것으로만 보인다)
+    if sec - vlen < OPEN_TAIL_MIN and sec <= vlen * OPEN_STRETCH_MAX:
+        r = max(1.0, sec / vlen)
+        vf = (f"[0:v]{scale},setpts={r:.4f}*PTS,fps={FPS},"
+              f"trim=0:{sec:.3f},setpts=PTS-STARTPTS[bg];")
+        return src, vf, 1
+    olen = min(OPEN_SEC, vlen, max(0.4, sec))
+    tail = sec - olen + OPEN_XFADE          # 겹치는 만큼 그림을 길게 뽑는다
+    vf = (f"[0:v]{scale},fps={FPS},trim=0:{olen:.3f},"
           f"setpts=PTS-STARTPTS[ov];")
     if tail <= OPEN_XFADE + 0.05:
         # 컷이 짧아 그림이 나올 자리가 없다 — 영상만으로 채운다
@@ -1319,6 +1365,14 @@ PART_MAX_SEC = 59.5
 #       4초 지점에서 화면이 튀어 눈에 걸린다. 그림으로 **부드럽게 넘긴다**.
 OPEN_SEC = 4.0                   # Veo 에게 살 길이 (초)
 OPEN_XFADE = 0.5                 # 영상 → 그림으로 넘어가는 시간
+# ⭐⭐⭐ 2026-09-05 손님: "3화 앞에는 영상부터 나와야 하는데, 이미지 나온후
+#    영상 나왔다가 **또 같은 이미지가 나와.**"
+#    편 첫 컷이 4.2초인데 영상이 4초다. 0.2초 남은 자리에 그림이 다시 떠서
+#    "영상이 끝나고 사진으로 얼어붙는" 것처럼 보였다. 그림이 **제대로 보일
+#    만큼 남지 않으면**(OPEN_TAIL_MIN) 그림을 아예 안 쓰고 영상을 조금 늘려
+#    컷 전체를 덮는다. 늘리는 폭은 눈에 안 띄는 데까지만(OPEN_STRETCH_MAX).
+OPEN_TAIL_MIN = 1.0              # 그림이 이만큼은 남아야 그림으로 넘어간다
+OPEN_STRETCH_MAX = 1.15          # 영상을 늘려도 되는 최대 배율 (15%)
 OPEN_RATIO = "9:16"              # 화면이 세로로 꽉 차므로 세로로 받는다
 # 값이 나가는 일이라 **꺼진 채로** 둔다. 관리자 화면에서 켜야 돈다.
 OPEN_VIDEO = os.environ.get("VT_OPEN_VIDEO", "").strip() in ("1", "예", "on")

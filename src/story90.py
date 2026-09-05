@@ -196,6 +196,14 @@ def too_hot(say):
 #    → 확실한 것만 여기서 조용히 고치고, 무엇을 고쳤는지 화면에 적어 드린다.
 #    ⚠️ **애매한 것은 안 고친다.** 제목을 기계가 늘리면 밋밋해진다 —
 #       그런 것은 되받아 고치기(repair)로 AI 에게 다시 시킨다.
+# 화면 묘사(영어)에 이 말이 나오면 그 사람이 화면에 있다는 뜻이다.
+# ⚠️ tools/build_short90.py 의 EN 과 짝이다 — 한쪽만 고치면 안 된다
+#    (tools/pair_check.py 가 본다).
+SCENE_EN = {"아내": "the wife", "남편": "the husband",
+            "내연녀": "the mistress", "딸": "the daughter",
+            "변호사": "the lawyer"}
+
+
 def autofix(doc):
     log = []
 
@@ -234,7 +242,23 @@ def autofix(doc):
                 log.append(f"컷{c.get('n')}: 화면에서 {', '.join(gone)} 을(를) 뺐다")
             c["who"] = who
 
-    # ④ 격한 연기 지시를 눌러 담는다 (2026-09-04 에 넣은 것)
+    # ④ 화면 묘사에 사람이 있는데 who 가 비었으면 **그 사람을 세운다**
+    #    ⭐⭐⭐ 2026-09-05 손님: "관련 없는 등장인물이 나오는 문제가 발생해."
+    #    who 가 비면 얼굴 기준 그림을 안 붙인다 → 그림 모델이 **아무 얼굴이나**
+    #    지어낸다. 그런데 화면 묘사가 "the wife hides a device" 처럼 사람을
+    #    부르고 있으면, 낯선 사람이 그려지는 것이 당연하다.
+    #    (실제로 S91 의 옛 대본 컷1 이 그랬다)
+    for c in doc.get("cuts") or []:
+        sc = str(c.get("scene") or "").lower()
+        add = [k for k, en in SCENE_EN.items()
+               if en in sc and k in who_ok(doc) and k not in (c.get("who") or [])]
+        if add:
+            c["who"] = (c.get("who") or []) + add
+            log.append(f"컷{c.get('n')}: 화면 묘사에 나오는 "
+                       f"{', '.join(add)} 을(를) 화면에 세웠다 "
+                       f"(안 세우면 낯선 얼굴이 그려진다)")
+
+    # ⑤ 격한 연기 지시를 눌러 담는다 (2026-09-04 에 넣은 것)
     log += cool_all(doc)
     return log
 

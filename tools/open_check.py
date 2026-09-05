@@ -100,10 +100,12 @@ def lips():
        움직이게 만들 수 있다.
     """
     print("\n③ 첫 장면에서 입이 안 움직이는가")
-    doc = json.loads((ROOT / "data" / "series" / "S90.json")
-                     .read_text(encoding="utf-8"))
-    n = S.open_cuts(doc)[0]
-    c = [x for x in doc["cuts"] if x["n"] == n][0]
+    # ⚠️⚠️ 2026-09-05 — 예전에는 여기서 **저장된 S90 대본을 읽었다.** 그런데
+    #    길이 검사가 "8-second 가 없다" 였고, S90 지문에는 마침 8-second 가
+    #    적혀 있어 통과했다. 실제로 만든 S91 지문은 **6-second** 였고,
+    #    손보는 코드도 "8-second" 만 바꾸고 있어 **한 번도 안 바뀌었다.**
+    #    → 시험글을 여기서 만든다. 그리고 몇 초라고 적혀 있든 잡는다.
+    c = fake_cut(6)
     t = S.open_prompt(c)
     ck("입을 다물라고 **바라는 것만**으로 적었다",
        "mouth closed" in t and "jaw relaxed" in t)
@@ -115,15 +117,57 @@ def lips():
            if re.search(r"nobody|never|\bdo(es)? not\b|\bdon't\b", ln)
            or (re.search(r"\bno \w", ln) and not ln.startswith("ON SCREEN:"))]
     ck("입·소리를 금지형으로 적은 줄이 없다", not hot, " | ".join(hot)[:120])
+    # ⭐ 몇 초라고 적혀 있든 **우리가 사는 길이**로 바뀌어야 한다
+    got = re.findall(r"(\d+(?:\.\d+)?)-second single continuous take", t)
     ck(f"우리가 사는 길이와 프롬프트가 맞는다 ({S.OPEN_SEC:g}초)",
-       f"{S.OPEN_SEC:g}-second" in t and "8-second" not in t)
+       got and all(float(x) == S.OPEN_SEC for x in got),
+       f"지문에 {got} 초라고 적혀 있다")
+    for sec in (6, 8, 5):                 # 대본이 어떤 길이로 적어 와도
+        tt = S.open_prompt(fake_cut(sec))
+        ck(f"{sec}초짜리로 적혀 와도 {S.OPEN_SEC:g}초로 바꾼다",
+           f"{S.OPEN_SEC:g}-second single continuous take" in tt
+           and f"{sec}-second single continuous take" not in tt)
+    ck("첫 프레임부터 움직이라고 적는다 (앞머리가 정지 화면이 안 되게)",
+       "MOTION START" in t and "very first frame" in t)
     ck("원본 대본은 안 건드린다 (손보기는 첫 장면에만)",
-       "8-second" in str(c.get("veo") or ""))
+       "6-second" in str(c.get("veo") or ""))
     # ⚠️ 손본 글을 **실제로 쓰는지**까지 본다. 손보는 함수만 있고 안 쓰면
     #    시험은 통과하는데 진짜 영상에는 옛 글이 들어간다.
     src = (ROOT / "src" / "short90.py").read_text(encoding="utf-8")
     op = (re.search(r"def openers\(doc\)[\s\S]*?\n\ndef ", src) or [""])[0]
     ck("만들 때 그 손본 글을 쓴다", "prompt = open_prompt(c)" in op)
+
+
+def fake_cut(sec):
+    """시험용 컷 하나. **저장된 대본 파일을 안 읽으려고** 여기서 만든다
+    (2026-09-05: S90 을 읽던 검사가 S91 의 진짜 고장을 못 잡았다)."""
+    return {"n": 1, "kind": "나레이션", "who": ["아내"],
+            "turns": [["나레이션", "시험"]],
+            "veo": (f"Fictional scene, invented characters, photoreal grounded "
+                    f"drama. {sec}-second single continuous take, vertical "
+                    f"portrait format (9 x 16).\n"
+                    f"SHOT: the wife sits in a dark room.\n"
+                    f"ACTION: the wife sits still. Mouths stay closed the whole "
+                    f"time.\n"
+                    f"AUDIO: nobody speaks and nobody moves their lips at any "
+                    f"point; only the quiet room tone of the location.")}
+
+
+def fake_doc():
+    """시험용 대본 하나 (3편 × 3컷). 저장된 대본 파일을 안 읽으려고 만든다."""
+    cuts, parts = [], []
+    for k in range(3):
+        a = k * 3 + 1
+        for n in range(a, a + 3):
+            cuts.append({"n": n, "kind": "나레이션", "who": ["아내"],
+                         "turns": [["나레이션", "시험 문장입니다."]],
+                         "say": ["담담하게"], "sec": 5.0,
+                         "scene": "the wife sits in a dark room",
+                         "still": f"SHOT: still {n}", "veo": f"VEO {n}"})
+        parts.append({"no": k + 1, "cuts": [a, a + 2],
+                      "card": ["첫 줄", "둘째 줄"], "yt_title": "시험"})
+    return {"sid": "TEST", "title": "시험 사건", "series_label": "시험 사건",
+            "cuts": cuts, "parts": parts}
 
 
 def wiring():
@@ -185,8 +229,7 @@ def wiring():
 def live():
     """가짜 4초 영상으로 **진짜 조립**해 본다 (Veo 를 안 부르므로 0원)."""
     print("\n⑤ 진짜로 붙는가 (가짜 4초 영상으로 조립 · 0원)")
-    doc = json.loads((ROOT / "data" / "series" / "S90.json")
-                     .read_text(encoding="utf-8"))
+    doc = fake_doc()                     # ⚠️ 저장된 대본 파일에 안 기댄다
     ns = S.open_cuts(doc)
     ck(f"편마다 첫 컷 하나씩 골라진다 ({ns})",
        len(ns) == len(S.parts_of(doc)) and len(set(ns)) == len(ns))
@@ -230,12 +273,92 @@ def live():
         ck("자막이 얹혀 있다 (배경을 밀어내지 않는다)", len(ovs) >= 2)
 
 
+def again():
+    """⑥ 안전 필터에 걸리면 **한 번만** 다시 해 보는가 (2026-09-05 손님).
+
+    손님: "1화는 앞에 영상이 아닌 이미지야."
+    까닭 — 구글 안전 필터가 1편 첫 장면을 걸렀다(raiMediaFilteredCount). 그런데
+    우리가 찾던 열쇳말이 안 맞아 "까닭을 모르겠다" 로 적혔고, 다시 해 보지도
+    않고 그림으로 넘어갔다.
+    """
+    print("\n⑥ 안전 필터에 걸렸을 때 (2026-09-05 손님: 1편이 그림으로 열렸다)")
+    import veo                                             # noqa: E402
+    ck("안전 필터를 따로 잡는 갈래가 있다",
+       issubclass(veo.RaiFiltered, veo.VeoError))
+    vs = (ROOT / "src" / "veo.py").read_text(encoding="utf-8")
+    ck("구글이 쓰는 열쇳말(rai)을 대소문자 안 가리고 본다",
+       'low = blob.lower()' in vs and '"rai"' in vs)
+    src = (ROOT / "src" / "short90.py").read_text(encoding="utf-8")
+    op = (re.search(r"def openers\(doc\)[\s\S]*?\n\ndef ", src) or [""])[0]
+    ck("걸리면 씨앗을 바꿔 한 번 더 부른다",
+       "except veo.RaiFiltered" in op and 'veo._seed(doc.get("sid"), n, "2")' in op)
+    ck("두 번까지만 한다 (세 번째는 없다)", op.count("veo.make_clip") == 2)
+    ck("그래도 안 되면 편 전체를 안 죽인다", "이 컷은 그림으로 갑니다" in op)
+    ck("어느 편이 그림으로 열리는지 크게 적는다",
+       "첫 장면이 그림으로 열리는 편" in op)
+    pc = (ROOT / "tools" / "plan_cost.py").read_text(encoding="utf-8")
+    ck("다시 해 보는 값이 뚜껑에 들어 있다", "(parts + 1)" in pc)
+
+
+def cover():
+    """⑦ 컷이 짧으면 **그림이 다시 안 나온다** (2026-09-05 손님).
+
+    손님: "3화 앞에는 영상부터 나와야 하는데, 이미지 나온후 영상 나왔다가
+          또 같은 이미지가 나와."
+    까닭 — 컷 4.23초 · 영상 4초. 남은 0.23초에 그림이 다시 떠서, 영상이 끝나고
+    사진으로 얼어붙는 것처럼 보였다.
+    """
+    print("\n⑦ 짧은 컷은 영상 하나로 덮는가 (진짜로 붙여서 화면 색으로 잰다)")
+    with tempfile.TemporaryDirectory() as td:
+        T = Path(td)
+        op, still, ov = T / "o.mp4", T / "s.png", T / "ov.png"
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i",
+                        f"color=c=red:s={S.W}x{S.H}:d=4:r={S.FPS}",
+                        "-c:v", "libx264", "-pix_fmt", "yuv420p", str(op)],
+                       check=True)
+        Image.new("RGB", (S.W, S.H), (0, 0, 255)).save(still)
+        Image.new("RGBA", (S.W, S.H), (0, 0, 0, 0)).save(ov)
+
+        def build(sec):
+            wav = T / f"v{int(sec * 100)}.wav"
+            subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i",
+                            "anullsrc=r=48000:cl=mono", "-t",
+                            f"{sec * 1.06:.2f}", str(wav)], check=True)
+            c = {"n": 1, "kind": "나레이션", "text": "시험", "scene": "x",
+                 "turns": [["나레이션", "시험"]], "sec": sec}
+            out = T / f"c{int(sec * 100)}.mp4"
+            got = S.cut_video(c, still, wav, None, [(ov, 0.0, sec)], out,
+                              opener=op)
+            seq, t = [], 0.0
+            while t < got - 0.05:
+                f = T / "f.png"
+                subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss",
+                                f"{t:.2f}", "-i", str(out), "-frames:v", "1",
+                                str(f)], check=True)
+                r, _g, b = Image.open(f).convert("RGB").resize((1, 1)) \
+                    .getpixel((0, 0))
+                seq.append("V" if r > b + 30 else ("I" if b > r + 30 else "x"))
+                t += 0.2
+            return "".join(seq), got
+
+        a, sa = build(4.23)          # 손님이 보신 그 길이 (3편 첫 컷)
+        ck(f"짧은 컷({sa:.1f}초)은 처음부터 끝까지 영상이다 [{a}]",
+           set(a) == {"V"}, "그림이 다시 나온다 — 손님이 짚으신 그 고장")
+        b, sb = build(5.47)          # 그림으로 넘어갈 만큼 긴 컷 (2편 첫 컷)
+        ck(f"긴 컷({sb:.1f}초)은 영상 → 그림으로 넘어간다 [{b}]",
+           b.startswith("V") and b.endswith("I"))
+        ck("긴 컷의 그림이 눈에 보일 만큼 남는다",
+           b.count("I") * 0.2 >= S.OPEN_TAIL_MIN * 0.6, f"{b.count('I')}칸뿐")
+
+
 def main():
     print("⭐ 편 첫 장면 영상 (값 0원 — Veo 를 안 부른다)\n")
     rules()
     lips()
     wiring()
     live()
+    again()
+    cover()
     print("\n" + "─" * 60)
     if bad:
         print(f"❌ 편 첫 장면: {len(bad)}군데")

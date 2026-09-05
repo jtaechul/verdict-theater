@@ -84,6 +84,26 @@ COLOR = ("COLOR: warm neutral base, low overall contrast, slightly lifted blacks
          "soft amber light from the practical lamps, muted greens and cyans, "
          "natural unsaturated skin tones, the exact same colour grade in every shot "
          "of this story.")
+# ⭐⭐⭐ 2026-09-05 (두 번째) — 사람 없는 컷에 **또** 낯선 남녀가 들어갔다.
+#    앞서 SHOT·FRAMING·CAMERA 세 줄만 고쳤는데, 지문에는 사람을 부르는 말이
+#    **네 군데 더** 있었다. 손님이 보내 주신 화면(컷6 "a car is parked on a
+#    dark street at night")에 젊은 남녀 한 쌍이 그대로 서 있었다.
+#      ① 머리줄  "invented **characters**"
+#      ② COLOR   "natural unsaturated **skin tones**"
+#      ③ STYLE   "natural **skin texture** · true-to-life **body** proportions"
+#      ④ STYLE   "ordinary everyday Korean **faces** with unexaggerated features"
+#    ⚠️ 내가 만든 검사(still_check)는 COLOR 앞까지만 보고 있었다 —
+#       "색·화풍 줄은 사람 얘기가 아니다" 라고 적어 두고 넘겼는데, 바로 그 줄들이
+#       사람을 부르고 있었다. 검사가 **지문 전체**를 보게 고쳤다.
+HEAD_NOBODY = "Fictional scene, photoreal grounded drama."
+COLOR_NOBODY = ("COLOR: warm neutral base, low overall contrast, slightly lifted "
+                "blacks, soft amber light from the practical lamps, muted greens "
+                "and cyans, the exact same colour grade in every shot of this story.")
+STYLE_NOBODY = ("STYLE: a single photograph of one moment, photoreal look with "
+                "natural surface texture and true-to-life proportions of the "
+                "objects, muted desaturated palette, soft practical lighting, "
+                "shallow depth of field, the same colour grade in every shot.")
+
 NO_TEXT = ("ON SCREEN: no text, no letters, no subtitles, no captions, no watermark, "
            "no logo, no speech bubbles, no typography anywhere on screen.")
 
@@ -222,7 +242,8 @@ def check_parts(story):
 
 def still_prompt(c):
     who = c.get("who") or []
-    body = [S.HEAD_FIX.rstrip(".") + ". A single still frame, vertical 9:16 portrait."]
+    head = (S.HEAD_FIX if who else HEAD_NOBODY).rstrip(".")
+    body = [head + ". A single still frame, vertical 9:16 portrait."]
     if who:
         body.append(people_of(who, still=True))
         body.append(f"SHOT: {c['scene']}. Framed from the waist up so every face "
@@ -234,9 +255,10 @@ def still_prompt(c):
         #    이제 사람이라는 낱말이 한 번도 안 나오는 판으로 바꾼다 —
         #    "그리지 마" 가 아니라 **무엇을 그릴지만** 적는다.
         body.append(f"SHOT: {c['scene']}. The place itself is the subject: "
-                    f"the objects and the light fill the frame.")
+                    f"the objects and the light fill the frame, quiet and empty.")
         body += [FRAMING_NOBODY, "CAMERA: " + BLUR_NOBODY]
-    body += [COLOR, S.STYLE_STILL, NO_TEXT]
+    body += ([COLOR, S.STYLE_STILL] if who else [COLOR_NOBODY, STYLE_NOBODY])
+    body.append(NO_TEXT)
     return "\n".join(body)
 
 

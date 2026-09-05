@@ -32,7 +32,15 @@ import build_short90 as B                                    # noqa: E402
 import wipe_mark as W                                        # noqa: E402
 
 bad = []
-PERSON = r"\bperson\b|\bpeople\b|\bface\b|\bhead\b|\bwaist\b|\bmouths?\b"
+# ⚠️⚠️ 2026-09-05 (두 번째) — 예전 목록은 여섯 낱말뿐이었고, 게다가 **COLOR
+#    앞까지만** 봤다 ("색·화풍 줄은 사람 얘기가 아니다" 라고 적고 넘겼다).
+#    바로 그 줄들이 사람을 부르고 있었다 —
+#      "invented characters" · "skin tones" · "skin texture" ·
+#      "body proportions" · "Korean faces"
+#    → 낱말을 넓히고 **지문 전체**를 본다.
+PERSON = (r"\bpersons?\b|\bpeople\b|\bfaces?\b|\bheads?\b|\bwaist\b"
+          r"|\bmouths?\b|\bcharacters?\b|\bskin\b|\bbody\b|\bbodies\b"
+          r"|\bfigures?\b|\bhumans?\b|\bmen\b|\bwomen\b|\bman\b|\bwoman\b")
 
 
 def ck(name, ok, why=""):
@@ -47,9 +55,9 @@ def main():
 
     print("① 사람 없는 컷에 사람을 부르지 않는가")
     empty = B.still_prompt({"who": [], "scene": "a car is parked on a dark street"})
-    head = empty.split("COLOR")[0]           # 색·화풍 줄은 사람 얘기가 아니다
-    hit = re.findall(PERSON, head)
-    ck("사람이라는 낱말이 한 번도 안 나온다", not hit, " · ".join(sorted(set(hit))))
+    hit = re.findall(PERSON, empty, re.I)    # ⚠️ 지문 **전체**를 본다
+    ck("사람이라는 낱말이 지문 어디에도 안 나온다 (색·화풍 줄까지)",
+       not hit, " · ".join(sorted(set(hit))))
     ck("금지형으로 적지 않는다 (Nobody's …)",
        "Nobody" not in empty and "nobody" not in empty,
        "모델은 '하지 마' 를 흘려듣고 오히려 그린다")
@@ -60,6 +68,26 @@ def main():
     ck("사람 컷은 여전히 사람을 가운데 둔다",
        "the person kept in the middle" in got)
     ck("사람 컷은 여전히 얼굴이 또렷하다", "only the people are sharp" in got)
+
+    print("\n① -3 화면 묘사에 사람이 있는데 안 세운 컷을 잡는가")
+    # ⭐ who 가 비면 얼굴 기준 그림을 안 붙인다 → 그림 모델이 아무 얼굴이나
+    #    지어낸다. 화면 묘사가 사람을 부르고 있으면 반드시 세워야 한다.
+    import story90 as ST                                    # noqa: E402
+    doc = {"cuts": [{"n": 1, "who": [], "say": ["담담하게"],
+                     "turns": [["나레이션", "시험"]],
+                     "scene": "the wife hides a small device under the seat"},
+                    {"n": 2, "who": [], "say": ["담담하게"],
+                     "turns": [["나레이션", "시험"]],
+                     "scene": "a car is parked on a dark street at night"}],
+           "people": {}}
+    ST.autofix(doc)
+    ck("사람이 나오는 묘사면 그 사람을 화면에 세운다",
+       doc["cuts"][0]["who"] == ["아내"], str(doc["cuts"][0]["who"]))
+    ck("사람이 없는 묘사는 그대로 둔다 (괜히 세우지 않는다)",
+       doc["cuts"][1]["who"] == [], str(doc["cuts"][1]["who"]))
+    ck("이름 짝이 맞는다 (story90.SCENE_EN ↔ build_short90.EN)",
+       set(ST.SCENE_EN) == set(B.EN),
+       f"{sorted(set(ST.SCENE_EN) ^ set(B.EN))}")
 
     print("\n② 오른쪽 아래 표시를 지우는가")
     s9 = (ROOT / "src" / "short90.py").read_text(encoding="utf-8")
