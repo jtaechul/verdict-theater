@@ -1,0 +1,296 @@
+{
+ "title": "차량 녹음기 불법행위 반소 사건",
+ "series_label": "녹음기와 맞소송",
+ "hook": "남편 차에 녹음기를 숨겨 불륜을 밝혀낸 아내에게 상간녀가 불법이라며 맞소송을 걸었다.",
+ "parts": [
+  {
+   "no": 1,
+   "cuts": [
+    1,
+    8
+   ],
+   "yt_title": "남편 차에 숨긴 녹음기에서 들린 충격적 대화, 아내의 반격",
+   "card": [
+    "남편 차에 몰래 둔 녹음기",
+    "그 안에서 들려온 낯선 목소리"
+   ]
+  },
+  {
+   "no": 2,
+   "cuts": [
+    9,
+    15
+   ],
+   "yt_title": "불법 녹음이라며 3천만 원 맞소송 건 상간녀, 법원의 기막힌 판결",
+   "card": [
+    "위자료 3천만 원 청구한 아내",
+    "불법녹음으로 맞소송 건 상간녀"
+   ]
+  }
+ ],
+ "cuts": [
+  {
+   "n": 1,
+   "sec": 6.6,
+   "who": [
+    "아내"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "아내의 의심은 남편 차에 녹음기를 숨기며 시작되었습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the wife secretly places a small black device under the car seat"
+  },
+  {
+   "n": 2,
+   "sec": 3.8,
+   "who": [
+    "아내"
+   ],
+   "turns": [
+    [
+     "아내",
+     "이거... 진짜야...?"
+    ]
+   ],
+   "say": [
+    "50대 여성이, 믿기지 않아 숨을 삼키며 낮고 조용한 목소리로"
+   ],
+   "scene": "the wife sits in her room and covers her mouth with trembling hands"
+  },
+  {
+   "n": 3,
+   "sec": 8.2,
+   "who": [
+    "아내"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "녹음기 속 남편과 낯선 여자의 낯뜨거운 대화. 아내는 세상이 무너졌습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the wife stares blankly at the wall while holding a small device"
+  },
+  {
+   "n": 4,
+   "sec": 5.3,
+   "who": [
+    "남편"
+   ],
+   "turns": [
+    [
+     "남편",
+     "아니... 그게 아니고... 오해야..."
+    ]
+   ],
+   "say": [
+    "50대 남성이, 당황해서 말끝이 조금 흔들리는 낮은 목소리로"
+   ],
+   "scene": "the husband avoids eye contact and waves his hands in denial"
+  },
+  {
+   "n": 5,
+   "sec": 4.9,
+   "who": [
+    "아내"
+   ],
+   "turns": [
+    [
+     "아내",
+     "오해...? 내 귀로 다 들었는데..."
+    ]
+   ],
+   "say": [
+    "50대 여성이, 조용히 되묻듯 한 마디씩 눌러서 단단하게"
+   ],
+   "scene": "the wife looks at her husband with a cold and intense gaze"
+  },
+  {
+   "n": 6,
+   "sec": 7.1,
+   "who": [
+    "아내"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "분노한 아내는 상간녀를 상대로 삼천만 원의 소송을 제기합니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the wife signs a stack of papers on a desk with a serious expression"
+  },
+  {
+   "n": 7,
+   "sec": 5.1,
+   "who": [
+    "내연녀"
+   ],
+   "turns": [
+    [
+     "내연녀",
+     "그거... 불법 녹음인 거 아시죠...?"
+    ]
+   ],
+   "say": [
+    "30대 여성이, 옅게 웃음기를 섞어 조용하고 차갑게"
+   ],
+   "scene": "the mistress sips coffee and looks away with a slight smirk"
+  },
+  {
+   "n": 8,
+   "sec": 6.6,
+   "who": [
+    "아내"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "오히려 당당한 상간녀의 태도. 실제로 있었던 사건입니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the wife tightly grips a cup of water with a hardened face"
+  },
+  {
+   "n": 9,
+   "sec": 12.1,
+   "who": [
+    "내연녀"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "상간녀가 아내를 상대로 삼천만 원을 물어내라며 맞소송을 걸었습니다."
+    ],
+    [
+     "나레이션",
+     "남편 차에 숨긴 녹음기로 불륜을 밝혀냈던 아내."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게",
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the mistress sits confidently on a sofa with her arms crossed"
+  },
+  {
+   "n": 10,
+   "sec": 6.4,
+   "who": [
+    "내연녀"
+   ],
+   "turns": [
+    [
+     "내연녀",
+     "허락 없이 남의 대화 훔쳐듣는 거... 범죄거든요..."
+    ]
+   ],
+   "say": [
+    "30대 여성이, 옅게 웃음기를 섞어 조용하고 차갑게"
+   ],
+   "scene": "the mistress slightly tilts her head and looks down with a cold expression"
+  },
+  {
+   "n": 11,
+   "sec": 4.9,
+   "who": [
+    "아내"
+   ],
+   "turns": [
+    [
+     "아내",
+     "남의 가정 박살 내놓고... 뭐...?"
+    ]
+   ],
+   "say": [
+    "50대 여성이, 기가 막혀 말끝이 조금 흔들리는 낮은 목소리로"
+   ],
+   "scene": "the wife stands in front of a door with her fists tightly clenched"
+  },
+  {
+   "n": 12,
+   "sec": 8.6,
+   "who": [
+    "내연녀"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "상간녀는 자신의 집에 찾아온 아내의 행동도 사생활 침해라며 억지를 부렸습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the mistress points her finger toward the front door inside her living room"
+  },
+  {
+   "n": 13,
+   "sec": 5.3,
+   "who": [
+    "내연녀"
+   ],
+   "turns": [
+    [
+     "내연녀",
+     "경찰 부르기 전에... 당장 나가세요..."
+    ]
+   ],
+   "say": [
+    "30대 여성이, 귀찮다는 듯 힘을 빼고 툭 던지듯"
+   ],
+   "scene": "the mistress turns her back and crosses her arms defensively"
+  },
+  {
+   "n": 14,
+   "sec": 7.9,
+   "who": [
+    "아내"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "법원은 상간녀에게 위자료 삼천만 원을 아내에게 지급하라고 판결합니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the wife stands outside a building and takes a deep breath"
+  },
+  {
+   "n": 15,
+   "sec": 9.7,
+   "who": [
+    "아내"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "다만 아내의 불법 녹음 책임도 물어 오십만 원을 깎아주었습니다. 실제로 있었던 사건입니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the wife looks up at the sky with a complex expression on her face"
+  }
+ ],
+ "sid": "S91",
+ "case_id": "184315",
+ "narr": "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+}
