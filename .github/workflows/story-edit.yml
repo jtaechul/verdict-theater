@@ -1,0 +1,102 @@
+name: 2-4. 대본 한 줄 고치기 (값 0원)
+
+# ⭐⭐⭐ 2026-09-05 손님: **"이거는 지금 내가 대본을 바꿀 수가 없게 돼 있잖아.
+#    근본적인 문제를 해결하려면 어떻게 해야 되는 거야?"**
+#
+#   그때까지 한 글자가 틀려도 [대본 다시 만들기](약 2,100원) 말고는 길이 없었다.
+#   27컷을 통째로 다시 뽑아야 하고, 새로 뽑아도 맞는다는 보장이 없다.
+#   실제로 S91 컷18 이 판결문과 **방향이 거꾸로** 나왔다 —
+#   상간녀가 "위자료를 더 올려 불렀다" 고 썼는데, 실제는 반소로 3,000만 원 청구.
+#
+# 값: **0원.** AI 를 안 부른다. 글은 손님이 넣으신다.
+#     그림은 화면 묘사를 안 바꾸면 지문이 그대로라 다시 안 그린다.
+#     고친 컷의 목소리만 다시 만들면 된다 (한 줄 약 10원).
+#
+# ⚠️ 규격에 안 맞으면 저장하지 않는다 (편당 225자 = 60초 못).
+
+on:
+  workflow_dispatch:
+    inputs:
+      sid:
+        description: '사건 번호 (예: S91)'
+        required: true
+      cut:
+        description: '컷 번호 (예: 18)'
+        required: true
+      turn:
+        description: '한 컷에 두 줄이면 0 또는 1'
+        required: false
+        default: '0'
+      text:
+        description: '새 대사 (비우면 안 바꿉니다)'
+        required: false
+        default: ''
+      scene:
+        description: '새 화면 묘사 (영어 · 비우면 안 바꿉니다 · 바꾸면 그림을 다시 그립니다)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: story-edit
+  cancel-in-progress: false
+
+jobs:
+  edit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 준비물
+        run: python3 -m pip install --quiet PyYAML pillow
+
+      - name: 고치기 (값 0원)
+        env:
+          SID: ${{ inputs.sid }}
+          CUT: ${{ inputs.cut }}
+          TURN: ${{ inputs.turn }}
+          NEWTEXT: ${{ inputs.text }}
+          NEWSCENE: ${{ inputs.scene }}
+        run: |
+          set -uo pipefail
+          ARGS="--sid $SID --cut $CUT --turn ${TURN:-0}"
+          # ⚠️ 빈 값을 --text "" 로 넘기면 대사를 빈 줄로 만들어 버린다.
+          #    준 것만 넘긴다.
+          if [ -n "${NEWTEXT:-}" ]; then
+            python3 tools/edit_line.py $ARGS --text "$NEWTEXT" \
+              ${NEWSCENE:+--scene "$NEWSCENE"} | tee edit.log
+          elif [ -n "${NEWSCENE:-}" ]; then
+            python3 tools/edit_line.py $ARGS --scene "$NEWSCENE" | tee edit.log
+          else
+            echo "::error::고칠 것을 안 주셨습니다 (대사도 화면 묘사도 비어 있습니다)"
+            exit 1
+          fi
+          [ "${PIPESTATUS[0]}" = "0" ] || exit 1
+
+      - name: 저장
+        run: |
+          git config user.name "verdict-theater-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add data/series
+          git diff --cached --quiet && { echo "바뀐 것이 없습니다."; exit 0; }
+          git commit -m "대본 한 줄 고침: ${{ inputs.sid }} 컷${{ inputs.cut }} [skip ci]"
+          bash tools/push.sh "대본 한 줄 고침 [skip ci]" data/series
+
+      - name: 결과 적기
+        if: always()
+        run: |
+          {
+            echo "## 대본 한 줄 고치기 (값 0원)"
+            echo ""
+            echo '```'
+            cat edit.log 2>/dev/null || echo "기록 없음"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

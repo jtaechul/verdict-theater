@@ -243,7 +243,12 @@ def main():
     mn = (re.search(r"\ndef main\(\)[\s\S]*?\n\nif __name__", src) or [""])[0]
     for what, pat in (("자동 손보기(0원)가 먼저다", r"fixed = autofix\(doc\)"),
                       ("그다음 검사한다", r"bad = check\(doc\)"),
-                      ("걸리면 되받아 고친다", r"repair\(llm, doc, bad\)"),
+                      # ⚠️ 2026-09-05 — 되받아 고치기가 **판결문도** 받게
+                      #    바뀌었다(사실을 고치려면 판결문이 있어야 한다).
+                      #    글자 하나로 못 박지 말고 부르는 것만 본다.
+                      ("걸리면 되받아 고친다", r"repair\(llm, doc, bad"),
+                      ("고칠 때 판결문도 같이 준다", r"repair\(llm, doc, bad, row\)"),
+                      ("판결문과 대조부터 한다 (사실 검사)", r"factcheck\(llm, doc, row\)"),
                       ("그래도 안 되면 받은 대본을 남긴다", r"\.broken\.json"),
                       ("얼마 썼는지 적어 준다", r"spent\(\)")):
         ck(what, re.search(pat, mn) is not None)

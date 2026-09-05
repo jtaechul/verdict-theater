@@ -78,9 +78,13 @@ def main():
     #    **누르는 자리가 검사보다 앞인지**를 본다.
     ck("자동 손보기가 격한 말을 누른다",
        re.search(r"def autofix\(doc\)[\s\S]*?cool_all\(doc\)", src) is not None)
+    # ⚠️ 2026-09-05 — 여기가 "두 줄 사이가 600자 안" 이었다. 그 사이에 판결문
+    #    대조가 들어오자 글자 수가 넘어 빨간불이 났다. **고장이 아니라 검사가
+    #    자리를 못 박고 있던 것**이다. 재는 것은 하나뿐이다 — 누르는 일이
+    #    검사보다 **앞이냐**. 자리 수로 재고 글자 수로 안 잰다.
     ck("검사하기 전에 눌러 준다 (2,100원짜리 대본을 안 물린다)",
-       re.search(r"fixed = autofix\(doc\)[\s\S]{0,600}?bad = check\(doc\)",
-                 src) is not None)
+       "fixed = autofix(doc)" in src and "bad = check(doc)" in src
+       and src.index("fixed = autofix(doc)") < src.index("bad = check(doc)"))
     ck("되받아 고친 뒤에도 다시 누른다",
        re.search(r"def repair\([\s\S]*?autofix\(doc\)", src) is not None)
     ck("눌렀는데도 남으면 규격 위반으로 잡는다", "too_hot(one)" in src)

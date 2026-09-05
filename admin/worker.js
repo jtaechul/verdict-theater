@@ -1075,8 +1075,89 @@ async function s90Cuts() {
   h += '<div class="uphint" style="margin-top:10px">다 고르셨으면 '
      + '<b>아래 ③ 세 편 만들기</b> 로 내려가십시오.</div>';
   h += '</div>';
+
+  // ⭐⭐⭐ 2026-09-05 손님: "이거는 지금 내가 대본을 바꿀 수가 없게 돼 있잖아.
+  //    근본적인 문제를 해결하려면 어떻게 해야 되는 거야?"
+  //    한 글자가 틀려도 [대본 다시 만들기](약 2,100원) 말고는 길이 없었다.
+  //    실제로 S91 컷18 이 판결문과 방향이 거꾸로 나왔다(상간녀가 "위자료를 더
+  //    올려 불렀다" → 실제는 반소로 3,000만 원 청구). 이제 그 줄만 고친다.
+  h += '<div class="card"><h2 data-t="② -2 대본 고치기">② -2 대본 고치기 '
+     + '<small style="font-weight:400;color:#9599ab">— 틀린 곳이 있을 때만, '
+     + '안 하셔도 됩니다</small></h2>';
+  h += '<div class="uphint"><b>값 0원입니다.</b> 글은 직접 넣으시고 AI 를 '
+     + '안 부릅니다. 그림도 그대로 씁니다 — 고친 컷의 <b>목소리만</b> 다시 '
+     + '만들면 됩니다(한 줄 약 10원).</div>';
+  h += '<div class="uphint" style="margin-top:6px">고친 뒤 <b>③ 에서 그 편만 '
+     + '다시 만들기</b> 를 누르십시오. 편당 글자 수(225자)를 넘기면 저장하지 '
+     + '않고 알려 드립니다.</div>';
+  cuts.forEach(function (c) {
+    (c.turns || []).forEach(function (t, i) {
+      h += '<div class="upbox" style="margin-top:8px">'
+         + '<b>컷 ' + c.n + '</b> '
+         + '<span style="color:' + (t[0] === '나레이션' ? '#9599ab' : '#c6a04a')
+         + '">' + esc(t[0]) + '</span>'
+         + '<div class="uphint" style="margin:6px 0" id="s90ed-' + c.n + '-' + i
+         + '">' + esc(t[1]) + '</div>'
+         + '<button onclick="editLine(' + c.n + ',' + i + ')">고치기</button>'
+         + '</div>';
+    });
+  });
+  h += '</div>';
+
   box.innerHTML = h;
   foldify();   // ⭐ 새로 그린 칸에도 접기를 걸어 준다
+}
+
+// ⭐ 대본 한 줄 고치기 — 값 0원. AI 를 안 부르고 손님이 넣으신 글을 그대로 쓴다.
+async function editLine(n, i) {
+  const cuts = (S90DOC && S90DOC.cuts) || [];
+  const c = cuts.filter(function (x) { return x.n === n; })[0];
+  if (!c) return;
+  const now = ((c.turns || [])[i] || ['', ''])[1] || '';
+  const txt = prompt('컷 ' + n + ' 대사를 고치십시오 (값 0원)', now);
+  if (txt === null) return;
+  const t = String(txt).trim();
+  if (!t || t === now) return;
+  const L = [];
+  L.push('컷 ' + n + ' 을(를) 이렇게 고칩니다.');
+  L.push('');
+  L.push('전: ' + now);
+  L.push('후: ' + t);
+  L.push('');
+  L.push('· 값 0원입니다 (AI 를 안 부릅니다).');
+  L.push('· 그림은 그대로 씁니다.');
+  L.push('· 고친 뒤 ③ 에서 그 편만 다시 만드시면 됩니다.');
+  L.push('· 편당 225자를 넘기면 저장하지 않고 알려 드립니다.');
+  if (!confirm(L.join(String.fromCharCode(10)))) return;
+
+  const since = Date.now();
+  try {
+    const r = await fetch('/api/edit-line', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sid: WORK, cut: String(n), turn: String(i),
+                             text: t }),
+    });
+    const j = await r.json();
+    if (!j.ok) {
+      showErr('대본을 고치지 못했습니다', (j.error || '') + ' ' + (j.detail || ''));
+      return;
+    }
+  } catch (e) {
+    showErr('대본을 고치지 못했습니다', String(e && e.message ? e.message : e));
+    return;
+  }
+  // ⚠️ 시작만 시키고 끝내지 않는다 — 되든 안 되든 결과를 알려 준다
+  //    (2026-09-04 손님: "눌렀는데 왜 아무것도 안떠?")
+  watchRun('story-edit.yml', since, async function (r) {
+    if (r.conclusion !== 'success') {
+      showErr('대본을 고치지 못했습니다',
+              '규격에 안 맞아 저장하지 않았을 수 있습니다 (편당 225자). '
+              + '실행 기록을 보십시오: ' + (r.html_url || ''));
+      return;
+    }
+    S90DOC = null;                       // 다시 읽어 화면을 새로 그린다
+    if (VIEW === 'work' && WORK) await openWork(WORK);
+  }, 8, 15);
 }
 
 // ⭐⭐⭐ 2026-09-01 손님: "각각 만들어서 각각 올릴 수 있어야 되는데 지금은
@@ -1224,7 +1305,11 @@ async function restory(sid, btn, msg) {
   L.push('「' + (w.label || w.title || sid) + '」 대본을 다시 지을까요?');
   L.push('');
   L.push('· 같은 사건 번호(' + sid + ')로 덮어씁니다.');
-  L.push('· 값은 약 300원 안팎입니다 (끝나면 실제 값을 적어 드립니다).');
+  // ⚠️⚠️ 2026-09-05 — 여기가 '약 300원' 이라고 적혀 있었다. 실제는 약 2,200원
+  //    (짓기 2,100 + 판결문 대조 30~80). 일곱 배를 낮게 적어 두고 있었다.
+  //    이 저장소의 규칙은 **누르기 전에 진짜 값을 적는다** 이다.
+  L.push('· 값은 약 2,200원입니다 (끝나면 실제 값을 적어 드립니다).');
+  L.push('  — 한 줄만 틀렸다면 아래 [② -2 대본 고치기] 가 0원입니다.');
   if (made) {
     L.push('· 컷이 바뀌면 그 컷의 그림과 목소리를 다시 만들어야 합니다');
     L.push('  (안 바뀐 컷은 그대로 씁니다 — 0원).');
@@ -4074,6 +4159,43 @@ export default {
               inputs: { case_id: cid } }),
           });
           return Response.json({ ok: true, case_id: cid });
+        } catch (e) {
+          const m = String(e && e.message ? e.message : e);
+          return Response.json({ ok: false, error: '시작하지 못했습니다',
+            detail: m.slice(0, 220) }, { status: 502 });
+        }
+      }
+
+      // ⭐⭐⭐ 2026-09-05 손님: "이거는 지금 내가 대본을 바꿀 수가 없게 돼
+      //    있잖아. 근본적인 문제를 해결하려면 어떻게 해야 되는 거야?"
+      //    한 글자가 틀려도 [대본 다시 만들기](약 2,100원) 말고는 길이
+      //    없었다. 이제 그 줄만 고친다 — **값 0원**(AI 를 안 부른다).
+      if (url.pathname === '/api/edit-line' && req.method === 'POST') {
+        let body = {};
+        try { body = await req.json(); } catch (e) { body = {}; }
+        const sid = String((body && body.sid) || '').toUpperCase();
+        const cut = String((body && body.cut) || '');
+        const turn = String((body && body.turn) || '0');
+        const text = String((body && body.text) || '');
+        if (!/^S\d{1,4}$/.test(sid))
+          return Response.json({ ok: false, error: '사건 번호가 이상합니다' },
+                               { status: 400 });
+        if (!/^\d{1,3}$/.test(cut))
+          return Response.json({ ok: false, error: '컷 번호가 이상합니다' },
+                               { status: 400 });
+        if (!text.trim())
+          return Response.json({ ok: false, error: '고칠 말이 비어 있습니다' },
+                               { status: 400 });
+        if (text.length > 200)
+          return Response.json({ ok: false, error: '한 줄이 너무 깁니다 (200자까지)' },
+                               { status: 400 });
+        try {
+          await gh(env, `/repos/${REPO}/actions/workflows/story-edit.yml/dispatches`, {
+            method: 'POST', body: JSON.stringify({ ref: BRANCH,
+              inputs: { sid: sid, cut: cut, turn: turn === '1' ? '1' : '0',
+                        text: text } }),
+          });
+          return Response.json({ ok: true, sid: sid, cut: cut });
         } catch (e) {
           const m = String(e && e.message ? e.message : e);
           return Response.json({ ok: false, error: '시작하지 못했습니다',

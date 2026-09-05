@@ -9,7 +9,8 @@ name: 2-3. 이 사건으로 쇼츠 대본 만들기
 #   → 이 단추가 그 길이다. 대기열에서 사건 하나를 고르면
 #     컷 · 편 나누기 · 편별 제목까지 한 번에 나온다.
 #
-# 값: 대본 한 편 약 2,100원 (제미나이 pro). 그림·목소리 값은 여기서 안 나간다.
+# 값: 대본 한 편 약 2,200원 (제미나이 pro · 짓기 2,100 + 판결문 대조 30~80).
+#     그림·목소리 값은 여기서 안 나간다.
 #
 # ⚠️ 단추로만 돈다 (tools/auto_spend_check.py 규칙).
 # ⚠️ 규격에 안 맞으면 저장하지 않는다 (src/story90.py 의 check).
@@ -42,7 +43,10 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      VT_RUN_KRW: '2800'
+      # ⚠️ 2026-09-05 — 판결문 대조(30~80원)가 붙었고, 되받아 고치기가
+      #    판결문을 같이 보내게 되어 한 번에 300~500원으로 늘었다.
+      #    뚜껑은 **진짜 값 바로 위**에 둔다 (짓기 2,100 + 대조 80 + 고치기 2번)
+      VT_RUN_KRW: '3400'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

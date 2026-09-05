@@ -632,10 +632,56 @@ def apply_fix(doc, fix):
     return log
 
 
-def repair(llm, doc, bad):
-    """틀린 곳만 AI 에게 돌려주고 고쳐 받는다. (고친 내역, 남은 잘못)"""
+# ── ⭐⭐⭐ 판결문 대조 (사실 검사) — 2026-09-05 손님 지시 ──────────
+#    손님: "상간녀가 위자료를 더 높여 불렀다. 이거는 반대가 되는 거 아니야?
+#           이런 부분들은 왜 사전에 그 검증을 못하는 거지?"
+#
+#    그때까지 대본 검사는 **규격만** 봤다 — 편 수·글자 수·컷 수·화자·주어.
+#    "이 말이 판결문과 맞는가" 를 보는 검사는 한 개도 없었다. 판결문은 저장돼
+#    있는데 대본을 지은 뒤 아무도 다시 안 봤다. 그래서 S91 컷18 이
+#    「여자는 사생활 침해라며 위자료를 더 올려 불렀습니다」 로 나갔다.
+#    (실제는 상간녀가 **반소로 3,000만 원을 청구**했고 50만 원만 인정됐다)
+#
+# ⚠️ 각색을 트집 잡으면 안 된다. 지어낸 대사·장면은 이 채널의 본업이다.
+#    잡는 것은 **사실이 뒤집힌 것**뿐이다 (프롬프트에 그렇게 적어 두었다).
+def factcheck(llm, doc, row):
+    """대본이 판결문과 어긋나는지 본다. 규격이 아니라 **사실**을 본다.
+
+    돌려주는 것: (반려 사유 목록, AI 가 제안한 고칠 말 {컷번호: 새 줄})
+    ⚠️ 이 검사가 죽어도 대본 짓기 전체를 죽이면 안 된다 — 그때는 빈 손으로
+       돌아와 규격 검사만 하고 넘어간다 (값 2,100원을 날리지 않는다).
+    """
+    body = prompts.build("story90_fact",
+                         CASE_JSON=case_json(row),
+                         SCRIPT=json.dumps(doc, ensure_ascii=False, indent=1))
+    out = llm.json(body, tier="pro", max_output_tokens=4096, temperature=0.2,
+                   label="판결문 대조", effort="low")
+    why, tip = [], {}
+    for one in (out or {}).get("wrong") or []:
+        try:
+            n = int(one.get("n"))
+        except Exception:                                    # noqa: BLE001
+            continue
+        what = str(one.get("무엇이틀렸나") or "").strip()
+        real = str(one.get("판결문은") or "").strip()
+        if not what:
+            continue
+        why.append(f"컷{n} 판결문과 다르다 — {what} (판결문: {real})")
+        fix = str(one.get("이렇게") or "").strip()
+        if fix:
+            tip[n] = fix
+    return why, tip
+
+
+def repair(llm, doc, bad, row=None):
+    """틀린 곳만 AI 에게 돌려주고 고쳐 받는다. (고친 내역, 남은 잘못)
+
+    ⚠️ 2026-09-05 — 판결문과 어긋난 곳을 고치려면 **판결문을 같이 줘야** 한다.
+       규격만 고칠 때는 안 줬는데(값을 아끼려고), 사실을 고치는 데는 필요하다.
+    """
     body = prompts.build(
         "story90_fix",
+        CASE=(case_json(row) if row else "(판결문 없음 — 규격만 고치는 중이다)"),
         BAD="\n".join("· " + b for b in bad[:20]),
         DOC=json.dumps(doc, ensure_ascii=False, indent=1))
     fix = llm.json(body, tier="pro", max_output_tokens=8192, temperature=0.6,
@@ -643,6 +689,26 @@ def repair(llm, doc, bad):
     log = apply_fix(doc, fix)
     log += autofix(doc)                      # 고친 자리도 다시 손본다 (0원)
     return log, check(doc)
+
+
+def apply_tip(doc, tip):
+    """판결문 대조가 알려 준 **그 자리에 넣을 한 줄**을 0원으로 끼워 넣는다.
+
+    ⚠️ 나레이션 줄만 바꾼다. 두 사람이 주고받는 대사 컷은 어느 줄인지가
+       애매해서 AI 에게 되묻는 쪽이 안전하다.
+    ⚠️ 넣은 뒤 규격을 다시 본다 — 길어져서 편이 60초를 넘으면 안 된다.
+    """
+    log = []
+    by_n = {c.get("n"): c for c in (doc.get("cuts") or [])}
+    for n, line in (tip or {}).items():
+        c = by_n.get(n)
+        if not c or len(c.get("turns") or []) != 1:
+            continue
+        was = c["turns"][0][1]
+        c["turns"][0][1] = line
+        c["sec"] = round(chars(c) / 4.6 + 1.2, 1)
+        log.append(f"컷{n}: 「{was[:22]}」 → 「{line[:22]}」")
+    return log
 
 
 def summary(doc):
@@ -694,7 +760,8 @@ def main():
     report(sid=sid, case_id=str(row["case_id"]), name=name,
            state="짓는 중", why=[], krw=0)
 
-    llm, _who = claude.writer(max_calls=4, prefer="gemini")
+    # ⚠️ 부를 수 있는 횟수 — 짓기 1 + 판결문 대조 1 + 되받아 고치기 2 + 여유 2
+    llm, _who = claude.writer(max_calls=6, prefer="gemini")
 
     def spent():
         try:
@@ -723,6 +790,25 @@ def main():
         for line in fixed[:10]:
             print(f"  · {line}")
 
+    # ── ①-2 판결문과 대조한다 (사실 검사 · 약 30~80원) ─────────
+    #    ⭐⭐⭐ 2026-09-05 손님: "이런 부분들은 왜 사전에 그 검증을 못하는 거지?"
+    #    규격만 보던 검사에 **사실**을 보는 눈을 붙인다.
+    tip = {}
+    try:
+        why, tip = factcheck(llm, doc, row)
+        if why:
+            print(f"\n■ 판결문과 어긋난 곳 {len(why)}군데 (약 30~80원)")
+            for w in why[:10]:
+                print(f"  · {w}")
+            moved = apply_tip(doc, tip)      # 알려 준 줄은 0원으로 넣는다
+            for m in moved:
+                print(f"    → {m}")
+        else:
+            print("\n■ 판결문과 어긋난 곳 없음 (약 30~80원)")
+    except Exception as e:                                   # noqa: BLE001
+        # ⚠️ 이 검사가 죽어도 2,100원짜리 대본을 날리면 안 된다
+        print(f"\n⚠️ 판결문 대조를 못 했다: {e} — 규격 검사만 하고 갑니다")
+
     # ── ② 검사 → ③ 걸리면 되받아 고치기 (최대 두 번) ───────────
     bad = check(doc)
     for r in range(1, FIX_ROUNDS + 1):
@@ -733,7 +819,7 @@ def main():
         for b in bad[:10]:
             print(f"  · {b}")
         try:
-            log, bad = repair(llm, doc, bad)
+            log, bad = repair(llm, doc, bad, row)
         except Exception as e:                               # noqa: BLE001
             print(f"  ⚠️ 고치기를 못 했다: {e}")
             break
