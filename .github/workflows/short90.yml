@@ -118,13 +118,18 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p build/s90/cards
-          # 지난번에 쓰던 얼굴을 먼저 받아 둔다 (손으로 올린 것도 여기 들어 있다)
-          python3 tools/release_file.py get cards90-S90 cards.zip build/cards90.zip \
+          S="${VT_SID:-S90}"
+          # ⚠️⚠️ 2026-09-05 — 보관 이름이 **cards90-S90 으로 고정**이었다.
+          #    사건이 둘이 되는 순간 앞 사건 얼굴을 받아 와 섞이고, 이 사건
+          #    얼굴을 그 이름으로 덮어써 앞 사건까지 바뀐다.
+          #    (손님: "전혀 다른 얼굴이 생성되도록" — 그러려면 사건마다 따로여야 한다)
+          python3 tools/release_file.py get "cards90-$S" cards.zip build/cards90.zip \
             && unzip -q -o build/cards90.zip -d build/s90/cards \
-            || echo "보관된 90초 편 카드가 없다"
+            || echo "보관된 $S 카드가 없다"
           # ⭐⭐ 저장소에 넣어 둔 손님 그림으로 덮어쓴다 — 손님이 아무것도 안
-          #    올려도 늘 이 다섯 얼굴이 쓰인다 (2026-08-30 확정 · 0원)
-          python3 tools/repo_cards.py build/s90/cards 2>&1 | tee -a make.log
+          #    올려도 늘 그 얼굴이 쓰인다 (2026-08-30 확정 · 0원)
+          #    ⭐ 사건 전용 폴더(assets/cards/<sid>)가 있으면 그것을, 없으면 s90.
+          python3 tools/repo_cards.py build/s90/cards "$S" 2>&1 | tee -a make.log
           # ⭐ 관리자 페이지에서 새로 올리신 그림이 있으면 그것이 이긴다.
           #    옆에 .hand 표시가 남아, 아래 단계가 그 사람은 다시 안 그린다.
           python3 tools/fetch_cards.py "$CARDS" build/s90/cards 2>&1 | tee -a make.log
@@ -132,7 +137,7 @@ jobs:
           FAIL=0
           python3 src/still.py cards S001 --out build/s90/cards 2>&1 | tee -a make.log || FAIL=1
           python3 -c "import shutil;shutil.make_archive('build/cards90','zip','build/s90/cards')" || true
-          python3 tools/release_file.py put cards90-S90 cards.zip build/cards90.zip || true
+          python3 tools/release_file.py put "cards90-$S" cards.zip build/cards90.zip || true
           [ "$FAIL" = 0 ] || { echo "❌ 인물 카드 단계 실패 — 만든 데까지는 보관했습니다"; exit 1; }
 
       - name: 2) 컷 그림 19장 (세로 9:16)

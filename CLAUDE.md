@@ -337,6 +337,41 @@ TV 드라마처럼 반투명 검정 위에 예고를 띄우되, **화면 전체�
 - 검사: `tools/story_flow_check.py` (S91 이 걸렸던 그 대본으로 **모의 실행**까지
   해서, 손보기 → 고치기 → 통과로 끝나는지 인터넷 없이 확인한다)
 
+### ⭐ 얼굴은 **사건마다 따로** (2026-09-05)
+
+> 손님: **"에피소드에서 등장인물들을 좀 새로 생성하고 싶거든? 전혀 다른 얼굴이
+> 생성되도록 하되 명령 프롬프트는 저번하고 동일한 방식으로 적어."**
+
+그때까지 얼굴 폴더도 보관 이름도 **S90 하나로 고정**이었다. 새 사건에 새 얼굴을
+넣으면 **이미 올린 편의 얼굴까지 바뀐다.**
+
+| | 어디 | 규칙 |
+|---|---|---|
+| 사건 전용 얼굴 | `assets/cards/<sid>/` (예 `assets/cards/s92/`) | 있으면 이것을 쓴다 |
+| 기본 얼굴 | `assets/cards/s90/` | 전용 폴더가 없으면 이것 (지금까지 그대로) |
+| 보관(캐시) | 릴리스 `cards90-<SID>` | **사건마다 따로**. 예전엔 `cards90-S90` 고정이라 섞였다 |
+| 손님이 올린 것 | 보관함 `cards/<SID>-<사람>-…` | 늘 이것이 이긴다 |
+
+- 파일 이름은 영문 고정: `wife · husband · mistress · daughter · attorney`
+- 검사: `tools/percase_check.py` ⑤절이 얼굴이 사건 사이로 새는지 본다
+
+#### 얼굴 프롬프트 쓰는 법 (형식을 바꾸지 않는다)
+
+**아래 여섯 줄은 글자 하나 안 바꾼다** — 이게 같아야 컷 그림에서 얼굴이 유지된다.
+
+```
+POSE: standing upright and still, arms relaxed at the sides, mouth closed, calm everyday expression.
+FRAME: full body from head to feet, centred, nothing cropped, vertical 9:16.
+BACKGROUND: plain flat light-grey empty wall, no furniture, no props, no scenery.
+LIGHT: soft even light from the front, no hard shadow, no coloured light.
+LOOK: photoreal look with natural skin texture and true-to-life body proportions, muted desaturated colours, soft even lighting.
+Avoid: text, letters, watermark, logo, props, furniture, background scenery, other people, harsh or coloured lighting, tilted camera, close-up crop, cartoon, anime, illustration, drawing, 3D render, oil painting
+```
+
+바꾸는 것은 맨 윗줄(나이)과 `FACE AND HAIR:` · `BUILD:` · `WEARING:` 넷뿐이다.
+⚠️ 매혹적인 인상은 `sexy · seductive · erotic` 이 아니라
+   **`striking · elegant · graceful · poised`** 로 적는다 (앞의 말은 안전 검사에 걸린다).
+
 ### ⭐ 등장인물 — 사건마다 늘릴 수 있다 (2026-09-04)
 
 기본 다섯(아내 50여 · 남편 50남 · 내연녀 30여 · 딸 20여 · 변호사 40남)은

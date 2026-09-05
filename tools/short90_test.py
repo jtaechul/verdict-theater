@@ -224,14 +224,23 @@ def main():
     import repo_cards as RC                                  # noqa: E402
     from PIL import Image
 
+    # ⭐ 2026-09-05 — 얼굴 폴더가 **사건마다** 갈린다(assets/cards/<sid>).
+    #    전용 폴더가 없는 사건은 기본 다섯(s90)으로 돌아간다. 그 기본 다섯이
+    #    늘 성한지를 본다 — 이게 비면 모든 사건이 얼굴 없이 나간다.
+    base, fell = RC.src_dir(RC.FALLBACK)
+    ck(f"기본 얼굴 폴더가 있다 (assets/cards/{RC.FALLBACK})", base.is_dir())
     for en, ko in RC.NAME.items():
-        f = RC.SRC / f"{en}.png"
+        f = base / f"{en}.png"
         big = f.exists() and f.stat().st_size > RC.MIN_BYTES
-        ck(f"{ko} 그림이 저장소에 있다 (assets/cards/s90/{en}.png)", big,
+        ck(f"{ko} 그림이 저장소에 있다 (assets/cards/{base.name}/{en}.png)", big,
            "없거나 너무 작다")
         if big:
             w, h = Image.open(f).size
             ck(f"{ko} 그림이 세로다", h > w, f"{w}x{h}")
+    # 전용 폴더를 안 만든 사건은 기본으로 돌아가야 한다 (얼굴이 비면 안 된다)
+    d, fb = RC.src_dir("S999")
+    ck("전용 폴더가 없는 사건은 기본 얼굴로 돌아간다",
+       fb and d.name == RC.FALLBACK, f"{d.name} · fallback={fb}")
 
     need = sorted({S9.ST_NAME.get(w, w) for c in cuts for w in (c.get("who") or [])})
     have = set(RC.NAME.values())

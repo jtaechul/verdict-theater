@@ -80,6 +80,34 @@ def main():
     py = (ROOT / "src" / "short90.py").read_text(encoding="utf-8")
     ck("조립도 사건을 골라 읽는다 (VT_SID)", "VT_SID" in py)
 
+    print("\n⑤ 얼굴이 사건 사이로 새지 않는가")
+    # ⭐⭐⭐ 2026-09-05 손님: "에피소드에서 등장인물들을 좀 새로 생성하고
+    #    싶거든? 전혀 다른 얼굴이 생성되도록."
+    #    그때까지 얼굴 폴더도 보관 이름도 **S90 하나로 고정**이었다. 새 사건에
+    #    새 얼굴을 넣으면 이미 올린 편의 얼굴까지 바뀐다.
+    yml0 = (ROOT / ".github" / "workflows" / "short90.yml").read_text(encoding="utf-8")
+    # ⚠️ 설명글(#)에 적힌 옛 이름에 속지 않는다 — **도는 줄**만 본다.
+    #    (한 번 속았다: "cards90-S90 으로 고정이었다" 는 설명을 고장으로 셌다)
+    yml = "\n".join(ln for ln in yml0.splitlines()
+                    if not ln.lstrip().startswith("#"))
+    rc = (ROOT / "tools" / "repo_cards.py").read_text(encoding="utf-8")
+    ck("얼굴 보관 이름이 사건마다 다르다",
+       "cards90-S90" not in yml and 'cards90-$S' in yml,
+       "cards90-S90 으로 고정이면 앞 사건 얼굴을 받아 와 섞입니다")
+    ck("얼굴 폴더를 사건 번호로 고른다", "def src_dir(sid)" in rc,
+       "assets/cards/s90 하나만 보면 새 사건이 옛 얼굴을 씁니다")
+    ck("전용 폴더가 없으면 기본 다섯으로 돌아간다", 'FALLBACK = "s90"' in rc)
+    ck("워크플로가 사건 번호를 넘겨 준다",
+       'repo_cards.py build/s90/cards "$S"' in yml)
+    # 진짜로 갈리는지 돌려 본다 (0원)
+    import subprocess
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        r = subprocess.run([sys.executable, str(ROOT / "tools" / "repo_cards.py"),
+                            td, "S91"], capture_output=True, text=True)
+        ck("없는 사건은 기본 얼굴로 돌아간다고 말해 준다",
+           "기본 얼굴" in r.stdout, r.stdout.strip()[:80])
+
     print("\n" + "─" * 60)
     if BAD:
         print("❌ 걸린 것:")
