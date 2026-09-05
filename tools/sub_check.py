@@ -52,6 +52,9 @@ LINES = [
     "여자는 상대가 결혼한 사람인 줄 몰랐다고 주장했습니다.",
     "실제로 있었던 사건입니다.",
     "그 소리는 조수석 밑에 숨겨둔 녹음기에서 나온 것이었습니다.",
+    "다만 몰래 녹음한 행위는 법 위반으로 인정되었습니다.",
+    "아내가 홧김에 한 번 찾아간 것은 불법이 아니라고 보았습니다.",
+    "재판부는 아내가 물려받은 재산까지 들여다보았습니다.",
     "아내가 내민 녹취록에는 두 사람의 목소리가 그대로 담겨 있었습니다.",
 ]
 
@@ -101,6 +104,33 @@ def main():
         ck(f"「{part}」 이 안 갈린다", any(part in x for x in got), str(got))
     ck("숫자와 단위를 한 덩어리로 붙인다",
        S9.merge_units("삼천만 원짜리 소장이".split())[0] == "삼천만 원짜리")
+    # ⭐ 가장 센 잣대 — **토막 끝이 '다음 말에 붙어야 하는 말' 이면 안 된다.**
+    #    이것이 "말이 중간에 끊긴다" 를 코드로 옮긴 것이다.
+    cut_mid = []
+    for t in LINES:
+        ch = S9.chunks_of(t)
+        for k, x in enumerate(ch[:-1]):
+            last = x.split()[-1]
+            if S9.hangs(last):
+                cut_mid.append(f"「{x}」 → 「{ch[k + 1]}」")
+    ck("토막 끝이 다음 낱말에 붙어야 하는 말로 끝나지 않는다",
+       not cut_mid, " · ".join(cut_mid[:2]))
+
+    print("\n② -2 「는·은」 을 관형형과 조사로 가르는가")
+    # ⭐⭐⭐ 2026-09-05 — 처음엔 「는」 을 무조건 붙였다. 그러면 한국어에서
+    #    가장 자연스러운 끊는 자리가 통째로 막혀, 「행위는 법 / 위반으로」
+    #    처럼 엉뚱한 데서 갈렸다. 대본 19종을 세어 잣대를 정했다.
+    ADN = ("맺는", "아는", "없는", "좋은", "모은", "것은",          # 붙는다
+           "배상하라는", "만나자는", "취급하는", "물려받은")
+    JOSA = ("아내는", "행위는", "남편은", "법원은", "증거는", "재판부는",  # 끊어도 된다
+            "내연녀는", "녹음은")
+    miss = [w for w in ADN if not S9.hangs(w)] + [w for w in JOSA if S9.hangs(w)]
+    ck(f"관형형 {len(ADN)}개는 붙이고 조사 {len(JOSA)}개는 끊는다",
+       not miss, " · ".join(miss))
+    got = S9.chunks_of("다만 몰래 녹음한 행위는 법 위반으로 인정되었습니다.")
+    ck("「법 위반으로」 가 안 갈린다", any("법 위반으로" in x for x in got), str(got))
+    ck("「녹음한 행위는」 이 안 갈린다",
+       any("녹음한 행위는" in x for x in got), str(got))
 
     print("\n③ 한 글자도 안 잃고 안 겹친다 (넘친 말은 다음 자막으로)")
     lost = [t for t in LINES
@@ -137,7 +167,10 @@ def main():
        "CHUNK_WORDS" not in ch and "CHUNK_CHARS" not in ch)
     ck("들어가는 만큼 재서 담는다", "getlength" in ch or "wide(" in ch)
     ck("끊는 자리를 조사·어미 뒤에서 고른다",
-       "BREAK_END" in ch and "HANG_END" in ch)
+       "BREAK_END" in ch and "hangs(" in ch)
+    hg = (re.search(r"def hangs\([\s\S]*?\n\ndef ", src) or [""])[0]
+    ck("「는·은」 은 앞 음절 수로 관형형인지 가른다",
+       "len(t) <= 2" in hg and "QUOTE_END" in hg)
 
     print("\n⑥ 나레이션이 주어를 밝히는가")
     ck("누가 그랬는지 빠지면 잡는다",
