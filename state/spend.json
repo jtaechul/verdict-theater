@@ -904,5 +904,59 @@
     "kind": "image",
     "krw": 132,
     "note": "gemini-3.1-flash-image 2K 9:16 c27.png"
+  },
+  {
+    "date": "2026-09-05",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 c02.png"
+  },
+  {
+    "date": "2026-09-05",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 c06.png"
+  },
+  {
+    "date": "2026-09-05",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 c14.png"
+  },
+  {
+    "date": "2026-09-05",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 c19.png"
+  },
+  {
+    "date": "2026-09-05",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 c23.png"
+  },
+  {
+    "date": "2026-09-05",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 c25.png"
+  },
+  {
+    "date": "2026-09-05",
+    "kind": "영상",
+    "krw": 470,
+    "note": "veo-3.1-lite-generate-preview 4초 c01.mp4"
+  },
+  {
+    "date": "2026-09-05",
+    "kind": "영상",
+    "krw": 470,
+    "note": "veo-3.1-lite-generate-preview 4초 c10.mp4"
+  },
+  {
+    "date": "2026-09-05",
+    "kind": "영상",
+    "krw": 470,
+    "note": "veo-3.1-lite-generate-preview 4초 c19.mp4"
   }
 ]
