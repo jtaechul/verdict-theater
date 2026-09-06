@@ -159,12 +159,18 @@ const STAGE_LABEL = {
 // ⚠️ src/ytmeta.py 의 BASE_TAGS 와 **글자 하나까지 같아야** 한다.
 //    화면에서 본 해시태그와 올라가는 해시태그가 다르면 안 된다
 //    (tools/pair_check.py 가 둘을 맞대어 본다).
-const YT_BASE_TAGS = ['판결극장', '사연극장', '실화사건', '실화사연',
-                      '사연', '법률사연', '쇼츠드라마', 'shorts'];
+// ⭐⭐⭐ 2026-09-06 — 실측 검색량(vidIQ · 한국)으로 갈아 끼웠다.
+//    사연 666,590 · 막장드라마 66,734 · 불륜 61,342 · 이혼사연 38,434 ·
+//    부부 38,272 · 사이다사연 36,400 · 반전사연 35,163
+//    뺀 것(검색량 안 잡힘): 법률사연 · 쇼츠드라마 · 실화사연 · 외도 · shorts
+//    ⚠️ src/ytmeta.py 의 LEAD_TAGS·BASE_TAGS 와 **짝**이다 (pair_check 가 본다).
+const YT_LEAD_TAGS = ['사연'];
+const YT_BASE_TAGS = ['사이다사연', '반전사연', '막장드라마', '부부',
+                      '판결극장', '사연극장', '실화사건'];
 const YT_TOPIC = [
   [['유류분', '상속', '상속재산', '한정승인'], ['유류분', '상속', '상속분쟁']],
-  [['내연', '불륜', '바람', '상간', '동거녀'], ['불륜', '외도', '상간소송']],
-  [['이혼', '위자료', '재산분할'], ['이혼', '위자료', '재산분할']],
+  [['내연', '불륜', '바람', '상간', '동거녀'], ['불륜', '이혼사연', '상간소송']],
+  [['이혼', '위자료', '재산분할'], ['이혼', '이혼사연', '위자료']],
   [['보험금', '사망보험'], ['보험금분쟁']],
   [['사기', '횡령', '빼돌', '가로챈'], ['재산다툼']],
   [['층간', '이웃'], ['이웃분쟁']],
@@ -193,8 +199,10 @@ function ytMeta(doc, no) {
   //    순서는 알려 주되 총 편수는 안 보이게 `(1화)` 로.
   if (title.indexOf('(' + no + '화') < 0 && title.indexOf('(' + no + '/') < 0)
     title = title + ' (' + no + '화)';
-  if (title.toLowerCase().indexOf('#shorts') < 0 && title.length + 8 <= 100)
-    title += ' #shorts';
+  // ⚠️⚠️⚠️ 2026-09-06 손님: "제목에다가 자꾸 shorts라고 넣었는데 이거 의미가
+  //    있는 거야?" — 없다. 유튜브는 2022년부터 세로 9:16 + 짧은 길이로 쇼츠를
+  //    스스로 알아본다. 제목의 #shorts 는 하는 일 없이 제목 자리만 먹는다.
+  //    → 뺐다. (src/ytmeta.py 도 같이 뺐다 — 짝이다)
   title = title.slice(0, 100);
 
   let tags = (ep.yt_tags || []).map((x) => ytClean(x).replace(/^#/, '')).filter(Boolean);
@@ -207,6 +215,8 @@ function ytMeta(doc, no) {
     });
     tags = tags.slice(0, 5);
   }
+  // ⭐ 유튜브가 제목 위에 띄우는 것은 **앞의 세 개**뿐이다 — 큰 것을 앞에.
+  tags = YT_LEAD_TAGS.filter((t) => tags.indexOf(t) < 0).concat(tags);
   YT_BASE_TAGS.forEach((b) => { if (tags.indexOf(b) < 0) tags.push(b); });
   tags = tags.slice(0, 15);
 
