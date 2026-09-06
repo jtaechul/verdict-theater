@@ -46,6 +46,37 @@ def ck(name, ok, why=""):
         bad.append(name)
 
 
+def code_of(text):
+    """주석과 따옴표 안 설명글을 걷어내고 **진짜 코드만** 남긴다.
+
+    ⚠️⚠️ 2026-09-06 — 이 검사를 만들자마자 같은 함정에 또 빠졌다. 고친 것을
+       되돌려 놓고 검사를 돌렸는데 **초록불이 그대로였다.** 까닭은 내가 새로
+       적은 설명글 안에 'bill_flush()' 라는 글자가 들어 있었기 때문이다.
+       검사가 코드가 아니라 **설명글을 읽고** 통과시킨 것이다.
+       → 이제 tokenize 로 주석·설명글을 통째로 지우고 나서 본다.
+    """
+    import io
+    import tokenize
+    lines = text.splitlines(keepends=True)
+    try:
+        toks = list(tokenize.generate_tokens(io.StringIO(text).readline))
+    except Exception:                                        # noqa: BLE001
+        return re.sub(r"#.*", "", text)
+    # ⭐ 자리를 그대로 두고 **그 자리만 빈칸으로** 지운다 — 줄·칸이 안 밀려서
+    #   'finally 다음에 bill_flush 가 오는가' 같은 것도 그대로 볼 수 있다.
+    for tok in toks:
+        if tok.type not in (tokenize.COMMENT, tokenize.STRING):
+            continue
+        (r1, c1), (r2, c2) = tok.start, tok.end
+        for r in range(r1, r2 + 1):
+            ln = lines[r - 1]
+            a = c1 if r == r1 else 0
+            b = c2 if r == r2 else len(ln)
+            keep = "\n" if ln.endswith("\n") and b >= len(ln.rstrip("\n")) else ""
+            lines[r - 1] = ln[:a] + " " * (b - a) + ln[b:]
+    return "".join(lines)
+
+
 def progs(text):
     """이 워크플로가 부르는 우리 프로그램들."""
     return sorted(set(re.findall(r"python3 ((?:src|tools)/[\w.]+\.py)", text)))
@@ -101,6 +132,29 @@ def main():
     ck(f"두 자리에 다 적는다 (지금 {n}자리)", n >= 2,
        "반려돼도 돈은 이미 나갔다 — 그 자리에도 적어야 한다")
     ck("반려 자리에도 적는다", "(반려)" in mn)
+
+    print("\n⑤ 목소리는 **모아 두기만 하면** 장부에 안 남는다")
+    # ⭐⭐⭐ 2026-09-06 — ②를 통과하면서도 목소리 값이 새고 있었다.
+    #    short90.yml 이 부르는 src/still.py·src/veo.py 는 cost.record 를 부르니
+    #    ②는 초록불이었다. 그런데 **목소리**는 길이 다르다 —
+    #    tts.say() 는 쓴 글자를 tts 안에 모아 두기만 하고(bill_add), 그것을
+    #    장부로 옮기는 것은 bill_flush() 다. 옛 60초 쪽만 그것을 불렀고
+    #    90초 쇼츠 쪽은 아무도 안 불러서, 8월 23일부터 목소리 값이 한 줄도
+    #    안 적혔다. → 목소리를 만드는 프로그램은 **반드시 비운다**.
+    for f in sorted((ROOT / "src").glob("*.py")):
+        src = f.read_text(encoding="utf-8")
+        # ⚠️ 설명글·주석에 적힌 tts.say() 는 세지 않는다 (진짜 부르는 자리만)
+        code = code_of(src)
+        if not re.search(r"\btts\.say\(\s*\w", code):
+            continue
+        ck(f"{f.name} — 만든 목소리 값을 장부로 비운다 (bill_flush)",
+           "bill_flush(" in code,
+           "tts.say() 로 돈을 쓰는데 bill_flush() 를 안 부른다 — "
+           "모아 두기만 하고 아무도 안 비운다")
+        # 중간에 멈춰도 이미 나간 돈은 적혀야 한다
+        ck(f"{f.name} — 중간에 멈춰도 적는다 (finally)",
+           re.search(r"finally:[\s\S]{0,400}bill_flush\(", code),
+           "한도에 걸려 멈추면 그때까지 쓴 목소리 값이 사라진다")
 
     print("\n④ 한 달 한도가 그 돈을 볼 수 있는가")
     c = (ROOT / "src" / "cost.py").read_text(encoding="utf-8")

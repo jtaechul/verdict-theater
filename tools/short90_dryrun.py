@@ -36,7 +36,7 @@ import short90 as S9                                         # noqa: E402
 import still as ST                                           # noqa: E402
 
 BAD = []
-CALLS = {"img": [], "tts": []}
+CALLS = {"img": [], "tts": [], "bill": []}
 
 
 def ck(name, ok, why=""):
@@ -92,6 +92,13 @@ def main():
             n = len([x for x in str(text) if not x.isspace()])
             fake_wav(pathlib.Path(out), n / 4.6 + 0.8)
             return out
+
+        # ⭐ 2026-09-06 — 진짜 tts 는 쓴 글자를 모아 두었다가 여기서 장부로
+        #    옮긴다. 가짜에도 있어야 그 자리를 실제로 밟아 볼 수 있다.
+        @staticmethod
+        def bill_flush(note=""):
+            CALLS["bill"].append(note)
+            return 0.0
 
     ST.gen = spy_gen
     sys.modules["tts"] = FakeTTS
@@ -202,6 +209,12 @@ def main():
     turns = sum(len(c["turns"]) for c in cuts)
     ck(f"줄 수만큼 만들었다 ({turns}줄)", len(CALLS["tts"]) == turns,
        f"{len(CALLS['tts'])}줄")
+    # ⭐⭐⭐ 2026-09-06 — **만든 목소리 값이 장부로 넘어갔는가.**
+    #    tts 는 쓴 글자를 모아 두기만 한다(bill_add). 그것을 장부로 옮기는
+    #    bill_flush() 를 90초 쇼츠 쪽에서 아무도 안 불러서, 8월 23일부터
+    #    목소리 값이 장부에 한 줄도 안 적혔다. 여기서 그 자리를 밟아 본다.
+    ck("만든 목소리 값을 장부로 넘겼다", CALLS["bill"],
+       "bill_flush() 를 한 번도 안 불렀다 — 쓴 돈이 장부 밖으로 샌다")
     no_style = [t["text"][:16] for t in CALLS["tts"] if not t["style"]]
     ck("모든 줄에 연기 지시를 실어 보냈다", not no_style, f"빠진 줄 {no_style}")
     old = sorted({t["voice"] for t in CALLS["tts"]

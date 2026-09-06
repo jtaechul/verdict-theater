@@ -576,7 +576,28 @@ def voice_route_ok(tts, need):
 
 
 def voices(doc):
+    """목소리를 만든다. **값은 반드시 장부에 남긴다.**
+
+    ⭐⭐⭐ 2026-09-06 손님이 "돈 세는 곳 없는지 확인해" 라고 하셔서 또 세어 보니,
+       **90초 쇼츠의 목소리 값이 8월 23일부터 장부에 한 줄도 안 적히고 있었다.**
+       tts.say() 는 쓴 글자를 모아 두기만 하고(bill_add), 그것을 장부로 옮기는
+       것은 bill_flush() 인데 — 옛 60초 쪽(src/shorts.py)만 그것을 불렀고
+       여기서는 아무도 안 불렀다. 모아 두기만 하고 아무도 안 비웠다.
+       더 나쁜 것: 한 달 한도(MONTH_KRW)는 장부만 보고 세므로, 안 적힌 돈은
+       한도에도 안 잡힌다.
+       → 여기서 **끝나든 실패하든(finally)** 반드시 비운다. 중간에 멈춰도
+         이미 나간 돈은 적힌다.
+    """
     import tts                                               # 늦게 부른다(열쇠 필요)
+    try:
+        return _voices(doc, tts)
+    finally:
+        won = tts.bill_flush(f"{SID} 90초 쇼츠")
+        if won:
+            print(f"■ 목소리 값 약 {won:,.0f}원 — 장부에 적었다")
+
+
+def _voices(doc, tts):
     d = OUT / "voice"
     d.mkdir(parents=True, exist_ok=True)
     need = sum(len(turns_of(c)) for c in doc["cuts"])
