@@ -37,6 +37,14 @@ on:
         options:
           - '진짜로 올리기'
           - '연습 (올리지 않고 확인만)'
+      fix_only:
+        description: '이미 올린 편의 글만 고칠까요 (영상은 그대로 · 0원)'
+        required: false
+        default: '아니오 — 새로 올린다'
+        type: choice
+        options:
+          - '아니오 — 새로 올린다'
+          - '예 — 제목·설명만 고친다'
       every_hours:
         description: 'all 일 때 몇 시간 간격으로 예약 공개할까요 (24 = 하루)'
         required: false
@@ -102,6 +110,7 @@ jobs:
           echo "유튜브 열쇠 3가지 모두 있습니다."
 
       - name: 보관해 둔 영상 꺼내기
+        if: ${{ !startsWith(inputs.fix_only, '예') }}
         env:
           PART: ${{ inputs.part }}
           SID: ${{ inputs.sid }}
@@ -136,7 +145,26 @@ jobs:
           #    손님이 관리자 페이지에서 고친 글이 있으면 그것이 이긴다.
           python3 tools/fetch_meta90.py "$META" build/s90/meta.json
 
+      # ⭐⭐⭐ 2026-09-06 — 이미 올린 편의 **글만** 고친다 (영상은 그대로).
+      #    그날 세 편이 옛 제목·옛 해시태그로 올라갔다. 아직 공개 전이라
+      #    내리지 않고 글만 갈아 끼우면 손해가 0이다.
+      - name: 올린 영상 글만 고치기 (0원)
+        if: ${{ startsWith(inputs.fix_only, '예') }}
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          PART: ${{ inputs.part }}
+          SID: ${{ inputs.sid }}
+        run: |
+          set -o pipefail
+          DRY=""
+          [ "${{ inputs.mode }}" = "연습 (올리지 않고 확인만)" ] && DRY="--dry"
+          python3 src/upload.py fixmeta "${SID:-S90}" --part "$PART" \
+            --meta build/s90/meta.json $DRY 2>&1 | tee up.log
+
       - name: 유튜브에 올리기
+        if: ${{ !startsWith(inputs.fix_only, '예') }}
         env:
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}

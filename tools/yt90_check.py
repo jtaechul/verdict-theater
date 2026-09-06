@@ -115,7 +115,7 @@ def main():
         t = up.read_text(encoding="utf-8")
         ck("단추로만 돈다 (밀기만 해도 올라가면 큰일이다)",
            "workflow_dispatch" in t and "\n  push:" not in t)
-        ck("고치신 글을 먼저 쓴다 (fetch_meta90)", "fetch_meta90.py" in t)
+        ck("올릴 글을 한 곳에서만 가져온다 (fetch_meta90)", "fetch_meta90.py" in t)
         # ⚠️ 2026-08-31 — 글 한 장 만들자고 영상 만드는 모듈(PIL 이 필요하다)을
         #    통째로 불렀다가 죽었다. 올릴 글은 이미 지어져 있으니 그냥 읽는다.
         fm = (ROOT / "tools" / "fetch_meta90.py").read_text(encoding="utf-8")
@@ -127,7 +127,17 @@ def main():
         ck("올릴 글을 만들려고 영상 모듈을 부르지 않는다",
            "src/short90.py" not in code and "import short90" not in code,
            "PIL 이 없는 자리에서 죽는다 — 지어 둔 글을 읽으십시오")
-        ck("지어 둔 글을 읽는다", "S90.meta.json" in fm)
+        # ⭐⭐⭐ 2026-09-06 — 올릴 글은 **저장해 둔 것 하나**에서만 온다.
+        #    화면이 보낸 글이 이기던 탓에, 손님 폰의 옛 화면이 옛 제목
+        #    ("…신음 소리 #shorts")과 옛 해시태그를 실어 보내 그대로 올라갔다.
+        ck("지어 둔 글을 읽는다",
+           'f"{sid}.meta.json"' in code or "S90.meta.json" in code)
+        ck("화면이 보낸 글을 올리지 않는다",
+           "json.dumps(got" not in code,
+           "옛 화면이면 옛 글이 그대로 올라간다")
+        ck("올리기 직전에 옛 글을 막는 문지기가 있다",
+           "def blocked(" in code and "DEAD" in code,
+           "죽은 해시태그·제목의 #shorts 를 막을 자리가 없다")
         ck("영상을 편마다 보관함에서 꺼내 온다", 'part$K.mp4' in t)
         ck("upload.py series 로 올린다", "upload.py series" in t)
         ck("몇 편을 올릴지 고를 수 있다", "part:" in t)

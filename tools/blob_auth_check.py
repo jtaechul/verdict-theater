@@ -37,7 +37,13 @@ def main():
     #    똑같은 실수를 이틀 만에 두 번 했다. → 이제 **찾아서** 본다.
     #    보관함 주소를 받아 가는 파일이 새로 생기면 저절로 검사에 들어온다.
     print("① 받아 갈 때 암호를 보내는가")
-    grab = sorted(str(f.relative_to(ROOT)) for f in (ROOT / "tools").glob("fetch_*.py"))
+    # ⭐ 2026-09-06 — fetch_meta90.py 는 보관함에서 아무것도 안 받아 온다.
+    #    올릴 글을 화면에서 받아 쓰던 것을 버렸기 때문이다(옛 화면이면 옛 글이
+    #    올라갔다). 받아 오지 않으니 암호도 필요 없다 — 이 검사에서 뺀다.
+    NO_FETCH = {"tools/fetch_meta90.py"}
+    grab = sorted(str(f.relative_to(ROOT))
+                  for f in (ROOT / "tools").glob("fetch_*.py")
+                  if str(f.relative_to(ROOT)) not in NO_FETCH)
     print(f"      보관함에서 받아 가는 파일 {len(grab)}개: {', '.join(grab)}")
     for f in grab:
         t = (ROOT / f).read_text(encoding="utf-8")

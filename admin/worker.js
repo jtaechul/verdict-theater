@@ -1499,6 +1499,12 @@ function partsCard(w) {
      + mini('연습 (올리지 않고 확인만)', 'workUpAll(1)')
      + '<button class="gold" id="w-up-all" onclick="workUpAll(0)">'
      + '세 편 예약 공개로 올리기</button></div>'
+     // ⭐⭐⭐ 2026-09-06 — 이미 올린 편의 **글만** 고친다 (영상은 그대로).
+     //    그날 세 편이 옛 제목·옛 해시태그로 올라갔다. 공개 전이라면
+     //    내리지 않고 글만 갈아 끼우면 손해가 0이다.
+     + '<div class="btns" style="margin-top:8px">'
+     + mini('올린 글 고치기 (제목·해시태그 · 0원)', 'workFixMeta()')
+     + '</div>'
      + '<div id="w-msg-all" class="uphint"></div></div>';
   return h;
 }
@@ -1706,6 +1712,42 @@ async function workUp(no, dry) {
   }
   WBUSY[id] = 0;
   lock(id, 0, (p.uploaded ? no + '편 다시 올리기' : no + '편 유튜브에 올리기'));
+}
+
+// ⭐ 이미 올린 편의 제목·설명·해시태그만 유튜브에서 고친다 (0원).
+//    영상은 손대지 않는다. 올릴 글은 저장소에 저장된 것을 쓴다 —
+//    이 화면이 옛 화면이어도 옛 글이 올라가지 않는다.
+async function workFixMeta() {
+  const id = 'w-up-all';
+  if (WBUSY[id]) return;
+  const w = (WORKS || {})[WORK] || {};
+  const done = partList(w).filter(function (x) { return x.uploaded; });
+  if (!done.length) {
+    showErr('아직 올린 편이 없습니다', '먼저 유튜브에 올린 뒤에 쓸 수 있습니다.');
+    return;
+  }
+  if (!confirm(['올린 ' + done.length + '편의 글을 고칠까요?', '',
+                '영상은 그대로 두고 제목·설명·해시태그만',
+                '저장된 최신 글로 갈아 끼웁니다.', '',
+                '값 0원'].join(String.fromCharCode(10)))) return;
+  WBUSY[id] = 1;
+  lock(id, 1, '고치는 중…');
+  const msg = document.getElementById('w-msg-all');
+  if (msg) msg.textContent = '고치는 중…';
+  try {
+    const r = await fetch('/api/upload-short90', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sid: WORK, part: 'all', fix_only: true }),
+    });
+    const j = await r.json();
+    if (!j.ok) { showErr('시작하지 못했습니다', j.error || ''); return; }
+    watchRun('short90-upload.yml', msg, '올린 글을 고쳤습니다');
+  } catch (e) {
+    showErr('시작하지 못했습니다', String(e && e.message ? e.message : e));
+  } finally {
+    WBUSY[id] = 0;
+    lock(id, 0, '세 편 예약 공개로 올리기');
+  }
 }
 
 async function workUpAll(dry) {
@@ -4016,9 +4058,12 @@ export default {
       //
       // ⭐⭐ 2026-09-01 — 한 사건이 여러 편이 되었다. 편마다 따로 올린다.
       //    part='all' 이면 첫 편은 지금, 나머지는 **예약 공개**로 하루씩 띄운다.
-      // ⚠️ 화면에서 고친 글이 그대로 올라가야 한다. 그래서 **사건 전체 글**을
-      //    보관함에 담고 주소만 넘긴다 (워크플로 입력에 글을 직접 넣으면
-      //    실행 기록에 통째로 남고 길이 제한에도 걸린다).
+      // ⚠️⚠️ 2026-09-06 — 여기서 보낸 글이 **저장된 글을 이기던 것을 버렸다.**
+      //    손님 폰에 떠 있던 옛 화면이 옛 제목("…신음 소리 #shorts")과 옛
+      //    해시태그를 실어 보냈고, 그것이 그대로 세 편에 올라갔다. 화면을
+      //    고쳐도 폰에 떠 있는 옛 화면은 못 고친다.
+      //    → 이제 올릴 글은 저장소의 data/series/<사건>.meta.json 하나뿐이다.
+      //      여기서 보내는 글은 기록으로만 남고 쓰이지 않는다.
       if (url.pathname === '/api/upload-short90' && req.method === 'POST') {
         let body = {};
         try { body = await req.json(); } catch (e) { body = {}; }
@@ -4051,7 +4096,9 @@ export default {
           parts.push({ part: no, title: title, description: desc, tags: tags,
                        privacy: 'private' });
         }
-        if (!parts.length)
+        // ⭐ 글만 고치는 길에서는 영상도 화면 글도 필요 없다
+        const fixOnly = !!(body && body.fix_only);
+        if (!parts.length && !fixOnly)
           return Response.json({ ok: false, error: '올릴 글이 없습니다' },
                                { status: 400 });
 
@@ -4074,7 +4121,9 @@ export default {
           await gh(env, `/repos/${REPO}/actions/workflows/short90-upload.yml/dispatches`, {
             method: 'POST', body: JSON.stringify({ ref: BRANCH,
               inputs: { sid: sid, part: part, privacy: priv, mode: mode,
-                        every_hours: every, meta: fresh || '' } }),
+                        every_hours: every, meta: fresh || '',
+                        fix_only: fixOnly ? '예 — 제목·설명만 고친다'
+                                          : '아니오 — 새로 올린다' } }),
           });
           return Response.json({ ok: true, sid: sid, part: part,
                                  privacy: priv, dry: mode });

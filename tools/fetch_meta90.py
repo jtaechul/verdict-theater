@@ -1,44 +1,51 @@
 #!/usr/bin/env python3
 """올릴 글(제목·설명·해시태그)을 준비한다.
 
-    python3 tools/fetch_meta90.py '<주소 또는 빈칸>' build/s90/meta.json
+    python3 tools/fetch_meta90.py '<쓰지 않는다>' build/s90/meta.json
 
-⚠️⚠️ 화면에서 본 글과 실제로 올라가는 글이 **반드시 같아야 한다.**
-   손님이 관리자 페이지에서 제목을 고쳤는데 다른 글이 올라가면, 무엇이
-   올라갔는지 아무도 모른다. 그래서 고친 글이 있으면 **그것이 이긴다.**
-   없을 때만 대본과 함께 지어 둔 글(data/series/S90.meta.json)을 쓴다.
+⭐⭐⭐ 2026-09-06 — **올릴 글은 저장해 둔 것 한 곳에서만 온다.**
+
+   그날 있었던 일: 손님이 [세 편 예약 공개로 올리기] 를 누르셨는데, 올라간
+   세 편에 **옛 제목("…낯선 여자의 신음 소리 #shorts")과 옛 해시태그**가
+   붙었다. 저장소의 글은 이미 새것으로 바뀌어 있었는데도 그랬다.
+
+   까닭: 여기가 "관리자 화면이 보낸 글이 이긴다" 였다. 손님 폰의 화면이
+   새로고침 안 된 옛 화면이라, 그 화면이 들고 있던 **옛 글**을 그대로 실어
+   보냈고 그것이 저장된 새 글을 이겼다. 화면을 고쳐도 폰에 떠 있는 옛 화면은
+   못 고친다 — 그러니 **화면을 믿는 구조 자체**를 버린다.
+
+   → 이제 올릴 글은 `data/series/<사건>.meta.json` 하나뿐이다.
+     제목을 고치려면 [② -2 대본 고치기] 를 쓴다. 그러면 저장된 글이 바뀌고,
+     화면이든 유튜브든 같은 글을 본다.
 """
 import json
 import os
 import sys
-import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-NEED = ("title", "description", "tags")
 
 
-def sane(m):
-    """올릴 글이 성한가 — 낱개 한 편이든, 편 여럿을 담은 것이든.
+# 되살아나면 안 되는 것들 (2026-09-06 — 검색량이 안 잡혀 뺀 태그들)
+DEAD = ("shorts", "법률사연", "쇼츠드라마", "실화사연", "외도")
 
-    ⭐ 2026-09-01 — 한 사건이 여러 편이 되면서 모양이 {sid, parts:[…]} 로
-       바뀌었다. 옛 낱개 모양도 계속 받아 준다(예전에 보관해 둔 것들).
+
+def blocked(meta):
+    """올리면 안 되는 글인가 — 막을 까닭을 줄줄이 돌려준다.
+
+    ⭐⭐⭐ 2026-09-06 — 마지막 문지기다. 글이 어디서 왔든(화면·저장된 파일·
+       옛 보관함) **여기를 지나야 올라간다.** 그날 옛 글이 세 편이나 올라간
+       뒤에야 알았다. 올리기 전에 막는 자리가 한 곳도 없었기 때문이다.
     """
-    if not isinstance(m, dict):
-        return False
-    if m.get("parts"):
-        return all(isinstance(x, dict) and all(x.get(k) for k in NEED)
-                   for x in m["parts"])
-    return all(m.get(k) for k in NEED)
-
-
-def _open(url):
-    # 보관함은 암호를 받는다 (tools/fetch_cards.py 와 같은 길)
-    req = urllib.request.Request(url, headers={
-        "User-Agent": "verdict-theater",
-        "x-vt-pass": os.environ.get("ADMIN_PASS", ""),
-    })
-    return urllib.request.urlopen(req, timeout=120)
+    why = []
+    for x in (meta.get("parts") or [meta]):
+        head = f"{x.get('part') or ''}편 ".strip() + " " if x.get("part") else ""
+        if "#" in str(x.get("title") or ""):
+            why.append(f"{head}제목에 해시태그가 들어 있다 — {x.get('title')}")
+        for t in (x.get("tags") or []):
+            if str(t).strip().lower() in DEAD:
+                why.append(f"{head}없앤 해시태그가 되살아났다 — #{t}")
+    return why
 
 
 def show(out):
@@ -59,41 +66,30 @@ def main():
     out = Path(sys.argv[2] if len(sys.argv) > 2 else "build/s90/meta.json")
     out.parent.mkdir(parents=True, exist_ok=True)
 
-    got = None
     if raw and raw not in ("{}", "null"):
-        try:
-            if raw.startswith("http"):
-                with _open(raw) as r:
-                    got = json.loads(r.read().decode("utf-8"))
-            else:
-                got = json.loads(raw)
-        except Exception as e:                               # noqa: BLE001
-            print(f"  ⚠️ 고치신 글을 못 읽었다 ({str(e)[:80]}) — 대본에서 만든다")
-            got = None
+        # ⚠️ 옛 화면이 아직 글을 실어 보낸다. 받되 **쓰지 않는다.**
+        print("■ 화면이 보낸 글이 있지만 쓰지 않습니다 "
+              "(옛 화면이면 옛 글이 올라갑니다 — 2026-09-06 사고)")
 
-    if sane(got):
-        got.setdefault("sid", "S90")
-        out.write_text(json.dumps(got, ensure_ascii=False, indent=1) + "\n",
-                       encoding="utf-8")
-        print("■ 관리자 페이지에서 고치신 글을 그대로 씁니다")
-        show(out)
-        return 0
-
-    # ⚠️⚠️ 2026-08-31 — 여기서 src/short90.py 를 불렀다가 **PIL 이 없어 죽었다.**
-    #    글 한 장 만들자고 **영상 만드는 모듈을 통째로** 부른 것이 잘못이다
-    #    (short90.py 는 맨 윗줄에서 그림 라이브러리를 부른다).
-    #    이제 올릴 글은 대본을 지을 때 **미리 지어 저장소에 들어 있다.**
-    #    그 파일을 그대로 쓴다 — 아무것도 안 깔아도 되고, 화면에 보이는
-    #    글과 똑같은 글이 올라간다.
     sid = (os.environ.get("VT_SID") or "S90").strip().upper()
     made = ROOT / "data" / "series" / f"{sid}.meta.json"
     if not made.exists():
         print(f"❌ 올릴 글이 없습니다 ({made.relative_to(ROOT)})\n"
               "   python3 tools/build_short90.py 로 대본을 다시 지으면 생깁니다")
         return 1
-    print("■ 고치신 글이 없어 대본과 함께 지어 둔 글을 씁니다 (0원)")
+    print(f"■ 올릴 글은 저장해 둔 {made.name} 하나만 씁니다 (0원)")
     out.write_text(made.read_text(encoding="utf-8"), encoding="utf-8")
     show(out)
+
+    # ⭐ 마지막 문지기 — 옛 글이면 여기서 멈춘다 (올린 뒤엔 늦다)
+    why = blocked(json.loads(out.read_text(encoding="utf-8")))
+    if why:
+        print("\n❌ 옛 글입니다 — 올리지 않고 멈춥니다")
+        for w in why:
+            print(f"   · {w}")
+        print("\n   고치는 법: 관리자 페이지에서 [② -2 대본 고치기] 를 한 번\n"
+              "   누르시면 올릴 글이 새로 지어집니다 (0원).")
+        return 1
     return 0
 
 

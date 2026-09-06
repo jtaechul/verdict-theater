@@ -742,6 +742,69 @@ def cmd_series(args):
     return 0
 
 
+def cmd_fixmeta(args):
+    """⭐⭐⭐ 2026-09-06 — **이미 올린 영상의 제목·설명·해시태그만 고친다.**
+
+    그날 있었던 일: 세 편이 **옛 제목("…낯선 여자의 신음 소리 #shorts")과 옛
+    해시태그**로 올라갔다. 아직 공개 전(예약)이라 조회수 손해는 0이지만,
+    그대로 두면 그 글로 공개된다. 영상은 그대로 두고 글만 바꾼다.
+
+    값 0원 — 유튜브 videos.update 는 하루 할당량만 쓰고 돈이 안 든다.
+    ⚠️ 유튜브는 제목만 보내면 나머지를 지운다. 지금 것을 먼저 읽어 와서
+       바꿀 것만 갈아 끼운 **한 벌 전체**를 보낸다.
+    """
+    sys.path.insert(0, str(ROOT / "src"))
+    import shortstate                                        # noqa: E402
+
+    raw = json.loads(Path(args.meta).read_text(encoding="utf-8"))
+    sid = raw.get("sid") or args.sid
+    parts = raw.get("parts") or [raw]
+    want = [int(args.part)] if args.part and args.part != "all" else None
+
+    token = None if args.dry else access_token()
+    done = bad = 0
+    for meta in parts:
+        no = int(meta.get("part") or 1)
+        if want and no not in want:
+            continue
+        was = shortstate.uploaded(sid, no)
+        if not was or not was.get("video_id"):
+            print(f"  {no}편 — 아직 안 올렸다. 건너뛴다.")
+            continue
+        vid = was["video_id"]
+        title = (meta.get("title") or "").strip()
+        desc = meta.get("description") or ""
+        tags = [t for t in (meta.get("tags") or []) if t]
+        if not title:
+            print(f"  ❌ {no}편 제목이 비었다")
+            bad += 1
+            continue
+        print(f"\n{no}편 https://youtu.be/{vid}")
+        print(f"  새 제목: {title}")
+        print(f"  새 해시태그: {' '.join('#' + t for t in tags)}")
+        if args.dry:
+            print("  (연습이라 실제로는 안 고쳤다)")
+            done += 1
+            continue
+        got = api("GET", "videos", token, params={"part": "snippet", "id": vid})
+        items = got.get("items") or []
+        if not items:
+            print(f"  ❌ 유튜브에서 못 찾았다 ({vid})")
+            bad += 1
+            continue
+        snip = dict(items[0]["snippet"])
+        snip["title"] = title[:100]
+        snip["description"] = desc[:4900]
+        snip["tags"] = tags[:15]
+        snip.setdefault("categoryId", "24")
+        api("PUT", "videos", token, body={"id": vid, "snippet": snip},
+            params={"part": "snippet"})
+        print("  ✅ 고쳤다")
+        done += 1
+    print(f"\n■ {done}편 고쳤다" + (f" · {bad}편 실패" if bad else ""))
+    return 1 if bad else 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -793,8 +856,18 @@ def main():
     r.add_argument("--dry", action="store_true",
                    help="연습 — 올리기 직전까지만 해 보고 실제로는 올리지 않는다")
 
+    x = sub.add_parser("fixmeta",
+                       help="이미 올린 편의 제목·설명·해시태그만 고친다 (0원)")
+    x.add_argument("sid")
+    x.add_argument("--part", default="all", help="몇 편인가 (1/2/3… 또는 all)")
+    x.add_argument("--meta", required=True)
+    x.add_argument("--dry", action="store_true",
+                   help="연습 — 무엇으로 바뀌는지만 보여 주고 안 고친다")
+
     args = ap.parse_args()
     try:
+        if args.cmd == "fixmeta":
+            return cmd_fixmeta(args)
         if args.cmd == "series":
             return cmd_series(args)
         if args.cmd == "meta":

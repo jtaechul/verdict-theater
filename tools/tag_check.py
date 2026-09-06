@@ -118,6 +118,39 @@ def main():
         ck(f"「{hook[:14]}…」 맨 앞이 '사연'", mm["tags"][0] == "사연",
            " ".join(mm["tags"][:3]))
 
+    print("\n⑥ 올리기 직전에 옛 글을 막는 문지기가 있는가")
+    # ⭐⭐⭐ 2026-09-06 — 세 편이 옛 제목("…신음 소리 #shorts")과 옛
+    #    해시태그로 유튜브에 올라갔다. 원인이 **두 군데였다** —
+    #      ① tools/fetch_meta90.py 가 "관리자 화면이 보낸 글이 이긴다" 였다.
+    #         손님 폰의 화면이 새로고침 안 된 옛 화면이라 옛 글을 실어 보냈다.
+    #      ② 저장된 data/series/S91.meta.json 자체도 태그를 고치기 전 것이었다.
+    #    둘 중 하나만 막았어도 안 올라갔을 텐데 막는 자리가 한 곳도 없었다.
+    sys.path.insert(0, str(ROOT / "tools"))
+    import fetch_meta90 as FM                                # noqa: E402
+
+    src = (ROOT / "tools" / "fetch_meta90.py").read_text(encoding="utf-8")
+    ck("올릴 글을 화면에서 받아 쓰지 않는다",
+       "json.dumps(got" not in src and "화면이 보낸 글이 있지만 쓰지 않습니다" in src,
+       "화면이 옛것이면 옛 글이 그대로 올라간다")
+
+    # ⚠️ 손님이 고치는 파일(data/series/*.meta.json)에 기대지 않는다 —
+    #    검사를 살아 있는 자료에 묶었다가 세 번 데었다. 여기 붙박이로 둔다.
+    dirty = {"parts": [
+        {"part": 1, "title": "옛 제목입니다 #shorts", "description": "x",
+         "tags": ["사연", "불륜"]},
+        {"part": 2, "title": "깨끗한 제목", "description": "x",
+         "tags": ["사연", "법률사연", "쇼츠드라마"]}]}
+    clean = {"parts": [
+        {"part": 1, "title": "깨끗한 제목", "description": "x",
+         "tags": ["사연", "불륜", "이혼사연"]}]}
+    why = FM.blocked(dirty)
+    ck("제목에 붙은 #shorts 를 잡는다",
+       any("해시태그가 들어 있다" in w for w in why), f"{why}")
+    ck("없앤 해시태그가 되살아난 것을 잡는다",
+       sum("되살아났다" in w for w in why) == 2, f"{why}")
+    ck("깨끗한 글은 그냥 통과시킨다", not FM.blocked(clean), f"{FM.blocked(clean)}")
+    ck("죽은 태그 목록이 비어 있지 않다", len(FM.DEAD) >= 5, f"{FM.DEAD}")
+
     print("\n" + "─" * 60)
     if bad:
         print(f"❌ 제목·해시태그: {len(bad)}군데")
