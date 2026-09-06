@@ -23,6 +23,12 @@ ROOT = Path(__file__).resolve().parent.parent
 SERIES = ROOT / "data" / "series"
 
 TITLE_MAX = 100          # 유튜브 제목 한도
+# ⭐⭐⭐ 2026-09-06 손님: "다음화가 궁금하다면은 구독과 좋아요, 알림을 좀
+#    설정하도록 유도하는 건 어떨까." 영상 끝 화면(short90.TAIL_SUB_*)과
+#    **같은 말**을 쓴다 — 화면과 설명이 따로 놀면 안 된다.
+CTA_NEXT = "다음 편이 궁금하시면 구독 · 좋아요 · 알림 설정을 해 두십시오."
+CTA_LAST = "구독해 두시면 다음 사건을 놓치지 않습니다. 좋아요와 알림 설정도 부탁드립니다."
+
 DESC_MAX = 4900
 TAG_MAX = 15
 
@@ -191,7 +197,7 @@ def cuts_of(doc, part):
     return [c for c in (doc.get("cuts") or []) if a <= c["n"] <= b]
 
 
-def part_meta(doc, part):
+def part_meta(doc, part, last=False):
     """한 **편**의 제목·설명·해시태그. 0원 (모델을 안 부른다).
 
     ⭐⭐ 2026-09-01 — 한 사건을 여러 편으로 나눠 올린다. 편마다 제목·설명이
@@ -223,6 +229,11 @@ def part_meta(doc, part):
     body = [clean(part["card"][0]) + ", " + clean(part["card"][1]), ""]
     body += narr_lines(sub, 2)
     body += ["", "법원은 어떻게 판단했을까요.", "", f"「{label}」"]
+    # ⭐⭐⭐ 2026-09-06 손님: "다음화가 궁금하다면은 구독과 좋아요, 알림을 좀
+    #    설정하도록 유도하는 건 어떨까." 영상 끝 화면(short90.end_card)에도
+    #    같은 말을 띄운다 — 화면과 설명이 따로 놀면 안 된다.
+    #    ⚠️ 마지막 편에는 "다음 편" 이라고 하지 않는다 (없는 편을 기다리게 된다).
+    body += ["", CTA_LAST if last else CTA_NEXT]
     body += [
         "",
         "실제 판결을 바탕으로 각색한 이야기입니다.",
@@ -238,6 +249,12 @@ def part_meta(doc, part):
             "privacy": "private"}
 
 
+def _last(doc):
+    """마지막 편 번호 (없으면 0)."""
+    nos = [int(p.get("no") or 0) for p in (doc.get("parts") or [])]
+    return max(nos) if nos else 0
+
+
 def meta90(doc):
     """사건 하나의 **편별** 올릴 글. 편 수는 대본이 정한다 (2편이든 4편이든).
 
@@ -246,4 +263,5 @@ def meta90(doc):
     """
     return {"sid": doc.get("sid") or "S90",
             "label": clean(doc.get("series_label")) or clean(doc.get("title")),
-            "parts": [part_meta(doc, p) for p in (doc.get("parts") or [])]}
+            "parts": [part_meta(doc, p, last=(int(p.get("no") or 0) == _last(doc)))
+                      for p in (doc.get("parts") or [])]}

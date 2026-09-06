@@ -129,6 +129,31 @@ def main():
     # ⭐ 자막이 갈리는 것·글씨 크기가 튀는 것·나레이션 주어는
     #    tools/sub_check.py 가 본다 (여기는 **컷 그림**만 본다).
 
+    print("\n③ 몇 장 다시 그리는지 **그리기 전에** 정확히 적는가")
+    # ⭐⭐⭐ 2026-09-06 손님: "왜 계속 만든 것 중 재활용 가능한 걸 또 만들어서
+    #    돈을 낭비하냐." 그리고 이 줄이 그 낭비를 **가리고 있었다** —
+    #    "새로 그릴 것 27장 · 약 3,572원" 이라고 적어 놓고 실제로는 6장만
+    #    그린 날이 있었다. 정말 27장을 그린 날도 같은 글이 떴다.
+    #    ⚠️ 이제 보관함을 받아 온 뒤(salvage) **진짜 다시 그릴 수**를 센다.
+    s9 = (ROOT / "src" / "short90.py").read_text(encoding="utf-8")
+    fn = (re.search(r"def stills\(doc\)[\s\S]*?\n\ndef ", s9) or [""])[0]
+    ck("보관함을 먼저 받아 온 뒤에 센다",
+       fn.index("kept = salvage(d)") < fn.index("plan = []"))
+    ck("컷마다 지문을 재서 '다시 그릴 것' 을 고른다",
+       "reuse.can_reuse(" in fn.split("made = 0")[0]
+       and "sig not in kept" in fn)
+    ck("컷 수가 아니라 **다시 그릴 수**로 값을 적는다",
+       "one * len(plan)" in fn and "* uniq" not in fn)
+    ck("그대로 쓰는 장수도 같이 적는다 (0원인 것을 보여 준다)",
+       "그대로 씁니다" in fn)
+    ck("어느 컷을 다시 그리는지 번호로 적는다", "다시 그리는 컷" in fn)
+    # ⚠️ 세는 자리와 그리는 자리가 **같은 잣대**를 써야 한다. 다르면 예고가
+    #    거짓말이 된다 (예고 6장 → 실제 27장).
+    body = fn.split("made = 0")[1]
+    ck("예고와 실제가 같은 잣대를 쓴다 (sig_of · can_reuse · kept)",
+       all(k in body for k in ("reuse.sig_of(c[\"still\"], *refs)",
+                               "reuse.can_reuse(", "sig in kept")))
+
     print("\n" + "─" * 60)
     if bad:
         print(f"❌ 컷 그림: {len(bad)}군데")

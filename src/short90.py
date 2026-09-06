@@ -134,6 +134,13 @@ TAIL_SIZE = 78
 TAIL_FADE = (0.30, 0.70, 1.0)    # 나타날 때 세 단계 (뚝 튀어나오면 눈에 걸린다)
 TAIL_NEXT = "다음 편에 계속"
 TAIL_LAST = "완결"
+# ⭐⭐⭐ 2026-09-06 손님: "다음화가 궁금하다면은 구독과 좋아요, 알림을 좀
+#    설정하도록 유도하는 건 어떨까." 끝까지 본 사람에게만 보이는 자리라
+#    가장 좋다. 큰 글 아래에 **작게 한 줄** 더 둔다 (큰 글을 안 가린다).
+# ⚠️ OS 이모지는 안 쓴다 — 기기마다 모양이 달라 싸구려처럼 보인다(0-2 규칙).
+TAIL_SUB_NEXT = "다음 편이 궁금하다면  구독 · 좋아요 · 알림"
+TAIL_SUB_LAST = "구독해 두시면 다음 사건을 놓치지 않습니다"
+TAIL_SUB_SIZE = 40
 
 SCRIM_TOP = 1080                 # 여기부터 아래로 서서히 어두워진다
 SCRIM_MAX = 0.88                 # 맨 아래 어두움 (0~1)
@@ -467,11 +474,27 @@ def stills(doc):
     kept = salvage(d)
     # ⚠️ 컷 수로 곱하면 값을 부풀려 적게 된다. 편 앞머리 나레이션처럼
     #    **다른 컷과 지문이 똑같은 컷**은 다시 안 그리고 옮겨 쓴다(0원).
-    uniq = len({c["still"] for c in doc["cuts"]})
-    free = len(doc["cuts"]) - uniq
-    print(f"■ 컷 그림 {len(doc['cuts'])}장 (세로 9:16 · 새로 그릴 것 {uniq}장 "
-          f"· 약 {cost.image_krw(ST.MODEL, ST.SIZE) * uniq:,.0f}원"
-          + (f" · 같은 그림 {free}장은 0원)" if free else ")"))
+    # ⭐⭐⭐ 2026-09-06 손님: **"왜 계속 만든 것 중 재활용 가능한 걸 또 만들어서
+    #    돈을 낭비하냐."** 맞는 지적이었다. 그리고 이 줄이 그 낭비를 **가리고
+    #    있었다** — 여기서 "새로 그릴 것 27장 · 약 3,572원" 이라고 적어 놓고
+    #    실제로는 6장만 그린 날이 있었다. 반대로 정말 27장을 그린 날도 같은
+    #    글이 떴다. **둘을 구분할 수가 없었다.**
+    #    → 보관함을 이미 받아 온 뒤이므로(salvage), **진짜로 다시 그릴 것이
+    #      몇 장인지 여기서 세어서** 그리기 전에 적는다.
+    plan = []
+    for c in doc["cuts"]:
+        refs = [p for p in (ST.card_path(cards_dir(), ST_NAME.get(w, w))
+                            for w in c.get("who") or []) if p.exists()]
+        sig = reuse.sig_of(c["still"], *refs)
+        ok, _why = reuse.can_reuse(d / f"c{c['n']:02d}.png", sig)
+        if not ok and sig not in kept:
+            plan.append(c["n"])
+    one = cost.image_krw(ST.MODEL, ST.SIZE)
+    keep = len(doc["cuts"]) - len(plan)
+    print(f"■ 컷 그림 {len(doc['cuts'])}장 — **다시 그릴 것 {len(plan)}장 "
+          f"· 약 {one * len(plan):,.0f}원** (나머지 {keep}장은 그대로 씁니다 · 0원)")
+    if plan:
+        print(f"   다시 그리는 컷: {', '.join(str(n) for n in plan)}")
     made = 0
     for c in doc["cuts"]:
         out = d / f"c{c['n']:02d}.png"
@@ -772,6 +795,11 @@ def overlay(c, out, turn=None, now=None, mark=""):
     return out
 
 
+def tail_sub(text):
+    """큰 글 아래 작게 붙는 유도 한 줄."""
+    return TAIL_SUB_LAST if str(text) == TAIL_LAST else TAIL_SUB_NEXT
+
+
 def end_card(text, out, alpha=1.0):
     """영상 끝에 뜨는 알림 — "다음 편에 계속" / "완결".
 
@@ -782,7 +810,12 @@ def end_card(text, out, alpha=1.0):
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     f = ImageFont.truetype(str(FONT_NAME), TAIL_SIZE)
+    sf = ImageFont.truetype(str(FONT_NAME), TAIL_SUB_SIZE)
+    sub = tail_sub(text)
     x1, y1, x2, y2 = d.textbbox((W / 2, TAIL_Y), str(text), font=f, anchor="ma")
+    sy = y2 + 18                                 # 큰 글 바로 아래
+    s1, _st, s2, sb = d.textbbox((W / 2, sy), sub, font=sf, anchor="ma")
+    x1, x2, y2 = min(x1, s1), max(x2, s2), sb    # 판을 두 줄에 맞춰 넓힌다
     pad_x, pad_y = 46, 26
     # 글자 뒤에 어두운 판을 깔아 밝은 그림 위에서도 읽히게 한다
     plate = Image.new("RGBA", (W, H), (0, 0, 0, 0))
@@ -796,6 +829,9 @@ def end_card(text, out, alpha=1.0):
            fill=GOLD, width=3)
     d.text((W / 2, TAIL_Y), str(text), font=f, fill=GOLD_BRIGHT, anchor="ma",
            stroke_width=4, stroke_fill=(0, 0, 0, 210))
+    # 유도 한 줄 — 흰색·작게. 큰 글보다 조용해야 한다.
+    d.text((W / 2, sy), sub, font=sf, fill=(255, 255, 255, 230), anchor="ma",
+           stroke_width=3, stroke_fill=(0, 0, 0, 200))
     if alpha < 1.0:
         img.putalpha(img.split()[3].point(lambda v: int(v * alpha)))
     img.save(out)
