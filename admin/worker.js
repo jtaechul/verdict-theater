@@ -1727,7 +1727,8 @@ async function workUpAll(dry) {
   if (!dry) {
     const done = ps.filter(function (x) { return x.uploaded; });
     const lines = [ps.length + '편을 한 번에 올릴까요?', '',
-                   '첫 편은 지금 공개되고,',
+                   '세 편 모두 예약 공개입니다 (지금 공개되는 편은 없습니다).',
+                   '첫 편은 한국 시각 다음 아침 8시,',
                    '나머지는 ' + every + '시간 간격으로 저절로 공개됩니다.',
                    '', '공개 범위: ' + priv];
     if (done.length)
