@@ -37,6 +37,30 @@ def story_path(sid):
     return ROOT / "data" / "series" / f"{sid}.story.json"
 
 
+def edit_title(sid, no, title):
+    """편 **제목**(유튜브에 올라가는 제목)을 고친다. 값 0원.
+
+    ⭐ 2026-09-06 — 제목은 컷 대사가 아니라 편(part)에 붙어 있어 따로 고친다.
+       쇼츠는 제목이 '볼지 말지' 를 정하는 거의 유일한 자리다.
+    """
+    p = story_path(sid)
+    if not p.exists():
+        raise SystemExit(f"❌ {p.name} 이 없습니다")
+    doc = json.loads(p.read_text(encoding="utf-8"))
+    part = next((x for x in doc.get("parts") or []
+                 if int(x.get("no") or 0) == int(no)), None)
+    if part is None:
+        raise SystemExit(f"❌ {sid} 에 {no}편이 없습니다")
+    t = str(title).strip()
+    if not t:
+        raise SystemExit("❌ 제목이 비었습니다")
+    if len(t) > 90:                       # 유튜브 상한 100자 · #shorts 자리를 남긴다
+        raise SystemExit(f"❌ 제목이 {len(t)}자입니다 — 90자까지입니다")
+    was = part.get("yt_title")
+    part["yt_title"] = t
+    return doc, p, [f"제목: 「{was}」 → 「{t}」"], [], ST.check(doc, new=False)
+
+
 def edit(sid, n, text=None, turn=0, scene=None, who=None):
     """컷 하나를 고치고, 무엇이 어떻게 바뀌었는지 돌려준다."""
     p = story_path(sid)
@@ -86,17 +110,24 @@ def rebuild(sid):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--sid", required=True)
-    ap.add_argument("--cut", type=int, required=True)
+    ap.add_argument("--cut", type=int, default=0)
     ap.add_argument("--turn", type=int, default=0, help="한 컷에 두 줄이면 0/1")
     ap.add_argument("--text", default=None, help="새 대사")
     ap.add_argument("--scene", default=None, help="새 화면 묘사(영어)")
     ap.add_argument("--who", default=None, help="화면에 세울 사람 (쉼표로)")
+    ap.add_argument("--title", default=None, help="편 제목 (유튜브에 올라가는 것)")
+    ap.add_argument("--part", type=int, default=0, help="--title 을 고칠 편 번호")
     ap.add_argument("--dry", action="store_true", help="저장하지 않고 보기만")
     a = ap.parse_args()
 
     sid = a.sid.upper()
-    doc, p, was, log, bad = edit(sid, a.cut, a.text, a.turn, a.scene, a.who)
-    print(f"■ {sid} 컷{a.cut}")
+    if a.title is not None:
+        doc, p, was, log, bad = edit_title(sid, a.part, a.title)
+        head = f"■ {sid} {a.part}편"
+    else:
+        doc, p, was, log, bad = edit(sid, a.cut, a.text, a.turn, a.scene, a.who)
+        head = f"■ {sid} 컷{a.cut}"
+    print(head)
     for x in was:
         print(f"  {x}")
     for x in log:

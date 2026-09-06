@@ -159,25 +159,39 @@ jobs:
           #   · all    : 첫 편은 지금, 나머지는 **예약 공개**로 하루씩 띄운다.
           #     손님이 사흘 동안 다시 안 들어오셔도 알아서 하루 간격으로 뜬다.
           #     (저장소 규칙에 이미 있다 — "쇼츠는 같은 날 한꺼번에 공개하지 않는다")
+          # ⭐⭐⭐ 2026-09-06 손님: "한꺼번에 올리니까 1편은 매번 조회수가 0이잖아."
+          #    실제 숫자를 뽑아 보니 원인은 "한꺼번에" 가 아니라 **1편만 예약
+          #    없이 즉시 공개**되던 것이었다. 바로 여기가 그랬다 —
+          #        if [ "$I" -eq 0 ]; then AT=""; else …
+          #    1편은 업로드가 끝나는 그 순간 공개된다. 유튜브가 아직 고화질
+          #    변환을 못 끝낸 때다. 그 상태로 공개되면 초기 노출에서 저화질로
+          #    서빙되고 쇼츠 피드 진입이 나빠진다.
+          #      실측 — 즉시 공개 2건 349회·0회 / 예약 공개 8건 1,212~2,946회
+          #             (같은 사건인데 1편 349 vs 2편 2,946 — 여덟 배)
+          #    → **1편도 예약 공개**로. 그리고 시각은 **한국 아침 8시**로 고정
+          #      (실측: 아침 8시 4건 평균 1,849 · 오후 1시 3건 1,269 · 저녁 349)
+          # ⚠️ '공개' 를 고르셨을 때만 예약을 건다. 비공개·일부공개를 고르셨는데
+          #    저절로 공개되면 안 된다.
           RC=0
+          SLOT() { [ "$P" = "public" ] && echo "--publish-at $(python3 tools/next_slot.py $1)"; }
           if [ "$PART" = "all" ]; then
             I=0
             for F in build/s90/part*.mp4; do
               [ -f "$F" ] || continue
               K=$(basename "$F" | sed 's/part\([0-9]*\)\.mp4/\1/')
-              if [ "$I" -eq 0 ]; then AT=""; else
-                AT="--publish-at $(python3 tools/plus_hours.py $((I * ${EVERY:-24})))"
-              fi
+              D=$(( I * ${EVERY:-24} / 24 ))
               python3 src/upload.py series "$S" --part "$K" \
                 --video "$F" --meta build/s90/meta.json \
-                --privacy "$P" $AT $DRY 2>&1 | tee -a up.log || RC=1
+                --privacy "$P" $(SLOT $D) $DRY 2>&1 | tee -a up.log || RC=1
               I=$((I+1))
             done
           else
+            # ⚠️ 한 편만 올릴 때도 예약을 건다. 여기가 비어 있어서 [1편만
+            #    올리기] 도 즉시 공개됐다 — 같은 고장이 두 자리에 있었다.
             python3 src/upload.py series "$S" --part "$PART" \
               --video "build/s90/part$PART.mp4" \
               --meta build/s90/meta.json \
-              --privacy "$P" $DRY 2>&1 | tee up.log || RC=1
+              --privacy "$P" $(SLOT 0) $DRY 2>&1 | tee up.log || RC=1
           fi
           exit $RC
 
