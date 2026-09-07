@@ -729,6 +729,20 @@ def cmd_series(args):
     vid = upload_video(token, video, title, desc, tags,
                        vertical=True, privacy=privacy, publish_at=at)
     print(f"\n✅ 올렸다 — https://youtu.be/{vid}")
+    # ⭐⭐⭐ 2026-09-07 손님: "섬네일을 내가 지정한 걸로 똑바로 올렸으면
+    #    이런 일 없잖아." 맞다 — 여기에 썸네일을 올리는 자리가 아예 없었다.
+    #    그래서 유튜브가 영상 한가운데 아무 장면이나 골라 썼다.
+    #    ⚠️ 썸네일이 실패해도 영상은 이미 올라갔다. 죽이지 않고 알리기만 한다.
+    th = Path(args.thumb) if getattr(args, "thumb", "") else None
+    if th and th.exists():
+        try:
+            set_thumbnail(token, vid, th)
+            print(f"  ▣ 썸네일도 올렸다 ({th.name})")
+        except Exception as e:                               # noqa: BLE001
+            print(f"  ⚠️ 썸네일은 못 올렸다 ({str(e)[:90]}) — 영상은 올라갔다")
+    else:
+        print("  ⚠️ 썸네일이 없어 유튜브가 아무 장면이나 고릅니다 "
+              "(쇼츠 만들기를 다시 누르면 생깁니다)")
     shortstate.mark_uploaded(sid, no, vid, "private" if at else privacy, at)
 
     # ⚠️ 옛 화면(state/series.json)도 아직 이것을 본다 — 같이 적어 둔다.
@@ -800,6 +814,14 @@ def cmd_fixmeta(args):
         api("PUT", "videos", token, body={"id": vid, "snippet": snip},
             params={"part": "snippet"})
         print("  ✅ 고쳤다")
+        # ⭐ 썸네일도 있으면 같이 갈아 끼운다 — 이미 올린 편도 구제된다
+        th = Path(args.thumb_dir) / f"part{no}.jpg" if args.thumb_dir else None
+        if th and th.exists():
+            try:
+                set_thumbnail(token, vid, th)
+                print(f"  ▣ 썸네일도 갈아 끼웠다 ({th.name})")
+            except Exception as e:                           # noqa: BLE001
+                print(f"  ⚠️ 썸네일은 못 바꿨다 ({str(e)[:90]})")
         done += 1
     print(f"\n■ {done}편 고쳤다" + (f" · {bad}편 실패" if bad else ""))
     return 1 if bad else 0
@@ -848,6 +870,8 @@ def main():
     r.add_argument("--part", default="", help="몇 편인가 (1/2/3…)")
     r.add_argument("--video", required=True)
     r.add_argument("--meta", required=True)
+    r.add_argument("--thumb", default="",
+                   help="썸네일 JPEG (없으면 유튜브가 아무 장면이나 고른다)")
     r.add_argument("--privacy", default="", help="private / unlisted / public")
     r.add_argument("--publish-at", dest="publish_at", default="",
                    help="예약 공개 시각 (2026-09-02T10:00:00Z)")
@@ -861,6 +885,8 @@ def main():
     x.add_argument("sid")
     x.add_argument("--part", default="all", help="몇 편인가 (1/2/3… 또는 all)")
     x.add_argument("--meta", required=True)
+    x.add_argument("--thumb-dir", dest="thumb_dir", default="",
+                   help="썸네일이 든 자리 (part1.jpg … 를 찾는다)")
     x.add_argument("--dry", action="store_true",
                    help="연습 — 무엇으로 바뀌는지만 보여 주고 안 고친다")
 

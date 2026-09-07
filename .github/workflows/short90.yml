@@ -236,6 +236,11 @@ jobs:
             [ -f "$F" ] || continue
             K=$(basename "$F" | sed 's/.*_part\([0-9]*\)\.mp4/\1/')
             python3 tools/release_file.py put "short90-$S" "part$K.mp4" "$F"
+            # ⭐ 2026-09-07 — 썸네일도 같이 보관한다. 이게 없으면 올릴 때
+            #    유튜브가 영상 한가운데 아무 장면이나 골라 쓴다.
+            T="${F%.mp4}.jpg"
+            [ -f "$T" ] && python3 tools/release_file.py put "short90-$S" \
+              "part$K.jpg" "$T" && echo "  보관: $K편 썸네일"
             echo "  보관: $K편 ($F)"
             N=$((N+1))
           done
@@ -261,7 +266,9 @@ jobs:
           #      치우는 것은 옛 한 편짜리(short.mp4) 같은 남은 것들뿐이다.
           python3 tools/release_file.py prune "short90-${VT_SID:-S90}" \
             meta.json part1.mp4 part2.mp4 part3.mp4 part4.mp4 part5.mp4 \
-            part6.mp4 part7.mp4 part8.mp4 part9.mp4 || true
+            part6.mp4 part7.mp4 part8.mp4 part9.mp4 \
+            part1.jpg part2.jpg part3.jpg part4.jpg part5.jpg \
+            part6.jpg part7.jpg part8.jpg part9.jpg || true
 
           # ⭐⭐⭐ 2026-09-02 — **올렸다는 것과 남아 있다는 것은 다르다.**
           #    위 사고 때 워크플로는 초록불이었다 — 올리는 것도 지우는 것도

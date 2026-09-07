@@ -125,6 +125,10 @@ jobs:
             python3 tools/release_file.py get "short90-$S" "part$K.mp4" \
               "build/s90/part$K.mp4" 2>/dev/null || continue
             [ -s "build/s90/part$K.mp4" ] || continue
+            # ⭐ 2026-09-07 — 썸네일도 꺼낸다. 없으면 그냥 넘어간다
+            #    (옛 사건에는 없다 — 그때는 유튜브가 아무 장면이나 썼다).
+            python3 tools/release_file.py get "short90-$S" "part$K.jpg" \
+              "build/s90/part$K.jpg" 2>/dev/null || true
             echo "  꺼냄: $K편"
             N=$((N+1))
           done
@@ -160,8 +164,14 @@ jobs:
           set -o pipefail
           DRY=""
           [ "${{ inputs.mode }}" = "연습 (올리지 않고 확인만)" ] && DRY="--dry"
+          # ⭐ 썸네일도 같이 갈아 끼운다 — 이미 올린 편도 구제된다
+          for K in 1 2 3 4 5; do
+            python3 tools/release_file.py get "short90-${SID:-S90}" \
+              "part$K.jpg" "build/s90/part$K.jpg" 2>/dev/null || true
+          done
           python3 src/upload.py fixmeta "${SID:-S90}" --part "$PART" \
-            --meta build/s90/meta.json $DRY 2>&1 | tee up.log
+            --meta build/s90/meta.json --thumb-dir build/s90 \
+            $DRY 2>&1 | tee up.log
 
       - name: 유튜브에 올리기
         if: ${{ !startsWith(inputs.fix_only, '예') }}
@@ -210,6 +220,7 @@ jobs:
               D=$(( I * ${EVERY:-24} / 24 ))
               python3 src/upload.py series "$S" --part "$K" \
                 --video "$F" --meta build/s90/meta.json \
+                --thumb "build/s90/part$K.jpg" \
                 --privacy "$P" $(SLOT $D) $DRY 2>&1 | tee -a up.log || RC=1
               I=$((I+1))
             done
@@ -219,6 +230,7 @@ jobs:
             python3 src/upload.py series "$S" --part "$PART" \
               --video "build/s90/part$PART.mp4" \
               --meta build/s90/meta.json \
+              --thumb "build/s90/part$PART.jpg" \
               --privacy "$P" $(SLOT 0) $DRY 2>&1 | tee up.log || RC=1
           fi
           exit $RC

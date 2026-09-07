@@ -305,6 +305,12 @@ jobs:
       - name: 제목·해시태그가 조회수에 도움이 되는 모양인가
         run: python3 tools/tag_check.py
 
+      # ⭐⭐⭐ 2026-09-07 손님: "섬네일을 내가 지정한 걸로 똑바로 올렸으면
+      #    이런 일 없잖아." 90초 쇼츠 길에는 썸네일이 **한 군데도 없었다** —
+      #    만들지도, 올리지도 않아서 유튜브가 아무 장면이나 골라 썼다.
+      - name: 썸네일이 만들어지고 진짜로 올라가는가
+        run: python3 tools/thumb_check.py
+
       - name: 유튜브에 올릴 글이 두 곳에서 같은가
         run: python3 tools/ytmeta_test.py
 

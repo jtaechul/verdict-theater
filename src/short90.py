@@ -1401,6 +1401,39 @@ def part_file(doc, no):
     return OUT / f"{doc.get('sid', 'S90')}_part{int(no)}.mp4"
 
 
+# ── ⭐⭐⭐ 썸네일 (2026-09-07 손님 지시) ─────────────────────────
+#    손님: "섬네일을 내가 지정한 걸로 똑바로 올렸으면 이런 일 없잖아.
+#           맨날 올릴 때 섬네일이 이상한 대로 지정되어 있으니까."
+#    맞는 말씀이다. 90초 쇼츠를 올리는 길에는 **썸네일을 올리는 자리가 아예
+#    없었다.** 그래서 유튜브가 영상 한가운데 아무 장면이나 골라 썼다.
+#
+#    어디를 뽑나 — 편 첫 장면의 이 시각. 여기에는
+#      · 화면 위 제목 카드(두 줄)  · 인물 얼굴  · 첫 자막
+#    이 다 들어 있다. 우리가 이미 디자인해 둔 화면이므로 따로 그릴 값이 없다.
+#    ⚠️ 쇼츠 피드(세로로 넘기는 화면)는 썸네일을 안 쓴다 — 영상이 바로 돈다.
+#       썸네일이 먹히는 곳은 **검색·채널 페이지·구독 피드**다. 거기서 갈린다.
+THUMB_AT = 1.2                   # 편 첫 장면에서 이 시각(초)의 화면을 뽑는다
+THUMB_MAX_BYTES = 1_900_000      # 유튜브 상한 2MB — 안전하게 그 밑으로
+
+
+def part_thumb(doc, no):
+    """그 편의 썸네일 자리. 영상과 같은 이름에 확장자만 다르다."""
+    return OUT / f"{doc.get('sid', 'S90')}_part{int(no)}.jpg"
+
+
+def make_thumb(final, out):
+    """완성 영상에서 한 장면을 뽑아 썸네일로 둔다 (0원).
+
+    ⚠️ 유튜브는 2MB 를 넘으면 거절한다. 넘으면 품질을 낮춰 다시 뽑는다 —
+       한 번 만들어 놓고 "올렸겠지" 하면 조용히 안 올라간다."""
+    for q in (2, 5, 9):
+        run(["ffmpeg", "-y", "-v", "error", "-ss", f"{THUMB_AT:g}",
+             "-i", str(final), "-frames:v", "1", "-q:v", str(q), str(out)])
+        if out.exists() and out.stat().st_size <= THUMB_MAX_BYTES:
+            return out
+    return out
+
+
 # ⚠️⚠️⚠️ 이 채널이 실제로 겪은 일이다 (2026-09-01) —
 #    60초 이하로 만든 쇼츠 여섯 편은 **전부** 1,209~1,554회가 나왔는데,
 #    127초짜리 한 편은 5시간 반 동안 **조회수 0** 이었다. 쇼츠 피드가 아예
@@ -1499,6 +1532,10 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
     music(joined, final)
     joined.unlink(missing_ok=True)       # 음악 얹기 전 판은 남길 까닭이 없다
     got = dur_of(final)
+    # ⭐ 썸네일도 같이 뽑아 둔다 (0원) — 없으면 유튜브가 아무 장면이나 쓴다
+    th = make_thumb(final, part_thumb(doc, part["no"]))
+    if th.exists():
+        print(f"  ▣ {th.name} — 썸네일 ({th.stat().st_size / 1000:.0f}KB)")
     # ⭐ 만든 사실을 상태 파일에 적는다 — 관리자 페이지가 여기서 길이를 읽는다
     import shortstate                                        # noqa: E402
     shortstate.mark_made(doc.get("sid") or "S90", part["no"], got)
