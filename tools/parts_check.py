@@ -172,8 +172,16 @@ def main():
     #    127초 한 편은 5시간 반 동안 **조회수 0**. 쇼츠 피드가 안 태운 것이다.
     ck("조립할 때 본다 (short90.PART_MAX_SEC)",
        getattr(S9, "PART_MAX_SEC", 999) <= 60)
-    ck("대본 지을 때 본다 (story90.PART_CHARS)",
-       getattr(story90, "PART_CHARS", 999) <= 240)
+    # ⭐⭐⭐ 2026-09-08 — 여기가 `PART_CHARS <= 240` 이었다. 그런데 **글자
+    #    상한만으로는 60초 못이 되지 않는다** — 컷마다 1.9초가 고정으로 붙어
+    #    같은 글자 수라도 11컷이면 9컷보다 3.8초 길다. 게다가 그 240이라는
+    #    숫자는 1자당 0.248초라는 **54% 틀린 잣대**에서 나온 것이라, 실제로는
+    #    38초짜리 벽이었다(60초까지 22초를 버리고 있었다).
+    #    → 이제 초로 본다. 잣대 자체가 맞는지는 tools/sec_scale_check.py 가 본다.
+    ck("대본 지을 때 본다 (story90.PART_SEC_MAX)",
+       getattr(story90, "PART_SEC_MAX", 999) <= 57)
+    ck("글자 울타리도 남아 있다 (터무니없는 값 막기)",
+       getattr(story90, "PART_CHARS", 0) >= 300)
     t1 = (ROOT / "tools" / "short90_test.py").read_text(encoding="utf-8")
     ck("규격 시험이 본다", "60초 아래" in t1)
     t2 = (ROOT / "tools" / "short90_dryrun.py").read_text(encoding="utf-8")

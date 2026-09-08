@@ -135,9 +135,13 @@ def main():
 
     for part in doc.get("parts") or []:
         aa, bb = part["cuts"]
-        ch = sum(ST.chars(c) for c in doc["cuts"] if aa <= c["n"] <= bb)
-        flag = "  ← 상한 넘음" if ch > ST.PART_CHARS else ""
-        print(f"  {part['no']}편 {ch}자 ({ch * ST.SEC_PER_CHAR:.1f}초){flag}")
+        mine = [c for c in doc["cuts"] if aa <= c["n"] <= bb]
+        ch = sum(ST.chars(c) for c in mine)
+        # ⭐ 2026-09-08 — 초는 글자만으로 안 나온다. 컷 수까지 넣어 잰다.
+        ps = ST.part_sec(mine)
+        flag = ("  ← 상한 넘음" if ps > ST.PART_SEC_MAX
+                else "  ← 너무 짧다" if ps < ST.PART_SEC_MIN else "")
+        print(f"  {part['no']}편 {ch}자 {len(mine)}컷 (약 {ps:.1f}초){flag}")
 
     if bad:
         print(f"\n❌ 규격에 안 맞습니다 ({len(bad)}군데) — **저장하지 않았습니다**")
