@@ -1505,6 +1505,12 @@ function partsCard(w) {
      + '<div class="btns" style="margin-top:8px">'
      + mini('올린 글 고치기 (제목·해시태그 · 0원)', 'workFixMeta()')
      + '</div>'
+     // ⭐⭐⭐ 2026-09-08 — 대사 컷을 영상으로 바꾸는 설계의 **0번 관문**.
+     //    한 사건 전부(5~7컷 · 3,500~4,900원)를 사기 전에 한 컷만 사서
+     //    한국어 발음·입 모양·자막 박힘을 눈과 귀로 본다.
+     + '<div class="btns" style="margin-top:8px">'
+     + mini('대사 한 컷 시험 영상 (약 706원)', 'workTalkTest()')
+     + '</div>'
      + '<div id="w-msg-all" class="uphint"></div></div>';
   return h;
 }
@@ -1717,6 +1723,38 @@ async function workUp(no, dry) {
 // ⭐ 이미 올린 편의 제목·설명·해시태그만 유튜브에서 고친다 (0원).
 //    영상은 손대지 않는다. 올릴 글은 저장소에 저장된 것을 쓴다 —
 //    이 화면이 옛 화면이어도 옛 글이 올라가지 않는다.
+// ⭐ 대사 컷 하나를 시험 삼아 영상으로 사 본다 (약 706원).
+//    한국어로 말하는 영상은 이 채널이 한 번도 만들어 본 적이 없다 —
+//    구글이 "영어는 완전 지원, 다른 언어는 평가하지 않았다"고 못박아 두었다.
+async function workTalkTest() {
+  const id = 'w-up-all';
+  if (WBUSY[id]) return;
+  if (!confirm(['대사 한 컷을 시험 삼아 영상으로 만들까요?', '',
+                '약 706원이 듭니다 (6초 한 컷).',
+                '인물이 화면에서 직접 한국어로 말하는 영상입니다.', '',
+                '만든 뒤 이 세 가지를 봐 주십시오:',
+                '  1. 한국어 발음이 알아들을 만한가',
+                '  2. 입 모양이 말과 맞는가',
+                '  3. 화면에 글자가 박혀 있지 않은가',
+               ].join(String.fromCharCode(10)))) return;
+  WBUSY[id] = 1;
+  const msg = document.getElementById('w-msg-all');
+  if (msg) msg.textContent = '대사 한 컷 만드는 중… (2~3분)';
+  try {
+    const r = await fetch('/api/talk-test', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sid: WORK }),
+    });
+    const j = await r.json();
+    if (!j.ok) { showErr('시작하지 못했습니다', j.error || ''); return; }
+    watchRun('talk-test.yml', msg, '대사 한 컷을 만들었습니다');
+  } catch (e) {
+    showErr('시작하지 못했습니다', String(e && e.message ? e.message : e));
+  } finally {
+    WBUSY[id] = 0;
+  }
+}
+
 async function workFixMeta() {
   const id = 'w-up-all';
   if (WBUSY[id]) return;
@@ -4064,6 +4102,25 @@ export default {
       //    고쳐도 폰에 떠 있는 옛 화면은 못 고친다.
       //    → 이제 올릴 글은 저장소의 data/series/<사건>.meta.json 하나뿐이다.
       //      여기서 보내는 글은 기록으로만 남고 쓰이지 않는다.
+      // ⭐ 대사 한 컷 시험 영상 (약 706원) — 설계의 0번 관문
+      if (url.pathname === '/api/talk-test' && req.method === 'POST') {
+        let body = {};
+        try { body = await req.json(); } catch (e) { body = {}; }
+        const sid = /^S\d{1,4}$/.test(String((body && body.sid) || '').toUpperCase())
+          ? String(body.sid).toUpperCase() : 'S91';
+        try {
+          await gh(env, `/repos/${REPO}/actions/workflows/talk-test.yml/dispatches`, {
+            method: 'POST', body: JSON.stringify({ ref: BRANCH,
+              inputs: { sid: sid, cut: '', mode: '진짜로 만들기' } }),
+          });
+          return Response.json({ ok: true, sid: sid });
+        } catch (e) {
+          const m = String(e && e.message ? e.message : e);
+          return Response.json({ ok: false, error: '시작하지 못했습니다',
+            detail: m.slice(0, 220) }, { status: 502 });
+        }
+      }
+
       if (url.pathname === '/api/upload-short90' && req.method === 'POST') {
         let body = {};
         try { body = await req.json(); } catch (e) { body = {}; }

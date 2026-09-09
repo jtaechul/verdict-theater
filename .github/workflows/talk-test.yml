@@ -1,0 +1,108 @@
+name: 4-3. 대사 한 컷 시험 영상 (약 706원)
+
+# ⭐⭐⭐ 2026-09-08 손님: "나레이션은 이미지로, 대사는 영상으로 바꾸자."
+#    그 설계의 **0번 관문**이다. 한 사건 전부(5~7컷 · 3,500~4,900원)를 사기
+#    전에 **한 컷만 사서 눈과 귀로 본다.**
+#
+#    까닭: 구글 공식 문서가 Veo 의 대사·립싱크를 "영어는 완전 지원, 다른
+#    언어는 평가하지 않았다"고 못박았다. 이 채널이 지금까지 산 영상은 전부
+#    **입을 다물게** 만든 것이라(short90.OPEN_LIPS), 한국어로 말하는 영상은
+#    한 번도 만들어 본 적이 없다.
+#
+# ⚠️ 값이 나간다. 단추로만 돈다 (tools/auto_spend_check.py 규칙).
+
+on:
+  workflow_dispatch:
+    inputs:
+      sid:
+        description: '어느 사건 (비우면 S91)'
+        required: false
+        default: 'S91'
+      cut:
+        description: '몇 번 컷 (비우면 알아서 가장 알맞은 대사 컷)'
+        required: false
+        default: ''
+      mode:
+        description: '연습이면 사지 않고 무엇을 살지만 봅니다'
+        required: true
+        default: '진짜로 만들기'
+        type: choice
+        options:
+          - '진짜로 만들기'
+          - '연습 (사지 않고 확인만)'
+
+permissions:
+  contents: write
+
+jobs:
+  talk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 그림 꺼내 오기 (첫 장면으로 넣어야 얼굴이 안 바뀐다)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          S: ${{ inputs.sid }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/s90/stills
+          python3 tools/release_file.py get "stills-${S:-S91}" stills.zip \
+            build/stills.zip
+          unzip -q -o build/stills.zip -d build/s90/stills
+          ls build/s90/stills | head -3
+
+      - name: 대사 한 컷 사기
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          S: ${{ inputs.sid }}
+          C: ${{ inputs.cut }}
+        run: |
+          set -o pipefail
+          DRY=""
+          [ "${{ inputs.mode }}" = "연습 (사지 않고 확인만)" ] && DRY="--dry"
+          CUT=""
+          [ -n "$C" ] && CUT="--cut $C"
+          python3 tools/talk_test.py "${S:-S91}" $CUT $DRY 2>&1 | tee talk.log
+
+      - name: 만든 영상 보관하기
+        if: ${{ inputs.mode == '진짜로 만들기' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          S: ${{ inputs.sid }}
+        run: |
+          set -euo pipefail
+          F=$(ls build/s90/talk_test/*.mp4 2>/dev/null | head -1)
+          [ -n "$F" ] || { echo "만든 영상이 없습니다"; exit 1; }
+          python3 tools/release_file.py put "talktest-${S:-S91}" \
+            "$(basename "$F")" "$F"
+          echo "보관함: talktest-${S:-S91} / $(basename "$F")"
+
+      - name: 쓴 돈 장부 남기기
+        if: always()
+        continue-on-error: true
+        run: |
+          git config user.name "verdict-theater-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add state/spend.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "장부에 새로 적힌 것이 없다"
+          else
+            git commit -m "장부: 쓴 돈 [skip ci]"
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+            git push origin "HEAD:${GITHUB_REF_NAME}" || echo "못 밀었다"
+          fi
+
+      - name: 결과 화면
+        if: always()
+        run: |
+          {
+            echo "## 대사 한 컷 시험 영상"
+            echo ""
+            echo '```'
+            cat talk.log 2>/dev/null || echo "(못 만들었습니다)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
