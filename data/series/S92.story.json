@@ -1,0 +1,688 @@
+{
+ "title": "22억 독식 상속 사건",
+ "series_label": "22억 상속 다툼",
+ "hook": "수십억 보상금을 독식한 장남과, 끝까지 아버지를 간병한 차남의 다툼.",
+ "people": {
+  "장남": {
+   "age": "50대",
+   "sex": "남"
+  },
+  "차남": {
+   "age": "50대",
+   "sex": "남"
+  },
+  "딸": {
+   "age": "50대",
+   "sex": "여"
+  },
+  "아버지": {
+   "age": "70대",
+   "sex": "남"
+  },
+  "어머니": {
+   "age": "70대",
+   "sex": "여"
+  }
+ },
+ "parts": [
+  {
+   "no": 1,
+   "cuts": [
+    1,
+    9
+   ],
+   "yt_title": "13억 입금된 날, 아버지는 장남을 경찰에 고소했다",
+   "card": [
+    "통장 맡긴 날 사라진 12억",
+    "아버지를 배신한 장남"
+   ]
+  },
+  {
+   "no": 2,
+   "cuts": [
+    10,
+    19
+   ],
+   "yt_title": "어머니에게 간 7억 위자료마저 가로챈 아들",
+   "card": [
+    "어머니의 위자료 7억",
+    "그 돈마저 빼돌린 장남"
+   ]
+  },
+  {
+   "no": 3,
+   "cuts": [
+    20,
+    29
+   ],
+   "yt_title": "20억 가로챈 장남, 병든 아버지를 외면하다",
+   "card": [
+    "병원비는 차남 몫",
+    "20억 독식한 장남"
+   ]
+  },
+  {
+   "no": 4,
+   "cuts": [
+    30,
+    38
+   ],
+   "yt_title": "수십억 독식한 장남이 토해낸 4억 3천만 원",
+   "card": [
+    "22억 삼킨 장남",
+    "결국 4억 토해내다"
+   ]
+  }
+ ],
+ "cuts": [
+  {
+   "n": 1,
+   "sec": 5.8,
+   "who": [
+    "아버지"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "십삼억 원의 토지 보상금이 입금된 날이었습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "an old man sits at a table looking down at a folded document"
+  },
+  {
+   "n": 2,
+   "sec": 6.9,
+   "who": [
+    "아버지"
+   ],
+   "turns": [
+    [
+     "아버지",
+     "내가 은행에 갈 기력이 없으니, 네가 가서 입금만 확인해다오."
+    ]
+   ],
+   "say": [
+    "70대 남성이, 지친 기색으로 한 박자 쉬고 조용하게"
+   ],
+   "scene": "the old man hands a small book to a middle-aged man"
+  },
+  {
+   "n": 3,
+   "sec": 9.7,
+   "who": [
+    "장남"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "장남은 아버지의 통장과 인감도장을 넘겨받자마자 자기 이름으로 펀드 계좌를 만들었습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the middle-aged man sits at a bank counter filling out a form"
+  },
+  {
+   "n": 4,
+   "sec": 8.6,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "그리고 며칠에 걸쳐 십이억 원이 넘는 돈을 모조리 자기 계좌로 이체해 버렸습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the middle-aged man holds a smartphone and taps the screen"
+  },
+  {
+   "n": 5,
+   "sec": 6.0,
+   "who": [
+    "아버지"
+   ],
+   "turns": [
+    [
+     "아버지",
+     "내 통장에 있던 그 큰돈을 네가 왜 전부 다 빼간 것이냐."
+    ]
+   ],
+   "say": [
+    "70대 남성이, 믿기지 않아 숨을 삼키며 조용하고 단단하게"
+   ],
+   "scene": "the old man stares at the middle-aged man with a stiff expression"
+  },
+  {
+   "n": 6,
+   "sec": 7.3,
+   "who": [
+    "장남"
+   ],
+   "turns": [
+    [
+     "장남",
+     "아버지가 장남인 저보고 앞으로 재산 관리 다 하라고 주신 거잖아요."
+    ]
+   ],
+   "say": [
+    "50대 남성이, 귀찮다는 듯 힘을 빼고 툭 던지듯"
+   ],
+   "scene": "the middle-aged man crosses his arms and looks away indifferently"
+  },
+  {
+   "n": 7,
+   "sec": 7.9,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "믿었던 아들에게 배신당한 아버지는 장남을 횡령 죄로 직접 고소했습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the old man sits in a police station holding a stack of papers"
+  },
+  {
+   "n": 8,
+   "sec": 7.1,
+   "who": [
+    "장남"
+   ],
+   "turns": [
+    [
+     "장남",
+     "통장 비밀번호까지 다 알려주셨으면서 이제 와서 왜 이러십니까."
+    ]
+   ],
+   "say": [
+    "50대 남성이, 뻔뻔함을 속으로 눌러 담아 낮고 서늘하게"
+   ],
+   "scene": "the middle-aged man sits in a chair and speaks calmly"
+  },
+  {
+   "n": 9,
+   "sec": 9.9,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "하지만 법원은 이를 증여로 판단했고, 아버지는 끝내 돈을 돌려받지 못한 채 세상을 떠났습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the old man lies in a hospital bed staring blankly at the ceiling"
+  },
+  {
+   "n": 10,
+   "sec": 8.2,
+   "who": [
+    "딸"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "아버지가 어머니에게 준 위자료 칠억 원마저 장남의 주머니로 들어갔습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "a woman looks at a smartphone screen with wide eyes"
+  },
+  {
+   "n": 11,
+   "sec": 6.9,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "십이억 원을 빼돌린 장남의 탐욕은 거기서 멈추지 않았습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the middle-aged man puts a stack of papers into his briefcase"
+  },
+  {
+   "n": 12,
+   "sec": 8.2,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "생전 아버지는 외도 문제로 어머니에게 칠억 원 가까운 돈을 주기로 했습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the old man sits head bowed in front of an old woman"
+  },
+  {
+   "n": 13,
+   "sec": 6.4,
+   "who": [
+    "아버지"
+   ],
+   "turns": [
+    [
+     "아버지",
+     "당신 계좌로 돈을 보냈소. 평생 속 썩인 거 이걸로 갚겠소."
+    ]
+   ],
+   "say": [
+    "70대 남성이, 미안함에 말끝이 조금 흔들리는 낮은 목소리로"
+   ],
+   "scene": "the old man pushes a piece of paper toward the old woman"
+  },
+  {
+   "n": 14,
+   "sec": 7.5,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "하지만 그 돈은 어머니의 손에 닿기도 전에 흔적도 없이 사라졌습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the middle-aged man stands in a dark room holding a smartphone"
+  },
+  {
+   "n": 15,
+   "sec": 7.1,
+   "who": [
+    "딸"
+   ],
+   "turns": [
+    [
+     "딸",
+     "오빠, 엄마한테 갔어야 할 칠억 원, 오빠가 중간에서 다 빼갔지?"
+    ]
+   ],
+   "say": [
+    "50대 여성이, 화를 속으로 눌러 담아 조용히 되묻듯 단단하게"
+   ],
+   "scene": "a middle-aged woman glares at the middle-aged man"
+  },
+  {
+   "n": 16,
+   "sec": 6.6,
+   "who": [
+    "장남"
+   ],
+   "turns": [
+    [
+     "장남",
+     "아버지가 시켜서 내 계좌로 옮겨둔 것뿐이야. 오해하지 마."
+    ]
+   ],
+   "say": [
+    "50대 남성이, 귀찮다는 듯 옅게 웃음기를 섞어 차갑게"
+   ],
+   "scene": "the middle-aged man shrugs his shoulders with a relaxed face"
+  },
+  {
+   "n": 17,
+   "sec": 9.0,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "장남은 아버지가 시킨 일이라고 변명했지만, 돈은 이미 장남이 다 써버린 뒤였습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the middle-aged man sits comfortably on an expensive leather sofa"
+  },
+  {
+   "n": 18,
+   "sec": 6.9,
+   "who": [
+    "딸"
+   ],
+   "turns": [
+    [
+     "딸",
+     "엄마는 평생 고생만 하셨어. 어떻게 그 돈까지 모조리 가로채?"
+    ]
+   ],
+   "say": [
+    "50대 여성이, 목이 메어 말끝이 흔들리는 낮은 목소리로"
+   ],
+   "scene": "the middle-aged woman clenches her fists tightly"
+  },
+  {
+   "n": 19,
+   "sec": 8.4,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "장남은 어머니의 몫까지 독식하고도 가족들에게 아무런 미안함이 없었습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the middle-aged man walks away without looking back"
+  },
+  {
+   "n": 20,
+   "sec": 7.1,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "수십억 원을 가로챈 장남은 병든 아버지를 철저히 외면했습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the middle-aged man looks out a large window holding a cup of coffee"
+  },
+  {
+   "n": 21,
+   "sec": 7.3,
+   "who": [
+    "차남"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "돈을 빼앗기고 쓰러진 아버지를 끝까지 돌본 것은 차남이었습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "another middle-aged man wipes the old man's face with a towel in a hospital"
+  },
+  {
+   "n": 22,
+   "sec": 7.7,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "차남은 빈털터리가 된 아버지의 병원비와 간병비를 홀로 짊어졌습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the second middle-aged man sits in a hospital corridor holding his head"
+  },
+  {
+   "n": 23,
+   "sec": 7.3,
+   "who": [
+    "차남"
+   ],
+   "turns": [
+    [
+     "차남",
+     "형, 아버지 병원비가 밀렸어. 형이 가져간 돈에서 조금만 보태줘."
+    ]
+   ],
+   "say": [
+    "50대 남성이, 지친 기색으로 숨을 삼키며 낮게"
+   ],
+   "scene": "the second middle-aged man talks on a smartphone with a tired face"
+  },
+  {
+   "n": 24,
+   "sec": 6.4,
+   "who": [
+    "장남"
+   ],
+   "turns": [
+    [
+     "장남",
+     "나도 지금 돈 없어. 네가 모시고 있으니까 네가 알아서 해."
+    ]
+   ],
+   "say": [
+    "50대 남성이, 귀찮다는 듯 힘을 빼고 짧게 끊어"
+   ],
+   "scene": "the first middle-aged man ends the call and puts his phone on the desk"
+  },
+  {
+   "n": 25,
+   "sec": 7.9,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "장남은 아버지가 돌아가시는 그날까지 단 한 번도 병원을 찾지 않았습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the old man lies alone in a dark hospital room"
+  },
+  {
+   "n": 26,
+   "sec": 8.6,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "아버지가 눈을 감자, 남은 자식들은 장남에게 빼돌린 재산을 나누자고 했습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the middle-aged woman and the second middle-aged man sit across from the first middle-aged man"
+  },
+  {
+   "n": 27,
+   "sec": 7.5,
+   "who": [
+    "딸"
+   ],
+   "turns": [
+    [
+     "딸",
+     "오빠가 이십 억 넘게 다 가져갔잖아. 우리 몫의 유류분은 돌려줘야지."
+    ]
+   ],
+   "say": [
+    "50대 여성이, 조용히 되묻듯 한 마디씩 단단하게"
+   ],
+   "scene": "the middle-aged woman leans forward and speaks firmly"
+  },
+  {
+   "n": 28,
+   "sec": 7.3,
+   "who": [
+    "장남"
+   ],
+   "turns": [
+    [
+     "장남",
+     "너희도 옛날에 삼천만 원씩 받았잖아. 난 더 이상 줄 돈 한 푼도 없어."
+    ]
+   ],
+   "say": [
+    "50대 남성이, 뻔뻔하게 숨을 삼키며 낮고 차갑게"
+   ],
+   "scene": "the first middle-aged man waves his hand dismissively"
+  },
+  {
+   "n": 29,
+   "sec": 8.4,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "끝까지 재산을 독식하려는 장남을 상대로, 동생들은 결국 소송을 걸었습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the middle-aged woman walks up the stairs of a large building"
+  },
+  {
+   "n": 30,
+   "sec": 9.0,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "법정에 선 장남은 동생이 아버지 병원비로 쓴 돈마저 미리 받은 재산이라고 우겼습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the first middle-aged man stands in a courtroom pointing his finger"
+  },
+  {
+   "n": 31,
+   "sec": 7.9,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "수십억 원을 홀로 삼킨 장남을 상대로 유류분 반환 소송이 시작되었습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "two lawyers sit at a large desk looking at documents"
+  },
+  {
+   "n": 32,
+   "sec": 7.3,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "장남은 아버지가 생전에 동생들에게 준 푼돈을 물고 늘어졌습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the first middle-aged man speaks with a stubborn expression"
+  },
+  {
+   "n": 33,
+   "sec": 8.4,
+   "who": [
+    "장남"
+   ],
+   "turns": [
+    [
+     "장남",
+     "동생들도 옛날에 돈 다 받아 갔습니다. 저한테 유류분을 달라는 건 억지입니다."
+    ]
+   ],
+   "say": [
+    "50대 남성이, 화를 속으로 눌러 담아 낮고 서늘하게"
+   ],
+   "scene": "the first middle-aged man looks around the room calmly"
+  },
+  {
+   "n": 34,
+   "sec": 7.3,
+   "who": [
+    "딸"
+   ],
+   "turns": [
+    [
+     "딸",
+     "오빠가 빼돌린 돈이 이십 억인데, 우리가 받은 몇천만 원이 문제야?"
+    ]
+   ],
+   "say": [
+    "50대 여성이, 어이가 없다는 듯 조용히 되묻듯"
+   ],
+   "scene": "the middle-aged woman stares at him with cold eyes"
+  },
+  {
+   "n": 35,
+   "sec": 8.8,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "재판부는 상속 개시 당시의 화폐 가치로 장남이 가져간 재산을 낱낱이 계산했습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "a man in a suit types on a laptop and looks at a monitor"
+  },
+  {
+   "n": 36,
+   "sec": 8.6,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "장남이 아버지에게서 몰래 증여받은 부동산과 현금은 이십이억 원이 넘었습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "a thick folder is placed on a large wooden desk"
+  },
+  {
+   "n": 37,
+   "sec": 7.1,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "법원은 장남에게 동생들의 유류분을 돌려주라고 판결했습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the first middle-aged man freezes with his mouth slightly open"
+  },
+  {
+   "n": 38,
+   "sec": 9.9,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "결국 장남은 차남과 딸에게 사억 삼천만 원을 토해내게 되었습니다. 실제로 있었던 사건입니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "the middle-aged woman and the second middle-aged man walk out of the building together"
+  }
+ ],
+ "sid": "S92",
+ "case_id": "601919",
+ "narr": "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+}
