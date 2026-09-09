@@ -33,8 +33,28 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 import cost                                                  # noqa: E402
-import short90 as S9                                         # noqa: E402
 import veo                                                   # noqa: E402
+
+# ⚠️⚠️⚠️ 2026-09-09 — 여기서 `import short90` 을 했다가 **PIL 이 없어 죽었다.**
+#    이 저장소에 이미 적혀 있던 교훈을 그대로 다시 밟은 것이다
+#    (tools/fetch_meta90.py 머리말 · 2026-08-31 같은 사고).
+#    short90 은 맨 윗줄에서 그림 라이브러리를 부르는데, 여기서 그것에게
+#    필요한 것은 **세 줄짜리 도우미 넷**뿐이다. 그래서 통째로 안 부르고
+#    여기 옮겨 적는다. 워크플로에 pillow 를 깔아 넘기는 것은 답이 아니다 —
+#    영상 한 컷 사자고 그림 라이브러리를 까는 것 자체가 잘못된 짜임이다.
+OUT = ROOT / "build" / "s90"
+RATIO = "9:16"
+
+
+def turns_of(c):
+    """이 컷에서 말하는 차례. 옛 대본(turns 없음)도 받아 준다."""
+    if c.get("turns"):
+        return [(w, t) for w, t in c["turns"]]
+    return [(c.get("kind") or "나레이션", c.get("text") or "")]
+
+
+def is_narr(c):
+    return all(w == "나레이션" for w, _ in turns_of(c))
 
 # ⚠️ Veo 는 4·6·8초만 받는다 — 5초는 HTTP 400 이다.
 #    4초면 720p, 6초면 1080p 로 간다(veo.res_for).
@@ -57,14 +77,14 @@ def talk_cuts(doc):
     """
     out = []
     for c in doc["cuts"]:
-        if S9.is_narr(c) or len(c.get("turns") or []) != 1:
+        if is_narr(c) or len(c.get("turns") or []) != 1:
             continue
         text = c["turns"][0][1]
         if any(w in text for w in HOT):
             continue
         out.append(c)
     return sorted(out, key=lambda c: (len(c.get("who") or []),
-                                      len(S9.turns_of(c)[0][1])))
+                                      len(turns_of(c)[0][1])))
 
 
 def fit_sec(prompt, sec):
@@ -102,12 +122,12 @@ def main():
     if c is None:
         print(f"❌ 컷{a.cut} 이 없습니다")
         return 2
-    if S9.is_narr(c):
+    if is_narr(c):
         print(f"❌ 컷{c['n']} 은 나레이션 컷입니다 — 대사 컷을 고르십시오.\n"
               f"   고를 만한 컷: {[x['n'] for x in cands]}")
         return 2
 
-    who, text = S9.turns_of(c)[0]
+    who, text = turns_of(c)[0]
     # ⭐ 실제로 만들 때와 **같은 길이**를 산다 (짧게 사면 말이 잘려 판정 불가)
     sec = a.sec
     if not sec:
@@ -127,17 +147,17 @@ def main():
         print("\n(연습이라 실제로는 안 삽니다 · 0원)")
         return 0
 
-    still = S9.OUT / "stills" / f"c{c['n']:02d}.png"
+    still = OUT / "stills" / f"c{c['n']:02d}.png"
     if not still.exists():
         print(f"\n❌ 그 컷 그림이 없습니다: {still}\n"
               f"   먼저 [쇼츠 만들기] 로 그림을 만들어 두어야 합니다 "
               f"(그림을 첫 장면으로 넣어야 얼굴이 안 바뀝니다).")
         return 2
 
-    out = S9.OUT / "talk_test" / f"{sid}_c{c['n']:02d}.mp4"
+    out = OUT / "talk_test" / f"{sid}_c{c['n']:02d}.mp4"
     out.parent.mkdir(parents=True, exist_ok=True)
     try:
-        veo.make_clip(prompt, sec, out, ratio=S9.OPEN_RATIO,
+        veo.make_clip(prompt, sec, out, ratio=RATIO,
                       seed=veo._seed(sid, c["n"], "talk"), start=still)
     except veo.RaiFiltered:
         print("\n⚠️ 구글 안전필터가 막았습니다 (돈은 안 나갔습니다).\n"
