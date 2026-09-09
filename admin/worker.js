@@ -940,13 +940,30 @@ function whenTxt(ms) {
 // ⭐⭐⭐ 2026-09-02 — 인물 이름을 **대본에서 읽는다.** 코드에 다섯을 박아
 //    두었더니 다른 사건에서는 엉뚱한 사람 칸이 떴다. 사건마다 나오는 사람이
 //    다르다 (어떤 사건은 장남·며느리, 어떤 사건은 아내·내연녀).
+// ⚠️⚠️⚠️ 2026-09-09 손님: "매번 이렇게 등장인물이 고정되는 게 아닌데 매번
+//    똑같은 등장인물만 등록할 수 있도록 하는 오류가 발생하고 있어."
+//
+//    맞다. 원인이 **두 개**였다.
+//      ① 인물 그림 칸은 화면을 그릴 때 바로 만들어지는데, 대본(S90DOC)은
+//         그 뒤에 따로 읽어 온다. 그러니 이 함수가 불릴 때 대본은 늘 없었고,
+//         **언제나 옛 다섯**(S90WHO)으로 물러섰다. 대본이 도착해도 이 칸을
+//         다시 그리지 않아 영영 그 상태였다.
+//      ② 카드 파일 이름과 화면 이름이 다르다 — 화면은 '아내', 파일은 '본처'.
+//         대본에서 뽑으면 '아내' 로 올라가는데 만들 때는 '본처' 를 찾으므로,
+//         ①을 고치는 순간 **올린 얼굴이 조용히 무시될 뻔했다.**
+//    → 대본을 먼저 읽고 그리고(아래 s90Cast), 이름은 여기서 맞춘다.
+const CARD_NAME = { '아내': '본처' };
+
 function castOf() {
   const seen = [];
+  const add = function (w) { if (w && seen.indexOf(w) < 0) seen.push(w); };
   for (const c of ((S90DOC && S90DOC.cuts) || []))
-    for (const w of (c.who || []))
-      if (seen.indexOf(w) < 0) seen.push(w);
+    for (const w of (c.who || [])) add(w);
+  for (const w of Object.keys((S90DOC && S90DOC.people) || {})) add(w);
   // 대본을 아직 못 읽었으면 옛 다섯으로 (화면이 비지 않게)
-  return seen.length ? seen.map(function (w) { return [w, w]; }) : S90WHO;
+  return seen.length
+    ? seen.map(function (w) { return [CARD_NAME[w] || w, w]; })
+    : S90WHO;
 }
 
 function short90Card() {
@@ -1030,6 +1047,7 @@ async function upCard(who) {
 //    올린 컷만 영상이 되고 나머지는 그림으로 간다.
 let S90DOC = null;
 let S90CLIPS = {};
+let CASTDRAWN = '';       // 지금 화면에 그려 둔 등장인물 (다시 그릴지 판단)
 
 async function s90Cuts() {
   const box = document.getElementById('s90cuts');
@@ -1040,6 +1058,18 @@ async function s90Cuts() {
       const u = '/api/short90?sid=' + encodeURIComponent(WORK || 'S90');
       S90DOC = (await (await fetch(u)).json()).doc;
     } catch (e) { S90DOC = null; }
+  }
+  // ⭐ 대본이 도착했으니 **인물 그림 칸을 다시 그린다.** 이걸 안 하면
+  //    처음 그릴 때의 옛 다섯이 화면에 그대로 남는다(2026-09-09 사고).
+  //    ⚠️ 손님이 이미 파일을 고르셨으면 다시 그리지 않는다 — 고른 것이 지워진다.
+  const cbox = document.getElementById('s90cast');
+  if (cbox && !Object.keys(S90CARDS).length) {
+    const now = castOf().map(function (p) { return p[0]; }).join(',');
+    if (now !== CASTDRAWN) {
+      cbox.innerHTML = short90Card();
+      CASTDRAWN = now;
+      foldify();
+    }
   }
   const cuts = (S90DOC && S90DOC.cuts) || [];
   if (!cuts.length) { box.innerHTML = ''; return; }
@@ -1240,7 +1270,7 @@ function worksCard() {
 async function openWork(sid) {
   VIEW = 'work';
   WORK = String(sid || 'S90');
-  S90DOC = null; WMETA = null; WBUSY = {};
+  S90DOC = null; WMETA = null; WBUSY = {}; CASTDRAWN = '';
   document.getElementById('app').innerHTML = '<div class="empty">여는 중…</div>';
   scrollTo(0, 0);
   await loadWorks(true);
@@ -1278,7 +1308,7 @@ function workDraw() {
               + '대본을 다시 지으면 올라간 영상과 내용이 달라집니다.</div>'
               : '')
         + '<div id="w-restory-msg" class="uphint"></div></div>';
-  h += short90Card();
+  h += '<div id="s90cast">' + short90Card() + '</div>';
   h += '<div id="s90cuts"><div class="card">'
      + '<h2 data-t="② 컷별 영상">② 컷별 영상</h2>'
      + '<div class="empty">컷 목록 불러오는 중…</div></div></div>';

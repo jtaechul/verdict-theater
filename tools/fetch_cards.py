@@ -29,8 +29,49 @@ def _open(url):
     return urllib.request.urlopen(req, timeout=300)
 
 
-OK = ("본처", "남편", "내연녀", "딸", "변호사")
+# ⚠️⚠️⚠️ 2026-09-09 손님: "매번 이렇게 등장인물이 고정되는 게 아닌데 매번
+#    똑같은 등장인물만 등록할 수 있도록 하는 오류가 발생하고 있어."
+#
+#    맞다. 여기가 `OK = ("본처","남편","내연녀","딸","변호사")` 로 **박혀
+#    있었다.** 사건마다 나오는 사람이 다른데(시어머니·아들·형·사장…), 그
+#    다섯 말고는 얼굴을 올려도 "모르는 사람" 이라며 조용히 버렸다.
+#
+#    → 이제 **그 사건 대본에 실제로 나오는 사람**을 받는다. 목록을 손으로
+#      적지 않으므로 새 인물이 생겨도 저절로 따라간다.
+#    ⚠️ 아무 이름이나 받으면 안 된다 — 파일 이름이 되므로 엉뚱한 글자가
+#      들어오면 파일이 이상해진다. 대본에 있는 이름만 받는다.
+ROOT = Path(__file__).resolve().parent.parent
 MIN_BYTES = 10_000
+# 화면 이름 ↔ 카드 파일 이름 (src/short90.ST_NAME 과 같아야 한다)
+CARD_NAME = {"아내": "본처"}
+
+
+FALLBACK = {"본처", "남편", "내연녀", "딸", "변호사"}
+
+
+def cast_of_doc(doc):
+    """이 대본에 나오는 사람들 (카드 파일 이름으로).
+
+    ⚠️ 검사가 살아 있는 파일에 안 묶이도록 **대본을 받아서** 따진다."""
+    got = set()
+    for c in (doc or {}).get("cuts") or []:
+        for w in c.get("who") or []:
+            got.add(CARD_NAME.get(w, w))
+    for w in ((doc or {}).get("people") or {}):
+        got.add(CARD_NAME.get(w, w))
+    return got or set(FALLBACK)
+
+
+def cast_of(sid):
+    """그 사건 대본에 나오는 사람들.
+
+    ⚠️ 대본을 못 읽으면 옛 다섯으로 물러선다 — 아무도 못 올리게 되면
+       손님이 올린 얼굴이 통째로 사라진다."""
+    f = ROOT / "data" / "series" / f"{sid}.json"
+    try:
+        return cast_of_doc(json.loads(f.read_text(encoding="utf-8")))
+    except Exception:                                        # noqa: BLE001
+        return set(FALLBACK)
 
 
 def main():
@@ -51,11 +92,14 @@ def main():
         return 1
 
     out.mkdir(parents=True, exist_ok=True)
+    sid = (os.environ.get("VT_SID") or "S90").strip().upper()
+    ok = cast_of(sid)
+    print(f"■ {sid} 대본에 나오는 사람: {' · '.join(sorted(ok))}")
     n = 0
     warned = []
     for who, url in got.items():
-        if who not in OK:
-            print(f"  ⚠️ 모르는 사람이라 건너뛴다: {who}")
+        if who not in ok:
+            print(f"  ⚠️ 이 사건 대본에 없는 사람이라 건너뛴다: {who}")
             continue
         if not isinstance(url, str) or not url.startswith("http"):
             print(f"  ⚠️ {who}: 주소가 이상하다 — 건너뛴다")
