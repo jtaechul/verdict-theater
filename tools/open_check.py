@@ -189,16 +189,30 @@ def wiring():
     pc = (re.search(r"function partsCard\(w\)[\s\S]*?\n}", js) or [""])[0]
     ck("그 자리에 **값이 적혀 있다**",
        'id="w-open"' in pc and "+약 " in pc and "470" in pc)
-    ck("기본은 꺼짐이다 (checked 가 없다)",
-       'id="w-open" checked' not in js.replace("> ", ">"))
+    # ⭐⭐⭐ 2026-09-09 — 체크박스가 **고르기**로 바뀌었다. 손님 지시로
+    #    "대사 장면"이 생기면서, 둘 다 켜면 값이 두 배가 되므로 하나만
+    #    고르게 했다(화면에 칸을 더 늘리지 않는다는 뜻도 있다).
+    first = (re.search(r'id="w-open"[\s\S]{0,200}?<option value="([^"]*)"', pc)
+             or ["", "?"])[1]
+    ck("기본은 꺼짐이다 (맨 위가 0원짜리다)", first == "",
+       f"맨 위가 '{first}' 다 — 열자마자 돈 쓰는 쪽이 골라져 있다")
     mk = (re.search(r"async function workMake\([\s\S]*?\n}", js) or [""])[0]
     ck("누르기 전에 얼마인지 보여 준다", "원이 나갑니다" in mk)
     ck("끄고 누르면 0원이라고 적어 준다", "전부 그림 · 0원" in mk)
-    ck("켠 값을 서버로 보낸다", "open_video:" in mk)
-    ck("서버는 '예' 일 때만 켠다", "=== '예') ? '예' : '아니요'" in js)
-    ck("워크플로로 넘긴다", "open_video: openv" in js)
-    ck("워크플로가 그 칸을 받는다", "open_video:" in yml)
-    ck("워크플로가 프로그램 스위치로 바꾼다", "VT_OPEN_VIDEO:" in yml)
+    ck("고른 값을 서버로 보낸다", "video_kind:" in mk)
+    # ⚠️ 값이 나가는 일이므로 **아는 값일 때만** 켜야 한다. 빈 값·이상한 값이
+    #    켜짐으로 새면 손님이 안 고른 날에 돈이 나간다.
+    ck("서버는 아는 값일 때만 켠다",
+       "vk === 'talk'" in js and "vk === 'open'" in js
+       and "안 만든다 (전부 그림 · 0원)" in js)
+    ck("워크플로로 넘긴다", "video_kind: kindv" in js)
+    ck("워크플로가 그 칸을 받는다", "video_kind:" in yml)
+    ck("워크플로가 프로그램 스위치로 바꾼다",
+       "VT_OPEN_VIDEO:" in yml and "VT_TALK_VIDEO:" in yml)
+    # ⚠️⚠️ 둘이 동시에 켜지면 값이 두 배가 된다. 워크플로에서 서로 배타인지 본다.
+    ck("편 첫 장면과 대사 장면이 동시에 안 켜진다",
+       "startsWith(inputs.video_kind, '편 첫 장면')" in yml
+       and "startsWith(inputs.video_kind, '대사 장면')" in yml)
     # ⚠️ 돈 뚜껑을 안 올리면 켠 날에 한도에 걸려 멈춘다. 늘 올려 두면
     #    안 켠 날에 막는 시늉만 하게 된다 — **켤 때만** 올려야 한다.
     # ⭐ 2026-09-05 — 뚜껑을 손으로 안 적고 대본에서 셈한다(plan_cost.py).

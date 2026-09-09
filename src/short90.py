@@ -392,6 +392,228 @@ def open_dir():
     return OUT / "open"
 
 
+# ── ⭐⭐⭐ 대사 컷을 영상으로 (2026-09-09 손님 지시) ────────────────
+#    손님: "나레이션은 모두 이미지로 대체하고, 대사 부분만 영상으로 제작하는
+#           방식이 더 나을 것 같아. 나레이션을 충분히 넣어 이해를 높이고
+#           대사 부분은 영상으로 제작해서 등장인물에 몰입도를 강화."
+#
+#    2026-09-09 시험 구매(S91 컷21 · 706원)로 **한국어 발화가 쓸 만하다**는
+#    것을 눈과 귀로 확인한 뒤에 붙인다. 그 전에는 붙이지 않았다.
+#
+#    ⚠️ 소리는 **Veo 가 만든 것을 쓴다.** 우리 TTS 로 덮지 않는다 —
+#       덮으면 입과 소리가 어긋난다. 2026-08-23 에 운영자가 두 판을 귀로
+#       비교하고 구글 쪽을 고른 기록이 src/vprompt.py:127 에 있다.
+#       cut_video() 는 이미 그렇게 되어 있다(대사 컷 + 소리 있는 영상이면
+#       영상 소리를 쓰고 컷 길이도 영상이 정한다).
+#
+#    ⚠️⚠️ **같은 인물을 너무 여러 컷 사지 않는다.** Veo 에는 목소리를 지정하는
+#       수단이 없어서, 같은 인물이라도 클립마다 다른 사람처럼 들릴 수 있다.
+#       클립 수가 곧 목소리가 흔들릴 기회 수다.
+TALK_VIDEO = os.environ.get("VT_TALK_VIDEO", "").strip() in ("1", "예", "on")
+TALK_PER_PART = int(os.environ.get("VT_TALK_PER_PART", "1"))   # 편마다 몇 컷
+TALK_PER_PERSON = 2              # 한 사건에서 같은 인물은 이만큼까지
+TALK_OK_SEC = (4, 6, 8)          # Veo 가 받는 길이 (5·7초는 HTTP 400)
+# 대사 뒤에 남기는 여운(초). 말이 끝난 뒤 이만큼만 두고 잘라 낸다 —
+# 안 자르면 6초 클립에 4.5초 대사일 때 자막이 1.5초 더 떠 있다.
+TALK_TAIL = 0.45
+# 안전필터가 자주 막는 낱말. 이런 대사는 영상으로 안 사고 그림으로 둔다 —
+# 막히면 그 컷 값(706원)이 그냥 날아가고, 한 번 더 해도 또 막히기 쉽다.
+TALK_HOT = ("관계", "잤", "몸", "성관계", "강간", "죽이", "때렸")
+
+
+def talk_dir():
+    """⚠️ 손님이 손으로 올린 영상(clips/)과 **섞지 않는다.** 워크플로가
+       clips/ 를 통째로 덮어썼다 되올리므로, 섞으면 손 올린 것이 조용히
+       사라진다."""
+    return OUT / "talk"
+
+
+def talk_sec(text):
+    """그 대사에 살 길이(초). Veo 가 받는 값 중에서 고른다."""
+    want = len(re.sub(r"[\s…·]", "", str(text))) / 4.6 + 0.8
+    return next((x for x in TALK_OK_SEC if x >= want), TALK_OK_SEC[-1])
+
+
+def talk_cuts(doc):
+    """영상으로 살 대사 컷들 — 편마다 TALK_PER_PART 개씩 고른다.
+
+    고르는 규칙(하나라도 어긋나면 그 컷은 그림으로 남는다):
+      · 말차례가 **한 줄**이다 — 두 사람이 주고받으면 한 클립에 목소리가
+        둘 들어가 흔들림이 두 배가 된다.
+      · 편의 **첫 컷도 마지막 컷도 아니다** — 첫 컷에는 편 제목 카드가,
+        마지막 컷에는 「다음 편에 계속」 카드가 얹힌다. 그리고 첫 컷을
+        비워 두면 cut_video 의 오프너 갈래와 부딪칠 일이 없다.
+      · 같은 인물이 한 사건에서 TALK_PER_PERSON 개를 넘지 않는다.
+    같은 값이면 **대사가 짧은 것**을 고른다 — 짧을수록 싸고, 말이 잘릴
+    위험도 적다.
+    """
+    got, per = [], {}
+    for p in parts_of(doc):
+        cs = part_cuts(doc, p)
+        if len(cs) < 3:
+            continue
+        cand = [c for c in cs[1:-1]
+                if not is_narr(c) and len(turns_of(c)) == 1
+                and not any(w in turns_of(c)[0][1] for w in TALK_HOT)]
+        cand.sort(key=lambda c: len(turns_of(c)[0][1]))
+        n = 0
+        for c in cand:
+            who = turns_of(c)[0][0]
+            if per.get(who, 0) >= TALK_PER_PERSON:
+                continue
+            got.append(c)
+            per[who] = per.get(who, 0) + 1
+            n += 1
+            if n >= TALK_PER_PART:
+                break
+    return got
+
+
+def talk_prompt(c, sec):
+    """대사 컷용 지문 — 길이만 우리가 사는 값으로 맞춘다.
+
+    ⚠️ 편 첫 장면(open_prompt)과 달리 **입을 다물게 하지 않는다.** 여기서는
+       말하는 것이 목적이다. 지문에는 이미 DIALOGUE·VOICE·AUDIO 가 들어
+       있다(tools/build_short90.py 가 넣는다) — 그대로 둔다."""
+    txt = str(c.get("veo") or c.get("still") or "")
+    return re.sub(r"\b\d+(?:\.\d+)?-second single continuous take",
+                  f"{int(sec)}-second single continuous take", txt)
+
+
+def speech_end(path):
+    """소리에서 **말이 끝난 시각**을 찾는다. 못 찾으면 None.
+
+    ⚠️ src/shorts.py 에 같은 일을 하는 것이 있지만 그 파일은 그림·목소리
+       모듈을 줄줄이 부른다. 여기 필요한 것은 이 스무 줄뿐이라 옮겨 적는다.
+    """
+    try:
+        out = subprocess.run(
+            ["ffmpeg", "-i", str(path), "-af",
+             "silencedetect=n=-35dB:d=0.30", "-f", "null", "-"],
+            capture_output=True, text=True).stderr
+        dur = dur_of(path)
+        # 마지막으로 조용해지기 시작한 시각 (그 뒤로 말이 없다)
+        st = [float(x) for x in re.findall(r"silence_start: ([\d.]+)", out)]
+        en = [float(x) for x in re.findall(r"silence_end: ([\d.]+)", out)]
+        if st and (not en or en[-1] < st[-1]):
+            return max(0.5, st[-1])
+        return None
+    except Exception:                                        # noqa: BLE001
+        return None
+
+
+def talk_trim(path, sec):
+    """말이 끝난 뒤 남는 조용한 시간을 잘라 낸다.
+
+    ⚠️⚠️ 이것이 **자막이 어긋나는 것을 막는 자리**다. 대사 컷은 영상 소리를
+       쓰므로 컷 길이 = 영상 길이인데, 6초를 사도 대사는 4.5초에 끝난다.
+       그러면 자막 한 장이 6초 내내 떠 있어 말이 끝난 뒤에도 1.5초를 더
+       남는다 (손님이 2026-08-31 에 지적하신 그 증상).
+       → 말 끝 + 여운 만큼만 남기고 자른다. 자를 것이 없으면 그대로 둔다.
+    """
+    end = speech_end(path)
+    if not end:
+        return False
+    want = min(sec, end + TALK_TAIL)
+    if sec - want < 0.35:            # 자를 만큼이 아니면 그냥 둔다
+        return False
+    tmp = path.with_suffix(".trim.mp4")
+    try:
+        run(["ffmpeg", "-y", "-v", "error", "-i", str(path),
+             "-t", f"{want:.3f}", "-c", "copy", str(tmp)])
+        tmp.replace(path)
+        print(f"    ✂️ 말이 {end:.1f}초에 끝나 {want:.1f}초로 자른다 "
+              f"(자막이 뒤에 남지 않게)")
+        return True
+    except Exception:                                        # noqa: BLE001
+        tmp.unlink(missing_ok=True)
+        return False
+
+
+def talkers(doc):
+    """대사 컷을 Veo 로 영상으로 만든다 (image-to-video · 소리는 Veo 것).
+
+    ⚠️ 값이 나간다. 그래서 openers() 와 같은 규칙을 지킨다 —
+       켜야만 돌고 · 만들기 전에 얼마인지 적고 · 지문이 같으면 안 만들고
+       (0원) · 실패하면 그 컷만 **그림으로** 돌아간다.
+    """
+    import veo                                              # 늦게 부른다(열쇠 필요)
+    d = talk_dir()
+    d.mkdir(parents=True, exist_ok=True)
+    cs = talk_cuts(doc)
+    st = OUT / "stills"
+    plan = [(c, talk_sec(turns_of(c)[0][1])) for c in cs]
+    tot = sum(cost.video_krw(veo.MODEL, x) for _, x in plan)
+    print(f"■ 대사 장면 영상 {len(plan)}컷 · 최대 약 {tot:,.0f}원")
+    # ⭐ 이름이 밀려도 다시 안 사게 — 지문으로 찾아 옮겨 쓴다 (그림·소리와 같은 길)
+    kept = salvage(d, ".mp4")
+    made, miss = 0, []
+    for c, sec in plan:
+        n = c["n"]
+        who, text = turns_of(c)[0]
+        out = d / f"c{n:02d}.mp4"
+        still = st / f"c{n:02d}.png"
+        if not still.exists():
+            raise Short90Error(f"컷{n} 그림이 없다 — 먼저 stills 를 돌린다")
+        prompt = talk_prompt(c, sec)
+        # ⚠️ 지문에 **그림 내용 전체**와 모델 이름까지 넣는다. 그림이 바뀌거나
+        #    모델이 바뀌면 영상도 다시 만들어야 한다.
+        sig = reuse.sig_of(prompt, str(sec), OPEN_RATIO, veo.MODEL,
+                           reuse.sig_of(still.read_bytes().hex()))
+        ok, why = reuse.can_reuse(out, sig)
+        print(f"  컷{n:>2} [{who}] {text[:26]}  ({sec}초)")
+        if ok:
+            print("    (그대로다 — 건너뛴다 · 0원)")
+            made += 1
+            continue
+        if sig in kept:
+            out.write_bytes(kept[sig])
+            reuse.stamp(out, sig)
+            print("    (이름만 밀렸다 — 그대로 옮겨 쓴다 · 0원)")
+            made += 1
+            continue
+        if why:
+            print(f"    ⚠️ {why} — 다시 만든다")
+        krw1 = cost.video_krw(veo.MODEL, sec)
+        try:
+            # ⭐ 씨앗을 **말하는 사람**으로 묶는다. 컷 번호로 묶으면 같은 인물의
+            #   여러 컷이 확실히 다른 씨앗을 받아 목소리가 더 흔들린다.
+            veo.make_clip(prompt, sec, out, ratio=OPEN_RATIO,
+                          seed=veo._seed(doc.get("sid"), who, "talk"),
+                          start=still)
+        except veo.RaiFiltered:
+            print(f"    ⚠️ 안전 필터에 걸렸다 — 씨앗을 바꿔 **한 번만** "
+                  f"다시 해 본다 (약 {krw1:,.0f}원)")
+            try:
+                veo.make_clip(prompt, sec, out, ratio=OPEN_RATIO,
+                              seed=veo._seed(doc.get("sid"), who, "talk2"),
+                              start=still)
+            except Exception as e2:                          # noqa: BLE001
+                print(f"    ⚠️ 두 번째도 못 만들었다 ({e2}) — 이 컷은 그림으로 갑니다")
+                out.unlink(missing_ok=True)
+                miss.append(n)
+                continue
+        except Exception as e:                               # noqa: BLE001
+            print(f"    ⚠️ 못 만들었다 ({e}) — 이 컷은 그림으로 갑니다")
+            out.unlink(missing_ok=True)
+            miss.append(n)
+            continue
+        # ⭐⭐ 소리가 진짜로 들어 있는지 본다. 무음 영상을 그대로 쓰면 그 컷이
+        #    통째로 조용해지고, 워크플로는 초록불이라 아무도 모른다.
+        if not has_audio(out):
+            print("    ⚠️ 소리가 없는 영상이다 — 이 컷은 그림으로 갑니다")
+            out.unlink(missing_ok=True)
+            miss.append(n)
+            continue
+        talk_trim(out, sec)
+        reuse.stamp(out, sig)
+        made += 1
+    print(f"\n■ 대사 장면 {made}/{len(plan)}컷")
+    if miss:
+        print("  ⚠️⚠️ 그림으로 가는 대사 컷: " + " · ".join(f"컷{n}" for n in miss))
+    return 0
+
+
 def openers(doc):
     """편 첫 컷을 Veo 로 4초짜리 영상으로 만든다 (image-to-video).
 
@@ -1490,6 +1712,11 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
         still = stills_d / f"c{n:02d}.png"
         voice = voice_d / f"c{n:02d}.wav"
         clip = clips_d / f"c{n:02d}.mp4"
+        # ⭐ 2026-09-09 — 손으로 올린 것이 **언제나 이긴다.** 없을 때만 기계가
+        #    만든 대사 영상을 쓴다. 손님이 공들여 올린 영상이 조용히 기계
+        #    것으로 덮이면 안 된다.
+        if not clip.exists():
+            clip = talk_dir() / f"c{n:02d}.mp4"
         if not still.exists() and not clip.exists():
             raise Short90Error(f"컷{n} 그림이 없다 — 먼저 stills 를 돌린다")
         if not voice.exists():
@@ -1575,7 +1802,8 @@ def build(doc, only=None):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("what",
-                    choices=["stills", "open", "voice", "build", "all", "meta"])
+                    choices=["stills", "open", "talk", "voice", "build",
+                             "all", "meta"])
     # ⭐ 2026-09-01 — 편마다 따로 만들 수 있어야 한다. 안 주면 전부 만든다.
     #    (그림·목소리는 편이 함께 쓰므로 늘 통째로 본다 — 나눠도 값이 같다)
     ap.add_argument("--part", default="",
@@ -1607,6 +1835,13 @@ def main():
                 return 1
         elif a.what == "all":
             print("■ 편 첫 장면 영상 — 끔 (그림으로 갑니다 · 0원)")
+        # ⭐ 대사 장면 영상 — **켰을 때만** 돈다 (값이 나간다).
+        #    그림 다음이다: 그 컷 그림을 첫 프레임으로 넣어야 얼굴이 안 바뀐다.
+        if a.what == "talk" or (a.what == "all" and TALK_VIDEO):
+            if talkers(doc):
+                return 1
+        elif a.what == "all":
+            print("■ 대사 장면 영상 — 끔 (그림으로 갑니다 · 0원)")
         if a.what in ("voice", "all"):
             if voices(doc):
                 return 1

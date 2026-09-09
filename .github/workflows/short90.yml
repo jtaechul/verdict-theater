@@ -49,12 +49,18 @@ on:
         description: '손님이 올린 컷 영상 (관리자 페이지가 넣는다 · 손대지 마십시오)'
         required: false
         default: ''
-      open_video:
-        description: '편 첫 장면을 진짜 영상으로 (+약 1,400원)'
+      # ⭐⭐⭐ 2026-09-09 손님: "나레이션은 이미지로, 대사만 영상으로."
+      #    편 첫 장면(입 다문 4초 x 3 = 1,411원) 자리를 **대사 장면**이
+      #    대신한다. 둘 다 켜면 값이 두 배가 되므로 하나만 고르게 둔다.
+      video_kind:
+        description: '어디를 진짜 영상으로 만들까요'
         required: false
-        default: '아니요'
+        default: '안 만든다 (전부 그림 · 0원)'
         type: choice
-        options: ['아니요', '예']
+        options:
+          - '안 만든다 (전부 그림 · 0원)'
+          - '대사 장면 (편마다 한 컷 · 약 2,100원)'
+          - '편 첫 장면 (입 다문 4초 · 약 1,400원)'
 
 permissions:
   contents: write
@@ -89,7 +95,8 @@ jobs:
       #    → 아래 '이번 값 셈하기' 단계가 **대본을 보고** 정해 준다.
       # ⭐⭐ 2026-09-04 손님: "각 편당 첫번째 씬만 영상으로."
       #    켰을 때만 Veo 를 부른다. 안 켜면 지금까지처럼 전부 그림이다.
-      VT_OPEN_VIDEO: ${{ inputs.open_video == '예' && '1' || '' }}
+      VT_OPEN_VIDEO: ${{ startsWith(inputs.video_kind, '편 첫 장면') && '1' || '' }}
+      VT_TALK_VIDEO: ${{ startsWith(inputs.video_kind, '대사 장면') && '1' || '' }}
       STEP: ${{ inputs.step || 'all' }}
 
     steps:
@@ -183,6 +190,23 @@ jobs:
           python3 -c "import shutil;shutil.make_archive('build/open','zip','build/s90/open')" || true
           python3 tools/release_file.py put "open-$S" open.zip build/open.zip || true
 
+      # ⭐⭐⭐ 2026-09-09 — 대사 장면만 진짜 영상으로 (손님 지시).
+      #    2026-09-09 시험 구매(706원)로 한국어 발화가 쓸 만한 것을 눈과 귀로
+      #    확인한 뒤에 붙였다.
+      #    ⚠️ 여기서 실패해도 **편 전체를 죽이지 않는다** — 그 컷만 그림으로 간다.
+      - name: 2-3) 대사 장면 영상 (켰을 때만)
+        if: env.VT_TALK_VIDEO == '1' && (env.STEP == 'all' || env.STEP == 'stills')
+        run: |
+          set -o pipefail
+          mkdir -p build/s90/talk
+          python3 tools/release_file.py get "talk-$S" talk.zip build/talk.zip \
+            && unzip -q -o build/talk.zip -d build/s90/talk \
+            || echo "보관된 대사 장면 영상이 없다"
+          python3 src/short90.py talk 2>&1 | tee -a make.log \
+            || echo "⚠️ 대사 장면 영상을 못 만들었습니다 — 그림으로 갑니다"
+          python3 -c "import shutil;shutil.make_archive('build/talk','zip','build/s90/talk')" || true
+          python3 tools/release_file.py put "talk-$S" talk.zip build/talk.zip || true
+
       - name: 3) 나레이션·대사 소리
         if: env.STEP == 'all' || env.STEP == 'voice'
         run: |
@@ -203,7 +227,7 @@ jobs:
         run: |
           set -o pipefail
           # 앞 단계를 건너뛴 실행에서도 만들어 둔 것을 받아 온다
-          for T in stills voice open; do
+          for T in stills voice open talk; do
             [ -d "build/s90/$T" ] || { \
               python3 tools/release_file.py get "$T-$S" "$T.zip" "build/$T.zip" \
               && unzip -q -o "build/$T.zip" -d "build/s90/$T" || true; }

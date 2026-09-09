@@ -1401,14 +1401,24 @@ function partsCard(w) {
         //    그 다음씬부터는 이미지로 나오는거지."
         //    편이 셋이면 스와이프 판정도 셋이고, 그 판정은 첫 1~2초에 갈린다.
         //    ⚠️ 값이 나가는 일이라 **끈 채로** 두고, 켤 때 값이 보이게 한다.
-        + '<label class="upbox" style="margin-top:10px;display:block">'
-        + '<input type="checkbox" id="w-open"> '
-        + '<b>편 첫 장면을 진짜 영상으로</b> '
-        + '<span class="uphint">(+약 ' + (470 * n).toLocaleString() + '원 · '
-        + n + '편 × 4초)</span>'
-        + '<div class="uphint" style="margin-top:6px">편마다 첫 4초만 움직이고 '
-        + '그 뒤는 지금처럼 그림입니다. 그 컷 그림을 그대로 움직이게 하므로 '
-        + '얼굴이 바뀌지 않습니다.</div></label>'
+        // ⭐⭐⭐ 2026-09-09 손님: "나레이션은 이미지로, 대사만 영상으로."
+        //    체크박스를 하나 더 달지 않고 **그 자리를 고르기로 바꿨다** —
+        //    둘 다 켜면 값이 두 배가 되고 화면도 어지러워진다.
+        + '<div class="upbox" style="margin-top:10px">'
+        + '<b>어디를 진짜 영상으로 만들까요</b>'
+        + '<select id="w-open" style="width:100%;font-size:14px;margin-top:6px">'
+        + '<option value="">안 만든다 (전부 그림 · 0원)</option>'
+        + '<option value="talk">대사 장면 — 편마다 한 컷 (+약 '
+        + (706 * n).toLocaleString() + '원)</option>'
+        + '<option value="open">편 첫 장면 — 입 다문 4초 (+약 '
+        + (470 * n).toLocaleString() + '원)</option>'
+        + '</select>'
+        + '<div class="uphint" style="margin-top:6px">'
+        + '<b>대사 장면</b>: 인물이 화면에서 직접 한국어로 말합니다. '
+        + '나레이션 컷은 전부 그림입니다.<br>'
+        + '<b>편 첫 장면</b>: 편마다 첫 4초만 움직입니다(입은 다뭅니다).<br>'
+        + '어느 쪽이든 그 컷 그림을 그대로 움직이게 하므로 얼굴은 안 바뀝니다.'
+        + '</div></div>'
         + '<div class="btns" style="margin-top:12px">'
         + '<button class="gold" id="w-make-all" onclick="workMake(0)">'
         + '전체 만들기 (' + (ps.length || 3) + '편)</button></div>'
@@ -1567,15 +1577,19 @@ async function workMake(no) {
   const what = no ? (no + '편만 다시 만들기') : '전체 만들기';
   // ⚠️ 값이 나가는 일은 **누르기 전에** 얼마인지 보여 드린다.
   const box = document.getElementById('w-open');
-  const open = !!(box && box.checked);
+  const kind = (box && box.value) || '';
   const nps = (partList((WORKS || {})[WORK] || {}) || []).length || 3;
   const lines = [what + ' 를 시작할까요?', '',
                  '그림과 목소리는 이미 만든 것을 그대로 씁니다 (0원).'];
-  if (open) {
+  if (kind === 'talk') {
+    lines.push('대사 장면 영상: 켬 — 편마다 한 컷 × 6초 = 약 '
+               + (706 * nps).toLocaleString() + '원이 나갑니다.');
+    lines.push('  (인물이 화면에서 직접 말합니다. 나레이션은 전부 그림입니다)');
+  } else if (kind === 'open') {
     lines.push('편 첫 장면 영상: 켬 — ' + nps + '편 × 4초 = 약 '
                + (470 * nps).toLocaleString() + '원이 나갑니다.');
   } else {
-    lines.push('편 첫 장면 영상: 끔 (전부 그림 · 0원)');
+    lines.push('진짜 영상: 끔 (전부 그림 · 0원)');
   }
   // ⭐⭐⭐ 2026-09-05 — 값이 나가기 직전 **마지막 문**이다.
   //    올린 얼굴이 화면 새로고침으로 사라져, 옛 얼굴로 조용히 그려진 적이
@@ -1602,7 +1616,7 @@ async function workMake(no) {
     const r = await fetch('/api/make-short90', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sid: WORK, part: no ? String(no) : '',
-                             open_video: open ? '예' : '아니요',
+                             video_kind: kind,
                              cards: S90CARDS, clips: S90CLIPS }),
     });
     const j = await r.json();
@@ -4299,18 +4313,23 @@ export default {
           ? String(body.sid).toUpperCase() : 'S90';
         const pn = parseInt((body && body.part) || '', 10);
         const part = (Number.isInteger(pn) && pn >= 1 && pn <= 20) ? String(pn) : '';
-        // ⭐ 2026-09-04 — 편 첫 장면 영상. 값이 나가므로 **'예' 라고 정확히
-        //    보냈을 때만** 켠다 (빈 값·이상한 값은 전부 끔으로 본다).
-        const openv = ((body && body.open_video) === '예') ? '예' : '아니요';
+        // ⭐ 값이 나가므로 **정확히 아는 값일 때만** 켠다
+        //    (빈 값·이상한 값은 전부 끔으로 본다).
+        // ⚠️ 짝을 객체로 적었더니 dispatch_input_check 가 그 **값들을 칸
+        //    이름으로** 읽고 빨간불을 냈다. 삼항으로 적어 그 모양을 피한다.
+        const vk = String((body && body.video_kind) || '');
+        const kindv = vk === 'talk' ? '대사 장면 (편마다 한 컷 · 약 2,100원)'
+                    : vk === 'open' ? '편 첫 장면 (입 다문 4초 · 약 1,400원)'
+                    : '안 만든다 (전부 그림 · 0원)';
         try {
           await gh(env, `/repos/${REPO}/actions/workflows/short90.yml/dispatches`, {
             method: 'POST', body: JSON.stringify({ ref: BRANCH,
               inputs: { step: step, sid: sid, part: part,
-                        open_video: openv,
+                        video_kind: kindv,
                         cards: payload, clips: shots } }),
           });
           return Response.json({ ok: true, sid: sid, part: part,
-                                 open_video: openv,
+                                 video_kind: kindv,
                                  n: Object.keys(cards).length,
                                  clips: Object.keys(clips).length });
         } catch (e) {
