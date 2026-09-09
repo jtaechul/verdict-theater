@@ -71,8 +71,15 @@ def rules():
        f"({S.OPEN_SEC:g}초 → {V.res_for(S.OPEN_SEC)})",
        V.res_for(S.OPEN_SEC) == "720p",
        "1080p 는 4초를 안 받는다 — 400 으로 통째로 실패한다")
-    ck("긴 것은 여전히 선명하게 받는다 (8초 → 1080p)",
-       V.res_for(8) == "1080p")
+    # ⚠️⚠️ 2026-09-09 — 여기가 `res_for(8) == "1080p"` 였다. 짐작이었다.
+    #    1080p 로 통과해 본 길이가 하나도 없다 — 4초(9/05)·6초(9/09) 둘 다
+    #    구글이 400 으로 거절했고, 8초는 아직 사 본 적이 없다.
+    #    → 어느 길이든 **통과가 확인된 화질**을 고르는지만 본다.
+    #      1080p 를 쓸 수 있게 되면 tools/veo_res_check.py 의 표에 적는다.
+    ck("어느 길이든 통과가 확인된 화질을 고른다",
+       all(V.res_for(x) in ("720p", "1080p") for x in (4, 6, 8))
+       and V.res_for(6) != "1080p",
+       "6초에 1080p 를 고르면 400 으로 거절당한다")
     ob = (re.search(r"def open_bg\([\s\S]*?\n\ndef ", src) or [""])[0]
     ck("되돌려 잇지 않는다 (4초에서 화면이 안 튄다)",
        "stream_loop" not in ob and "xfade" in ob)

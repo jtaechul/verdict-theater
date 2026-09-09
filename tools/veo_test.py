@@ -113,7 +113,14 @@ if posts:
            for c in DOC["episodes"][0]["cuts"]),
        [vprompt.seconds_for(c["subtitle"]) for c in DOC["episodes"][0]["cuts"]])
     ck("비율을 16:9 로 보낸다 (shorts 가 4:3 으로 자른다)", p.get("aspectRatio") == "16:9", p)
-    ck("1080p 로 받는다 (최종 가로가 1080px)", p.get("resolution") == "1080p", p)
+    # ⚠️⚠️ 2026-09-09 — 여기가 `== "1080p"` 였다. 그런데 **1080p 로 통과해 본
+    #    길이가 하나도 없다** — 4초(9/05)도 6초(9/09)도 구글이 400 으로 거절했다.
+    #    "최종 가로가 1080px 이니 1080p 로 받자" 는 바람이었지, 실측이 아니었다.
+    #    → 실제로 통과가 확인된 화질만 보내는지 본다. 어느 길이에 어느 화질이
+    #      되는지의 규칙 자체는 tools/veo_res_check.py 가 지킨다.
+    ck("실제로 통과가 확인된 화질을 보낸다 (720p)",
+       p.get("resolution") == "720p",
+       f"{p.get('resolution')} — 1080p 는 아직 어느 길이에서도 통과 못 했다")
     ck('personGeneration 은 "ALLOW_ALL" (allow_adult 는 400)',
        p.get("personGeneration") == "ALLOW_ALL", p)
     ck("씨앗(seed)을 보낸다", isinstance(p.get("seed"), int), p)
