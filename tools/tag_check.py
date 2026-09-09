@@ -38,7 +38,10 @@ import ytmeta as YM                                         # noqa: E402
 bad = []
 
 # 검색량이 안 잡혀 뺀 것들 — 다시 들어오면 안 된다
-DEAD = ("법률사연", "쇼츠드라마", "실화사연", "외도", "shorts")
+# ⚠️ 2026-09-09 — "shorts" 를 이 목록에서 뺐다. 해시태그 목록에서는 여전히
+#    안 쓰지만, **제목의 #shorts 는 되살렸다**(위 실측). 여기 남겨 두면
+#    제목에 붙은 것을 죽은 태그로 잡아 버린다.
+DEAD = ("법률사연", "쇼츠드라마", "실화사연", "외도")
 # 2026-09-04 손님이 넣으라고 하신 것 — 빼면 안 된다
 KEEP = ("사연극장", "실화사건")
 
@@ -71,8 +74,15 @@ def main():
 
     m = YM.meta90(fake_doc())["parts"][0]
 
-    print("① 제목에서 #shorts 를 뺐는가")
-    ck("제목에 #shorts 가 없다", "#shorts" not in m["title"].lower(), m["title"])
+    print("① 제목에 #shorts 가 붙는가 (2026-09-09 되돌림)")
+    # ⚠️⚠️⚠️ 여기가 2026-09-06 에 "#shorts 가 **없다**" 였다. 내가 일반론
+    #    ("유튜브는 세로 9:16 으로 쇼츠를 스스로 알아본다")을 믿고 뺐다.
+    #    그런데 **이 채널 12편의 실측이 정반대**였다 (2026-09-09):
+    #        있음 9편 353~3,576회 · 없음 3편 46~220회 · 겹치는 구간 없음
+    #    뺀 뒤 올린 세 편이 46·72·220 으로 무너졌다.
+    #    ⚠️ 다시 빼고 싶어지면 아래 표를 먼저 보라. 공식 문서는 이 채널의
+    #       숫자를 못 이긴다.
+    ck("제목에 #shorts 가 있다", "#shorts" in m["title"].lower(), m["title"])
     ck("제목이 100자 안이다", len(m["title"]) <= 100, f"{len(m['title'])}자")
     for f, nm in ((ROOT / "src" / "ytmeta.py", "파이썬"),
                   (ROOT / "admin" / "worker.js", "관리자 화면")):
@@ -135,17 +145,21 @@ def main():
 
     # ⚠️ 손님이 고치는 파일(data/series/*.meta.json)에 기대지 않는다 —
     #    검사를 살아 있는 자료에 묶었다가 세 번 데었다. 여기 붙박이로 둔다.
+    # ⚠️⚠️ 2026-09-09 — 문지기의 규칙이 바뀌었다. #shorts 는 제목에 되살렸으므로
+    #    통과시켜야 하고, **엉뚱한 태그**만 막는다.
     dirty = {"parts": [
-        {"part": 1, "title": "옛 제목입니다 #shorts", "description": "x",
+        {"part": 1, "title": "옛 제목입니다 #법률사연", "description": "x",
          "tags": ["사연", "불륜"]},
-        {"part": 2, "title": "깨끗한 제목", "description": "x",
+        {"part": 2, "title": "깨끗한 제목 #shorts", "description": "x",
          "tags": ["사연", "법률사연", "쇼츠드라마"]}]}
     clean = {"parts": [
-        {"part": 1, "title": "깨끗한 제목", "description": "x",
+        {"part": 1, "title": "깨끗한 제목 #shorts", "description": "x",
          "tags": ["사연", "불륜", "이혼사연"]}]}
     why = FM.blocked(dirty)
-    ck("제목에 붙은 #shorts 를 잡는다",
-       any("해시태그가 들어 있다" in w for w in why), f"{why}")
+    ck("제목에 붙은 엉뚱한 해시태그를 잡는다",
+       any("엉뚱한 해시태그가 들어 있다" in w for w in why), f"{why}")
+    ck("제목의 #shorts 는 그냥 통과시킨다",
+       not any("#shorts" in w and "엉뚱한" in w for w in why), f"{why}")
     ck("없앤 해시태그가 되살아난 것을 잡는다",
        sum("되살아났다" in w for w in why) == 2, f"{why}")
     ck("깨끗한 글은 그냥 통과시킨다", not FM.blocked(clean), f"{FM.blocked(clean)}")

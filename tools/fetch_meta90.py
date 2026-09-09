@@ -19,6 +19,7 @@
      화면이든 유튜브든 같은 글을 본다.
 """
 import json
+import re
 import os
 import sys
 from pathlib import Path
@@ -40,8 +41,14 @@ def blocked(meta):
     why = []
     for x in (meta.get("parts") or [meta]):
         head = f"{x.get('part') or ''}편 ".strip() + " " if x.get("part") else ""
-        if "#" in str(x.get("title") or ""):
-            why.append(f"{head}제목에 해시태그가 들어 있다 — {x.get('title')}")
+        # ⚠️⚠️ 2026-09-09 — 여기가 "제목에 # 이 하나라도 있으면 막는다" 였다.
+        #    같은 날 실측으로 **#shorts 를 제목에 되살리자 우리 글이 우리
+        #    문지기에 막혔다.** 막아야 하는 것은 아무 태그나 붙는 것이지
+        #    #shorts 가 아니다 — 그것만 빼고 본다.
+        #      (제목의 #shorts: 있음 9편 353~3,576회 / 없음 3편 46~220회)
+        t = re.sub(r"#shorts\b", "", str(x.get("title") or ""), flags=re.I)
+        if "#" in t:
+            why.append(f"{head}제목에 엉뚱한 해시태그가 들어 있다 — {x.get('title')}")
         for t in (x.get("tags") or []):
             if str(t).strip().lower() in DEAD:
                 why.append(f"{head}없앤 해시태그가 되살아났다 — #{t}")
