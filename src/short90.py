@@ -477,48 +477,58 @@ def talk_prompt(c, sec):
 def speech_span(path):
     """소리에서 **말이 시작한 시각과 끝난 시각**을 찾는다 — (시작, 끝).
 
-    ⭐⭐⭐ 2026-09-10 손님: "대사 음성이랑 자막이랑 안 맞게 제작되는 오류."
-       예전에는 **끝만** 찾았다(speech_end). 그래서 뒤에 남는 침묵은 잘랐지만
-       **앞에 있는 침묵은 손도 안 댔다.** Veo 영상은 배우가 0초에 바로 말을
-       시작하지 않는다 — 숨을 쉬고, 고개를 돌리고, 1초쯤 뒤에 입을 연다.
-       자막은 0초부터 켜지므로 그 1초만큼 **자막이 목소리보다 계속 앞서** 간다.
-       한 컷 안에서 낱말마다 나눠 켜는 카라오케라, 앞이 밀리면 끝까지 밀린다.
+    ⭐⭐⭐ 2026-09-10 손님(두 번째): "아직도 대사 음성이랑 자막이 맞지 않아."
+       첫 판은 ffmpeg 의 silencedetect(-35dB 고정)를 썼다. 그런데 Veo 영상에는
+       **방 안 소리(room tone)가 늘 깔려 있다** — 우리가 지문에 "with only the
+       quiet room tone of the location underneath" 라고 시켜서 넣은 것이다.
+       그 배경음이 -35dB 보다 크면 silencedetect 는 **조용한 구간을 하나도
+       못 찾는다.** 그러면 (0, 전체) 가 되어 자막이 컷 전체에 퍼진다 —
+       고치기 전과 똑같아진다.
+       실측:
+           배경음 무음 · -50dB → 시작 1.20 · 끝 3.20  (맞음)
+           배경음 -34dB · -24dB → 시작 0.00 · 끝 4.70  (못 찾음)
+       ⚠️ 내 시험이 **디지털 무음**을 썼기에 늘 통과했다. 시험이 너무 쉬우면
+          없는 것을 있다고 말해 준다.
 
-    ⚠️ src/shorts.py 에 비슷한 것이 있지만 그 파일은 그림·목소리 모듈을 줄줄이
-       부른다. 여기 필요한 것은 이 스무 줄뿐이라 옮겨 적는다.
+       → 고정 dB 를 버리고, 그 소리의 **자기 배경음 대비**로 잰다.
+         50ms 씩 크기를 재서, 조용한 쪽(하위 10%)보다 훨씬 큰 구간을 말로 본다.
+         배경음이 크든 작든 똑같이 걸린다.
     """
     try:
-        out = subprocess.run(
-            ["ffmpeg", "-i", str(path), "-af",
-             "silencedetect=n=-35dB:d=0.30", "-f", "null", "-"],
-            capture_output=True, text=True).stderr
-        dur = dur_of(path) or 0.0
-        # ⚠️⚠️⚠️ 2026-09-10 — 예전 셈이 **처음부터 틀려 있었다.**
-        #    ffmpeg 는 파일 **끝에서도** silence_end 를 적어 준다. 그런데
-        #    옛 코드는 `en[-1] < st[-1]` 일 때만 끝을 인정했다. 끝 침묵의
-        #    silence_end 가 늘 따라 나오므로 이 조건은 **거의 언제나 거짓**이고,
-        #    speech_end 는 None 을 돌려줬다 → talk_trim 이 한 번도 안 잘랐다.
-        #    2026-08-31 에 "자막이 뒤에 남는다" 고 고쳤다던 그 자리는
-        #    **죽은 코드**였다. 손님이 오늘 또 같은 증상을 보신 까닭이다.
-        #    → 조용한 구간을 **짝으로 묶어** 말하는 구간을 빼낸다.
-        st = [float(x) for x in re.findall(r"silence_start: (-?[\d.]+)", out)]
-        en = [float(x) for x in re.findall(r"silence_end: ([\d.]+)", out)]
-        gaps = []
-        for i, a in enumerate(st):
-            b = en[i] if i < len(en) else dur
-            gaps.append((max(0.0, a), b))
-        beg, fin = 0.0, dur or None
-        if gaps:
-            # 맨 앞이 조용하면 그 침묵이 끝나는 때가 말의 시작
-            if gaps[0][0] <= 0.25:
-                beg = gaps[0][1]
-            # 맨 끝이 조용하면 그 침묵이 **시작하는** 때가 말의 끝
-            if dur and gaps[-1][1] >= dur - 0.30 and gaps[-1][0] > beg:
-                fin = gaps[-1][0]
-        # ⚠️ 말이 남은 길이가 터무니없으면 잘못 잰 것이다 — 손대지 않는다.
-        if fin is not None and fin - beg < 0.4:
+        import array
+        HZ, WIN = 8000, 0.05
+        raw = subprocess.run(
+            ["ffmpeg", "-v", "error", "-i", str(path), "-vn",
+             "-ac", "1", "-ar", str(HZ), "-f", "s16le", "-"],
+            capture_output=True).stdout
+        a = array.array("h")
+        a.frombytes(raw[: len(raw) // 2 * 2])
+        if not a:
             return 0.0, None
-        if dur and beg > dur * 0.6:
+        step = int(HZ * WIN)
+        lv = []
+        for i in range(0, len(a) - step + 1, step):
+            chunk = a[i:i + step]
+            lv.append((sum(x * x for x in chunk) / step) ** 0.5)
+        if len(lv) < 6:
+            return 0.0, None
+        srt = sorted(lv)
+        floor = srt[max(0, int(len(srt) * 0.10))]      # 배경음
+        peak = srt[int(len(srt) * 0.95)]               # 말소리
+        # 말이랄 게 없으면(배경음과 봉우리가 비슷하면) 손대지 않는다
+        if peak <= max(floor * 2.5, 1.0):
+            return 0.0, None
+        cut = floor + (peak - floor) * 0.20            # 배경음보다 확실히 큰 자리
+        on = [i for i, v in enumerate(lv) if v >= cut]
+        if not on:
+            return 0.0, None
+        beg, fin = on[0] * WIN, (on[-1] + 1) * WIN
+        dur = dur_of(path) or (len(lv) * WIN)
+        beg = max(0.0, min(beg, dur))
+        fin = max(beg + 0.3, min(fin, dur))
+        if fin - beg < 0.4:
+            return 0.0, None
+        if beg > dur * 0.6:                            # 앞이 6할 넘게 조용할 리 없다
             return 0.0, fin
         return beg, fin
     except Exception:                                        # noqa: BLE001
@@ -776,6 +786,30 @@ def stills(doc):
             return []
         return [p for p in (ST.card_path(cards_dir(), ST_NAME.get(w, w))
                             for w in c.get("who") or []) if p.exists()]
+
+    # ⭐⭐⭐ 2026-09-10 손님: **"장남이라고 해놓고선 등장인물이 아닌 사람이
+    #    자꾸 나타나. 등장인물을 등록했으면 등록 인물만 나오게 해."**
+    #    까닭은 바로 위 `if p.exists()` 였다. 얼굴 그림이 없으면 **조용히 빼고**
+    #    그냥 그렸다. 그런데 지문에는 "PEOPLE: the reference images show 장남"
+    #    이 그대로 적혀 있다 — 모델은 "장남을 보여 주는 참조 그림이 있다" 고
+    #    듣고는 그림이 없으니 **아무 남자나 지어낸다.**
+    #    → 값(132원)도 나가고, 나온 그림은 엉뚱한 사람이라 다시 그려야 한다.
+    #      **그리기 전에 막는다.**
+    lack = {}
+    for c in doc["cuts"]:
+        if is_narr(c):
+            continue
+        for w in c.get("who") or []:
+            if not ST.card_path(cards_dir(), ST_NAME.get(w, w)).exists():
+                lack.setdefault(w, []).append(c["n"])
+    if lack:
+        raise Short90Error(
+            "등장인물 얼굴 그림이 없습니다 — 그리면 **엉뚱한 사람**이 나옵니다.\n"
+            + "\n".join(f"   · {w} : 컷 {', '.join(str(x) for x in ns)}"
+                        for w, ns in lack.items())
+            + "\n   관리자 페이지 [① 인물 그림] 에서 그 사람 얼굴을 올린 뒤 "
+              "다시 눌러 주십시오.\n"
+              "   (얼굴 없이 그리면 값은 값대로 나가고 다시 그려야 합니다)")
 
     for c in doc["cuts"]:
         refs = refs_of(c)

@@ -134,6 +134,49 @@ def main():
        and "castOfDoc(" in mk else False,
        "sid 를 선언하기 전에 쓰면 그 자리에서 죽는다")
 
+    print("\n⑥ 등록한 인물만 화면에 나오는가 (얼굴 없이 그리지 않는가)")
+    # ⭐⭐⭐ 2026-09-10 손님: **"장남이라고 해놓고선 등장인물이 아닌 사람이
+    #    자꾸 나타나. 등장인물을 등록했으면 등록 인물만 나오게 해."**
+    #    까닭: stills() 가 `if p.exists()` 로 **없는 얼굴을 조용히 빼고** 그렸다.
+    #    그런데 지문에는 "PEOPLE: the reference images show 장남" 이 그대로
+    #    적혀 있어, 모델은 "참조가 있다" 고 듣고 **아무 남자나 지어냈다.**
+    #    값(132원)은 값대로 나가고 그림은 버려야 한다.
+    import tempfile                                          # noqa: E402
+    real_out = S9.OUT
+    try:
+        S9.OUT = Path(tempfile.mkdtemp())
+        (S9.OUT / "cards").mkdir(parents=True, exist_ok=True)
+        doc = {"sid": "S99",
+               "parts": [{"no": 1, "cuts": [1, 2], "card": ["가", "나"],
+                          "yt_title": "제" * 30}],
+               "cuts": [{"n": 1, "who": [], "turns": [["나레이션", "가" * 20]],
+                         "say": ["담담하게"], "still": "x", "scene": "an empty chair"},
+                        {"n": 2, "who": ["장남"], "turns": [["장남", "가" * 20]],
+                         "say": ["담담하게"], "still": "x", "scene": "장남 sits"}]}
+        try:
+            S9.stills(doc)
+            ck("얼굴이 없으면 **그리기 전에** 막는다", False,
+               "얼굴 없이 그리면 엉뚱한 사람이 나오고 값도 나간다")
+        except S9.Short90Error as e:
+            msg = str(e)
+            ck("얼굴이 없으면 **그리기 전에** 막는다", True)
+            ck("누구 얼굴이 없는지 이름으로 알려 준다", "장남" in msg, msg[:60])
+            ck("어느 컷인지 번호로 알려 준다", "컷 2" in msg, msg[:80])
+            ck("어디서 올리는지 알려 준다", "인물 그림" in msg, msg[:80])
+        # 나레이션 컷만 있으면 막지 않는다 (얼굴을 안 쓰는 컷이다)
+        doc2 = {"sid": "S99", "parts": doc["parts"],
+                "cuts": [dict(doc["cuts"][0]), dict(doc["cuts"][0], n=2)]}
+        try:
+            S9.stills(doc2)
+            ck("나레이션만 있는 대본은 안 막는다", True)
+        except S9.Short90Error as e:
+            ck("나레이션만 있는 대본은 안 막는다",
+               "얼굴 그림이 없습니다" not in str(e), str(e)[:60])
+        except Exception:                                    # noqa: BLE001
+            ck("나레이션만 있는 대본은 안 막는다", True)   # 그림 그리다 죽는 건 별개
+    finally:
+        S9.OUT = real_out
+
     print("\n" + "─" * 60)
     if bad:
         print(f"❌ 등장인물: {len(bad)}군데 — 사건이 바뀌어도 옛 사람만 뜬다")

@@ -38,13 +38,26 @@ def ck(name, ok, why=""):
         bad.append(name)
 
 
-def make_clip(out, quiet_head, talk, quiet_tail):
-    """앞뒤가 조용하고 가운데만 소리 나는 영상 한 개 (ffmpeg 로 만든다)."""
+def make_clip(out, quiet_head, talk, quiet_tail, room=0.02):
+    """앞뒤가 조용하고 가운데만 소리 나는 영상 한 개 (ffmpeg 로 만든다).
+
+    ⚠️⚠️⚠️ 2026-09-10 — `room` 이 이 시험의 **핵심**이다.
+       처음에는 앞뒤를 **디지털 무음**(aevalsrc=0)으로 두었다. 그러면
+       ffmpeg 의 silencedetect(-35dB 고정)가 무조건 찾아내므로, 잰다는
+       코드가 실제로는 못 재고 있어도 시험은 늘 초록불이었다.
+       진짜 Veo 영상에는 **방 안 소리가 늘 깔려 있다** — 우리가 지문에
+       "with only the quiet room tone of the location underneath" 라고
+       시켜서 넣은 것이다. 그 소리가 -35dB 보다 크면 옛 방식은 조용한
+       구간을 하나도 못 찾았고, 자막이 컷 전체에 퍼졌다.
+       그래서 손님이 고쳤다는 말을 듣고도 **또 어긋난 영상을 보셨다.**
+       → 시험은 늘 **방 안 소리를 깔고** 잰다. 쉬운 시험은 없는 것을
+         있다고 말해 준다.
+    """
     total = quiet_head + talk + quiet_tail
-    # 소리: 무음 → 440Hz 톤 → 무음  (톤이 '말' 자리다)
-    af = (f"aevalsrc=0:d={quiet_head}[a0];"
+    q = f"aevalsrc={room}*random(0)" if room else "aevalsrc=0"
+    af = (f"{q}:d={quiet_head}[a0];"
           f"sine=frequency=440:duration={talk}[a1];"
-          f"aevalsrc=0:d={quiet_tail}[a2];"
+          f"{q}:d={quiet_tail}[a2];"
           f"[a0][a1][a2]concat=n=3:v=0:a=1[a]")
     subprocess.run(
         ["ffmpeg", "-y", "-v", "error",
@@ -64,6 +77,16 @@ def main():
     sec = make_clip(clip, HEAD, TALK, TAIL)
     print(f"   시험용 영상: 앞 {HEAD}초 조용 · {TALK}초 말 · 뒤 {TAIL}초 조용 "
           f"(모두 {sec:.1f}초)")
+
+    print("\n① -0 **방 안 소리가 깔려 있어도** 재는가 (진짜 영상이 그렇다)")
+    for room, name in ((0.0, "무음"), (0.003, "아주 조용"),
+                       (0.02, "보통 방 안 소리"), (0.06, "제법 큰 방 안 소리")):
+        cx = tmp / f"room_{room}.mp4"
+        make_clip(cx, HEAD, TALK, TAIL, room=room)
+        b2, f2 = S9.speech_span(cx)
+        ok2 = abs(b2 - HEAD) <= 0.35 and f2 is not None and abs(f2 - (HEAD + TALK)) <= 0.35
+        ck(f"{name}: 시작 {b2:.2f}초 · 끝 {f2 if f2 is None else round(f2, 2)}초", ok2,
+           f"진짜는 {HEAD}~{HEAD + TALK}초 — 고정 dB 로 재면 배경음에 묻힌다")
 
     print("\n① 말이 **언제 시작하고 언제 끝나는지** 재는가")
     beg, fin = S9.speech_span(clip)
