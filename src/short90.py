@@ -420,6 +420,16 @@ TALK_PER_PART = talkplan.TALK_PER_PART
 TALK_PER_PERSON = talkplan.TALK_PER_PERSON
 TALK_OK_SEC = talkplan.TALK_OK_SEC
 TALK_HOT = talkplan.TALK_HOT
+# 대사 뒤에 남기는 여운(초). 말이 끝난 뒤 이만큼만 두고 잘라 낸다.
+# ⚠️⚠️ 2026-09-10 — 이 줄이 **한 번 사라진 적이 있다.** 위 블록을 갈아끼우며
+#    같이 날아갔는데, talk_trim 은 영상을 살 때만 도는 자리라 검사 72개가
+#    전부 초록불이었다 (값이 나가는 순간 NameError 로 죽었을 것이다).
+#    → tools/name_check.py 가 이제 이런 것을 잡는다.
+TALK_TAIL = 0.45
+# 말이 끝난 뒤에도 자막이 이만큼 더 남는다 (읽을 시간을 준다).
+# ⚠️ TALK_TAIL 과 같은 값이면 자막이 컷 끝과 딱 붙어 뚝 끊긴다.
+SUB_TAIL = 0.35
+_SPAN_CACHE = {}                 # 같은 영상을 두 번 재지 않는다
 
 
 def talk_dir():
@@ -454,26 +464,60 @@ def talk_prompt(c, sec):
                   f"{int(sec)}-second single continuous take", txt)
 
 
-def speech_end(path):
-    """소리에서 **말이 끝난 시각**을 찾는다. 못 찾으면 None.
+def speech_span(path):
+    """소리에서 **말이 시작한 시각과 끝난 시각**을 찾는다 — (시작, 끝).
 
-    ⚠️ src/shorts.py 에 같은 일을 하는 것이 있지만 그 파일은 그림·목소리
-       모듈을 줄줄이 부른다. 여기 필요한 것은 이 스무 줄뿐이라 옮겨 적는다.
+    ⭐⭐⭐ 2026-09-10 손님: "대사 음성이랑 자막이랑 안 맞게 제작되는 오류."
+       예전에는 **끝만** 찾았다(speech_end). 그래서 뒤에 남는 침묵은 잘랐지만
+       **앞에 있는 침묵은 손도 안 댔다.** Veo 영상은 배우가 0초에 바로 말을
+       시작하지 않는다 — 숨을 쉬고, 고개를 돌리고, 1초쯤 뒤에 입을 연다.
+       자막은 0초부터 켜지므로 그 1초만큼 **자막이 목소리보다 계속 앞서** 간다.
+       한 컷 안에서 낱말마다 나눠 켜는 카라오케라, 앞이 밀리면 끝까지 밀린다.
+
+    ⚠️ src/shorts.py 에 비슷한 것이 있지만 그 파일은 그림·목소리 모듈을 줄줄이
+       부른다. 여기 필요한 것은 이 스무 줄뿐이라 옮겨 적는다.
     """
     try:
         out = subprocess.run(
             ["ffmpeg", "-i", str(path), "-af",
              "silencedetect=n=-35dB:d=0.30", "-f", "null", "-"],
             capture_output=True, text=True).stderr
-        dur = dur_of(path)
-        # 마지막으로 조용해지기 시작한 시각 (그 뒤로 말이 없다)
-        st = [float(x) for x in re.findall(r"silence_start: ([\d.]+)", out)]
+        dur = dur_of(path) or 0.0
+        # ⚠️⚠️⚠️ 2026-09-10 — 예전 셈이 **처음부터 틀려 있었다.**
+        #    ffmpeg 는 파일 **끝에서도** silence_end 를 적어 준다. 그런데
+        #    옛 코드는 `en[-1] < st[-1]` 일 때만 끝을 인정했다. 끝 침묵의
+        #    silence_end 가 늘 따라 나오므로 이 조건은 **거의 언제나 거짓**이고,
+        #    speech_end 는 None 을 돌려줬다 → talk_trim 이 한 번도 안 잘랐다.
+        #    2026-08-31 에 "자막이 뒤에 남는다" 고 고쳤다던 그 자리는
+        #    **죽은 코드**였다. 손님이 오늘 또 같은 증상을 보신 까닭이다.
+        #    → 조용한 구간을 **짝으로 묶어** 말하는 구간을 빼낸다.
+        st = [float(x) for x in re.findall(r"silence_start: (-?[\d.]+)", out)]
         en = [float(x) for x in re.findall(r"silence_end: ([\d.]+)", out)]
-        if st and (not en or en[-1] < st[-1]):
-            return max(0.5, st[-1])
-        return None
+        gaps = []
+        for i, a in enumerate(st):
+            b = en[i] if i < len(en) else dur
+            gaps.append((max(0.0, a), b))
+        beg, fin = 0.0, dur or None
+        if gaps:
+            # 맨 앞이 조용하면 그 침묵이 끝나는 때가 말의 시작
+            if gaps[0][0] <= 0.25:
+                beg = gaps[0][1]
+            # 맨 끝이 조용하면 그 침묵이 **시작하는** 때가 말의 끝
+            if dur and gaps[-1][1] >= dur - 0.30 and gaps[-1][0] > beg:
+                fin = gaps[-1][0]
+        # ⚠️ 말이 남은 길이가 터무니없으면 잘못 잰 것이다 — 손대지 않는다.
+        if fin is not None and fin - beg < 0.4:
+            return 0.0, None
+        if dur and beg > dur * 0.6:
+            return 0.0, fin
+        return beg, fin
     except Exception:                                        # noqa: BLE001
-        return None
+        return 0.0, None
+
+
+def speech_end(path):
+    """말이 끝난 시각만 (옛 이름 — 부르는 데가 있어 남겨 둔다)."""
+    return speech_span(path)[1]
 
 
 def talk_trim(path, sec):
@@ -1269,7 +1313,36 @@ def syl(t):
     return max(1, len([x for x in str(t) if not x.isspace()]))
 
 
-def sub_windows(c, sec, voice):
+def clip_span(clip, sec):
+    """영상 소리를 쓰는 컷에서 **말이 실제로 나는 구간** — (시작, 끝).
+
+    ⭐⭐⭐ 2026-09-10 손님: "대사 음성이랑 자막이랑 안 맞게 제작되는 오류."
+       대사 컷은 우리 목소리 파일이 없다(영상 안에서 배우가 말한다). 그래서
+       자막 창이 **컷 전체 (0 ~ 끝)** 로 잡혀 있었다. 그런데 Veo 영상은
+         · 앞 0.5~1.5초는 배우가 아직 입을 안 뗀다
+         · 뒤 0.45초는 여운(TALK_TAIL)이라 아무 말이 없다
+       그 조용한 구간까지 자막이 나눠 가지니, 낱말이 하나같이 목소리보다
+       **먼저** 켜진다. 한 컷 안에서 계속 밀린다.
+       → 소리를 실제로 재서 **말이 나는 구간에만** 자막을 나눈다 (값 0원).
+
+    ⚠️ 재기에 실패하면 옛 방식(컷 전체)으로 돌아간다. 자막이 아예 안 뜨는
+       것보다는 조금 어긋나는 편이 낫다.
+    """
+    if not clip:
+        return 0.0, sec
+    key = str(clip)
+    if key in _SPAN_CACHE:                  # 한 컷을 두 번 재지 않는다
+        return _SPAN_CACHE[key]
+    beg, fin = speech_span(clip)
+    beg = max(0.0, min(float(beg or 0.0), sec))
+    fin = sec if fin is None else max(beg + 0.3, min(float(fin) + SUB_TAIL, sec))
+    if fin - beg < 0.5:                     # 잘못 잰 것이다 — 손대지 않는다
+        beg, fin = 0.0, sec
+    _SPAN_CACHE[key] = (beg, fin)
+    return beg, fin
+
+
+def sub_windows(c, sec, voice, clip=None):
     """자막 한 줄씩 **언제부터 언제까지** 떠 있을지.
 
     ⭐⭐ 2026-08-31 손님: "대사 목소리와 자막이 시간차가 발생."
@@ -1294,17 +1367,20 @@ def sub_windows(c, sec, voice):
                     real = [float(x) / SPEED for x in got]
             except Exception:                                # noqa: BLE001
                 real = []
-    at, t0 = [], 0.0
+    # ⭐ 영상 소리를 쓰는 컷(우리 목소리가 없는 컷)은 **말이 나는 구간**만 쓴다
+    beg, fin = clip_span(clip, sec) if (clip and not voice) else (0.0, sec)
+    at, t0 = [], beg
     if real:
         for i, d in enumerate(real):
             # 마지막 줄은 여운까지 끌고 간다 (말이 끝나도 글은 남아 있어야 한다)
-            t1 = sec if i == len(real) - 1 else min(sec, t0 + d)
+            t1 = fin if i == len(real) - 1 else min(fin, t0 + d)
             at.append((t0, t1))
             t0 = t1
     else:
         tot = sum(syl(t) for _, t in turns)
+        span = max(0.05, fin - beg)
         for i, (_, t) in enumerate(turns):
-            t1 = sec if i == len(turns) - 1 else t0 + sec * syl(t) / tot
+            t1 = fin if i == len(turns) - 1 else t0 + span * syl(t) / tot
             at.append((t0, t1))
             t0 = t1
     return at
@@ -1337,7 +1413,7 @@ def cut_sec(c, voice, clip):
     return max(MIN_CUT, dur_of(voice) / SPEED + PAD), False
 
 
-def karaoke(c, sec, voice, d, n, title=None, mark='', tail=''):
+def karaoke(c, sec, voice, d, n, title=None, mark='', tail='', clip=None):
     """카라오케 자막 장들 — [(그림, 언제부터, 언제까지), …].
 
     ⭐⭐ 2026-08-31 손님: "카라오케 자막으로 변경하자."
@@ -1356,7 +1432,7 @@ def karaoke(c, sec, voice, d, n, title=None, mark='', tail=''):
     d = Path(d)
     d.mkdir(parents=True, exist_ok=True)
     turns = turns_of(c)
-    wins = sub_windows(c, sec, voice)
+    wins = sub_windows(c, sec, voice, clip)
     out = []
     # ⭐ 편의 **첫 컷**이면 화면 위에 편 제목을 얹는다 (2026-09-01).
     #    세 단계로 옅어지며 사라진다 — 뚝 끊기면 눈에 걸린다.
@@ -1711,7 +1787,10 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
         sec0, uca = cut_sec(c, voice, clip if clip.exists() else None)
         ovs = karaoke(c, sec0, None if uca else voice, OUT / "ov", n,
                       title=head if i == 0 else None, mark=mark,
-                      tail=tail if i == len(cuts) - 1 else "")
+                      tail=tail if i == len(cuts) - 1 else "",
+                      # ⭐ 영상 소리를 쓰는 컷이면 그 영상에서 말이 나는
+                      #    구간을 재서 자막을 거기에 맞춘다 (값 0원)
+                      clip=clip if (uca and clip.exists()) else None)
         out = parts_d / f"c{n:02d}.mp4"
         sec = cut_video(c, still, voice, clip if clip.exists() else None, ovs,
                         out, opener=opener)
