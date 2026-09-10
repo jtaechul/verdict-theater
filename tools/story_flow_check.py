@@ -51,7 +51,14 @@ def thin_script():
     def c(n, who, text, face=None):
         return {"n": n, "who": list(face or ([] if who == "나레이션" else [who])),
                 "turns": [[who, text]], "say": ["담담하게 낮은 목소리로"],
-                "scene": "a woman sits alone in a dim room"}
+        # ⚠️ 2026-09-10 — 나레이션 컷 화면 묘사에는 사람이 없어야 한다
+        #    (없으면 낯선 외국인이 그려진다). 시험용 대본도 **지금
+        #    규격에 맞게** 채워야, 시험이 재려는 것만 남는다.
+        # ⚠️ 법원·판사처럼 사람 아닌 화자는 autofix 가 **나레이션으로 바꾼다.**
+        #    그러면 그 컷도 나레이션 컷이라 사람 없는 묘사여야 한다.
+        "scene": ("a lamp lights an empty chair in a dim room"
+                  if who == "나레이션" or who in ST.NOT_PEOPLE
+                  else "a woman sits alone in a dim room")}
     cuts = [
         c(1, "나레이션", "아내의 의심은 남편 차에 녹음기를 숨기며 시작되었습니다.",
           ["아내"]),
@@ -101,7 +108,14 @@ def fake_s91():
     def cut(n, who, text, face=None):
         return {"n": n, "who": list(face or ([] if who == "나레이션" else [who])),
                 "turns": [[who, text]], "say": ["담담하게 낮은 목소리로"],
-                "scene": "a woman sits alone in a dim room"}
+        # ⚠️ 2026-09-10 — 나레이션 컷 화면 묘사에는 사람이 없어야 한다
+        #    (없으면 낯선 외국인이 그려진다). 시험용 대본도 **지금
+        #    규격에 맞게** 채워야, 시험이 재려는 것만 남는다.
+        # ⚠️ 법원·판사처럼 사람 아닌 화자는 autofix 가 **나레이션으로 바꾼다.**
+        #    그러면 그 컷도 나레이션 컷이라 사람 없는 묘사여야 한다.
+        "scene": ("a lamp lights an empty chair in a dim room"
+                  if who == "나레이션" or who in ST.NOT_PEOPLE
+                  else "a woman sits alone in a dim room")}
 
     cuts, n = [], 0
 

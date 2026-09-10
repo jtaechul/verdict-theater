@@ -54,37 +54,84 @@ def main():
     print("⭐ 컷 그림 (값 0원 — 그림을 안 그린다)\n")
 
     print("① 사람 없는 컷에 사람을 부르지 않는가")
-    empty = B.still_prompt({"who": [], "scene": "a car is parked on a dark street"})
+    # ⚠️⚠️⚠️ 2026-09-10 — 이 검사는 **절대 걸릴 수 없는 검사**였다.
+    #    시험용 장면으로 "a car is parked on a dark street" 처럼 **사람이
+    #    없는 문장을 스스로 골라 넣고** "사람 낱말이 없다" 를 확인했다.
+    #    당연히 늘 통과다. 껍데기 문장에 사람 낱말이 없다는 것만 증명할 뿐,
+    #    **사람이 들어오는 유일한 길인 화면 묘사(scene)** 는 한 번도 안 봤다.
+    #    그동안 진짜 대본은 "the middle-aged man …" 이었고, 그림에는 낯선
+    #    외국인이 계속 들어갔다. 손님이 세 번 말할 때까지 이 검사는 초록불이었다.
+    #    → 이제 **진짜 대본에서 뽑은 장면**(사람이 든 문장)을 넣는다.
+    # (가) 사람을 부르는 나레이션 장면은 **그리지 않고 막는다**
+    DIRTY = {"n": 4, "who": ["아버지"], "turns": [["나레이션", "시험"]],
+             "scene": "the middle-aged man holds a smartphone and taps the screen"}
+    try:
+        B.still_prompt(DIRTY)
+        ck("사람을 부르는 나레이션 장면은 막는다", False, "그냥 그려 버렸다")
+    except SystemExit as e:
+        ck("사람을 부르는 나레이션 장면은 막는다",
+           "나레이션 컷 화면 묘사에 사람이 있습니다" in str(e), str(e)[:70])
+    # (나) 깨끗한 나레이션 장면은 지문 어디에도 사람이 안 남는다
+    NARR = {"n": 5, "who": ["아버지"], "turns": [["나레이션", "시험"]],
+            "scene": "a thick folder is placed on a large wooden desk"}
+    empty = B.still_prompt(NARR)
     hit = re.findall(PERSON, empty, re.I)    # ⚠️ 지문 **전체**를 본다
-    ck("사람이라는 낱말이 지문 어디에도 안 나온다 (색·화풍 줄까지)",
+    ck("깨끗한 나레이션 장면은 지문에 사람이 하나도 없다",
        not hit, " · ".join(sorted(set(hit))))
+    ck("나레이션 컷은 who 가 있어도 장소 갈래로 간다",
+       "The place itself is the subject" in empty,
+       "who 로 갈리면 나레이션에도 사람이 그려진다")
     ck("금지형으로 적지 않는다 (Nobody's …)",
        "Nobody" not in empty and "nobody" not in empty,
        "모델은 '하지 마' 를 흘려듣고 오히려 그린다")
     ck("무엇을 그릴지 적는다", "The place itself is the subject" in empty)
 
     print("\n① -2 사람이 있는 컷은 그대로다 (지문이 안 바뀌어야 0원)")
-    got = B.still_prompt({"who": ["아내"], "scene": "the wife sits at a table"})
+    got = B.still_prompt({"who": ["아내"], "turns": [["아내", "말한다"]],
+                          "scene": "the wife sits at a table"})
     ck("사람 컷은 여전히 사람을 가운데 둔다",
        "the person kept in the middle" in got)
     ck("사람 컷은 여전히 얼굴이 또렷하다", "only the people are sharp" in got)
 
-    print("\n① -3 화면 묘사에 사람이 있는데 안 세운 컷을 잡는가")
-    # ⭐ who 가 비면 얼굴 기준 그림을 안 붙인다 → 그림 모델이 아무 얼굴이나
-    #    지어낸다. 화면 묘사가 사람을 부르고 있으면 반드시 세워야 한다.
+    print("\n① -3 나레이션은 사람을 **세우지 않고 반려한다**")
+    # ⚠️⚠️⚠️ 2026-09-10 — 예전 이 검사는 정반대를 요구했다:
+    #    "나레이션 컷 묘사에 사람이 있으면 **그 사람을 화면에 세워라**".
+    #    그래서 나레이션 배경에 사람이 그려지는 것이 **검사로 보장**돼 있었다.
+    #    규칙(나레이션=장소)과 검사(나레이션에 사람 세워라)가 정면으로
+    #    싸웠고, 검사가 이겼다. 검사가 버그를 지키고 있었던 것이다.
+    #    → 이제 나레이션은 세우지 않고 **규격 검사가 반려**한다.
     import story90 as ST                                    # noqa: E402
     doc = {"cuts": [{"n": 1, "who": [], "say": ["담담하게"],
                      "turns": [["나레이션", "시험"]],
                      "scene": "the wife hides a small device under the seat"},
                     {"n": 2, "who": [], "say": ["담담하게"],
                      "turns": [["나레이션", "시험"]],
-                     "scene": "a car is parked on a dark street at night"}],
-           "people": {}}
+                     "scene": "a car is parked on a dark street at night"},
+                    {"n": 3, "who": [], "say": ["담담하게"],
+                     "turns": [["장남", "형이 다 가져갔잖아"]],
+                     "scene": "장남 sits at a bank counter"}],
+           "people": {"장남": {"age": "50대", "sex": "남"}}}
     ST.autofix(doc)
-    ck("사람이 나오는 묘사면 그 사람을 화면에 세운다",
-       doc["cuts"][0]["who"] == ["아내"], str(doc["cuts"][0]["who"]))
-    ck("사람이 없는 묘사는 그대로 둔다 (괜히 세우지 않는다)",
-       doc["cuts"][1]["who"] == [], str(doc["cuts"][1]["who"]))
+    ck("나레이션 컷에는 사람을 세우지 않는다",
+       doc["cuts"][0]["who"] == [], str(doc["cuts"][0]["who"])
+       + " ← 세우면 장소 그림에 사람이 들어간다")
+    ck("사람이 없는 묘사는 그대로 둔다", doc["cuts"][1]["who"] == [])
+    # ⭐ 대사 컷은 반대다 — 묘사에 나오는 사람은 세워야 얼굴이 이어진다
+    ck("대사 컷은 묘사에 나오는 사람을 세운다",
+       doc["cuts"][2]["who"] == ["장남"], str(doc["cuts"][2]["who"]))
+    # ⭐⭐ 옛 다섯(아내·남편·내연녀·딸·변호사)에 안 묶인다
+    ck("그 사건 사람 이름으로 알아본다 (옛 다섯에 안 묶인다)",
+       "장남" in ST.scene_en({"people": {"장남": {}}}),
+       "하드코딩이 남아 있으면 새 사건마다 조용히 무력해진다")
+    # 규격 검사가 나레이션 컷의 사람을 반려하는가
+    dirty = {"cuts": [{"n": 1, "who": [], "say": ["담담하게"],
+                       "turns": [["나레이션", "시험입니다."]],
+                       "scene": "the middle-aged man holds a smartphone"}],
+             "people": {}}
+    why = [b for b in ST.check(dirty, new=False)
+           if "나레이션 컷 화면 묘사에 사람" in b]
+    ck("규격 검사가 나레이션 속 사람을 반려한다", bool(why),
+       "안 잡으면 그대로 그려져 값(장당 132원)이 날아간다")
     ck("이름 짝이 맞는다 (story90.SCENE_EN ↔ build_short90.EN)",
        set(ST.SCENE_EN) == set(B.EN),
        f"{sorted(set(ST.SCENE_EN) ^ set(B.EN))}")

@@ -198,7 +198,36 @@
 
 ## 화면 묘사(`scene`) 쓰는 법
 
-- 영어 한 문장. 사람이 **지금 무엇을 하고 있는지**를 적는다.
+### ⭐⭐⭐ 나레이션 컷과 대사 컷은 **완전히 다르게** 적는다 (절대 위반 금지)
+
+이 채널의 설계는 **나레이션 = 장소 그림 · 대사 = 인물 영상** 이다.
+둘을 섞으면 나레이션 장면에 **낯선 외국인**이 그려진다 — 그 컷에는 얼굴
+참조를 안 붙이기 때문에, 사람을 부르면 그림 모델이 생판 남을 지어낸다.
+(2026-09-10 손님: "나레이션 배경 이미지에 사람이 자꾸 들어가.
+ 그것도 외국인이 들어가, 등장인물도 아니고.")
+
+- **나레이션 컷** (말하는 사람이 전부 `나레이션`)
+  → **사람을 한 번도 부르지 않는다.** 장소·사물·빛만 적는다.
+  금지: man, woman, person, people, he, she, his, her, son, daughter,
+  father, mother, lawyer, judge, someone, couple, family …
+  · 좋다: `a thick folder is placed on a large wooden desk`
+  · 좋다: `an empty hospital bed with rumpled sheets under a dim lamp`
+  · 좋다: `two empty chairs face each other in a quiet courtroom`
+  · 나쁘다: `the middle-aged man holds a smartphone`  ← 사람을 불렀다
+  · 나쁘다: `the old man lies in a hospital bed`      ← 사람을 불렀다
+  요령: 그 사람이 **방금 떠난 자리**를 적는다. 손 대신 놓인 서류, 빈 의자,
+  식은 커피, 열린 서랍. 감정은 사람이 아니라 **사물과 빛**이 전한다.
+
+- **대사 컷** (사람이 말하는 컷)
+  → 사람을 **한국어 이름 그대로** 부른다 (`장남`, `아버지`, `딸`).
+  `the middle-aged man` 처럼 대명사로 부르면 누구인지 못 알아봐서
+  얼굴 참조가 안 붙고, 컷마다 다른 사람이 나온다.
+  · 좋다: `장남 sits at a bank counter filling out a form`
+  · 나쁘다: `the first middle-aged man sits at a bank counter`
+
+### 두 컷에 공통
+
+- 영어 한 문장. **지금 무엇이 보이는지**를 적는다.
 - **글자가 나올 물건을 부르지 않는다** — bank statement, letterhead,
   business card, receipt, id card, newspaper, 간판, 명패. 실제 상표가
   그려져 나온다. 대신 `a stack of papers`, `a folded document` 처럼 쓴다.
@@ -263,7 +292,7 @@
     {"n": 1, "sec": 10.4, "who": ["아내"],
      "turns": [["나레이션", "…"]],
      "say": ["사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"],
-     "scene": "the wife sits at a bank counter and looks down at a small book"},
+     "scene": "장남 sits at a bank counter and looks down at a small book"},
     {"n": 2, "sec": 8.0, "who": ["아내", "남편"],
      "turns": [["아내", "…"], ["남편", "…"]],
      "say": ["50대 여성이, …", "50대 남성이, …"],

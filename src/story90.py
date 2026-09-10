@@ -232,6 +232,49 @@ SCENE_EN = {"아내": "the wife", "남편": "the husband",
             "변호사": "the lawyer"}
 
 
+def scene_en(doc):
+    """이 사건에서 '화면 묘사에 이 사람이 나온다' 를 알아보는 말들.
+
+    ⚠️⚠️ 2026-09-10 — 위 SCENE_EN 은 **옛 다섯**(아내·남편·내연녀·딸·변호사)
+       만 안다. S92 는 장남·차남·아버지라 하나도 안 걸렸다. 하드코딩을 남겨
+       두면 새 사건마다 조용히 무력해진다 — **그 사건 사람 목록에서 만든다.**
+       (대본 규칙도 이제 화면 묘사에서 인물을 한국어 이름 그대로 부르게 한다)
+    """
+    got = dict(SCENE_EN)
+    for nm in (doc or {}).get("people") or {}:
+        got.setdefault(str(nm), str(nm))
+    return got
+
+
+# ⭐⭐⭐ 나레이션 컷 화면 묘사에는 **사람을 부르지 않는다** (손님 지시)
+#    손님: "규칙을 정해 놓은 거를 왜 자꾸 까먹고 다시 원복을 시켜서
+#           나레이션 배경 이미지에 사람이 자꾸 들어가는 거야.
+#           그것도 외국인이 들어가 등장인물도 아니고."
+#
+#    2026-09-05 에 지문 껍데기만 "사람 없는 판" 으로 바꿔 놓고 정작
+#    **화면 묘사(scene) 자체**는 손 안 댔다. 지문은 scene 을 그대로 갖다
+#    붙이므로, scene 이 "the middle-aged man …" 이면 사람이 그려진다.
+#    껍데기에 규칙을 적는 것은 규칙을 적은 것이 아니다 —
+#    **글이 태어나는 자리(대본)와 그것을 보는 자리(규격 검사)에 적는다.**
+NARR_PERSON = re.compile(
+    r"\b(?:persons?|people|man|men|woman|women|boy|girl|guy|lady|gentleman"
+    r"|son|daughter|father|mother|brother|sister|wife|husband|widow"
+    r"|lawyer|attorney|judge|doctor|nurse|clerk|officer|policeman"
+    r"|someone|somebody|everyone|crowd|couple|family"
+    r"|he|she|his|her|him|hers|they|them|their)\b", re.I)
+
+
+def is_narr_cut(c):
+    """이 컷은 나레이션인가 (말하는 사람이 전부 '나레이션' 인가).
+
+    ⚠️ src/short90.py 의 is_narr 과 **같은 잣대**여야 한다. 한쪽만 고치면
+       규격에서는 통과한 컷이 그림에서는 사람 없는 갈래로 가 버린다.
+    """
+    turns = c.get("turns") or []
+    return bool(turns) and all(str((t or ["", ""])[0]).strip() == "나레이션"
+                               for t in turns)
+
+
 def autofix(doc):
     log = []
 
@@ -276,10 +319,20 @@ def autofix(doc):
     #    지어낸다. 그런데 화면 묘사가 "the wife hides a device" 처럼 사람을
     #    부르고 있으면, 낯선 사람이 그려지는 것이 당연하다.
     #    (실제로 S91 의 옛 대본 컷1 이 그랬다)
+    EN_NOW = scene_en(doc)
     for c in doc.get("cuts") or []:
+        # ⚠️⚠️ 2026-09-10 — 여기가 **규칙과 정반대로** 돌고 있었다.
+        #    나레이션 컷은 사람을 안 그리기로 해 놓고, 이 자리에서는
+        #    "화면 묘사에 사람이 있으면 화면에 세운다" 며 도로 세웠다.
+        #    규칙 두 개가 서로 싸우니 대본이 쓴 대로 아무렇게나 갈렸다.
+        #    → 나레이션 컷은 건드리지 않는다. 화면 묘사에 사람이 있으면
+        #      세우는 것이 아니라 **규격 검사가 반려한다**(위 ②).
+        if is_narr_cut(c):
+            continue
         sc = str(c.get("scene") or "").lower()
-        add = [k for k, en in SCENE_EN.items()
-               if en in sc and k in who_ok(doc) and k not in (c.get("who") or [])]
+        add = [k for k, en in EN_NOW.items()
+               if en.lower() in sc and k in who_ok(doc)
+               and k not in (c.get("who") or [])]
         if add:
             c["who"] = (c.get("who") or []) + add
             log.append(f"컷{c.get('n')}: 화면 묘사에 나오는 "
@@ -486,6 +539,20 @@ def check(doc, new=True):
         sc = str(c.get("scene") or "")
         if not sc.strip():
             bad.append(f"컷{n}: 화면 묘사(scene)가 비었다")
+        # ⭐⭐⭐ 나레이션 컷 배경에는 **사람이 없어야 한다** (손님 지시)
+        #    얼굴 참조가 없는 컷이라, 사람을 부르면 그림 모델이 생판 남을
+        #    지어낸다 — 한국인도 아니고 이 사건 등장인물도 아닌 사람이.
+        #    ⚠️ new 와 상관없이 본다. 이미 만들어 둔 대본에도 그대로 있고,
+        #       그 대본으로 그림을 그리면 값이 나간다(장당 132원).
+        if is_narr_cut(c):
+            w = NARR_PERSON.findall(sc)
+            if w:
+                bad.append(
+                    f"컷{n}: 나레이션 컷 화면 묘사에 사람이 있다 — "
+                    f"'{w[0]}' ({sc[:46]}). 나레이션 배경은 **장소·사물·빛**만 "
+                    f"적는다. 얼굴 참조가 없어서 낯선 외국인이 그려진다. "
+                    f"고치기: tools/edit_line.py --sid <사건> --cut {n} "
+                    f"--scene \"...\" (값 0원)")
         # ⚠️ 규칙은 "그 말을 절대 쓰지 마라" 가 아니다. **쓰려면 뒷감당을 해라** 다.
         #    그림을 다시 그리면 132원이 나가지만, 정해 둔 자리를 흐리게 가리면
         #    0원이다(그 컷에 scrub 을 적어 두면 된다). 둘 중 하나도 안 하고

@@ -31,6 +31,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 import series as S                                           # noqa: E402
+import story90 as ST90                                       # noqa: E402
+import talkplan                                              # noqa: E402
 
 SERIES = ROOT / "data" / "series"
 BASE = SERIES / "S001.json"          # 인물 카드 글은 여기 한 곳뿐이다
@@ -241,7 +243,27 @@ def check_parts(story):
 
 
 def still_prompt(c):
-    who = c.get("who") or []
+    # ⭐⭐⭐ 2026-09-10 — 갈림길을 **who 가 아니라 '나레이션인가'** 로 바꾼다.
+    #    손님: "나레이션 배경 이미지에 사람이 자꾸 들어가."
+    #    나레이션 컷에 who 가 남아 있으면 사람 갈래로 가서 사람이 그려졌다.
+    #    나레이션은 **장소·사물·빛**, 대사는 **사람** — 이 둘을 섞지 않는다.
+    #    (원래 설계도 그랬다: 나레이션은 그림, 대사는 영상)
+    who = [] if is_narr(c) else (c.get("who") or [])
+    if not who:
+        # ⚠️⚠️ 마지막 관문. 나레이션 컷 화면 묘사가 사람을 부르고 있으면
+        #    **조용히 그리지 않는다.** 얼굴 참조가 없어서 낯선 외국인이
+        #    그려지고, 그 값(장당 132원)이 그대로 날아간다.
+        #    규격 검사(story90.check)가 먼저 잡지만, 옛 대본이 이 길로
+        #    들어올 수 있어 여기서 한 번 더 막는다.
+        w = ST90.NARR_PERSON.findall(str(c.get("scene") or ""))
+        if w:
+            raise SystemExit(
+                f"❌ 컷{c.get('n')}: 나레이션 컷 화면 묘사에 사람이 있습니다 "
+                f"— '{w[0]}'\n   {c.get('scene')}\n"
+                f"   나레이션 배경은 **장소·사물·빛**만 적습니다 "
+                f"(얼굴 참조가 없어 낯선 외국인이 그려집니다).\n"
+                f"   고치기: python3 tools/edit_line.py --sid <사건> "
+                f"--cut {c.get('n')} --scene \"...\"   (값 0원)")
     head = (S.HEAD_FIX if who else HEAD_NOBODY).rstrip(".")
     body = [head + ". A single still frame, vertical 9:16 portrait."]
     if who:
@@ -468,6 +490,12 @@ def main(argv=None):
            "people": dict(story.get("people") or {}),
            "cuts": cuts,
            "characters": base.get("characters") or []}
+    # ⭐⭐⭐ 2026-09-10 — 화면이 값을 **스스로 세지 않게** 여기서 찍어 둔다.
+    #    화면은 `706원 × 편 수` 로 어림하고 있었다("편마다 한 컷" 시절 셈).
+    #    대사 컷 전부를 영상으로 바꾸자 화면이 2,824원이라 적고 실제로는
+    #    12,936원이 나가게 됐다 — 값을 보고 승인하는 사람에게 거짓말이다.
+    #    세는 자리를 하나(src/talkplan.py)로 두고, 화면은 이 값을 읽는다.
+    doc["talk"] = talkplan.plan(doc)
     out_p.write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n",
                      encoding="utf-8")
 

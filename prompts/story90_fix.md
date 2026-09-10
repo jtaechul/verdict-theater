@@ -63,6 +63,19 @@
   이를 악물고 · 서슬 퍼렇게 · 몰아붙이듯 · 날카롭게 · 격하게 · 세게
 - `scene` 화면 묘사는 영어 한 문장. 글자가 나올 물건(bank statement,
   letterhead, business card, receipt, id card, newspaper)을 부르지 않는다.
+- ⭐⭐⭐ **나레이션 컷**(말하는 사람이 `나레이션`)의 `scene` 은 **사람을 한 번도
+  부르지 않는다.** 장소·사물·빛만 적는다. 그 컷에는 얼굴 기준 그림을 안 붙이기
+  때문에, 사람을 부르면 이 사건 인물도 아닌 **낯선 외국인**이 그려진다.
+  금지: man, woman, person, people, he, she, his, her, son, daughter, father,
+  mother, wife, husband, lawyer, judge, someone, couple, family …
+  · 좋다: `a thick folder is placed on a large wooden desk`
+  · 좋다: `an empty hospital bed with rumpled sheets under a dim lamp`
+  · 나쁘다: `the middle-aged man holds a smartphone`
+  요령: 그 사람이 **방금 떠난 자리**를 적는다 — 놓인 서류, 빈 의자, 식은 커피.
+  ⚠️ `법원`·`판사` 처럼 사람이 아닌 화자는 기계가 **나레이션으로 바꾼다.**
+     그 컷의 `scene` 도 사람 없는 것으로 같이 고쳐야 한다.
+- **대사 컷**의 `scene` 은 인물을 **한국어 이름 그대로** 부른다 (`장남`, `아버지`).
+  `the middle-aged man` 처럼 대명사로 부르면 얼굴이 안 붙어 컷마다 다른 사람이 된다.
 
 # 내놓을 것
 

@@ -16,6 +16,7 @@
     ⑥ 손으로 만든 영상(clips/cNN.mp4)이 있으면 그 컷만 영상으로 바뀌는가
 """
 import json
+import re
 import os
 import tempfile
 import pathlib
@@ -101,8 +102,18 @@ def main():
                 wear.append(f"컷{c['n']}·{k}({','.join(hit)})")
     ck("컷 프롬프트에 옷·생김새를 적은 곳이 없다 (기준 그림과 안 싸운다)",
        not wear, " ".join(wear))
-    ck("사람이 나오는 컷은 기준 그림을 그대로 지키라고 시킨다",
-       all("reference image" in c["still"] for c in cuts if c.get("who")))
+    # ⚠️⚠️ 2026-09-10 — 예전에는 who 가 있으면 무조건 얼굴 참조를 요구했다.
+    #    그런데 나레이션 컷에도 who 가 남아 있어, 장소여야 할 그림에 사람이
+    #    들어갔다(손님: "나레이션 배경 이미지에 사람이 자꾸 들어가").
+    #    이제 **대사 컷에만** 붙는다 — 그리고 나레이션 컷에는 **없어야** 한다.
+    talk_c = [c for c in cuts if not S9.is_narr(c) and c.get("who")]
+    narr_c = [c for c in cuts if S9.is_narr(c)]
+    ck("대사 컷은 기준 그림을 그대로 지키라고 시킨다",
+       all("reference image" in c["still"] for c in talk_c),
+       str([c["n"] for c in talk_c if "reference image" not in c["still"]]))
+    ck("나레이션 컷에는 기준 그림이 안 붙는다 (장소만 그린다)",
+       all("reference image" not in c["still"] for c in narr_c),
+       str([c["n"] for c in narr_c if "reference image" in c["still"]]))
 
     # ⭐⭐⭐ 2026-08-27 — 손님이 구글 플로우에서 막혔다:
     #    "이 프롬프트는 유명인의 동영상 생성에 관한 Google 정책을 위반할 가능성이…"
@@ -116,8 +127,12 @@ def main():
     BAN = BAN + ("cardigan", "suit", "skirt", "blouse", "hair", "wearing",
                  "years old", "fifties", "thirties", "twenties", "forties",
                  "lawyer")
-    hit = [f"컷{c['n']}({w})" for c in cuts for w in BAN
-           if w in (c.get("flow") or "").lower()]
+    # ⚠️⚠️ 2026-09-10 — 낱말을 **글자 조각**으로 찾고 있었다. 그래서
+    #    "empty chairs"(빈 의자)가 'hair'(머리카락)로 걸렸다. 낱말 경계를 준다
+    #    ("suit" 가 "suitcase" 를, "actor" 가 "factory" 를 잡던 것도 같이 사라진다).
+    _ban = re.compile(r"\b(?:" + "|".join(re.escape(w) for w in BAN) + r")\b", re.I)
+    hit = [f"컷{c['n']}({w})" for c in cuts
+           for w in set(_ban.findall(c.get("flow") or ""))]
     ck("컷 전부 플로우용 프롬프트가 있다",
        all((c.get("flow") or "").strip() for c in cuts))
     ck("플로우용 프롬프트에 정책에 걸리는 낱말이 없다", not hit, " ".join(hit))
@@ -270,11 +285,16 @@ def main():
     finally:
         ST.gen, S9.OUT = real_gen, real_out
 
+    # ⚠️ 나레이션 컷은 얼굴을 **안 붙이는 것이 맞다** (장소 그림이다)
+    def want(c):
+        if S9.is_narr(c):
+            return []
+        return [S9.ST_NAME.get(w, w) + ".png" for w in (c.get("who") or [])]
+
     wrong = [c["n"] for c in cuts
-             if seen.get(f"c{c['n']:02d}.png", []) !=
-             [S9.ST_NAME.get(w, w) + ".png" for w in (c.get("who") or [])]]
-    with_ref = [c["n"] for c in cuts if c.get("who")]
-    ck(f"사람이 나오는 {len(with_ref)}컷에 그 사람 얼굴이 그대로 붙는다",
+             if seen.get(f"c{c['n']:02d}.png", []) != want(c)]
+    with_ref = [c["n"] for c in cuts if want(c)]
+    ck(f"대사 {len(with_ref)}컷에 그 사람 얼굴이 그대로 붙는다",
        not wrong, f"어긋난 컷 {wrong}")
     ck(f"그림 {len(cuts)}장을 다 만든다 (빠지는 컷이 없다)", len(seen) == len(cuts),
        f"{len(seen)}/{len(cuts)}")

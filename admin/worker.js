@@ -1471,8 +1471,10 @@ function partsCard(w) {
         + '<b>어디를 진짜 영상으로 만들까요</b>'
         + '<select id="w-open" style="width:100%;font-size:14px;margin-top:6px">'
         + '<option value="">안 만든다 (전부 그림 · 0원)</option>'
-        + '<option value="talk">대사 장면 — 편마다 한 컷 (+약 '
-        + (706 * n).toLocaleString() + '원)</option>'
+        + '<option value="talk">대사 장면 — ' + (talkPlan().stale
+             ? '값을 모릅니다 (대본을 다시 지어야 압니다)'
+             : ('대사 컷 ' + talkPlan().n + '개 전부 (+약 '
+                + talkPlan().krw.toLocaleString() + '원)')) + '</option>'
         + '<option value="open">편 첫 장면 — 입 다문 4초 (+약 '
         + (470 * n).toLocaleString() + '원)</option>'
         + '</select>'
@@ -1633,6 +1635,19 @@ function lock(id, on, text) {
   if (text) b.textContent = text;
 }
 
+// 2026-09-10 — 대사 영상 값은 **화면이 세지 않는다.**
+//    예전에는 '706원 곱하기 편 수' 로 어림했다 (편마다 한 컷이던 시절의 셈).
+//    대사 컷 전부를 영상으로 바꾸자 화면은 2,824원이라 적고 실제로는
+//    12,936원이 나가게 됐다 — 값을 보고 승인하시는 분께 거짓말이 된다.
+//    이제 대본을 지을 때 tools/build_short90.py 가 doc.talk 에 찍어 둔
+//    진짜 셈(src/talkplan.py 한 곳에서 나온 값)을 그대로 읽는다.
+//    값이 없으면(옛 대본) 0원이라고 적지 않는다 — **모른다고 적는다.**
+function talkPlan() {
+  const t = (S90DOC && S90DOC.talk) || null;
+  if (t && typeof t.krw === 'number') return t;
+  return { n: 0, sec: 0, krw: 0, stale: true };
+}
+
 async function workMake(no) {
   const id = no ? 'w-make-' + no : 'w-make-all';
   if (WBUSY[id]) return;
@@ -1645,8 +1660,13 @@ async function workMake(no) {
   const lines = [what + ' 를 시작할까요?', '',
                  '그림과 목소리는 이미 만든 것을 그대로 씁니다 (0원).'];
   if (kind === 'talk') {
-    lines.push('대사 장면 영상: 켬 — 편마다 한 컷 × 6초 = 약 '
-               + (706 * nps).toLocaleString() + '원이 나갑니다.');
+    const tp = talkPlan();
+    // ⚠️ 값을 모르면 **모른다고 적는다.** 0원이라고 적으면 승인이 거짓이 된다.
+    lines.push(tp.stale
+      ? '대사 장면 영상: 켬 — 값을 아직 모릅니다. 이 대본은 값 셈이 찍히기 전에 '
+        + '지어진 것입니다. [대본 다시 짓기] 를 한 번 하시면 정확한 값이 뜹니다.'
+      : ('대사 장면 영상: 켬 — 대사 컷 ' + tp.n + '개 · 모두 ' + tp.sec
+         + '초 = 약 ' + tp.krw.toLocaleString() + '원이 나갑니다.'));
     lines.push('  (인물이 화면에서 직접 말합니다. 나레이션은 전부 그림입니다)');
   } else if (kind === 'open') {
     lines.push('편 첫 장면 영상: 켬 — ' + nps + '편 × 4초 = 약 '

@@ -410,15 +410,16 @@ def open_dir():
 #       수단이 없어서, 같은 인물이라도 클립마다 다른 사람처럼 들릴 수 있다.
 #       클립 수가 곧 목소리가 흔들릴 기회 수다.
 TALK_VIDEO = os.environ.get("VT_TALK_VIDEO", "").strip() in ("1", "예", "on")
-TALK_PER_PART = int(os.environ.get("VT_TALK_PER_PART", "1"))   # 편마다 몇 컷
-TALK_PER_PERSON = 2              # 한 사건에서 같은 인물은 이만큼까지
-TALK_OK_SEC = (4, 6, 8)          # Veo 가 받는 길이 (5·7초는 HTTP 400)
-# 대사 뒤에 남기는 여운(초). 말이 끝난 뒤 이만큼만 두고 잘라 낸다 —
-# 안 자르면 6초 클립에 4.5초 대사일 때 자막이 1.5초 더 떠 있다.
-TALK_TAIL = 0.45
-# 안전필터가 자주 막는 낱말. 이런 대사는 영상으로 안 사고 그림으로 둔다 —
-# 막히면 그 컷 값(706원)이 그냥 날아가고, 한 번 더 해도 또 막히기 쉽다.
-TALK_HOT = ("관계", "잤", "몸", "성관계", "강간", "죽이", "때렸")
+# ⭐⭐⭐ 2026-09-10 — 고르는 규칙은 **src/talkplan.py 한 곳**에만 둔다.
+#    여기와 화면(worker.js)이 따로 세다가, 화면이 2,824원이라고 적고 실제로는
+#    12,936원이 나가는 꼴이 됐다. 세는 자리를 하나로 만든다.
+#    손님 설계: "나레이션은 모두 이미지, 대사 부분만 영상." 그래서 제한 없음이
+#    기본이다 — 편마다 1컷으로 막아 둔 것은 설계가 아니라 내 임의였다.
+import talkplan                                             # noqa: E402
+TALK_PER_PART = talkplan.TALK_PER_PART
+TALK_PER_PERSON = talkplan.TALK_PER_PERSON
+TALK_OK_SEC = talkplan.TALK_OK_SEC
+TALK_HOT = talkplan.TALK_HOT
 
 
 def talk_dir():
@@ -429,44 +430,17 @@ def talk_dir():
 
 
 def talk_sec(text):
-    """그 대사에 살 길이(초). Veo 가 받는 값 중에서 고른다."""
-    want = len(re.sub(r"[\s…·]", "", str(text))) / 4.6 + 0.8
-    return next((x for x in TALK_OK_SEC if x >= want), TALK_OK_SEC[-1])
+    """그 대사에 살 길이(초) — talkplan 이 정한다."""
+    return talkplan.talk_sec(text)
 
 
 def talk_cuts(doc):
-    """영상으로 살 대사 컷들 — 편마다 TALK_PER_PART 개씩 고른다.
+    """영상으로 살 대사 컷들 — 고르는 규칙은 talkplan 에 있다.
 
-    고르는 규칙(하나라도 어긋나면 그 컷은 그림으로 남는다):
-      · 말차례가 **한 줄**이다 — 두 사람이 주고받으면 한 클립에 목소리가
-        둘 들어가 흔들림이 두 배가 된다.
-      · 편의 **첫 컷도 마지막 컷도 아니다** — 첫 컷에는 편 제목 카드가,
-        마지막 컷에는 「다음 편에 계속」 카드가 얹힌다. 그리고 첫 컷을
-        비워 두면 cut_video 의 오프너 갈래와 부딪칠 일이 없다.
-      · 같은 인물이 한 사건에서 TALK_PER_PERSON 개를 넘지 않는다.
-    같은 값이면 **대사가 짧은 것**을 고른다 — 짧을수록 싸고, 말이 잘릴
-    위험도 적다.
+    ⚠️ 여기서 따로 세지 않는다. 화면·대본짓기·실제 제작이 **같은 셈**을
+       써야 화면에 적힌 값이 진짜 값이 된다.
     """
-    got, per = [], {}
-    for p in parts_of(doc):
-        cs = part_cuts(doc, p)
-        if len(cs) < 3:
-            continue
-        cand = [c for c in cs[1:-1]
-                if not is_narr(c) and len(turns_of(c)) == 1
-                and not any(w in turns_of(c)[0][1] for w in TALK_HOT)]
-        cand.sort(key=lambda c: len(turns_of(c)[0][1]))
-        n = 0
-        for c in cand:
-            who = turns_of(c)[0][0]
-            if per.get(who, 0) >= TALK_PER_PERSON:
-                continue
-            got.append(c)
-            per[who] = per.get(who, 0) + 1
-            n += 1
-            if n >= TALK_PER_PART:
-                break
-    return got
+    return talkplan.talk_cuts(doc)
 
 
 def talk_prompt(c, sec):
@@ -704,9 +678,18 @@ def stills(doc):
     #    → 보관함을 이미 받아 온 뒤이므로(salvage), **진짜로 다시 그릴 것이
     #      몇 장인지 여기서 세어서** 그리기 전에 적는다.
     plan = []
-    for c in doc["cuts"]:
-        refs = [p for p in (ST.card_path(cards_dir(), ST_NAME.get(w, w))
+    # ⭐⭐ 2026-09-10 — 나레이션 컷에는 **얼굴 참조를 안 붙인다.**
+    #    붙이면 장소 그림에 그 사람이 들어간다. 지문 조립(still_prompt)도
+    #    같은 잣대로 갈린다 — 한쪽만 고치면 지문은 장소인데 참조는 사람인
+    #    엇갈린 그림이 나온다.
+    def refs_of(c):
+        if is_narr(c):
+            return []
+        return [p for p in (ST.card_path(cards_dir(), ST_NAME.get(w, w))
                             for w in c.get("who") or []) if p.exists()]
+
+    for c in doc["cuts"]:
+        refs = refs_of(c)
         sig = reuse.sig_of(c["still"], *refs)
         ok, _why = reuse.can_reuse(d / f"c{c['n']:02d}.png", sig)
         if not ok and sig not in kept:
@@ -720,8 +703,7 @@ def stills(doc):
     made = 0
     for c in doc["cuts"]:
         out = d / f"c{c['n']:02d}.png"
-        refs = [p for p in (ST.card_path(cards_dir(), ST_NAME.get(w, w))
-                            for w in c.get("who") or []) if p.exists()]
+        refs = refs_of(c)
         sig = reuse.sig_of(c["still"], *refs)
         ok, why = reuse.can_reuse(out, sig)
         print(f"  컷{c['n']:>2} {'·'.join(c.get('who') or []) or '—'}")

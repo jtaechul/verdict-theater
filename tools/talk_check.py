@@ -59,6 +59,16 @@ def fake(nparts=3, per=9):
     return {"sid": "S99", "title": "시험", "cuts": cuts, "parts": parts}
 
 
+def _per_part(got, doc):
+    """고른 컷을 편별로 센다 (제한을 켜 뒀을 때만 쓴다)."""
+    per = {}
+    for c in got:
+        for p in doc["parts"]:
+            if p["cuts"][0] <= c["n"] <= p["cuts"][1]:
+                per[p["no"]] = per.get(p["no"], 0) + 1
+    return per
+
+
 def main():
     print("⭐ 대사 컷만 영상이 되는가 (값 0원)\n")
     doc = fake()
@@ -69,21 +79,31 @@ def main():
     ck("고른 것 가운데 나레이션이 없다", not narr, f"컷{narr} 이 나레이션이다")
     ck("고른 것이 있다 (아무것도 안 고르면 기능이 죽은 것이다)", got)
 
-    print("\n② 편마다·인물마다 정해진 수만 산다")
-    per_part = {}
-    for c in got:
-        for p in doc["parts"]:
-            if p["cuts"][0] <= c["n"] <= p["cuts"][1]:
-                per_part[p["no"]] = per_part.get(p["no"], 0) + 1
-    over = [k for k, v in per_part.items() if v > S9.TALK_PER_PART]
-    ck(f"편마다 {S9.TALK_PER_PART}컷까지다", not over, f"{over}편이 넘겼다")
-    who = {}
-    for c in got:
-        w = S9.turns_of(c)[0][0]
-        who[w] = who.get(w, 0) + 1
-    over2 = [k for k, v in who.items() if v > S9.TALK_PER_PERSON]
-    ck(f"같은 인물은 {S9.TALK_PER_PERSON}컷까지다 "
-       f"(목소리가 흔들릴 기회를 줄인다)", not over2, f"{over2} 가 넘겼다")
+    print("\n② 대사 컷은 **하나도 빠짐없이** 영상으로 간다")
+    # ⭐⭐⭐ 2026-09-10 손님: "대사 치는 부분에서 영상으로 제작된 거는
+    #    일부에 불과하고." 맞는 지적이었다. 손님 설계는 "나레이션은 모두
+    #    이미지, 대사 부분만 영상" 인데, 내가 값을 아끼려고 편마다 1컷으로
+    #    막아 놨다 — S92 는 대사 14컷 중 4컷만 영상이 됐다.
+    #    그 제한은 설계가 아니라 **내 임의**였다.
+    # ⚠️ 이 시험은 "제한이 0(제한 없음)이다" 를 글로 보지 않는다.
+    #    진짜 대본으로 **골라 보고**, 고를 수 있는 대사 컷이 남았는지 센다.
+    talkable = [c for c in doc["cuts"]
+                if not S9.is_narr(c) and len(S9.turns_of(c)) == 1
+                and not any(w in S9.turns_of(c)[0][1] for w in S9.TALK_HOT)]
+    inner = []
+    for p in doc["parts"]:
+        a, b = p["cuts"]
+        mine = [c for c in talkable if a < c["n"] < b]
+        inner += mine
+    miss = sorted(c["n"] for c in inner if c not in got)
+    ck("고를 수 있는 대사 컷이 하나도 안 남는다",
+       not miss, f"컷{miss} 이 그림으로 남았다 — 편마다·인물마다 걸어 둔 "
+                 f"수 제한이 살아 있다는 뜻이다")
+    if S9.TALK_PER_PART or S9.TALK_PER_PERSON:
+        over = [k for k, v in _per_part(got, doc).items()
+                if S9.TALK_PER_PART and v > S9.TALK_PER_PART]
+        ck(f"제한을 켜 두면 그 수를 지킨다 (편 {S9.TALK_PER_PART})",
+           not over, f"{over}편이 넘겼다")
 
     print("\n③ 첫 컷·마지막 컷은 안 고른다")
     # ⚠️⚠️ 처음에는 위 붙박이 대본으로 봤는데, 거기서는 첫·마지막 컷이
@@ -112,8 +132,30 @@ def main():
     import cost, veo                                         # noqa: E402
     tot = sum(cost.video_krw(veo.MODEL, S9.talk_sec(S9.turns_of(c)[0][1]))
               for c in got)
-    ck(f"세 편에 약 {tot:,.0f}원 — 한 사건 값의 절반을 안 넘는다",
-       tot <= 3000, f"{tot:,.0f}원")
+    # ⚠️⚠️ 2026-09-10 — 예전에는 여기서 `tot <= 3000` 을 걸었다. 그 숫자는
+    #    "편마다 한 컷" 이던 시절의 값이고, **그 제한 자체가 손님 설계와
+    #    어긋난 것**이었다. 뚜껑을 숫자로 박아 두면, 설계가 바뀔 때 검사가
+    #    옛 설계를 지키는 편에 선다 (그래서 대사 14컷 중 4컷만 나갔다).
+    #    → 값은 막지 않는다. 대신 **누르기 전에 진짜 값이 화면에 뜨는지**를
+    #      본다. 손님 규칙은 "값을 숨기지 마라" 이지 "싸게 하라" 가 아니다.
+    import talkplan                                          # noqa: E402
+    pl = talkplan.plan(doc)
+    ck("셈이 한 곳에서만 나온다 (short90 과 talkplan 이 같은 답)",
+       [c["n"] for c in got] == pl["cuts"], f'{[c["n"] for c in got]} vs {pl["cuts"]}')
+    js = (ROOT / "admin" / "worker.js").read_text(encoding="utf-8")
+    ck("화면이 스스로 안 센다 (doc.talk 을 읽는다)",
+       "S90DOC.talk" in js and "706 * n" not in js,
+       "화면이 따로 세면 언젠가 또 어긋난다")
+    ck("화면이 컷 수와 값을 함께 적는다",
+       "talkPlan().n" in js and "talkPlan().krw" in js)
+    ck("값을 모르면 0원이라고 안 적는다",
+       "stale" in js and "값을 아직 모릅니다" in js,
+       "0원이라고 적으면 승인 자체가 거짓이 된다")
+    bs = (ROOT / "tools" / "build_short90.py").read_text(encoding="utf-8")
+    ck("대본을 지을 때 값을 찍어 둔다 (doc['talk'])",
+       'doc["talk"] = talkplan.plan(doc)' in bs)
+    print(f"   · 이 시험 대본이면 대사 {pl['n']}컷 · {pl['sec']}초 "
+          f"· 약 {pl['krw']:,}원")
     src = (ROOT / "src" / "short90.py").read_text(encoding="utf-8")
     ck("켜야만 돈다 (VT_TALK_VIDEO)", "VT_TALK_VIDEO" in src)
     yml = (ROOT / ".github" / "workflows" / "short90.yml").read_text(encoding="utf-8")
