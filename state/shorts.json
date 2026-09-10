@@ -13,8 +13,6 @@
      1,
      8
     ],
-    "sec": 46.3,
-    "made_at": "2026-09-02T09:07:48Z",
     "uploaded": {
      "video_id": "rBgqeyyxElQ",
      "privacy": "public",
@@ -33,8 +31,6 @@
      9,
      16
     ],
-    "sec": 44.7,
-    "made_at": "2026-09-02T09:08:29Z",
     "uploaded": {
      "video_id": "-pGAtpmwLzg",
      "privacy": "private",
@@ -53,8 +49,6 @@
      17,
      24
     ],
-    "sec": 42.8,
-    "made_at": "2026-09-02T09:09:07Z",
     "uploaded": {
      "video_id": "Ezib6Q1qB5o",
      "privacy": "private",
@@ -67,7 +61,8 @@
   "label": "32억 상속 사건",
   "case_id": "230761",
   "cuts": 24,
-  "scripted_at": "2026-09-01T12:42:55Z"
+  "scripted_at": "2026-09-01T12:42:55Z",
+  "script_sig": "f75316f572e7"
  },
  "S91": {
   "sid": "S91",
@@ -152,9 +147,7 @@
     "cuts": [
      1,
      9
-    ],
-    "sec": 55.6,
-    "made_at": "2026-09-10T04:42:49Z"
+    ]
    },
    "2": {
     "no": 2,
@@ -166,9 +159,7 @@
     "cuts": [
      10,
      19
-    ],
-    "sec": 62.3,
-    "made_at": "2026-09-10T04:43:32Z"
+    ]
    },
    "3": {
     "no": 3,
@@ -180,9 +171,7 @@
     "cuts": [
      20,
      29
-    ],
-    "sec": 64.1,
-    "made_at": "2026-09-10T04:44:15Z"
+    ]
    },
    "4": {
     "no": 4,
@@ -194,15 +183,14 @@
     "cuts": [
      30,
      38
-    ],
-    "sec": 59.1,
-    "made_at": "2026-09-10T04:44:55Z"
+    ]
    }
   },
   "title": "22억 독식 상속 사건",
   "label": "22억 상속 다툼",
   "case_id": "601919",
   "cuts": 38,
-  "scripted_at": "2026-09-09T10:59:58Z"
+  "scripted_at": "2026-09-09T10:59:58Z",
+  "script_sig": "bc7be377d35e"
  }
 }

@@ -1667,6 +1667,23 @@ async function workMake(no) {
         + '지어진 것입니다. [대본 다시 짓기] 를 한 번 하시면 정확한 값이 뜹니다.'
       : ('대사 장면 영상: 켬 — 대사 컷 ' + tp.n + '개 · 모두 ' + tp.sec
          + '초 = 약 ' + tp.krw.toLocaleString() + '원이 나갑니다.'));
+    // ⭐⭐⭐ 60초 벽 — 이 채널에서 가장 비싼 교훈이다. 대사 컷을 영상으로
+    //    바꾸면 편이 길어진다. 넘칠 편은 만들기 전에 그림으로 덜어 내는데,
+    //    **무엇을 덜어냈고 편이 몇 초가 되는지** 누르기 전에 보여 드린다.
+    if (!tp.stale && tp.parts) {
+      const ps = Object.keys(tp.parts).sort().map(function (k) {
+        return k + '편 ' + tp.parts[k] + '초'; }).join(' · ');
+      lines.push('  만들고 나면: ' + ps + ' (60초 벽 안)');
+      if ((tp.dropped || []).length)
+        lines.push('  60초를 넘지 않게 대사 컷 ' + tp.dropped.length
+                   + '개는 그림으로 남깁니다.');
+      // ⭐ 한 번 실행 한도가 있어 한 번에 다 안 될 수 있다. 미리 알려 드린다.
+      //    두 번째부터는 만든 것을 0원으로 다시 쓰므로 값은 더 안 나간다.
+      if ((tp.presses || 1) > 1)
+        lines.push('  값 한도(' + (tp.cap || 3000).toLocaleString() + '원) 때문에 '
+                   + tp.presses + '번 눌러야 다 만들어집니다. '
+                   + '두 번째부터는 만든 것을 그대로 써서 값이 더 안 나갑니다.');
+    }
     lines.push('  (인물이 화면에서 직접 말합니다. 나레이션은 전부 그림입니다)');
   } else if (kind === 'open') {
     lines.push('편 첫 장면 영상: 켬 — ' + nps + '편 × 4초 = 약 '

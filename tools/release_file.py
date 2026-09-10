@@ -89,7 +89,23 @@ def put(tag, name, src):
     ct = "video/mp4" if name.endswith(".mp4") else "application/octet-stream"
     call(f"{UP}/repos/{os.environ.get('GITHUB_REPOSITORY', 'jtaechul/verdict-theater')}"
          f"/releases/{rel['id']}/assets?name={name}", "POST", data, ct)
-    print(f"✅ {src} → {tag}/{name} ({len(data):,} 바이트)")
+    # ⭐⭐⭐ 2026-09-10 — **보관이 진짜 됐는지 확인한다.**
+    #    손님: "이미 제작된 것 중 제대로 된 것은 다시 제작되지 않도록."
+    #    여기가 그 규칙이 사는 자리다. 이 보관이 실패하면 다음 실행에서
+    #    그림 38장(약 5,000원)과 대사 영상(컷마다 706~941원)을 **전부 다시**
+    #    만든다. 그런데 워크플로가 `|| true` 로 감싸고 있어, 실패해도
+    #    초록불이고 아무도 몰랐다. 올린 뒤 **되읽어** 크기를 견준다.
+    back = release(tag)
+    got = next((x for x in back.get("assets", []) if x["name"] == name), None)
+    if not got or int(got.get("size") or 0) != len(data):
+        print(f"❌❌ 보관 실패 — {tag}/{name} 이 제대로 안 올라갔습니다.\n"
+              f"   올린 크기 {len(data):,} · 저쪽 크기 "
+              f"{(got or {}).get('size', '없음')}\n"
+              f"   ⚠️ 이대로 두면 **다음에 만들 때 값을 처음부터 다시 씁니다.**"
+              f" (그림 한 장 132원 · 대사 영상 한 컷 706~941원)",
+              file=sys.stderr)
+        return 3
+    print(f"✅ {src} → {tag}/{name} ({len(data):,} 바이트 · 보관 확인함)")
     return 0
 
 

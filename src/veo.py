@@ -86,6 +86,13 @@ class RaiFiltered(VeoError):
     """안전 필터에 걸렸다 — **고장이 아니다.** 같은 지문이라도 씨앗을 바꾸면
     통과하는 일이 잦다. 부르는 쪽이 이것만 따로 잡아 한 번 더 해 볼 수 있게
     갈래를 나눠 둔다 (2026-09-05: 1편 첫 장면이 여기 걸려 그림으로 갔다)."""
+class RunCapReached(VeoError):
+    """한 번 실행에 정한 값(cost.RUN_KRW)을 넘었다. 만든 것은 그대로 남는다."""
+
+
+# 이번 실행에서 영상에 쓴 값 (src/still.py 의 _spent 와 같은 얼개)
+_spent = {"krw": 0.0}
+
 
 
 def _key():
@@ -161,12 +168,26 @@ def make_clip(prompt, sec, out, ratio="16:9", seed=None, start=None, end=None):
         raise VeoError(f"이번 실행의 영상 만들기 상한({CALL_CAP}번)에 걸렸다.")
 
     krw = cost.video_krw(MODEL, sec)
+    # ⭐⭐⭐ 2026-09-10 — **한 번 실행 한도가 여기엔 없었다.**
+    #    그림(src/still.py)에는 2026-08-30 에 달았는데, 훨씬 비싼 영상에는
+    #    안 달려 있었다. 달 한도만 보니 한 달 여유가 남아 있으면 한 번 누를 때
+    #    만 원 넘게 그냥 나갈 수 있었다 (대사 컷 14개 = 12,900원).
+    #    ⚠️ 부르는 쪽마다 달면 **새 갈래가 생길 때 잊는다.** 실제로 openers·
+    #       talkers 두 갈래가 모두 뚫려 있었다. 그래서 **값이 나가는 이 자리**
+    #       에 박는다 — 앞으로 어떤 갈래가 생겨도 저절로 걸린다.
+    if _spent["krw"] + krw > cost.RUN_KRW:
+        raise RunCapReached(
+            f"이번 실행 한도({cost.RUN_KRW:,.0f}원)에 걸렸습니다. "
+            f"여기까지 영상에 {_spent['krw']:,.0f}원 썼고 "
+            f"이 컷이 약 {krw:,.0f}원입니다. "
+            f"만든 것은 그대로 남습니다 — 다시 누르면 없는 것만 채웁니다(0원).")
     if cost.month_total() + krw > cost.MONTH_KRW:
         raise cost.MonthlyCapReached(
             f"이번 달 한도({cost.MONTH_KRW:,.0f}원)에 걸렸습니다. "
             f"지금까지 {cost.month_total():,.0f}원 썼고 이 컷이 약 {krw:,.0f}원입니다.")
 
     print(f"    영상 만드는 중… ({sec}초 · {res_for(sec)} · 약 {krw:,.0f}원)")
+    _spent["krw"] += krw
     inst = {"prompt": prompt}
     if start:
         # ⚠️ 실측: image 에는 bytesBase64Encoded 와 mimeType 이 **둘 다** 있어야

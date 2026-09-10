@@ -117,6 +117,37 @@ def mark_uploaded(sid, no, video_id, privacy, publish_at=None):
     return p
 
 
+def mark_script(sid, sig):
+    """대본 글이 바뀌었으면 **만든 기록(sec)을 지운다.**
+
+    ⭐⭐⭐ 2026-09-10 — 대본을 고쳐도 화면은 **옛 길이**를 그대로 보여 줬다.
+       S92 는 2편 62.3초 · 3편 64.1초로 적혀 있었는데, 그 사이 대본을 줄여
+       실제로는 52초짜리다. 낡은 숫자를 보고 "60초 넘었네" 하거나, 반대로
+       줄이기 전 숫자를 보고 그냥 올리게 된다.
+       → 대본 글이 바뀌면 그 사건의 '만든 길이' 를 지운다.
+         화면에는 **'아직 안 만듦'** 으로 뜬다 (그게 사실이다).
+    """
+    d = load()
+    r = row(d, sid)
+    if r.get("script_sig") == sig:
+        return False
+    r["script_sig"] = sig
+    for p in (r.get("parts") or {}).values():
+        p.pop("sec", None)
+        p.pop("made_at", None)
+    save(d)
+    return True
+
+
+def made(sid, no):
+    """그 편을 만든 기록 (sec · made_at). 안 만들었으면 빈 것.
+
+    ⭐ 2026-09-10 — 올리기 전에 **길이를 보려고** 만들었다. 60초를 넘은 편은
+       이 채널에서 조회수가 0이었다 (src/upload.py 가 여기서 읽어 막는다).
+    """
+    return (load().get(sid) or {}).get("parts", {}).get(str(no)) or {}
+
+
 def uploaded(sid, no):
     """이미 올렸으면 그 기록. 안 올렸으면 None. (두 번 올리는 것을 막는 데 쓴다)"""
     p = (load().get(sid) or {}).get("parts", {}).get(str(no)) or {}

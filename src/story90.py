@@ -79,11 +79,34 @@ PEOPLE_MAX = 4          # 기본 다섯 말고 더 세울 수 있는 사람 수
 #   ⚠️ **글자로 재지 않는다. 초로 잰다.** 컷 수가 8~11로 변하는데 컷마다
 #      1.4초씩 고정으로 붙으므로, 같은 글자 수라도 컷이 많으면 훨씬 길어진다.
 #      옛 방식(글자 상한 하나)으로는 이걸 절대 못 잡는다.
-SEC_PER_CHAR = 0.1218            # 글자 한 개가 차지하는 시간(초) — 실측
-SEC_PER_CUT = 1.875              # 컷 한 개에 붙는 고정 시간(여운·최소 길이)
+# ⭐⭐⭐ 2026-09-10 — 이 잣대를 **다시 맞췄다.** 옛 값(0.1218 · 1.875)은
+#    S91 **한 사건의 컷 27개**로만 맞춘 것이라, 다른 사건에서 줄줄이 짧게 잡았다.
+#    만들어 둔 열 편의 **진짜 길이**(state/shorts.json)와 대 보면 —
+#        S91 : -1.5 ~ +1.6초   (맞춘 그 사건이라 잘 맞는다)
+#        S90 : +3.4 ~ +7.4초   ← 실제가 더 길다
+#        S92 : +6.1 ~ +9.8초   ← 실제가 훨씬 더 길다
+#    그래서 규격을 **통과한** S92 대본이 실제로는 2편 62.3초 · 3편 64.1초로
+#    만들어져 있었다. 이 채널에서 60초를 넘은 편은 조회수가 **0** 이었다.
+#    (다행히 아직 안 올렸다 — 올렸으면 그대로 묻혔다)
+#
+#    → **컷이 아니라 편(part) 단위 실측 여섯 개**로 다시 맞췄다.
+#      대사 영상이 없던 S90·S91 여섯 편만 쓴다(대사 영상은 길이를 따로 밀어
+#      올리므로 잣대에 섞으면 안 된다).
+#          편 = 0.153 x 글자 + 1.5 x 컷
+#      여섯 편 오차: 실제보다 짧게 최대 4.3초 · 길게 최대 5.0초.
+#    ⚠️ 컷 항(1.5초)을 0으로 두면 제곱합은 조금 줄지만, **컷을 쪼개도 길이가
+#       안 늘어나는** 잣대가 된다. 컷마다 붙는 여운은 실제로 있으므로 살려 둔다.
+#    ⚠️ **짧게 잡는 쪽이 위험하다.** 짧게 잡으면 규격을 통과한 대본이 60초를
+#       넘는다. 그래서 상한(PART_SEC_MAX)에 그 오차만큼 안전분을 둔다.
+SEC_PER_CHAR = 0.153             # 글자 한 개가 차지하는 시간(초) — 편 단위 실측
+SEC_PER_CUT = 1.5                # 컷 한 개에 붙는 고정 시간(여운)
+# 잣대가 실제보다 **짧게** 잡을 수 있는 최대치(초). 상한을 이만큼 낮춰 잡는다.
+SEC_TOL = 4.5
 # 한 편의 길이(초) 상한·하한. 60초를 넘긴 편은 이 채널에서 조회수 0이었다
 # (short90.PART_MAX_SEC=59.5). 잣대 오차 1.6초를 감안해 **55초**에서 막는다.
-PART_SEC_MAX = 55.0
+# ⚠️ 60초 벽(short90.PART_MAX_SEC = 59.5)에서 잣대 오차(SEC_TOL)만큼 물러선다.
+#    55.0 = 59.5 - 4.5. 이 숫자를 손으로 올리면 그만큼 60초를 넘을 위험이 커진다.
+PART_SEC_MAX = 59.5 - SEC_TOL
 PART_SEC_MIN = 46.0
 # 글자 상한은 **말도 안 되는 값을 막는 마지막 울타리**로만 남긴다.
 #   9컷 기준 55초 ≈ 313자, 8컷이면 328자. 넉넉히 둔다.
@@ -240,9 +263,35 @@ def scene_en(doc):
        두면 새 사건마다 조용히 무력해진다 — **그 사건 사람 목록에서 만든다.**
        (대본 규칙도 이제 화면 묘사에서 인물을 한국어 이름 그대로 부르게 한다)
     """
-    got = dict(SCENE_EN)
-    for nm in (doc or {}).get("people") or {}:
-        got.setdefault(str(nm), str(nm))
+    ppl = (doc or {}).get("people") or {}
+    got = {}
+    for nm, en in SCENE_EN.items():          # 옛 다섯 (아내·남편·…)
+        got.setdefault(nm, []).append(en)
+    for nm in ppl:                           # 새 규칙 — 한국어 이름 그대로
+        got.setdefault(str(nm), []).append(str(nm))
+    # ⭐⭐ 2026-09-10 — 옛 대본은 사람을 **대명사**로 부른다
+    #    ("the old man", "the middle-aged woman"). 그러면 이름이 안 걸려
+    #    얼굴 참조가 안 붙고, 그 사람이 낯선 얼굴로 화면에 나온다
+    #    (S92 컷13 "the old man pushes a piece of paper toward **the old
+    #     woman**" — 어머니가 얼굴 없이 화면에 있었다).
+    #    나이·성별로 만든 영어 표현도 **같이** 알아본다.
+    #    ⚠️ 같은 나이대·성별이 둘 이상이면 누구인지 알 수 없다(장남·차남 둘 다
+    #       50대 남). 그런 것은 건드리지 않는다 — 엉뚱한 얼굴을 붙이는 것이
+    #       안 붙이는 것보다 나쁘다.
+    band = {}
+    for nm, v in ppl.items():
+        age = str((v or {}).get("age") or "")
+        sex = str((v or {}).get("sex") or "")
+        mm = re.search(r"(\d+)", age)
+        yr = int(mm.group(1)) if mm else 0
+        word = ("old" if yr >= 60 else "young" if 0 < yr <= 39
+                else "middle-aged" if yr else "")
+        who = "man" if sex.startswith("남") else "woman" if sex.startswith("여") else ""
+        if word and who:
+            band.setdefault(f"the {word} {who}", []).append(str(nm))
+    for en, names in band.items():
+        if len(names) == 1:                  # 한 명일 때만
+            got.setdefault(names[0], []).append(en)
     return got
 
 
@@ -330,9 +379,9 @@ def autofix(doc):
         if is_narr_cut(c):
             continue
         sc = str(c.get("scene") or "").lower()
-        add = [k for k, en in EN_NOW.items()
-               if en.lower() in sc and k in who_ok(doc)
-               and k not in (c.get("who") or [])]
+        add = [k for k, ens in EN_NOW.items()
+               if any(str(e).lower() in sc for e in ens)
+               and k in who_ok(doc) and k not in (c.get("who") or [])]
         if add:
             c["who"] = (c.get("who") or []) + add
             log.append(f"컷{c.get('n')}: 화면 묘사에 나오는 "

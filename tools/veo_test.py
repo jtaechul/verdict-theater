@@ -178,7 +178,18 @@ want = round(cost.video_krw(veo.MODEL, vprompt.seconds_for(
 ck(f"한 컷 값이 {want:,}원으로 적힌다", rows and rows[0]["krw"] == want, rows[:1])
 
 # ③ 이어 만들기
+# ⚠️⚠️ 2026-09-10 — 이 시험은 한 프로세스 안에서 **여러 번의 실행**을 흉내 낸다.
+#    그런데 veo.make_clip 에 한 번 실행 한도(cost.RUN_KRW)가 생기면서, 앞
+#    단계에서 쓴 값이 그대로 쌓여 뒤 단계가 한도에 걸렸다. 진짜 실행은 매번
+#    **새 프로세스**라 그렇게 쌓이지 않는다 — 시험도 그렇게 맞춘다.
+#    (한도 자체는 tools/waste_check.py 가 따로 본다)
+def new_run():
+    """실행 하나가 새로 시작한 것처럼 이번 실행 값을 0으로 되돌린다."""
+    veo._spent["krw"] = 0.0
+
+
 print("③ 이미 있는 컷은 다시 안 만드는가")
+new_run()
 sent.clear(); veo._calls["n"] = 0
 with redirect_stdout(io.StringIO()):
     veo.episode("S001", 1, d)
@@ -194,6 +205,7 @@ ck("지운 한 컷만 다시 만든다",
 
 # ④ 상한
 print("④ 부르는 횟수 상한이 진짜로 막는가")
+new_run()
 d2 = pathlib.Path(tempfile.mkdtemp(prefix="veo-cap-"))
 keep = veo.CALL_CAP
 veo.CALL_CAP = 2
@@ -206,6 +218,7 @@ ck("만든 것은 남는다", len(list(d2.glob('*.mp4'))) == 2, sorted(p.name fo
 veo.CALL_CAP = keep
 
 # ⑤ 한 달 한도 — 부르기 전에 막아야 한다
+new_run()
 print("⑤ 한 달 한도를 부르기 전에 보는가")
 d3 = pathlib.Path(tempfile.mkdtemp(prefix="veo-cap2-"))
 cost.record("영상", cost.MONTH_KRW + 1, "검사용 가짜")
@@ -264,6 +277,7 @@ for tag, body in (("raiFilteredReason", {"raiFilteredReason": "blocked by safety
     urllib.request.urlopen = blocked
     d5 = pathlib.Path(tempfile.mkdtemp(prefix="veo-safe-"))
     veo._calls["n"] = 0
+    new_run()                    # 여기도 **새 실행**이다 (앞 값이 안 쌓인다)
     with redirect_stdout(io.StringIO()) as log:
         veo.episode("S001", 1, d5, only_cut=1)
     out5 = log.getvalue()

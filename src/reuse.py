@@ -77,3 +77,41 @@ def stamp(out, sig):
     f = sig_file(out)
     f.parent.mkdir(parents=True, exist_ok=True)
     f.write_text(sig, encoding="utf-8")
+
+
+# ── ⭐⭐⭐ 아낀 값 장부 (2026-09-10 손님: "이미 제작된 것 중 제대로 된 것은
+#    다시 제작되지 않도록 하여 비용이 낭비되지 않도록") ──────────────
+#    재활용은 예전부터 돌고 있었지만, **얼마나 아꼈는지 아무도 안 적었다.**
+#    보관이 조용히 실패해 매번 다시 만들고 있어도 화면에는 똑같이 보였다.
+#    → 실행마다 "다시 쓴 것 / 새로 만든 것 / 아낀 값"을 적는다.
+_BOOK = {}
+
+
+def note(kind, reused, made, one_krw):
+    """한 갈래(그림·소리·대사영상)의 결과를 장부에 적는다."""
+    b = _BOOK.setdefault(kind, {"reused": 0, "made": 0, "krw": 0.0})
+    b["reused"] += int(reused)
+    b["made"] += int(made)
+    b["krw"] = float(one_krw)
+
+
+def book_flush(title=""):
+    """장부를 사람 말로 찍고 비운다. 아낀 값을 돌려준다."""
+    if not _BOOK:
+        return 0.0
+    saved = spent = 0.0
+    print(f"\n■ 다시 쓴 것 / 새로 만든 것{(' — ' + title) if title else ''}")
+    for kind, b in _BOOK.items():
+        s_ = b["reused"] * b["krw"]
+        m_ = b["made"] * b["krw"]
+        saved += s_
+        spent += m_
+        print(f"   {kind}: 그대로 씀 {b['reused']}개(약 {s_:,.0f}원 아낌) · "
+              f"새로 만듦 {b['made']}개(약 {m_:,.0f}원)")
+    print(f"   합계 — 아낀 값 약 {saved:,.0f}원 · 쓴 값 약 {spent:,.0f}원")
+    if saved == 0 and spent > 0:
+        print("   ⚠️⚠️ 하나도 못 쓰고 전부 새로 만들었습니다. 보관(릴리스)이 "
+              "제대로 안 되고 있을 수 있습니다 — 다음 실행에서도 같은 값이 "
+              "또 나갑니다. 위쪽 '보관' 줄을 확인하십시오.")
+    _BOOK.clear()
+    return saved

@@ -449,8 +449,18 @@ def talk_cuts(doc):
 
     ⚠️ 여기서 따로 세지 않는다. 화면·대본짓기·실제 제작이 **같은 셈**을
        써야 화면에 적힌 값이 진짜 값이 된다.
+
+    ⭐⭐⭐ 2026-09-10 — **60초 벽을 사기 전에 지킨다.**
+       대사 컷을 영상으로 바꾸면 그 컷 길이가 목소리 길이가 아니라 영상
+       길이(4·6·8초)가 된다. S92 는 그것만으로 2편·3편이 54초에서 66초로
+       뛴다. 이 채널에서 60초를 넘은 편은 조회수가 **0** 이었다.
+       만든 뒤에 경고를 찍는 것으로는 늦다 — 그때는 값을 이미 다 쓴 뒤다.
+       → talkplan.fit 이 넘칠 편의 **긴 대사 컷부터 그림으로 남긴다.**
     """
-    return talkplan.talk_cuts(doc)
+    keep, why = talkplan.fit(doc)
+    for w in why:
+        print(f"  ⏸ {w}")
+    return keep
 
 
 def talk_prompt(c, sec):
@@ -566,6 +576,7 @@ def talkers(doc):
     # ⭐ 이름이 밀려도 다시 안 사게 — 지문으로 찾아 옮겨 쓴다 (그림·소리와 같은 길)
     kept = salvage(d, ".mp4")
     made, miss = 0, []
+    spent, again = 0.0, 0        # spent = 이번에 진짜 나간 값 · again = 0원으로 다시 쓴 것
     for c, sec in plan:
         n = c["n"]
         who, text = turns_of(c)[0]
@@ -583,16 +594,31 @@ def talkers(doc):
         if ok:
             print("    (그대로다 — 건너뛴다 · 0원)")
             made += 1
+            again += 1
             continue
         if sig in kept:
             out.write_bytes(kept[sig])
             reuse.stamp(out, sig)
             print("    (이름만 밀렸다 — 그대로 옮겨 쓴다 · 0원)")
             made += 1
+            again += 1
             continue
         if why:
             print(f"    ⚠️ {why} — 다시 만든다")
         krw1 = cost.video_krw(veo.MODEL, sec)
+        # ⭐⭐⭐ 2026-09-10 — **한 번 실행 한도가 여기에 없었다.**
+        #    대사 컷이 14개면 12,900원이 나가는데, 이 채널이 정한 한 번 한도는
+        #    3,000원이다. 다른 곳(still.py · veo.py)에는 다 걸려 있는데
+        #    가장 비싼 이 자리만 뻥 뚫려 있었다.
+        #    → 넘으면 **거기서 멈춘다.** 만든 것은 그대로 남고, 다시 누르면
+        #      없는 것만 채운다(만든 것은 0원으로 다시 쓴다).
+        if spent + krw1 > cost.RUN_KRW:
+            print(f"    ⏸ 한 번 실행 한도({cost.RUN_KRW:,.0f}원)에 닿았다 "
+                  f"— 여기서 멈춘다. 만든 {made}개는 그대로 남는다.\n"
+                  f"       나머지는 **다시 누르면** 이어서 만듭니다 "
+                  f"(만든 것은 0원으로 다시 씁니다).")
+            miss += [x["n"] for x, _ in plan if x["n"] >= n and x["n"] not in miss]
+            break
         try:
             # ⭐ 씨앗을 **말하는 사람**으로 묶는다. 컷 번호로 묶으면 같은 인물의
             #   여러 컷이 확실히 다른 씨앗을 받아 목소리가 더 흔들린다.
@@ -611,6 +637,13 @@ def talkers(doc):
                 out.unlink(missing_ok=True)
                 miss.append(n)
                 continue
+        except veo.RunCapReached as e:
+            # ⭐ 값이 모자라 멈춘 것이지 **고장이 아니다.** 그림으로 떨어뜨리지
+            #   않고 여기서 멈춘다 — 다시 누르면 만든 것은 0원으로 쓰고
+            #   없는 것만 이어서 만든다.
+            print(f"    ⏸ {e}")
+            miss += [x["n"] for x, *_ in plan if x["n"] >= n and x["n"] not in miss]
+            break
         except Exception as e:                               # noqa: BLE001
             print(f"    ⚠️ 못 만들었다 ({e}) — 이 컷은 그림으로 갑니다")
             out.unlink(missing_ok=True)
@@ -626,7 +659,12 @@ def talkers(doc):
         talk_trim(out, sec)
         reuse.stamp(out, sig)
         made += 1
-    print(f"\n■ 대사 장면 {made}/{len(plan)}컷")
+        spent += krw1
+    print(f"\n■ 대사 장면 {made}/{len(plan)}컷 · 이번에 쓴 값 약 {spent:,.0f}원")
+    # ⭐ 아낀 값을 적는다. 아낀 값이 0이면 보관이 안 되고 있다는 뜻이다.
+    if plan:
+        one = cost.video_krw(veo.MODEL, plan[0][1])
+        reuse.note("대사 영상", again, max(0, made - again), one)
     if miss:
         print("  ⚠️⚠️ 그림으로 가는 대사 컷: " + " · ".join(f"컷{n}" for n in miss))
     return 0
@@ -689,6 +727,13 @@ def openers(doc):
                 out.unlink(missing_ok=True)
                 miss.append(n)
                 continue
+        except veo.RunCapReached as e:
+            # ⭐ 값이 모자라 멈춘 것이지 **고장이 아니다.** 그림으로 떨어뜨리면
+            #   손님은 "왜 영상이 안 됐지" 하고 다시 눌러 또 값을 쓴다.
+            #   여기서 멈추고, 다시 누르면 만든 것은 0원으로 쓰고 이어서 만든다.
+            print(f"    ⏸ {e}")
+            miss.append(n)
+            break
         except Exception as e:                               # noqa: BLE001
             # ⚠️ 첫 장면 하나가 안 나왔다고 편 전체를 못 만들면 안 된다.
             #    그 컷은 **그림으로** 간다 — 지금까지 하던 그대로다.
@@ -773,6 +818,8 @@ def stills(doc):
         reuse.stamp(out, sig)
         made += 1
     print(f"\n■ 그림 {made}/{len(doc['cuts'])}장")
+    # ⭐ 얼마를 아꼈는지 적는다 (보관이 조용히 죽으면 여기서 드러난다)
+    reuse.note("컷 그림", made - len(plan), len(plan), one)
     # ⭐⭐ 2026-08-31 손님: "특정 은행 브랜드가 언급되면 안 돼."
     #    그림 모델이 실제 상표(하나은행)를 그려 넣은 적이 있다. 정해 둔 자리를
     #    흐리게 만든다 (값 0원). 영상이 아니라 **그림**에 걸어야 카메라가
@@ -1911,6 +1958,12 @@ def main():
                 return 1
             # 영상이 나왔으면 올릴 글도 같이 만들어 둔다 (0원)
             meta(doc)
+        # ⭐⭐⭐ 2026-09-10 — 끝에 **얼마를 아꼈는지** 적는다.
+        #    손님: "이미 제작된 것 중 제대로 된 것은 다시 제작되지 않도록 하여
+        #    비용이 낭비되지 않도록." 재활용은 예전부터 돌았지만 얼마나 아꼈는지
+        #    아무도 안 적어서, 보관이 조용히 죽어 매번 다시 만들고 있어도
+        #    화면에는 똑같이 보였다. 아낀 값이 0이면 여기서 크게 알린다.
+        reuse.book_flush(SID)
         return 0
     except (Short90Error, ST.StillError, cost.MonthlyCapReached) as e:
         print(f"❌ {e}")

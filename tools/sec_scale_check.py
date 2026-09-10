@@ -35,10 +35,23 @@ sys.path.insert(0, str(ROOT / "src"))
 import short90 as S9                                         # noqa: E402
 import story90 as ST                                         # noqa: E402
 
-# ── 붙박이 실측표 (2026-09-06 · S91 · build 로그와 state/shorts.json 에서) ──
-#    (편, 글자수(chars() 기준), 컷수, 실제 만들어진 길이(초))
-MEASURED = [(1, 201, 9, 41.3), (2, 222, 9, 45.5), (3, 221, 9, 42.3)]
-TOL = 2.5                        # 이만큼까지는 맞는 것으로 본다
+# ── 붙박이 실측표 — **진짜로 만들어진 편들의 길이** ────────────────
+#    (사건, 편, 글자수(chars() 기준), 컷수, 실제 길이(초))
+#
+# ⚠️⚠️⚠️ 2026-09-10 — 예전에는 이 표에 **S91 세 편만** 있었다. 그 세 편으로
+#    맞춘 잣대라 S91 은 당연히 잘 맞았고, 검사도 늘 초록불이었다.
+#    그런데 다른 사건에서는 줄줄이 짧게 잡았다 —
+#        S90 +3.4 ~ +7.4초 · S92 +6.1 ~ +9.8초 (실제가 더 길다)
+#    그래서 규격을 **통과한** S92 대본이 실제로는 2편 62.3초 · 3편 64.1초로
+#    만들어져 있었다. 이 채널에서 60초를 넘은 편은 조회수가 **0** 이었다.
+#    한 사건으로만 맞추고 그 사건으로만 검사하면, 검사는 잣대를 재는 것이
+#    아니라 **자기가 맞춘 것을 다시 확인**할 뿐이다.
+#    → 만들어 둔 편을 **전부** 넣는다. 새 편이 생기면 여기에 더한다.
+MEASURED = [
+    ("S90", 1, 196, 8, 46.3), ("S90", 2, 216, 8, 44.7), ("S90", 3, 195, 8, 42.8),
+    ("S91", 1, 201, 9, 41.3), ("S91", 2, 222, 9, 45.5), ("S91", 3, 221, 9, 42.3),
+]
+TOL = 5.5                        # 이만큼까지는 맞는 것으로 본다 (양쪽)
 
 bad = []
 
@@ -57,10 +70,23 @@ def main():
     print("⭐ 대본 길이 잣대가 실제와 맞는가 (값 0원)\n")
 
     print("① 실제로 만든 영상의 길이를 맞히는가")
-    for no, ch, cuts, real in MEASURED:
+    short = []
+    for sid, no, ch, cuts, real in MEASURED:
         got = est(ch, cuts)
-        ck(f"{no}편 {ch}자 {cuts}컷 → 잰 값 {got:.1f}초 (실제 {real}초)",
+        ck(f"{sid} {no}편 {ch}자 {cuts}컷 → 잰 값 {got:.1f}초 (실제 {real}초)",
            abs(got - real) <= TOL, f"{abs(got - real):.1f}초 어긋난다")
+        if real > got:
+            short.append(real - got)
+
+    print("\n① -2 **짧게 잡는 쪽**이 안전분 안에 있는가 (이쪽이 위험하다)")
+    # ⚠️ 길게 잡으면 멀쩡한 대본이 반려될 뿐이지만, **짧게 잡으면** 규격을
+    #    통과한 대본이 60초를 넘는다. 그 오차만큼 상한을 낮춰 두어야 한다.
+    worst = max(short) if short else 0.0
+    tol = getattr(ST, "SEC_TOL", 0.0)
+    ck(f"실제보다 짧게 잡는 최대치가 {worst:.1f}초다", worst <= tol,
+       f"{worst:.1f}초 > 안전분 {tol}초 — 그만큼 60초를 넘길 수 있다")
+    ck("story90 에 안전분(SEC_TOL)이 적혀 있다", tol > 0,
+       "안전분이 없으면 상한을 얼마로 둬야 하는지 근거가 없다")
 
     print("\n② 글자만이 아니라 컷 수도 재는가")
     # 같은 글자 수인데 컷이 둘 더 많으면 그만큼 길어져야 한다
@@ -77,9 +103,14 @@ def main():
     wall = getattr(S9, "PART_MAX_SEC", 59.5)
     ck(f"대본 상한({ST.PART_SEC_MAX}초)이 조립 벽({wall}초)보다 낮다",
        ST.PART_SEC_MAX < wall)
-    ck(f"안전분이 {TOL}초 이상이다 (잣대 오차만큼)",
-       wall - ST.PART_SEC_MAX >= TOL,
+    ck(f"안전분이 {getattr(ST, 'SEC_TOL', 0)}초 이상이다 (잣대가 짧게 잡는 만큼)",
+       wall - ST.PART_SEC_MAX >= getattr(ST, "SEC_TOL", 99),
        f"지금 {wall - ST.PART_SEC_MAX:.1f}초 — 잣대가 조금만 빗나가도 60초를 넘는다")
+    # ⚠️ 상한을 손으로 적어 두면 안전분과 따로 놀게 된다. 벽에서 빼서 만든다.
+    src = (ROOT / "src" / "story90.py").read_text(encoding="utf-8")
+    ck("상한을 벽에서 빼서 만든다 (손으로 적은 숫자가 아니다)",
+       "PART_SEC_MAX = 59.5 - SEC_TOL" in src,
+       "손으로 적으면 벽이나 안전분이 바뀔 때 조용히 어긋난다")
 
     print("\n④ 프롬프트가 시키는 글자 수가 그 초 안에 들어가는가")
     import re

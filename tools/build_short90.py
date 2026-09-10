@@ -496,6 +496,12 @@ def main(argv=None):
     #    12,936원이 나가게 됐다 — 값을 보고 승인하는 사람에게 거짓말이다.
     #    세는 자리를 하나(src/talkplan.py)로 두고, 화면은 이 값을 읽는다.
     doc["talk"] = talkplan.plan(doc)
+    # ⭐ 대본 글이 바뀌면 '만든 길이' 기록을 지운다 — 낡은 숫자를 보고
+    #    판단하면 60초를 넘긴 편을 그대로 올리게 된다.
+    import hashlib
+    sig = hashlib.sha1(json.dumps(
+        [[t for t in (c.get("turns") or [])] for c in cuts],
+        ensure_ascii=False).encode("utf-8")).hexdigest()[:12]
     out_p.write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n",
                      encoding="utf-8")
 
@@ -505,6 +511,10 @@ def main(argv=None):
     #    ⚠️ 셈법은 여전히 src/ytmeta.py 한 곳뿐이다 (여기서 부르기만 한다).
     sys.path.insert(0, str(ROOT / "src"))
     import ytmeta                                            # noqa: E402
+    import shortstate                                        # noqa: E402
+    if shortstate.mark_script(sid, sig):
+        print("  ⚠️ 대본 글이 바뀌었습니다 — 만든 길이 기록을 지웠습니다 "
+              "(낡은 숫자로 60초 벽을 잘못 판단하지 않도록).")
     meta_p.write_text(json.dumps(ytmeta.meta90(doc), ensure_ascii=False,
                                  indent=1) + "\n", encoding="utf-8")
 

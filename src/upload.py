@@ -668,6 +668,10 @@ def cmd_series(args):
     """
     sys.path.insert(0, str(ROOT / "src"))
     import shortstate                                        # noqa: E402
+    # ⚠️ short90 을 부르면 PIL 이 딸려 온다 — 여기서는 숫자만 쓴다.
+    #    (src/short90.PART_MAX_SEC · src/talkplan.PART_MAX_SEC 와 같은 값)
+    import talkplan                                          # noqa: E402
+    MAX_SHORT_SEC = talkplan.PART_MAX_SEC
 
     video = Path(args.video)
     if not video.exists():
@@ -708,6 +712,22 @@ def cmd_series(args):
             print(f"❌ 예약 시각 모양이 틀렸다: {at} "
                   f"(2026-09-02T10:00:00Z 처럼 적는다)")
             return 2
+
+    # ⭐⭐⭐ 60초 벽 — 이 채널에서 **가장 비싼 교훈**이다.
+    #    2026-09-01: 60초 이하 6편은 전부 1,209~1,554회 · 127초 1편은 **0회**.
+    #    ⚠️⚠️ 2026-09-10 — 그동안 이 규칙을 **아무도 막지 않았다.**
+    #       src/short90.build_part 은 만든 **뒤에** 글만 찍고 그대로 넘어갔고,
+    #       관리자 화면은 노란 글씨만 띄웠지 [올리기] 단추는 그대로 살아 있었다.
+    #       "절대 넘기지 않는다" 고 적어 놓고 정작 막는 자리가 없었던 것이다.
+    #       올리기는 **되돌릴 수 없는 자리**다. 여기서 막는다.
+    made = (shortstate.made(sid, no) or {}) if hasattr(shortstate, "made") else {}
+    got = float(made.get("sec") or 0)
+    if got > MAX_SHORT_SEC and not args.long_ok:
+        print(f"❌ {sid} {no}편은 {got:.0f}초다 — 이 채널은 **60초 이하**만"
+              f" 조회수가 나왔다 (127초 편은 0회였다).\n"
+              f"   컷을 옮겨 나누거나 대사 영상을 줄여 다시 만드십시오.\n"
+              f"   그래도 올리려면 --long-ok 를 준다 (권하지 않는다).")
+        return 2
 
     was = shortstate.uploaded(sid, no)
     if was and not args.again:
@@ -875,6 +895,8 @@ def main():
     r.add_argument("--privacy", default="", help="private / unlisted / public")
     r.add_argument("--publish-at", dest="publish_at", default="",
                    help="예약 공개 시각 (2026-09-02T10:00:00Z)")
+    r.add_argument("--long-ok", dest="long_ok", action="store_true",
+                   help="60초를 넘어도 올린다 (권하지 않는다 — 127초 편은 0회였다)")
     r.add_argument("--again", action="store_true",
                    help="이미 올린 편을 **일부러** 다시 올린다")
     r.add_argument("--dry", action="store_true",
