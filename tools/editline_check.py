@@ -164,6 +164,72 @@ def main():
                      (ROOT / "tools" / "edit_line.py").read_text(encoding="utf-8")))
     ck("화면에도 0원이라고 적혀 있다", "값 0원입니다" in js)
 
+    print("\n⑤ 편에 붙은 글은 **모두** 고칠 길이 있는가")
+    # ⭐⭐ 2026-09-10 — S92 2편에서 났다. 나레이션은 판결문에 맞춰 고쳤는데
+    #    화면 제목(card)은 「어머니의 위자료 7억」 이 그대로 남아, 같은 편에서
+    #    화면 글자와 나레이션이 **서로 다른 말**을 했다 (판결문에 '위자료' 는
+    #    한 번도 안 나온다). 까닭은 단순했다 — 제목(--title)만 고칠 수 있고
+    #    화면 제목은 고칠 손잡이가 아예 없었다.
+    # ⚠️ 항목 목록을 손으로 적지 않는다. **대본이 실제로 들고 있는 것**에서
+    #    뽑는다 — 나중에 편에 새 글칸이 생기면 손잡이를 달기 전까지 여기서
+    #    걸린다 (손으로 적어 두면 조용히 또 빠진다).
+    src = (ROOT / "tools" / "edit_line.py").read_text(encoding="utf-8")
+    KNOB = {"yt_title": "--title", "card": "--card"}
+    for k, v in fake_story()["parts"][0].items():
+        if k in ("no", "cuts"):                  # 뼈대다 — 보는 사람에게 안 뜬다
+            continue
+        flag = KNOB.get(k)
+        ck(f"편의 '{k}' 를 고칠 손잡이가 있다", bool(flag),
+           "이 글칸은 대본을 통째로 다시 뽑아야만 고쳐진다 (약 2,100원)")
+        if not flag:
+            continue
+        ck(f"{flag} 를 인자로 받는다", f'ap.add_argument("{flag}"' in src)
+        ck(f"{flag} 가 main 에서 갈라진다",
+           re.search(rf"a\.{flag[2:]} is not None", src) is not None)
+        ck(f"{flag} 가 part[{k!r}] 을 실제로 바꾼다",
+           re.search(rf'part\["{k}"\] = ', src) is not None)
+
+    # 진짜로 돌려 본다 — 그 편만 바뀌고 나머지 편은 그대로여야 한다
+    doc0 = fake_story()
+    tmp2 = Path(tempfile.mkdtemp())
+    p2 = tmp2 / "S99.story.json"
+    p2.write_text(json.dumps(doc0, ensure_ascii=False, indent=1), encoding="utf-8")
+    real2 = E.story_path
+    E.story_path = lambda sid: p2
+    # ⚠️ 손잡이가 아예 없을 때 여기서 터지면(AttributeError) 뒤 검사가 못 돈다.
+    #    빨간불은 나야 하되 **깨끗이** 나야 한다 — 없으면 한 줄로 적고 건너뛴다.
+    if not hasattr(E, "edit_card"):
+        ck("화면 제목을 고치는 함수가 있다", False, "edit_card 가 없다")
+        E.story_path = real2
+        print("\n" + "─" * 60)
+        print(f"❌ 대본 한 줄 고치기: {len(bad)}군데")
+        for b in bad:
+            print(f"     {b}")
+        return 1
+    try:
+        d3, _p3, w3, _l3, why3 = E.edit_card("S99", 2, "윗줄 고침|아랫줄 고침")
+        ck("화면 제목 두 줄이 바뀐다",
+           d3["parts"][1]["card"] == ["윗줄 고침", "아랫줄 고침"])
+        ck("다른 편 화면 제목은 그대로다",
+           d3["parts"][0]["card"] == doc0["parts"][0]["card"]
+           and d3["parts"][2]["card"] == doc0["parts"][2]["card"])
+        ck("무엇이 어떻게 바뀌었는지 알려 준다", any("→" in x for x in w3), str(w3))
+        ck("규격에 걸리지 않는다", not why3, str(why3[:2]))
+        for nm, arg in (("두 줄이 아니면", "한 줄뿐"),
+                        ("빈 줄이 섞이면", "윗줄|")):
+            try:
+                E.edit_card("S99", 2, arg)
+                ck(f"{nm} 막는다", False, "그냥 넘어갔다")
+            except SystemExit as e:
+                ck(f"{nm} 막는다", "❌" in str(e), str(e)[:60])
+        try:
+            E.edit_card("S99", 99, "가|나")
+            ck("없는 편은 막는다", False, "그냥 넘어갔다")
+        except SystemExit as e:
+            ck("없는 편은 막는다", "❌" in str(e), str(e)[:60])
+    finally:
+        E.story_path = real2
+
     print("\n" + "─" * 60)
     if bad:
         print(f"❌ 대본 한 줄 고치기: {len(bad)}군데")

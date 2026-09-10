@@ -61,6 +61,31 @@ def edit_title(sid, no, title):
     return doc, p, [f"제목: 「{was}」 → 「{t}」"], [], ST.check(doc, new=False)
 
 
+def edit_card(sid, no, card):
+    """편 **화면 제목**(영상 위에 뜨는 두 줄 · 섬네일 글자)을 고친다. 값 0원.
+
+    ⭐ 2026-09-10 — S92 2편에서 났다. 나레이션은 판결문에 맞춰 「어머니 계좌로
+       보낸 칠억 원」 으로 고쳤는데, 화면 제목은 「어머니의 위자료 7억」 이 그대로
+       남아 **같은 편 안에서 화면 글자와 나레이션이 서로 다른 말**을 했다.
+       판결문에 '위자료' 라는 말은 한 번도 안 나온다. 제목(--title)만 고칠 수
+       있고 화면 제목은 고칠 길이 없던 것이 원인이라, 여기에 같이 붙인다.
+    """
+    p = story_path(sid)
+    if not p.exists():
+        raise SystemExit(f"❌ {p.name} 이 없습니다")
+    doc = json.loads(p.read_text(encoding="utf-8"))
+    part = next((x for x in doc.get("parts") or []
+                 if int(x.get("no") or 0) == int(no)), None)
+    if part is None:
+        raise SystemExit(f"❌ {sid} 에 {no}편이 없습니다")
+    lines = [x.strip() for x in str(card).split("|")]
+    if len(lines) != 2 or not all(lines):
+        raise SystemExit("❌ 화면 제목은 두 줄입니다 — \"윗줄|아랫줄\" 처럼 주십시오")
+    was = part.get("card")
+    part["card"] = lines
+    return doc, p, [f"화면 제목: {was} → {lines}"], [], ST.check(doc, new=False)
+
+
 def edit(sid, n, text=None, turn=0, scene=None, who=None):
     """컷 하나를 고치고, 무엇이 어떻게 바뀌었는지 돌려준다."""
     p = story_path(sid)
@@ -116,13 +141,19 @@ def main():
     ap.add_argument("--scene", default=None, help="새 화면 묘사(영어)")
     ap.add_argument("--who", default=None, help="화면에 세울 사람 (쉼표로)")
     ap.add_argument("--title", default=None, help="편 제목 (유튜브에 올라가는 것)")
-    ap.add_argument("--part", type=int, default=0, help="--title 을 고칠 편 번호")
+    ap.add_argument("--card", default=None,
+                    help="화면 제목 두 줄 — \"윗줄|아랫줄\"")
+    ap.add_argument("--part", type=int, default=0,
+                    help="--title · --card 를 고칠 편 번호")
     ap.add_argument("--dry", action="store_true", help="저장하지 않고 보기만")
     a = ap.parse_args()
 
     sid = a.sid.upper()
     if a.title is not None:
         doc, p, was, log, bad = edit_title(sid, a.part, a.title)
+        head = f"■ {sid} {a.part}편"
+    elif a.card is not None:
+        doc, p, was, log, bad = edit_card(sid, a.part, a.card)
         head = f"■ {sid} {a.part}편"
     else:
         doc, p, was, log, bad = edit(sid, a.cut, a.text, a.turn, a.scene, a.who)
