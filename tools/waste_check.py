@@ -154,6 +154,37 @@ def main():
     ck("두 번째부터는 값이 더 안 든다고 알려 준다",
        "값이 더 안 나갑니다" in js)
 
+    print("\n⑦ 실행 뚜껑 셈이 **값 나가는 갈래를 전부** 아는가")
+    # ⭐⭐⭐ 2026-09-10 — plan_cost 가 **대사 영상을 몰랐다.**
+    #    켜 두고 실행해도 그림값만 잡아서
+    #        VEO_CALL_CAP = 6   (대사 컷은 8개인데)
+    #        VT_RUN_KRW  = 5,982원  (대사 영상만 6,118원인데)
+    #    이 되어, 달 한도를 올려도 **여섯 컷째에서 잘린다.**
+    #    손님은 "왜 몇 개만 됐지" 만 보게 된다.
+    import importlib                                         # noqa: E402
+    pc = importlib.import_module("plan_cost")
+    sid = "S92"
+    if not (ROOT / "data" / "series" / f"{sid}.json").exists():
+        sid = "S90"
+    off = pc.plan(sid, False, False)
+    on = pc.plan(sid, False, True)
+    import talkplan as TP2                                   # noqa: E402
+    import json as _json                                     # noqa: E402
+    doc = _json.loads((ROOT / "data" / "series" / f"{sid}.json")
+                      .read_text(encoding="utf-8"))
+    tp = TP2.plan(doc)
+    ck("대사 영상을 켜면 뚜껑이 그만큼 커진다",
+       on["run_krw"] > off["run_krw"] + tp["krw"] * 0.8,
+       f"끔 {off['run_krw']:,} → 켬 {on['run_krw']:,} (대사값 {tp['krw']:,})")
+    ck(f"영상 부르는 횟수 뚜껑이 대사 컷 수({tp['n']}개)를 덮는다",
+       on["veo_cap"] >= tp["n"], f"뚜껑 {on['veo_cap']}번")
+    ck("무슨 영상값인지 이름을 붙여 준다 (대사 장면 / 편 첫 장면)",
+       on.get("vid_label") == "대사 장면", str(on.get("vid_label")))
+    yml2 = (ROOT / ".github" / "workflows" / "short90.yml").read_text(encoding="utf-8")
+    ck("워크플로가 그 스위치를 셈보다 **먼저** 정해 준다",
+       yml2.find("VT_TALK_VIDEO") < yml2.find("plan_cost.py"),
+       "뒤에 정하면 셈이 꺼진 줄 알고 뚜껑을 낮게 잡는다")
+
     print("\n" + "─" * 60)
     if bad:
         print(f"❌ 값이 새는 자리: {len(bad)}군데")
