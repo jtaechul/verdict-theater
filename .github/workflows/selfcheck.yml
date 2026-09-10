@@ -397,6 +397,11 @@ jobs:
           node tools/blob_test.mjs
           # ⭐ 2026-08-22 — [만든 영상] 화면이 실제로 그려지는가
           node tools/made_screen_test.mjs
+          # ⭐⭐ 2026-09-10 — 창구(API)를 하나도 안 빼고 **진짜로 불러 본다.**
+          #    [전체 만들기] 가 손님 화면에서 그대로 죽었다
+          #    (ReferenceError: Cannot access 'cards' before initialization).
+          #    글만 읽는 검사로는 못 잡는다 — 돌려 봐야 잡힌다.
+          node tools/api_run_test.mjs
 
       - name: 워크플로에 넘기는 값 이름이 저쪽에 있는가
         run: |

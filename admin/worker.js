@@ -4359,7 +4359,6 @@ export default {
         //    check_scope 가 "이 칸에 없는 것" 으로 잡는다 (일부러 그렇게 좁게
         //    본다 — 다른 칸 것을 잘못 넘기던 사고가 있었다).
         const step = 'all';
-        const payload = JSON.stringify(cards);
         const shots = JSON.stringify(clips);
         // ⭐ 2026-09-01 — 어느 사건의 어느 편을 만들 것인가.
         //    편을 비우면 전부 만든다(처음 만들 때). 한 편만 주면 그 편만
@@ -4377,6 +4376,12 @@ export default {
           const v = body && body.cards ? body.cards[k] : '';
           if (typeof v === 'string' && v.startsWith('http')) cards[k] = v;
         }
+        // ⚠️⚠️ 2026-09-10 — 이 줄이 **cards 를 만들기 위**에 있었다.
+        //    const 는 선언 앞에서 쓰면 그 자리에서 죽는다(ReferenceError:
+        //    Cannot access 'cards' before initialization). 바로 위에
+        //    "sid 를 선언 전에 쓸 뻔했다" 고 적어 두고도 한 칸 옆에서
+        //    똑같은 실수를 했다. 만든 **뒤**에 굳힌다.
+        const payload = JSON.stringify(cards);
         const pn = parseInt((body && body.part) || '', 10);
         const part = (Number.isInteger(pn) && pn >= 1 && pn <= 20) ? String(pn) : '';
         // ⭐ 값이 나가므로 **정확히 아는 값일 때만** 켠다
