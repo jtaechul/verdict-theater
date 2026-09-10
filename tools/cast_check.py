@@ -43,15 +43,22 @@ def ck(name, ok, why=""):
 def main():
     print("⭐ 등장인물이 사건마다 따라가는가 (값 0원)\n")
 
-    print("① 대본에 새 인물이 있으면 그 사람도 받는가")
-    # 붙박이 대본 — 옛 다섯에 **없는** 사람들이 나온다
+    print("① 컷에 서는 사람만 받는가")
+    # 붙박이 대본 — 옛 다섯에 **없는** 사람이 컷에 서고,
+    #              people 에는 **컷에 안 서는** 사람이 하나 들어 있다.
     doc = {"cuts": [{"n": 1, "who": ["아내", "시어머니"]},
                     {"n": 2, "who": ["아들"]},
                     {"n": 3, "who": []}],
-           "people": {"공장장": {"sex": "남", "age": "60대"}}}
+           "people": {"공장장": {"sex": "남", "age": "60대"},
+                      "아내": {}, "시어머니": {}, "아들": {}}}
     got = FC.cast_of_doc(doc)
-    for w in ("시어머니", "아들", "공장장"):
-        ck(f"'{w}' 를 받는다", w in got, f"{sorted(got)}")
+    for w in ("시어머니", "아들"):
+        ck(f"컷에 서는 '{w}' 를 받는다", w in got, f"{sorted(got)}")
+    # ⚠️⚠️ 2026-09-10 손님이 바로 걸린 자리다. people 에만 있는 사람(S92 의
+    #    어머니 — 나레이션에 네 번 나오지만 컷에는 한 번도 안 선다)까지 칸을
+    #    만들었더니, 올리면 서버가 "누구 그림인지 알 수 없습니다" 로 거절했다.
+    ck("컷에 안 서고 말로만 언급되는 '공장장' 은 안 받는다",
+       "공장장" not in got, f"{sorted(got)} — 올릴 수 없는 칸이 생긴다")
     ck("'아내' 는 카드 이름 '본처' 로 바뀐다", "본처" in got and "아내" not in got,
        f"{sorted(got)}")
     ck("대본에 없는 사람은 안 받는다", "변호사" not in got, f"{sorted(got)}")
@@ -79,6 +86,36 @@ def main():
     ck("이미 고른 파일이 있으면 다시 안 그린다",
        "!Object.keys(S90CARDS).length" in cuts_fn,
        "다시 그리면 손님이 고른 파일이 사라진다")
+
+    print("\n⑤ 화면·서버·만들기가 **같은 기준**을 보는가")
+    # ⚠️⚠️⚠️ 2026-09-10 — 여기가 틀어져서 손님이 걸렸다. 화면은 people 까지
+    #    보고 칸을 만들었는데 서버는 who 만 인정했다. 화면이 만든 칸에 올리니
+    #    "누구 그림인지 알 수 없습니다" 가 떴다. 기준이 하나여야 한다.
+    cast_fn = (re.search(r"function castOf\(\)[\s\S]*?\n}", js) or [""])[0]
+    srv_fn = (re.search(r"function castOfDoc\(doc\)[\s\S]*?\n}", js) or [""])[0]
+    ck("서버에 셈하는 자리가 하나 있다 (castOfDoc)", srv_fn)
+    for nm, fn in (("화면(castOf)", cast_fn), ("서버(castOfDoc)", srv_fn)):
+        ck(f"{nm} 는 컷의 who 를 본다", ".who" in fn)
+        ck(f"{nm} 는 people 을 안 본다", ".people" not in fn,
+           "말로만 언급되는 사람까지 칸이 생겨 올릴 수 없게 된다")
+    fcsrc = (ROOT / "tools" / "fetch_cards.py").read_text(encoding="utf-8")
+    fcfn = (re.search(r"def cast_of_doc\(doc\)[\s\S]*?(?=\ndef )", fcsrc) or [""])[0]
+    ck("받는 쪽(fetch_cards)도 people 을 안 본다", '"people"' not in fcfn,
+       "화면·서버와 기준이 달라진다")
+    # ⚠️ 얼굴을 워크플로로 넘기는 자리도 같은 셈을 써야 한다 — 여기가 옛 다섯
+    #    이면 아버지·장남 얼굴을 올려도 워크플로에 아예 안 실린다.
+    # ⚠️ 앞의 화면 쪽 fetch('/api/make-short90') 가 아니라 **서버 갈래**를 본다
+    mk = (re.search(r"url\.pathname === '/api/make-short90'[\s\S]{0,1800}", js)
+          or [""])[0]
+    ck("워크플로로 넘길 때도 그 사건 사람 전부를 넘긴다",
+       "castOfDoc(" in mk and "for (const k of S90_CARDS)" not in mk,
+       "올린 얼굴이 워크플로에 안 실린다")
+    # ⚠️⚠️ 2026-09-10 — 이 셈을 sid 가 정해지기 **전에** 두었다가 그 자리에서
+    #    죽을 뻔했다(선언 전 사용). 순서를 못 박는다.
+    ck("사건 번호(sid)를 정한 뒤에 얼굴을 셈한다",
+       mk.index("const sid") < mk.index("castOfDoc(") if "const sid" in mk
+       and "castOfDoc(" in mk else False,
+       "sid 를 선언하기 전에 쓰면 그 자리에서 죽는다")
 
     print("\n" + "─" * 60)
     if bad:

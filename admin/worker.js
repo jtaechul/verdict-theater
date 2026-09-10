@@ -365,7 +365,23 @@ async function listDir(env, path) {
 // 보관함은 배포할 때 자동으로 만들어져 붙는다 (deploy-admin.yml).
 const KV_CHUNK = 8 * 1024 * 1024;   // 조각 하나 8MB (KV 한 값 상한 25MB 안쪽)
 // 90초 편 인물 카드 이름 (그림 파일 이름과 같아야 한다 — 아내는 '본처' 다)
+// ⚠️ 대본을 못 읽었을 때만 쓰는 옛 다섯. **평소에는 안 쓴다** —
+//    여기에 기대면 사건마다 사람이 달라도 늘 같은 다섯만 올릴 수 있게 된다.
 const S90_CARDS = ['본처', '남편', '내연녀', '딸', '변호사'];
+
+// ⭐⭐⭐ 2026-09-10 — 등장인물을 **한 곳에서만** 셈한다.
+//    전에는 화면·얼굴 받는 곳·워크플로로 넘기는 곳이 서로 다른 기준을 썼다.
+//    화면은 people 까지 보고 칸을 만드는데 서버는 who 만 인정해서, 화면이
+//    만든 칸에 올리면 "누구 그림인지 알 수 없습니다" 가 떴다.
+//    → 규칙은 하나다: **컷에 실제로 서는 사람(cuts[].who)**.
+//      대본을 못 읽을 때만 옛 다섯으로 물러선다.
+function castOfDoc(doc) {
+  const cast = new Set();
+  for (const c of ((doc && doc.cuts) || []))
+    for (const w of (c.who || [])) cast.add(String(w));
+  if (!cast.size) for (const w of S90_CARDS) cast.add(w);
+  return cast;
+}
 // ⚠️⚠️ 2026-08-30 — 보관함 열쇠에 **한글을 넣으면 안 된다.**
 //    /api/blob 은 열쇠를 [A-Za-z0-9._-] 로만 받는다(일부러 좁게 본다).
 //    'cards/S90-본처-…' 로 올려 두었더니 워크플로가 받아 갈 때 튕겼고,
@@ -955,11 +971,17 @@ function whenTxt(ms) {
 const CARD_NAME = { '아내': '본처' };
 
 function castOf() {
+  // ⚠️⚠️ 2026-09-10 — 여기에 people 을 같이 넣었다가 손님이 바로 걸렸다.
+  //    people 에는 **화면에 안 나오고 말로만 언급되는 사람**도 들어간다
+  //    (S92 의 어머니 — 나레이션에 네 번 나오지만 컷에는 한 번도 안 선다).
+  //    그래서 올릴 수 없는 칸이 생겼고, 올리면 서버가 "누구 그림인지 알 수
+  //    없습니다" 로 거절했다 — 화면과 서버가 서로 다른 기준을 보고 있었다.
+  //    → **컷에 실제로 서는 사람(who)** 하나만 본다. 화면·서버·만들기 셋이
+  //      같은 기준을 쓴다 (tools/cast_check.py 가 셋을 견줘 본다).
   const seen = [];
   const add = function (w) { if (w && seen.indexOf(w) < 0) seen.push(w); };
   for (const c of ((S90DOC && S90DOC.cuts) || []))
     for (const w of (c.who || [])) add(w);
-  for (const w of Object.keys((S90DOC && S90DOC.people) || {})) add(w);
   // 대본을 아직 못 읽었으면 옛 다섯으로 (화면이 비지 않게)
   return seen.length
     ? seen.map(function (w) { return [CARD_NAME[w] || w, w]; })
@@ -4219,10 +4241,7 @@ export default {
         // ⚠️ 인물 이름을 코드에 박아 두면 다른 사건에서 다 막힌다.
         //    그 사건 대본에 실제로 나오는 사람인지로 본다.
         const doc0 = await getJson(env, 'data/series/' + sid + '.json');
-        const cast = new Set();
-        for (const c of ((doc0 && doc0.cuts) || []))
-          for (const w of (c.who || [])) cast.add(String(w));
-        for (const w of S90_CARDS) cast.add(w);   // 옛 이름도 받아 준다
+        const cast = castOfDoc(doc0);
         if (!cast.has(who))
           return Response.json({ ok: false,
             error: '누구 그림인지 알 수 없습니다',
@@ -4316,11 +4335,6 @@ export default {
       if (url.pathname === '/api/make-short90' && req.method === 'POST') {
         let body = {};
         try { body = await req.json(); } catch (e) { body = {}; }
-        const cards = {};
-        for (const k of S90_CARDS) {
-          const v = body && body.cards ? body.cards[k] : '';
-          if (typeof v === 'string' && v.startsWith('http')) cards[k] = v;
-        }
         // 컷마다 올린 영상 (없으면 그 컷은 그림으로 간다)
         const clips = {};
         const sent = (body && body.clips) || {};
@@ -4341,6 +4355,17 @@ export default {
         //    다시 조립한다 — 그림·목소리는 이미 있는 것을 그대로 쓴다(0원).
         const sid = /^S\d{1,4}$/.test(String((body && body.sid) || '').toUpperCase())
           ? String(body.sid).toUpperCase() : 'S90';
+        // ⚠️⚠️ 2026-09-10 — 여기도 옛 다섯(S90_CARDS)만 넘기고 있었다.
+        //    아버지·장남 얼굴을 올려도 **워크플로에 아예 안 실렸다.**
+        //    그 사건 대본에 나오는 사람 전부를 넘긴다.
+        //    ⚠️ sid 가 정해진 **뒤에** 셈해야 한다 — 위에 두었다가 sid 를
+        //       선언 전에 쓰는 꼴이 되어 그 자리에서 죽을 뻔했다.
+        const cardDoc = await getJson(env, 'data/series/' + sid + '.json');
+        const cards = {};
+        for (const k of castOfDoc(cardDoc)) {
+          const v = body && body.cards ? body.cards[k] : '';
+          if (typeof v === 'string' && v.startsWith('http')) cards[k] = v;
+        }
         const pn = parseInt((body && body.part) || '', 10);
         const part = (Number.isInteger(pn) && pn >= 1 && pn <= 20) ? String(pn) : '';
         // ⭐ 값이 나가므로 **정확히 아는 값일 때만** 켠다

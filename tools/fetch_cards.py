@@ -53,12 +53,13 @@ def cast_of_doc(doc):
     """이 대본에 나오는 사람들 (카드 파일 이름으로).
 
     ⚠️ 검사가 살아 있는 파일에 안 묶이도록 **대본을 받아서** 따진다."""
+    # ⚠️⚠️ 2026-09-10 — people 을 같이 보다가 걸렸다. people 에는 **화면에
+    #    안 나오고 말로만 언급되는 사람**도 들어간다(S92 의 어머니).
+    #    화면·서버·여기가 같은 규칙을 써야 한다 — **컷에 서는 사람만**.
     got = set()
     for c in (doc or {}).get("cuts") or []:
         for w in c.get("who") or []:
             got.add(CARD_NAME.get(w, w))
-    for w in ((doc or {}).get("people") or {}):
-        got.add(CARD_NAME.get(w, w))
     return got or set(FALLBACK)
 
 
