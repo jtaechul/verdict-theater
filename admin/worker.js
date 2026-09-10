@@ -1085,8 +1085,10 @@ async function s90Cuts() {
   //    처음 그릴 때의 옛 다섯이 화면에 그대로 남는다(2026-09-09 사고).
   //    ⚠️ 손님이 이미 파일을 고르셨으면 다시 그리지 않는다 — 고른 것이 지워진다.
   const cbox = document.getElementById('s90cast');
-  if (cbox && !Object.keys(S90CARDS).length) {
+  if (cbox) {
     const now = castOf().map(function (p) { return p[0]; }).join(',');
+    // ⚠️ 사람이 바뀌었을 때만 다시 그린다. 늘 다시 그리면 손님이 방금 고른
+    //    파일이 지워진다. (올린 얼굴은 S90CARDS 에 남아 다시 그려도 보인다)
     if (now !== CASTDRAWN) {
       cbox.innerHTML = short90Card();
       CASTDRAWN = now;
@@ -1330,7 +1332,16 @@ function workDraw() {
               + '대본을 다시 지으면 올라간 영상과 내용이 달라집니다.</div>'
               : '')
         + '<div id="w-restory-msg" class="uphint"></div></div>';
-  h += '<div id="s90cast">' + short90Card() + '</div>';
+  // ⚠️⚠️⚠️ 2026-09-10 — 여기서 short90Card() 를 **바로** 그렸다. 그런데 그때는
+  //    대본(S90DOC)이 아직 없어서 늘 옛 다섯(S90WHO)이 그려졌고, 손님 화면에
+  //    S92 인데 아내·남편·내연녀·변호사가 떴다.
+  //    한 번 "대본이 오면 다시 그린다" 로 고쳤는데 **그것도 안 됐다** —
+  //    이미 올려 둔 얼굴이 있으면(딸) 다시 안 그리게 막아 두었기 때문이다.
+  //    → 틀린 목록을 **아예 안 그린다.** 대본을 읽기 전에는 누가 나오는지
+  //      알 수 없으므로 "불러오는 중" 만 띄우고, 알게 된 뒤에 그린다.
+  h += '<div id="s90cast"><div class="card">'
+     + '<h2 data-t="① 인물 그림">① 인물 그림</h2>'
+     + '<div class="empty">대본에서 등장인물을 읽는 중…</div></div></div>';
   h += '<div id="s90cuts"><div class="card">'
      + '<h2 data-t="② 컷별 영상">② 컷별 영상</h2>'
      + '<div class="empty">컷 목록 불러오는 중…</div></div></div>';
