@@ -470,8 +470,23 @@ def talk_prompt(c, sec):
        말하는 것이 목적이다. 지문에는 이미 DIALOGUE·VOICE·AUDIO 가 들어
        있다(tools/build_short90.py 가 넣는다) — 그대로 둔다."""
     txt = str(c.get("veo") or c.get("still") or "")
-    return re.sub(r"\b\d+(?:\.\d+)?-second single continuous take",
-                  f"{int(sec)}-second single continuous take", txt)
+    txt = re.sub(r"\b\d+(?:\.\d+)?-second single continuous take",
+                 f"{int(sec)}-second single continuous take", txt)
+    # ⭐⭐⭐ 2026-09-11 손님: **"말이 너무들 느려."**
+    #    느린 것은 모델 탓이 아니라 **우리가 시킨 것**이었다. AUDIO 줄에
+    #    "real spontaneous speech with uneven rhythm and short breaths between
+    #     phrases"(구절마다 숨 쉬며 들쭉날쭉하게) 가 들어 있다. 그대로 읽으니
+    #    4초짜리 대사가 6~8초로 늘어졌다.
+    #    ⚠️ 그 상수(src/series.AUDIO_FIX)는 **16화 대본 48컷에도 박혀 있다.**
+    #       거기를 고치면 저장해 둔 대본이 통째로 "AUDIO 줄이 없다" 로 걸린다
+    #       (tools/script_check.py 가 그렇게 잡아 줬다). 그래서 **대사 영상
+    #       지문에서만** 그 대목을 바꿔 끼운다.
+    txt = txt.replace(
+        "real spontaneous speech with uneven rhythm and short breaths "
+        "between phrases",
+        "spoken at a brisk natural conversational pace, no pauses between "
+        "phrases and no drawn-out syllables")
+    return txt
 
 
 def speech_span(path):

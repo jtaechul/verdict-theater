@@ -63,7 +63,28 @@ def main():
 
     print("① 사기 전에 막는가 (대사 영상이 편을 밀어 올릴 때)")
     # 벽에 아슬아슬한 대본 — 대사 컷을 전부 영상으로 사면 반드시 넘는다
-    doc = fake(2, 9, 30)
+    # ⚠️⚠️ 2026-09-11 — 대사 영상이 4초로 짧아지자 이 시험용 대본이 더 이상
+    #    벽을 안 넘게 됐다. 그러면 이 시험은 **아무것도 안 재는 시험**이 된다.
+    #    바로 아래 "넘지 않으면 이 시험은 아무것도 안 잰다" 줄이 그것을 잡아
+    #    빨간불을 냈다 — 시험이 스스로 무의미해진 것을 알린 것이다.
+    #    → 손으로 숫자를 키우지 않고 **셈해서** 만든다. 잣대나 영상 길이가
+    #      또 바뀌어도 시험은 계속 뜻을 가진다.
+    #    ⚠️ 글자를 키우면 **그림만으로도** 벽을 넘어 fit 이 손쓸 수 없게 된다
+    #       (덜어내도 안 줄어든다). 그래서 **컷 수**로 키운다 — 대사 컷마다
+    #       영상이 그림보다 조금씩 길어지는 그 차이가 쌓여 벽을 넘는다.
+    doc = None
+    for _cuts in range(9, 40):
+        cand = fake(2, _cuts, 12)
+        base_s = max(TP.part_secs(cand).values())
+        full_s = max(TP.part_secs(
+            cand, [c["n"] for c in TP.talk_cuts(cand)]).values())
+        if base_s > TP.PART_MAX_SEC - TP.SAFE_MARGIN:
+            break                          # 그림만으로 벽에 닿았다 — 더 키우면 뜻이 없다
+        doc = cand
+        if full_s > TP.PART_MAX_SEC:
+            break                          # 찾았다: 그림은 안 넘고 영상은 넘는다
+    if doc is None:                        # 못 만들면 시험이 뜻이 없다 — 알린다
+        doc = fake(2, 9, 12)
     base = TP.part_secs(doc)
     ck(f"시험 대본이 벽 아래에 있다 ({base[1]:.0f}초)",
        base[1] <= TP.PART_MAX_SEC, str(base))

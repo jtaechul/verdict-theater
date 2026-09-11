@@ -37,9 +37,20 @@ def is_narr(c):
     return bool(ts) and all(str(t[0]).strip() == "나레이션" for t in ts)
 
 
+# ⭐⭐⭐ 2026-09-11 손님: **"대사 영상은 길게 하지 말고 4초면 충분할 것 같아.
+#    말이 너무들 느려."**
+#    느린 것은 우리가 지문에 "구절마다 숨 쉬며" 라고 시켜서였다(src/series.py
+#    에서 고쳤다). 그 말을 빼면 한국어는 보통 초당 5~6자로 나온다.
+#    → 자 수 나누는 값을 4.6 에서 5.6 으로 올리고 여유도 줄인다.
+#      20자 대사 = 4.0초 → **4초**. 예전 잣대로는 5.1초라 6초를 샀다.
+#      값도 706원 → 470원으로 줄고, 편 길이도 그만큼 짧아진다.
+CHARS_PER_SEC = 5.6
+LEAD_SEC = 0.4                   # 입을 떼기까지의 짧은 여유
+
+
 def talk_sec(text):
     """그 대사에 살 길이(초). Veo 가 받는 값 중에서 고른다."""
-    want = len(re.sub(r"[\s…·]", "", str(text))) / 4.6 + 0.8
+    want = len(re.sub(r"[\s…·]", "", str(text))) / CHARS_PER_SEC + LEAD_SEC
     return next((x for x in TALK_OK_SEC if x >= want), TALK_OK_SEC[-1])
 
 
