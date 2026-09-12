@@ -1576,5 +1576,35 @@
     "kind": "목소리",
     "krw": 118,
     "note": "267자(어림) · gemini-3.1-flash-tts-preview S92 90초 쇼츠"
+  },
+  {
+    "date": "2026-09-12",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 c02.png"
+  },
+  {
+    "date": "2026-09-12",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 c05.png"
+  },
+  {
+    "date": "2026-09-12",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 c15.png"
+  },
+  {
+    "date": "2026-09-12",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 c31.png"
+  },
+  {
+    "date": "2026-09-12",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 c34.png"
   }
 ]
