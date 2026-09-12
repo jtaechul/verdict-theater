@@ -114,14 +114,19 @@ def main():
     ck("찍고 나면 장부를 비운다", not reuse._BOOK)
 
     print("\n④ 다시 쓸 판단이 **지문**으로 이루어지는가 (파일 있으면 건너뛰기 금지)")
+    # ⚠️ 2026-09-12 — 대사 영상 지문 셈을 talk_sig 한 곳으로 모았다.
+    #    옛 모양(sig = reuse.sig_of(prompt, ...))을 찾던 검사가 그 뒤로
+    #    빨간불을 냈다 — 검사가 **구조가 아니라 글자 모양**을 보고 있었다.
+    sig_fn = (re.search(r"\ndef talk_sig\([\s\S]*?(?=\ndef )", s9) or [""])[0]
     for kind, pat in (("컷 그림", r'sig = reuse\.sig_of\(c\["still"\], \*refs\)'),
-                      ("대사 영상", r"sig = reuse\.sig_of\(prompt, str\(sec\)"),
                       ("목소리", r"sig = reuse\.sig_of\(\*\[f\"\{w\}\|")):
         ck(f"{kind}: 만든 재료로 지문을 만든다",
            re.search(pat, s9) is not None)
+    ck("대사 영상: 만든 재료로 지문을 만든다",
+       "reuse.sig_of(" in sig_fn and "str(sec)" in sig_fn and "model" in sig_fn,
+       "talk_sig 가 지시문·길이·모델을 안 넣는다")
     ck("대사 영상 지문에 **그 컷 그림**이 들어간다 (image-to-video 라서)",
-       re.search(r"sig = reuse\.sig_of\(prompt, str\(sec\)[\s\S]{0,200}still\.read_bytes",
-                 s9) is not None,
+       "read_bytes" in sig_fn,
        "그림이 바뀌면 영상도 바뀌어야 한다")
     ck("이름이 밀려도 다시 안 만든다 (salvage)",
        s9.count("salvage(") >= 3)

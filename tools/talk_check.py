@@ -169,8 +169,12 @@ def main():
        "이 컷은 그림으로 갑니다" in fn and "continue" in fn)
     ck("소리 없는 영상을 걸러 낸다 (조용한 실패를 막는다)",
        "has_audio(" in fn)
+    # ⚠️ 2026-09-11 — 지문 셈을 talk_sig 한 곳으로 모았다. 그 안을 본다.
+    _s9 = (ROOT / "src" / "short90.py").read_text(encoding="utf-8")
+    sig_fn = (re.search(r"\ndef talk_sig\([\s\S]*?(?=\ndef )", _s9) or [""])[0]
     ck("지문에 그림과 모델을 넣는다 (그림이 바뀌면 다시 만든다)",
-       "veo.MODEL" in fn and "read_bytes().hex()" in fn)
+       "read_bytes" in sig_fn and "model" in sig_fn and "str(sec)" in sig_fn,
+       "그림이나 모델이 바뀌어도 옛 영상을 그대로 쓴다")
     ck("이름이 밀려도 다시 안 산다 (salvage)", "salvage(" in fn)
     ck("안전필터에 걸리면 딱 한 번만 다시 산다",
        fn.count("veo.make_clip(") == 2)
@@ -180,6 +184,61 @@ def main():
     ck("말 끝에서 잘라 자막이 뒤에 안 남는다",
        "def talk_trim(" in src and "talk_trim(" in fn)
     ck("안전필터 고위험 대사는 애초에 안 고른다", "TALK_HOT" in src)
+
+    print("\n⑦ -2 **그림을 넣어** 영상을 만드는가 (image-to-video)")
+    # ⭐⭐⭐ 2026-09-12 손님: **"이미지 제작하고 그 이미지 가지고 영상 만드는 거
+    #    맞지? 그렇게 해야 된다."**
+    #    맞다. 그런데 이 규칙을 지키는 검사는 **편 첫 장면(open_check)에만**
+    #    있었고, 정작 지금 쓰는 **대사 영상에는 없었다.**
+    #    글로만 새로 그리면 그 컷 그림과 얼굴이 달라진다 — 앞뒤 컷이 딴 사람이
+    #    된다. 이 채널이 여러 번 겪은 사고다.
+    ck("대사 영상을 **그 컷 그림에서** 만든다 (start=still)",
+       fn.count("start=still") >= 2,
+       "글로만 새로 그리면 앞뒤 컷의 얼굴이 달라진다")
+    ck("안전필터로 다시 살 때도 그림을 넣는다",
+       fn.count("veo.make_clip(") == fn.count("start=still"),
+       "다시 살 때만 글로 그리면 그 컷만 딴 얼굴이 된다")
+    ck("그림이 없으면 **아예 안 산다** (돈만 나가고 딴 얼굴이 나온다)",
+       "그림이 없다 — 먼저 stills 를 돌린다" in fn)
+    ck("지문에도 그 그림을 넣는다 (그림이 바뀌면 영상도 다시 만든다)",
+       "read_bytes" in sig_fn)
+
+    print("\n⑧ 조립이 **지금 대본에 맞는 영상만** 쓰는가")
+    # ⭐⭐⭐ 2026-09-11 손님: "제대로 제작이 안된다."
+    #    조립(build_part)이 talk/ 에 **파일이 있으면 그냥 썼다.** 그래서
+    #    9월 10일에 만든 컷34 클립(자막 고치기 전 판 · 8.00초 통짜)이
+    #    그대로 들어가 말이 끝난 뒤 3초를 가만히 서 있는 화면이 됐다.
+    #    그 컷은 60초 벽 때문에 **덜어낸 컷**이라 계획에 아예 없었다.
+    #    "파일이 있으면 쓴다" 는 판단은 예전에도 세 번 사고를 냈다.
+    import tempfile                                          # noqa: E402
+    src9 = (ROOT / "src" / "short90.py").read_text(encoding="utf-8")
+    ck("조립이 지문을 본다 (talk_ok)", "talk_ok(c, t, still)" in src9,
+       "파일이 있으면 쓰는 판단은 옛 영상을 그대로 끌고 온다")
+    ck("안 맞으면 그림으로 간다고 알려 준다", "지금 대본과 안 맞는다" in src9)
+    ck("만들 때와 조립할 때가 **같은 지문**을 쓴다", src9.count("talk_sig(") >= 2)
+    ck("계획에 없는 옛 영상은 치운다", "이번 계획에 없다 — 치운다" in src9)
+    ck("손으로 올린 영상은 건드리지 않는다",
+       "reuse.by_hand(clip)" in src9 and "reuse.by_hand(f)" in src9)
+
+    tmp = Path(tempfile.mkdtemp())
+    still = tmp / "c05.png"
+    still.write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 20000)
+    clip = tmp / "c05.mp4"
+    clip.write_bytes(b"0" * 20000)
+    cut = {"n": 5, "who": ["장남"], "say": ["담담하게"],
+           "turns": [["장남", "형이 다 가져갔잖아"]],
+           "scene": "장남 sits at a table", "still": "x", "veo": "y"}
+    import reuse as R                                        # noqa: E402
+    R.stamp(clip, "엉뚱한지문")
+    ck("지문이 다른 영상은 안 쓴다", not S9.talk_ok(cut, clip, still)[0],
+       "옛 영상이 그대로 들어간다")
+    sec = S9.talk_sec(S9.turns_of(cut)[0][1])
+    R.stamp(clip, S9.talk_sig(cut, sec, still, model="veo-test"))
+    ck("지문이 같아도 모델이 다르면 안 쓴다",
+       not S9.talk_ok(cut, clip, still)[0])
+    R.stamp(clip, S9.talk_sig(cut, sec, still))
+    ck("지문이 맞으면 쓴다 (괜히 다시 안 만든다)",
+       S9.talk_ok(cut, clip, still)[0])
 
     print("\n" + "─" * 60)
     if bad:

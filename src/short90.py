@@ -612,8 +612,7 @@ def talkers(doc):
         prompt = talk_prompt(c, sec)
         # ⚠️ 지문에 **그림 내용 전체**와 모델 이름까지 넣는다. 그림이 바뀌거나
         #    모델이 바뀌면 영상도 다시 만들어야 한다.
-        sig = reuse.sig_of(prompt, str(sec), OPEN_RATIO, veo.MODEL,
-                           reuse.sig_of(still.read_bytes().hex()))
+        sig = talk_sig(c, sec, still, veo.MODEL, prompt)
         ok, why = reuse.can_reuse(out, sig)
         print(f"  컷{n:>2} [{who}] {text[:26]}  ({sec}초)")
         if ok:
@@ -685,6 +684,20 @@ def talkers(doc):
         reuse.stamp(out, sig)
         made += 1
         spent += krw1
+    # ⭐⭐⭐ 계획에 없는 옛 영상을 치운다. 안 치우면 조립이 그것을 주워 쓴다
+    #    (9/10 에 만든 컷34 가 그렇게 들어갔다 — 8초 통짜에 덜어낸 컷이었다).
+    want = {c["n"] for c, _ in plan}
+    for f in sorted(d.glob("c*.mp4")):
+        try:
+            no = int(f.stem[1:])
+        except ValueError:
+            continue
+        if no in want or reuse.by_hand(f):
+            continue
+        f.unlink(missing_ok=True)
+        reuse.sig_file(f).unlink(missing_ok=True)
+        print(f"  🧹 컷{no} 영상은 이번 계획에 없다 — 치운다 "
+              f"(안 치우면 옛 영상이 그대로 들어간다)")
     print(f"\n■ 대사 장면 {made}/{len(plan)}컷 · 이번에 쓴 값 약 {spent:,.0f}원")
     # ⭐ 아낀 값을 적는다. 아낀 값이 0이면 보관이 안 되고 있다는 뜻이다.
     if plan:
@@ -693,6 +706,41 @@ def talkers(doc):
     if miss:
         print("  ⚠️⚠️ 그림으로 가는 대사 컷: " + " · ".join(f"컷{n}" for n in miss))
     return 0
+
+
+def talk_sig(c, sec, still, model=None, prompt=None):
+    """그 대사 영상을 **무엇으로 만들었는지** 한 줄로. talkers 와 조립이 같이 쓴다.
+
+    ⭐⭐⭐ 2026-09-11 손님: "제대로 제작이 안된다."
+       조립(build_part)이 talk/ 에 **파일이 있으면 그냥 썼다.** 지금 대본의
+       계획인지, 언제 만든 것인지 보지 않았다. 그래서 9월 10일에 만든
+       컷34 클립(자막 고치기 전 판 · 8.00초 통짜)이 그대로 들어가,
+       말이 끝난 뒤 3초를 가만히 서 있는 화면이 됐다. 게다가 그 컷은
+       60초 벽 때문에 **덜어낸 컷**이라 이번 계획에 아예 없었다.
+       "있으면 쓴다" 는 판단은 예전에도 세 번 사고를 냈다 (src/reuse.py).
+       → 지문이 맞을 때만 쓴다. 셈하는 자리를 하나로 둔다.
+    """
+    if model is None:
+        import veo                                           # noqa: E402
+        model = veo.MODEL
+    if prompt is None:
+        prompt = talk_prompt(c, sec)
+    return reuse.sig_of(prompt, str(sec), OPEN_RATIO, model,
+                        reuse.sig_of(Path(still).read_bytes().hex()))
+
+
+def talk_ok(c, clip, still):
+    """이 대사 영상을 지금 대본에 써도 되는가. (된다/안 된다, 왜)"""
+    clip, still = Path(clip), Path(still)
+    if not clip.exists() or not still.exists():
+        return False, ""
+    if reuse.by_hand(clip):          # 손으로 올린 것은 손님 것이다 — 늘 이긴다
+        return True, ""
+    try:
+        sec = talk_sec(turns_of(c)[0][1])
+        return reuse.can_reuse(clip, talk_sig(c, sec, still))
+    except Exception as e:                                   # noqa: BLE001
+        return False, str(e)
 
 
 def openers(doc):
@@ -1870,7 +1918,19 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
         #    만든 대사 영상을 쓴다. 손님이 공들여 올린 영상이 조용히 기계
         #    것으로 덮이면 안 된다.
         if not clip.exists():
-            clip = talk_dir() / f"c{n:02d}.mp4"
+            # ⭐⭐⭐ 2026-09-11 — **지문이 맞을 때만 쓴다.**
+            #    예전에는 파일이 있으면 그냥 썼다. 그래서 9월 10일에 만든
+            #    컷34 클립(자막 고치기 전 판 · 8.00초 통짜)이 그대로 들어가
+            #    말이 끝난 뒤 3초를 가만히 서 있는 화면이 됐다. 게다가 그 컷은
+            #    60초 벽 때문에 **덜어낸 컷**이라 계획에 아예 없었다.
+            t = talk_dir() / f"c{n:02d}.mp4"
+            if t.exists():
+                good, why = talk_ok(c, t, still)
+                if good:
+                    clip = t
+                else:
+                    print(f"  ⚠️ 컷{n} 대사 영상은 지금 대본과 안 맞는다"
+                          f"{(' — ' + why) if why else ''} — 그림으로 갑니다")
         if not still.exists() and not clip.exists():
             raise Short90Error(f"컷{n} 그림이 없다 — 먼저 stills 를 돌린다")
         if not voice.exists():
