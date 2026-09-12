@@ -436,6 +436,11 @@ TALK_VIDEO = os.environ.get("VT_TALK_VIDEO", "").strip() in ("1", "예", "on")
 #    손님 설계: "나레이션은 모두 이미지, 대사 부분만 영상." 그래서 제한 없음이
 #    기본이다 — 편마다 1컷으로 막아 둔 것은 설계가 아니라 내 임의였다.
 import talkplan                                             # noqa: E402
+# ⚠️⚠️ 2026-09-12 — 여기 위의 `ST` 는 **still**(그림) 모듈이다. story90 이
+#    아니다. 이름이 비슷해 `ST.scene_extra(...)` 라고 적었다가 stills 이
+#    통째로 죽었다(AttributeError). **글만 읽는 검사는 그걸 못 잡는다** —
+#    돌려 보는 검사(short90_test)가 잡았다. 그래서 이름을 갈라 둔다.
+import story90 as ST90                                      # noqa: E402
 TALK_PER_PART = talkplan.TALK_PER_PART
 TALK_PER_PERSON = talkplan.TALK_PER_PERSON
 TALK_OK_SEC = talkplan.TALK_OK_SEC
@@ -897,7 +902,7 @@ def stills(doc):
     #    사고인데 자리만 다르다. **값이 나가는 자리에서 같이 막는다.**
     many = []
     for c in doc["cuts"]:
-        extra, heads = ST.scene_extra(c)
+        extra, heads = ST90.scene_extra(c)
         if extra:
             many.append((c["n"], len(heads), c.get("who") or [], c.get("scene")))
     if many:

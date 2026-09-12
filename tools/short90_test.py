@@ -554,14 +554,25 @@ def main():
             fake_wav(tmp / "voice" / f"c{c['n']:02d}.wav", say_sec[c["n"]])
         # ⑤ 손으로 만든 영상이 섞인 상황 — 대사 컷(소리 있음)·나레이션 컷(소리 있음)
         (tmp / "clips").mkdir(parents=True, exist_ok=True)
+        # ⚠️⚠️ 2026-09-12 — 예전 이 가짜 영상은 **처음부터 끝까지 똑같은 삐-
+        #    소리**(sine)였다. 그건 소리지 말이 아니다 — 사람 말은 낱말 사이가
+        #    꺼지고 모음에서 솟는다. 이제 조립은 "소리가 있나" 가 아니라
+        #    **"말이 있나"** 를 보므로(has_speech), 삐- 소리는 말로 안 친다.
+        #    시험 거리가 진짜와 다르면 시험은 엉뚱한 것을 재게 된다.
+        #    → 방 안 소리(작게) 위에 가운데 말소리가 얹힌 꼴로 만든다.
         for n, d in ((4, 6), (10, 5)):
-            subprocess.run(["ffmpeg", "-y", "-v", "error",
-                            "-f", "lavfi", "-i",
-                            f"color=c=red:s=720x1280:d={d}:r={S9.FPS}",
-                            "-f", "lavfi", "-i", f"sine=frequency=300:duration={d}",
-                            "-c:v", "libx264", "-pix_fmt", "yuv420p",
-                            "-c:a", "aac", "-shortest",
-                            str(tmp / "clips" / f"c{n:02d}.mp4")], check=True)
+            subprocess.run(
+                ["ffmpeg", "-y", "-v", "error",
+                 "-f", "lavfi", "-i",
+                 f"color=c=red:s=720x1280:d={d}:r={S9.FPS}",
+                 "-f", "lavfi", "-i", f"anoisesrc=d={d}:c=pink:a=0.02",
+                 "-f", "lavfi", "-i", f"sine=f=220:d={d - 2.5:g}",
+                 "-filter_complex",
+                 f"[2:a]adelay=1200|1200,apad=whole_dur={d},volume=0.6[v];"
+                 f"[1:a][v]amix=inputs=2:duration=first[a]",
+                 "-map", "0:v", "-map", "[a]", "-t", str(d),
+                 "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac",
+                 str(tmp / "clips" / f"c{n:02d}.mp4")], check=True)
         hand = tmp / "clips" / "c04.mp4"
         # 붙이는 것은 컷 몇 개만 — 첫 컷·대사 컷·손영상 컷·가장 긴 컷·마지막 컷
         pick = {1, 4, 10, 13, 19}

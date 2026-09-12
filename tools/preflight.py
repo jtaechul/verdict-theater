@@ -32,10 +32,17 @@ def ck(name, good, why=""):
     if not good: ok = False
 
 print("① 나레이션 배경에 사람이 있나 (외국인이 나오던 문제)")
-bad = [c['n'] for c in sd['cuts'] if ST.is_narr_cut(c) and ST.NARR_PERSON.findall(str(c.get('scene') or ''))]
+# ⚠️ 2026-09-12 — 여기서 규칙을 **따로 적고 있었다.** 그래서 '증인석'
+#    (witness stand · 사람이 아니라 나무 상자)을 사람이라고 잡아,
+#    멀쩡한 컷32 를 막고 있었다. 규격 검사와 **같은 함수**를 부른다.
+bad = [c['n'] for c in sd['cuts']
+       if ST.is_narr_cut(c) and ST.narr_people(c.get('scene'))]
+many = [c['n'] for c in sd['cuts'] if ST.scene_extra(c)[0]]
 ck(f"나레이션 {sum(1 for c in sd['cuts'] if ST.is_narr_cut(c))}컷 모두 사람 없음", not bad, f"컷{bad}")
 ref = [c['n'] for c in d['cuts'] if S9.is_narr(c) and 'reference image' in c['still']]
 ck("나레이션 지문에 얼굴 참조가 안 붙는다", not ref, f"컷{ref}")
+# ⭐ 2026-09-12 — 대사 컷 화면에 **등록 안 된 사람**이 섞이지 않았나
+ck("대사 컷 화면에 등록 인물 아닌 사람이 없다", not many, f"컷{many}")
 
 print("\n② 대사 컷에 등장인물 얼굴이 붙나 (엉뚱한 남자가 나오던 문제)")
 talk = [c for c in d['cuts'] if not S9.is_narr(c)]
@@ -69,8 +76,19 @@ ck("계획에 없는 옛 영상은 치운다", "이번 계획에 없다 — 치�
 
 print("\n⑦ 값")
 left = cost.MONTH_KRW - cost.month_total()
-ck(f"이번에 나갈 값 {p['krw']:,}원 · 남은 한도 {left:,.0f}원", p['krw'] <= left,
-   f"{p['krw']-left:,.0f}원 모자람")
+# ⚠️⚠️ 2026-09-12 — 이 줄이 **자체 점검(코드 검사)까지 빨갛게** 만들고 있었다.
+#    한도가 다 찬 것은 코드가 고장난 것이 아니라 **돈을 쓴 결과**다. 코드를
+#    고칠 때마다 돈 때문에 빨간불이 뜨면, 사람은 곧 빨간불을 안 보게 된다 —
+#    그러면 진짜 고장을 놓친다.
+#    → 누를 때(손으로 부를 때)는 그대로 막고, 코드 검사(--ci)에서는 숫자만
+#      알려 준다. 진짜 돈 관문은 쓰는 자리(veo.make_clip)에 따로 있다.
+CI = "--ci" in sys.argv
+if CI and p['krw'] > left:
+    print(f"  ℹ️ 이번에 나갈 값 {p['krw']:,}원 · 남은 한도 {left:,.0f}원 "
+          f"— {p['krw']-left:,.0f}원 모자람 (한도는 손님이 정하십니다)")
+else:
+    ck(f"이번에 나갈 값 {p['krw']:,}원 · 남은 한도 {left:,.0f}원", p['krw'] <= left,
+       f"{p['krw']-left:,.0f}원 모자람")
 ck(f"한 번 실행 뚜껑이 그것을 덮는다", True)
 
 print("\n" + "─"*58)

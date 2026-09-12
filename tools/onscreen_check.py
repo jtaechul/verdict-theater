@@ -119,11 +119,43 @@ def main():
        "나레이션 컷 화면 묘사에 사람이" in got2)
 
     print("\n■ ⑤ 값이 나가는 자리(short90.stills)가 막는다")
+    # ⚠️⚠️ 2026-09-12 — 여기는 처음에 **글만 읽었다**(소스에 그 낱말이 있나).
+    #    그러는 사이 `ST.scene_extra` 라고 잘못 적어 stills 가 통째로 죽어
+    #    있었는데(ST 는 still 모듈이지 story90 이 아니다) 이 검사는 초록불
+    #    이었다. **글을 읽는 검사는 돌아가는지를 못 잰다.** 그래서 진짜로
+    #    불러 본다 — 관문이 먼저 막으므로 그림은 한 장도 안 그린다(0원).
+    import tempfile
+    real_out, S90.OUT = S90.OUT, Path(tempfile.mkdtemp())
+    hit = ""
+    try:
+        S90.stills(doc_of(cut(1, ["아버지"], two)))
+    except S90.Short90Error as e:
+        hit = str(e)
+    except Exception as e:                                   # noqa: BLE001
+        hit = f"[엉뚱한 고장] {type(e).__name__}: {e}"
+    finally:
+        S90.OUT = real_out
+    ck("stills 를 **진짜로 불러도** 그리기 전에 멈춘다",
+       "등장인물이 아닌 사람" in hit)
+    ck("멈출 때 어느 컷인지 적어 준다 (엉뚱한 고장이 아니다)",
+       "컷1" in hit and "엉뚱한 고장" not in hit)
+    ok_hit = ""
+    try:
+        S90.OUT = Path(tempfile.mkdtemp())
+        S90.stills(doc_of(cut(1, ["아버지", "장남"], two)))
+    except S90.Short90Error as e:
+        ok_hit = str(e)
+    except Exception:                                        # noqa: BLE001
+        ok_hit = ""
+    finally:
+        S90.OUT = real_out
+    ck("둘 다 who 에 넣으면 이 관문은 안 막는다 (헛막지 않는다)",
+       "등장인물이 아닌 사람" not in ok_hit)
     # ⚠️ 관문은 **돈을 쓰는 자리**에 있어야 한다. 규격 검사만 믿으면
     #    옛 대본이 옆문으로 들어온다 (실제로 세 번 그랬다).
     fn = (ROOT / "src" / "short90.py").read_text("utf-8")
     body = fn.split("def stills(")[1].split("\ndef ")[0]
-    ck("stills 안에서 사람 수를 센다 (ST.scene_extra)", "ST.scene_extra" in body)
+    ck("stills 안에서 사람 수를 센다 (scene_extra)", "scene_extra(c)" in body)
     ck("넘치면 Short90Error 로 **그리기 전에** 멈춘다",
        "scene_extra" in body.split("raise Short90Error")[0])
     ck("멈출 때 어느 컷인지·몇 명인지 적어 준다",
