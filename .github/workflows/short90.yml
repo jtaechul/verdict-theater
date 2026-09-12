@@ -194,16 +194,28 @@ jobs:
       #    2026-09-09 시험 구매(706원)로 한국어 발화가 쓸 만한 것을 눈과 귀로
       #    확인한 뒤에 붙였다.
       #    ⚠️ 여기서 실패해도 **편 전체를 죽이지 않는다** — 그 컷만 그림으로 간다.
-      - name: 2-3) 대사 장면 영상 (켰을 때만)
-        if: env.VT_TALK_VIDEO == '1' && (env.STEP == 'all' || env.STEP == 'stills')
+      # ⚠️⚠️⚠️ 2026-09-12 — **꺼내 오는 것까지 같이 잠겨 있었다.**
+      #    "진짜 영상: 안 만든다" 로 누르면 이 단계가 통째로 건너뛰어져,
+      #    **이미 사 둔 대사 영상 열 개(약 4,700원)가 조립에 안 들어갔다.**
+      #    한 컷도 안 사는 실행인데 이미 낸 돈이 화면에서 사라지는 것이다.
+      #    꺼내 오는 것은 **우리 보관함에서 내려받는 것**이라 0원이다.
+      #    → 꺼내 오기는 늘 하고, **사는 것만** 잠근다.
+      #      (관문은 돈이 나가는 자리에 둔다 — 그 옆자리가 아니라)
+      - name: 2-3) 대사 장면 영상 (사는 것은 켰을 때만 · 꺼내 오기는 늘)
+        if: env.STEP == 'all' || env.STEP == 'stills'
         run: |
           set -o pipefail
           mkdir -p build/s90/talk
           python3 tools/release_file.py get "talk-$S" talk.zip build/talk.zip \
             && unzip -q -o build/talk.zip -d build/s90/talk \
             || echo "보관된 대사 장면 영상이 없다"
-          python3 src/short90.py talk 2>&1 | tee -a make.log \
-            || echo "⚠️ 대사 장면 영상을 못 만들었습니다 — 그림으로 갑니다"
+          if [ "$VT_TALK_VIDEO" = "1" ]; then
+            python3 src/short90.py talk 2>&1 | tee -a make.log \
+              || echo "⚠️ 대사 장면 영상을 못 만들었습니다 — 그림으로 갑니다"
+          else
+            echo "■ 대사 장면 영상: 이번엔 **안 삽니다**(0원). 이미 사 둔 것은 그대로 씁니다."
+            ls build/s90/talk/*.mp4 2>/dev/null | wc -l | xargs -I{} echo "   보관된 대사 영상 {}개를 꺼내 왔습니다"
+          fi
           python3 -c "import shutil;shutil.make_archive('build/talk','zip','build/s90/talk')" || true
           python3 tools/release_file.py put "talk-$S" talk.zip build/talk.zip || echo "::warning::보관 실패 — 다음 실행에서 값을 처음부터 다시 씁니다. 위 ❌❌ 줄을 보십시오."
 

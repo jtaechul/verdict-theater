@@ -190,6 +190,29 @@ def main():
        yml2.find("VT_TALK_VIDEO") < yml2.find("plan_cost.py"),
        "뒤에 정하면 셈이 꺼진 줄 알고 뚜껑을 낮게 잡는다")
 
+    # ⭐⭐⭐ 2026-09-12 — **이미 사 둔 것을 꺼내 오는 길까지 잠그지 않는다.**
+    #    "진짜 영상: 안 만든다" 로 누르면 대사 영상 단계가 통째로 건너뛰어져,
+    #    이미 산 열 개(약 4,700원)가 조립에 안 들어갔다. 한 컷도 안 사는
+    #    실행인데 **이미 낸 돈이 화면에서 사라진다.**
+    #    꺼내 오기는 우리 보관함에서 내려받는 것이라 0원이다 —
+    #    관문은 **돈이 나가는 자리**(사는 줄)에만 둔다.
+    import yaml as _yaml
+    wf = _yaml.safe_load((ROOT / ".github" / "workflows" / "short90.yml")
+                         .read_text("utf-8"))
+    st = [x for x in wf["jobs"]["short90"]["steps"]
+          if "2-3" in str(x.get("name", ""))]
+    ck("대사 영상 단계가 있다", len(st) == 1)
+    if st:
+        cond, run = str(st[0].get("if") or ""), str(st[0].get("run") or "")
+        ck("단계 자체는 VT_TALK_VIDEO 로 잠그지 않는다 (꺼내 오기는 0원)",
+           "VT_TALK_VIDEO" not in cond)
+        ck("보관함에서 꺼내 오는 줄이 조건 밖에 있다",
+           'release_file.py get "talk-' in run.split("VT_TALK_VIDEO")[0])
+        ck("**사는 줄**만 VT_TALK_VIDEO 안에 있다",
+           "VT_TALK_VIDEO" in run
+           and "short90.py talk" in run.split("VT_TALK_VIDEO")[1].split("else")[0]
+           and "short90.py talk" not in run.split("VT_TALK_VIDEO")[0])
+
     print("\n" + "─" * 60)
     if bad:
         print(f"❌ 값이 새는 자리: {len(bad)}군데")
