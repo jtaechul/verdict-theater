@@ -1486,5 +1486,95 @@
     "kind": "목소리",
     "krw": 14,
     "note": "32자(어림) · gemini-3.1-flash-tts-preview S92 90초 쇼츠"
+  },
+  {
+    "date": "2026-09-12",
+    "kind": "영상",
+    "krw": 470,
+    "note": "veo-3.1-lite-generate-preview 4초 c02.mp4"
+  },
+  {
+    "date": "2026-09-12",
+    "kind": "영상",
+    "krw": 470,
+    "note": "veo-3.1-lite-generate-preview 4초 c05.mp4"
+  },
+  {
+    "date": "2026-09-12",
+    "kind": "영상",
+    "krw": 470,
+    "note": "veo-3.1-lite-generate-preview 4초 c06.mp4"
+  },
+  {
+    "date": "2026-09-12",
+    "kind": "영상",
+    "krw": 706,
+    "note": "veo-3.1-lite-generate-preview 6초 c08.mp4"
+  },
+  {
+    "date": "2026-09-12",
+    "kind": "영상",
+    "krw": 470,
+    "note": "veo-3.1-lite-generate-preview 4초 c13.mp4"
+  },
+  {
+    "date": "2026-09-12",
+    "kind": "영상",
+    "krw": 470,
+    "note": "veo-3.1-lite-generate-preview 4초 c18.mp4"
+  },
+  {
+    "date": "2026-09-12",
+    "kind": "영상",
+    "krw": 470,
+    "note": "veo-3.1-lite-generate-preview 4초 c15.mp4"
+  },
+  {
+    "date": "2026-09-12",
+    "kind": "영상",
+    "krw": 470,
+    "note": "veo-3.1-lite-generate-preview 4초 c16.mp4"
+  },
+  {
+    "date": "2026-09-12",
+    "kind": "영상",
+    "krw": 470,
+    "note": "veo-3.1-lite-generate-preview 4초 c24.mp4"
+  },
+  {
+    "date": "2026-09-12",
+    "kind": "영상",
+    "krw": 470,
+    "note": "veo-3.1-lite-generate-preview 4초 c23.mp4"
+  },
+  {
+    "date": "2026-09-12",
+    "kind": "영상",
+    "krw": 470,
+    "note": "veo-3.1-lite-generate-preview 4초 c27.mp4"
+  },
+  {
+    "date": "2026-09-12",
+    "kind": "영상",
+    "krw": 470,
+    "note": "veo-3.1-lite-generate-preview 4초 c28.mp4"
+  },
+  {
+    "date": "2026-09-12",
+    "kind": "영상",
+    "krw": 470,
+    "note": "veo-3.1-lite-generate-preview 4초 c33.mp4"
+  },
+  {
+    "date": "2026-09-12",
+    "kind": "영상",
+    "krw": 470,
+    "note": "veo-3.1-lite-generate-preview 4초 c34.mp4"
+  },
+  {
+    "date": "2026-09-12",
+    "kind": "목소리",
+    "krw": 118,
+    "note": "267자(어림) · gemini-3.1-flash-tts-preview S92 90초 쇼츠"
   }
 ]
