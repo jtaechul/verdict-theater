@@ -305,12 +305,120 @@ def scene_en(doc):
 #    붙이므로, scene 이 "the middle-aged man …" 이면 사람이 그려진다.
 #    껍데기에 규칙을 적는 것은 규칙을 적은 것이 아니다 —
 #    **글이 태어나는 자리(대본)와 그것을 보는 자리(규격 검사)에 적는다.**
+#    ⚠️⚠️ 2026-09-12 — **복수형이 그물을 빠져나갔다.** `\blawyer\b` 는
+#       "two lawyers" 에 안 걸린다(뒤에 s 가 붙어 낱말 끝이 아니다). S92 컷31
+#       "two lawyers sit at a large desk" 이 규격 검사를 그대로 통과했고,
+#       나레이션 컷인데 낯선 변호사 둘이 그려졌다. 낱말을 적을 때는
+#       **한 낱말이 아니라 그 낱말의 모든 꼴**을 적어야 한다.
 NARR_PERSON = re.compile(
-    r"\b(?:persons?|people|man|men|woman|women|boy|girl|guy|lady|gentleman"
-    r"|son|daughter|father|mother|brother|sister|wife|husband|widow"
-    r"|lawyer|attorney|judge|doctor|nurse|clerk|officer|policeman"
-    r"|someone|somebody|everyone|crowd|couple|family"
+    r"\b(?:persons?|people|peoples|man|men|woman|women|boys?|girls?|guys?"
+    r"|lady|ladies|gentlemen|gentleman|sons?|daughters?|fathers?|mothers?"
+    r"|brothers?|sisters?|wife|wives|husbands?|widows?|widowers?"
+    r"|lawyers?|attorneys?|judges?|doctors?|nurses?|clerks?|officers?"
+    r"|policemen|policeman|witness|witnesses|reporters?|guards?|bailiffs?"
+    r"|someone|somebody|everyone|crowds?|couples?|family|families"
     r"|he|she|his|her|him|hers|they|them|their)\b", re.I)
+
+
+# ⭐⭐⭐ 2026-09-12 손님: **"상대방이 장남인데 저 이미지는 장남이 아니잖아.
+#    등장인물을 등록했으면 등록 인물만 나올 수 있도록 해."**
+#
+#    까닭은 나레이션 쪽과 **똑같은 모양**인데 자리만 달랐다. 대사 컷의 화면
+#    묘사가 `who` 보다 사람을 많이 부르면, 남는 사람은 얼굴 참조가 없다 —
+#    그림 모델은 그냥 지어낸다.
+#        컷5  who=['아버지']  "the old man stares at **the middle-aged man**"
+#        컷2  who=['아버지']  "the old man hands a small book to **a middle-aged man**"
+#        컷15 who=['딸']      "a middle-aged woman glares at **the middle-aged man**"
+#        컷34 who=['딸']      "the middle-aged woman stares at **him**"
+#    나레이션 컷에는 "사람을 부르지 마라" 규칙이 있었는데, **대사 컷에는
+#    사람 수를 세는 규칙이 아예 없었다.** 한쪽만 막으면 다른 쪽으로 샌다.
+#
+#    → 대사 컷은 **화면 묘사에 나오는 사람 수 ≤ who 수**. 넘으면 막는다.
+#      고치는 길은 둘 — ① 그 사람을 who 에 넣어 얼굴을 붙이거나
+#                      ② 화면 묘사에서 그 사람을 빼거나. 둘 다 0원이다.
+_SCENE_NOUN = re.compile(
+    r"\b(?:persons?|people|man|men|woman|women|boys?|girls?|guys?"
+    r"|lady|ladies|gentlemen|gentleman|sons?|daughters?|fathers?|mothers?"
+    r"|brothers?|sisters?|wife|wives|husbands?|widows?|widowers?"
+    r"|lawyers?|attorneys?|judges?|doctors?|nurses?|clerks?|officers?"
+    r"|policemen|policeman|witness|witnesses|reporters?|guards?|bailiffs?"
+    r"|someone|somebody|crowds?|couples?|family|families)\b", re.I)
+
+# 앞에 '~에게/~와' 같은 말이 붙은 대명사는 **다른 사람**을 가리킨다.
+#   "stares at him" → 화면에 남자가 하나 더 있다
+#   "clenches her fists" → 자기 주먹이다 (이건 안 센다)
+#
+# ⚠️⚠️ 2026-09-12 — 처음에는 her 도 넣었다가 S90 이 두 군데 헛걸렸다:
+#      "with her chin up" · "at her side" — 둘 다 **제 몸**이지 딴 사람이
+#      아니다. her 만 유독 '그녀를' 과 '그녀의' 를 같은 꼴로 쓴다.
+#      → her 는 아예 안 센다. **덜 잡는 것이 헛잡는 것보다 낫다** — 헛잡는
+#        검사는 멀쩡한 일을 막고, 사람은 곧 검사를 안 믿게 된다.
+#        (놓치는 몫은 명사 규칙이 거의 다 잡는다. him·them·he·she·they 는
+#         '~의' 로 쓸 수 없는 말이라 그대로 둔다)
+_SCENE_PRON = re.compile(
+    r"\b(?:at|to|towards?|with|beside|behind|near|past|from|against"
+    r"|between|facing|opposite|alongside)\s+(?:him|them|he|she|they)\b",
+    re.I)
+
+# 하나만 가리키는데 s 로 끝나는 낱말 (복수로 세면 안 된다)
+_ONE_S = {"witness", "gentlemen", "policemen", "men", "women", "people",
+          "families", "ladies", "wives"}
+# 그 말 하나가 이미 둘 이상인 낱말
+_MANY = {"people", "men", "women", "crowd", "crowds", "couple", "couples",
+         "family", "families", "ladies", "gentlemen", "policemen", "wives",
+         "witnesses"}
+
+# ⚠️ 사람 낱말이 **물건 이름**으로 쓰이는 자리가 있다 — "witness stand"(증인석)
+#    는 사람이 아니라 나무 상자다. 이걸 안 걸러내면 규격 검사가 멀쩡한 컷을
+#    잡고, 사람은 "또 헛소리네" 하며 검사를 안 믿게 된다. 검사가 틀리게 잡는
+#    것은 못 잡는 것만큼 나쁘다.
+_FURNITURE = re.compile(
+    r"\b(?:witness\s+(?:stand|box|chair|seat)|jury\s+(?:box|bench)"
+    r"|judge'?s?\s+bench|family\s+(?:court|photo|register|room|album)"
+    r"|police\s+(?:station|tape|car)|nurse'?s?\s+station"
+    r"|(?:doctor|lawyer|officer|judge)'?s?\s+(?:office|desk|room|chair|door)"
+    r"|men'?s?\s+room|women'?s?\s+room|people'?s?\s+court)\b", re.I)
+
+
+def scene_clean(sc):
+    """사람 낱말이 물건 이름으로 쓰인 자리를 지운 화면 묘사."""
+    return _FURNITURE.sub(" ", str(sc or ""))
+
+
+def narr_people(sc):
+    """나레이션 화면 묘사에 든 **사람 낱말들** (비었으면 사람이 없다).
+
+    ⚠️ 규격 검사(check)와 대본 만들기(tools/build_short90.py)가 **같은 이
+       함수**를 쓴다. 두 곳에 따로 적으면 한쪽만 고쳐져 규칙이 반쪽이 된다.
+    """
+    return NARR_PERSON.findall(scene_clean(sc))
+
+
+def scene_heads(sc):
+    """화면 묘사에 **사람이 몇 명 나오는가** — 사람을 가리키는 말들.
+
+    ⚠️ 세는 것이지 알아맞히는 것이 아니다. "the middle-aged man" 이 장남인지
+       차남인지는 모른다(둘 다 50대 남). 모르면 **못 붙인다**. 그래서 수만
+       세고, 넘으면 사람이 고치게 한다.
+    """
+    sc = scene_clean(sc)
+    out = []
+    for m in _SCENE_NOUN.finditer(sc):
+        w = m.group(0)
+        lw = w.lower()
+        out.append(w)
+        if lw in _MANY or (lw.endswith("s") and lw not in _ONE_S):
+            out.append(w)                     # 복수 = 둘 이상
+    out += [m.group(0) for m in _SCENE_PRON.finditer(sc)]
+    return out
+
+
+def scene_extra(c):
+    """이 대사 컷 화면에 **who 에 없는 사람**이 몇 명 있는가 (0 이면 괜찮다)."""
+    if is_narr_cut(c):
+        return 0, []
+    heads = scene_heads(c.get("scene"))
+    return max(0, len(heads) - len(c.get("who") or [])), heads
 
 
 def is_narr_cut(c):
@@ -594,7 +702,7 @@ def check(doc, new=True):
         #    ⚠️ new 와 상관없이 본다. 이미 만들어 둔 대본에도 그대로 있고,
         #       그 대본으로 그림을 그리면 값이 나간다(장당 132원).
         if is_narr_cut(c):
-            w = NARR_PERSON.findall(sc)
+            w = narr_people(sc)
             if w:
                 bad.append(
                     f"컷{n}: 나레이션 컷 화면 묘사에 사람이 있다 — "
@@ -602,6 +710,20 @@ def check(doc, new=True):
                     f"적는다. 얼굴 참조가 없어서 낯선 외국인이 그려진다. "
                     f"고치기: tools/edit_line.py --sid <사건> --cut {n} "
                     f"--scene \"...\" (값 0원)")
+        # ⭐⭐⭐ 대사 컷 — 화면에 **who 보다 사람이 많으면** 안 된다.
+        #    남는 사람은 얼굴 참조가 없어 그림 모델이 지어낸다
+        #    (손님: "장남이라고 해놓고선 등장인물이 아닌 사람이 나타나").
+        else:
+            extra, heads = scene_extra(c)
+            if extra:
+                bad.append(
+                    f"컷{n}: 화면에 나오는 사람({len(heads)}명)이 등장인물 "
+                    f"who({len(c.get('who') or []) }명: "
+                    f"{', '.join(c.get('who') or []) or '없음'})보다 많다 — "
+                    f"'{sc[:50]}'. 남는 사람은 얼굴 그림이 없어서 **생판 남**이 "
+                    f"그려진다. 고치는 길 둘(둘 다 0원): ① 그 사람을 who 에 "
+                    f"넣는다  ② 화면 묘사에서 그 사람을 뺀다 "
+                    f"(tools/edit_line.py --sid <사건> --cut {n} --scene \"...\")")
         # ⚠️ 규칙은 "그 말을 절대 쓰지 마라" 가 아니다. **쓰려면 뒷감당을 해라** 다.
         #    그림을 다시 그리면 132원이 나가지만, 정해 둔 자리를 흐리게 가리면
         #    0원이다(그 컷에 scrub 을 적어 두면 된다). 둘 중 하나도 안 하고

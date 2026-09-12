@@ -255,7 +255,7 @@ def still_prompt(c):
         #    그려지고, 그 값(장당 132원)이 그대로 날아간다.
         #    규격 검사(story90.check)가 먼저 잡지만, 옛 대본이 이 길로
         #    들어올 수 있어 여기서 한 번 더 막는다.
-        w = ST90.NARR_PERSON.findall(str(c.get("scene") or ""))
+        w = ST90.narr_people(c.get("scene"))
         if w:
             raise SystemExit(
                 f"❌ 컷{c.get('n')}: 나레이션 컷 화면 묘사에 사람이 있습니다 "
@@ -264,6 +264,20 @@ def still_prompt(c):
                 f"(얼굴 참조가 없어 낯선 외국인이 그려집니다).\n"
                 f"   고치기: python3 tools/edit_line.py --sid <사건> "
                 f"--cut {c.get('n')} --scene \"...\"   (값 0원)")
+    else:
+        # ⭐⭐⭐ 2026-09-12 손님: "장남이라고 해놓고선 등장인물이 아닌 사람이
+        #    자꾸 나타나." 대사 컷 화면에 who 보다 사람이 많으면, 남는 사람은
+        #    얼굴 참조가 없어 그림 모델이 지어낸다. 나레이션 쪽만 막아 두면
+        #    **대사 쪽으로 샌다** — 실제로 샜다(S92 컷2·5·15·34).
+        extra, heads = ST90.scene_extra(c)
+        if extra:
+            raise SystemExit(
+                f"❌ 컷{c.get('n')}: 화면에 사람이 {len(heads)}명인데 등장인물"
+                f"(who)은 {len(who)}명입니다 — {', '.join(who) or '없음'}\n"
+                f"   {c.get('scene')}\n"
+                f"   남는 사람은 얼굴 그림이 없어 **생판 남**이 그려집니다.\n"
+                f"   ① 그 사람을 who 에 넣거나  ② 화면 묘사에서 빼 주십시오 "
+                f"(둘 다 값 0원).")
     head = (S.HEAD_FIX if who else HEAD_NOBODY).rstrip(".")
     body = [head + ". A single still frame, vertical 9:16 portrait."]
     if who:

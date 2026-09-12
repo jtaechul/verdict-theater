@@ -96,7 +96,8 @@
    "n": 2,
    "sec": 4.7,
    "who": [
-    "아버지"
+    "아버지",
+    "장남"
    ],
    "turns": [
     [
@@ -107,7 +108,7 @@
    "say": [
     "70대 남성이, 지친 기색으로 한 박자 쉬고 조용하게"
    ],
-   "scene": "the old man hands a small book to a middle-aged man"
+   "scene": "the old man hands a small book to the middle-aged man"
   },
   {
    "n": 3,
@@ -145,7 +146,8 @@
    "n": 5,
    "sec": 4.2,
    "who": [
-    "아버지"
+    "아버지",
+    "장남"
    ],
    "turns": [
     [
@@ -306,7 +308,8 @@
    "n": 15,
    "sec": 4.7,
    "who": [
-    "딸"
+    "딸",
+    "장남"
    ],
    "turns": [
     [
@@ -317,7 +320,7 @@
    "say": [
     "50대 여성이, 화를 속으로 눌러 담아 조용히 되묻듯 단단하게"
    ],
-   "scene": "a middle-aged woman glares at the middle-aged man"
+   "scene": "the middle-aged woman glares at the middle-aged man"
   },
   {
    "n": 16,
@@ -571,7 +574,7 @@
    "say": [
     "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
    ],
-   "scene": "two lawyers sit at a large desk looking at documents"
+   "scene": "a large courtroom desk with two thick folders open side by side under a hard lamp"
   },
   {
    "n": 32,
@@ -609,7 +612,8 @@
    "n": 34,
    "sec": 5.3,
    "who": [
-    "딸"
+    "딸",
+    "장남"
    ],
    "turns": [
     [
@@ -620,7 +624,7 @@
    "say": [
     "50대 여성이, 어이가 없다는 듯 조용히 되묻듯"
    ],
-   "scene": "the middle-aged woman stares at him with cold eyes"
+   "scene": "the middle-aged woman stares at the middle-aged man with cold eyes"
   },
   {
    "n": 35,

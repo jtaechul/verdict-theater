@@ -303,6 +303,26 @@ def has_audio(path):
     return "audio" in out
 
 
+def has_speech(path):
+    """이 영상 안에서 **사람이 실제로 말하는가**.
+
+    ⭐⭐⭐ 2026-09-12 손님: **"왜 대사 치는 부분인데 음성 목소리가 안 나오는데."**
+       까닭: 여기 바로 위 has_audio 는 **소리 트랙이 붙어 있는지**만 본다.
+       Veo 는 말을 안 하고 방 안 소리(room tone)만 담은 영상을 내보낼 때가
+       있다 — 우리가 지문에 "with only the quiet room tone of the location
+       underneath" 라고 시켜서 넣게 한 그 소리다. 트랙은 멀쩡히 있으니
+       has_audio 는 통과다. 그러면 cut_sec 이 "영상 안에서 말한다" 고 판단해
+       우리 목소리를 안 얹고, 그 컷은 **통째로 조용해진다.** 워크플로는
+       초록불이라 아무도 모른다.
+       → "소리가 있는가" 가 아니라 **"말이 있는가"** 를 묻는다.
+         재는 자리는 자막을 맞출 때 쓰는 speech_span 과 **같은 자**다
+         (따로 재면 자막과 소리 판단이 어긋난다).
+    """
+    if not has_audio(path):
+        return False
+    return speech_span(path)[1] is not None
+
+
 # ── ① 그림 ────────────────────────────────────────────────────
 # 화면 이름 ↔ 인물 카드 파일 이름 (카드에는 아내가 '본처' 로 적혀 있다)
 ST_NAME = {"아내": "본처"}
@@ -680,6 +700,12 @@ def talkers(doc):
             out.unlink(missing_ok=True)
             miss.append(n)
             continue
+        # ⚠️ 트랙은 있는데 **말이 없는** 경우가 있다(방 안 소리만). 지워 버리면
+        #    이미 낸 값(470원)이 날아가고 다음에 또 사야 한다 — 화면은 멀쩡하니
+        #    **화면은 쓰고 우리 목소리를 얹는다.** cut_sec 이 알아서 그렇게 한다.
+        if not has_speech(out):
+            print("    ⚠️ 영상 안에서 말을 안 한다 — 화면은 쓰고 "
+                  "**우리 목소리**를 얹습니다")
         talk_trim(out, sec)
         reuse.stamp(out, sig)
         made += 1
@@ -865,6 +891,26 @@ def stills(doc):
         for w in c.get("who") or []:
             if not ST.card_path(cards_dir(), ST_NAME.get(w, w)).exists():
                 lack.setdefault(w, []).append(c["n"])
+    # ⭐⭐⭐ 2026-09-12 손님: **"등장인물을 등록했으면 등록 인물만 나오게 해."**
+    #    얼굴 그림이 다 있어도, 화면 묘사가 who 보다 사람을 많이 부르면
+    #    남는 사람은 참조가 없다 — 모델이 지어낸다. 얼굴이 없는 것과 똑같은
+    #    사고인데 자리만 다르다. **값이 나가는 자리에서 같이 막는다.**
+    many = []
+    for c in doc["cuts"]:
+        extra, heads = ST.scene_extra(c)
+        if extra:
+            many.append((c["n"], len(heads), c.get("who") or [], c.get("scene")))
+    if many:
+        raise Short90Error(
+            "화면에 **등장인물이 아닌 사람**이 들어 있습니다 — 그리면 생판 "
+            "남이 나옵니다.\n"
+            + "\n".join(f"   · 컷{n} : 화면 {h}명 vs 등장인물 {len(w)}명"
+                        f"({', '.join(w) or '없음'})\n     {sc}"
+                        for n, h, w, sc in many)
+            + "\n   고치는 길 둘(둘 다 값 0원): ① 그 사람을 who 에 넣는다"
+              "  ② 화면 묘사에서 그 사람을 뺀다\n"
+              "   python3 tools/edit_line.py --sid <사건> --cut <번호> "
+              "--scene \"...\"")
     if lack:
         raise Short90Error(
             "등장인물 얼굴 그림이 없습니다 — 그리면 **엉뚱한 사람**이 나옵니다.\n"
@@ -1549,7 +1595,9 @@ def cut_sec(c, voice, clip):
     """
     clip = Path(clip) if clip and Path(clip).exists() else None
     talks = not is_narr(c)
-    if clip and talks and has_audio(clip):
+    # ⚠️ has_audio 가 아니라 has_speech 다. 말이 없는 영상의 소리를 쓰면
+    #    그 컷이 통째로 조용해진다 (손님이 보신 바로 그 화면).
+    if clip and talks and has_speech(clip):
         return dur_of(clip), True
     # ⚠️ 예전에는 대본에 적힌 sec 과 견줘 **큰 쪽**을 썼다. 그런데 그 숫자는
     #    Veo 영상 길이(4·6·8초)라 그림 컷에는 뜻이 없고, 말보다 길면 그만큼
@@ -1959,7 +2007,8 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
         elif is_narr(c):
             how = "영상 + 우리 나레이션"
         else:
-            how = "영상 (그 안에서 말한다)" if has_audio(clip) else "영상 + 우리 목소리"
+            how = ("영상 (그 안에서 말한다)" if has_speech(clip)
+                   else "영상 + 우리 목소리")
         print(f"  컷{n:>2} [{c['kind']:<4}] {sec:>5.2f}초 ({how})"
               + ("  ← 편 제목" if i == 0 else "")
               + (f"  ← {tail}" if i == len(cuts) - 1 else ""))
