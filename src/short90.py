@@ -32,7 +32,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import cost                                                  # noqa: E402
@@ -756,8 +756,45 @@ def talk_sig(c, sec, still, model=None, prompt=None):
         model = veo.MODEL
     if prompt is None:
         prompt = talk_prompt(c, sec)
-    return reuse.sig_of(prompt, str(sec), OPEN_RATIO, model,
-                        reuse.sig_of(Path(still).read_bytes().hex()))
+    # ⭐⭐⭐ 2026-09-13 — 지문을 **두 토막**으로 나눈다: "무슨 말을 하는가" 와
+    #    "어느 그림에서 나왔는가". 나누는 까닭 —
+    #    표시 지우기(wipe_mark)가 stills 를 돌릴 때마다 그림 파일을 다시
+    #    저장해서 **바이트가 매번 달라졌다**. 그림은 똑같은데 지문이 깨지니
+    #    대사 영상 14개가 통째로 다시 사졌다 (한 번에 6,821원).
+    #    표시 지우기는 이제 한 번만 하도록 고쳤지만, 그것만으로는 **이미 사
+    #    둔 영상**을 살릴 수 없다. 두 토막으로 두면 앞 토막(말)이 같은지
+    #    따로 볼 수 있어서, 뒤 토막(그림)이 어긋났을 때 **그림을 눈으로
+    #    맞춰 보고** 살릴 수 있다 (talk_ok 를 보라).
+    head = reuse.sig_of(prompt, str(sec), OPEN_RATIO, model)
+    tail = reuse.sig_of(Path(still).read_bytes().hex())
+    return f"{head}.{tail}"
+
+
+# 영상 첫 장면과 그림이 **같은 그림인가** 를 재는 잣대.
+# 실측(S92 14컷): 같은 그림 3.8~6.7 · 다른 그림 38.6~65.7 — 사이가 넓다.
+SAME_PIC = 15.0
+
+
+def same_picture(clip, still):
+    """이 영상은 **이 그림에서 나온 것인가** — 첫 장면을 그림과 견준다.
+
+    ⭐ 바이트가 아니라 **보이는 것**으로 따진다. 영상은 그림을 씨앗으로 넣어
+       만들므로 첫 장면은 그 그림과 거의 같다. 그림 파일을 다시 저장해서
+       바이트만 달라진 경우와, 그림을 **정말 다시 그린** 경우를 이것으로
+       가른다 (앞의 것은 살리고 뒤의 것은 다시 산다).
+    """
+    try:
+        out = Path(clip).with_suffix(".frame.png")
+        run(["ffmpeg", "-y", "-v", "error", "-i", str(clip),
+             "-frames:v", "1", str(out)])
+        a = Image.open(still).convert("RGB")
+        b = Image.open(out).convert("RGB").resize(a.size)
+        px = ImageChops.difference(a, b).convert("L").resize((64, 114))
+        out.unlink(missing_ok=True)
+        d = list(px.getdata())
+        return sum(d) / len(d)
+    except Exception:                                        # noqa: BLE001
+        return None
 
 
 def talk_ok(c, clip, still):
@@ -769,7 +806,33 @@ def talk_ok(c, clip, still):
         return True, ""
     try:
         sec = talk_sec(turns_of(c)[0][1])
-        return reuse.can_reuse(clip, talk_sig(c, sec, still))
+        want = talk_sig(c, sec, still)
+        ok, why = reuse.can_reuse(clip, want)
+        if ok:
+            return True, ""
+        # ⭐⭐⭐ 2026-09-13 — **말이 같고 그림도 같아 보이면 살린다.**
+        #    표시 지우기가 그림 파일을 다시 저장해 바이트만 달라진 경우다.
+        #    그냥 버리면 멀쩡한 영상 열 개(약 4,700원)를 다시 사게 된다.
+        #    ⚠️ 앞 토막(무슨 말을 몇 초로 하는가)이 **똑같을 때만** 본다.
+        #       대사가 바뀌었으면 그림이 같아도 못 쓴다 — 입과 말이 어긋난다.
+        got = (reuse.sig_file(clip).read_text(encoding="utf-8").strip()
+               if reuse.sig_file(clip).exists() else "")
+        same_talk = got and "." in got and got.split(".")[0] == want.split(".")[0]
+        # ⚠️ 옛 지문(2026-09-13 이전)은 한 토막이라 앞뒤를 가를 수가 없다.
+        #    그래서 **그림이 같고 길이가 말이 될 때만** 살린다.
+        #    ⚠️⚠️ 길이를 "산 초와 똑같은가" 로 보면 안 된다 — 산 뒤에
+        #       talk_trim 이 말 끝의 조용한 자리를 잘라 둔다(4초 → 3.42초).
+        #       처음에 그렇게 재서 멀쩡한 다섯 컷을 버릴 뻔했다.
+        #       **산 초보다 길지만 않으면** 된다 (8초짜리 옛 통짜를 막는다).
+        old_one = (got and "." not in got and dur_of(clip) <= sec + 0.35)
+        if same_talk or old_one:
+            d = same_picture(clip, still)
+            if d is not None and d < SAME_PIC:
+                reuse.stamp(clip, want)      # 다음부터는 바로 통과한다
+                return True, ""
+            if d is not None:
+                return False, f"그림이 바뀌었다 (닮음 {d:.0f})"
+        return ok, why
     except Exception as e:                                   # noqa: BLE001
         return False, str(e)
 
@@ -963,6 +1026,8 @@ def stills(doc):
         # ⚠️ 새로 그렸으면 **가린 표시를 지운다.** 안 지우면 "이미 가렸다" 며
         #    건너뛰는데, 새 그림에서는 상표가 다른 자리에 있을 수 있다.
         out.with_suffix(".scrubbed").unlink(missing_ok=True)
+        # ⚠️ 새로 그렸으면 **표시 지우기도 다시** 해야 한다 (2026-09-13)
+        out.with_suffix(".wiped").unlink(missing_ok=True)
         reuse.stamp(out, sig)
         made += 1
     print(f"\n■ 그림 {made}/{len(doc['cuts'])}장")
