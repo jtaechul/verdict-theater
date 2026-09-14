@@ -144,6 +144,36 @@ def main():
     ok5, _ = S.talk_ok(CUT, clip5, still)
     ck("산 초보다 긴 옛 통짜는 안 쓴다", not ok5)
 
+    print("\n■ ⑦ **돈을 쓰는 자리**가 그 살림을 쓰는가 (여기가 2,822원짜리다)")
+    #    2026-09-14 — 살리는 장치를 조립하는 쪽(build_part → talk_ok)에만
+    #    넣고 **사는 쪽(talkers)에는 안 넣었다.** 그래서 열 개를 살릴 수
+    #    있었는데 전부 다시 만들러 갔고, 여섯 개를 새로 사고 한도에 걸렸다.
+    #    ⚠️ 이 검사는 **글이 아니라 짜임**을 본다 — talkers 가 can_reuse 를
+    #       바로 부르면(=살림을 건너뛰면) 빨간불이 난다.
+    fn2 = (ROOT / "src" / "short90.py").read_text("utf-8")
+    tb = fn2.split("def talkers(")[1].split("\ndef ")[0]
+    head = tb.split("krw1 = cost.video_krw")[0]
+    ck("사는 쪽이 talk_ok 로 판단한다 (살림이 여기서도 돈다)",
+       "talk_ok(c, out, still)" in head)
+    ck("사는 쪽이 can_reuse 를 바로 부르지 않는다",
+       "reuse.can_reuse(out, sig)" not in head)
+
+    print("\n■ ⑧ 못 만들어도 **이미 사 둔 영상은 안 지운다**")
+    #    2026-09-14 — 한도에 걸려 한 푼도 못 쓴 컷 여덟 개의 **예전 영상**이
+    #    지워졌다 (약 3,760원어치). 돈이 모자란 것이 이미 산 것을 버릴
+    #    까닭은 아니다.
+    keep = d / "keep.mp4"
+    a_clip(keep, still)
+    before = keep.stat().st_mtime_ns
+    S.drop_if_new(keep, before)
+    ck("손도 안 댄 옛 영상은 그대로 둔다", keep.exists())
+    junk = d / "junk.mp4"
+    a_clip(junk, still)
+    S.drop_if_new(junk, None)                  # 이번에 새로 생긴 것
+    ck("이번에 새로 생긴 반쪽짜리는 치운다", not junk.exists())
+    ck("talkers 가 그 도우미를 쓴다 (무조건 지우지 않는다)",
+       "drop_if_new(out, was)" in tb and "out.unlink(missing_ok=True)" not in tb)
+
     shutil.rmtree(d, ignore_errors=True)
     print("\n" + "─" * 60)
     if bad:

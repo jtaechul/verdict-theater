@@ -638,7 +638,14 @@ def talkers(doc):
         # ⚠️ 지문에 **그림 내용 전체**와 모델 이름까지 넣는다. 그림이 바뀌거나
         #    모델이 바뀌면 영상도 다시 만들어야 한다.
         sig = talk_sig(c, sec, still, veo.MODEL, prompt)
-        ok, why = reuse.can_reuse(out, sig)
+        # ⭐⭐⭐ 2026-09-14 — **여기서 talk_ok 를 안 쓰고 있었다.**
+        #    살리는 장치(그림이 같아 보이면 그대로 쓴다)를 조립하는 쪽
+        #    (build_part → talk_ok)에만 넣고, 정작 **돈을 쓰는 이 자리**에는
+        #    안 넣었다. 그래서 열 개를 살릴 수 있었는데 전부 "다시 만든다" 로
+        #    가서, 여섯 개를 새로 사고(2,822원) 한도에 걸려 멈췄다.
+        #    ⚠️ 관문이든 살림이든 **돈이 나가는 자리에 있어야 뜻이 있다.**
+        #       같은 잘못을 이 파일에서만 네 번째 한다.
+        ok, why = talk_ok(c, out, still)
         print(f"  컷{n:>2} [{who}] {text[:26]}  ({sec}초)")
         if ok:
             print("    (그대로다 — 건너뛴다 · 0원)")
@@ -668,6 +675,12 @@ def talkers(doc):
                   f"(만든 것은 0원으로 다시 씁니다).")
             miss += [x["n"] for x, _ in plan if x["n"] >= n and x["n"] not in miss]
             break
+        # ⭐⭐⭐ 2026-09-14 — 못 만들었을 때 **이미 있던 영상까지 지우고
+        #    있었다.** 한도에 걸려 멈춘 컷 여덟 개가 그렇게 사라졌다
+        #    (예전에 산 것 · 약 3,760원어치). 돈이 모자라 못 샀다는 것이
+        #    이미 산 것을 버릴 까닭이 될 수는 없다.
+        #    → 이번에 실제로 건드린 파일만 지운다.
+        was = out.stat().st_mtime_ns if out.exists() else None
         try:
             # ⭐ 씨앗을 **말하는 사람**으로 묶는다. 컷 번호로 묶으면 같은 인물의
             #   여러 컷이 확실히 다른 씨앗을 받아 목소리가 더 흔들린다.
@@ -683,7 +696,7 @@ def talkers(doc):
                               start=still)
             except Exception as e2:                          # noqa: BLE001
                 print(f"    ⚠️ 두 번째도 못 만들었다 ({e2}) — 이 컷은 그림으로 갑니다")
-                out.unlink(missing_ok=True)
+                drop_if_new(out, was)
                 miss.append(n)
                 continue
         except veo.RunCapReached as e:
@@ -694,15 +707,19 @@ def talkers(doc):
             miss += [x["n"] for x, *_ in plan if x["n"] >= n and x["n"] not in miss]
             break
         except Exception as e:                               # noqa: BLE001
-            print(f"    ⚠️ 못 만들었다 ({e}) — 이 컷은 그림으로 갑니다")
-            out.unlink(missing_ok=True)
+            print(f"    ⚠️ 못 만들었다 ({e})")
+            if out.exists() and was is not None and out.stat().st_mtime_ns == was:
+                print("       (전에 사 둔 영상은 **그대로 둡니다** — 돈을 버리지 않습니다)")
+            else:
+                print("       이 컷은 그림으로 갑니다")
+            drop_if_new(out, was)
             miss.append(n)
             continue
         # ⭐⭐ 소리가 진짜로 들어 있는지 본다. 무음 영상을 그대로 쓰면 그 컷이
         #    통째로 조용해지고, 워크플로는 초록불이라 아무도 모른다.
         if not has_audio(out):
             print("    ⚠️ 소리가 없는 영상이다 — 이 컷은 그림으로 갑니다")
-            out.unlink(missing_ok=True)
+            drop_if_new(out, was)      # 방금 만든 것이라 치우는 게 맞다
             miss.append(n)
             continue
         # ⚠️ 트랙은 있는데 **말이 없는** 경우가 있다(방 안 소리만). 지워 버리면
@@ -737,6 +754,21 @@ def talkers(doc):
     if miss:
         print("  ⚠️⚠️ 그림으로 가는 대사 컷: " + " · ".join(f"컷{n}" for n in miss))
     return 0
+
+
+def drop_if_new(out, was):
+    """못 만들었을 때 **이번에 새로 생긴 파일만** 치운다.
+
+    ⚠️ 예전에는 무조건 지웠다. 그래서 한 푼도 못 쓰고 멈춘 컷의 **이미 사 둔
+       영상**까지 사라졌다 (2026-09-14, 여덟 개 · 약 3,760원어치).
+       반쪽만 쓰인 쓰레기 파일은 치워야 하지만, **손도 못 댄 옛 파일**은
+       그대로 두는 것이 맞다.
+    """
+    out = Path(out)
+    if not out.exists():
+        return
+    if was is None or out.stat().st_mtime_ns != was:
+        out.unlink(missing_ok=True)
 
 
 def talk_sig(c, sec, still, model=None, prompt=None):

@@ -122,9 +122,13 @@ def main():
     print("\n■ ④ 만들자마자 보는 자리 — 값을 버리지 않는다")
     fn = (ROOT / "src" / "short90.py").read_text("utf-8")
     body = fn.split("def talkers(")[1].split("\ndef ")[0]
+    # ⚠️ 2026-09-14 — 예전에는 `out.unlink` 라는 **글자**를 찾았다. 지우는
+    #    방법이 drop_if_new(이번에 새로 생긴 것만 지운다)로 바뀌자 헛걸렸다.
+    #    글자가 아니라 **치우는 일이 일어나는가**를 본다.
     ck("소리 트랙이 아예 없으면 그 파일은 버린다 (망가진 파일)",
-       "if not has_audio(out):" in body and "out.unlink" in
-       body.split("if not has_audio(out):")[1].split("continue")[0])
+       "if not has_audio(out):" in body and any(
+           k in body.split("if not has_audio(out):")[1].split("continue")[0]
+           for k in ("drop_if_new", "out.unlink")))
     ck("말만 없는 것은 **안 버린다** — 이미 낸 값(470원)이 날아가지 않게",
        "if not has_speech(out):" in body
        and "unlink" not in body.split("if not has_speech(out):")[1]
