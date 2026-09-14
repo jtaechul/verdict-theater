@@ -1606,5 +1606,41 @@
     "kind": "image",
     "krw": 132,
     "note": "gemini-3.1-flash-image 2K 9:16 c34.png"
+  },
+  {
+    "date": "2026-09-14",
+    "kind": "영상",
+    "krw": 470,
+    "note": "veo-3.1-lite-generate-preview 4초 c02.mp4"
+  },
+  {
+    "date": "2026-09-14",
+    "kind": "영상",
+    "krw": 470,
+    "note": "veo-3.1-lite-generate-preview 4초 c05.mp4"
+  },
+  {
+    "date": "2026-09-14",
+    "kind": "영상",
+    "krw": 470,
+    "note": "veo-3.1-lite-generate-preview 4초 c06.mp4"
+  },
+  {
+    "date": "2026-09-14",
+    "kind": "영상",
+    "krw": 706,
+    "note": "veo-3.1-lite-generate-preview 6초 c08.mp4"
+  },
+  {
+    "date": "2026-09-14",
+    "kind": "영상",
+    "krw": 470,
+    "note": "veo-3.1-lite-generate-preview 4초 c13.mp4"
+  },
+  {
+    "date": "2026-09-14",
+    "kind": "영상",
+    "krw": 470,
+    "note": "veo-3.1-lite-generate-preview 4초 c18.mp4"
   }
 ]
