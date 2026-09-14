@@ -729,6 +729,24 @@ def cmd_series(args):
               f"   그래도 올리려면 --long-ok 를 준다 (권하지 않는다).")
         return 2
 
+    # ⭐⭐⭐ 2026-09-14 손님(화면 캡처): **"이 부분은 영상이 아니라 이미지로
+    #    만들어져 있어. 다시는 이런 일들이 발생하지 않게 코드 수정해."**
+    #    대사 영상을 만들라고 눌렀는데 한도에 걸려 여덟 컷을 못 샀다. 그
+    #    컷들은 조용히 그림으로 떨어졌고 워크플로는 초록불로 끝났다.
+    #    3편은 대사 네 컷이 전부 그림이라 통째로 슬라이드쇼였다.
+    #    ⚠️ 올리기는 **되돌릴 수 없는 자리**다. 60초 벽과 같은 까닭으로
+    #       여기서 막는다 — 덜 된 편이 채널에 올라가면 지울 수 없다.
+    gaps = list((made or {}).get("talk_gaps") or [])
+    if gaps and not args.gap_ok:
+        print(f"❌ {sid} {no}편은 **아직 덜 됐습니다** — 대사인데 그림으로 간 "
+              f"컷이 {len(gaps)}개 있습니다: "
+              f"{' · '.join('컷' + str(n) for n in gaps)}\n"
+              f"   영상을 못 산 컷입니다(대개 한 달 한도에 걸린 것입니다).\n"
+              f"   한도를 올리고 [전체 만들기] 를 다시 누르면 이어서 만듭니다 "
+              f"— 이미 만든 것은 0원입니다.\n"
+              f"   그림인 채로 그냥 올리려면 --gap-ok 를 준다 (권하지 않는다).")
+        return 2
+
     was = shortstate.uploaded(sid, no)
     if was and not args.again:
         print(f"❌ {sid} {no}편은 이미 올렸다 — "
@@ -895,6 +913,8 @@ def main():
     r.add_argument("--privacy", default="", help="private / unlisted / public")
     r.add_argument("--publish-at", dest="publish_at", default="",
                    help="예약 공개 시각 (2026-09-02T10:00:00Z)")
+    r.add_argument("--gap-ok", dest="gap_ok", action="store_true",
+                   help="대사 컷이 그림으로 떨어진 편도 그냥 올린다 (권하지 않음)")
     r.add_argument("--long-ok", dest="long_ok", action="store_true",
                    help="60초를 넘어도 올린다 (권하지 않는다 — 127초 편은 0회였다)")
     r.add_argument("--again", action="store_true",

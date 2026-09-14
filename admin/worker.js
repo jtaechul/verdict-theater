@@ -1498,7 +1498,10 @@ function partsCard(w) {
     const m = ((WMETA && WMETA.parts) || []).filter(
       (x) => Number(x.part) === Number(no))[0] || {};
     const u = p.uploaded || null;
-    const madeTxt = p.sec ? (Math.round(p.sec) + '초') : '아직 안 만듦';
+    const madeTxt = p.sec
+      ? (Math.round(p.sec) + '초'
+         + ((p.talk_gaps || []).length ? ' · 덜 됨' : ''))
+      : '아직 안 만듦';
     const long = p.sec && p.sec > 59.5;
     h += '<div class="card"><h2 data-t="쇼츠 ' + no + '편">' + no + '편 '
        + '<small style="font-weight:400;color:#9599ab">— '
@@ -1511,6 +1514,18 @@ function partsCard(w) {
       h += '<div class="uphint" style="color:#e0a33c"><b>60초를 넘었습니다.</b> '
          + '이 채널은 60초 이하만 조회수가 나왔습니다(127초 편은 0회였습니다). '
          + '컷을 옮겨 나누는 것이 좋습니다.</div>';
+    // ⭐⭐⭐ 2026-09-14 손님(화면 캡처): "이 부분은 영상이 아니라 이미지로
+    //    만들어져 있어." 한도에 걸려 못 산 대사 컷이 조용히 그림으로
+    //    떨어졌는데 화면은 "만들어짐" 이라고만 적혀 있었다.
+    //    → 덜 된 편은 **화면에서도 덜 됐다고 말한다.** (올리기는 막힌다)
+    const gaps = (p.talk_gaps || []);
+    if (gaps.length)
+      h += '<div class="uphint" style="color:#e0a33c"><b>아직 덜 됐습니다.</b> '
+         + '대사인데 그림으로 나온 컷 ' + gaps.length + '개: '
+         + esc(gaps.map(function (n) { return '컷' + n; }).join(' · '))
+         + '<br>영상을 못 산 컷입니다(대개 한 달 한도). 한도를 올리고 '
+         + '<b>다시 만들기</b>를 누르면 없는 것만 이어서 만듭니다 '
+         + '— 이미 만든 것은 0원입니다. 이 편은 올리기가 막혀 있습니다.</div>';
     if (u && u.publish_at)
       h += '<div class="uphint">예약 공개: ' + esc(u.publish_at) + '</div>';
     h += '<div class="btns" style="margin-top:10px">'

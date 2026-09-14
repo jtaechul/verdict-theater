@@ -99,11 +99,23 @@ def from_doc(doc):
     return r
 
 
-def mark_made(sid, no, sec):
+def mark_made(sid, no, sec, gaps=None):
+    """이 편을 만들었다고 적는다.
+
+    ⭐⭐⭐ 2026-09-14 손님(화면 캡처): **"이 부분은 영상이 아니라 이미지로
+       만들어져 있어. 다시는 이런 일들이 발생하지 않게 코드 수정해."**
+       대사 영상을 만들라고 눌렀는데 한도에 걸려 여덟 컷을 못 샀다. 그
+       컷들은 조용히 **그림으로 떨어졌고**, 워크플로는 초록불로 끝났다.
+       손님은 다 된 줄 알고 보시다가 슬라이드쇼를 만났다 (3편은 대사 네
+       컷이 전부 그림이었다).
+       → **덜 된 것은 덜 됐다고 적는다.** 적어 두면 올리기가 막을 수 있고
+         화면에도 뜬다. `gaps` = 영상이어야 하는데 그림으로 간 컷 번호들.
+    """
     d = load()
     p = row(d, sid).setdefault("parts", {}).setdefault(str(no), {"no": int(no)})
     p["sec"] = round(float(sec), 1)
     p["made_at"] = now()
+    p["talk_gaps"] = sorted(int(x) for x in (gaps or []))
     save(d)
     return p
 

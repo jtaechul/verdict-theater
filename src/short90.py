@@ -829,6 +829,33 @@ def same_picture(clip, still):
         return None
 
 
+def talk_gaps(doc, cuts=None):
+    """**영상이어야 하는데 그림으로 갈** 대사 컷 번호들.
+
+    ⭐⭐⭐ 2026-09-14 손님: "이 부분은 영상이 아니라 이미지로 만들어져 있어.
+       다시는 이런 일들이 발생하지 않게 코드 수정해."
+       한도에 걸려 못 산 컷 여덟 개가 조용히 그림으로 떨어졌는데, 워크플로는
+       초록불이었다. 3편은 대사 네 컷이 전부 그림이라 통째로 슬라이드쇼였다.
+       **덜 된 것을 덜 됐다고 말할 수 있어야** 막을 수도, 알릴 수도 있다.
+
+    ⚠️ '전부 그림' 으로 눌렀을 때(TALK_VIDEO 꺼짐)는 빈손을 돌려준다 —
+       그건 고장이 아니라 **고른 것**이다.
+    """
+    if not TALK_VIDEO:
+        return []
+    keep, _why = talkplan.fit(doc)      # ⚠️ 번호가 아니라 **컷** 을 돌려준다
+    st, td = OUT / "stills", talk_dir()
+    by = {c["n"]: c for c in doc["cuts"]}
+    out = []
+    for n in [x["n"] for x in keep]:
+        if cuts is not None and n not in cuts:
+            continue
+        clip, still = td / f"c{n:02d}.mp4", st / f"c{n:02d}.png"
+        if not (clip.exists() and still.exists() and talk_ok(by[n], clip, still)[0]):
+            out.append(n)
+    return sorted(out)
+
+
 def talk_ok(c, clip, still):
     """이 대사 영상을 지금 대본에 써도 되는가. (된다/안 된다, 왜)"""
     clip, still = Path(clip), Path(still)
@@ -2148,7 +2175,15 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
         print(f"  ▣ {th.name} — 썸네일 ({th.stat().st_size / 1000:.0f}KB)")
     # ⭐ 만든 사실을 상태 파일에 적는다 — 관리자 페이지가 여기서 길이를 읽는다
     import shortstate                                        # noqa: E402
-    shortstate.mark_made(doc.get("sid") or "S90", part["no"], got)
+    # ⭐⭐⭐ 2026-09-14 — 이 편에서 **영상이어야 하는데 그림으로 간** 대사 컷.
+    #    적어 두면 올리기(src/upload.py)가 막고 화면에도 뜬다.
+    gaps = talk_gaps(doc, set(n for n, *_ in [(c["n"],) for c in cuts]))
+    shortstate.mark_made(doc.get("sid") or "S90", part["no"], got, gaps)
+    if gaps:
+        print(f"  ⚠️⚠️ **이 편은 아직 덜 됐습니다.** 대사인데 그림으로 간 컷: "
+              f"{' · '.join('컷' + str(n) for n in gaps)}\n"
+              f"       (영상을 못 산 컷입니다. 한도를 올리고 다시 누르면 "
+              f"이어서 만듭니다 — 이미 만든 것은 0원입니다)")
     print(f"  ▶ {final.name} — {got:.1f}초 "
           f"({final.stat().st_size / 1e6:.1f}MB)")
     if got > PART_MAX_SEC:
@@ -2177,6 +2212,22 @@ def build(doc, only=None):
     print(f"■ 「{doc['title']}」 {len(doc['cuts'])}컷 · "
           f"{len(ps)}편 조립" + (" (고른 편만)" if only else ""))
     secs = [build_part(doc, x, stills_d, voice_d, clips_d, parts_d) for x in ps]
+    # ⭐⭐⭐ 2026-09-14 손님: **"다시는 이런 일들이 발생하지 않게 코드 수정해."**
+    #    대사 영상을 만들라고 눌렀는데 여덟 컷을 못 사서 그림으로 떨어졌는데,
+    #    여기는 "■ 다 됐다" 를 찍고 0(성공)을 돌려줬다. 워크플로는 초록불,
+    #    손님은 다 된 줄 알고 보시다가 슬라이드쇼를 만났다.
+    #    → **다 안 됐으면 다 됐다고 하지 않는다.** 만든 것은 그대로 두고
+    #      (값을 버리지 않는다) 실행만 실패로 끝낸다. 그래야 눈에 띈다.
+    gaps = talk_gaps(doc)
+    if gaps:
+        print(f"\n❌ **아직 덜 됐습니다** — 대사인데 그림으로 간 컷 "
+              f"{len(gaps)}개: {' · '.join('컷' + str(n) for n in gaps)}")
+        print("   만든 것은 그대로 보관했습니다 (값은 안 버립니다).")
+        print("   한 달 한도를 올리고 [전체 만들기] 를 다시 누르면 "
+              "**없는 것만** 이어서 만듭니다 (이미 만든 것은 0원).")
+        print("   ⚠️ 이 편들은 올리기가 막힙니다 — 덜 된 것이 채널에 "
+              "올라가면 지울 수 없기 때문입니다.")
+        return 1
     print("\n■ 다 됐다 — " + " · ".join(
         f"{x['no']}편 {t:.0f}초" for x, t in zip(ps, secs)))
     return 0
