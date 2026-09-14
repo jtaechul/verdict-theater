@@ -150,7 +150,13 @@
     ],
     "sec": 44.4,
     "made_at": "2026-09-14T11:56:25Z",
-    "talk_gaps": []
+    "talk_gaps": [],
+    "uploaded": {
+     "video_id": "3SLjsBgt1hM",
+     "privacy": "private",
+     "at": "2026-09-14T12:11:41Z",
+     "publish_at": "2026-09-14T23:00:00Z"
+    }
    },
    "2": {
     "no": 2,
@@ -165,7 +171,13 @@
     ],
     "sec": 46.4,
     "made_at": "2026-09-14T11:57:24Z",
-    "talk_gaps": []
+    "talk_gaps": [],
+    "uploaded": {
+     "video_id": "ZxUoAPMsKHg",
+     "privacy": "private",
+     "at": "2026-09-14T12:11:47Z",
+     "publish_at": "2026-09-15T23:00:00Z"
+    }
    },
    "3": {
     "no": 3,
@@ -180,7 +192,13 @@
     ],
     "sec": 46.7,
     "made_at": "2026-09-14T11:58:23Z",
-    "talk_gaps": []
+    "talk_gaps": [],
+    "uploaded": {
+     "video_id": "0hhlJEswZuU",
+     "privacy": "private",
+     "at": "2026-09-14T12:11:55Z",
+     "publish_at": "2026-09-16T23:00:00Z"
+    }
    },
    "4": {
     "no": 4,
@@ -195,7 +213,13 @@
     ],
     "sec": 48.4,
     "made_at": "2026-09-14T11:59:26Z",
-    "talk_gaps": []
+    "talk_gaps": [],
+    "uploaded": {
+     "video_id": "_Gc5LTHhlIQ",
+     "privacy": "private",
+     "at": "2026-09-14T12:12:00Z",
+     "publish_at": "2026-09-17T23:00:00Z"
+    }
    }
   },
   "title": "22억 독식 상속 사건",
