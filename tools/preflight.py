@@ -21,6 +21,7 @@
 import json, re, sys, subprocess
 sys.path.insert(0,'src'); sys.path.insert(0,'tools')
 import story90 as ST, talkplan as TP, short90 as S9, cost
+from pathlib import Path
 SID = (sys.argv[1] if len(sys.argv) > 1 else "S92").upper()
 d = json.load(open(f'data/series/{SID}.json'))
 sd = json.load(open(f'data/series/{SID}.story.json'))
@@ -83,12 +84,37 @@ left = cost.MONTH_KRW - cost.month_total()
 #    → 누를 때(손으로 부를 때)는 그대로 막고, 코드 검사(--ci)에서는 숫자만
 #      알려 준다. 진짜 돈 관문은 쓰는 자리(veo.make_clip)에 따로 있다.
 CI = "--ci" in sys.argv
-if CI and p['krw'] > left:
-    print(f"  ℹ️ 이번에 나갈 값 {p['krw']:,}원 · 남은 한도 {left:,.0f}원 "
-          f"— {p['krw']-left:,.0f}원 모자람 (한도는 손님이 정하십니다)")
+# ⚠️⚠️ 2026-09-14 — p['krw'] 는 **하나도 안 사 뒀을 때**의 값이다(최대값).
+#    이미 사 둔 대사 영상이 있으면 실제로는 훨씬 적게 나간다
+#    (S92 실측: 최대 6,816원 · 실제 1,882원 — 열 개는 그대로 쓴다).
+#    그런데 여기서 최대값으로 막아 버리니, 1,882원이면 되는 실행을
+#    "3,641원 모자람" 이라며 세웠다. **헛막는 검사는 멀쩡한 일을 막는다.**
+#    → 이미 사 둔 것이 보이면 그것을 빼고 센다. 안 보이면 "최대" 라고
+#      적고 막지는 않는다 — 진짜 돈 관문은 쓰는 자리(veo.make_clip)다.
+have = 0
+td = Path("build/s90/talk")
+if td.is_dir():
+    import short90 as S9x
+    for n, sec in ((c["n"], TP.talk_sec(S9x.turns_of(c)[0][1]))
+                   for c in d["cuts"] if not ST.is_narr_cut(c)):
+        clip = td / f"c{n:02d}.mp4"
+        stl = Path("build/s90/stills") / f"c{n:02d}.png"
+        if clip.exists() and stl.exists() and S9x.talk_ok(d["cuts"][0] and
+                [c for c in d["cuts"] if c["n"] == n][0], clip, stl)[0]:
+            have += cost.video_krw(__import__("veo").MODEL, sec)
+need = round(max(0, p['krw'] - have))
+word = "이번에 나갈 값" if have else "이번에 나갈 값(최대)"
+if have:
+    print(f"  · 이미 사 둔 대사 영상 {have:,.0f}원어치는 그대로 씁니다 (0원)")
+if CI or (not have and need > left):
+    mark = "ℹ️" if need > left else "✅"
+    print(f"  {mark} {word} {need:,}원 · 남은 한도 {left:,.0f}원"
+          + (f" — {need-left:,.0f}원 모자랄 수 있습니다 (이미 사 둔 것을 빼면 "
+             f"줄어듭니다. 모자라면 값을 쓰는 자리에서 스스로 멈춥니다)"
+             if need > left else ""))
 else:
-    ck(f"이번에 나갈 값 {p['krw']:,}원 · 남은 한도 {left:,.0f}원", p['krw'] <= left,
-       f"{p['krw']-left:,.0f}원 모자람")
+    ck(f"{word} {need:,}원 · 남은 한도 {left:,.0f}원", need <= left,
+       f"{need-left:,.0f}원 모자람")
 ck(f"한 번 실행 뚜껑이 그것을 덮는다", True)
 
 print("\n" + "─"*58)
