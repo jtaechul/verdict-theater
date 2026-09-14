@@ -1026,7 +1026,7 @@ function short90Card() {
        + '</div></div></div>';
   });
   h += '<div class="uphint" style="margin-top:10px"><b>아래 ②</b> 를 지나 '
-     + '<b>③ 세 편 만들기</b> 를 누르시면 됩니다.</div>';
+     + '<b>③ ' + partWord(workParts()) + ' 만들기</b> 를 누르시면 됩니다.</div>';
   h += '</div>';
   return h;
 }
@@ -1137,7 +1137,7 @@ async function s90Cuts() {
   // ⚠️ 만들기 단추는 **아래 ③ 칸**으로 옮겼다 (2026-09-01). 편마다 따로
   //    만들 수 있어야 해서, 만들기와 올리기를 편 목록 옆에 나란히 둔다.
   h += '<div class="uphint" style="margin-top:10px">다 고르셨으면 '
-     + '<b>아래 ③ 세 편 만들기</b> 로 내려가십시오.</div>';
+     + '<b>아래 ③ ' + partWord(workParts()) + ' 만들기</b> 로 내려가십시오.</div>';
   h += '</div>';
 
   // ⭐⭐⭐ 2026-09-05 손님: "이거는 지금 내가 대본을 바꿀 수가 없게 돼 있잖아.
@@ -1250,6 +1250,23 @@ async function loadWorks(force) {
   } catch (e) { WORKS = {}; }
   return WORKS;
 }
+
+// ⭐⭐⭐ 2026-09-14 손님: "이거 4편인 거지? 오타가 맞지?"
+//    화면 곳곳에 **"세 편"이 글자로 박혀** 있었다. S92 는 4편인데 단추에는
+//    "세 편 예약 공개로 올리기" 라고 떠 있었다. 편 수는 대본이 정하는데
+//    화면만 셋으로 굳어 있으면 손님은 매번 화면을 의심해야 한다.
+//    → **언제나 세어서 적는다.** 편 수를 적는 자리는 전부 이 함수를 거친다.
+function partWord(n) {
+  const w = ['', '한', '두', '세', '네', '다섯', '여섯', '일곱', '여덟', '아홉', '열'];
+  return (n > 0 && n < w.length) ? w[n] + ' 편' : String(n || 0) + '편';
+}
+
+
+// 지금 열어 본 사건이 몇 편인가 (단추 글자에 쓴다)
+function workParts() {
+  return partList((WORKS || {})[WORK] || {}).length;
+}
+
 
 function partList(w) {
   const ps = (w && w.parts) || {};
@@ -1456,7 +1473,7 @@ async function againStory(btn) {
 function partsCard(w) {
   const ps = partList(w);
   const n = ps.length || 3;
-  let h = '<div class="card"><h2>③ 세 편 만들기</h2>'
+  let h = '<div class="card"><h2>③ ' + partWord(n) + ' 만들기</h2>'
         + '<div class="uphint">그림과 목소리를 편들이 함께 씁니다. '
         + '<b>한 번에 만드는 쪽이 빠르고 돈이 덜 듭니다.</b> '
         + '처음에는 아래 단추 하나만 누르시면 됩니다.</div>'
@@ -1569,7 +1586,7 @@ function partsCard(w) {
   //    실측 — 즉시 공개 2건 349회·0회 / 예약 공개 8건 1,212~2,946회.
   //    이제 1편도 예약 공개고, 시각은 한국 아침 8시로 고정한다.
   h += '<div class="card"><h2>한 번에 올리기 (예약 공개)</h2>'
-     + '<div class="uphint"><b>세 편 모두 예약 공개</b>로 올라갑니다. '
+     + '<div class="uphint"><b>' + partWord(n) + ' 모두 예약 공개</b>로 올라갑니다. '
      + '<b>한국 시각 아침 8시</b>부터 하루씩 띄워 저절로 공개됩니다 — 사흘 '
      + '동안 다시 안 들어오셔도 됩니다.<br>'
      + '⚠️ 올리자마자 공개하면 유튜브가 <b>고화질 변환을 끝내기 전</b>에 '
@@ -1588,7 +1605,7 @@ function partsCard(w) {
      + '<div class="btns" style="margin-top:12px">'
      + mini('연습 (올리지 않고 확인만)', 'workUpAll(1)')
      + '<button class="gold" id="w-up-all" onclick="workUpAll(0)">'
-     + '세 편 예약 공개로 올리기</button></div>'
+     + partWord(n) + ' 예약 공개로 올리기</button></div>'
      // ⭐⭐⭐ 2026-09-06 — 이미 올린 편의 **글만** 고친다 (영상은 그대로).
      //    그날 세 편이 옛 제목·옛 해시태그로 올라갔다. 공개 전이라면
      //    내리지 않고 글만 갈아 끼우면 손해가 0이다.
@@ -1875,7 +1892,7 @@ async function workFixMeta() {
     showErr('시작하지 못했습니다', String(e && e.message ? e.message : e));
   } finally {
     WBUSY[id] = 0;
-    lock(id, 0, '세 편 예약 공개로 올리기');
+    lock(id, 0, partWord(workParts()) + ' 예약 공개로 올리기');
   }
 }
 
@@ -1898,7 +1915,7 @@ async function workUpAll(dry) {
   if (!dry) {
     const done = ps.filter(function (x) { return x.uploaded; });
     const lines = [ps.length + '편을 한 번에 올릴까요?', '',
-                   '세 편 모두 예약 공개입니다 (지금 공개되는 편은 없습니다).',
+                   partWord(ps.length) + ' 모두 예약 공개입니다 (지금 공개되는 편은 없습니다).',
                    '첫 편은 한국 시각 다음 아침 8시,',
                    '나머지는 ' + every + '시간 간격으로 저절로 공개됩니다.',
                    '', '공개 범위: ' + priv];
@@ -1933,7 +1950,7 @@ async function workUpAll(dry) {
     if (msg) msg.textContent = '';
   }
   WBUSY[id] = 0;
-  lock(id, 0, '세 편 예약 공개로 올리기');
+  lock(id, 0, partWord(workParts()) + ' 예약 공개로 올리기');
 }
 
 // ⭐ 2026-09-03 — 프롬프트 상자를 화면에서 없앴으므로, 복사할 글은
@@ -2938,8 +2955,7 @@ const SIMPLE = true;
 //      있을 이유가 없다. 필요하실 때 제목을 누르면 펴진다.
 // ⚠️ '쇼츠 ' 하나로 편 칸(쇼츠 1편·2편…)과 예약 공개 칸을 한꺼번에 편다.
 //    편 수는 사건마다 다르므로 번호를 하나씩 적어 두지 않는다.
-const FOLD_OPEN = ['다음에 할 일', '지금 상태', '90초 한 편', '③ 만든 영상',
-                   '③ 세 편 만들기', '④ 편',
+const FOLD_OPEN = ['다음에 할 일', '지금 상태', '90초 한 편', '③ ', '④ 편',
                    '쇼츠 ', '내 쇼츠 작품', '다음 사건 고르기'];
 const foldKey = (t) => 'fold:' + t.slice(0, 24);
 
