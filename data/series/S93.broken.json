@@ -1,0 +1,485 @@
+{
+ "title": "33억 유언장과 두집살림",
+ "series_label": "33억 숨겨진 유언장",
+ "hook": "40년 두집살림 남편이 내연녀에게 남긴 33억, 본처가 소송으로 되찾다.",
+ "people": {
+  "내연녀": {
+   "age": "60대",
+   "sex": "여"
+  },
+  "혼외자": {
+   "age": "20대",
+   "sex": "남"
+  }
+ },
+ "parts": [
+  {
+   "no": 1,
+   "cuts": [
+    1,
+    9
+   ],
+   "yt_title": "아내에겐 빚 60만 원, 내연녀에겐 33억 남긴 남편",
+   "card": [
+    "장례식 끝난 직후",
+    "33억 건물이 넘어갔다"
+   ]
+  },
+  {
+   "no": 2,
+   "cuts": [
+    10,
+    18
+   ],
+   "yt_title": "\"우린 남처럼 살았잖아\" 끝까지 당당했던 내연녀",
+   "card": [
+    "본처에겐 빚만 남기고",
+    "그 여잔 33억을 가졌다"
+   ]
+  },
+  {
+   "no": 3,
+   "cuts": [
+    19,
+    27
+   ],
+   "yt_title": "남편이 몰래 남긴 33억 유언장을 휴지조각으로 만든 법",
+   "card": [
+    "전 재산 주겠다는 유언",
+    "가족의 권리가 이겼다"
+   ]
+  }
+ ],
+ "cuts": [
+  {
+   "n": 1,
+   "sec": 8.4,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "남편이 세상을 떠나고 삼십억 원대 건물은 전부 다른 여자의 차지가 되었습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "an empty hospital bed with rumpled sheets under a dim lamp"
+  },
+  {
+   "n": 2,
+   "sec": 7.1,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "장례식이 끝나자마자 등기부부터 바꾼 그 여자의 짓이었습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "white chrysanthemums are placed on a quiet wooden table"
+  },
+  {
+   "n": 3,
+   "sec": 6.6,
+   "who": [
+    "아내"
+   ],
+   "turns": [
+    [
+     "아내",
+     "당신 장례식에 그 여자가 뻔뻔하게 찾아올 줄은 정말 몰랐어."
+    ]
+   ],
+   "say": [
+    "50대 여성이, 믿기지 않아 숨을 삼키며 낮고 조용한 목소리로"
+   ],
+   "scene": "아내 sits on a couch in a dark living room staring blankly"
+  },
+  {
+   "n": 4,
+   "sec": 7.3,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "남편은 이십 년이 넘는 긴 세월 동안 밖에서 두 집 살림을 해왔습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "two empty coffee cups are left on a small cafe table"
+  },
+  {
+   "n": 5,
+   "sec": 7.5,
+   "who": [
+    "딸"
+   ],
+   "turns": [
+    [
+     "딸",
+     "엄마, 아빠 명의로 되어 있던 상가들이 전부 그 여자 앞으로 넘어갔어."
+    ]
+   ],
+   "say": [
+    "20대 여성이, 조용히 되묻듯 한 마디씩 눌러서 단단하게"
+   ],
+   "scene": "딸 stands holding a piece of paper with trembling hands"
+  },
+  {
+   "n": 6,
+   "sec": 7.3,
+   "who": [
+    "내연녀"
+   ],
+   "turns": [
+    [
+     "내연녀",
+     "돌아가시기 전에 전 재산을 다 나한테 주기로 공증까지 마친 문서야."
+    ]
+   ],
+   "say": [
+    "60대 여성이, 옅게 웃음기를 섞어 조용하고 차갑게"
+   ],
+   "scene": "내연녀 drinks tea at a luxurious cafe looking relaxed"
+  },
+  {
+   "n": 7,
+   "sec": 8.6,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "아내는 등기부를 떼어보고서야 남편이 남긴 숨겨진 유언장의 존재를 알았습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "a thick folder is placed on a large wooden desk"
+  },
+  {
+   "n": 8,
+   "sec": 6.2,
+   "who": [
+    "아내"
+   ],
+   "turns": [
+    [
+     "아내",
+     "내 아이들 몫까지 전부 저 여자에게 뺏기지는 않을 거야."
+    ]
+   ],
+   "say": [
+    "50대 여성이, 조용히 되묻듯 한 마디씩 눌러서 단단하게"
+   ],
+   "scene": "아내 holds a pen tightly over a lawsuit form"
+  },
+  {
+   "n": 9,
+   "sec": 7.3,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "아내는 그 여자와 혼외자를 상대로 재산을 되찾을 소송을 냈습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "a heavy wooden door of a courtroom is tightly closed"
+  },
+  {
+   "n": 10,
+   "sec": 6.9,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "본처에겐 빚만 남기고 내연녀에겐 삼십억 원이 넘어갔습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "a crumpled piece of paper lies on a dusty floor"
+  },
+  {
+   "n": 11,
+   "sec": 7.1,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "유언장으로 남편의 재산을 독차지한 여자는 무척 뻔뻔했습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "a thick folder rests on a glass table"
+  },
+  {
+   "n": 12,
+   "sec": 6.9,
+   "who": [
+    "내연녀"
+   ],
+   "turns": [
+    [
+     "내연녀",
+     "껍데기만 부부였지, 당신들 이미 남처럼 지낸 지 오래됐잖아."
+    ]
+   ],
+   "say": [
+    "60대 여성이, 옅게 웃음기를 섞어 조용하고 차갑게"
+   ],
+   "scene": "내연녀 crosses her arms sitting on a plush leather sofa"
+  },
+  {
+   "n": 13,
+   "sec": 7.1,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "그 여자는 혼인 관계가 끝났었다며 아내의 소송을 비웃었습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "a ticking wall clock hangs in an empty hallway"
+  },
+  {
+   "n": 14,
+   "sec": 6.6,
+   "who": [
+    "딸"
+   ],
+   "turns": [
+    [
+     "딸",
+     "그동안 우리에게 준 상처로 모자라서 건물까지 전부 훔쳐 가?"
+    ]
+   ],
+   "say": [
+    "20대 여성이, 조용히 되묻듯 한 마디씩 눌러서 단단하게"
+   ],
+   "scene": "딸 glares sharply while standing in a narrow corridor"
+  },
+  {
+   "n": 15,
+   "sec": 7.3,
+   "who": [
+    "혼외자"
+   ],
+   "turns": [
+    [
+     "혼외자",
+     "아버지 뜻에 따라 우리가 정당하게 물려받은 재산인데 훔치다니요."
+    ]
+   ],
+   "say": [
+    "20대 남성이, 귀찮다는 듯 힘을 빼고 툭 던지듯"
+   ],
+   "scene": "혼외자 adjusts his tie with a confident smirk"
+  },
+  {
+   "n": 16,
+   "sec": 7.5,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "아내는 남편이 그 여자에게 돈을 빼돌린 증거들을 샅샅이 모았습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "a stack of folders is placed neatly on a desk"
+  },
+  {
+   "n": 17,
+   "sec": 6.6,
+   "who": [
+    "아내"
+   ],
+   "turns": [
+    [
+     "아내",
+     "네가 망쳐버린 내 인생, 위자료부터 확실하게 계산해 볼까."
+    ]
+   ],
+   "say": [
+    "50대 여성이, 화를 속으로 눌러 담아 낮고 서늘하게"
+   ],
+   "scene": "아내 looks straight ahead with a cold and determined expression"
+  },
+  {
+   "n": 18,
+   "sec": 7.7,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "법원은 아내의 빼앗긴 권리를 다시 꼼꼼하게 들여다보기 시작했습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "sunlight streams through a large window into an empty courtroom"
+  },
+  {
+   "n": 19,
+   "sec": 7.3,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "전 재산을 그 여자에게 주겠다는 남편의 비밀 유언장이 있었습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "a sealed envelope with a red stamp sits on a desk"
+  },
+  {
+   "n": 20,
+   "sec": 7.1,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "하지만 법원은 남겨진 가족들의 권리를 훨씬 더 무겁게 봤습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "a wooden gavel rests quietly on a judge's bench"
+  },
+  {
+   "n": 21,
+   "sec": 7.3,
+   "who": [
+    "변호사"
+   ],
+   "turns": [
+    [
+     "변호사",
+     "유언이 있어도 상속인의 최소한의 몫은 법률로 굳건히 보호됩니다."
+    ]
+   ],
+   "say": [
+    "40대 남성이, 낮고 단단하게"
+   ],
+   "scene": "변호사 stands in a law office pointing at a document"
+  },
+  {
+   "n": 22,
+   "sec": 7.5,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "판결에 따라 내연녀는 삼십억 원대 건물의 지분을 토해내야 했습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "a torn piece of paper flutters down to the floor"
+  },
+  {
+   "n": 23,
+   "sec": 6.9,
+   "who": [
+    "내연녀"
+   ],
+   "turns": [
+    [
+     "내연녀",
+     "이미 내 이름으로 등기까지 다 마쳤는데 이 지분을 뺏어간다고?"
+    ]
+   ],
+   "say": [
+    "60대 여성이, 믿기지 않아 숨을 삼키며 흔들리는 목소리로"
+   ],
+   "scene": "내연녀 grips the edge of a table with a shocked face"
+  },
+  {
+   "n": 24,
+   "sec": 7.5,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "법원은 가정을 파탄 낸 내연녀에게 위자료 지급도 함께 명령했습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "a small plant sits on a bright windowsill in a quiet room"
+  },
+  {
+   "n": 25,
+   "sec": 7.1,
+   "who": [
+    "아내"
+   ],
+   "turns": [
+    [
+     "아내",
+     "네가 훔쳐 간 내 자리, 이제야 법정에서 제대로 값을 치르는구나."
+    ]
+   ],
+   "say": [
+    "50대 여성이, 힘을 빼고 한 박자 쉬며 서늘하게"
+   ],
+   "scene": "아내 breathes out a sigh of relief with a faint smile"
+  },
+  {
+   "n": 26,
+   "sec": 7.7,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "빼돌려졌던 재산은 결국 원래 주인인 가족의 품으로 다시 돌아갔습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "a set of keys is placed gently on a wooden table"
+  },
+  {
+   "n": 27,
+   "sec": 3.8,
+   "who": [],
+   "turns": [
+    [
+     "나레이션",
+     "실제로 있었던 사건입니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "a warm sunset glows over a quiet residential street"
+  }
+ ],
+ "sid": "S93",
+ "case_id": "239125",
+ "narr": "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+}
