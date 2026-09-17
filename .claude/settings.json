@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__github__actions_list",
+      "mcp__github__actions_get",
+      "mcp__github__get_job_logs",
+      "mcp__github__get_commit",
+      "mcp__github__list_commits",
+      "mcp__github__list_branches",
+      "mcp__github__get_file_contents",
+      "mcp__vidIQ_for_Claude__vidiq_channel_videos",
+      "mcp__vidIQ_for_Claude__vidiq_get_videos_by_ids",
+      "Bash(bash tools/checkall.sh)",
+      "Bash(bash tools/checkall.sh *)"
+    ]
+  }
+}
