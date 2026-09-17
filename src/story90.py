@@ -385,13 +385,43 @@ def scene_clean(sc):
     return _FURNITURE.sub(" ", str(sc or ""))
 
 
-def narr_people(sc):
-    """나레이션 화면 묘사에 든 **사람 낱말들** (비었으면 사람이 없다).
+def cast_in(sc, doc=None):
+    """화면 묘사에 이름이 적힌 **등장인물**들 (그 사건 사람 목록에 있는 이름)."""
+    sc = str(sc or "")
+    return [k for k in who_ok(doc or {}) if k and k in sc]
+
+
+def narr_people(sc, doc=None):
+    """나레이션 화면 묘사에 든 **등장인물 아닌 사람 낱말들**.
 
     ⚠️ 규격 검사(check)와 대본 만들기(tools/build_short90.py)가 **같은 이
        함수**를 쓴다. 두 곳에 따로 적으면 한쪽만 고쳐져 규칙이 반쪽이 된다.
+
+    ⭐⭐⭐ 2026-09-17 손님: **"나레이션 씬에 사람이 들어가는 상황이 발생한다면
+       반드시 등장인물이 들어갈 수 있도록 반영해줘. 등장인물 외에 사람들이
+       절대 메인으로 등장해선 안 돼."**
+
+       그전까지는 나레이션 컷에 **사람 낱말이 하나라도 있으면 반려**였다
+       (2026-09-12). 낯선 외국인이 그려지는 것을 막으려던 것이고, 그건 맞다.
+       그런데 그 못 때문에 나레이션 컷이 **전부 빈 방**이 됐다 — S93 은
+       스물두 컷이 사람 없는 장소였고, 그래서 드라마처럼 안 보였다.
+
+       막아야 할 것은 '사람' 이 아니라 **'우리가 얼굴을 모르는 사람'** 이다.
+         · 등장인물 이름(아내·딸·내연녀…)이 적혀 있으면 → 괜찮다.
+           autofix 가 who 에 세워 **얼굴 기준 그림**을 붙인다(0원).
+         · man·woman·lawyer·crowd 같은 보통명사 → **그대로 반려**.
+           얼굴 기준이 없어 그림 모델이 생판 남을 지어낸다.
+         · her·his·they 같은 대명사 → 등장인물이 **같은 줄에 있을 때만** 봐준다.
+           가리킬 사람이 있으니 낯선 사람이 안 생긴다.
     """
-    return NARR_PERSON.findall(scene_clean(sc))
+    sc = scene_clean(sc)
+    named = cast_in(sc, doc)
+    hits = NARR_PERSON.findall(sc)
+    if not named:
+        return hits
+    # 등장인물이 적혀 있으면 대명사는 그 사람을 가리킨다 — 봐준다
+    pron = {"he", "she", "his", "her", "him", "hers", "they", "them", "their"}
+    return [w for w in hits if w.lower() not in pron]
 
 
 def scene_heads(sc):
@@ -482,14 +512,26 @@ def autofix(doc):
         #    나레이션 컷은 사람을 안 그리기로 해 놓고, 이 자리에서는
         #    "화면 묘사에 사람이 있으면 화면에 세운다" 며 도로 세웠다.
         #    규칙 두 개가 서로 싸우니 대본이 쓴 대로 아무렇게나 갈렸다.
-        #    → 나레이션 컷은 건드리지 않는다. 화면 묘사에 사람이 있으면
-        #      세우는 것이 아니라 **규격 검사가 반려한다**(위 ②).
-        if is_narr_cut(c):
+        #
+        # ⭐⭐⭐ 2026-09-17 손님: "나레이션 씬에 사람이 들어가는 상황이
+        #    발생한다면 **반드시 등장인물**이 들어갈 수 있도록 반영해줘."
+        #    → 나레이션 컷도 이제 건드린다. 다만 **등장인물 이름이 적혀 있을
+        #      때만** 세운다(그때는 얼굴 기준이 붙어 낯선 사람이 안 나온다).
+        #      보통명사(man·woman·lawyer…)는 여기서 안 세우고 검사가 반려한다.
+        #    ⚠️ 2026-09-10 에 두 규칙이 싸운 자리다. 이번엔 싸우지 않는다 —
+        #      검사도 '등장인물은 통과 · 보통명사는 반려' 로 같은 편이다.
+        if is_narr_cut(c) and not cast_in(c.get("scene"), doc):
             continue
         sc = str(c.get("scene") or "").lower()
         add = [k for k, ens in EN_NOW.items()
                if any(str(e).lower() in sc for e in ens)
                and k in who_ok(doc) and k not in (c.get("who") or [])]
+        # ⚠️ 2026-09-17 — 위는 **영어 낱말**("the wife")만 찾는다. 우리 화면
+        #    묘사는 "아내 stands alone …" 처럼 **한글 이름**을 그대로 쓴다.
+        #    그래서 이름을 적어 두고도 화면에 안 세워지고 있었다.
+        for k in cast_in(c.get("scene"), doc):
+            if k not in (c.get("who") or []) and k not in add:
+                add.append(k)
         if add:
             c["who"] = (c.get("who") or []) + add
             log.append(f"컷{c.get('n')}: 화면 묘사에 나오는 "
@@ -721,14 +763,24 @@ def check(doc, new=True):
         #    ⚠️ new 와 상관없이 본다. 이미 만들어 둔 대본에도 그대로 있고,
         #       그 대본으로 그림을 그리면 값이 나간다(장당 132원).
         if is_narr_cut(c):
-            w = narr_people(sc)
+            w = narr_people(sc, doc)
             if w:
                 bad.append(
-                    f"컷{n}: 나레이션 컷 화면 묘사에 사람이 있다 — "
-                    f"'{w[0]}' ({sc[:46]}). 나레이션 배경은 **장소·사물·빛**만 "
-                    f"적는다. 얼굴 참조가 없어서 낯선 외국인이 그려진다. "
-                    f"고치기: tools/edit_line.py --sid <사건> --cut {n} "
+                    f"컷{n}: 나레이션 컷 화면 묘사에 **등장인물이 아닌 사람**이 "
+                    f"있다 — '{w[0]}' ({sc[:46]}). 얼굴 기준이 없어 낯선 "
+                    f"외국인이 그려진다. 장소·사물·빛만 적거나, 꼭 사람을 "
+                    f"세우려면 **등장인물 이름**({', '.join(who_ok(doc)[:4])} …)을 "
+                    f"적어라. 고치기: tools/edit_line.py --sid <사건> --cut {n} "
                     f"--scene \"...\" (값 0원)")
+            # ⭐⭐⭐ 등장인물을 적었으면 **화면에 세워야** 한다 (2026-09-17).
+            #    안 세우면 얼굴 기준이 안 붙어, 이름만 적고 낯선 얼굴이 그려진다.
+            #    (autofix ④ 가 0원으로 세워 주므로 여기까지 오면 진짜 잘못이다)
+            miss = [k for k in cast_in(sc, doc) if k not in (c.get("who") or [])]
+            if miss:
+                bad.append(
+                    f"컷{n}: 나레이션 화면에 '{miss[0]}' 를 적어 놓고 화면에 "
+                    f"안 세웠다 — who 에 넣어라 (안 넣으면 얼굴 기준이 안 붙어 "
+                    f"낯선 얼굴이 그려진다)")
         # ⭐⭐⭐ 대사 컷 — 화면에 **who 보다 사람이 많으면** 안 된다.
         #    남는 사람은 얼굴 참조가 없어 그림 모델이 지어낸다
         #    (손님: "장남이라고 해놓고선 등장인물이 아닌 사람이 나타나").

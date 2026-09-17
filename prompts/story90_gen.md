@@ -48,7 +48,7 @@
 
 | | 무엇 |
 |---|---|
-| **누가** | 말하는 사람은 **그 컷 화면에** 나와 있다(`who` 에 넣는다). 얼굴 없이 목소리만 나오면 누가 말하는지 모른다. ⚠️ 나레이션 컷은 **장소**다 — 거기에는 사람을 넣지 않는다 |
+| **누가** | 말하는 사람은 **그 컷 화면에** 나와 있다(`who` 에 넣는다). 얼굴 없이 목소리만 나오면 누가 말하는지 모른다. ⚠️ 나레이션 컷은 기본이 **장소**다. 사람을 세우려면 **등장인물 이름**으로만 적고 `who` 에도 넣는다 — 보통명사(man·woman·lawyer…)는 절대 금지 |
 | **무엇을 했나** | 요약하지 말고 그 장면을 보여 준다 |
 | **왜** | 그렇게 한 까닭. 이게 빠지면 인물이 갑자기 이상해 보인다 |
 | **그래서** | 그 행동의 결과. 이게 빠지면 이야기가 끊긴 느낌이 든다 |
@@ -227,17 +227,30 @@
 (2026-09-10 손님: "나레이션 배경 이미지에 사람이 자꾸 들어가.
  그것도 외국인이 들어가, 등장인물도 아니고.")
 
-- **나레이션 컷** (말하는 사람이 전부 `나레이션`)
-  → **사람을 한 번도 부르지 않는다.** 장소·사물·빛만 적는다.
-  금지: man, woman, person, people, he, she, his, her, son, daughter,
-  father, mother, lawyer, judge, someone, couple, family …
+- **나레이션 컷** (말하는 사람이 전부 `나레이션`) — **기본은 장소·사물·빛**
+  → 보통명사로 사람을 부르면 **절대 안 된다.**
+  금지: man, woman, person, people, son, daughter, father, mother,
+  lawyer, judge, someone, couple, family, crowd …
   · 좋다: `a thick folder is placed on a large wooden desk`
   · 좋다: `an empty hospital bed with rumpled sheets under a dim lamp`
-  · 좋다: `two empty chairs face each other in a quiet courtroom`
-  · 나쁘다: `the middle-aged man holds a smartphone`  ← 사람을 불렀다
-  · 나쁘다: `the old man lies in a hospital bed`      ← 사람을 불렀다
+  · 나쁘다: `the middle-aged man holds a smartphone`  ← 보통명사로 불렀다
+  · 나쁘다: `two lawyers sit at a large desk`         ← 복수형도 안 된다
   요령: 그 사람이 **방금 떠난 자리**를 적는다. 손 대신 놓인 서류, 빈 의자,
   식은 커피, 열린 서랍. 감정은 사람이 아니라 **사물과 빛**이 전한다.
+
+  ⭐⭐⭐ **다만 사람을 꼭 세워야 한다면, 반드시 등장인물 이름으로 적는다**
+  (2026-09-17 손님: "나레이션 씬에 사람이 들어가는 상황이 발생한다면 반드시
+  등장인물이 들어갈 수 있도록. 등장인물 외에 사람들이 절대 메인으로 등장해선
+  안 돼.")
+  · 좋다: `아내 stands alone in an empty funeral hall`
+  · 좋다: `딸 sits at the edge of a dim living room, her back to the door`
+  · 나쁘다: `a woman stands alone in an empty funeral hall` ← 누구인지 모른다
+  한국어 이름을 적으면 그 사람의 **얼굴 기준 그림**이 붙어 낯선 사람이
+  나올 수 없다. 이름 없이 부르면 그림 모델이 생판 남을 지어낸다.
+  ⚠️ 이름을 적었으면 `who` 에도 그 사람을 **반드시** 넣어라(안 넣으면 얼굴
+  기준이 안 붙는다). 빼먹어도 기계가 0원으로 넣어 주지만, 처음부터 넣는다.
+  ⚠️ 그래도 **빈 장소가 기본**이다. 나레이션 컷마다 사람을 세우면 대사 컷과
+  구별이 안 되고, 이야기의 숨 쉴 자리가 사라진다.
 
 - **대사 컷** (사람이 말하는 컷)
   → 사람을 **한국어 이름 그대로** 부른다 (`장남`, `아버지`, `딸`).

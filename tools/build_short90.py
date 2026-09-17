@@ -364,38 +364,96 @@ def is_reply(c, prev):
     return place(c) == place(prev)
 
 
-def shot_of(c, prev=None):
-    """이 컷의 (SHOT, FRAMING, CAMERA) 세 줄. 컷 성격이 정한다."""
+# ⭐ 앵글로 **힘의 관계**를 보여 준다 (2026-09-17 손님 선택).
+#    이야기가 글이 아니라 그림으로 읽힌다 — 가진 쪽은 올려다보고, 밀려난 쪽은
+#    내려다본다. 그리고 판결이 난 뒤(마지막 편)에는 **뒤집는다.**
+#    ⚠️ 살짝만 준다. 세게 주면 만화가 된다.
+POWER = {"내연녀": "low", "혼외자": "low", "아내": "high", "딸": "high"}
+ANGLE = {
+    "low": "shot from slightly below eye level so they look composed and in control",
+    "high": "shot from slightly above eye level so they look worn down and small",
+    "eye": "shot at eye level, level and plain",
+}
+
+
+def angle_of(name, flip=False):
+    """그 사람을 어느 높이에서 잡을까. flip 이면 뒤집는다(판결 뒤)."""
+    a = POWER.get(name, "eye")
+    if flip and a in ("low", "high"):
+        a = "high" if a == "low" else "low"
+    return ANGLE[a]
+
+
+def shot_of(c, prev=None, ctx=None):
+    """이 컷의 (SHOT, FRAMING, CAMERA) 세 줄. 컷 성격이 정한다.
+
+    ctx — {"talks": 대사 컷인가, "climax": 편의 마지막 대사인가,
+           "flip": 판결 뒤라 힘이 뒤집혔는가}
+    """
     who = c.get("who") or []
     scene = c["scene"]
+    ctx = ctx or {}
+    START = "The movement is already under way in the very first frame."
     if not who:
-        # ① 공간감 · 상황 전달 — 와이드 + 느린 줌아웃 (사람 낱말 0회)
-        move = NARR_MOVES[(int(c["n"]) - 1) % len(NARR_MOVES)]
+        # ① 장소 컷 — 샷 크기를 **크게 대비**시킨다 (와이드 ↔ 인서트)
+        #    ⚠️ 셋을 컷 번호로 돌린다. 무작위로 하면 다시 만들 때마다 화면이
+        #       달라져 0원 재사용이 깨진다.
+        i = (int(c["n"]) - 1) % 3
+        if i == 1:
+            # 인서트 — 드라마가 가장 많이 쓰는 샷인데 우리에겐 0개였다
+            return (f"SHOT: {scene}. A tight macro insert of the single most "
+                    f"telling object in this place, filling the frame, the camera "
+                    f"pushing in almost imperceptibly slowly. {START}",
+                    FRAMING_NOBODY, "CAMERA: " + BLUR_NOBODY)
+        if i == 2:
+            return (f"SHOT: {scene}. A low-angle medium view from near floor "
+                    f"level looking up past the objects in the foreground, the "
+                    f"camera drifting sideways in a slow steady lateral move. "
+                    f"{START}", FRAMING_NOBODY, "CAMERA: " + BLUR_NOBODY)
         return (f"SHOT: {scene}. A cinematic wide shot of the place itself, deep "
-                f"depth of field, {move}. The movement is already under way in "
-                f"the very first frame.",
-                FRAMING_NOBODY,
-                "CAMERA: " + BLUR_NOBODY)
+                f"depth of field, the camera pulling back in a very slow zoom out "
+                f"that opens up the space. {START}",
+                FRAMING_NOBODY, "CAMERA: " + BLUR_NOBODY)
+
+    ang = angle_of(who[0], ctx.get("flip"))
+    if not ctx.get("talks"):
+        # ② 나레이션인데 **등장인물이 서 있는** 컷 (2026-09-17 손님 지시)
+        #    빈 방만 이어지면 드라마로 안 보인다. 얼굴 기준이 붙어 있으므로
+        #    낯선 사람이 나올 일이 없다.
+        return (f"SHOT: {scene}. A wide shot that leaves the person small in the "
+                f"space, {ang}, the camera holding still and only breathing "
+                f"slightly. They do not speak; mouths stay closed. {START}",
+                f"FRAMING: vertical 9:16 portrait, filling the whole frame edge to "
+                f"edge, the person placed off to one side with the empty room "
+                f"around them, {EYE_LINE}.",
+                "CAMERA: " + BLUR)
     if len(who) >= 2 or is_reply(c, prev):
-        # ② 대립 · 주고받음 — 오버 더 숄더 + 느린 패닝
+        # ③ 대립 · 주고받음 — 오버 더 숄더 + 느린 패닝
         return (f"SHOT: {scene}. An over-the-shoulder shot past the listener, "
                 f"the near shoulder soft in the foreground framing the speaker, "
-                f"the camera panning slowly and horizontally. The movement is "
-                f"already under way in the very first frame.",
+                f"{ang}, the camera panning slowly and horizontally. {START}",
                 f"FRAMING: vertical 9:16 portrait, filling the whole frame edge to "
                 f"edge, frame-in-frame composition using the doorway, blinds or "
                 f"glass partition of the room, {EYE_LINE}.",
                 "CAMERA: " + BLUR)
-    # ③ 심리 변화 · 결의 — 미디엄~클로즈 + 느린 줌인
-    return (f"SHOT: {scene}. A medium shot tightening towards a close-up, the "
-            f"camera in a slow dramatic zoom in on the face, intense steady gaze. "
-            f"The movement is already under way in the very first frame.",
+    if ctx.get("climax"):
+        # ④ 결정적 순간 — **카메라를 멈춘다.** 전부 움직이면 오히려 싸구려다.
+        return (f"SHOT: {scene}. A tight close-up on the face, {ang}, the camera "
+                f"locked off completely still on a tripod with no move at all, so "
+                f"that only the face moves. {START}",
+                f"FRAMING: vertical 9:16 portrait, filling the whole frame edge to "
+                f"edge, the face filling much of the frame, {EYE_LINE}.",
+                "CAMERA: " + BLUR)
+    # ⑤ 심리 변화 · 결의 — 미디엄~클로즈 + 느린 줌인
+    return (f"SHOT: {scene}. A medium shot tightening towards a close-up, {ang}, "
+            f"the camera in a slow dramatic zoom in on the face, intense steady "
+            f"gaze. {START}",
             f"FRAMING: vertical 9:16 portrait, filling the whole frame edge to "
             f"edge, the person kept in the middle, {EYE_LINE}.",
             "CAMERA: " + BLUR)
 
 
-def veo_prompt(c, prev=None):
+def veo_prompt(c, prev=None, ctx=None):
     """그 컷을 손으로 만들 때 쓸 영상 프롬프트 (제미나이에 그대로 붙인다).
 
     ⭐ 2026-08-27 손님: "이미지는 중간중간 섞여 있고 동영상도 있어야 돼."
@@ -406,7 +464,7 @@ def veo_prompt(c, prev=None):
     talks = not is_narr(c)
     speaker = kind_of(c)
     sec = veo_sec(c)
-    shot, framing, cam = shot_of(c, prev)
+    shot, framing, cam = shot_of(c, prev, ctx)
     body = [f"{S.HEAD_FIX} {sec}-second single continuous take, "
             f"vertical portrait format (9 x 16)."]
     if who:
@@ -559,6 +617,19 @@ def main(argv=None):
     check_say(story)
     check_parts(story)
     check_scrub(story)
+    # ⭐ 편마다 **마지막 대사 컷**을 찾아 둔다 — 거기서는 카메라를 멈춘다
+    #    (결정적 순간 락오프 · 2026-09-17 손님 선택). 전부 움직이면 싸구려다.
+    climax = set()
+    parts_all = story.get("parts") or []
+    for p_ in parts_all:
+        a_, b_ = p_["cuts"]
+        talky = [x["n"] for x in story["cuts"]
+                 if a_ <= x["n"] <= b_ and not is_narr(x)]
+        if talky:
+            climax.add(talky[-1])
+    # 판결이 난 뒤(마지막 편)에는 힘의 관계가 뒤집힌다 — 앵글도 뒤집는다
+    last_a = parts_all[-1]["cuts"][0] if parts_all else 10 ** 9
+
     cuts = []
     prev = None                       # 주고받는 대사를 알아보려고 앞 컷을 쥔다
     for c in story["cuts"]:
@@ -580,7 +651,11 @@ def main(argv=None):
             #    편을 나누며 번호가 밀리자 엉뚱한 컷을 가리킬 뻔했다.
             "scrub": c.get("scrub"),
             "still": still_prompt(c),
-            "veo": veo_prompt(c, prev),
+            "veo": veo_prompt(c, prev, {
+                "talks": not is_narr(c),
+                "climax": c["n"] in climax,
+                "flip": c["n"] >= last_a,
+            }),
             "flow": flow_prompt(c),
         })
         prev = c

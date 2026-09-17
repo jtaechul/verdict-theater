@@ -129,9 +129,22 @@ def main():
                        "scene": "the middle-aged man holds a smartphone"}],
              "people": {}}
     why = [b for b in ST.check(dirty, new=False)
-           if "나레이션 컷 화면 묘사에 사람" in b]
-    ck("규격 검사가 나레이션 속 사람을 반려한다", bool(why),
+           if "등장인물이 아닌 사람" in b]
+    ck("규격 검사가 나레이션 속 **낯선** 사람을 반려한다", bool(why),
        "안 잡으면 그대로 그려져 값(장당 132원)이 날아간다")
+    # ⭐⭐⭐ 2026-09-17 손님: "나레이션 씬에 사람이 들어간다면 반드시
+    #    등장인물이 들어갈 수 있도록." 이름을 적으면 얼굴 기준이 붙으므로
+    #    낯선 사람이 나올 수 없다 — 그때는 통과해야 한다.
+    named = {"cuts": [{"n": 1, "who": [], "say": ["담담하게"],
+                       "turns": [["나레이션", "시험입니다."]],
+                       "scene": "아내 stands alone in an empty hall"}],
+             "people": {}}
+    ST.autofix(named)
+    ck("등장인물 이름이면 통과하고 화면에 세워진다 (0원)",
+       named["cuts"][0]["who"] == ["아내"]
+       and not [x for x in ST.check(named, new=False)
+                if "사람" in x or "안 세웠" in x],
+       str(named["cuts"][0]["who"]))
     ck("이름 짝이 맞는다 (story90.SCENE_EN ↔ build_short90.EN)",
        set(ST.SCENE_EN) == set(B.EN),
        f"{sorted(set(ST.SCENE_EN) ^ set(B.EN))}")

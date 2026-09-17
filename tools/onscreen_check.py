@@ -90,7 +90,7 @@ def main():
        ST.narr_people("an empty witness stand under a light") == [])
     ck("규격 검사와 대본 만들기가 **같은 함수**를 쓴다",
        "narr_people" in (ROOT / "tools" / "build_short90.py").read_text("utf-8")
-       and "narr_people(sc)" in (ROOT / "src" / "story90.py").read_text("utf-8"))
+       and "narr_people(sc, doc)" in (ROOT / "src" / "story90.py").read_text("utf-8"))
 
     print("\n■ ③ 규격 검사(story90.check)가 막는다")
     bad1 = ST.check(doc_of(cut(1, ["아버지"], two)))

@@ -283,10 +283,11 @@ def camera():
            "scene": "변호사 sits in a law office with a case file",
            "turns": [("변호사", "그 길부터 다투어 보시지요")]}
 
+    TALK = {"talks": True}
     s_narr = B.shot_of(narr)[0]
-    s_solo = B.shot_of(solo, narr)[0]
-    s_rep = B.shot_of(reply, solo)[0]
-    s_far = B.shot_of(far, reply)[0]
+    s_solo = B.shot_of(solo, narr, TALK)[0]
+    s_rep = B.shot_of(reply, solo, TALK)[0]
+    s_far = B.shot_of(far, reply, TALK)[0]
     ck("나레이션 컷은 와이드다 (공간을 보여 준다)", "wide shot" in s_narr, s_narr[:90])
     ck("혼자 말하는 컷은 미디엄 + 느린 줌인이다",
        "medium shot" in s_solo and "zoom in" in s_solo, s_solo[:90])
@@ -307,12 +308,65 @@ def camera():
     ck("같은 컷은 늘 같은 무빙이다 (다시 만들어도 안 달라진다)",
        B.shot_of(dict(narr, n=5))[0] == B.shot_of(dict(narr, n=5))[0])
     # 눈선은 세로 화면에서 위쪽 1/3 — 아래는 자막 띠가 덮는다
-    ck("사람 컷은 눈선을 위쪽에 둔다", "eye line" in B.shot_of(solo, narr)[1])
+    ck("사람 컷은 눈선을 위쪽에 둔다", "eye line" in B.shot_of(solo, narr, TALK)[1])
+
+    # ── ⭐ 2026-09-17 (두 번째) 손님이 고른 연출 네 가지 ──────────────
+    #    "지금 현재 우리의 카메라 구도는 너무 AI스럽고 단순하고 드라마 같지 않아."
+    #    맞다. 샷 크기가 사실상 두 종류뿐이고 전부 눈높이에 전부 움직였다.
+    # ① 인서트 컷 — 드라마가 가장 많이 쓰는데 우리에겐 0개였다
+    sizes = {B.shot_of(dict(narr, n=i))[0] for i in (1, 2, 3)}
+    ck("장소 컷 샷 크기가 세 가지로 갈린다 (와이드·인서트·로우앵글)",
+       len(sizes) == 3, f"{len(sizes)}가지")
+    ck("인서트(사물 클로즈업) 컷이 있다",
+       any("macro insert" in x for x in sizes))
+    # ② 앵글로 힘의 관계 — 가진 쪽은 올려다보고 밀려난 쪽은 내려다본다
+    lowp = B.shot_of(dict(solo, who=["내연녀"]), None, TALK)[0]
+    highp = B.shot_of(dict(solo, who=["아내"]), None, TALK)[0]
+    ck("가진 쪽은 아래에서 올려다본다 (내연녀)", "slightly below" in lowp)
+    ck("밀려난 쪽은 위에서 내려다본다 (아내)", "slightly above" in highp)
+    # ③ 판결 뒤에는 **뒤집힌다** — 이야기가 그림으로 읽힌다
+    flip = B.shot_of(dict(solo, who=["아내"]), None, {"talks": True, "flip": True})[0]
+    ck("판결 뒤에는 힘의 관계가 뒤집힌다", "slightly below" in flip, flip[:90])
+    # ④ 결정적 순간에는 카메라를 **멈춘다** (전부 움직이면 싸구려다)
+    clim = B.shot_of(solo, None, {"talks": True, "climax": True})[0]
+    ck("결정적 순간은 카메라를 멈춘다 (락오프)",
+       "locked off" in clim and "close-up" in clim, clim[:90])
+    ck("결정적 순간은 편마다 **마지막 대사 컷**으로 정한다",
+       '"climax": c["n"] in climax' in
+       (ROOT / "tools" / "build_short90.py").read_text("utf-8"))
+
+    # ── ⭐⭐⭐ 핵심 규칙: 화면에 나오는 사람은 **반드시 등장인물** ─────
+    #    손님: "등장인물 외에 사람들이 절대 메인으로 등장해선 안 돼."
+    #    이 저장소가 가장 여러 번 사고 난 자리다(09-05 · 09-10 · 09-12).
+    import story90 as ST                                      # noqa: E402
+    def narr_case(scene):
+        d = {"people": {}, "cuts": [{"n": 1, "who": [], "say": ["담담하게"],
+             "turns": [["나레이션", "그날의 일을 전해 드립니다 차분하게"]],
+             "scene": scene}],
+             "parts": [{"no": 1, "cuts": [1, 1], "card": ["가", "나"],
+                        "yt_title": "x" * 30}]}
+        ST.autofix(d)
+        left = [x for x in ST.check(d) if "사람" in x or "안 세웠" in x]
+        return (not left), d["cuts"][0]["who"]
+
+    ok1, who1 = narr_case("아내 stands alone in an empty funeral hall")
+    ck("등장인물 이름이면 통과하고 0원으로 화면에 세워진다",
+       ok1 and who1 == ["아내"], f"{ok1} {who1}")
+    ok2, _ = narr_case("아내 stands with her hands folded in a dim hall")
+    ck("등장인물이 있으면 대명사(her)는 봐준다", ok2)
+    ok3, _ = narr_case("a middle-aged woman stands in a dim hall")
+    ck("보통명사 사람은 반려한다 (낯선 사람이 그려진다)", not ok3)
+    ok4, _ = narr_case("two lawyers sit at a large desk")
+    ck("복수형 보통명사도 반려한다 (2026-09-12 에 뚫린 자리)", not ok4)
+    ok5, _ = narr_case("아내 and a young man stand in a dim hall")
+    ck("등장인물과 섞여 있어도 낯선 쪽을 반려한다", not ok5)
+    ok6, who6 = narr_case("an empty funeral hall with dim lamps")
+    ck("빈 장소는 그대로 통과한다 (기본은 여전히 장소다)", ok6 and who6 == [])
 
     # ⚠️ 가져온 규칙표에서 **일부러 뺀 것**이 도로 들어오지 않았는지 본다.
     #    ⚠️ 소스 글자를 세면 **설명 주석까지** 걸린다(실제로 걸렸다).
     #       진짜로 모델에게 가는 것은 만들어진 지문이므로 그것을 본다.
-    out = (B.veo_prompt(solo, narr) + "\n" + B.veo_prompt(narr)).lower()
+    out = (B.veo_prompt(solo, narr, TALK) + "\n" + B.veo_prompt(narr)).lower()
     ck("--ar 를 안 보낸다 (미드저니 문법 · Veo 는 ratio 로 받는다)",
        "--ar" not in out, "글자로 읽혀 화면에 뜰 수 있다")
     ck("8k·4k 를 안 보낸다 (우리 금지어 — 안전필터에 걸린 이력)",
