@@ -189,10 +189,29 @@ def plan(doc, krw_per_sec=0.08, usd_krw=1470.0):
             presses += 1
             run = 0.0
         run += one
+    # ⭐⭐⭐ 2026-09-17 손님: "아예 전체를 다 영상으로 만드는 버전도 추가해줘."
+    #    전체 영상 = 대사 컷(위) + **나레이션 컷 전부**.
+    #    ⚠️ 화면과 실제 제작이 **같은 셈**을 써야 화면에 적힌 값이 진짜 값이 된다.
+    #       나레이션 컷 길이는 short90.open_sec_of 와 똑같이 talk_sec 으로 센다.
+    #    ⚠️ 값이 커서 화면은 **편 하나씩**을 권한다 — 편별 값도 같이 적어 준다.
+    def _won(s):
+        return round(s * krw_per_sec * usd_krw)
+
+    all_ns = [c for c in doc.get("cuts") or []]
+    per = {}
+    for p in doc.get("parts") or []:
+        a, b = p["cuts"]
+        sec_p = sum(talk_sec(turns_of(c)[0][1])
+                    for c in all_ns if a <= c["n"] <= b)
+        per[str(int(p["no"]))] = {"sec": round(sec_p, 1), "krw": _won(sec_p)}
+    all_sec = sum(talk_sec(turns_of(c)[0][1]) for c in all_ns)
     return {"n": len(cuts), "cuts": [c["n"] for c in cuts],
             "sec": sum(secs), "krw": won,
             "cap": cap, "presses": presses,
             # 화면이 **누르기 전에** 보여 줄 것들
             "parts": {str(k): round(v, 1) for k, v in parts.items()},
             "over": [k for k, v in parts.items() if v > PART_MAX_SEC],
-            "dropped": why}
+            "dropped": why,
+            # 전체 영상 (그림 먼저 → 모든 컷 영상)
+            "all": {"n": len(all_ns), "sec": round(all_sec, 1),
+                    "krw": _won(all_sec), "per_part": per}}

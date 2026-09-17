@@ -380,8 +380,13 @@ OPEN_START = ("MOTION START: the movement is already under way in the very first
               "frame and continues without pause to the last frame.")
 
 
-def open_prompt(c):
-    """편 첫 장면(4초)용 프롬프트 — 길이를 맞추고 입을 다물게 한다."""
+def open_prompt(c, sec=None):
+    """편 첫 장면용 프롬프트 — 길이를 맞추고 입을 다물게 한다.
+
+    ⚠️ 2026-09-17 — `sec` 이 생겼다. **전체 영상**(VT_ALL_VIDEO)에서는 컷마다
+       사는 길이가 다르기 때문이다. 안 주면 예전 그대로 OPEN_SEC(4초).
+    """
+    sec = OPEN_SEC if sec is None else sec
     txt = str(c.get("veo") or c.get("still") or "")
     out = []
     for line in txt.splitlines():
@@ -397,14 +402,30 @@ def open_prompt(c):
         #    → 몇 초라고 적혀 있든 **우리가 사는 길이**로 바꾼다
         #      (src/vprompt.py 가 쓰는 것과 같은 방식).
         out.append(re.sub(r"\b\d+(?:\.\d+)?-second single continuous take",
-                          f"{OPEN_SEC:g}-second single continuous take", line))
+                          f"{sec:g}-second single continuous take", line))
     out.append(OPEN_START)
     out.append(OPEN_LIPS)
     return "\n".join(out)
 
 
+def open_sec_of(c):
+    """이 컷에 살 길이(초). 전체 영상이면 **컷 길이만큼**, 아니면 4초."""
+    if not ALL_VIDEO:
+        return OPEN_SEC
+    return float(talk_sec(turns_of(c)[0][1]))
+
+
 def open_cuts(doc):
-    """편마다 **첫 컷** 번호. 여기만 진짜 영상으로 만든다."""
+    """진짜 영상으로 만들 **말 없는 컷**(나레이션) 번호.
+
+    ⭐⭐⭐ 2026-09-17 손님: "아예 전체를 다 영상으로 만드는 버전도 하나 추가해줘."
+       · 평소       : 편마다 **첫 컷** 하나 (입 다문 4초)
+       · 전체 영상  : 그 편의 **나레이션 컷 전부**, 각자 컷 길이만큼
+       대사 컷은 여기서 안 센다 — talk_cuts 가 따로 맡는다(입이 움직여야 한다).
+    ⚠️ 전체 영상은 이 둘(나레이션 + 대사)을 **같이** 켜서 만든다.
+    """
+    if ALL_VIDEO:
+        return [c["n"] for c in doc.get("cuts") or [] if is_narr(c)]
     return [part_cuts(doc, p)[0]["n"] for p in parts_of(doc) if part_cuts(doc, p)]
 
 
@@ -429,7 +450,22 @@ def open_dir():
 #    ⚠️⚠️ **같은 인물을 너무 여러 컷 사지 않는다.** Veo 에는 목소리를 지정하는
 #       수단이 없어서, 같은 인물이라도 클립마다 다른 사람처럼 들릴 수 있다.
 #       클립 수가 곧 목소리가 흔들릴 기회 수다.
-TALK_VIDEO = os.environ.get("VT_TALK_VIDEO", "").strip() in ("1", "예", "on")
+# ⭐⭐⭐ 2026-09-17 손님: "아예 전체를 다 영상으로 만드는 버전도 하나 추가해줘.
+#    근데 내 생각에는 일단 이미지를 만들고 해야 하니까 그렇게 한다라는 걸 적어줘."
+#    맞는 말씀이다. 이 시스템은 **그림을 첫 프레임으로 넣어 움직이는** 방식
+#    (image-to-video)이라 그림이 반드시 먼저다. 그림 없이는 openers 가 멈춘다.
+#
+#    전체 영상 = 나레이션 컷(openers) + 대사 컷(talkers) 을 **같이** 켠 것이다.
+#    새 갈래를 만들지 않는다 — 갈래가 늘면 값 막는 자리를 또 잊는다
+#    (실제로 2026-09-10 에 openers·talkers 두 갈래가 다 뚫려 있었다).
+#    ⚠️ 값이 크다. S93 기준 한 편 약 7,800원 · 네 편 약 31,300원.
+#       그래서 화면에서 **편 하나씩** 만들게 하고, 한 번 실행 뚜껑이 막는다.
+ALL_VIDEO = os.environ.get("VT_ALL_VIDEO", "").strip() in ("1", "예", "on")
+# 전체 영상이면 대사 컷도 당연히 영상이다 (따로 켜 달라고 하지 않는다)
+# ⚠️ 열쇠를 **읽는 자리는 한 줄**로 둔다 — 검사가 "읽는 자리가 하나뿐인가"
+#    를 글자로 세기 때문이다(두 곳에서 읽으면 한쪽만 끄고 껐다고 믿게 된다).
+_TALK_ENV = os.environ.get("VT_TALK_VIDEO", "").strip() in ("1", "예", "on")
+TALK_VIDEO = ALL_VIDEO or _TALK_ENV
 # ⭐⭐⭐ 2026-09-10 — 고르는 규칙은 **src/talkplan.py 한 곳**에만 둔다.
 #    여기와 화면(worker.js)이 따로 세다가, 화면이 2,824원이라고 적고 실제로는
 #    12,936원이 나가는 꼴이 됐다. 세는 자리를 하나로 만든다.
@@ -897,37 +933,46 @@ def talk_ok(c, clip, still):
 
 
 def openers(doc):
-    """편 첫 컷을 Veo 로 4초짜리 영상으로 만든다 (image-to-video).
+    """말 없는 컷을 Veo 영상으로 만든다 (image-to-video).
+
+    · 평소      : 편마다 첫 컷 하나 · 4초 (VT_OPEN_VIDEO)
+    · 전체 영상 : 나레이션 컷 **전부** · 컷 길이만큼 (VT_ALL_VIDEO)
 
     ⚠️ 값이 나간다. 그래서 —
-       · 켜야만 돈다 (VT_OPEN_VIDEO)
+       · 켜야만 돈다
        · 만들기 **전에** 얼마인지 적어 준다
        · 지문이 같으면 다시 안 만든다 (0원). 그림이 바뀌면 다시 만든다.
+    ⚠️ **그림이 먼저다.** 그림을 첫 프레임으로 넣어 움직이므로, 그림이 없으면
+       여기서 멈춘다(아래 Short90Error). 전체 영상도 예외가 아니다.
     """
     import veo                                              # 늦게 부른다(열쇠 필요)
     d = open_dir()
     d.mkdir(parents=True, exist_ok=True)
     ns = open_cuts(doc)
     st = OUT / "stills"
-    krw1 = cost.video_krw(veo.MODEL, OPEN_SEC)
-    print(f"■ 편 첫 장면 영상 {len(ns)}개 "
-          f"({OPEN_SEC:g}초씩 · 한 개 약 {krw1:,.0f}원 · 최대 "
-          f"{krw1 * len(ns):,.0f}원)")
+    by_n = {c["n"]: c for c in doc.get("cuts") or []}
+    secs = {n: open_sec_of(by_n[n]) for n in ns if n in by_n}
+    tot = sum(cost.video_krw(veo.MODEL, s) for s in secs.values())
+    what = "전체 영상 · 나레이션 컷" if ALL_VIDEO else "편 첫 장면 영상"
+    print(f"■ {what} {len(ns)}개 "
+          f"({sum(secs.values()):g}초 · 최대 약 {tot:,.0f}원)")
     made, miss = 0, []
     for n in ns:
         out = d / f"c{n:02d}.mp4"
         still = st / f"c{n:02d}.png"
         if not still.exists():
             raise Short90Error(f"컷{n} 그림이 없다 — 먼저 stills 를 돌린다")
-        c = [x for x in doc["cuts"] if x["n"] == n][0]
+        c = by_n[n]
+        sec1 = secs[n]
+        krw1 = cost.video_krw(veo.MODEL, sec1)
         # ⚠️ 우리 시스템용 판(veo)을 쓴다. 앱용 판(flow)이 아니다.
-        #    ⭐ 첫 장면용으로 손본다 — 4초에 맞추고, 입을 다물게 한다.
-        prompt = open_prompt(c)
+        #    ⭐ 말 없는 컷용으로 손본다 — 길이를 맞추고, 입을 다물게 한다.
+        prompt = open_prompt(c, sec1)
         # ⚠️ 지문에 **그림 내용까지** 넣는다. 그림이 바뀌면 영상도 바뀌어야 한다.
-        sig = reuse.sig_of(prompt, f"{OPEN_SEC:g}", OPEN_RATIO,
+        sig = reuse.sig_of(prompt, f"{sec1:g}", OPEN_RATIO,
                            reuse.sig_of(still.read_bytes().hex()[:4096]))
         ok, why = reuse.can_reuse(out, sig)
-        print(f"  컷{n:>2} 편 첫 장면")
+        print(f"  컷{n:>2} {what} ({sec1:g}초 · 약 {krw1:,.0f}원)")
         if ok:
             print("    (그대로다 — 건너뛴다 · 0원)")
             made += 1
@@ -935,7 +980,7 @@ def openers(doc):
         if why:
             print(f"    ⚠️ {why} — 다시 만든다")
         try:
-            veo.make_clip(prompt, int(OPEN_SEC), out, ratio=OPEN_RATIO,
+            veo.make_clip(prompt, int(sec1), out, ratio=OPEN_RATIO,
                           seed=veo._seed(doc.get("sid"), n), start=still)
         except veo.RaiFiltered:
             # ⭐⭐⭐ 2026-09-05 손님: "1화는 앞에 영상이 아닌 이미지야."
@@ -945,7 +990,7 @@ def openers(doc):
             print(f"    ⚠️ 안전 필터에 걸렸다 — 씨앗을 바꿔 **한 번만** "
                   f"다시 해 본다 (약 {krw1:,.0f}원)")
             try:
-                veo.make_clip(prompt, int(OPEN_SEC), out, ratio=OPEN_RATIO,
+                veo.make_clip(prompt, int(sec1), out, ratio=OPEN_RATIO,
                               seed=veo._seed(doc.get("sid"), n, "2"),
                               start=still)
             except Exception as e2:                          # noqa: BLE001
@@ -969,7 +1014,7 @@ def openers(doc):
             continue
         reuse.stamp(out, sig)
         made += 1
-    print(f"\n■ 편 첫 장면 {made}/{len(ns)}개")
+    print(f"\n■ {what} {made}/{len(ns)}개")
     # ⚠️ 조용히 그림으로 넘어가면 손님은 "왜 1화만 영상이 아니지?" 만 알게 된다.
     #    어느 편이 그림으로 열리는지 **크게** 적는다.
     if miss:
@@ -2091,7 +2136,9 @@ OPEN_TAIL_MIN = 1.0              # 그림이 이만큼은 남아야 그림으로
 OPEN_STRETCH_MAX = 1.15          # 영상을 늘려도 되는 최대 배율 (15%)
 OPEN_RATIO = "9:16"              # 화면이 세로로 꽉 차므로 세로로 받는다
 # 값이 나가는 일이라 **꺼진 채로** 둔다. 관리자 화면에서 켜야 돈다.
-OPEN_VIDEO = os.environ.get("VT_OPEN_VIDEO", "").strip() in ("1", "예", "on")
+# 전체 영상이면 나레이션 컷도 전부 영상이다 (openers 가 맡는다)
+_OPEN_ENV = os.environ.get("VT_OPEN_VIDEO", "").strip() in ("1", "예", "on")
+OPEN_VIDEO = ALL_VIDEO or _OPEN_ENV
 
 
 def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):

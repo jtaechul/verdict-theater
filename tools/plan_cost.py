@@ -27,7 +27,7 @@ SPARE_CALLS = 6          # 안전필터 등으로 몇 번 다시 부를 여유
 SPARE_KRW = 1.15         # 값은 15% 여유 (모델이 값을 조금씩 다르게 매긴다)
 
 
-def plan(sid, open_video, talk_video=False):
+def plan(sid, open_video, talk_video=False, all_video=False):
     doc = json.loads((ROOT / "data" / "series" / f"{sid}.json")
                      .read_text(encoding="utf-8"))
     cuts = doc.get("cuts") or []
@@ -40,12 +40,29 @@ def plan(sid, open_video, talk_video=False):
     img_krw = one_img * uniq
     vid_krw = 0.0
     veo_cap = parts + 2                # 편마다 하나 + 안전 필터 재시도 두 번
-    if open_video:
+    # ⭐⭐⭐ 2026-09-17 — 전체 영상(그림 먼저 → 모든 컷 영상).
+    #    ⚠️ 상한을 **손으로 적지 않는다.** 편이 늘거나 컷이 늘면 손으로 적은
+    #       숫자는 반드시 어긋나고, 그 자리에서 반쪽만 만들어진다
+    #       (2026-09-05 에 STILL_CALL_CAP 24 로 똑같이 당했다).
+    #    → 대본을 보고 센다. 컷 수 + 안전 필터 재시도 여유.
+    if all_video:
+        import talkplan                                      # noqa: E402
+        tp = talkplan.plan(doc)
+        # ⚠️⚠️ 2026-09-17 — 여기서 **네 편 값을 다 더하면 안 된다.**
+        #    손님이 고른 것은 '편 하나씩' 이고, 한 번 실행 뚜껑은 잘못
+        #    눌렀을 때 손해를 **한 편에서 끊으려고** 있는 것이다. 다 더하면
+        #    뚜껑이 30,000원이 되어 막는 시늉만 하게 된다.
+        #    → 가장 비싼 편 하나로 잡는다. 편을 옮겨 가며 네 번 누르면
+        #      네 편이 다 만들어지고, 만든 것은 다시 눌러도 0원이다.
+        each = [v['krw'] for v in (tp['all'].get('per_part') or {}).values()]
+        vid_krw = float(max(each) if each else tp['all']['krw'])
+        veo_cap = max(veo_cap, tp['all']['n'] + SPARE_CALLS)
+    elif open_video:
         import short90 as S9                                 # noqa: E402
         # ⚠️ 2026-09-05 — 안전 필터에 걸리면 **한 번 더** 부른다(씨앗만 바꿔).
         #    한 번분을 미리 넣어 둔다. 안 걸리면 그만큼은 안 쓴다.
         vid_krw = cost.video_krw("veo-3.1-lite", S9.OPEN_SEC) * (parts + 1)
-    if talk_video:
+    if talk_video and not all_video:
         # ⭐⭐⭐ 2026-09-10 — **여기가 대사 영상을 모르고 있었다.**
         #    켜 두고 실행해도 이 셈은 그림값만 잡았다. 그래서
         #        VEO_CALL_CAP = 6  (대사 컷은 8개인데)
@@ -67,7 +84,8 @@ def plan(sid, open_video, talk_video=False):
         "img_krw": img_krw, "vid_krw": vid_krw,
         # ⚠️ 무슨 영상인지 이름을 붙여 준다 — 예전엔 대사 영상값도
         #    "편 첫 장면" 이라고 적혀 무엇에 얼마가 드는지 알 수 없었다.
-        "vid_label": ("대사 장면" if talk_video else
+        "vid_label": ("전체 영상" if all_video else
+                      "대사 장면" if talk_video else
                       "편 첫 장면" if open_video else "영상"),
         "run_krw": round((img_krw + vid_krw) * SPARE_KRW + 200),
     }
@@ -82,7 +100,8 @@ def main():
     a = ap.parse_args()
     ov = str(a.open_video or os.environ.get("VT_OPEN_VIDEO") or "").strip()
     tv = str(os.environ.get("VT_TALK_VIDEO") or "").strip() in ("1", "예", "on")
-    p = plan((a.sid or "S90").upper(), ov in ("1", "예", "on"), tv)
+    av = str(os.environ.get("VT_ALL_VIDEO") or "").strip() in ("1", "예", "on")
+    p = plan((a.sid or "S90").upper(), ov in ("1", "예", "on"), tv, av)
 
     if a.env:
         print(f"STILL_CALL_CAP={p['still_cap']}")

@@ -142,7 +142,8 @@ def lips():
     #    시험은 통과하는데 진짜 영상에는 옛 글이 들어간다.
     src = (ROOT / "src" / "short90.py").read_text(encoding="utf-8")
     op = (re.search(r"def openers\(doc\)[\s\S]*?\n\ndef ", src) or [""])[0]
-    ck("만들 때 그 손본 글을 쓴다", "prompt = open_prompt(c)" in op)
+    # ⚠️ 2026-09-17 — 전체 영상이 생기며 컷마다 길이가 달라져 sec 이 붙었다.
+    ck("만들 때 그 손본 글을 쓴다", "prompt = open_prompt(c, sec1)" in op)
 
 
 def fake_cut(sec):
@@ -372,6 +373,76 @@ def cover():
            b.count("I") * 0.2 >= S.OPEN_TAIL_MIN * 0.6, f"{b.count('I')}칸뿐")
 
 
+def whole():
+    """⭐⭐⭐ 2026-09-17 손님: "아예 전체를 다 영상으로 만드는 버전도 추가해줘.
+       근데 일단 이미지를 만들고 해야 하니까 그렇게 한다라는 걸 적어줘."
+
+    값이 큰 갈래다(편당 약 6,000원). 지켜야 할 것을 여기서 붙들어 둔다.
+    ⚠️ 살아 있는 대본을 안 읽는다 — 손님이 다시 지으시면 시험이 헛돈다.
+    """
+    print("\n⑤ 전체 영상 (그림 먼저 → 모든 컷 영상)")
+    src = (ROOT / "src" / "short90.py").read_text(encoding="utf-8")
+    yml = (ROOT / ".github" / "workflows" / "short90.yml").read_text(
+        encoding="utf-8")
+    js = (ROOT / "admin" / "worker.js").read_text(encoding="utf-8")
+
+    ck("켜야만 돈다 (기본은 꺼짐)", not S.ALL_VIDEO)
+    ck("켜는 열쇠를 읽는 자리가 하나뿐이다 (VT_ALL_VIDEO)",
+       src.count('os.environ.get("VT_ALL_VIDEO"') == 1)
+    # 켜면 나레이션·대사 **둘 다** 켜져야 한다. 하나만 켜지면 반쪽이 나간다.
+    ck("켜면 나레이션 컷 갈래가 같이 켜진다", "OPEN_VIDEO = ALL_VIDEO or" in src)
+    ck("켜면 대사 컷 갈래가 같이 켜진다", "TALK_VIDEO = ALL_VIDEO or" in src)
+
+    doc = {"cuts": [
+        {"n": 1, "who": [], "turns": [["나레이션", "그날의 일을 전해 드립니다"]]},
+        {"n": 2, "who": ["아내"], "turns": [["아내", "그게 무슨 말이에요"]]},
+        # ⚠️ 긴 줄을 일부러 둔다 — 짧은 줄만 두면 둘 다 4초가 나와
+        #    "컷마다 제 길이를 사는가" 를 못 재고 시험이 헛돈다.
+        {"n": 3, "who": [],
+         "turns": [["나레이션", "아내와 네 자녀는 남편이 떠난 지 "
+                              "두 달 만에 소송을 냈습니다"]]}],
+        "parts": [{"no": 1, "cuts": [1, 3]}]}
+    was = S.ALL_VIDEO
+    try:
+        S.ALL_VIDEO = True
+        ns = S.open_cuts(doc)
+        ck("켜면 나레이션 컷을 **전부** 가져온다", ns == [1, 3], str(ns))
+        ck("대사 컷은 여기서 안 센다 (talk_cuts 가 맡는다)", 2 not in ns, str(ns))
+        ck("컷마다 **제 길이**를 산다 (4초 고정이 아니다)",
+           S.open_sec_of(doc["cuts"][0]) != S.OPEN_SEC
+           or S.open_sec_of(doc["cuts"][2]) != S.OPEN_SEC,
+           f"{S.open_sec_of(doc['cuts'][0])}초")
+        S.ALL_VIDEO = False
+        ck("안 켜면 예전 그대로다 (편 첫 컷 하나 · 4초)",
+           S.open_cuts(doc) == [1]
+           and S.open_sec_of(doc["cuts"][0]) == S.OPEN_SEC)
+    finally:
+        S.ALL_VIDEO = was
+
+    # ⚠️ 그림이 먼저다 — 그림이 없으면 **멈춘다**(조용히 건너뛰면 안 된다).
+    op = (re.search(r"def openers\(doc\)[\s\S]*?\n\ndef ", src) or [""])[0]
+    ck("그림이 없으면 멈춘다 (그림이 먼저다)",
+       "그림이 없다 — 먼저 stills 를 돌린다" in op)
+    ck("화면에 '그림을 먼저 만든다' 고 적었다",
+       "<b>그림을 먼저 만든 뒤</b>" in js)
+    ck("화면에 편당 값을 적어 준다", "allPlan().one.toLocaleString()" in js)
+    ck("화면이 **한 편씩** 하라고 이른다", "전체는 한 번에 한 편씩" in js)
+
+    # ⚠️ 화면이 보내는 글자와 워크플로 choice 가 한 글자도 안 달라야 한다
+    m = re.search(r"vk === 'all' \? '([^']+)'", js)
+    ck("화면이 보내는 이름이 워크플로에 있다", bool(m) and m.group(1) in yml,
+       m.group(1) if m else "없다")
+    ck("워크플로가 그 이름으로 열쇠를 켠다", "VT_ALL_VIDEO:" in yml)
+    # ⚠️ 상한을 손으로 적지 않는다 (2026-09-05 에 똑같이 당했다)
+    ck("영상 개수 상한을 손으로 안 적는다",
+       not re.search(r"^      VEO_CALL_CAP: ", yml, re.M))
+    pc = (ROOT / "tools" / "plan_cost.py").read_text(encoding="utf-8")
+    ck("상한·뚜껑을 대본을 보고 셈한다", "if all_video:" in pc)
+    ck("뚜껑은 **편 하나**로 잡는다 (다 더하지 않는다)",
+       "max(each) if each else" in pc,
+       "다 더하면 뚜껑이 3만 원이 되어 막는 시늉만 한다")
+
+
 def main():
     print("⭐ 편 첫 장면 영상 (값 0원 — Veo 를 안 부른다)\n")
     rules()
@@ -380,6 +451,7 @@ def main():
     live()
     again()
     cover()
+    whole()
     print("\n" + "─" * 60)
     if bad:
         print(f"❌ 편 첫 장면: {len(bad)}군데")

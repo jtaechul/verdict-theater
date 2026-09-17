@@ -1507,12 +1507,31 @@ function partsCard(w) {
                 + talkPlan().krw.toLocaleString() + '원)')) + '</option>'
         + '<option value="open">편 첫 장면 — 입 다문 4초 (+약 '
         + (470 * n).toLocaleString() + '원)</option>'
+        // ⭐⭐⭐ 2026-09-17 손님: "아예 전체를 다 영상으로 만드는 버전도 하나
+        //    추가해줘. 근데 일단 이미지를 만들고 해야 하니까 그렇게 한다라는
+        //    걸 여기 설명이 좀 적어줘."
+        //    ⚠️ 값이 크다(편당 약 6,000원). 그래서 **한 편씩** 만들도록
+        //       아래 설명에 못을 박고, 편별 값을 그대로 적어 준다.
+        + '<option value="all">전체 — 이 편 전부 영상' + (allPlan().stale
+             ? ' (값을 모릅니다 — 대본을 다시 지어야 압니다)'
+             : (' (+약 ' + allPlan().one.toLocaleString() + '원/편)')) + '</option>'
         + '</select>'
         + '<div class="uphint" style="margin-top:6px">'
         + '<b>대사 장면</b>: 인물이 화면에서 직접 한국어로 말합니다. '
         + '나레이션 컷은 전부 그림입니다.<br>'
         + '<b>편 첫 장면</b>: 편마다 첫 4초만 움직입니다(입은 다뭅니다).<br>'
+        + '<b>전체</b>: 나레이션 컷까지 모두 움직입니다. '
+        + '<b>그림을 먼저 만든 뒤</b> 그 그림을 움직이게 하므로, '
+        + '누르시면 그림 만들기부터 차례로 돕니다(그림이 이미 있으면 0원으로 '
+        + '건너뜁니다).<br>'
         + '어느 쪽이든 그 컷 그림을 그대로 움직이게 하므로 얼굴은 안 바뀝니다.'
+        + (allPlan().stale ? '' :
+           // ⚠️ 편 수를 글자로 박지 않는다 — 사건마다 편 수가 다르다
+           //    (partcount_check 가 이것을 붙들고 있다).
+           ('<br><b style="color:#e8b64c">전체는 한 번에 한 편씩</b> 만드십시오 — '
+            + '아래 편마다 있는 [다시 만들기] 를 쓰시면 됩니다. '
+            + partWord(workParts()) + ' 를 다 하시면 약 '
+            + allPlan().krw.toLocaleString() + '원입니다.'))
         + '</div></div>'
         + '<div class="btns" style="margin-top:12px">'
         + '<button class="gold" id="w-make-all" onclick="workMake(0)">'
@@ -1691,6 +1710,19 @@ function talkPlan() {
   const t = (S90DOC && S90DOC.talk) || null;
   if (t && typeof t.krw === 'number') return t;
   return { n: 0, sec: 0, krw: 0, stale: true };
+}
+
+// ⭐ 2026-09-17 — 전체 영상(그림 먼저 → 모든 컷 영상)의 값.
+//    ⚠️ 여기서 따로 세지 않는다. talkplan.plan 이 적어 둔 것을 그대로 읽는다 —
+//       화면과 실제 제작이 같은 셈을 써야 화면 값이 진짜 값이 된다.
+//    one = 가장 비싼 편 하나. 손님은 **한 편씩** 만드시므로 그게 누르는 값이다.
+function allPlan() {
+  const a = (S90DOC && S90DOC.talk && S90DOC.talk.all) || null;
+  if (!a || typeof a.krw !== 'number') return { n: 0, krw: 0, one: 0, stale: true };
+  const each = Object.keys(a.per_part || {}).map((k) => a.per_part[k].krw);
+  return { n: a.n, sec: a.sec, krw: a.krw,
+           one: each.length ? Math.max.apply(null, each) : a.krw,
+           per: a.per_part || {}, stale: false };
 }
 
 async function workMake(no) {
@@ -4470,8 +4502,11 @@ export default {
         // ⚠️ 짝을 객체로 적었더니 dispatch_input_check 가 그 **값들을 칸
         //    이름으로** 읽고 빨간불을 냈다. 삼항으로 적어 그 모양을 피한다.
         const vk = String((body && body.video_kind) || '');
+        // ⚠️ 워크플로(short90.yml)의 choice **글자 그대로**여야 한다. 한 글자만
+        //    달라도 깃허브가 그 값을 안 받고 실행이 통째로 안 뜬다.
         const kindv = vk === 'talk' ? '대사 장면 (편마다 한 컷 · 약 2,100원)'
                     : vk === 'open' ? '편 첫 장면 (입 다문 4초 · 약 1,400원)'
+                    : vk === 'all' ? '전체 (그림 먼저 → 모든 컷 영상 · 편당 약 6,800원)'
                     : '안 만든다 (전부 그림 · 0원)';
         try {
           await gh(env, `/repos/${REPO}/actions/workflows/short90.yml/dispatches`, {
