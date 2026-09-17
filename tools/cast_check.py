@@ -65,14 +65,25 @@ def main():
     ck("빈 대본이면 옛 다섯으로 물러선다",
        FC.cast_of_doc({}) == set(FC.FALLBACK))
 
-    print("\n② 이름 맞춤표가 세 곳에서 같은가")
+    print("\n② 이름 맞춤표가 네 곳에서 같은가")
     js = (ROOT / "admin" / "worker.js").read_text(encoding="utf-8")
-    m = re.search(r"const CARD_NAME = \{([^}]*)\}", js)
-    jsmap = dict(re.findall(r"'([^']+)'\s*:\s*'([^']+)'", m.group(1))) if m else {}
+    maps = [dict(re.findall(r"'([^']+)'\s*:\s*'([^']+)'", g))
+            for g in re.findall(r"const CARD_NAME = \{([^}]*)\}", js)]
+    jsmap = maps[0] if maps else {}
     ck("화면과 만들기(short90.ST_NAME)가 같다", jsmap == S9.ST_NAME,
        f"화면 {jsmap} · 만들기 {S9.ST_NAME}")
     ck("화면과 받는 쪽(fetch_cards.CARD_NAME)이 같다", jsmap == FC.CARD_NAME,
        f"화면 {jsmap} · 받는 쪽 {FC.CARD_NAME}")
+    # ⚠️⚠️⚠️ 2026-09-17 손님: 아내 칸에만 "누구 그림인지 알 수 없습니다" 가 떴다.
+    #    worker.js 안에 이 표가 **두 벌**이다 — 서버 쪽과 화면(템플릿 안) 쪽.
+    #    서버 쪽이 없어서 castOfDoc 이 대본 그대로 '아내' 만 인정했고, 화면은
+    #    '본처' 로 올리니 서로 못 알아봤다. 두 벌이 같은지 여기서 붙들어 둔다.
+    ck("worker.js 안 두 벌(서버·화면)이 같다",
+       len(maps) == 2 and maps[0] == maps[1], str(maps))
+    # 서버가 셈한 뒤 **카드 이름으로 맞추는가** — 이것이 빠져서 거절당했다
+    srv = (re.search(r"function castOfDoc\(doc\)[\s\S]*?\n}", js) or [""])[0]
+    ck("서버(castOfDoc)도 그 표를 쓴다 (아내 → 본처)", "CARD_NAME[" in srv,
+       "안 쓰면 화면이 올린 '본처' 를 서버가 모른다고 거절한다")
 
     print("\n③ 화면이 대본을 읽은 뒤에 인물 칸을 다시 그리는가")
     ck("인물 칸이 제 자리(div)에 있다", "id=\"s90cast\"" in js.replace("'", '"'))
