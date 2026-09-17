@@ -240,6 +240,8 @@ def main():
     ck("지문이 맞으면 쓴다 (괜히 다시 안 만든다)",
        S9.talk_ok(cut, clip, still)[0])
 
+    camera()
+
     print("\n" + "─" * 60)
     if bad:
         print(f"❌ 대사 장면: {len(bad)}군데")
@@ -248,6 +250,75 @@ def main():
         return 1
     print("✅ 대사 장면: 대사 컷만 · 편마다 하나 · 실패해도 그림으로 간다")
     return 0
+
+
+def camera():
+    """⭐⭐⭐ 2026-09-17 — 컷 성격에 따라 구도·카메라 무빙이 갈리는가.
+
+    손님이 연출 규칙표를 주시며 반영을 지시하셨다. 그때까지 영상 프롬프트는
+    **모든 컷이 똑같았다** ("waist up … static camera"). 우스운 것은, 정지
+    그림에는 컷마다 다른 무빙이 이미 들어가고 있었다는 점이다 —
+    그림이 영상보다 더 움직였다.
+    ⚠️ 살아 있는 대본을 안 읽는다. 재려는 모양을 여기서 만든다.
+    """
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "b90", ROOT / "tools" / "build_short90.py")
+    B = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(B)
+
+    print("\n⑨ 컷 성격에 따라 구도·카메라가 갈리는가")
+    HALL = "an empty funeral hall with dim lamps"
+    narr = {"n": 1, "who": [], "scene": HALL,
+            "turns": [("나레이션", "그날의 일을 전해 드립니다")]}
+    solo = {"n": 3, "who": ["딸"], "scene": f"딸 stands holding a paper in {HALL}",
+            "turns": [("딸", "엄마, 저 두 사람은 누구야")]}
+    # ⚠️ 받아치는 말 — 사람이 바뀌고 **같은 자리**다. 우리 대본에서 대립은
+    #    '한 컷에 두 사람' 이 아니라 이렇게 컷을 나눠 나온다. 한 컷 안의
+    #    사람 수만 보면 오버 더 숄더가 한 번도 안 걸린다(실제로 그랬다).
+    reply = {"n": 4, "who": ["아내"],
+             "scene": f"아내 sits with her hands folded in her lap in {HALL}",
+             "turns": [("아내", "네 아버지가 밖에 두고 살던 사람이다")]}
+    far = {"n": 9, "who": ["변호사"],
+           "scene": "변호사 sits in a law office with a case file",
+           "turns": [("변호사", "그 길부터 다투어 보시지요")]}
+
+    s_narr = B.shot_of(narr)[0]
+    s_solo = B.shot_of(solo, narr)[0]
+    s_rep = B.shot_of(reply, solo)[0]
+    s_far = B.shot_of(far, reply)[0]
+    ck("나레이션 컷은 와이드다 (공간을 보여 준다)", "wide shot" in s_narr, s_narr[:90])
+    ck("혼자 말하는 컷은 미디엄 + 느린 줌인이다",
+       "medium shot" in s_solo and "zoom in" in s_solo, s_solo[:90])
+    ck("받아치는 컷은 오버 더 숄더다 (대립 구도)",
+       "over-the-shoulder" in s_rep, s_rep[:90])
+    ck("자리가 바뀌면 받아치는 것으로 안 본다",
+       "over-the-shoulder" not in s_far, s_far[:90])
+    # ⚠️ 나레이션 컷에는 사람이라는 낱말이 한 번도 나오면 안 된다.
+    #    그림 쪽은 2026-09-05 에 고쳤는데 **영상 쪽은 안 고쳐져 있었다** —
+    #    빈 빈소 컷에 "the person kept in the middle" 이 들어가 있었다.
+    three = "\n".join(B.shot_of(narr))
+    ck("나레이션 컷 지문에 사람 낱말이 없다",
+       not any(w in three for w in ("person", "people", "face", "faces")),
+       three[:120])
+    # 같은 무빙만 이어지면 지루하다 — 나레이션은 돌려 가며 쓴다
+    moves = {B.shot_of(dict(narr, n=i))[0] for i in (1, 2, 3)}
+    ck("나레이션 컷 무빙이 이웃끼리 다르다", len(moves) == 3, f"{len(moves)}가지")
+    ck("같은 컷은 늘 같은 무빙이다 (다시 만들어도 안 달라진다)",
+       B.shot_of(dict(narr, n=5))[0] == B.shot_of(dict(narr, n=5))[0])
+    # 눈선은 세로 화면에서 위쪽 1/3 — 아래는 자막 띠가 덮는다
+    ck("사람 컷은 눈선을 위쪽에 둔다", "eye line" in B.shot_of(solo, narr)[1])
+
+    # ⚠️ 가져온 규칙표에서 **일부러 뺀 것**이 도로 들어오지 않았는지 본다.
+    #    ⚠️ 소스 글자를 세면 **설명 주석까지** 걸린다(실제로 걸렸다).
+    #       진짜로 모델에게 가는 것은 만들어진 지문이므로 그것을 본다.
+    out = (B.veo_prompt(solo, narr) + "\n" + B.veo_prompt(narr)).lower()
+    ck("--ar 를 안 보낸다 (미드저니 문법 · Veo 는 ratio 로 받는다)",
+       "--ar" not in out, "글자로 읽혀 화면에 뜰 수 있다")
+    ck("8k·4k 를 안 보낸다 (우리 금지어 — 안전필터에 걸린 이력)",
+       not re.search(r"\b[48]k\b", out))
+    ck("색은 지금 것을 지킨다 (teal and orange 로 안 간다)",
+       "teal and orange" not in out and "warm neutral base" in out)
 
 
 if __name__ == "__main__":

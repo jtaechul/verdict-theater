@@ -306,7 +306,96 @@ AUDIO_QUIET = ("AUDIO: nobody speaks and nobody moves their lips at any point; "
                "no narration.")
 
 
-def veo_prompt(c):
+# ── ⭐⭐⭐ 컷 성격에 따른 구도·카메라 무빙 (2026-09-17 손님 지시) ──────
+#    손님이 연출 규칙표를 주시며 "우리 영상 제작 프롬프트에 반영해 달라" 하셨다.
+#
+#    그때까지 영상 프롬프트는 **모든 컷이 똑같았다** —
+#      "Framed from the waist up …, static camera"
+#    37컷이 전부 같은 구도에 무빙은 아예 없었다. 우스운 것은, **정지 그림에는**
+#    컷마다 다른 켄번즈 무빙이 이미 들어가고 있었다는 점이다(short90.move_of).
+#    그림이 영상보다 더 움직이고 있었다.
+#
+#    ⚠️ 받은 규칙표를 **그대로 쓰지 않았다.** 그 표는 사극(史劇)용이었다 —
+#       횃불·짚가리·창살. 판결극장은 현대 법정극이라 횃불이 없다.
+#       · 가져온 것 : 상황별 구도·무빙 3종, 눈선 상단 1/3, frame-in-frame
+#       · 번역한 것 : 창살·기둥 → 블라인드·유리벽·문틀·서류더미
+#       · 뺀 것     : `--ar 9:16`(미드저니 문법이다. Veo 는 ratio 파라미터로
+#                     받고 우리는 이미 넘긴다. 프롬프트에 넣으면 글자로 읽혀
+#                     화면에 뜰 수 있다 — NO_TEXT 로 막고 있는 바로 그것이다)
+#                     `8k`(우리 금지어다. charsheet.PHOTO_WORDS 참고 —
+#                     '사진 주문서' 로 읽혀 안전필터에 걸린 이력이 있다)
+#                     Teal & Orange(손님이 '지금 색을 지킨다' 를 고르셨다.
+#                     S90~S92 와 색이 튀면 한 채널로 안 보인다)
+#
+#    ⚠️ 나레이션 컷에는 **사람이라는 낱말이 한 번도 안 나와야** 한다.
+#       그림 쪽은 2026-09-05 에 고쳤는데(FRAMING_NOBODY) 영상 쪽은 안 고쳐서,
+#       빈 빈소 컷에 "the person kept in the middle" 이 들어가 있었다.
+#       낯선 사람이 그려지던 바로 그 자리다 — 여기서 같이 고친다.
+EYE_LINE = ("the eye line held about a third of the way down from the top of the "
+            "vertical frame")
+# 나레이션(장소) 컷은 같은 무빙만 이어지면 지루하다. 컷 번호로 **돌려 가며** 쓴다
+# (무작위로 하면 다시 만들 때마다 화면이 달라져 0원 재사용이 깨진다).
+NARR_MOVES = [
+    "the camera pulling back in a very slow zoom out that opens up the space",
+    "the camera pushing in almost imperceptibly slowly",
+    "the camera drifting sideways in a slow steady lateral move",
+]
+
+
+def is_reply(c, prev):
+    """앞 컷과 **주고받는 중**인가 — 사람이 바뀌고 같은 자리에 있는가.
+
+    ⚠️ 대립 장면은 우리 대본에서 '두 사람이 한 컷에' 가 아니라 **컷을 나눠
+       주고받는** 모양으로 나온다(컷3 딸 → 컷4 아내). 한 컷 안의 사람 수만
+       보면 오버 더 숄더가 **한 번도 안 걸린다** — 실제로 S93 이 그랬다.
+    """
+    if prev is None:
+        return False
+    a, b = c.get("who") or [], prev.get("who") or []
+    if not a or not b or a == b:
+        return False
+    # 같은 자리인가 — 화면 묘사 뒤쪽(장소)이 같으면 한 자리로 본다.
+    # ⚠️ **맨 뒤** " in " 에서 자른다. 앞에서 자르면 "hands folded in her lap
+    #    in an empty funeral hall" 같은 줄이 "her lap in an empty…" 로 잘려
+    #    같은 자리인데 다르다고 나온다(실제로 그래서 한 번도 안 걸렸다).
+    def place(x):
+        return str(x.get("scene") or "").rsplit(" in ", 1)[-1].strip()
+
+    return place(c) == place(prev)
+
+
+def shot_of(c, prev=None):
+    """이 컷의 (SHOT, FRAMING, CAMERA) 세 줄. 컷 성격이 정한다."""
+    who = c.get("who") or []
+    scene = c["scene"]
+    if not who:
+        # ① 공간감 · 상황 전달 — 와이드 + 느린 줌아웃 (사람 낱말 0회)
+        move = NARR_MOVES[(int(c["n"]) - 1) % len(NARR_MOVES)]
+        return (f"SHOT: {scene}. A cinematic wide shot of the place itself, deep "
+                f"depth of field, {move}. The movement is already under way in "
+                f"the very first frame.",
+                FRAMING_NOBODY,
+                "CAMERA: " + BLUR_NOBODY)
+    if len(who) >= 2 or is_reply(c, prev):
+        # ② 대립 · 주고받음 — 오버 더 숄더 + 느린 패닝
+        return (f"SHOT: {scene}. An over-the-shoulder shot past the listener, "
+                f"the near shoulder soft in the foreground framing the speaker, "
+                f"the camera panning slowly and horizontally. The movement is "
+                f"already under way in the very first frame.",
+                f"FRAMING: vertical 9:16 portrait, filling the whole frame edge to "
+                f"edge, frame-in-frame composition using the doorway, blinds or "
+                f"glass partition of the room, {EYE_LINE}.",
+                "CAMERA: " + BLUR)
+    # ③ 심리 변화 · 결의 — 미디엄~클로즈 + 느린 줌인
+    return (f"SHOT: {scene}. A medium shot tightening towards a close-up, the "
+            f"camera in a slow dramatic zoom in on the face, intense steady gaze. "
+            f"The movement is already under way in the very first frame.",
+            f"FRAMING: vertical 9:16 portrait, filling the whole frame edge to "
+            f"edge, the person kept in the middle, {EYE_LINE}.",
+            "CAMERA: " + BLUR)
+
+
+def veo_prompt(c, prev=None):
     """그 컷을 손으로 만들 때 쓸 영상 프롬프트 (제미나이에 그대로 붙인다).
 
     ⭐ 2026-08-27 손님: "이미지는 중간중간 섞여 있고 동영상도 있어야 돼."
@@ -317,14 +406,13 @@ def veo_prompt(c):
     talks = not is_narr(c)
     speaker = kind_of(c)
     sec = veo_sec(c)
+    shot, framing, cam = shot_of(c, prev)
     body = [f"{S.HEAD_FIX} {sec}-second single continuous take, "
             f"vertical portrait format (9 x 16)."]
     if who:
         body.append(people_of(who))
-    body.append(f"SHOT: {c['scene']}. Framed from the waist up so every face stays "
-                f"clear, static camera. The movement is already under way in the very "
-                f"first frame.")
-    body.append(FRAMING)
+    body.append(shot)
+    body.append(framing)
     if talks:
         names = " then ".join(EN.get(w, w) for w, _ in c["turns"])
         body.append(f"ACTION: {c['scene']}. {names} speak in that order, each one's "
@@ -350,7 +438,7 @@ def veo_prompt(c):
                     f"take, with small natural movement — a breath, a hand shifting, "
                     f"light moving. Mouths stay closed the whole time.")
         body.append(AUDIO_QUIET)
-    body += ["CAMERA: " + BLUR, COLOR, S.STYLE_FIX, NO_TEXT]
+    body += [cam, COLOR, S.STYLE_FIX, NO_TEXT]
     return "\n".join(body)
 
 
@@ -472,6 +560,7 @@ def main(argv=None):
     check_parts(story)
     check_scrub(story)
     cuts = []
+    prev = None                       # 주고받는 대사를 알아보려고 앞 컷을 쥔다
     for c in story["cuts"]:
         c = dict(c)
         c["turns"] = [tuple(t) for t in c["turns"]]
@@ -491,9 +580,10 @@ def main(argv=None):
             #    편을 나누며 번호가 밀리자 엉뚱한 컷을 가리킬 뻔했다.
             "scrub": c.get("scrub"),
             "still": still_prompt(c),
-            "veo": veo_prompt(c),
+            "veo": veo_prompt(c, prev),
             "flow": flow_prompt(c),
         })
+        prev = c
     doc = {"sid": sid, "case_id": story.get("case_id", ""),
            "title": story["title"], "hook": story.get("hook", ""),
            "series_label": story.get("series_label") or story["title"],
