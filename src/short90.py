@@ -453,7 +453,10 @@ def open_cuts(doc):
         return [c["n"] for c in doc.get("cuts") or []
                 if is_narr(c) and (c.get("who") or [])]
     if ALL_VIDEO:
-        return [c["n"] for c in doc.get("cuts") or [] if is_narr(c)]
+        # ⚠️ 무료 스톡이 이미 있는 컷은 사지 않는다 — 값이 두 번 나간다
+        return [c["n"] for c in doc.get("cuts") or []
+                if is_narr(c)
+                and not (stock_dir() / f"c{c['n']:02d}.mp4").exists()]
     return [part_cuts(doc, p)[0]["n"] for p in parts_of(doc) if part_cuts(doc, p)]
 
 
@@ -526,6 +529,15 @@ TALK_TAIL = 0.45
 # ⚠️ TALK_TAIL 과 같은 값이면 자막이 컷 끝과 딱 붙어 뚝 끊긴다.
 SUB_TAIL = 0.35
 _SPAN_CACHE = {}                 # 같은 영상을 두 번 재지 않는다
+
+
+def stock_dir():
+    """⭐ 2026-09-17 — Pexels 무료 실사 영상을 받아 둔 자리 (값 0원).
+
+    **사람이 한 명도 없는 나레이션 컷**에만 쓴다. 우리 색감을 입혀 받으므로
+    AI 그림 컷과 색이 안 튄다. 받는 것은 src/stock_video.py 가 한다.
+    """
+    return OUT / "stock"
 
 
 def talk_dir():
@@ -2219,6 +2231,14 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
                 else:
                     print(f"  ⚠️ 컷{n} 대사 영상은 지금 대본과 안 맞는다"
                           f"{(' — ' + why) if why else ''} — 그림으로 갑니다")
+        # ⭐⭐⭐ 2026-09-17 — 사람 없는 장소 컷은 **무료 실사 영상**이 있으면
+        #    그것을 쓴다(0원). 그림을 밀고 당기는 것보다 진짜로 움직인다.
+        #    ⚠️ 사람이 나오는 컷에는 절대 안 쓴다 — 우리 등장인물 얼굴이
+        #       아니기 때문이다(핵심 규칙). 그래서 who 가 빈 나레이션 컷만.
+        if not clip.exists() and is_narr(c) and not (c.get("who") or []):
+            sk = stock_dir() / f"c{n:02d}.mp4"
+            if sk.exists():
+                clip = sk
         if not still.exists() and not clip.exists():
             raise Short90Error(f"컷{n} 그림이 없다 — 먼저 stills 를 돌린다")
         if not voice.exists():

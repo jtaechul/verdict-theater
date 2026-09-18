@@ -185,6 +185,21 @@ jobs:
           python3 tools/release_file.py put "stills-$S" stills.zip build/stills.zip || echo "::warning::보관 실패 — 다음 실행에서 값을 처음부터 다시 씁니다. 위 ❌❌ 줄을 보십시오."
           [ "$FAIL" = 0 ] || { echo "❌ 컷 그림 단계 실패 — 만든 데까지는 보관했습니다"; exit 1; }
 
+      # ⭐⭐⭐ 2026-09-17 손님: "Pexels videos 장소 컷에만 넣는 거 진행해!
+      #    대신 우리의 색감은 입혀서 영상으로 제작하자."
+      #    **사람이 한 명도 없는 나레이션 컷**만 무료 실사 영상으로 채운다(0원).
+      #    사람 나오는 컷에는 절대 안 쓴다 — 우리 등장인물 얼굴이 아니다.
+      #    ⚠️ 열쇠가 없거나 쓸 만한 것이 없으면 조용히 그림으로 간다.
+      #       값이 나가는 길이 아니라 실패해도 손해가 없다 — 편을 안 죽인다.
+      - name: 2-1) 장소 컷 무료 실사 영상 (값 0원)
+        if: env.STEP == 'all' || env.STEP == 'stills'
+        continue-on-error: true
+        env:
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+        run: |
+          python3 src/stock_video.py "$S" 2>&1 | tee -a make.log || \
+            echo "::warning::장소 컷 실사 영상을 못 받았습니다 — 그림으로 갑니다"
+
       # ⭐⭐⭐ 2026-09-05 — 이 단계가 **없어서** 편 첫 장면 영상이 한 번도
       #    안 돌았다. src/short90.py 는 stills/voice/build 를 따로 부르는데,
       #    첫 장면은 'all' 일 때만 돌게 걸어 뒀다. 손님이 체크하고 값까지
