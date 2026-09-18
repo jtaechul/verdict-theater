@@ -197,6 +197,8 @@ def plan(doc, krw_per_sec=0.08, usd_krw=1470.0):
     def _won(s):
         return round(s * krw_per_sec * usd_krw)
 
+    talk_by_n = {c["n"]: talk_sec(turns_of(c)[0][1]) for c in cuts}
+
     all_ns = [c for c in doc.get("cuts") or []]
     per = {}
     for p in doc.get("parts") or []:
@@ -205,6 +207,14 @@ def plan(doc, krw_per_sec=0.08, usd_krw=1470.0):
                     for c in all_ns if a <= c["n"] <= b)
         per[str(int(p["no"]))] = {"sec": round(sec_p, 1), "krw": _won(sec_p)}
     all_sec = sum(talk_sec(turns_of(c)[0][1]) for c in all_ns)
+    # ⭐ 2026-09-17 — 대사 컷 값도 **편별로** 적어 둔다.
+    #    한 번 실행 뚜껑은 "잘못 눌러도 한 편에서 끊는다" 는 선이다.
+    #    네 편 합계로 잡으면 막는 시늉만 하게 된다(전체 영상과 같은 이치).
+    tper = {}
+    for p2 in doc.get("parts") or []:
+        a2, b2 = p2["cuts"]
+        sp = sum(v for n2, v in talk_by_n.items() if a2 <= n2 <= b2)
+        tper[str(int(p2["no"]))] = {"sec": round(sp, 1), "krw": _won(sp)}
     return {"n": len(cuts), "cuts": [c["n"] for c in cuts],
             "sec": sum(secs), "krw": won,
             "cap": cap, "presses": presses,
@@ -212,6 +222,7 @@ def plan(doc, krw_per_sec=0.08, usd_krw=1470.0):
             "parts": {str(k): round(v, 1) for k, v in parts.items()},
             "over": [k for k, v in parts.items() if v > PART_MAX_SEC],
             "dropped": why,
+            "per_part": tper,
             # 전체 영상 (그림 먼저 → 모든 컷 영상)
             "all": {"n": len(all_ns), "sec": round(all_sec, 1),
                     "krw": _won(all_sec), "per_part": per}}

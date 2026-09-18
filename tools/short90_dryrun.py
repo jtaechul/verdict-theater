@@ -405,6 +405,47 @@ def main():
     gap /= (a.height // 16) * (a.width // 16)
     ck(f"화면이 실제로 움직인다 (차이 {gap:.1f})", gap > 5,
        "처음과 끝이 거의 같다 — 정지 그림이나 다름없다")
+
+    # ⭐⭐⭐ 2026-09-17 — **얼어 있지 않은가**(프레임끼리 다른가).
+    #    손님이 "무빙을 주면 영상처럼 보일 것" 이라 하셨는데, 무빙은 이미
+    #    있었다. 사진 티가 나는 진짜 까닭은 밀고 당겨도 **픽셀이 한 개도
+    #    안 바뀌기** 때문이다. 진짜 영상은 매 프레임이 미세하게 다르다.
+    #    ⚠️ 위 '움직인다' 검사로는 이걸 못 잡는다 — 켄번즈만 있어도 통과한다.
+    #       그래서 **움직임을 끈 채** 마무리 필터로만 재 본다.
+    flat = tmp2 / "flat.png"
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi",
+                    "-i", "color=c=0x3a3428:s=270x480:d=1",
+                    "-frames:v", "1", str(flat)], check=True)
+    live = []
+    for vf in ("scale=270:480,fps=30", f"scale=270:480,{S9.LIVE},fps=30"):
+        k = len(live)
+        out = tmp2 / f"live{k}.mp4"
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-loop", "1",
+                        "-i", str(flat), "-vf", vf, "-t", "0.5",
+                        str(out)], check=True)
+        d = tmp2 / f"fr{k}"
+        d.mkdir(exist_ok=True)
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(out),
+                        "-vf", "select=lt(n\\,3)", "-vsync", "0",
+                        str(d / "%02d.png")], check=True)
+        fs = sorted(d.glob("*.png"))
+        tot, n = 0.0, 0
+        for x, y in zip(fs, fs[1:]):
+            A = _I.open(x).convert("L").tobytes()
+            B = _I.open(y).convert("L").tobytes()
+            tot += sum(abs(i - j) for i, j in zip(A, B)) / len(A)
+            n += 1
+        live.append(tot / max(n, 1))
+    ck(f"얹기 전에는 완전히 얼어 있다 ({live[0]:.3f})", live[0] < 0.01)
+    ck(f"얹은 뒤에는 프레임마다 다르다 ({live[1]:.3f})", live[1] > 0.05,
+       "정지 그림이 얼어 있으면 아무리 밀고 당겨도 사진으로 보인다")
+    # ⚠️ 흔들림은 **일부러 안 넣는다** — 시차가 없어 오히려 티가 나고, 손에
+    #    들고 보는 쇼츠에서 화면이 흔들리면 멀미를 유발한다.
+    ck("흔들림(shake)은 안 넣는다",
+       "shake" not in S9.LIVE.lower() and "crop=" not in S9.LIVE)
+    ck("그림 배경에 실제로 얹혀 있다",
+       "{LIVE}[bg];" in (ROOT / "src" / "short90.py").read_text("utf-8"),
+       "상수만 있고 안 쓰면 시험만 통과하고 화면은 그대로다")
     shutil.rmtree(tmp2, ignore_errors=True)
 
     print("\n⑥ 소리가 영상 끝까지 붙어 있는가")

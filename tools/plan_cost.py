@@ -72,6 +72,13 @@ def plan(sid, open_video, talk_video=False, all_video=False):
         #    → 고르는 셈(src/talkplan.py)에서 그대로 가져온다. 세는 자리는 하나다.
         import talkplan                                      # noqa: E402
         tp = talkplan.plan(doc)
+        # ⚠️⚠️ 2026-09-17 — 여기를 "가장 비싼 편 하나" 로 줄였다가
+        #    waste_check ⑦ 에 걸렸다. **맞는 지적이다.** 2026-09-10 에
+        #    plan_cost 가 대사 영상값을 몰라 뚜껑이 5,982원으로 잡혔고,
+        #    여섯 컷째에서 잘려 손님은 "왜 몇 개만 됐지" 만 보셨다.
+        #    뚜껑은 **이번 실행에서 나갈 값 전부**를 덮어야 한다.
+        #    (한 편에서 끊고 싶으면 편을 골라 누르면 된다 — 그때는 만든
+        #     것을 0원으로 다시 쓰므로 두 번째부터 값이 더 안 나간다)
         vid_krw += tp["krw"]
         veo_cap = max(veo_cap, tp["n"] + 2)   # 대사 컷 + 안전 필터 재시도 두 번
 
@@ -101,7 +108,8 @@ def main():
     ov = str(a.open_video or os.environ.get("VT_OPEN_VIDEO") or "").strip()
     tv = str(os.environ.get("VT_TALK_VIDEO") or "").strip() in ("1", "예", "on")
     av = str(os.environ.get("VT_ALL_VIDEO") or "").strip() in ("1", "예", "on")
-    p = plan((a.sid or "S90").upper(), ov in ("1", "예", "on"), tv, av)
+    pv = str(os.environ.get("VT_PEOPLE_VIDEO") or "").strip() in ("1", "예", "on")
+    p = plan((a.sid or "S90").upper(), ov in ("1", "예", "on"), tv or pv, av)
 
     if a.env:
         print(f"STILL_CALL_CAP={p['still_cap']}")

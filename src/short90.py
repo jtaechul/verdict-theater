@@ -214,6 +214,30 @@ MOVES = [
 MOVES_TALK = (0, 1)
 MOVES_NARR = (0, 2, 4, 1, 3, 5)
 
+# ── ⭐⭐⭐ 정지 그림을 **살아 있게** 한다 (2026-09-17 손님 지시) ────────
+#    손님: "나레이션은 등장인물 이미지나 배경이미지만 나오고 카메라 줌인,
+#           줌아웃, 흔들림, 무빙이나 모션 등으로 영상효과를 주면 비용이
+#           절감되고 영상처럼 보일 것 같은데."
+#
+#    무빙(켄번즈)은 **이미 하고 있다**(위 MOVES). 그런데도 사진 티가 나는
+#    까닭은 무빙이 없어서가 아니라 **화면이 얼어 있어서**다 —
+#    밀고 당겨도 프레임끼리 픽셀이 한 개도 안 바뀐다. 진짜 영상은 눈 깜빡임·
+#    빛 일렁임·필름 알갱이 때문에 매 프레임이 미세하게 다르다.
+#
+#    실측(1초 · 프레임 간 평균 밝기차)
+#        지금       0.000   ← 완전히 얼어 있다
+#        알갱이 얹음 0.265   ← 매 프레임이 다르다
+#
+#    ⚠️ 흔들림(shake)은 **일부러 안 넣는다.** 정지 그림을 흔들면 시차가 없는
+#       것이 더 도드라지고(판때기가 통째로 흔들린다), 손에 들고 보는 쇼츠에서
+#       화면이 흔들리면 멀미를 유발해 오히려 이탈 요인이 된다.
+#    ⚠️ 아주 약하게만 준다. 세게 주면 압축이 망가져 용량만 커지고 지저분해진다.
+LIVE_GRAIN = "noise=alls=6:allf=t"
+# 램프가 아주 미세하게 숨 쉬는 정도 (±0.4%). 눈에 '보이는' 것이 아니라
+# '얼어 있지 않다' 고 느끼게 하는 몫이다.
+LIVE_BREATH = "eq=brightness='0.004*sin(2*PI*t/3)':eval=frame"
+LIVE = f"{LIVE_GRAIN},{LIVE_BREATH}"
+
 # 목소리 — 사람마다 고정한다 (컷마다 달라지면 딴 사람이 된다)
 # ⭐⭐⭐ 2026-08-31 손님 확정: "갈아탄다."
 #
@@ -410,7 +434,7 @@ def open_prompt(c, sec=None):
 
 def open_sec_of(c):
     """이 컷에 살 길이(초). 전체 영상이면 **컷 길이만큼**, 아니면 4초."""
-    if not ALL_VIDEO:
+    if not (ALL_VIDEO or PEOPLE_VIDEO):
         return OPEN_SEC
     return float(talk_sec(turns_of(c)[0][1]))
 
@@ -424,6 +448,10 @@ def open_cuts(doc):
        대사 컷은 여기서 안 센다 — talk_cuts 가 따로 맡는다(입이 움직여야 한다).
     ⚠️ 전체 영상은 이 둘(나레이션 + 대사)을 **같이** 켜서 만든다.
     """
+    if PEOPLE_VIDEO:
+        # 사람이 서 있는 나레이션 컷만. 빈 장소는 그림 + 켄번즈로 둔다
+        return [c["n"] for c in doc.get("cuts") or []
+                if is_narr(c) and (c.get("who") or [])]
     if ALL_VIDEO:
         return [c["n"] for c in doc.get("cuts") or [] if is_narr(c)]
     return [part_cuts(doc, p)[0]["n"] for p in parts_of(doc) if part_cuts(doc, p)]
@@ -461,11 +489,18 @@ def open_dir():
 #    ⚠️ 값이 크다. S93 기준 한 편 약 7,800원 · 네 편 약 31,300원.
 #       그래서 화면에서 **편 하나씩** 만들게 하고, 한 번 실행 뚜껑이 막는다.
 ALL_VIDEO = os.environ.get("VT_ALL_VIDEO", "").strip() in ("1", "예", "on")
+# ⭐⭐⭐ 2026-09-17 손님 선택 — **인물이 나오는 컷만** 영상으로.
+#    "전체" 는 사물·장소까지 다 사서 24,226원이 든다. 그런데 시청자가
+#    가짜라고 느끼는 것은 빈 방이 아니라 **얼어붙은 사람 얼굴**이다.
+#    서류·도장 클로즈업은 실제 드라마도 거의 안 움직인다 — 그림이 맞다.
+#    → 인물 컷만 사면 8,704원. 값은 3분의 1인데 오히려 더 드라마 같다.
+PEOPLE_VIDEO = os.environ.get(
+    "VT_PEOPLE_VIDEO", "").strip() in ("1", "예", "on")
 # 전체 영상이면 대사 컷도 당연히 영상이다 (따로 켜 달라고 하지 않는다)
 # ⚠️ 열쇠를 **읽는 자리는 한 줄**로 둔다 — 검사가 "읽는 자리가 하나뿐인가"
 #    를 글자로 세기 때문이다(두 곳에서 읽으면 한쪽만 끄고 껐다고 믿게 된다).
 _TALK_ENV = os.environ.get("VT_TALK_VIDEO", "").strip() in ("1", "예", "on")
-TALK_VIDEO = ALL_VIDEO or _TALK_ENV
+TALK_VIDEO = ALL_VIDEO or PEOPLE_VIDEO or _TALK_ENV
 # ⭐⭐⭐ 2026-09-10 — 고르는 규칙은 **src/talkplan.py 한 곳**에만 둔다.
 #    여기와 화면(worker.js)이 따로 세다가, 화면이 2,824원이라고 적고 실제로는
 #    12,936원이 나가는 꼴이 됐다. 세는 자리를 하나로 만든다.
@@ -1879,6 +1914,8 @@ def open_bg(c, opener, still, sec, frames):
            f"zoompan=z='{z}':d={tf}"
            f":x='(iw-iw/zoom)*({px})'"
            f":y='(ih-ih/zoom)*({py})':s={W}x{H}:fps={FPS},"
+           # ⭐ 영상에서 그림으로 넘어간 뒤에도 얼어 있지 않게
+           f"{LIVE},"
            f"trim=0:{tail:.3f},setpts=PTS-STARTPTS[st];"
            f"[ov][st]xfade=transition=fade:duration={OPEN_XFADE:.3f}"
            f":offset={max(0.0, olen - OPEN_XFADE):.3f}[bg];")
@@ -1936,7 +1973,9 @@ def cut_video(c, still, voice, clip, ovs, out, opener=None):
               f"crop={sw}:{sh},"
               f"zoompan=z='{z}':d={frames}"
               f":x='(iw-iw/zoom)*({px})'"
-              f":y='(ih-ih/zoom)*({py})':s={W}x{H}:fps={FPS}[bg];")
+              f":y='(ih-ih/zoom)*({py})':s={W}x{H}:fps={FPS},"
+              # ⭐ 얼어 있지 않게 (위 LIVE 설명 참고) — 값 0원
+              f"{LIVE}[bg];")
     # ⭐ 한 컷 안에서 두 사람이 주고받으면 **자막도 차례대로** 바뀌어야 한다.
     #
     # ⭐⭐ 2026-08-31 손님: "대사 목소리와 자막이 시간차가 발생."
@@ -2138,7 +2177,7 @@ OPEN_RATIO = "9:16"              # 화면이 세로로 꽉 차므로 세로로 �
 # 값이 나가는 일이라 **꺼진 채로** 둔다. 관리자 화면에서 켜야 돈다.
 # 전체 영상이면 나레이션 컷도 전부 영상이다 (openers 가 맡는다)
 _OPEN_ENV = os.environ.get("VT_OPEN_VIDEO", "").strip() in ("1", "예", "on")
-OPEN_VIDEO = ALL_VIDEO or _OPEN_ENV
+OPEN_VIDEO = ALL_VIDEO or PEOPLE_VIDEO or _OPEN_ENV
 
 
 def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
