@@ -1702,5 +1702,29 @@
     "kind": "대본 만들기",
     "krw": 532,
     "note": "S93 판례239125"
+  },
+  {
+    "date": "2026-09-18",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 c01.png"
+  },
+  {
+    "date": "2026-09-18",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 c02.png"
+  },
+  {
+    "date": "2026-09-18",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 c03.png"
+  },
+  {
+    "date": "2026-09-18",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 c04.png"
   }
 ]
