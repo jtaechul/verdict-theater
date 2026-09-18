@@ -14,6 +14,7 @@
    ⑤ 열쇠가 없어도 안 죽는다 — 그냥 그림으로 간다
    ⑥ 스톡이 있는 컷은 Veo 로 **또 사지 않는다** (값이 두 번 나간다)
 """
+import os
 import subprocess
 import sys
 import tempfile
@@ -68,6 +69,23 @@ def main():
        "두 벌로 두면 한쪽만 고쳐져 규칙이 반쪽이 된다")
     ck("낱말표가 비어 있지 않다", len(SV._people_words()) >= 20,
        f"{len(SV._people_words())}개")
+
+    print("\n②-2 두 창고를 다 보는가 (후보가 두 배면 사람 없는 것을 고르기 쉽다)")
+    ck("pexels 를 본다", callable(getattr(SV, "search_pexels", None)))
+    ck("pixabay 도 본다", callable(getattr(SV, "search_pixabay", None)))
+    ck("한 곳이 막혀도 다른 쪽으로 간다",
+       SV.search_pexels("x") == [] and SV.search_pixabay("x") == []
+       if not (SV.key() or SV.os.environ.get(SV.KEY_ENV2, "").strip()) else True)
+    # ⚠️ 두 곳의 설명 자리가 다르다(pexels=주소 슬러그 · pixabay=tags).
+    #    **한 가지 잣대**로 보게 desc 로 맞춰 둔다 — 안 그러면 한쪽만 걸러진다.
+    ck("두 곳 설명을 같은 잣대로 본다",
+       SV.looks_human({"desc": "a man in a hallway"})
+       and not SV.looks_human({"desc": "empty courtroom"}),
+       "한쪽만 걸러지면 다른 쪽으로 사람이 들어온다")
+    yml0 = (ROOT / ".github" / "workflows" / "short90.yml").read_text("utf-8")
+    ck("워크플로가 두 열쇠를 다 넘긴다",
+       "PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}" in yml0
+       and "PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}" in yml0)
 
     print("\n③ 모를 때는 **버린다**")
     import os

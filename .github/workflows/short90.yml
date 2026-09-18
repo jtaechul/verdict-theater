@@ -196,6 +196,7 @@ jobs:
         continue-on-error: true
         env:
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
         run: |
           python3 src/stock_video.py "$S" 2>&1 | tee -a make.log || \
             echo "::warning::장소 컷 실사 영상을 못 받았습니다 — 그림으로 갑니다"
