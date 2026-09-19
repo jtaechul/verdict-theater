@@ -214,6 +214,52 @@ MOVES = [
 MOVES_TALK = (0, 1)
 MOVES_NARR = (0, 2, 4, 1, 3, 5)
 
+# ── ⭐⭐⭐ 한 프레이밍을 **오래 안 끌고 간다** (2026-09-19 손님 선택 "C") ──
+#    손님이 고르신 글: "정지 그림은 오래 둘수록 들킨다. 나레이션 컷을 3~4초로
+#    끊고 컷 수를 늘린다."
+#
+#    ⚠️ 원하시는 **결과**는 "화면이 3~4초마다 바뀐다" 이지 "컷 수가 는다" 가
+#       아니다. 컷을 늘리는 길은 값이 나간다 — 컷 하나에 그림 한 장(132원)이라
+#       한 사건에 7~15장이 더 붙는다(+924~1,980원). 게다가 편 컷 수 못
+#       (PART_MIN_CUTS 8 · PART_MAX_CUTS 11) 과 편 길이 못(46~55초)이 서로
+#       싸우게 된다 — 한 컷을 4.5초로 막으면 8컷 편은 최대 36초라 46초 하한을
+#       **어떤 대본으로도 못 넘긴다.** 이 저장소가 두 번 당한 그 덫이다.
+#
+#    → **같은 그림을 다르게 잘라** 한 번 더 보여 준다. 그림을 새로 안 만드니
+#      값은 0원이고, 편 길이도 그대로라 60초 벽을 안 건드린다. 이미 만들어 둔
+#      S93 에도 그대로 먹는다(다시 만들 필요 없음).
+#
+#    ⚠️ 이을 때는 **겹쳐 넘긴다**(xfade). 같은 그림을 딱 잘라 이으면 각도가
+#       안 바뀌어 '튄 것'(점프컷)으로 보인다. 겹쳐 넘기면 켄번즈 다큐가 늘
+#       쓰는 어법이 되어 어색하지 않다 — open_bg 가 쓰는 방식과 같다.
+LINGER_MAX = 4.5                 # 한 프레이밍이 머무는 최대 시간(초)
+SHOT_MIN = 2.2                   # 이보다 짧게 쪼개지 않는다 (깜빡임으로 보인다)
+SHOT_MAX = 3                     # 한 컷에 프레이밍 세 개까지
+REFRAME_XFADE = 0.40             # 프레이밍끼리 겹쳐 넘기는 시간(초)
+# 넓게 보는 프레이밍 — 쪼갤 때 **첫 자리**에 온다 (뒤의 '바짝'과 크기가 확 달라야)
+#    (줌 시작, 줌 끝, 가로 시작, 가로 끝, 세로 시작, 세로 끝, 이름)
+#    ⚠️ 앞 프레이밍이 **끝난 크기**와 뒤가 **시작하는 크기**가 0.15 넘게
+#       차이 나야 한다. 비슷하면 겹쳐 넘겨도 "그냥 계속 줌인" 으로 보인다.
+WIDE = [
+    (1.02, 1.10, 0.50, 0.50, 0.50, 0.50, "넓게 다가간다"),
+    (1.06, 1.02, 0.50, 0.50, 0.50, 0.50, "넓게 물러선다"),
+    (1.04, 1.10, 0.58, 0.44, 0.50, 0.50, "넓게 왼쪽으로"),
+    (1.04, 1.10, 0.42, 0.56, 0.50, 0.50, "넓게 오른쪽으로"),
+]
+# 바짝 당겨 보는 프레이밍 — 줌 상한 1.30 을 넘기지 않는다(그 위는 흐려진다)
+TIGHT_NARR = [
+    (1.28, 1.22, 0.50, 0.50, 0.34, 0.40, "위쪽을 바짝"),
+    (1.24, 1.30, 0.34, 0.40, 0.52, 0.48, "왼쪽을 바짝"),
+    (1.28, 1.22, 0.66, 0.60, 0.50, 0.54, "오른쪽을 바짝"),
+    (1.28, 1.22, 0.50, 0.50, 0.66, 0.60, "아래쪽을 바짝"),
+]
+# ⚠️ 대사 컷은 얼굴이 주인공이다 — 옆으로 밀면 얼굴이 잘린다. 가운데서만 당긴다.
+WIDE_TALK = [WIDE[0], WIDE[1]]
+TIGHT_TALK = [
+    (1.26, 1.30, 0.50, 0.50, 0.46, 0.46, "얼굴로 바짝"),
+    (1.30, 1.24, 0.50, 0.50, 0.44, 0.44, "얼굴에서 물러선다"),
+]
+
 # ── ⭐⭐⭐ 정지 그림을 **살아 있게** 한다 (2026-09-17 손님 지시) ────────
 #    손님: "나레이션은 등장인물 이미지나 배경이미지만 나오고 카메라 줌인,
 #           줌아웃, 흔들림, 무빙이나 모션 등으로 영상효과를 주면 비용이
@@ -1808,6 +1854,87 @@ def move_of(c):
     return MOVES[ring[(int(c["n"]) - 1) % len(ring)]]
 
 
+def shot_plan(c, sec):
+    """이 컷을 **몇 개의 프레이밍**으로 보여 줄 것인가 — [(초, 카메라), …].
+
+    한 프레이밍이 LINGER_MAX 를 넘게 머무르면 그 자리에서 **같은 그림을 다르게
+    잘라** 한 번 더 보여 준다(넓게 → 바짝 → 넓게). 그림을 새로 안 만들므로
+    값은 0원이고, 컷 길이(sec)도 그대로라 60초 벽을 안 건드린다.
+
+    ⚠️ 쪼갠 뒤 한 토막이 SHOT_MIN 보다 짧아지면 **안 쪼갠다** — 2초도 안 되는
+       프레이밍은 바뀐 것이 아니라 깜빡인 것으로 보인다.
+    """
+    n = 1
+    if sec > LINGER_MAX + 0.05:
+        # ⚠️ 겹쳐 넘기는 만큼 토막이 **길어진다** — 그것까지 넣고 센다.
+        #    (안 넣으면 9초를 둘로 쪼개고 4.7초씩 머물러 상한을 넘는다)
+        need = (sec - REFRAME_XFADE) / (LINGER_MAX - REFRAME_XFADE)
+        n = int(need) + (0 if need - int(need) < 1e-9 else 1)
+        n = min(SHOT_MAX, max(2, n))
+        while n > 1 and (sec + (n - 1) * REFRAME_XFADE) / n < SHOT_MIN:
+            n -= 1
+    if n <= 1:
+        return [(sec, move_of(c))]
+    # 겹쳐 넘기는 만큼 토막을 길게 뽑는다 — 다 이으면 정확히 sec 이 된다
+    span = (sec + (n - 1) * REFRAME_XFADE) / n
+    talks = not is_narr(c)
+    wide = WIDE_TALK if talks else WIDE
+    tight = TIGHT_TALK if talks else TIGHT_NARR
+    k = int(c["n"]) - 1
+    out = []
+    for i in range(n):
+        tbl = tight if i % 2 else wide
+        out.append((span, tbl[(k + i // 2) % len(tbl)]))
+    return out
+
+
+def zoom_chain(mv, d):
+    """카메라 한 줄 → zoompan 필터 글. (프레이밍마다 똑같이 쓴다)"""
+    z0, z1, x0, x1, y0, y1, _nm = mv
+    f = max(2, int(round(d * FPS)))
+    t = f"(on/{max(1, f - 1)})"
+    return (f"zoompan=z='{z0:.4f}+({z1 - z0:.4f})*{t}':d={f}"
+            f":x='(iw-iw/zoom)*({x0:.4f}+({x1 - x0:.4f})*{t})'"
+            f":y='(ih-ih/zoom)*({y0:.4f}+({y1 - y0:.4f})*{t})'"
+            f":s={W}x{H}:fps={FPS}")
+
+
+def still_bg(c, still, sec):
+    """그림 한 장 → 컷 배경 [bg]. 길면 **다르게 잘라** 한 번 더 보여 준다.
+
+    돌려주는 것: (ffmpeg 입력 조각, 필터 글, 배경 입력 개수)
+    ⚠️ 입력은 그림 **한 개**뿐이다(split 으로 갈라 쓴다) — 자막 장 번호가
+       밀리지 않는다.
+    """
+    # 조금 키운 뒤 천천히 움직인다 — 원본 크기에서 바로 줌하면 덜덜 떨린다.
+    # ⚠️ 2배로 키우면 컷 하나에 6초씩 걸려 너무 느리다. 1.4배면 또렷하고
+    #    속도는 3분의 2다.
+    sw, sh = int(W * ZOOM_SRC), int(H * ZOOM_SRC)
+    src = ["-loop", "1", "-i", str(still)]
+    head = (f"[0:v]scale={sw}:{sh}:force_original_aspect_ratio=increase,"
+            f"crop={sw}:{sh}")
+    plan = shot_plan(c, sec)
+    if len(plan) == 1:
+        d, mv = plan[0]
+        # ⭐ 얼어 있지 않게 (위 LIVE 설명 참고) — 값 0원
+        return src, f"{head},{zoom_chain(mv, d)},{LIVE}[bg];", 1
+    n = len(plan)
+    vf = head + f",split={n}" + "".join(f"[s{i}]" for i in range(n)) + ";"
+    for i, (d, mv) in enumerate(plan):
+        vf += (f"[s{i}]{zoom_chain(mv, d)},"
+               f"trim=0:{d:.3f},setpts=PTS-STARTPTS[f{i}];")
+    cur = "[f0]"
+    for i in range(1, n):
+        nxt = "[x{}]".format(i) if i < n - 1 else "[xf]"
+        # 이은 뒤 길이 = (i)*span - (i-1)*X → 다음 겹침 자리는 그 값에서 X 앞
+        off = i * (plan[0][0] - REFRAME_XFADE)
+        vf += (f"{cur}[f{i}]xfade=transition=fade"
+               f":duration={REFRAME_XFADE:.3f}:offset={max(0.0, off):.3f}{nxt};")
+        cur = nxt
+    vf += f"{cur}{LIVE}[bg];"
+    return src, vf, 1
+
+
 def cut_sec(c, voice, clip):
     """이 컷이 몇 초짜리인가, 그리고 소리를 올린 영상에서 가져오는가.
 
@@ -1969,25 +2096,9 @@ def cut_video(c, still, voice, clip, ovs, out, opener=None):
         vf = (f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,"
               f"crop={W}:{H},fps={FPS},trim=0:{sec:.3f},setpts=PTS-STARTPTS[bg];")
     else:
-        src = ["-loop", "1", "-i", str(still)]
-        # 조금 키운 뒤 천천히 움직인다 — 원본 크기에서 바로 줌하면 덜덜 떨린다.
-        # ⚠️ 2배로 키우면 컷 하나에 6초씩 걸려 너무 느리다. 1.4배면 또렷하고
-        #    속도는 3분의 2다.
-        sw, sh = int(W * ZOOM_SRC), int(H * ZOOM_SRC)
-        z0, z1, x0, x1, y0, y1, _nm = move_of(c)
-        # on = 지금 몇 번째 프레임인가. 0 에서 frames 까지 고르게 간다.
-        t = f"(on/{max(1, frames - 1)})"
-        z = f"{z0:.4f}+({z1 - z0:.4f})*{t}"
-        # 가로·세로는 **남는 자리 안에서** 움직인다. 줌이 클수록 자리가 넓다.
-        px = f"{x0:.4f}+({x1 - x0:.4f})*{t}"
-        py = f"{y0:.4f}+({y1 - y0:.4f})*{t}"
-        vf = (f"[0:v]scale={sw}:{sh}:force_original_aspect_ratio=increase,"
-              f"crop={sw}:{sh},"
-              f"zoompan=z='{z}':d={frames}"
-              f":x='(iw-iw/zoom)*({px})'"
-              f":y='(ih-ih/zoom)*({py})':s={W}x{H}:fps={FPS},"
-              # ⭐ 얼어 있지 않게 (위 LIVE 설명 참고) — 값 0원
-              f"{LIVE}[bg];")
+        # ⭐ 그림 한 장이 오래 머물면 **다르게 잘라** 한 번 더 보여 준다
+        #    (still_bg · LINGER_MAX). 그림을 새로 안 만드니 값은 0원이다.
+        src, vf, nbg = still_bg(c, still, sec)
     # ⭐ 한 컷 안에서 두 사람이 주고받으면 **자막도 차례대로** 바뀌어야 한다.
     #
     # ⭐⭐ 2026-08-31 손님: "대사 목소리와 자막이 시간차가 발생."
