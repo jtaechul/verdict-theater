@@ -1918,5 +1918,11 @@
     "kind": "image",
     "krw": 132,
     "note": "gemini-3.1-flash-image 2K 9:16 c36.png"
+  },
+  {
+    "date": "2026-09-19",
+    "kind": "목소리",
+    "krw": 543,
+    "note": "1232자(어림) · gemini-3.1-flash-tts-preview S93 90초 쇼츠"
   }
 ]
