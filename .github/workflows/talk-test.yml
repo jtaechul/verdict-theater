@@ -75,7 +75,8 @@ jobs:
           S: ${{ inputs.sid }}
         run: |
           set -euo pipefail
-          F=$(ls build/s90/talk_test/*.mp4 2>/dev/null | head -1)
+          # ⚠️ 없으면 ls 가 2번으로 끝나 **다음 줄까지 못 간다** (set -e)
+          F=$(find build/s90/talk_test -maxdepth 1 -name '*.mp4' 2>/dev/null | head -1 || true)
           [ -n "$F" ] || { echo "만든 영상이 없습니다"; exit 1; }
           python3 tools/release_file.py put "talktest-${S:-S91}" \
             "$(basename "$F")" "$F"

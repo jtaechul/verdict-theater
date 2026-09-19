@@ -140,17 +140,19 @@ jobs:
           EP="${{ inputs.episode }}"
           if [ -z "$EP" ]; then
             # 회차를 안 적었으면 만들다 만 것을 알아서 찾는다 (초벌이 있는 것 우선)
-            EP=$(ls -1 data/scripts/EP*.draft.json 2>/dev/null | sort | tail -1 \
-                 | xargs -r basename | sed 's/\.draft\.json$//')
+            # ⚠️ 초벌이 하나도 없으면 ls 가 2번으로 끝나 단계가 죽는다
+            #    (바로 아래에서 "없으면 괜찮다" 고 다루는데 거기까지 못 간다)
+            EP=$(find data/scripts -maxdepth 1 -name 'EP*.draft.json' 2>/dev/null \
+                 | sort | tail -1 | xargs -r basename | sed 's/\.draft\.json$//' || true)
           fi
           if [ -z "$EP" ]; then
             # ⭐ 이어서 만들 것이 없다 = **이미 다 만들어져 있다** 는 뜻이다.
             #    이건 잘못된 상태가 아니므로 빨간 X 를 내면 안 된다.
             #    2026-08-11 에 여기서 빨간 X 가 나서, 손님이 같은 버튼을
             #    되풀이해 누르게 됐다(누를 때마다 실패). 초록불로 끝낸다.
-            DONE=$(ls -1 data/scripts/EP*.json 2>/dev/null \
+            DONE=$(find data/scripts -maxdepth 1 -name 'EP*.json' 2>/dev/null \
                    | grep -v '\.eval\.\|\.shorts\.\|\.draft\.' | sort | tail -1 \
-                   | xargs -r basename | sed 's/\.json$//')
+                   | xargs -r basename | sed 's/\.json$//' || true)
             {
               echo "## 이어서 만들 것이 없습니다 — 이미 다 만들어져 있습니다"
               echo ""
@@ -183,9 +185,9 @@ jobs:
           set -o pipefail
           EP="${{ inputs.episode }}"
           if [ -z "$EP" ]; then
-            EP=$(ls -1 data/scripts/EP*.json 2>/dev/null \
+            EP=$(find data/scripts -maxdepth 1 -name 'EP*.json' 2>/dev/null \
                  | grep -v '\.eval\.\|\.shorts\.\|\.draft\.' | sort | tail -1 \
-                 | xargs -r basename | sed 's/\.json$//')
+                 | xargs -r basename | sed 's/\.json$//' || true)
           fi
           if [ -z "$EP" ]; then
             echo "::error::만들어진 회차가 없습니다."
@@ -208,9 +210,9 @@ jobs:
           set -o pipefail
           EP="${{ inputs.episode }}"
           if [ -z "$EP" ]; then
-            EP=$(ls -1 data/scripts/EP*.json 2>/dev/null \
+            EP=$(find data/scripts -maxdepth 1 -name 'EP*.json' 2>/dev/null \
                  | grep -v '\.eval\.\|\.shorts\.\|\.draft\.' | sort | tail -1 \
-                 | xargs -r basename | sed 's/\.json$//')
+                 | xargs -r basename | sed 's/\.json$//' || true)
           fi
           if [ -z "$EP" ]; then
             echo "::error::만들어진 회차가 없습니다."
@@ -368,7 +370,9 @@ jobs:
               echo '```'
               echo ""
             fi
-            LATEST=$(ls -1 data/scripts/EP*.json 2>/dev/null | grep -v '\.eval\.\|\.shorts\.\|\.draft\.' | sort | tail -1)
+            # ⚠️ 없으면 ls 가, 다 걸러지면 grep 이 죽는다 — 둘 다 괜찮은 일이다
+            LATEST=$(find data/scripts -maxdepth 1 -name 'EP*.json' 2>/dev/null \
+                     | grep -v '\.eval\.\|\.shorts\.\|\.draft\.' | sort | tail -1 || true)
             if [ -n "$LATEST" ]; then
               echo "---"
               echo ""

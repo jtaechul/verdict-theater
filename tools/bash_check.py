@@ -51,6 +51,86 @@ def bash_reads(text):
         Path(path).unlink(missing_ok=True)
 
 
+# ⭐⭐⭐ 2026-09-19 — **"없으면 죽는 줄".** S93 이 세 번 연속 실패한 까닭.
+#    `ls build/s90/talk/*.mp4 2>/dev/null | wc -l | xargs …`
+#    맞는 파일이 하나도 없으면 ls 는 **2번**으로 끝난다. `2>/dev/null` 은
+#    글만 숨길 뿐 끝값은 그대로고, 깃허브가 켜 두는 `set -e` 와 줄 맨 앞의
+#    `set -o pipefail` 이 그 2번을 받아 **단계 전체를 죽인다.**
+#    더 나쁜 것은, 세 자리 모두 바로 아래·다음 줄에서 "없으면 괜찮다" 를
+#    다루고 있었다는 점이다 — 그 줄까지 가지도 못했다.
+#
+#    ⚠️ 글자만 봐서는 못 잡는다(어떤 ls 는 멀쩡하다). **빈 폴더에서 진짜로
+#       돌려 본다** — 없을 때 죽는지가 곧 답이다.
+#    ⚠️ 워크플로 줄을 아무거나 돌리면 위험하다. 그래서 **파일을 세거나 고르는
+#       뻔한 명령만** 들어 있는 줄로 한정한다(아래 ONLY).
+#    같은 덫이 `grep` 에도 있다 — 걸러 낸 것이 하나도 없으면 1번으로 끝난다.
+#    (script.yml 세 자리가 그랬다. 셋 다 바로 아래에서 "없으면 괜찮다" 를
+#     다루는데 거기까지 못 갔다 — 2026-08-11 에 손님이 같은 버튼을 되풀이해
+#     누르시게 만든 그 빨간 X 다.)
+#
+#    ⚠️ 재는 자리를 **"폴더는 있고 파일만 없다"** 로 맞춘다. 그 줄까지 왔다는
+#       것은 앞 단계가 폴더를 만들어 뒀다는 뜻이다. 폴더까지 없는 것으로 재면
+#       멀쩡한 find 를 잡는다(실제로 shorts.yml·video.yml 넷을 잘못 잡았다) —
+#       헛막는 검사는 멀쩡한 일을 막는다.
+LISTY = re.compile(r"\b(?:ls|find)\b[^|;&]*[*?]")
+# 그 줄이 뒤지는 폴더 — 재기 전에 **빈 채로 만들어 둔다**
+FINDDIR = re.compile(r"\bfind\s+([\w./-]+)")
+ONLY = {"ls", "find", "wc", "xargs", "echo", "sort", "tail", "head", "grep",
+        "sed", "basename", "cut", "tr", "awk", "true", "cat", "printf"}
+WORD = re.compile(r"[A-Za-z_][\w.-]*")
+
+
+def listy_lines(run):
+    """그 실행 칸에서 **파일을 찾아 세는 줄**만 골라 온다 (줄 이음 합침)."""
+    txt = EXPR.sub("GITHUB_VALUE", run).replace("\\\n", " ")
+    out = []
+    for line in txt.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or not LISTY.search(line):
+            continue
+        # ⚠️ `EP=$(ls … | …)` 처럼 **값에 담는 꼴**이 더 흔하다. 담는 것도
+        #    끝값이 그대로 넘어가 set -e 에 걸린다 — 껍데기를 벗기고 본다.
+        m = re.match(r"^\w+=\$\((.*)\)\s*$", line)
+        if m:
+            line = m.group(1)
+        # 첫 낱말들(명령 자리)이 전부 뻔한 것인지 본다
+        cmds = [WORD.match(x.strip().lstrip("$({ ")).group(0)
+                for x in re.split(r"[|;]|&&|\|\|", line)
+                if WORD.match(x.strip().lstrip("$({ "))]
+        if cmds and all(c in ONLY for c in cmds):
+            out.append(line)
+    return out
+
+
+def dies_when_empty(line, mkdirs=()):
+    """빈 폴더에서 돌려 본다 — 죽으면 그 줄이 단계를 죽인다.
+
+    ⚠️ 같은 실행 칸 위쪽의 `mkdir -p` 는 **먼저 그대로 해 준다.** 안 그러면
+       폴더가 아예 없는 것을 "파일이 없다" 로 착각해 멀쩡한 줄을 잡는다
+       (실제로 shorts.yml 의 find 를 잘못 잡았다 — 검사가 헛막으면
+       멀쩡한 일을 막는다).
+    """
+    d = tempfile.mkdtemp()
+    dirs = list(mkdirs) + FINDDIR.findall(line)
+    pre = "".join(f"mkdir -p {x}\n" for x in dirs)
+    r = subprocess.run(["bash", "-c", f"set -e -o pipefail\n{pre}{line}"],
+                       capture_output=True, text=True, timeout=20, cwd=d)
+    return r.returncode != 0
+
+
+MKDIR = re.compile(r"^mkdir\s+-p\s+(.+)$")
+
+
+def mkdirs_of(run):
+    """그 실행 칸이 미리 만드는 폴더들 (그대로 해 주고 나서 재야 한다)."""
+    out = []
+    for line in EXPR.sub("GITHUB_VALUE", run).splitlines():
+        m = MKDIR.match(line.strip())
+        if m and "$" not in m.group(1):
+            out += m.group(1).split()
+    return out
+
+
 def selftest():
     """일부러 망가뜨린 글을 잡는지 본다 — 못 잡으면 검사기가 고장난 것."""
     broken = 'echo "한 번 돌리면 풀립니다 (6명 전부는 3,180원).""\n'
@@ -65,6 +145,13 @@ def selftest():
     heredoc = "python3 - <<'PY'\nprint('한글')\nPY\n"
     if bash_reads(heredoc) is not None:
         print("❌ 자기시험 실패: 파이썬 끼워 넣기(heredoc)를 문제 삼는다")
+        return False
+    # ⭐ "없으면 죽는 줄" 을 잡는지도 자기시험한다
+    if not dies_when_empty("ls nope/*.mp4 2>/dev/null | wc -l"):
+        print("❌ 자기시험 실패: 없을 때 죽는 줄을 못 잡는다")
+        return False
+    if dies_when_empty("echo \"$(find . -name '*.mp4' 2>/dev/null | wc -l)개\""):
+        print("❌ 자기시험 실패: 멀쩡한 줄을 죽는다고 한다")
         return False
     print("✅ 자기시험: 망가진 글은 잡고 멀쩡한 글은 통과시킨다")
     return True
@@ -83,6 +170,7 @@ def main():
 
     bad = 0
     total = 0
+    looked = [0]
     for p in sorted(WF.glob("*.yml")):
         doc = yaml.safe_load(p.read_text(encoding="utf-8"))
         for jname, job in (doc.get("jobs") or {}).items():
@@ -94,19 +182,29 @@ def main():
                 if "bash" not in str(shell):
                     continue
                 total += 1
+                name = step.get("name", f"{i}번째 단계")
                 err = bash_reads(run)
                 if err:
                     bad += 1
-                    name = step.get("name", f"{i}번째 단계")
                     first = err.splitlines()[0] if err else ""
                     print(f"   ❌ {p.name} · {jname} · 「{name}」")
                     print(f"      {first}")
-    print(f"   실행 칸 {total}개를 읽었습니다.")
+                # ② 파일이 하나도 없을 때 그 줄이 단계를 죽이지 않는가
+                pre = mkdirs_of(run)
+                for line in listy_lines(run):
+                    looked[0] += 1
+                    if dies_when_empty(line, pre):
+                        bad += 1
+                        print(f"   ❌ {p.name} · {jname} · 「{name}」")
+                        print(f"      파일이 하나도 없으면 이 줄이 단계를 죽인다:")
+                        print(f"      {line[:96]}")
+    print(f"   실행 칸 {total}개를 읽었습니다 "
+          f"(그중 파일을 찾아 세는 줄 {looked[0]}개는 빈 폴더에서 돌려 봤습니다).")
     print("─" * 52)
     if bad:
-        print(f"❌ bash 가 못 읽는 실행 칸 {bad}개 — 버튼을 누르면 그 단계에서 죽습니다")
+        print(f"❌ 버튼을 누르면 죽을 자리 {bad}군데")
         return 1
-    print("✅ 셸 명령 검사: 전부 읽힌다")
+    print("✅ 셸 명령 검사: 전부 읽히고 · 파일이 없어도 안 죽는다")
     return 0
 
 

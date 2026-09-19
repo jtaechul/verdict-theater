@@ -56,7 +56,18 @@ def release(tag, make=False):
 
 
 def get(tag, name, dest):
-    rel = release(tag)
+    # ⚠️ 2026-09-19 — 보관함이 **아직 없는 것**(처음 만드는 사건)은 잘못이
+    #    아니다. 그런데 404 를 그냥 터뜨려 파이썬 오류 스무 줄이 기록에
+    #    쏟아졌고, 손님은 무엇이 잘못됐는지 알 수 없었다.
+    #    → 한 줄로 알려 주고 1번으로 끝낸다 (부르는 쪽이 `|| echo` 로 받는다).
+    try:
+        rel = release(tag)
+    except urllib.error.HTTPError as e:
+        if e.code != 404:
+            raise
+        print(f"  보관함 '{tag}' 이 아직 없다 — 처음 만드는 것이면 정상이다",
+              file=sys.stderr)
+        return 1
     a = next((x for x in rel.get("assets", []) if x["name"] == name), None)
     if not a:
         # 이름이 달라도 하나뿐이면 그것을 쓴다 (사람이 올린 파일 이름은 제각각이다)

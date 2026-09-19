@@ -40,6 +40,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import urllib.parse
@@ -58,6 +59,27 @@ PIXABAY_API = "https://pixabay.com/api/videos/"
 KEY_ENV = "PEXELS_API_KEY"
 KEY_ENV2 = "PIXABAY_API_KEY"
 W, H = 1080, 1920
+
+# ⭐⭐⭐ 2026-09-19 — **이름표(User-Agent) 가 없어서 통째로 막히고 있었다.**
+#    S93 실행 기록: pexels 검색도 403, pixabay 영상 내려받기도 403.
+#    열쇠 문제로 보이지만 아니었다. 실측(같은 주소·틀린 열쇠로):
+#        pexels  이름표 없음 → 403 Forbidden  ·  이름표 있음 → 401 (열쇠만 틀림)
+#        pixabay 이름표 없음 → 403 Forbidden  ·  이름표 있음 → 404 (주소만 틀림)
+#    즉 이름표가 없으면 **열쇠를 보여 줄 기회조차 없이** 문 앞에서 막힌다.
+#    두 곳 다 방패(Cloudflare 등) 뒤에 있어 "파이썬이 왔다"(Python-urllib)
+#    는 이름표를 그냥 거절한다.
+#    → 바깥에 나가는 모든 요청은 **_open 하나**를 지난다. 두 벌로 두면
+#      한쪽만 고쳐져 또 절반이 막힌다(이 저장소가 여러 번 당한 자리다).
+UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+      "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+
+
+def _open(url, headers=None, timeout=20, data=None):
+    """바깥에 나가는 **단 하나의 문**. 늘 이름표를 붙인다."""
+    h = {"User-Agent": UA}
+    h.update(headers or {})
+    return urllib.request.urlopen(
+        urllib.request.Request(url, data=data, headers=h), timeout=timeout)
 
 # ⭐ 우리 COLOR 규격을 ffmpeg 로 옮긴 것.
 #    "warm neutral base, low overall contrast, slightly lifted blacks,
@@ -105,8 +127,7 @@ def looks_human(v):
 
 
 def _get(url, headers=None):
-    req = urllib.request.Request(url, headers=headers or {})
-    with urllib.request.urlopen(req, timeout=20) as r:
+    with _open(url, headers) as r:
         return json.loads(r.read().decode("utf-8"))
 
 
@@ -221,11 +242,9 @@ def _ask(png):
         {"inline_data": {"mime_type": "image/png",
                          "data": base64.b64encode(png.read_bytes()).decode()}},
     ]}]}
-    req = urllib.request.Request(
-        url, data=json.dumps(body).encode(),
-        headers={"Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
+        with _open(url, {"Content-Type": "application/json"}, 30,
+                   json.dumps(body).encode()) as r:
             t = json.loads(r.read().decode())
             said = (t["candidates"][0]["content"]["parts"][0]["text"]).strip()
             return not said.upper().startswith("NO")
@@ -269,7 +288,10 @@ def fetch_one(c, out, dry=False):
         if not f:
             continue
         try:
-            urllib.request.urlretrieve(f["link"], tmp)
+            # ⚠️ urlretrieve 를 쓰면 안 된다 — 이름표를 붙일 자리가 없어
+            #    CDN 이 403 으로 막는다(2026-09-19 에 이것으로 다 막혔다).
+            with _open(f["link"], timeout=60) as r, open(tmp, "wb") as w:
+                shutil.copyfileobj(r, w)
         except Exception as e:               # noqa: BLE001
             print(f"    ⚠️ 못 받았다 ({e})")
             continue

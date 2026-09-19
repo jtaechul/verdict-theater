@@ -37,6 +37,8 @@ def ck(name, ok, why=""):
 
 def main():
     print("⭐ 장소 컷 무료 실사 영상 (값 0원 · 인터넷 0회)\n")
+    global src0
+    src0 = (ROOT / "src" / "stock_video.py").read_text("utf-8")
 
     print("① 사람 나오는 컷에는 안 쓴다 (핵심 규칙)")
     doc = {"cuts": [
@@ -86,6 +88,45 @@ def main():
     ck("워크플로가 두 열쇠를 다 넘긴다",
        "PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}" in yml0
        and "PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}" in yml0)
+
+    print("\n②-3 바깥에 나갈 때 **이름표(User-Agent)** 를 붙이는가")
+    # ⚠️⚠️ 2026-09-19 — 이것이 없어서 S93 에서 실사 영상이 **한 편도** 안
+    #    붙었다. 기록에는 403 Forbidden 만 줄줄이 찍혀 열쇠 문제처럼 보였다.
+    #    실측(같은 주소·틀린 열쇠): 이름표 없으면 403(문 앞 차단),
+    #    있으면 401/404(열쇠·주소만 틀림). 즉 **열쇠를 보여 줄 기회조차**
+    #    없었다. 두 창고 다 방패 뒤에 있어 "파이썬이 왔다" 는 거절한다.
+    import urllib.request as _u
+    seen = []
+
+    class _Fake:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            return b"{}"
+
+    was = _u.urlopen
+    try:
+        _u.urlopen = lambda req, timeout=None: (seen.append(req), _Fake())[1]
+        SV._open("https://example.invalid/x")
+        SV._open("https://example.invalid/y", {"Authorization": "k"})
+    finally:
+        _u.urlopen = was
+    ck("이름표를 붙인다", all("Mozilla/" in (r.get_header("User-agent") or "")
+                          for r in seen),
+       str([r.get_header("User-agent") for r in seen]))
+    ck("다른 머리글을 얹어도 이름표가 안 지워진다",
+       len(seen) > 1 and seen[1].get_header("Authorization") == "k"
+       and "Mozilla/" in (seen[1].get_header("User-agent") or ""))
+    ck("바깥에 나가는 문이 **하나**다 (_open 밖에서 urlopen 을 안 부른다)",
+       src0.count("urllib.request.urlopen") == 1,
+       "두 벌로 두면 한쪽만 고쳐져 절반이 또 막힌다")
+    ck("urlretrieve 를 안 쓴다 (이름표를 붙일 자리가 없다)",
+       "urlretrieve" not in src0.replace("# ⚠️ urlretrieve 를 쓰면 안 된다", ""),
+       "이것으로 내려받기가 통째로 막혔다")
 
     print("\n③ 모를 때는 **버린다**")
     import os

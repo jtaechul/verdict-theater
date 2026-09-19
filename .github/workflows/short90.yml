@@ -244,7 +244,15 @@ jobs:
               || echo "⚠️ 대사 장면 영상을 못 만들었습니다 — 그림으로 갑니다"
           else
             echo "■ 대사 장면 영상: 이번엔 **안 삽니다**(0원). 이미 사 둔 것은 그대로 씁니다."
-            ls build/s90/talk/*.mp4 2>/dev/null | wc -l | xargs -I{} echo "   보관된 대사 영상 {}개를 꺼내 왔습니다"
+            # ⚠️⚠️ 2026-09-19 — 여기가 **실행 전체를 죽이고 있었다.**
+            #    `ls build/.../*.mp4` 는 맞는 파일이 하나도 없으면 2번으로
+            #    끝난다. 2>/dev/null 은 **글만 숨길 뿐 끝값은 그대로**고,
+            #    set -o pipefail + set -e 가 그 2번을 받아 단계를 죽인다.
+            #    → 처음 만드는 사건(보관된 대사 영상 0개)은 반드시 여기서
+            #      죽었다. S93 이 세 번 연속 실패한 진짜 까닭이다.
+            #    find 는 없어도 0번으로 끝나고, echo 가 바깥 명령이라
+            #    안쪽이 무엇이든 이 줄은 죽지 않는다.
+            echo "   보관된 대사 영상 $(find build/s90/talk -maxdepth 1 -name '*.mp4' 2>/dev/null | wc -l)개를 꺼내 왔습니다"
           fi
           python3 -c "import shutil;shutil.make_archive('build/talk','zip','build/s90/talk')" || true
           python3 tools/release_file.py put "talk-$S" talk.zip build/talk.zip || echo "::warning::보관 실패 — 다음 실행에서 값을 처음부터 다시 씁니다. 위 ❌❌ 줄을 보십시오."
