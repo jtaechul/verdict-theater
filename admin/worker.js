@@ -1512,6 +1512,9 @@ function partsCard(w) {
         //    걸 여기 설명이 좀 적어줘."
         //    ⚠️ 값이 크다(편당 약 6,000원). 그래서 **한 편씩** 만들도록
         //       아래 설명에 못을 박고, 편별 값을 그대로 적어 준다.
+        + '<option value="key">결정적 순간만 — 편마다 한 컷' + (keyPlan().stale
+             ? ' (값을 모릅니다 — 대본을 다시 지어야 압니다)'
+             : (' (+약 ' + keyPlan().krw.toLocaleString() + '원)')) + '</option>'
         + '<option value="people">인물만 — 사람 나오는 컷만 (+약 '
         + talkPlan().krw.toLocaleString() + '원)</option>'
         + '<option value="all">전체 — 이 편 전부 영상' + (allPlan().stale
@@ -1522,8 +1525,12 @@ function partsCard(w) {
         + '<b>대사 장면</b>: 인물이 화면에서 직접 한국어로 말합니다. '
         + '나레이션 컷은 전부 그림입니다.<br>'
         + '<b>편 첫 장면</b>: 편마다 첫 4초만 움직입니다(입은 다뭅니다).<br>'
+        + '<b>결정적 순간만</b>: 편에서 가장 중요한 대사 컷 <b>하나씩</b>만 '
+        + '영상입니다(카메라를 멈추고 얼굴만 움직입니다). 나머지는 그림에 '
+        + '카메라 무빙을 줍니다(0원). <b>값 대비 가장 싸게 드라마 느낌</b>이 '
+        + '납니다.<br>'
         + '<b>인물만</b>: 사람이 나오는 컷만 영상이고, 사물·장소 컷은 '
-        + '그림에 카메라 무빙을 줍니다(0원). 값 대비 가장 드라마 같습니다.<br>'
+        + '그림에 카메라 무빙을 줍니다(0원).<br>'
         + '<b>전체</b>: 나레이션 컷까지 모두 움직입니다. '
         + '<b>그림을 먼저 만든 뒤</b> 그 그림을 움직이게 하므로, '
         + '누르시면 그림 만들기부터 차례로 돕니다(그림이 이미 있으면 0원으로 '
@@ -1729,6 +1736,20 @@ function allPlan() {
            per: a.per_part || {}, stale: false };
 }
 
+// ⭐⭐⭐ 2026-09-20 손님 선택 — **결정적 순간만** 영상 (편마다 한 컷).
+//    손님: "카메라 구도가 너무 단조로운데." 구도는 그림으로 풀었지만
+//    '카메라가 진짜로 움직이는' 느낌은 그림으로 못 만든다. 그 느낌이 가장
+//    필요한 자리 하나씩만 산다.
+//    ⚠️ 여기서 세지 않는다 — talkplan.plan 이 찍어 둔 값을 그대로 읽는다.
+function keyPlan() {
+  const k = (S90DOC && S90DOC.talk && S90DOC.talk.key) || null;
+  if (!k || typeof k.krw !== 'number') return { n: 0, krw: 0, one: 0, stale: true };
+  const each = Object.keys(k.per_part || {}).map((x) => k.per_part[x].krw);
+  return { n: k.n, sec: k.sec, krw: k.krw, cuts: k.cuts || [],
+           one: each.length ? Math.max.apply(null, each) : k.krw,
+           per: k.per_part || {}, stale: false };
+}
+
 async function workMake(no) {
   const id = no ? 'w-make-' + no : 'w-make-all';
   if (WBUSY[id]) return;
@@ -1740,6 +1761,18 @@ async function workMake(no) {
   const nps = (partList((WORKS || {})[WORK] || {}) || []).length || 3;
   const lines = [what + ' 를 시작할까요?', '',
                  '그림과 목소리는 이미 만든 것을 그대로 씁니다 (0원).'];
+  if (kind === 'key') {
+    // ⚠️ 값을 모르면 **모른다고 적는다.** 0원이라고 적으면 승인이 거짓이 된다.
+    const kp = keyPlan();
+    lines.push(kp.stale
+      ? '결정적 순간 영상: 켬 — 값을 아직 모릅니다. [대본 다시 짓기] 를 한 번 '
+        + '하시면 정확한 값이 뜹니다.'
+      : ('결정적 순간 영상: 켬 — 편마다 한 컷씩 ' + kp.n + '개(컷 '
+         + (kp.cuts || []).join('·') + ') · 모두 ' + kp.sec + '초 = 약 '
+         + kp.krw.toLocaleString() + '원이 나갑니다.'));
+    if (!kp.stale && no) lines.push('  이 편만 하면 약 '
+      + ((kp.per[String(no)] || {}).krw || 0).toLocaleString() + '원입니다.');
+  }
   if (kind === 'talk') {
     const tp = talkPlan();
     // ⚠️ 값을 모르면 **모른다고 적는다.** 0원이라고 적으면 승인이 거짓이 된다.
@@ -4510,6 +4543,7 @@ export default {
         //    달라도 깃허브가 그 값을 안 받고 실행이 통째로 안 뜬다.
         const kindv = vk === 'talk' ? '대사 장면 (편마다 한 컷 · 약 2,100원)'
                     : vk === 'open' ? '편 첫 장면 (입 다문 4초 · 약 1,400원)'
+                    : vk === 'key' ? '결정적 순간만 (편마다 한 컷 · 약 2,800원)'
                     : vk === 'people' ? '인물만 (사람 나오는 컷만 영상 · 사물·장소는 그림)'
                     : vk === 'all' ? '전체 (그림 먼저 → 모든 컷 영상 · 편당 약 6,800원)'
                     : '안 만든다 (전부 그림 · 0원)';

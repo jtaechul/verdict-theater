@@ -69,6 +69,10 @@ on:
           # ⭐ 2026-09-17 손님 선택 — 값 대비 가장 낫다고 본 자리.
           #    시청자가 가짜라고 느끼는 것은 빈 방이 아니라 얼어붙은
           #    사람 얼굴이다. 사물·장소는 그림 + 켄번즈로 충분하다.
+          # ⭐ 2026-09-20 손님 선택 — 구도는 그림으로 풀었지만 '카메라가
+          #    진짜로 움직이는' 느낌은 그림으로 못 만든다. 그 느낌이 가장
+          #    필요한 자리(편의 마지막 대사 컷) 하나씩만 산다.
+          - '결정적 순간만 (편마다 한 컷 · 약 2,800원)'
           - '인물만 (사람 나오는 컷만 영상 · 사물·장소는 그림)'
           - '전체 (그림 먼저 → 모든 컷 영상 · 편당 약 6,800원)'
 
@@ -111,6 +115,9 @@ jobs:
       #    이것을 보고 OPEN·TALK 둘 다 켠다. 여기서 따로 안 켠다).
       VT_ALL_VIDEO: ${{ startsWith(inputs.video_kind, '전체') && '1' || '' }}
       VT_PEOPLE_VIDEO: ${{ startsWith(inputs.video_kind, '인물만') && '1' || '' }}
+      # ⭐ 2026-09-20 — 결정적 순간만 (편마다 한 컷). 고르는 규칙은
+      #    src/talkplan.py 의 key_cuts 한 곳에 있다.
+      VT_KEY_VIDEO: ${{ startsWith(inputs.video_kind, '결정적') && '1' || '' }}
       STEP: ${{ inputs.step || 'all' }}
 
     steps:
@@ -239,7 +246,7 @@ jobs:
           python3 tools/release_file.py get "talk-$S" talk.zip build/talk.zip \
             && unzip -q -o build/talk.zip -d build/s90/talk \
             || echo "보관된 대사 장면 영상이 없다"
-          if [ "$VT_TALK_VIDEO" = "1" ]; then
+          if [ "$VT_TALK_VIDEO" = "1" ] || [ "$VT_KEY_VIDEO" = "1" ]; then
             python3 src/short90.py talk 2>&1 | tee -a make.log \
               || echo "⚠️ 대사 장면 영상을 못 만들었습니다 — 그림으로 갑니다"
           else

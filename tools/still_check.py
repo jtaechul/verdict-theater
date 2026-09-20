@@ -86,12 +86,41 @@ def main():
        "모델은 '하지 마' 를 흘려듣고 오히려 그린다")
     ck("무엇을 그릴지 적는다", "The place itself is the subject" in empty)
 
-    print("\n① -2 사람이 있는 컷은 그대로다 (지문이 안 바뀌어야 0원)")
-    got = B.still_prompt({"who": ["아내"], "turns": [["아내", "말한다"]],
-                          "scene": "the wife sits at a table"})
-    ck("사람 컷은 여전히 사람을 가운데 둔다",
-       "the person kept in the middle" in got)
+    print("\n① -2 사람이 있는 컷 — 얼굴은 또렷하고 **구도는 컷마다 다르다**")
+    # ⭐⭐⭐ 2026-09-20 — 예전 이 자리는 "지문이 안 바뀌어야 0원" 이라며
+    #    `the person kept in the middle` 이 그대로 있는지를 봤다. 값을 지키는
+    #    뜻은 옳았지만, 그 바람에 **구도가 영영 하나로 묶여** 있었다.
+    #    손님: "카메라 구도가 아직도 너무 단조로운데." 뜯어보니 36컷 그림
+    #    지문이 딱 두 문장이었다(사람 컷 "허리 위" · 장소 컷 "빈 방").
+    #    → 손님 승인(4,752원)으로 구도표를 그림에도 잇는다. 이제 여기서는
+    #      **같은 것을 지키는지**가 아니라 **여러 가지인지**를 본다.
+    #      값을 지키는 자리는 따로 있다(reuse.sig_of · cost.RUN_KRW).
+    def one(n, who, scene, turns):
+        return B.still_prompt({"n": n, "who": who, "turns": turns,
+                               "scene": scene}, None, {"talks": True})
+
+    got = one(3, ["아내"], "the wife sits at a table", [["아내", "말한다"]])
     ck("사람 컷은 여전히 얼굴이 또렷하다", "only the people are sharp" in got)
+    ck("사람 컷은 눈높이를 정해 준다", "eye line" in got)
+    shots = []
+    for n in range(1, 13):
+        g = one(n, ["아내"], "the wife sits at a table", [["아내", "말한다"]])
+        m = re.search(r"SHOT: (.+)", g)
+        shots.append(m.group(1)[:60] if m else "")
+    ck(f"사람 컷 구도가 여러 가지다 ({len(set(shots))}가지)", len(set(shots)) >= 3,
+       "하나뿐이면 스무 컷이 전부 같은 그림이 된다")
+    ck("이웃한 컷이 같은 구도가 아니다",
+       not [i for i in range(1, len(shots)) if shots[i] == shots[i - 1]])
+    places = []
+    for n in range(1, 13):
+        g = B.still_prompt({"n": n, "who": [], "turns": [["나레이션", "ㄱ"]],
+                            "scene": "a thick folder on a desk"}, None, {})
+        m = re.search(r"SHOT: (.+)", g)
+        places.append(m.group(1)[:60] if m else "")
+    ck(f"장소 컷 구도도 여러 가지다 ({len(set(places))}가지)", len(set(places)) >= 4)
+    ck("장소 컷 구도에도 사람이 안 섞인다",
+       not [w for g in places for w in re.findall(PERSON, g, re.I)],
+       "여기로 사람이 새면 낯선 남녀가 그려진다")
 
     print("\n① -3 나레이션은 사람을 **세우지 않고 반려한다**")
     # ⚠️⚠️⚠️ 2026-09-10 — 예전 이 검사는 정반대를 요구했다:

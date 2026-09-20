@@ -518,7 +518,13 @@ PEOPLE_VIDEO = os.environ.get(
 # ⚠️ 열쇠를 **읽는 자리는 한 줄**로 둔다 — 검사가 "읽는 자리가 하나뿐인가"
 #    를 글자로 세기 때문이다(두 곳에서 읽으면 한쪽만 끄고 껐다고 믿게 된다).
 _TALK_ENV = os.environ.get("VT_TALK_VIDEO", "").strip() in ("1", "예", "on")
-TALK_VIDEO = ALL_VIDEO or PEOPLE_VIDEO or _TALK_ENV
+# ⭐⭐⭐ 2026-09-20 손님 선택 — **결정적 순간만** 영상으로 (편마다 한 컷).
+#    손님: "카메라 구도가 너무 단조로운데." 구도는 그림으로 풀었지만
+#    '카메라가 진짜로 움직이는' 느낌은 그림으로는 못 만든다. 그 느낌이 가장
+#    필요한 자리 — 편의 마지막 대사 컷 하나씩만 산다.
+#    ⚠️ 고르는 규칙은 talkplan.key_cuts 한 곳에 있다(여기서 안 센다).
+_KEY_ENV = os.environ.get("VT_KEY_VIDEO", "").strip() in ("1", "예", "on")
+TALK_VIDEO = ALL_VIDEO or PEOPLE_VIDEO or _TALK_ENV or _KEY_ENV
 # ⭐⭐⭐ 2026-09-10 — 고르는 규칙은 **src/talkplan.py 한 곳**에만 둔다.
 #    여기와 화면(worker.js)이 따로 세다가, 화면이 2,824원이라고 적고 실제로는
 #    12,936원이 나가는 꼴이 됐다. 세는 자리를 하나로 만든다.

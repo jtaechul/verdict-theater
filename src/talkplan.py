@@ -24,6 +24,13 @@ TALK_OK_SEC = (4, 6, 8)          # Veo 가 받는 길이 (5·7초는 HTTP 400)
 # 0 = 제한 없음. **제한 없음이 기본이다** — 손님 설계가 "대사 부분만 영상" 이다.
 TALK_PER_PART = int(os.environ.get("VT_TALK_PER_PART", "0"))
 TALK_PER_PERSON = int(os.environ.get("VT_TALK_PER_PERSON", "0"))
+# ⭐⭐⭐ 2026-09-20 손님 선택: "4편 전부 + 결정적 순간 영상".
+#    편마다 **딱 한 컷**만 산다 — 그 편의 마지막 대사 컷(결정적 순간).
+#    거기서는 카메라를 멈추므로(build_short90.move_line) 흔들림이 가장 적고,
+#    값도 편당 한 컷이라 예측이 된다.
+#    ⚠️ 고르는 규칙을 여기 **한 곳**에만 둔다 — 화면(admin)도 만드는 쪽도
+#       같은 함수를 읽는다. 따로 세면 화면이 거짓 값을 적는다(2026-09-10).
+KEY_ONLY = os.environ.get("VT_KEY_VIDEO", "").strip() in ("1", "예", "on")
 # 안전필터가 자주 막는 낱말. 막히면 그 컷 값이 그냥 날아간다.
 TALK_HOT = ("관계", "잤", "몸", "성관계", "강간", "죽이", "때렸")
 
@@ -73,6 +80,11 @@ def talk_cuts(doc):
         cand = [c for c in cs[1:-1]
                 if not is_narr(c) and len(turns_of(c)) == 1
                 and not any(w in turns_of(c)[0][1] for w in TALK_HOT)]
+        if KEY_ONLY:
+            # ⭐ 편마다 한 컷 — **가장 뒤**의 대사 컷이 결정적 순간이다
+            if cand:
+                got.append(max(cand, key=lambda c: c["n"]))
+            continue
         cand.sort(key=lambda c: len(turns_of(c)[0][1]))
         n = 0
         for c in cand:
@@ -85,6 +97,20 @@ def talk_cuts(doc):
             if TALK_PER_PART and n >= TALK_PER_PART:
                 break
     return got
+
+
+def key_cuts(doc):
+    """**결정적 순간** 컷들 — 편마다 하나. (env 와 상관없이 같은 규칙)
+
+    ⚠️ talk_cuts(KEY_ONLY) 와 **같은 것**을 돌려줘야 한다. 화면에 적는 값과
+       실제로 사는 것이 어긋나면 승인 자체가 뜻이 없다(2026-09-10 사고).
+    """
+    was = globals()["KEY_ONLY"]
+    globals()["KEY_ONLY"] = True
+    try:
+        return talk_cuts(doc)
+    finally:
+        globals()["KEY_ONLY"] = was
 
 
 # ⭐⭐⭐ 60초 벽 — 이 채널에서 **가장 비싼 교훈**이다.
@@ -207,6 +233,14 @@ def plan(doc, krw_per_sec=0.08, usd_krw=1470.0):
                     for c in all_ns if a <= c["n"] <= b)
         per[str(int(p["no"]))] = {"sec": round(sec_p, 1), "krw": _won(sec_p)}
     all_sec = sum(talk_sec(turns_of(c)[0][1]) for c in all_ns)
+    # ⭐ 결정적 순간만 — 편마다 한 컷. 화면이 이 값을 그대로 적는다.
+    kc = key_cuts(doc)
+    kper = {}
+    for p3 in doc.get("parts") or []:
+        a3, b3 = p3["cuts"]
+        sk = sum(talk_sec(turns_of(c)[0][1]) for c in kc if a3 <= c["n"] <= b3)
+        kper[str(int(p3["no"]))] = {"sec": round(sk, 1), "krw": _won(sk)}
+    key_sec = sum(talk_sec(turns_of(c)[0][1]) for c in kc)
     # ⭐ 2026-09-17 — 대사 컷 값도 **편별로** 적어 둔다.
     #    한 번 실행 뚜껑은 "잘못 눌러도 한 편에서 끊는다" 는 선이다.
     #    네 편 합계로 잡으면 막는 시늉만 하게 된다(전체 영상과 같은 이치).
@@ -225,4 +259,8 @@ def plan(doc, krw_per_sec=0.08, usd_krw=1470.0):
             "per_part": tper,
             # 전체 영상 (그림 먼저 → 모든 컷 영상)
             "all": {"n": len(all_ns), "sec": round(all_sec, 1),
-                    "krw": _won(all_sec), "per_part": per}}
+                    "krw": _won(all_sec), "per_part": per},
+            # 결정적 순간만 (편마다 한 컷)
+            "key": {"n": len(kc), "cuts": [c["n"] for c in kc],
+                    "sec": round(key_sec, 1), "krw": _won(key_sec),
+                    "per_part": kper}}

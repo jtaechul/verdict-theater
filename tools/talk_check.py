@@ -289,8 +289,18 @@ def camera():
     s_rep = B.shot_of(reply, solo, TALK)[0]
     s_far = B.shot_of(far, reply, TALK)[0]
     ck("나레이션 컷은 와이드다 (공간을 보여 준다)", "wide shot" in s_narr, s_narr[:90])
-    ck("혼자 말하는 컷은 미디엄 + 느린 줌인이다",
-       "medium shot" in s_solo and "zoom in" in s_solo, s_solo[:90])
+    # ⭐⭐⭐ 2026-09-20 — 예전 이 줄은 "혼자 말하는 컷은 **늘** 미디엄" 을
+    #    요구했다. 그 바람에 구도가 하나로 묶여 스무 컷이 전부 같은 그림이
+    #    됐다(손님: "카메라 구도가 아직도 너무 단조로운데").
+    #    → 구도는 표에서 **컷마다 갈리고**, 움직임만 느린 줌인/패닝이다.
+    #      둘을 갈라서 본다.
+    ck("혼자 말하는 컷에도 카메라 지시가 붙는다 (움직이거나, 멈추거나)",
+       any(x in s_solo for x in ("zoom in", "panning", "holding still")),
+       s_solo[:90])
+    solo_shots = {B.shot_of(dict(solo, n=i), narr, TALK)[0].split(". ")[1][:40]
+                  for i in range(1, 9)}
+    ck(f"혼자 말하는 컷 구도가 여러 가지다 ({len(solo_shots)}가지)",
+       len(solo_shots) >= 3, "하나면 스무 컷이 전부 같은 그림이 된다")
     ck("받아치는 컷은 오버 더 숄더다 (대립 구도)",
        "over-the-shoulder" in s_rep, s_rep[:90])
     ck("자리가 바뀌면 받아치는 것으로 안 본다",

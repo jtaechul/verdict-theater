@@ -242,7 +242,7 @@ def check_parts(story):
                          f"겹친 컷 {dup}")
 
 
-def still_prompt(c):
+def still_prompt(c, prev=None, ctx=None):
     # ⭐⭐⭐ 2026-09-10 — 갈림길을 **who 가 아니라 '나레이션인가'** 로 바꾼다.
     #    손님: "나레이션 배경 이미지에 사람이 자꾸 들어가."
     #    나레이션 컷에 who 가 남아 있으면 사람 갈래로 가서 사람이 그려졌다.
@@ -282,17 +282,20 @@ def still_prompt(c):
     body = [head + ". A single still frame, vertical 9:16 portrait."]
     if who:
         body.append(people_of(who, still=True))
-        body.append(f"SHOT: {c['scene']}. Framed from the waist up so every face "
-                    f"stays clear, mouths closed, holding the moment.")
-        body += [FRAMING, "CAMERA: " + BLUR]
+        # ⭐⭐⭐ 2026-09-20 — 여기가 **연출이 안 닿던 자리**다. 예전에는 컷이
+        #    무엇이든 늘 같은 한 문장("허리 위로 잡아 모든 얼굴이 또렷하게")
+        #    이었다. 36컷 구도가 전부 같으니 단조로울 수밖에 없었다.
+        #    이제 영상과 **같은 구도표**(compose_of)를 읽는다. 움직임만 빠진다.
+        shot, framing, cam = compose_of(c, prev, ctx, who)
+        body += [shot + " Mouths closed, holding the moment.", framing, cam]
     else:
         # ⚠️ 2026-08-31 에 "이 줄이 낯선 남녀를 부르는 것 같다" 고 적어 두고
         #    **미뤘다.** 2026-09-05 에 손님이 실제로 그 화면을 보내 주셨다.
         #    이제 사람이라는 낱말이 한 번도 안 나오는 판으로 바꾼다 —
         #    "그리지 마" 가 아니라 **무엇을 그릴지만** 적는다.
-        body.append(f"SHOT: {c['scene']}. The place itself is the subject: "
-                    f"the objects and the light fill the frame, quiet and empty.")
-        body += [FRAMING_NOBODY, "CAMERA: " + BLUR_NOBODY]
+        shot, framing, cam = compose_of(c, prev, ctx, who)
+        body += [f"{shot} The place itself is the subject: the objects and the "
+                 f"light fill the frame, quiet and empty.", framing, cam]
     body += ([COLOR, S.STYLE_STILL] if who else [COLOR_NOBODY, STYLE_NOBODY])
     body.append(NO_TEXT)
     return "\n".join(body)
@@ -384,73 +387,204 @@ def angle_of(name, flip=False):
     return ANGLE[a]
 
 
-def shot_of(c, prev=None, ctx=None):
-    """이 컷의 (SHOT, FRAMING, CAMERA) 세 줄. 컷 성격이 정한다.
+# ⭐⭐⭐ 2026-09-20 손님: "카메라 구도가 아직도 너무 단조로운데 … 이게 지금
+#    이미지만 나와서 이렇게 된 거예요?"
+#
+#    **그렇다.** 뜯어보니 연출(아래 구도표)이 **영상 프롬프트에만** 이어져
+#    있었다. 그림 프롬프트는 36컷에 문구가 **둘뿐**이었다 —
+#      21컷 "허리 위로 잡아 모든 얼굴이 또렷하게"
+#      15컷 "장소 자체가 주인공, 조용히 비어 있게"
+#    게다가 마지막 실행은 영상을 한 편도 안 샀다. 화면의 100%가 그림이므로
+#    연출은 **한 프레임도 안 닿았다.** 컷마다 구도가 똑같으니 켄번즈를 아무리
+#    걸어도 단조로울 수밖에 없다.
+#
+#    → 구도(compose_of)와 움직임(move_line)을 **갈라 놓는다.**
+#      · 구도는 그림도 영상도 **같은 표**를 읽는다 (두 벌로 두면 한쪽만 좋아진다)
+#      · 움직임은 영상에만 붙인다 — 그림은 움직일 수 없다
+#
+#    ⭐ 손님이 고르신 수트(Suits) 구도 셋을 더한다:
+#      ① 유리 너머 · 창에 비친 얼굴  ② 문틀 · 블라인드로 가두기
+#      ③ 뒷모습 · 실루엣 · 사람을 작게
+#      (물건 클로즈업은 안 고르셨다 — 장소 컷에 이미 있던 것만 남긴다)
+#
+#    ⚠️ 컷 번호로 **돌려 쓴다.** 무작위로 하면 다시 만들 때마다 화면이 달라져
+#       0원 재사용이 깨진다(같은 컷은 늘 같은 구도).
+#    ⚠️⚠️ 장소 컷 글에는 **사람을 부르는 낱말이 한 번도 나오면 안 된다.**
+#       2026-09-05 에 "그리지 마" 라고 적었다가 낯선 남녀가 두 번 그려져 나왔다.
+#       실루엣도 **사물의** 실루엣으로만 적는다.
 
-    ctx — {"talks": 대사 컷인가, "climax": 편의 마지막 대사인가,
-           "flip": 판결 뒤라 힘이 뒤집혔는가}
+# ── 장소 컷 구도 (who 없음) — 여섯 갈래 ───────────────────────────
+PLACE_SHOTS = [
+    ("A cinematic wide shot of the place itself, deep depth of field, the "
+     "whole room laid out", None),
+    ("A tight macro insert of the single most telling object in this place, "
+     "filling the frame", None),
+    ("A low-angle medium view from near floor level looking up past the "
+     "objects in the foreground", None),
+    # ⭐ 유리 너머 · 반사 (수트의 서명 같은 화면)
+    ("Shot through a pane of glass — a rain-streaked window or a glass door — "
+     "with the room behind mirrored faintly on the surface, two layers laid "
+     "over each other in one frame",
+     "FRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, "
+     "the glass surface covering the whole frame, the reflection and what lies "
+     "beyond it overlapping."),
+    # ⭐ 문틀 액자
+    ("Shot from the next room through an open doorway, the dark door frame "
+     "closing in on all four sides and only the lit room beyond it visible",
+     "FRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, "
+     "a frame-within-the-frame made by the doorway, the outer edges dark."),
+    # ⭐ 역광 실루엣 (사물의 실루엣 — 사람 낱말을 쓰지 않는다)
+    ("Backlit hard from a window so the objects in the foreground fall into "
+     "flat dark shapes against the pale light, long slatted shadows from the "
+     "blinds lying across the floor",
+     "FRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, "
+     "the bright window high in the frame and the dark shapes below it."),
+]
+
+# ── 대사 컷 구도 (말하는 컷) — 특례 둘 + 세 갈래 ──────────────────
+#    ⚠️ 말하는 컷에는 **뒷모습을 안 쓴다** — 입이 안 보이면 말하는 컷이 아니다.
+TALK_SHOTS = [
+    ("A medium shot tightening towards a close-up, {ang}, intense steady gaze",
+     None),
+    # ⭐ 유리 너머
+    ("Shot through the glass wall or glass door of the room, {ang}, the glass "
+     "catching a faint reflection of the corridor lights across their face",
+     "FRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, "
+     "the glass between the camera and them, a faint reflection laid over "
+     "their face, {eye}."),
+    # ⭐ 문틀 · 블라인드
+    ("Framed standing inside a doorway, {ang}, half-open blind slats throwing "
+     "hard horizontal bars of shadow across their face and the wall",
+     "FRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, "
+     "a frame-within-the-frame made by the doorway or the blinds, the outer "
+     "edges dark, {eye}."),
+    # ⭐ 사람을 작게 — 얼굴만 이어지면 숨이 막힌다. 공간을 한 번씩 보여 준다.
+    ("A wide shot that leaves them small against the room, {ang}, the empty "
+     "space around them carrying the weight",
+     "FRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, "
+     "the person placed off to one side with the room open around them, "
+     "{eye}."),
+]
+
+# ── 나레이션인데 인물이 선 컷 — 네 갈래 (입은 다문다) ─────────────
+CAST_NARR_SHOTS = [
+    ("A wide shot that leaves the person small in the space, {ang}",
+     "FRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, "
+     "the person placed off to one side with the empty room around them, "
+     "{eye}."),
+    # ⭐ 뒷모습 · 실루엣
+    ("Shot from behind them, hard backlight from the window ahead turning "
+     "them into a dark shape, their face not visible at all, the shoulders "
+     "and the room telling it instead",
+     "FRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, "
+     "their back filling the lower half and the lit room beyond."),
+    # ⭐ 유리 너머
+    ("Shot through a glass door or a night window, {ang}, their face and the "
+     "reflection of the room laid over each other on the glass",
+     "FRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, "
+     "the glass between the camera and them, {eye}."),
+    # ⭐ 문틀 액자
+    ("Seen from the next room through an open doorway, {ang}, the dark door "
+     "frame closing in on all four sides",
+     "FRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, "
+     "a frame-within-the-frame made by the doorway, the outer edges dark, "
+     "{eye}."),
+]
+
+FRAMING_MID = ("FRAMING: vertical 9:16 portrait, filling the whole frame edge "
+               "to edge, the person kept in the middle, " + EYE_LINE + ".")
+
+
+def compose_of(c, prev=None, ctx=None, who=None):
+    """이 컷의 (구도 한 문장, FRAMING, CAMERA). **움직임은 안 들어간다.**
+
+    그림도 영상도 이 표를 읽는다 — 두 벌로 두면 한쪽만 좋아진다(실제로
+    영상 쪽만 좋아져 있었다. 위 설명 참고).
+
+    ⚠️⚠️ who 를 **부르는 쪽이 정해 준다.** 그림 쪽은 나레이션 컷이면 who 가
+       있어도 장소 갈래로 보낸다(2026-09-10 · "나레이션 배경에 사람이 자꾸
+       들어가"). 여기서 c["who"] 를 그냥 읽으면 **잣대가 두 벌**이 되어,
+       장소 갈래로 보낸 컷에 사람 구도가 얹힌다 — 실제로 그렇게 됐고
+       still_check 가 "mouths · people · person" 으로 잡았다.
     """
-    who = c.get("who") or []
+    who = (c.get("who") or []) if who is None else who
     scene = c["scene"]
     ctx = ctx or {}
-    START = "The movement is already under way in the very first frame."
+    n = int(c.get("n") or 1) - 1      # 번호 없는 조각도 안 죽게
     if not who:
-        # ① 장소 컷 — 샷 크기를 **크게 대비**시킨다 (와이드 ↔ 인서트)
-        #    ⚠️ 셋을 컷 번호로 돌린다. 무작위로 하면 다시 만들 때마다 화면이
-        #       달라져 0원 재사용이 깨진다.
-        i = (int(c["n"]) - 1) % 3
-        if i == 1:
-            # 인서트 — 드라마가 가장 많이 쓰는 샷인데 우리에겐 0개였다
-            return (f"SHOT: {scene}. A tight macro insert of the single most "
-                    f"telling object in this place, filling the frame, the camera "
-                    f"pushing in almost imperceptibly slowly. {START}",
-                    FRAMING_NOBODY, "CAMERA: " + BLUR_NOBODY)
-        if i == 2:
-            return (f"SHOT: {scene}. A low-angle medium view from near floor "
-                    f"level looking up past the objects in the foreground, the "
-                    f"camera drifting sideways in a slow steady lateral move. "
-                    f"{START}", FRAMING_NOBODY, "CAMERA: " + BLUR_NOBODY)
-        return (f"SHOT: {scene}. A cinematic wide shot of the place itself, deep "
-                f"depth of field, the camera pulling back in a very slow zoom out "
-                f"that opens up the space. {START}",
-                FRAMING_NOBODY, "CAMERA: " + BLUR_NOBODY)
+        shot, fr = PLACE_SHOTS[n % len(PLACE_SHOTS)]
+        return (f"SHOT: {scene}. {shot}.", fr or FRAMING_NOBODY,
+                "CAMERA: " + BLUR_NOBODY)
 
     ang = angle_of(who[0], ctx.get("flip"))
+    fill = {"ang": ang, "eye": EYE_LINE}
     if not ctx.get("talks"):
         # ② 나레이션인데 **등장인물이 서 있는** 컷 (2026-09-17 손님 지시)
         #    빈 방만 이어지면 드라마로 안 보인다. 얼굴 기준이 붙어 있으므로
         #    낯선 사람이 나올 일이 없다.
-        return (f"SHOT: {scene}. A wide shot that leaves the person small in the "
-                f"space, {ang}, the camera holding still and only breathing "
-                f"slightly. They do not speak; mouths stay closed. {START}",
-                f"FRAMING: vertical 9:16 portrait, filling the whole frame edge to "
-                f"edge, the person placed off to one side with the empty room "
-                f"around them, {EYE_LINE}.",
-                "CAMERA: " + BLUR)
+        shot, fr = CAST_NARR_SHOTS[n % len(CAST_NARR_SHOTS)]
+        return (f"SHOT: {scene}. {shot.format(**fill)}. They do not speak; "
+                f"mouths stay closed.", fr.format(**fill), "CAMERA: " + BLUR)
     if len(who) >= 2 or is_reply(c, prev):
-        # ③ 대립 · 주고받음 — 오버 더 숄더 + 느린 패닝
+        # ③ 대립 · 주고받음 — 오버 더 숄더
         return (f"SHOT: {scene}. An over-the-shoulder shot past the listener, "
                 f"the near shoulder soft in the foreground framing the speaker, "
-                f"{ang}, the camera panning slowly and horizontally. {START}",
-                f"FRAMING: vertical 9:16 portrait, filling the whole frame edge to "
-                f"edge, frame-in-frame composition using the doorway, blinds or "
-                f"glass partition of the room, {EYE_LINE}.",
+                f"{ang}.",
+                f"FRAMING: vertical 9:16 portrait, filling the whole frame edge "
+                f"to edge, frame-in-frame composition using the doorway, blinds "
+                f"or glass partition of the room, {EYE_LINE}.",
                 "CAMERA: " + BLUR)
     if ctx.get("climax"):
-        # ④ 결정적 순간 — **카메라를 멈춘다.** 전부 움직이면 오히려 싸구려다.
-        return (f"SHOT: {scene}. A tight close-up on the face, {ang}, the camera "
-                f"locked off completely still on a tripod with no move at all, so "
-                f"that only the face moves. {START}",
-                f"FRAMING: vertical 9:16 portrait, filling the whole frame edge to "
-                f"edge, the face filling much of the frame, {EYE_LINE}.",
+        # ④ 결정적 순간 — 얼굴만 크게
+        return (f"SHOT: {scene}. A tight close-up on the face, {ang}.",
+                f"FRAMING: vertical 9:16 portrait, filling the whole frame edge "
+                f"to edge, the face filling much of the frame, {EYE_LINE}.",
                 "CAMERA: " + BLUR)
-    # ⑤ 심리 변화 · 결의 — 미디엄~클로즈 + 느린 줌인
-    return (f"SHOT: {scene}. A medium shot tightening towards a close-up, {ang}, "
-            f"the camera in a slow dramatic zoom in on the face, intense steady "
-            f"gaze. {START}",
-            f"FRAMING: vertical 9:16 portrait, filling the whole frame edge to "
-            f"edge, the person kept in the middle, {EYE_LINE}.",
+    shot, fr = TALK_SHOTS[n % len(TALK_SHOTS)]
+    return (f"SHOT: {scene}. {shot.format(**fill)}.",
+            (fr or FRAMING_MID).format(**fill) if fr else FRAMING_MID,
             "CAMERA: " + BLUR)
+
+
+# ── 움직임 — **영상에만** 붙는다 (그림은 움직일 수 없다) ──────────
+MOVE_PLACE = [
+    "the camera pulling back in a very slow zoom out that opens up the space",
+    "the camera pushing in almost imperceptibly slowly",
+    "the camera drifting sideways in a slow steady lateral move",
+    "the camera easing sideways so the reflection slides across the glass",
+    "the camera stepping through the doorway in a very slow push in",
+    "the camera holding still while only the light shifts",
+]
+MOVE_TALK = [
+    "the camera in a slow dramatic zoom in on the face",
+    "the camera panning slowly and horizontally",
+    "the camera holding still and only breathing slightly",
+]
+
+
+def move_line(c, ctx=None):
+    """이 컷을 영상으로 살 때 붙일 **움직임** 한 마디."""
+    ctx = ctx or {}
+    n = int(c.get("n") or 1) - 1      # 번호 없는 조각도 안 죽게
+    if ctx.get("climax"):
+        # ⭐ 결정적 순간엔 **카메라를 멈춘다.** 전부 움직이면 오히려 싸구려다.
+        return ("the camera locked off completely still on a tripod with no "
+                "move at all, so that only the face moves")
+    ring = MOVE_PLACE if not (c.get("who") or []) else MOVE_TALK
+    return ring[n % len(ring)]
+
+
+def shot_of(c, prev=None, ctx=None):
+    """영상용 (SHOT, FRAMING, CAMERA) — 구도에 움직임을 얹은 것."""
+    shot, framing, cam = compose_of(c, prev, ctx)
+    mv = move_line(c, ctx)
+    # ⚠️ **멈춘 샷에는 "이미 움직이고 있다" 를 붙이지 않는다.** 한 문장 안에서
+    #    "카메라를 멈춘다" 와 "움직임이 첫 프레임부터 진행 중이다" 가 부딪치면
+    #    모델은 둘 중 하나를 버린다 — 대개 멈추라는 쪽을 버린다.
+    #    (결정적 순간 락오프도 그동안 이 모순을 달고 있었다)
+    start = ("" if ("locked off" in mv or "holding still" in mv)
+             else " The movement is already under way in the very first frame.")
+    return (f"{shot.rstrip('.')}, {mv}.{start}", framing, cam)
 
 
 def veo_prompt(c, prev=None, ctx=None):
@@ -635,6 +769,8 @@ def main(argv=None):
     for c in story["cuts"]:
         c = dict(c)
         c["turns"] = [tuple(t) for t in c["turns"]]
+        shot_ctx = {"talks": not is_narr(c), "climax": c["n"] in climax,
+                    "flip": c["n"] >= last_a}
         cuts.append({
             "n": c["n"], "kind": kind_of(c), "sec": c["sec"],
             "narr": is_narr(c),
@@ -650,12 +786,10 @@ def main(argv=None):
             #    예전엔 따로 파일(S90.scrub.json)에 컷 번호로 적어 두었는데,
             #    편을 나누며 번호가 밀리자 엉뚱한 컷을 가리킬 뻔했다.
             "scrub": c.get("scrub"),
-            "still": still_prompt(c),
-            "veo": veo_prompt(c, prev, {
-                "talks": not is_narr(c),
-                "climax": c["n"] in climax,
-                "flip": c["n"] >= last_a,
-            }),
+            # ⚠️ 그림과 영상이 **같은 prev·ctx** 를 받아야 같은 구도가 나온다.
+            #    (그림만 맨몸으로 부르면 구도표가 늘 첫 갈래로 떨어진다)
+            "still": still_prompt(c, prev, shot_ctx),
+            "veo": veo_prompt(c, prev, shot_ctx),
             "flow": flow_prompt(c),
         })
         prev = c
