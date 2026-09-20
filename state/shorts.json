@@ -245,7 +245,13 @@
     ],
     "sec": 49.2,
     "made_at": "2026-09-20T01:54:15Z",
-    "talk_gaps": []
+    "talk_gaps": [],
+    "uploaded": {
+     "video_id": "k1Xx2BONhxk",
+     "privacy": "private",
+     "at": "2026-09-20T02:59:53Z",
+     "publish_at": "2026-09-20T23:00:00Z"
+    }
    },
    "2": {
     "no": 2,
@@ -260,7 +266,13 @@
     ],
     "sec": 45.5,
     "made_at": "2026-09-20T01:55:16Z",
-    "talk_gaps": []
+    "talk_gaps": [],
+    "uploaded": {
+     "video_id": "o3uH05BNqgE",
+     "privacy": "private",
+     "at": "2026-09-20T02:59:59Z",
+     "publish_at": "2026-09-21T23:00:00Z"
+    }
    },
    "3": {
     "no": 3,
@@ -275,7 +287,13 @@
     ],
     "sec": 46.6,
     "made_at": "2026-09-20T01:56:19Z",
-    "talk_gaps": []
+    "talk_gaps": [],
+    "uploaded": {
+     "video_id": "bv3dQCSgWtw",
+     "privacy": "private",
+     "at": "2026-09-20T03:00:05Z",
+     "publish_at": "2026-09-22T23:00:00Z"
+    }
    },
    "4": {
     "no": 4,
@@ -290,7 +308,13 @@
     ],
     "sec": 50.6,
     "made_at": "2026-09-20T01:57:27Z",
-    "talk_gaps": []
+    "talk_gaps": [],
+    "uploaded": {
+     "video_id": "OFmWOqeK-l4",
+     "privacy": "private",
+     "at": "2026-09-20T03:00:12Z",
+     "publish_at": "2026-09-23T23:00:00Z"
+    }
    }
   },
   "script_sig": "3f3cf487d785",
