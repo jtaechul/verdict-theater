@@ -285,18 +285,36 @@ VOICE_BY = {
     ("여", "30대"): "Erinome",   ("남", "30대"): "Iapetus",
     ("여", "40대"): "Kore",      ("남", "40대"): "Iapetus",
     ("여", "50대"): "Gacrux",    ("남", "50대"): "Algenib",
-    ("여", "60대"): "Gacrux",    ("남", "60대"): "Alnilam",
-    ("여", "70대"): "Gacrux",    ("남", "70대"): "Alnilam",
+    # ⚠️ 예전에는 60·70대 남자가 **Alnilam** 이었다 — 나레이션과 같은 소리다.
+    #    노인이 말할 때마다 나레이션이 말하는 것처럼 들린다. 갈라 놓는다.
+    ("여", "60대"): "Gacrux",    ("남", "60대"): "Schedar",
+    ("여", "70대"): "Sulafat",   ("남", "70대"): "Rasalgethi",
 }
 
 
 def voice_of(who, doc):
-    """그 사람의 목소리. 표에 없으면 대본이 적은 나이대·성별로 고른다."""
-    if who in VOICE:
-        return VOICE[who]
-    v = ((doc.get("people") or {}).get(who) or {})
-    got = VOICE_BY.get((str(v.get("sex") or "여"), str(v.get("age") or "40대")))
-    return got or VOICE["나레이션"]
+    """그 사람의 목소리 — **나이대·성별이 정한다.**
+
+    ⭐⭐⭐ 2026-09-20 손님: "나이 보고 목소리 고르게 고쳐."
+       예전에는 이름표(VOICE)를 **먼저** 봤다. 그래서 핵심 다섯(아내·남편·
+       내연녀·딸·변호사)은 대본이 나이를 뭐라고 적든 늘 같은 목소리였다 —
+       예순의 아내도, 서른의 아내도 50대 소리로 말했다.
+       → 이제 나이대·성별로 고르고, **이름표는 나이를 모를 때의 기본값**이다.
+       (나이 기본값은 story90.PEOPLE_BASE 한 곳에 있다 — 두 벌로 두지 않는다)
+
+    ⚠️ 나레이션 목소리는 **누구에게도 안 준다.** 겹치면 등장인물이 말하는지
+       나레이션이 말하는지 귀로 구별이 안 된다.
+    """
+    if who == "나레이션":
+        return VOICE["나레이션"]
+    v = (ST90.people_of(doc) or {}).get(who) or {}
+    got = VOICE_BY.get((str(v.get("sex") or "").strip(),
+                        str(v.get("age") or "").strip()))
+    if not got:
+        got = VOICE.get(who)                 # 나이를 모르면 이름표로
+    if not got or got == VOICE["나레이션"]:
+        got = VOICE_BY[(str(v.get("sex") or "여"), "40대")]
+    return got
 
 
 class Short90Error(RuntimeError):

@@ -264,17 +264,28 @@ async function gh(env, path, init = {}) {
 //       그냥 통째로 주고 있었다. 운영자가 만든 영상을 한 번도 못 본 까닭이다.
 //       같은 코드를 두 군데가 나눠 쓰게 해서 한쪽만 낡는 일을 없앤다.
 async function streamAsset(env, req, id, fname) {
+  const range = req.headers.get('Range');
+  // ⚠️⚠️⚠️ 2026-09-20 손님: "왜 이렇게 영상이 제대로 재생이 안 되냐."
+  //    여기 **두 군데**가 어긋나 있었다.
+  //    ① Range(몇 번째 바이트부터 달라)를 **리다이렉트된 뒤에만** 넘겼다.
+  //       깃허브가 리다이렉트 없이 본문을 바로 주는 경우에는 Range 가 아예
+  //       안 붙어 **통째로 200** 이 나갔다.
+  //    ② 그래 놓고 `Accept-Ranges: bytes` 는 **늘** 붙였다. 브라우저에게
+  //       "나 건너뛰기 되는 영상이야" 라고 해 놓고, 정작 건너뛰기를 물어보면
+  //       Content-Range 없는 200 을 준 것이다. 사파리·크롬은 이걸 깨진
+  //       영상으로 보고 **재생을 멈춘다.** 되감기도 당연히 안 된다.
+  //    → 처음부터 Range 를 넘기고, **저쪽이 실제로 해 준 만큼만** 알린다.
   const r0 = await fetch(`${GH}/repos/${REPO}/releases/assets/${id}`, {
     headers: {
       'Authorization': `Bearer ${env.GH_TOKEN}`,
       'Accept': 'application/octet-stream',
       'User-Agent': 'verdict-theater-admin',
       'X-GitHub-Api-Version': '2022-11-28',
+      ...(range ? { Range: range } : {}),
     },
     redirect: 'manual',
   });
   const loc = r0.headers.get('Location');
-  const range = req.headers.get('Range');
   // 리다이렉트 없이 본문을 바로 주는 경우도 있어 양쪽을 다 받는다.
   const up = loc
     ? await fetch(loc, range ? { headers: { Range: range } } : {})
@@ -283,7 +294,6 @@ async function streamAsset(env, req, id, fname) {
     return new Response('영상을 가져오지 못했습니다 (' + up.status + ')', { status: 502 });
   const h = new Headers();
   h.set('Content-Type', 'video/mp4');
-  h.set('Accept-Ranges', 'bytes');
   h.set('Cache-Control', 'private, no-store');
   // 받는 파일로 내려줄 때 — 브라우저가 재생 대신 저장 창을 띄운다
   if (fname) h.set('Content-Disposition', `attachment; filename="${fname}"`);
@@ -291,7 +301,13 @@ async function streamAsset(env, req, id, fname) {
     const v = up.headers.get(k);
     if (v) h.set(k, v);
   }
-  return new Response(up.body, { status: up.status, headers: h });
+  // ⚠️ **해 줄 수 있을 때만** 건너뛰기가 된다고 알린다. 저쪽이 206 으로
+  //    답했거나(부분), Range 를 안 물어본 평범한 요청이면 괜찮다.
+  //    Range 를 물었는데 200 이 왔다면 그건 건너뛰기를 못 해 준 것이다 —
+  //    그때 Accept-Ranges 를 붙이면 브라우저가 속아서 재생을 멈춘다.
+  const partial = up.status === 206 && !!up.headers.get('Content-Range');
+  if (partial || !range) h.set('Accept-Ranges', 'bytes');
+  return new Response(up.body, { status: partial ? 206 : 200, headers: h });
 }
 
 // ⚠️⚠️⚠️ 2026-08-22 — **쇼츠 만들기가 여기서 죽고 있었다.**
@@ -1694,10 +1710,25 @@ async function workPlay(no) {
       + '</div>';
     return;
   }
+  // ⚠️ 주소에 때(t)를 붙인다 — 다시 만든 뒤에도 옛 영상이 캐시로 뜨던 적이 있다.
+  const src = q + '&play=1&t=' + Date.now();
   box.innerHTML = '<video controls playsinline preload="metadata" '
     + 'style="width:100%;max-height:70vh;border-radius:12px;background:#000;'
-    + 'display:block;margin-top:10px" src="' + q + '&play=1"></video>'
-    + '<div class="uphint">' + mb(j.size) + '</div>';
+    + 'display:block;margin-top:10px" src="' + src + '"></video>'
+    + '<div class="btns" style="margin-top:8px">'
+    // ⭐⭐⭐ 2026-09-20 손님: "영상을 좀 저장을 할 수 있게 해 주든가."
+    //    서버는 진작부터 dl=1 로 내려받기를 해 줬는데 **90초 편 화면에만
+    //    단추가 없었다.** 폰에서는 영상을 꾹 눌러도 안 되는 경우가 많다.
+    + '<button onclick="workSave(' + no + ')">영상 저장</button>'
+    + '<button onclick="workPlay(' + no + ')">닫기</button></div>'
+    + '<div class="uphint">' + mb(j.size) + ' · 저장이 안 되면 새 창에서 '
+    + '다시 눌러 보십시오.</div>';
+}
+
+// ⭐ 내려받기는 **새 창**으로 연다 — 아이폰이 그때 저장 창을 띄운다.
+function workSave(no) {
+  window.open('/api/short?s90=1&sid=' + encodeURIComponent(WORK)
+              + '&part=' + no + '&play=1&dl=1', '_blank');
 }
 
 // ⚠️⚠️ 단추가 두 번 눌려 같은 영상이 두 번 올라갈 뻔한 적이 있다.

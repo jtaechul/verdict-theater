@@ -430,7 +430,10 @@ def cmd_shorts(args):
             print(f"  쇼츠 {no}번 영상이 없다: {v}")
             continue
         title = (s.get("youtube", {}).get("title") or doc["meta"]["title_candidates"][0])
-        title = f"{title[:80]} #Shorts"
+        # ⚠️ 2026-09-20 손님: "제목에 해시태그로 쇼츠를 넣는 경우는 없어."
+        #    유튜브는 세로 9:16 을 쇼츠로 스스로 알아본다 — 붙이지 않는다.
+        #    (해시태그는 ytmeta 가 그 사건에 맞는 것으로 제목에 달아 준다)
+        title = title[:80]
         desc = (s.get("youtube", {}).get("description_body", "") + "\n\n" + NOTICE).strip()
         vid = upload_video(token, v, title, desc,
                            s.get("youtube", {}).get("tags", []), vertical=True)
@@ -488,7 +491,8 @@ def meta_for(doc, sh, durs, what):
             y = x.get("youtube", {}) or {}
             t = (y.get("title") or doc["meta"]["title_candidates"][0])[:80]
             return {
-                "title": f"{t} #Shorts",
+                # ⚠️ 쇼츠 해시태그는 안 붙인다 (2026-09-20 손님)
+                "title": t,
                 "description": (y.get("description_body", "") + "\n\n" + NOTICE).strip(),
                 "tags": y.get("tags", [])[:15],
                 "pinned": "",

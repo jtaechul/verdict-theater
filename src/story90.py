@@ -593,19 +593,33 @@ def needs_subject(one):
     return not SUBJ.search(t + " ")
 
 
+# 기본 다섯의 **나이 기본값**. 대본이 안 적어 줬을 때만 쓴다.
+#    ⚠️⚠️ 2026-09-20 손님: "나이 보고 목소리 고르게 고쳐."
+#       예전에는 이 다섯을 **손으로 박아 두고 대본이 적은 나이를 버렸다**
+#       (아래 `nm in out: continue`). 그래서 예순의 아내도, 스물의 아내도
+#       늘 50대 목소리로 말했다. 이제 **대본이 적은 것이 이긴다.**
+PEOPLE_BASE = {"아내": {"age": "50대", "sex": "여"},
+               "남편": {"age": "50대", "sex": "남"},
+               "내연녀": {"age": "30대", "sex": "여"},
+               "딸": {"age": "20대", "sex": "여"},
+               "변호사": {"age": "40대", "sex": "남"}}
+
+
 def people_of(doc):
-    """그 사건에 나오는 사람들 — {이름: {age, sex}}. 기본 다섯도 넣어 준다."""
-    out = {"아내": {"age": "50대", "sex": "여"},
-           "남편": {"age": "50대", "sex": "남"},
-           "내연녀": {"age": "30대", "sex": "여"},
-           "딸": {"age": "20대", "sex": "여"},
-           "변호사": {"age": "40대", "sex": "남"}}
+    """그 사건에 나오는 사람들 — {이름: {age, sex}}. 기본 다섯도 넣어 준다.
+
+    ⚠️ **대본이 적어 준 나이·성별이 먼저다.** 기본값은 안 적어 줬을 때만.
+       목소리(short90.voice_of)가 이 값으로 갈린다 — 여기가 틀리면 예순 노인이
+       스무 살 목소리로 말한다.
+    """
+    out = {k: dict(v) for k, v in PEOPLE_BASE.items()}
     for name, v in (doc.get("people") or {}).items():
         nm = str(name).strip()
-        if not nm or nm in out:
+        if not nm:
             continue
-        out[nm] = {"age": str((v or {}).get("age") or "40대"),
-                   "sex": str((v or {}).get("sex") or "여")}
+        base = out.get(nm) or {}
+        out[nm] = {"age": str((v or {}).get("age") or base.get("age") or "40대"),
+                   "sex": str((v or {}).get("sex") or base.get("sex") or "여")}
     return out
 
 

@@ -84,6 +84,42 @@ def topic_tags(*texts):
     return out[:5]
 
 
+# ⭐⭐⭐ 2026-09-20 손님: "제목에 해시태그로 쇼츠를 넣는 경우는 없어. 당장
+#    지워. 그리고 적절한 해시태그를 넣도록 코드에 반영해."
+#    제목 끝에 다는 것은 **그 사건에 맞는 것 둘**까지만 — 많이 달면 제목이
+#    안 읽히고, 쇼츠는 피드에서 앞 40자쯤만 보인다.
+TITLE_TAGS = 2
+# 제목에는 안 다는 것 — 채널이 늘 붙이는 말이라 제목 자리에서는 뜻이 없다
+#    ('사연' 은 검색량 1위지만 제목 끝에 붙으면 무슨 사연인지 안 알려 준다)
+TITLE_TAG_SKIP = {"사연", "판결극장", "사연극장", "실화사건", "부부",
+                  "사이다사연", "반전사연"}
+
+
+def strip_shorts(title):
+    """제목에서 #shorts·#쇼츠 를 뺀다 (어느 자리에 있든)."""
+    t = re.sub(r"#\s*(shorts?|쇼츠)\b", " ", str(title), flags=re.I)
+    return re.sub(r"\s{2,}", " ", t).strip()
+
+
+def with_tags(title, tags):
+    """제목 끝에 **그 사건에 맞는** 해시태그를 둘까지 붙인다.
+
+    ⚠️ 제목에 이미 있는 낱말은 안 붙인다 — 같은 말이 두 번 보이면 지저분하다.
+    ⚠️ 유튜브 한도(TITLE_MAX)를 넘기면 안 붙인다.
+    """
+    out = str(title).rstrip()
+    low = out.lower()
+    for t in tags:
+        if sum(1 for x in out.split() if x.startswith("#")) >= TITLE_TAGS:
+            break
+        if not t or t in TITLE_TAG_SKIP or t.lower() in low:
+            continue
+        cand = f"{out} #{t}"
+        if len(cand) <= TITLE_MAX:
+            out, low = cand, cand.lower()
+    return out
+
+
 def clean(t):
     return re.sub(r"\s+", " ", str(t or "")).strip()
 
@@ -251,12 +287,18 @@ def part_meta(doc, part, last=False):
     #   공개됨), **되돌리는 값이 0원이고 글자 8자뿐**이다. 재는 값과 거는
     #   값이 이렇게 기울면 되돌리는 것이 맞다.
     #
-    #   ⚠️ 다시 빼고 싶어지면, 먼저 tools/tag_check.py 의 실측표를 보라.
-    #      "유튜브 공식 문서에 그렇게 적혀 있다" 는 이 채널의 숫자를 못 이긴다.
-    if "#shorts" not in title.lower():
-        title = f"{title} #shorts"
-    title = title[:TITLE_MAX]
-
+    #
+    #   ⚠️⚠️⚠️ 2026-09-20 — **손님이 두 번 말씀하셨다. 다시는 안 되돌린다.**
+    #     손님: "그 어떤 잘 나가는 쇼츠 영상에도 제목에다가 해시태그로 쇼츠를
+    #     넣는 경우는 없어. **당장 지워.** 그리고 적절한 해시태그를 넣도록
+    #     코드에 반영해."
+    #   위 실측은 **못 믿을 것이었다.** 없음 쪽 3편(S91)에는 다른 사고가 겹쳐
+    #   있었다 — 지웠다 다시 올렸고, 1편은 첫 두 시간을 옛 제목으로 공개됐다.
+    #   3편 대 9편이라 표본도 안 맞는다. 그런 숫자로 손님이 정하신 것을
+    #   뒤집었다. **그러면 안 된다.**
+    #   ⚠️ 유튜브는 세로 9:16 을 쇼츠로 **스스로** 알아본다. #shorts 는 하는 일
+    #      없이 제목의 값진 자리(피드에서 보이는 앞 40자)만 먹는다.
+    #      tools/tag_check.py 가 이제 **없는지**를 검사한다.
     tags = [clean(x).lstrip("#") for x in (part.get("tags")
                                           or doc.get("yt_tags") or []) if clean(x)]
     if not tags:
@@ -268,6 +310,8 @@ def part_meta(doc, part, last=False):
         if b not in tags:
             tags.append(b)
     tags = tags[:TAG_MAX]
+    # ⭐ #shorts 자리에 **그 사건에 맞는 해시태그**를 둘까지 넣는다
+    title = with_tags(strip_shorts(title), tags)[:TITLE_MAX]
 
     body = [clean(part["card"][0]) + ", " + clean(part["card"][1]), ""]
     body += narr_lines(sub, 2)

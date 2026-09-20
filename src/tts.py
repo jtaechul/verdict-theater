@@ -71,7 +71,10 @@ GEM_F = ["Kore",        # 단단하고 야무지다 — 몰아붙이는 아내
          "Gacrux",      # 연륜 — 어머니뻘
          "Aoede", "Autonoe", "Callirrhoe", "Despina", "Erinome",
          "Achernar", "Laomedeia", "Sulafat", "Vindemiatrix", "Pulcherrima"]
-GEM_M = ["Orus",        # 단단하다 — 버티는 남편
+GEM_M = ["Puck",        # 젊다 — 아들·청년 (⚠️ 2026-09-20: 목록에서 빠져 있었다.
+                        #   short90.VOICE_BY 는 10·20대 남자에 이미 쓰고 있어,
+                        #   "남자 칸에 남자 목소리인가" 검사가 헛으로 걸렸다)
+         "Orus",        # 단단하다 — 버티는 남편
          "Algenib",     # 거칠다 — 막 나가는 쪽
          "Fenrir",      # 격하다 — 소리치는 쪽
          "Charon", "Iapetus", "Umbriel", "Algieba", "Enceladus",

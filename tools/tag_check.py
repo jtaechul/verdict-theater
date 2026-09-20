@@ -74,24 +74,46 @@ def main():
 
     m = YM.meta90(fake_doc())["parts"][0]
 
-    print("① 제목에 #shorts 가 붙는가 (2026-09-09 되돌림)")
-    # ⚠️⚠️⚠️ 여기가 2026-09-06 에 "#shorts 가 **없다**" 였다. 내가 일반론
-    #    ("유튜브는 세로 9:16 으로 쇼츠를 스스로 알아본다")을 믿고 뺐다.
-    #    그런데 **이 채널 12편의 실측이 정반대**였다 (2026-09-09):
-    #        있음 9편 353~3,576회 · 없음 3편 46~220회 · 겹치는 구간 없음
-    #    뺀 뒤 올린 세 편이 46·72·220 으로 무너졌다.
-    #    ⚠️ 다시 빼고 싶어지면 아래 표를 먼저 보라. 공식 문서는 이 채널의
-    #       숫자를 못 이긴다.
-    ck("제목에 #shorts 가 있다", "#shorts" in m["title"].lower(), m["title"])
+    print("① 제목에 #shorts 가 **없는가** · 대신 맞는 해시태그가 붙는가")
+    # ⚠️⚠️⚠️ **손님이 두 번 말씀하셨다. 다시는 안 되돌린다.**
+    #   2026-09-06 손님: "자꾸 제목에다가 shorts 라고 넣었는데 이거 의미가 …"
+    #     → 뺐다.
+    #   2026-09-09 내가 **되살렸다.** 조회수 실측을 믿었다 —
+    #        있음 9편 353~3,576회 · 없음 3편 46~220회
+    #   2026-09-20 손님: "그 어떤 잘 나가는 쇼츠 영상에도 제목에다가
+    #     해시태그로 쇼츠를 넣는 경우는 없어. **당장 지워.**"
+    #
+    #   ⚠️ 그 실측은 **못 믿을 것이었다.** 없음 쪽 3편(S91)에는 다른 사고가
+    #      겹쳐 있었다 — 지웠다 다시 올렸고, 1편은 첫 두 시간을 옛 제목으로
+    #      공개됐다. 3편 대 9편이라 표본도 안 맞는다. 그런 숫자로 손님이
+    #      정하신 것을 뒤집으면 안 된다.
+    #   ⚠️ 유튜브는 세로 9:16 을 쇼츠로 **스스로** 알아본다. #shorts 는 하는
+    #      일 없이 제목의 값진 자리(피드에서 보이는 앞 40자)만 먹는다.
+    ck("제목에 #shorts 가 없다",
+       "shorts" not in m["title"].lower() and "쇼츠" not in m["title"],
+       m["title"])
     ck("제목이 100자 안이다", len(m["title"]) <= 100, f"{len(m['title'])}자")
-    for f, nm in ((ROOT / "src" / "ytmeta.py", "파이썬"),
+    # ⭐ 그 자리에 **그 사건에 맞는** 해시태그가 들어갔는가
+    tt = [x.lstrip("#") for x in m["title"].split() if x.startswith("#")]
+    ck(f"제목에 사건 해시태그가 붙는다 ({' '.join('#' + x for x in tt) or '없음'})",
+       1 <= len(tt) <= YM.TITLE_TAGS, m["title"])
+    ck("제목 해시태그가 그 편 태그칸에서 나온 것이다",
+       all(x in m["tags"] for x in tt), f"{tt} vs {m['tags'][:6]}")
+    ck("채널이 늘 붙이는 말은 제목에 안 단다 (무슨 사연인지 안 알려 준다)",
+       not (set(tt) & YM.TITLE_TAG_SKIP), str(set(tt) & YM.TITLE_TAG_SKIP))
+    # ⚠️ 붙이는 코드가 **어디에도** 살아 있으면 안 된다 (세 곳에 있었다)
+    for f, nm in ((ROOT / "src" / "ytmeta.py", "메타"),
+                  (ROOT / "src" / "upload.py", "올리기"),
                   (ROOT / "admin" / "worker.js", "관리자 화면")):
         t = f.read_text(encoding="utf-8")
         # 주석에 적힌 설명은 봐준다 — **붙이는 코드**만 없어야 한다
         code = "\n".join(l for l in t.splitlines()
                          if not l.strip().startswith(("#", "//")))
         ck(f"{nm}: 제목에 붙이는 코드가 없다",
-           "+= ' #shorts'" not in code and '+= " #shorts"' not in code)
+           not re.search(r"[\"'`]\s*#\s*shorts", code, re.I), nm)
+    ck("어디에 있든 떼어낸다 (strip_shorts)",
+       YM.strip_shorts("제목입니다 #Shorts") == "제목입니다"
+       and YM.strip_shorts("제목 #쇼츠 입니다") == "제목 입니다")
 
     print("\n② 검색량이 안 잡히던 태그를 뺐는가")
     got = set(m["tags"])

@@ -30,7 +30,7 @@ from claude import writer                                   # noqa: E402
 SERIES = ROOT / "data" / "series"
 
 HOOK_MAX = 22          # 화면 맨 위 한 줄 (넘으면 두 줄로 접혀 영상을 가린다)
-YT_MAX = 40            # 유튜브 제목 ((n/16) · #shorts 는 우리가 붙인다)
+YT_MAX = 40            # 유튜브 제목 ((n/16) 은 우리가 붙인다 · 쇼츠 태그는 안 붙인다)
 
 
 def strip_len(t):
