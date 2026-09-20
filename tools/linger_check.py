@@ -98,8 +98,13 @@ def main():
     ck(f"움직임이 여러 가지다 ({len({m[6] for m in moves})}가지)",
        len({m[6] for m in moves}) >= 3)
     tm = [S9.move_of(talk(n)) for n in ns]
-    ck("대사 컷은 옆으로 안 훑는다 (얼굴이 잘린다)",
-       all(abs(m[3] - m[2]) <= 0.05 and abs(m[5] - m[4]) <= 0.05 for m in tm))
+    # ⭐ 2026-09-20 — 대사 컷도 옆으로 움직이되, 한도는 **나레이션 표에서
+    #    계산한다**(short90_dryrun.py 와 같은 잣대 — 손으로 적으면 둘이
+    #    어긋난다). 그 이상이면 얼굴이 잘릴 만큼 크게 훑는 것이다.
+    cap_x = max(abs(S9.MOVES[i][3] - S9.MOVES[i][2]) for i in S9.MOVES_NARR) * 0.75
+    cap_y = max(abs(S9.MOVES[i][5] - S9.MOVES[i][4]) for i in S9.MOVES_NARR) * 0.75
+    ck("대사 컷은 폭을 줄여서만 움직인다 (얼굴이 잘릴 만큼 크게는 안 훑는다)",
+       all(abs(m[3] - m[2]) <= cap_x and abs(m[5] - m[4]) <= cap_y for m in tm))
     ck("줌이 흐려지지 않는 범위 안이다 (1.0~1.30)",
        all(1.0 < m[0] <= 1.30 and 1.0 < m[1] <= 1.30 for m in moves + tm))
 

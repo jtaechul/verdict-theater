@@ -363,11 +363,19 @@ def main():
     # 줌이 너무 크면 1.4배로 키워 둔 그림의 화소를 넘어 흐려진다
     bad_z = [m[6] for m in moves if not (1.0 < m[0] <= 1.30 and 1.0 < m[1] <= 1.30)]
     ck("줌이 흐려지지 않는 범위 안이다 (1.0~1.30)", not bad_z, f"{bad_z}")
-    # 대사 컷에서 옆으로 크게 훑으면 얼굴이 잘린다
+    # ⭐⭐⭐ 2026-09-20 손님 선택 — 대사 컷도 좌우·상하로 움직인다. 다만
+    #    **나레이션 폭의 절반 남짓**으로만 — 그 이상이면 "옆으로 훑어
+    #    얼굴이 잘린다" 는 원래 문제로 되돌아간다.
+    #    ⚠️ 숫자를 손으로 적지 않는다 — 나레이션 표(MOVES_NARR)에서
+    #       한도를 **계산**한다. 나레이션 폭이 나중에 바뀌면 이 한도도
+    #       같이 움직여야 하기 때문이다(손으로 적으면 둘이 어긋난다).
+    cap_x = max(abs(S9.MOVES[i][3] - S9.MOVES[i][2]) for i in S9.MOVES_NARR) * 0.75
+    cap_y = max(abs(S9.MOVES[i][5] - S9.MOVES[i][4]) for i in S9.MOVES_NARR) * 0.75
     pan_talk = [c["n"] for c, m in zip(cuts, moves)
-                if c["kind"] != "나레이션" and (abs(m[3] - m[2]) > 0.05
-                                             or abs(m[5] - m[4]) > 0.05)]
-    ck("대사 컷은 얼굴이 잘리게 훑지 않는다", not pan_talk, f"컷 {pan_talk}")
+                if c["kind"] != "나레이션" and (abs(m[3] - m[2]) > cap_x
+                                             or abs(m[5] - m[4]) > cap_y)]
+    ck(f"대사 컷이 옆으로 크게 훑어 얼굴이 잘리지 않는다 "
+       f"(나레이션 폭의 {cap_x:.0%}/{cap_y:.0%} 안)", not pan_talk, f"컷 {pan_talk}")
 
     # 진짜로 움직이는지 한 컷만 찍어서 본다 (정지 그림이면 화면이 안 바뀐다)
     from PIL import Image as _I, ImageDraw as _D
