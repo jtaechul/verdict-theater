@@ -23,6 +23,7 @@ import argparse
 import json
 import mimetypes
 import os
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -229,6 +230,24 @@ def upload_video(token, path, title, description, tags, vertical=False,
     """
     if publish_at:
         privacy = "private"
+    # ⭐⭐⭐⭐ 2026-09-20 손님(격노): "다음 화부터 한 번만 더 제목에 쇼츠
+    #    해시태그가 들어가면 죽여버릴 거야. 핵심 규칙에 반영하고 검증 체계까지
+    #    넣어라." — 이 지시는 **두 번째**다. 2026-09-06 에 이미 "제목에서
+    #    빼라" 셨는데, 2026-09-09 에 **내가** 조회수 숫자(있음 9편·없음 3편)를
+    #    믿고 되살렸다. 그 숫자는 표본도 안 맞고, "없음" 3편에는 다른 사고
+    #    (지웠다 다시 올림 · 두 시간 옛 제목 노출)가 겹쳐 있었다. 손님이
+    #    이미 정하신 것을 코드가 다시 뒤집으면 안 된다.
+    #
+    #    → CI 검사(tag_check.py · yt90_check.py)는 **push 할 때만** 본다.
+    #      실제로 유튜브에 올라가는 값은 **여기, 이 한 곳**을 반드시 지난다
+    #      (worker.js 는 유튜브 API를 직접 안 부른다 — 전부 이 함수를 거친다).
+    #      그래서 마지막 방어선을 **여기**에 둔다: 제목에 그 낱말이 있으면
+    #      실행 자체를 막는다. 어떤 코드 경로로 들어오든 못 빠져나간다.
+    if re.search(r"#\s*(shorts?|쇼츠)", title, re.I):
+        raise SystemExit(
+            f"❌ 제목에 '쇼츠' 해시태그가 있어 올리기를 막았습니다: {title!r}\n"
+            f"   2026-09-06·2026-09-20 손님이 두 번 금지하신 것입니다. "
+            f"제목을 고치고 다시 시도하십시오.")
     meta = {
         "snippet": {
             "title": title[:100],

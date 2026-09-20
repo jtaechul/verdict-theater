@@ -7,10 +7,15 @@
    있는 거야? 조회수에 부정적인 영향을 미치는 것만 당장 없애고, 긍정적인
    영향을 미칠 만한 해시태그를 넣도록 코드 수정해."**
 
-■ 제목의 #shorts — **의미 없다.**
+■ 제목의 #shorts — **의미 없다. 다시는 안 되돌린다 (최종·2026-09-20).**
    유튜브는 2022년부터 **세로 9:16 + 짧은 길이**로 쇼츠를 스스로 알아본다.
    제목에 적어도 하는 일이 없으면서 제목 100자 가운데 8자를 먹고, 쇼츠 화면
    에서 제목이 잘리는 자리를 잡아먹는다. → 뺐다.
+   ⚠️⚠️⚠️ 2026-09-09 에 **내가** 조회수 실측(있음 9편·없음 3편)을 믿고
+      되살렸는데, 그 표본에는 다른 사고가 섞여 있었다. 2026-09-20 손님이
+      다시 지우라 하셨다 — 이번엔 CI 검사뿐 아니라 **런타임에도**
+      (src/upload.py 의 upload_video 가 제목을 보고 그 자리에서 막는다)
+      막아 둔다. 두 겹이라 한쪽이 뚫려도 다른 쪽이 잡는다.
 
 ■ 해시태그 — **실측 검색량으로 갈아 끼웠다** (vidIQ · 한국 · 2026-09-06)
        사연        666,590      막장드라마   66,734
@@ -167,25 +172,60 @@ def main():
 
     # ⚠️ 손님이 고치는 파일(data/series/*.meta.json)에 기대지 않는다 —
     #    검사를 살아 있는 자료에 묶었다가 세 번 데었다. 여기 붙박이로 둔다.
-    # ⚠️⚠️ 2026-09-09 — 문지기의 규칙이 바뀌었다. #shorts 는 제목에 되살렸으므로
-    #    통과시켜야 하고, **엉뚱한 태그**만 막는다.
+    # ⚠️⚠️⚠️ 2026-09-20 — 2026-09-09 의 되돌림을 **다시 되돌린다**(마지막).
+    #    #shorts 는 이제 **무조건** 막힌다. 대신 제목에 정당하게 붙는
+    #    사건 해시태그(ytmeta.with_tags)는 그 편 태그칸에 있으면 통과한다.
     dirty = {"parts": [
         {"part": 1, "title": "옛 제목입니다 #법률사연", "description": "x",
          "tags": ["사연", "불륜"]},
-        {"part": 2, "title": "깨끗한 제목 #shorts", "description": "x",
-         "tags": ["사연", "법률사연", "쇼츠드라마"]}]}
+        {"part": 2, "title": "낡은 제목 #shorts", "description": "x",
+         "tags": ["사연", "법률사연", "쇼츠드라마"]},
+        {"part": 3, "title": "낡은 제목 #쇼츠", "description": "x",
+         "tags": ["사연", "불륜"]}]}
     clean = {"parts": [
-        {"part": 1, "title": "깨끗한 제목 #shorts", "description": "x",
+        {"part": 1, "title": "깨끗한 제목 #이혼사연", "description": "x",
          "tags": ["사연", "불륜", "이혼사연"]}]}
     why = FM.blocked(dirty)
-    ck("제목에 붙은 엉뚱한 해시태그를 잡는다",
+    ck("제목에 붙은 엉뚱한 해시태그를 잡는다 (그 편 태그칸에 없는 것)",
        any("엉뚱한 해시태그가 들어 있다" in w for w in why), f"{why}")
-    ck("제목의 #shorts 는 그냥 통과시킨다",
-       not any("#shorts" in w and "엉뚱한" in w for w in why), f"{why}")
+    ck("제목의 #shorts 를 금지된 것으로 잡는다",
+       any("금지된 '쇼츠'" in w and "#shorts" in w for w in why), f"{why}")
+    ck("제목의 #쇼츠 도 금지된 것으로 잡는다",
+       any("금지된 '쇼츠'" in w and "#쇼츠" in w for w in why), f"{why}")
+    ck("#shorts 를 '엉뚱한 해시태그' 로 이중 신고하지 않는다",
+       not any("#shorts" in w and "엉뚱한 해시태그" in w for w in why), f"{why}")
     ck("없앤 해시태그가 되살아난 것을 잡는다",
        sum("되살아났다" in w for w in why) == 2, f"{why}")
-    ck("깨끗한 글은 그냥 통과시킨다", not FM.blocked(clean), f"{FM.blocked(clean)}")
+    ck("제 태그칸에서 나온 해시태그를 단 깨끗한 글은 통과시킨다",
+       not FM.blocked(clean), f"{FM.blocked(clean)}")
     ck("죽은 태그 목록이 비어 있지 않다", len(FM.DEAD) >= 5, f"{FM.DEAD}")
+
+    print("\n⑦ 실제로 유튜브에 올리는 자리(src/upload.py)에 마지막 방벽이 있는가")
+    # ⭐⭐⭐⭐ 2026-09-20 손님(격노): "다음 화부터 한 번만 더 제목에 쇼츠
+    #    해시태그가 들어가면 죽여버릴 거야. 검증 체계까지 넣어라."
+    #    CI 검사는 push 할 때만 본다 — **실제로 올라가는 값**은 반드시
+    #    src/upload.py 의 upload_video() 를 지난다(worker.js 는 유튜브 API를
+    #    직접 안 부른다). 그래서 이 검사가 아니라 **런타임 자체**가 마지막
+    #    방벽이어야 한다. 여기서는 그 방벽이 살아 있는지만 확인한다.
+    sys.path.insert(0, str(ROOT / "src"))
+    import upload as UP                                       # noqa: E402
+
+    for bad_title in ("제목 #shorts", "제목 #Shorts", "제목 #쇼츠"):
+        try:
+            UP.upload_video("t", Path("/nope_xyz.mp4"), bad_title, "d", [])
+            ck(f"업로드 함수가 '{bad_title}' 를 막는다", False, "그냥 넘어갔다")
+        except SystemExit:
+            ck(f"업로드 함수가 '{bad_title}' 를 막는다", True)
+        except FileNotFoundError:
+            ck(f"업로드 함수가 '{bad_title}' 를 막는다", False,
+               "막지 않고 다음 단계(파일 열기)로 넘어갔다")
+    try:
+        UP.upload_video("t", Path("/nope_xyz.mp4"), "멀쩡한 제목 #유류분", "d", [])
+        ck("멀쩡한 제목은 안 막는다", False, "여기 오면 안 된다")
+    except FileNotFoundError:
+        ck("멀쩡한 제목은 안 막는다", True)
+    except SystemExit as e:
+        ck("멀쩡한 제목은 안 막는다", False, str(e)[:70])
 
     print("\n" + "─" * 60)
     if bad:

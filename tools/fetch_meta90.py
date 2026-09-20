@@ -37,18 +37,32 @@ def blocked(meta):
     ⭐⭐⭐ 2026-09-06 — 마지막 문지기다. 글이 어디서 왔든(화면·저장된 파일·
        옛 보관함) **여기를 지나야 올라간다.** 그날 옛 글이 세 편이나 올라간
        뒤에야 알았다. 올리기 전에 막는 자리가 한 곳도 없었기 때문이다.
+
+    ⭐⭐⭐⭐ 2026-09-20 손님(격노): "다음 화부터 한 번만 더 제목에 쇼츠
+       해시태그가 들어가면 죽여버릴 거야. 검증 체계까지 넣어라."
+       2026-09-09 에 여기서 **#shorts 를 봐주도록 바꿨던 것**을 되돌린다.
+       그 판단의 근거였던 실측(있음 9편·없음 3편)은 표본이 안 맞고 다른
+       사고가 섞여 있었다 — 손님이 이미 정하신 것을 코드가 다시 뒤집으면
+       안 된다. `#shorts`·`#쇼츠` 는 **이유를 불문하고 막는다.**
+
+       ⚠️ 이제 제목에 해시태그가 **정당하게** 붙는다(ytmeta.with_tags —
+          "…33억이 내연녀에게 넘어갔다 #유류분 #상속"). 그래서 "제목에 #
+          이 있으면 무조건 막는다" 로는 못 돌아간다 — 그러면 정상 기능을
+          막는다. 대신 **그 편 태그칸에 없는 해시태그**만 엉뚱한 것으로 본다.
     """
     why = []
     for x in (meta.get("parts") or [meta]):
         head = f"{x.get('part') or ''}편 ".strip() + " " if x.get("part") else ""
-        # ⚠️⚠️ 2026-09-09 — 여기가 "제목에 # 이 하나라도 있으면 막는다" 였다.
-        #    같은 날 실측으로 **#shorts 를 제목에 되살리자 우리 글이 우리
-        #    문지기에 막혔다.** 막아야 하는 것은 아무 태그나 붙는 것이지
-        #    #shorts 가 아니다 — 그것만 빼고 본다.
-        #      (제목의 #shorts: 있음 9편 353~3,576회 / 없음 3편 46~220회)
-        t = re.sub(r"#shorts\b", "", str(x.get("title") or ""), flags=re.I)
-        if "#" in t:
-            why.append(f"{head}제목에 엉뚱한 해시태그가 들어 있다 — {x.get('title')}")
+        title = str(x.get("title") or "")
+        if re.search(r"#\s*(shorts?|쇼츠)\b", title, re.I):
+            why.append(f"{head}제목에 금지된 '쇼츠' 해시태그가 있다 — {title}")
+        allowed = {str(t).lstrip("#") for t in (x.get("tags") or [])}
+        for m in re.finditer(r"#([^\s#]+)", title):
+            tag = m.group(1)
+            if re.match(r"(?i)shorts?$", tag) or "쇼츠" in tag:
+                continue                       # 위에서 이미 잡았다
+            if tag not in allowed:
+                why.append(f"{head}제목에 엉뚱한 해시태그가 들어 있다 — #{tag}")
         for t in (x.get("tags") or []):
             if str(t).strip().lower() in DEAD:
                 why.append(f"{head}없앤 해시태그가 되살아났다 — #{t}")
