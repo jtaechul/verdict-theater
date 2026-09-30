@@ -90,6 +90,19 @@ Cloudflare Workers 는 공개/비공개와 무관하고 무료다.
 ⚠️ Cloudflare 대시보드에서 직접 바꾸지 않는다. 다음 배포 때 GitHub 에 적힌
    값으로 **되돌아간다** — 비밀번호의 원본은 GitHub 한 곳이다.
 
+### 배포가 `Authentication error [code: 10000]` 로 멈출 때
+
+Cloudflare 열쇠(`CLOUDFLARE_API_TOKEN`)가 만료됐거나 덮어써진 것이다
+(2026-09-30 실제로 겪었다 — 9/20 배포는 됐는데 9/30 에 이것으로 멈췄다).
+기록에 "보관함을 만들지 못했습니다" 가 같이 뜨지만 보관함 문제가 아니다 —
+열쇠가 안 통하니 보관함 목록조차 못 읽은 것이다.
+
+1. [Cloudflare API 토큰](https://dash.cloudflare.com/profile/api-tokens) → 「···」 → 토큰 생성
+   → **Edit Cloudflare Workers** 템플릿 사용 → 계정 리소스에 내 계정 → 토큰 생성 → 복사
+   (기존 토큰은 값을 다시 볼 수 없다. 새로 만든다)
+2. 저장소 Secrets → `CLOUDFLARE_API_TOKEN` 연필 → 붙여넣기 → Update secret
+3. **6. 관리자 페이지 배포** 를 다시 돌린다
+
 ---
 
 ## 안전장치
