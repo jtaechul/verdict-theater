@@ -1,0 +1,134 @@
+name: 4-4. 새 방식 시험 — 인물 시트 + 옴니 입모양 (약 1,500원)
+
+# ⭐⭐⭐ 2026-09-30 손님이 정한 새 방식의 **0번 관문**이다.
+#    ① 등장인물(6명 이내)을 한 장에 그린다 → 칸마다 잘라 인물 참조로 쓴다
+#    ② 결정적 컷만 옴니 플래시로 입모양+대사 영상, 나머지는 그림+카메라 무빙
+#    한 편 전부를 사기 전에 **한 컷만** 사서 눈과 귀로 본다.
+#
+#    같은 날 손님이 앱(구글 플로우)에서 직접 해 보셨는데 영상이
+#    "유명인의 동영상 생성에 관한 Google 정책" 으로 막혔다 (앱은 사람 그림을
+#    첨부하면 막는다). 그래서 API 로 돈다 — src/omni.py.
+#
+#    결과는 관리자 페이지 → 그 사건 → [⑤ 새 방식 시험] 에서 봅니다.
+#
+# ⚠️ 값이 나간다. 단추로만 돈다 (tools/auto_spend_check.py 규칙).
+
+on:
+  workflow_dispatch:
+    inputs:
+      sid:
+        description: '어느 사건 (비우면 S93)'
+        required: false
+        default: 'S93'
+      cut:
+        description: '몇 번 컷 (비우면 알아서 결정적 컷 하나)'
+        required: false
+        default: ''
+      mode:
+        description: '다시 누르면 지난 인물 시트를 그대로 씁니다 (그만큼 0원)'
+        required: true
+        default: '진짜로 만들기'
+        type: choice
+        options:
+          - '진짜로 만들기'
+          - '인물 시트부터 새로 만들기'
+          - '연습 (사지 않고 확인만)'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: omni-test
+  cancel-in-progress: false
+
+jobs:
+  omni:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 준비물 (ffmpeg · 그림 자르기)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          python3 -m pip install --quiet pillow
+
+      - name: 지난 인물 시트 꺼내 오기 (다시 누르면 시트 값 0원)
+        if: ${{ inputs.mode == '진짜로 만들기' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          S: ${{ inputs.sid }}
+        run: |
+          SID="${S:-S93}"
+          python3 tools/release_file.py get "omnitest-${SID}" sheet.png \
+            "build/omni_test/${SID}/sheet.png" \
+            || echo "지난 시트가 없습니다 — 새로 만듭니다"
+
+      - name: 새 방식 시험 (시트 → 칸 자르기 → 컷 그림 → 옴니)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          S: ${{ inputs.sid }}
+          C: ${{ inputs.cut }}
+          M: ${{ inputs.mode }}
+        run: |
+          set -o pipefail
+          ARGS=""
+          [ -n "$C" ] && ARGS="$ARGS --cut $C"
+          [ "$M" = "인물 시트부터 새로 만들기" ] && ARGS="$ARGS --fresh"
+          [ "$M" = "연습 (사지 않고 확인만)" ] && ARGS="$ARGS --dry"
+          python3 tools/omni_test.py "${S:-S93}" $ARGS 2>&1 | tee omni.log
+
+      - name: 만든 것 보관하기 (관리자 페이지에서 봅니다)
+        if: ${{ always() && inputs.mode != '연습 (사지 않고 확인만)' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          S: ${{ inputs.sid }}
+        run: |
+          SID="${S:-S93}"
+          D="build/omni_test/${SID}"
+          mkdir -p "$D"
+          # ⚠️ 없으면 ls 가 2번으로 끝나 **다음 줄까지 못 간다** — find 로 센다
+          N=$(find "$D" -maxdepth 1 -type f 2>/dev/null | wc -l || true)
+          if [ "${N:-0}" -eq 0 ]; then
+            echo "보관할 것이 없습니다 (시작 전에 멈췄습니다)"
+            exit 0
+          fi
+          BAD=0
+          while IFS= read -r F; do
+            python3 tools/release_file.py put "omnitest-${SID}" \
+              "$(basename "$F")" "$F" || BAD=1
+          done < <(find "$D" -maxdepth 1 -type f | sort)
+          echo "보관함: omnitest-${SID} (${N}개)"
+          exit "$BAD"
+
+      - name: 쓴 돈 장부 남기기
+        if: always()
+        continue-on-error: true
+        run: |
+          git config user.name "verdict-theater-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add state/spend.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "장부에 새로 적힌 것이 없다"
+          else
+            git commit -m "장부: 쓴 돈 (옴니 시험) [skip ci]"
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+            git push origin "HEAD:${GITHUB_REF_NAME}" || echo "못 밀었다"
+          fi
+
+      - name: 결과 화면
+        if: always()
+        run: |
+          {
+            echo "## 새 방식 시험 — 인물 시트 + 옴니 입모양"
+            echo ""
+            echo "결과는 **관리자 페이지 → 그 사건 → ⑤ 새 방식 시험 → [결과 보기]** 에서 봅니다."
+            echo ""
+            echo '```'
+            cat omni.log 2>/dev/null || echo "(못 만들었습니다)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

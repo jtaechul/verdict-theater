@@ -1392,6 +1392,7 @@ function workDraw() {
      + '<h2 data-t="② 컷별 영상">② 컷별 영상</h2>'
      + '<div class="empty">컷 목록 불러오는 중…</div></div></div>';
   h += partsCard(w);
+  h += omniCard();
   document.getElementById('app').innerHTML = h;
   foldify();
 }
@@ -1729,6 +1730,146 @@ async function workPlay(no) {
 function workSave(no) {
   window.open('/api/short?s90=1&sid=' + encodeURIComponent(WORK)
               + '&part=' + no + '&play=1&dl=1', '_blank');
+}
+
+// ⭐⭐⭐ 2026-09-30 — **새 방식 시험 (인물 시트 + 옴니 입모양).**
+//    손님: "등장인물 6명 이내로 하고 한 이미지로 제작해서 해당 구획의 등장인물을
+//    각각 … 적용하도록" · "옴니 플래시로 해. 결정적 영상만 입모양+대사".
+//    같은 날 앱(구글 플로우)에서는 '유명인 정책' 으로 막혀 API 로 돈다.
+//    값은 워크플로 로그(tools/omni_test.py)가 그 컷 대사 길이로 정확히 셈한다.
+//    여기 적는 값은 S93 컷8(7초) 기준이고, 대사가 길면 늘어난다고 함께 적는다.
+function omniCard() {
+  return '<div class="card"><h2 data-t="⑤ 새 방식 시험">⑤ 새 방식 시험 '
+    + '<small style="font-weight:400;color:#9599ab">— 인물 시트 + 옴니 입모양</small></h2>'
+    + '<div class="uphint">등장인물 전부를 <b>한 장</b>에 그리고 칸마다 잘라 인물 '
+    + '참조로 씁니다. 그다음 결정적 컷 하나를 <b>옴니 플래시</b>가 한국어로 '
+    + '말하는 영상으로 만듭니다 (앱에서 막힌 것을 API 로 돌립니다).<br>'
+    + '값: 약 1,500원 (대사가 길면 최대 약 1,950원) · 다시 누르면 지난 시트를 '
+    + '그대로 써서 약 265원이 빠집니다. 3~5분 걸립니다.</div>'
+    + '<div style="margin-top:10px"><b>컷 번호</b> '
+    + '<span class="uphint">비우면 알아서 결정적 컷 하나</span>'
+    + '<input id="omni-cut" inputmode="numeric" placeholder="예: 8" '
+    + 'style="width:100%;font-size:14px;margin-top:4px"></div>'
+    + '<div class="btns" style="margin-top:12px">'
+    + '<button class="gold" id="omni-go" onclick="omniGo(0)">시험 만들기 (약 1,500원)</button>'
+    + '<button class="mini" id="omni-fresh" onclick="omniGo(1)">시트부터 새로</button>'
+    + '<button class="mini" onclick="omniShow()">결과 보기</button></div>'
+    + '<div id="omni-msg" class="uphint"></div><div id="omni-box"></div></div>';
+}
+
+async function omniGo(fresh) {
+  if (WBUSY['omni']) return;
+  const el = document.getElementById('omni-cut');
+  const cut = String((el && el.value) || '').trim();
+  // ⚠️ 이 코드는 통째로 템플릿 문자열 안이다 — \d 는 d 로 풀린다. [0-9] 로 적는다
+  if (cut && !/^[0-9]{1,3}$/.test(cut)) {
+    showErr('컷 번호가 이상합니다', '숫자만 적어 주십시오 (예: 8). 비우면 알아서 고릅니다.');
+    return;
+  }
+  const L = ['새 방식 시험을 시작할까요?', '',
+    (cut ? '컷' + cut : '알아서 고른 결정적 컷') + ' 하나를 옴니 영상으로 만듭니다.',
+    fresh ? '인물 시트부터 새로 그립니다 (약 265원 포함).'
+          : '지난 인물 시트가 있으면 그대로 씁니다.',
+    '값: 약 1,500원 (대사가 길면 최대 약 1,950원)',
+    '3~5분 뒤 [결과 보기] 를 누르십시오.'];
+  if (!confirm(L.join(String.fromCharCode(10)))) return;
+  WBUSY['omni'] = 1;
+  lock('omni-go', true); lock('omni-fresh', true);
+  const msg = document.getElementById('omni-msg');
+  try {
+    const r = await fetch('/api/omni-test', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sid: WORK, cut: cut, fresh: fresh ? 1 : 0 }) });
+    const j = await r.json();
+    if (!j.ok) showErr(j.error || '시작하지 못했습니다', j.detail || '');
+    else if (msg) msg.innerHTML = '<b>시작했습니다.</b> 3~5분 뒤 '
+      + '<b>[결과 보기]</b> 를 누르십시오.';
+  } catch (e) {
+    showErr('시작하지 못했습니다', String(e));
+  } finally {
+    WBUSY['omni'] = 0;
+    lock('omni-go', false); lock('omni-fresh', false);
+  }
+}
+
+// ⭐ 내려받기는 **새 창**으로 연다 — 아이폰이 그때 저장 창을 띄운다 (workSave 와 같다)
+function omniSave(id, cut) {
+  window.open('/api/video?id=' + id + '&dl=c' + String(cut).padStart(2, '0')
+              + '-omni.mp4', '_blank');
+}
+
+async function omniShow() {
+  const box = document.getElementById('omni-box');
+  if (!box) return;
+  box.innerHTML = '<div class="uphint" style="margin-top:10px">찾는 중…</div>';
+  let j = {};
+  try {
+    j = await (await fetch('/api/omni-test?sid=' + encodeURIComponent(WORK)
+                           + '&t=' + Date.now(), { cache: 'no-store' })).json();
+  } catch (e) { j = {}; }
+  if (!j.ok) {
+    box.innerHTML = '<div class="uphint" style="margin-top:10px;color:#e0a33c">'
+      + '결과를 못 불러왔습니다. 잠시 뒤 다시 눌러 주십시오.</div>';
+    return;
+  }
+  if (j.none || !(j.assets || []).length) {
+    box.innerHTML = '<div class="uphint" style="margin-top:10px">아직 시험 결과가 '
+      + '없습니다. [시험 만들기] 를 누르고 3~5분 기다려 주십시오.</div>';
+    return;
+  }
+  const A = {};
+  (j.assets || []).forEach(function (a) { A[a.name] = a; });
+  const r = j.result || {};
+  // 폰에서는 가벼운 사본(v-이름.jpg)을 먼저 쓴다 — 4K 시트 PNG 는 10MB 가 넘는다
+  const pick = function (name) {
+    return A['v-' + name.replace(/[.]png$/, '') + '.jpg'] || A[name] || null;
+  };
+  const pic = function (name, cap) {
+    const a = pick(name);
+    if (!a) return '';
+    return '<figure style="margin:10px 0 0"><img src="/api/thumb?id=' + a.id
+      + '" loading="lazy" style="width:100%;border-radius:10px;display:block">'
+      + '<figcaption class="uphint">' + esc(cap) + '</figcaption></figure>';
+  };
+  const cast = (r.cast || []).filter(function (c) { return pick(c.file); });
+  const tag = r.cut ? 'c' + String(r.cut).padStart(2, '0') : '';
+  const tries = (r.attempts || []).filter(function (a) { return a.task; });
+  let h = '';
+  if (r.ok === false || r.error)
+    h += '<div class="uphint" style="margin-top:10px;color:#e0a33c"><b>못 만들었습니다.</b> '
+       + esc(r.error || '') + '</div>';
+  if (r.cut)
+    h += '<div class="uphint" style="margin-top:10px">컷' + esc(r.cut) + ' · "'
+       + esc(r.text || '') + '" · ' + esc(r.video_sec || r.sec || '?') + '초 · 쓴 돈 약 '
+       + Number(r.krw || 0).toLocaleString() + '원'
+       + (tries.length > 1 ? " · 첫 시도가 안전 검사에 걸려 '참조만' 으로 다시 만들었습니다"
+                           : '') + '</div>';
+  h += pic('sheet.png', '인물 시트 — 왼쪽부터 '
+           + cast.map(function (c) { return c.name; }).join(' · '));
+  if (cast.length)
+    h += '<div style="display:flex;gap:6px;margin-top:10px;overflow-x:auto">'
+       + cast.map(function (c) {
+           return '<figure style="margin:0;flex:1 0 0;min-width:56px">'
+             + '<img src="/api/thumb?id=' + pick(c.file).id + '" loading="lazy" '
+             + 'style="width:100%;border-radius:8px;display:block">'
+             + '<figcaption class="uphint" style="text-align:center">' + esc(c.name)
+             + '</figcaption></figure>';
+         }).join('') + '</div>';
+  if (tag) {
+    h += pic(tag + '-still.png', '컷' + r.cut + ' 그림 — 영상의 첫 장면');
+    const v = A[tag + '-omni.mp4'];
+    if (v)
+      h += '<video controls playsinline preload="metadata" style="width:100%;'
+         + 'max-height:70vh;border-radius:12px;background:#000;display:block;'
+         + 'margin-top:10px" src="/api/video?id=' + v.id + '"></video>'
+         + '<div class="btns" style="margin-top:8px"><button onclick="omniSave('
+         + v.id + ',' + Number(r.cut) + ')">영상 저장</button></div>';
+    h += pic(tag + '-frames.jpg', '영상 속 네 장면 (영상이 안 틀어질 때 보십시오)');
+  }
+  h += '<div class="uphint" style="margin-top:10px"><b>보실 것</b> ① 다섯 얼굴이 확실히 '
+     + '다른가 (특히 내연녀와 딸) ② 한국어 발음 ③ 입 모양이 말과 맞는가 '
+     + '④ 얼굴이 시트 속 그 사람과 같은가 · 화면에 글자가 박히지 않았는가</div>';
+  box.innerHTML = h;
 }
 
 // ⚠️⚠️ 단추가 두 번 눌려 같은 영상이 두 번 올라갈 뻔한 적이 있다.
@@ -4148,7 +4289,10 @@ export default {
       if (url.pathname === '/api/video') {
         const id = url.searchParams.get('id') || '';
         if (!/^\d+$/.test(id)) return new Response('bad id', { status: 400 });
-        return streamAsset(env, req, id);
+        // dl=파일이름 이 붙으면 저장 창을 띄운다 (새 방식 시험의 [영상 저장])
+        const dl = url.searchParams.get('dl') || '';
+        return streamAsset(env, req, id,
+                           /^[A-Za-z0-9._-]{1,60}$/.test(dl) ? dl : undefined);
       }
 
       if (url.pathname === '/api/script') {
@@ -4467,6 +4611,67 @@ export default {
       // ⭐⭐⭐ 2026-09-01 — **새 사건의 쇼츠 대본을 짓는다.**
       //    그전까지 90초 대본은 손으로 쓴 파이썬 파일이라 사건 2번째를
       //    손님 혼자서는 시작할 수가 없었다. 이제 단추 한 번이면 된다.
+      // ⭐⭐⭐ 2026-09-30 — **새 방식 시험 (인물 시트 + 옴니 입모양).**
+      //    손님: "영상을 플로우가 아닌 옴니 플래쉬로 자동화 하고 싶어."
+      //    같은 날 앱(구글 플로우)에서 직접 해 보셨는데 '유명인 정책' 으로 막혔다
+      //    — 앱은 사람 그림을 첨부하면 막는다. 그래서 API 로 도는 시험을
+      //    여기서 누르고(POST), 여기서 본다(GET). 결과는 릴리스 omnitest-<사건>.
+      if (url.pathname === '/api/omni-test' && req.method === 'POST') {
+        let body = {};
+        try { body = await req.json(); } catch (e) { body = {}; }
+        const sid = String((body && body.sid) || '').toUpperCase();
+        const cut = String((body && body.cut) || '').trim();
+        if (!/^S\d{1,4}$/.test(sid))
+          return Response.json({ ok: false, error: '사건 번호가 이상합니다' },
+                               { status: 400 });
+        if (cut && !/^\d{1,3}$/.test(cut))
+          return Response.json({ ok: false, error: '컷 번호가 이상합니다',
+            detail: '숫자만 적어 주십시오 (예: 8). 비우면 알아서 고릅니다.' },
+                               { status: 400 });
+        // ⚠️ 이 글자는 워크플로(omni-test.yml)의 선택지와 **한 글자도 달라선 안 된다**
+        //    (tools/omni_check.py 가 맞춰 본다)
+        const mode = body && body.fresh ? '인물 시트부터 새로 만들기' : '진짜로 만들기';
+        try {
+          await gh(env, `/repos/${REPO}/actions/workflows/omni-test.yml/dispatches`, {
+            method: 'POST', body: JSON.stringify({ ref: BRANCH,
+              inputs: { sid: sid, cut: cut, mode: mode } }),
+          });
+          return Response.json({ ok: true, sid: sid, cut: cut });
+        } catch (e) {
+          const m = String(e && e.message ? e.message : e);
+          return Response.json({ ok: false, error: '시작하지 못했습니다',
+            detail: m.slice(0, 220) }, { status: 502 });
+        }
+      }
+
+      if (url.pathname === '/api/omni-test') {
+        const sid = String(url.searchParams.get('sid') || '').toUpperCase();
+        if (!/^S\d{1,4}$/.test(sid))
+          return Response.json({ ok: false, error: '사건 번호가 이상합니다' },
+                               { status: 400 });
+        let rel = null;
+        try { rel = await gh(env, `/repos/${REPO}/releases/tags/omnitest-${sid}`); }
+        catch (e) { rel = null; }
+        if (!rel) return Response.json({ ok: true, none: true });
+        const list = rel.assets || [];
+        const assets = list.map((a) => ({ name: a.name, id: a.id, size: a.size,
+                                          at: a.updated_at || a.created_at }));
+        let result = null;
+        const rj = list.find((a) => a.name === 'result.json');
+        if (rj) {
+          try {
+            const r0 = await fetch(`${GH}/repos/${REPO}/releases/assets/${rj.id}`, {
+              headers: { 'Authorization': `Bearer ${env.GH_TOKEN}`,
+                         'Accept': 'application/octet-stream',
+                         'User-Agent': 'verdict-theater-admin' } });
+            if (r0.ok) result = await r0.json();
+          } catch (e) { result = null; }
+        }
+        // 프롬프트는 길다 — 화면에는 안 쓰므로 빼고 보낸다
+        if (result && result.prompts) delete result.prompts;
+        return Response.json({ ok: true, assets: assets, result: result });
+      }
+
       if (url.pathname === '/api/make-story' && req.method === 'POST') {
         let body = {};
         try { body = await req.json(); } catch (e) { body = {}; }

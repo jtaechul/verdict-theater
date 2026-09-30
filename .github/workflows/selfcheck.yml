@@ -404,6 +404,8 @@ jobs:
           node tools/blob_test.mjs
           # ⭐ 2026-08-22 — [만든 영상] 화면이 실제로 그려지는가
           node tools/made_screen_test.mjs
+          # ⭐⭐⭐ 2026-09-30 — [⑤ 새 방식 시험] 칸이 그려지는가 (그림·영상·저장·실패 안내)
+          node tools/omni_screen_test.mjs
           # ⭐⭐⭐ 2026-09-10 — 대사 영상의 **소리와 자막이 맞는가.**
           #    말이 늦게 시작하는 소리를 진짜로 만들어 재 본다 (0원).
           python3 tools/talksub_test.py
@@ -477,6 +479,10 @@ jobs:
           #    목소리였고, people_of 는 그 다섯의 나이를 손으로 박아 두고
           #    대본이 적은 나이를 버렸다(nm in out → continue).
           python3 tools/voiceage_check.py
+          # ⭐⭐⭐ 2026-09-30 — **새 방식 시험 (인물 시트 + 옴니 입모양).**
+          #    손님이 앱(플로우)에서 하다 '유명인 정책' 으로 막혀 API 로 옮겼다.
+          #    옴니 단가 · 프롬프트 낱말 · 시트 순서 · 칸 자르기 · 단추 글자를 본다.
+          python3 tools/omni_check.py
           # ⭐⭐⭐ 2026-09-12 — **대사 컷에서 목소리가 나오는가.**
           #    손님: "왜 대사 치는 부분인데 음성 목소리가 안 나오는데."
           #    has_audio 는 소리 트랙이 있는지만 봤다. Veo 가 방 안 소리만
