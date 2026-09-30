@@ -2164,5 +2164,23 @@
     "kind": "영상",
     "krw": 706,
     "note": "veo-3.1-lite-generate-preview 6초 c34.mp4"
+  },
+  {
+    "date": "2026-09-30",
+    "kind": "image",
+    "krw": 265,
+    "note": "gemini-3.1-flash-image 4K 16:9 sheet.png"
+  },
+  {
+    "date": "2026-09-30",
+    "kind": "image",
+    "krw": 132,
+    "note": "gemini-3.1-flash-image 2K 9:16 c08-still.png"
+  },
+  {
+    "date": "2026-09-30",
+    "kind": "영상",
+    "krw": 1080,
+    "note": "gemini-omni-1.1-flash 7초 c08-omni.mp4 (어림)"
   }
 ]
