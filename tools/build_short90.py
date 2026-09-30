@@ -118,6 +118,15 @@ def load_story(path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+# ⭐⭐⭐ 2026-09-30 — **2분 드라마** (story90 format="drama")
+#    인물 참조가 **인물 시트에서 자른 칸**이다 — 한 칸에 한 사람이 가까이·전신
+#    두 번 나온다. 지문에 그렇다고 적지 않으면 모델이 두 사람을 그린다
+#    (tools/omni_test.py 에서 먼저 배웠다). main() 이 대본마다 켜고 끈다.
+SHEET_REFS = False
+TWICE = (" Each reference picture shows that person twice — a close view and a "
+         "full-length view — and each is one single person.")
+
+
 def people_of(names, still=False):
     """컷에 나오는 사람 — **이름만** 적고 생김새·옷은 안 적는다.
 
@@ -137,7 +146,8 @@ def people_of(names, still=False):
     tail = ("the same person in every shot of this story" if still
             else "unchanged from the first frame to the last")
     return (f"PEOPLE: the reference images show, in order, {lst}. Keep each person "
-            f"exactly as they appear in their own reference image, {tail}.")
+            f"exactly as they appear in their own reference image, {tail}."
+            + (TWICE if SHEET_REFS else ""))
 
 
 def who_line(names):
@@ -634,6 +644,116 @@ def veo_prompt(c, prev=None, ctx=None):
     return "\n".join(body)
 
 
+# ── ⭐⭐⭐ 2분 드라마 — 인물과 대사 영상 지문 (2026-09-30) ────────────
+def cast_characters(story):
+    """대본이 정한 인물(cast) → characters (인물 시트·목소리가 읽는 꼴).
+
+    ⚠️ 옛 여러 편은 characters 를 S001 한 곳에서 가져온다(기본 다섯).
+       2분 드라마는 사건마다 인물이 다르다 — 대본이 정한 것을 그대로 쓴다.
+       (S92 는 사건 인물이 장남·차남인데 characters 는 기본 다섯이었다)"""
+    out = []
+    for p in story.get("cast") or []:
+        sex = "man" if str(p.get("sex") or "").strip() == "남" else "woman"
+        age = p.get("age")
+        face, build, wear, voice = (str(p.get(k) or "").strip().rstrip(".")
+                                    for k in ("face", "build", "wear", "voice"))
+        out.append({
+            "name": p["name"], "role_en": p.get("role_en") or p["name"],
+            "sex": p.get("sex"), "age": age,
+            "flow_prompt": f"Korean {sex}, {age} years old, {face}.",
+            "flow_sheet": "\n".join([f"FACE AND HAIR: {face}.",
+                                     f"BUILD: {build}.", f"WEARING: {wear}."]),
+            "face_tag": f"{age}, {face}"[:90],
+            "voice": voice, "body": build, "outfit": wear,
+        })
+    return out
+
+
+OMNI_HEAD = ("A short fictional drama scene. Every character is invented for this "
+             "story and resembles nobody.")
+OMNI_STYLE = ("STYLE: naturalistic cinematic drama, soft film grain, muted "
+              "desaturated palette, soft practical lighting, shallow depth of field.")
+def omni_timeline(role, text, sec, listener=""):
+    """[0.0-0.6s] 처럼 초를 박는다 (옴니 문서가 권하는 적기).
+    ⚠️ 빠르기·숨·문장 나누기는 **talkplan 한 곳**의 값이다 — 산 길이(omni_sec)와
+       초 표가 다른 잣대를 쓰면 표가 산 길이를 넘어 말이 잘린다."""
+    ss = talkplan.omni_sentences(text)
+    rows = [f"[0.0-{talkplan.OMNI_LEAD:.1f}s] silent, {role} holds the moment"
+            + (f" while {listener} listens with lips closed" if listener else "")
+            + "."]
+    t = talkplan.OMNI_LEAD
+    for i, one in enumerate(ss):
+        k = len(re.sub(r"[\s…·.,!?\"'~]", "", one)) / talkplan.OMNI_CHARS_PER_SEC
+        rows.append(f"[{t:.1f}-{t + k:.1f}s] {role} says in Korean: \"{one}\"")
+        t += k
+        if i + 1 < len(ss):
+            rows.append(f"[{t:.1f}-{t + talkplan.OMNI_PAUSE:.1f}s] one short breath.")
+            t += talkplan.OMNI_PAUSE
+    rows.append(f"[{t:.1f}-{float(sec):.1f}s] silent, lips closed, {role} holds the "
+                "look until the end.")
+    return rows
+
+
+def omni_prompt(c, prev, ctx, sec, chars, first=True):
+    """대사 컷 하나를 옴니 플래시가 **입모양+대사**로 말하는 영상 지문.
+
+    그림 역할은 맨 앞에 적는다 (옴니 문서):
+      first=True  — Image1 = 그 컷 그림(첫 장면) · Image2… = 화면 인물의 시트 칸
+      first=False — 안전 검사에 걸렸을 때 한 번 더: 칸만 참조로 (첫 장면 없음)
+    ⚠️ 옷·생김새를 적지 않는다 — 참조 그림이 잡는다 (series.wear_bait).
+    ⚠️ 목소리는 인물 한 줄(cast.voice)로 **고정**이다 — 손님: "등장인물별 성우
+       코드, 속도, 톤 사전 설정해." 옴니는 소리 참조를 못 받으므로(공식 문서)
+       같은 설명을 매 컷 똑같이 넣는 것이 고정하는 길이다."""
+    who = list(c.get("who") or [])
+    w, text = c["turns"][0]
+    by = {x.get("name"): x for x in chars}
+
+    def en(nm):
+        return str((by.get(nm) or {}).get("role_en") or EN.get(nm, nm))
+
+    refs = [f"<IMAGE_REF_{i}>" for i in range(len(who))]
+    if first:
+        head = ("[# Sources <FIRST_FRAME>@Image1] [# References "
+                + " ".join(f"{r}@Image{i + 2}" for i, r in enumerate(refs)) + "]")
+    else:
+        head = ("[# References "
+                + " ".join(f"{r}@Image{i + 1}" for i, r in enumerate(refs)) + "]")
+    role = en(w)
+    others = [en(x) for x in who if x != w]
+    cast = " and ".join(f"{en(x)} {r}" for x, r in zip(who, refs))
+    one = len(who) == 1
+    shot, framing, cam = shot_of(c, prev, ctx)
+    for nm in sorted({x for x in who + [w]}, key=len, reverse=True):
+        shot = shot.replace(nm, en(nm))
+    say = "; ".join(str(x) for x in (c.get("say") or []) if str(x).strip())
+    ch = by.get(w) or {}
+    rows = [
+        head,
+        f"{OMNI_HEAD} Vertical 9:16, exactly {sec} seconds, one single continuous "
+        "shot from the first frame to the last.",
+        f"CAST: {cast} {'is the only person' if one else 'are the only people'} in "
+        "this scene, each looking exactly like their own reference the whole time. "
+        "Each reference shows that person twice — a close view and a full-length "
+        "view — one single person.",
+        shot, framing,
+        "TIMELINE:",
+        *omni_timeline(role, text, sec, " and ".join(others)),
+        f"DIALOGUE: [LANGUAGE: KOREAN] only {role} speaks, in natural fluent everyday "
+        "Korean with standard Seoul intonation, at a brisk natural conversational "
+        f"pace, lips moving in sync with every syllable. {role} says these exact "
+        f"words once and nothing more: \"{text}\"",
+        f"VOICE: {role} — {ch.get('voice') or 'a natural native Korean voice'}."
+        + (f" Delivery (Korean note): {say}." if say else ""),
+        f"SOUND: {role}'s voice with quiet room tone underneath, and nothing else.",
+        cam, COLOR, OMNI_STYLE, NO_TEXT,
+        ("Use Image1 as the starting frame. Use the other images as references for "
+         "the people." if first else
+         "Use the given images only as references for how the people look; the "
+         "video opens on a fresh shot of the scene."),
+    ]
+    return "\n".join(r for r in rows if r)
+
+
 # ⭐⭐⭐ 2026-08-27 — **구글 플로우(제미나이 앱)로 손수 만들 때 쓰는 판.**
 #    손님이 앱에서 컷 4를 넣었더니 이렇게 막혔다 —
 #      "이 프롬프트는 유명인의 동영상 생성에 관한 Google 정책을 위반할 가능성이…"
@@ -740,6 +860,11 @@ def main(argv=None):
         raise SystemExit(f"❌ 사건 번호가 이상합니다: {sid!r} (S90 처럼 적습니다)")
     story_p, out_p, meta_p = paths(sid)
     story = load_story(story_p)
+    # ⭐ 2026-09-30 — 2분 드라마면 인물 참조가 시트 칸이다 (위 SHEET_REFS)
+    global SHEET_REFS
+    drama = str(story.get("format") or "") == talkplan.DRAMA
+    SHEET_REFS = drama
+    chars = cast_characters(story) if drama else None
 
     base = json.loads(BASE.read_text(encoding="utf-8"))
     have = {c.get("name") for c in (base.get("characters") or [])}
@@ -792,6 +917,13 @@ def main(argv=None):
             "veo": veo_prompt(c, prev, shot_ctx),
             "flow": flow_prompt(c),
         })
+        # ⭐ 2분 드라마 — 대사 컷(한 사람 한 줄)은 옴니 영상 지문도 함께 짓는다
+        if drama and not is_narr(c) and len(c["turns"]) == 1:
+            sec_o = talkplan.omni_sec(c["turns"][0][1])
+            cuts[-1]["omni_sec"] = sec_o
+            cuts[-1]["omni"] = omni_prompt(c, prev, shot_ctx, sec_o, chars)
+            cuts[-1]["omni_ref"] = omni_prompt(c, prev, shot_ctx, sec_o, chars,
+                                               first=False)
         prev = c
     doc = {"sid": sid, "case_id": story.get("case_id", ""),
            "title": story["title"], "hook": story.get("hook", ""),
@@ -802,13 +934,32 @@ def main(argv=None):
            #    안 넘기면 그 사람이 나레이션 목소리로 말한다.
            "people": dict(story.get("people") or {}),
            "cuts": cuts,
-           "characters": base.get("characters") or []}
+           "characters": (chars if drama else base.get("characters") or [])}
+    if drama:
+        doc["format"] = talkplan.DRAMA
+        doc["cast"] = list(story.get("cast") or [])
     # ⭐⭐⭐ 2026-09-10 — 화면이 값을 **스스로 세지 않게** 여기서 찍어 둔다.
     #    화면은 `706원 × 편 수` 로 어림하고 있었다("편마다 한 컷" 시절 셈).
     #    대사 컷 전부를 영상으로 바꾸자 화면이 2,824원이라 적고 실제로는
     #    12,936원이 나가게 됐다 — 값을 보고 승인하는 사람에게 거짓말이다.
     #    세는 자리를 하나(src/talkplan.py)로 두고, 화면은 이 값을 읽는다.
-    doc["talk"] = talkplan.plan(doc)
+    if drama:
+        # ⭐ 대사 영상은 옴니 값으로 센다 (cost.py 단가표 한 곳) — 화면이 이 값을 읽는다
+        import cost                                          # noqa: E402
+        import omni                                          # noqa: E402
+        import still as STL                                  # noqa: E402
+        rate = cost.video_krw(omni.MODEL, 1) / cost.USD_KRW
+        doc["talk"] = talkplan.plan(doc, krw_per_sec=rate, usd_krw=cost.USD_KRW)
+        uniq = len({c["still"] for c in cuts})
+        img = cost.image_krw(STL.MODEL, STL.SIZE) * uniq
+        sheet = cost.image_krw(STL.MODEL, "4K")
+        doc["talk"]["drama"] = {
+            "talk_n": doc["talk"]["n"], "talk_krw": doc["talk"]["krw"],
+            "stills": uniq, "still_krw": round(img), "sheet_krw": round(sheet),
+            "krw": round(doc["talk"]["krw"] + img + sheet),
+        }
+    else:
+        doc["talk"] = talkplan.plan(doc)
     # ⭐ 대본 글이 바뀌면 '만든 길이' 기록을 지운다 — 낡은 숫자를 보고
     #    판단하면 60초를 넘긴 편을 그대로 올리게 된다.
     import hashlib

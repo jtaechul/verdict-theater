@@ -35,6 +35,43 @@ KEY_ONLY = os.environ.get("VT_KEY_VIDEO", "").strip() in ("1", "예", "on")
 TALK_HOT = ("관계", "잤", "몸", "성관계", "강간", "죽이", "때렸")
 
 
+# ⭐⭐⭐ 2026-09-30 — **2분 드라마** (손님 확정)
+#    "2분 이내 쇼츠 드라마로 가자." · "결정적 영상만 입모양+대사, 나머지는
+#    인물그림+카메라무빙." · 대사 목소리는 "옴니 목소리 그대로".
+#    대본에 format="drama" 가 찍힌 사건만 이 규칙을 탄다. 옛 60초 여러 편은
+#    아래 값들을 **하나도** 안 쓴다 (60초 벽은 그쪽에 그대로 남는다).
+#    · 한 편이 전부다 — 편 벽은 2분(DRAMA_MAX_SEC)
+#    · 대사 컷(한 사람 한 줄)은 **전부** 옴니 영상이다. 나머지는 나레이션 + 그림
+#    · 옴니는 길이를 글로 받는다 — 4~10초 아무 값이나 (해양생물 쪽 실측 4~8초)
+DRAMA = "drama"
+DRAMA_MAX_SEC = 119.5
+OMNI_CHARS_PER_SEC = 5.6       # 아래 CHARS_PER_SEC 와 같은 빠르기 ("말이 너무들 느려")
+OMNI_LEAD, OMNI_TAIL = 0.6, 0.6                   # 말 앞 숨 · 말 뒤 여운
+OMNI_PAUSE = 0.4                                  # 두 문장 사이 숨
+OMNI_MIN_SEC, OMNI_MAX_SEC = 4, 10
+
+
+def is_drama(doc):
+    return str((doc or {}).get("format") or "") == DRAMA
+
+
+def omni_sentences(text):
+    """대사를 문장으로 — 옴니 지문의 초 표(build_short90.omni_timeline)와 같이 쓴다."""
+    return [x for x in re.split(r"(?<=[.?!…])\s+", str(text or "").strip()) if x]
+
+
+def omni_sec(text):
+    """옴니에게 살 길이(초) — 말이 다 들어가는 가장 짧은 정수 초.
+    ⚠️ 조립 때 말 뒤를 잘라(talk_trim) 쓰므로, 길게 사면 그만큼 버린다.
+    ⚠️ 문장 사이 숨(OMNI_PAUSE)까지 센다 — 지문의 초 표가 이 길이를 넘으면
+       옴니가 말을 자르거나 서두른다."""
+    import math
+    breaks = max(0, len(omni_sentences(text)) - 1)
+    need = (len(re.sub(r"[\s…·.,!?\"'~]", "", str(text))) / OMNI_CHARS_PER_SEC
+            + OMNI_LEAD + OMNI_TAIL + OMNI_PAUSE * breaks)
+    return int(min(OMNI_MAX_SEC, max(OMNI_MIN_SEC, math.ceil(need))))
+
+
 def turns_of(c):
     return [t for t in (c.get("turns") or []) if t and len(t) >= 2]
 
@@ -61,6 +98,16 @@ def talk_sec(text):
     return next((x for x in TALK_OK_SEC if x >= want), TALK_OK_SEC[-1])
 
 
+def talk_sec_of(doc, text):
+    """그 사건 규격대로 산 길이 — 2분 드라마는 옴니(4~10초), 옛 편은 Veo(4·6·8초)."""
+    return omni_sec(text) if is_drama(doc) else talk_sec(text)
+
+
+def part_max_sec(doc):
+    """편 하나의 벽(초) — 2분 드라마는 2분, 옛 여러 편은 60초."""
+    return DRAMA_MAX_SEC if is_drama(doc) else PART_MAX_SEC
+
+
 def talk_cuts(doc):
     """영상으로 살 대사 컷들.
 
@@ -80,6 +127,11 @@ def talk_cuts(doc):
         cand = [c for c in cs[1:-1]
                 if not is_narr(c) and len(turns_of(c)) == 1
                 and not any(w in turns_of(c)[0][1] for w in TALK_HOT)]
+        if is_drama(doc):
+            # ⭐ 2분 드라마 — 대사 컷이 곧 결정적 컷이다. **전부** 산다
+            #    (대본이 7~10개로 짓는다 · story90.check 가 본다)
+            got += cand
+            continue
         if KEY_ONLY:
             # ⭐ 편마다 한 컷 — **가장 뒤**의 대사 컷이 결정적 순간이다
             if cand:
@@ -160,8 +212,8 @@ def part_secs(doc, talk_ns=None):
         a, b = p["cuts"]
         cs = [c for c in doc.get("cuts") or [] if a <= c["n"] <= b]
         out[int(p["no"])] = sum(
-            talk_sec(turns_of(c)[0][1]) if c["n"] in talk_ns else cut_base(c)
-            for c in cs)
+            talk_sec_of(doc, turns_of(c)[0][1]) if c["n"] in talk_ns
+            else cut_base(c) for c in cs)
     return out
 
 
@@ -179,16 +231,17 @@ def fit(doc, cuts=None):
         no = int(p["no"])
         mine = [c for c in keep if a <= c["n"] <= b]
         # 긴 대사부터 뺀다
-        mine.sort(key=lambda c: talk_sec(turns_of(c)[0][1]), reverse=True)
+        mine.sort(key=lambda c: talk_sec_of(doc, turns_of(c)[0][1]), reverse=True)
         while mine:
             got = part_secs(doc, [c["n"] for c in keep])[no]
-            if got <= PART_MAX_SEC - SAFE_MARGIN:
+            if got <= part_max_sec(doc) - SAFE_MARGIN:
                 break
             drop = mine.pop(0)
             keep = [c for c in keep if c["n"] is not drop["n"]]
             keep = [c for c in keep if c["n"] != drop["n"]]
             why.append(f"{no}편 컷{drop['n']} — 그림으로 남긴다 "
-                       f"(넣으면 {got:.0f}초 · 60초 벽에 너무 가깝다)")
+                       f"(넣으면 {got:.0f}초 · {part_max_sec(doc):.0f}초 벽에 "
+                       f"너무 가깝다)")
     return keep, why
 
 
@@ -200,7 +253,7 @@ def plan(doc, krw_per_sec=0.08, usd_krw=1470.0):
        (진짜 장부는 만들 때 cost.py 가 적는다)
     """
     cuts, why = fit(doc)                 # ⭐ 60초 벽을 먼저 지킨다
-    secs = [talk_sec(turns_of(c)[0][1]) for c in cuts]
+    secs = [talk_sec_of(doc, turns_of(c)[0][1]) for c in cuts]
     won = sum(round(s * krw_per_sec * usd_krw) for s in secs)
     parts = part_secs(doc, [c["n"] for c in cuts])
     # ⭐ 한 번 실행 한도(cost.RUN_KRW)에 걸려 **몇 번 눌러야 하는지** 미리 알린다.
@@ -223,7 +276,7 @@ def plan(doc, krw_per_sec=0.08, usd_krw=1470.0):
     def _won(s):
         return round(s * krw_per_sec * usd_krw)
 
-    talk_by_n = {c["n"]: talk_sec(turns_of(c)[0][1]) for c in cuts}
+    talk_by_n = {c["n"]: talk_sec_of(doc, turns_of(c)[0][1]) for c in cuts}
 
     all_ns = [c for c in doc.get("cuts") or []]
     per = {}
@@ -254,7 +307,9 @@ def plan(doc, krw_per_sec=0.08, usd_krw=1470.0):
             "cap": cap, "presses": presses,
             # 화면이 **누르기 전에** 보여 줄 것들
             "parts": {str(k): round(v, 1) for k, v in parts.items()},
-            "over": [k for k, v in parts.items() if v > PART_MAX_SEC],
+            "over": [k for k, v in parts.items() if v > part_max_sec(doc)],
+            "max_sec": part_max_sec(doc),
+            "format": DRAMA if is_drama(doc) else "parts",
             "dropped": why,
             "per_part": tper,
             # 전체 영상 (그림 먼저 → 모든 컷 영상)

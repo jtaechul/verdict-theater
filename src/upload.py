@@ -745,9 +745,18 @@ def cmd_series(args):
     #       올리기는 **되돌릴 수 없는 자리**다. 여기서 막는다.
     made = (shortstate.made(sid, no) or {}) if hasattr(shortstate, "made") else {}
     got = float(made.get("sec") or 0)
+    # ⭐⭐⭐ 2026-09-30 — **2분 드라마는 벽이 2분이다** (손님 확정 · 대본이 정한다).
+    #    옛 여러 편은 60초 그대로다. 대본 형식은 대본 파일을 보고 안다.
+    try:
+        _doc = json.loads((ROOT / "data" / "series" / f"{sid}.json")
+                          .read_text(encoding="utf-8"))
+        MAX_SHORT_SEC = talkplan.part_max_sec(_doc)
+    except (OSError, ValueError):
+        pass
     if got > MAX_SHORT_SEC and not args.long_ok:
-        print(f"❌ {sid} {no}편은 {got:.0f}초다 — 이 채널은 **60초 이하**만"
-              f" 조회수가 나왔다 (127초 편은 0회였다).\n"
+        print(f"❌ {sid} {no}편은 {got:.0f}초다 — 벽은 {MAX_SHORT_SEC:.0f}초다. "
+              f"이 채널은 **60초 이하**만"
+              f" 조회수가 나왔다 (127초 편은 0회였다 · 2분 드라마는 2분까지).\n"
               f"   컷을 옮겨 나누거나 대사 영상을 줄여 다시 만드십시오.\n"
               f"   그래도 올리려면 --long-ok 를 준다 (권하지 않는다).")
         return 2

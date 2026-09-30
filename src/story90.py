@@ -21,6 +21,7 @@
 """
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -598,6 +599,184 @@ def needs_subject(one):
 #       예전에는 이 다섯을 **손으로 박아 두고 대본이 적은 나이를 버렸다**
 #       (아래 `nm in out: continue`). 그래서 예순의 아내도, 스물의 아내도
 #       늘 50대 목소리로 말했다. 이제 **대본이 적은 것이 이긴다.**
+# ── ⭐⭐⭐ 2026-09-30 — **2분 드라마** (손님 확정: "2분 이내 쇼츠 드라마로 가자") ──
+#    대본에 format="drama" 가 찍힌 사건만 아래 규격을 탄다 (옛 여러 편은 그대로다).
+#    · 한 사건 = 한 편 (100~110초) — 벽은 2분(talkplan.DRAMA_MAX_SEC)
+#    · 대사 컷(한 사람 한 줄)은 **전부** 옴니가 입모양으로 말하는 영상이다.
+#      대사 목소리는 옴니 목소리 그대로 (손님 선택) — 그래서 인물의 말은
+#      대사 컷에서만 나오고, 나머지 컷은 나레이션 + 그림 + 카메라 무빙이다.
+#    · 인물(2~6명)의 생김새·옷·목소리를 **대본이 정한다** (cast) → 인물 시트
+#      한 장에 나란히 그려 칸마다 잘라 쓴다 (src/castsheet.py)
+#    프롬프트: prompts/drama120_gen.md · 고치기: prompts/drama120_fix.md
+DRAMA = "drama"
+DRAMA_RULES = {
+    "PARTS_MIN": 1, "PARTS_MAX": 1,
+    "PART_MIN_CUTS": 18, "PART_MAX_CUTS": 24,
+    # 벽 119.5초에서 잣대 오차(SEC_TOL)와 옴니 말 빠르기 흔들림(5초)만큼 물러선다
+    "PART_SEC_MAX": 119.5 - SEC_TOL - 5.0,
+    "PART_SEC_MIN": 90.0,
+    "PART_CHARS": 620, "PART_CHARS_MIN": 380,
+    "NARR_MIN_PER_PART": 7,
+    "ELLIPSIS_MAX": 5,
+    "PEOPLE_MAX": 6,
+}
+DRAMA_TALK_MIN, DRAMA_TALK_MAX = 7, 10      # 대사 컷(= 옴니 영상) 수
+DRAMA_LINE_MIN, DRAMA_LINE_MAX = 6, 32      # 대사 한 줄 글자 (프롬프트는 12~30 을 겨냥)
+DRAMA_CAST_MIN, DRAMA_CAST_MAX = 2, 6
+# 대사 영상값 상한 — 한 번 실행 한도(2분 드라마 16,000원 · 손님 승인
+# 2026-09-30) 안에 그림(약 3,000원)·시트(265원)와 함께 들어가게 한다
+DRAMA_OMNI_KRW_MAX = 10_000
+CAST_KEYS = ("name", "sex", "age", "role_en", "face", "build", "wear", "voice")
+# 인물 시트 그림이 막히는 낱말 (series.RISKY 와 같은 까닭 — 몸매·노출)
+CAST_BAN = ("sexy", "seductive", "revealing", "low-cut", "lingerie", "cleavage",
+            "busty", "curvy", "hourglass", "nude", "naked", "underwear",
+            "adult", "restrained", "swap")
+
+
+def is_drama(doc):
+    return str((doc or {}).get("format") or "") == DRAMA
+
+
+def rules_of(doc):
+    """그 대본에 맞는 규격 — 2분 드라마면 DRAMA_RULES 가 이긴다."""
+    out = {k: globals()[k] for k in DRAMA_RULES}
+    if is_drama(doc):
+        out.update(DRAMA_RULES)
+    return out
+
+
+def band_of(age):
+    """52 → '50대' (목소리를 나이대로 고른다 — short90.VOICE_BY)."""
+    try:
+        a = int(str(age).strip().rstrip("대세살"))
+    except ValueError:
+        return "40대"
+    a = max(10, min(79, a))
+    return f"{a // 10 * 10}대"
+
+
+def people_from_cast(doc):
+    """cast(생김새까지 정한 인물) → people(나이대·성별 · 목소리가 쓴다)."""
+    out = {}
+    for p in doc.get("cast") or []:
+        nm = str((p or {}).get("name") or "").strip()
+        if not nm:
+            continue
+        sx = str(p.get("sex") or "").strip().lower()
+        out[nm] = {"age": band_of(p.get("age")),
+                   "sex": "남" if sx in ("남", "male", "m", "man") else "여"}
+    return out
+
+
+def shape_drama(doc):
+    """AI 가 낸 2분 드라마 꼴을 제작 쪽이 아는 꼴로 맞춘다 (0원).
+    · 한 편짜리 parts 를 만든다 — 조립·올리기가 편 단위로 돈다
+    · cast → people (목소리 나이대·성별)
+    ⚠️ 여러 번 불러도 같다 (고치기 뒤에도 부른다 — 컷 수가 바뀌면 편 범위도)."""
+    doc["format"] = DRAMA
+    cuts = doc.get("cuts") or []
+    old = (doc.get("parts") or [{}])[0] if doc.get("parts") else {}
+    yt = doc.pop("yt_title", None) or old.get("yt_title") or ""
+    card = doc.pop("card", None) or old.get("card") or []
+    doc["parts"] = [{"no": 1, "cuts": [1, len(cuts)], "yt_title": str(yt).strip(),
+                     "card": [str(x).strip() for x in card][:2]}]
+    cast = []
+    for p in doc.get("cast") or []:
+        if not isinstance(p, dict):
+            continue
+        q = {k: (str(p.get(k)).strip() if p.get(k) is not None else "")
+             for k in CAST_KEYS}
+        try:
+            q["age"] = int(str(q["age"]).rstrip("대세살"))
+        except ValueError:
+            pass
+        cast.append(q)
+    doc["cast"] = cast
+    doc["people"] = people_from_cast(doc)
+    return doc
+
+
+def check_drama(doc, new=True):
+    """2분 드라마에만 있는 규격 — 인물 설계 · 대사 컷 · 대사 영상값."""
+    bad = []
+    cast = doc.get("cast") or []
+    names = [str((p or {}).get("name") or "").strip() for p in cast]
+    if not (DRAMA_CAST_MIN <= len(cast) <= DRAMA_CAST_MAX):
+        bad.append(f"인물(cast)이 {len(cast)}명이다 — {DRAMA_CAST_MIN}~"
+                   f"{DRAMA_CAST_MAX}명이어야 한다 (한 장에 나란히 그린다)")
+    if len(set(names)) != len(names):
+        bad.append(f"인물 이름이 겹친다: {names}")
+    for p in cast:
+        nm = str(p.get("name") or "?")
+        miss = [k for k in CAST_KEYS if not str(p.get(k) or "").strip()]
+        if miss:
+            bad.append(f"인물 '{nm}' 의 {', '.join(miss)} 가 비었다")
+        if nm in NOT_PEOPLE:
+            bad.append(f"'{nm}' 은(는) 인물이 아니다 — 판결·해설은 나레이션이 전한다")
+        if str(p.get("sex") or "").strip() not in SEXES:
+            bad.append(f"인물 '{nm}' 의 성별이 이상하다 ({p.get('sex')}) — 남/여")
+        try:
+            if not 10 <= int(p.get("age")) <= 89:
+                raise ValueError
+        except (TypeError, ValueError):
+            bad.append(f"인물 '{nm}' 의 나이가 숫자가 아니다 ({p.get('age')})")
+        look = " ".join(str(p.get(k) or "") for k in ("face", "build", "wear"))
+        if re.search(r"[가-힣]", look + str(p.get("voice") or "") + str(p.get("role_en") or "")):
+            bad.append(f"인물 '{nm}' 의 생김새·옷·목소리는 영어로 적는다")
+        hot = [w for w in CAST_BAN if re.search(rf"\b{re.escape(w)}\b", look.lower())]
+        if hot:
+            bad.append(f"인물 '{nm}' 의 생김새·옷에 그림이 막히는 낱말이 있다: "
+                       f"{', '.join(hot)} — 옷은 색과 종류로만 적는다")
+        if "korean" not in str(p.get("voice") or "").lower():
+            bad.append(f"인물 '{nm}' 의 목소리에 한국어 원어민(native Korean "
+                       f"speaker)이라고 적지 않았다")
+    cuts = doc.get("cuts") or []
+    talk = []
+    for c in cuts:
+        n = c.get("n")
+        ts = c.get("turns") or []
+        on = set(c.get("who") or [])
+        for w in on:
+            if w not in names:
+                bad.append(f"컷{n}: 화면의 '{w}' 가 인물(cast)에 없다 — 시트에 "
+                           f"못 그려 낯선 얼굴이 나온다")
+        speakers = [w for w, _ in ts if w != "나레이션"]
+        if len(ts) != 1:
+            bad.append(f"컷{n}: 한 컷에 {len(ts)}줄이다 — 2분 드라마는 한 컷 한 줄이다 "
+                       f"(두 사람이 주고받으면 컷을 둘로 나눈다 · 대사와 나레이션을 "
+                       f"섞지 않는다)")
+            continue
+        if speakers:
+            w, t = ts[0]
+            talk.append(c)
+            if w not in names:
+                bad.append(f"컷{n}: 말하는 '{w}' 가 인물(cast)에 없다")
+            k = len(re.sub(r"[\s…·]", "", str(t)))
+            if not DRAMA_LINE_MIN <= k <= DRAMA_LINE_MAX:
+                bad.append(f"컷{n}: 대사가 {k}자다 — 한 줄 {DRAMA_LINE_MIN}~"
+                           f"{DRAMA_LINE_MAX}자 (옴니 영상 한 컷에 들어가는 길이)")
+    if new and not (DRAMA_TALK_MIN <= len(talk) <= DRAMA_TALK_MAX):
+        bad.append(f"대사 컷이 {len(talk)}개다 — {DRAMA_TALK_MIN}~{DRAMA_TALK_MAX}개"
+                   f"여야 한다 (대사 컷 하나가 입모양 영상 한 편이다)")
+    if cuts:
+        last = (cuts[-1].get("turns") or [["", ""]])[0]
+        if last[0] != "나레이션" or "실제로 있었던 사건" not in str(last[1]):
+            bad.append("마지막 컷은 나레이션 「실제로 있었던 사건입니다.」 로 맺는다")
+    # ⭐ 값은 **사기 전에** 본다 — 대사 영상값이 한 번 실행 한도를 넘으면
+    #    만들다 멈춘다 (만든 것은 남지만 손님이 두 번 누르셔야 한다)
+    try:
+        import omni                                          # noqa: E402
+        import talkplan                                      # noqa: E402
+        won = sum(cost.video_krw(omni.MODEL, talkplan.omni_sec(c["turns"][0][1]))
+                  for c in talk)
+        if new and won > DRAMA_OMNI_KRW_MAX:
+            bad.append(f"대사 영상값이 약 {won:,.0f}원이다 — {DRAMA_OMNI_KRW_MAX:,}원"
+                       f" 안으로 (대사 컷을 줄이거나 짧게)")
+    except ImportError:
+        pass
+    return bad
+
+
 PEOPLE_BASE = {"아내": {"age": "50대", "sex": "여"},
                "남편": {"age": "50대", "sex": "남"},
                "내연녀": {"age": "30대", "sex": "여"},
@@ -612,7 +791,9 @@ def people_of(doc):
        목소리(short90.voice_of)가 이 값으로 갈린다 — 여기가 틀리면 예순 노인이
        스무 살 목소리로 말한다.
     """
-    out = {k: dict(v) for k, v in PEOPLE_BASE.items()}
+    # ⭐ 2분 드라마는 기본 다섯을 안 넣는다 — 대본이 정한 인물(cast)뿐이다
+    out = ({} if is_drama(doc)
+           else {k: dict(v) for k, v in PEOPLE_BASE.items()})
     for name, v in (doc.get("people") or {}).items():
         nm = str(name).strip()
         if not nm:
@@ -722,10 +903,13 @@ def check(doc, new=True):
     bad = []
     cuts = doc.get("cuts") or []
     parts = doc.get("parts") or []
+    # ⭐ 2026-09-30 — 규격은 대본마다 다르다 (2분 드라마 · 옛 여러 편)
+    R = rules_of(doc)
+    wall = "2분" if is_drama(doc) else "60초"
     OK = who_ok(doc)                      # 기본 다섯 + 이 사건이 더 세운 사람
     extra = [w for w in people_of(doc) if w not in BASE_WHO]
-    if len(extra) > PEOPLE_MAX:
-        bad.append(f"사람을 {len(extra)}명 더 세웠다 — {PEOPLE_MAX}명까지다 "
+    if len(extra) > R["PEOPLE_MAX"]:
+        bad.append(f"사람을 {len(extra)}명 더 세웠다 — {R['PEOPLE_MAX']}명까지다 "
                    f"({', '.join(extra)})")
     for nm in extra:
         v = people_of(doc)[nm]
@@ -740,8 +924,8 @@ def check(doc, new=True):
         return ["컷이 하나도 없다"]
     # ⚠️ 편 수·글자 하한·말줄임표는 **새로 짓는 것**에만 건다. 이미 만들어 둔
     #    대본을 뒤늦게 규격 위반으로 만들면, 손대지도 않은 사건이 빨간불이 난다.
-    if new and not (PARTS_MIN <= len(parts) <= PARTS_MAX):
-        bad.append(f"편이 {len(parts)}개다 — {PARTS_MIN}~{PARTS_MAX}편이어야 한다 "
+    if new and not (R["PARTS_MIN"] <= len(parts) <= R["PARTS_MAX"]):
+        bad.append(f"편이 {len(parts)}개다 — {R['PARTS_MIN']}~{R['PARTS_MAX']}편이어야 한다 "
                    f"(편을 늘리면 그만큼 자세히 쓸 수 있다)")
 
     ns = [c.get("n") for c in cuts]
@@ -834,32 +1018,33 @@ def check(doc, new=True):
         if not mine:
             bad.append(f"{no}편에 컷이 없다")
             continue
-        if new and not (PART_MIN_CUTS <= len(mine) <= PART_MAX_CUTS):
+        if new and not (R["PART_MIN_CUTS"] <= len(mine) <= R["PART_MAX_CUTS"]):
             bad.append(f"{no}편이 {len(mine)}컷이다 "
-                       f"({PART_MIN_CUTS}~{PART_MAX_CUTS}컷이어야 한다 — "
+                       f"({R['PART_MIN_CUTS']}~{R['PART_MAX_CUTS']}컷이어야 한다 — "
                        f"컷이 적으면 이야기가 껑충 뛴다)")
         ch = sum(chars(c) for c in mine)
         # ⭐⭐⭐ 2026-09-08 — **글자가 아니라 초로 잰다** (위 잣대 설명 참조)
         ps = part_sec(mine)
-        if ps > PART_SEC_MAX or ch > PART_CHARS:
+        if ps > R["PART_SEC_MAX"] or ch > R["PART_CHARS"]:
             bad.append(f"{no}편이 {ch}자 {len(mine)}컷 = 약 {ps:.0f}초다 — "
-                       f"{PART_SEC_MAX:.0f}초를 넘으면 60초 벽에 걸린다"
-                       f"(이 채널은 60초를 넘긴 편이 조회수 0이었다)")
+                       f"{R['PART_SEC_MAX']:.0f}초를 넘으면 {wall} 벽에 걸린다"
+                       + ("" if is_drama(doc) else
+                          "(이 채널은 60초를 넘긴 편이 조회수 0이었다)"))
         # ⭐ 하한 — 짧게 써도 아무도 안 잡아서 1편이 41초로 나왔다(14초를 버렸다)
-        if new and (ps < PART_SEC_MIN or ch < PART_CHARS_MIN):
+        if new and (ps < R["PART_SEC_MIN"] or ch < R["PART_CHARS_MIN"]):
             # ⚠️ 이 말을 "글자를 채워라" 로 읽으면 안 된다. 짧은 것은 증상이고
             #    병은 **걸음이 빠진 것**이다. 늘릴 자리에는 빠진 걸음을 넣는다.
             bad.append(f"{no}편이 {ch}자 {len(mine)}컷 = 약 {ps:.0f}초뿐이다 — "
-                       f"쓸 수 있는 {PART_SEC_MAX:.0f}초 가운데 "
-                       f"{PART_SEC_MAX - ps:.0f}초를 버리고 있다. 이야기가 "
+                       f"쓸 수 있는 {R['PART_SEC_MAX']:.0f}초 가운데 "
+                       f"{R['PART_SEC_MAX'] - ps:.0f}초를 버리고 있다. 이야기가 "
                        f"껑충 뛰고 있다는 뜻이다. 같은 말을 늘여 쓰지 말고, "
                        f"빠진 걸음(왜 그랬는지 · 그래서 어떻게 됐는지)을 "
-                       f"나레이션으로 풀어 {PART_SEC_MIN:.0f}초를 넘겨라")
+                       f"나레이션으로 풀어 {R['PART_SEC_MIN']:.0f}초를 넘겨라")
         # ⭐ 말줄임표는 분량만 먹고 뜻이 없다 ("이거... 진짜야...?")
         ell = sum(str(t).count("...") + str(t).count("…")
                   for c in mine for _, t in c["turns"])
-        if new and ell > ELLIPSIS_MAX:
-            bad.append(f"{no}편에 말줄임표가 {ell}개다 — {ELLIPSIS_MAX}개까지다. "
+        if new and ell > R["ELLIPSIS_MAX"]:
+            bad.append(f"{no}편에 말줄임표가 {ell}개다 — {R['ELLIPSIS_MAX']}개까지다. "
                        f"자리만 먹고 뜻은 안 나른다")
         # ⭐ 나레이션은 주어를 밝힌다 — 누구 이야기인지 모른 채 결말만
         #    듣게 되면 안 된다 (손님: "주어를 쓰고 그다음에 서술을 해야지")
@@ -875,8 +1060,8 @@ def check(doc, new=True):
         # ② 편마다 맥락을 나르는 나레이션이 있어야 한다. 반응(대사)만
         #    이어지면 보는 사람은 무슨 일이 왜 벌어졌는지 못 따라간다.
         nn = sum(1 for c in mine for w, _ in c["turns"] if w == "나레이션")
-        if new and nn < NARR_MIN_PER_PART:
-            bad.append(f"{no}편에 나레이션이 {nn}줄뿐이다 — {NARR_MIN_PER_PART}줄 "
+        if new and nn < R["NARR_MIN_PER_PART"]:
+            bad.append(f"{no}편에 나레이션이 {nn}줄뿐이다 — {R['NARR_MIN_PER_PART']}줄 "
                        f"이상 두어라. 무슨 일이 왜 벌어졌는지는 나레이션이 나른다")
         # ③ 편은 상황을 세우고 시작한다 (첫 컷이 반응이면 맥락 없이 튄다)
         if new and mine[0]["turns"][0][0] != "나레이션":
@@ -986,6 +1171,8 @@ def check(doc, new=True):
     for k in ("title", "series_label", "hook"):
         if not str(doc.get(k) or "").strip():
             bad.append(f"{k} 가 비었다")
+    if is_drama(doc):
+        bad += check_drama(doc, new)
     return bad
 
 
@@ -1003,6 +1190,38 @@ def apply_fix(doc, fix):
     log = []
     if not isinstance(fix, dict):
         return ["고친 것을 못 알아봤다 (JSON 이 아니다)"]
+
+    # ⭐ 2분 드라마 — 컷을 나누거나 끼웠으면 AI 가 **컷 전부**를 다시 보낸다
+    #    (drama120_fix.md 가 그렇게 시킨다). 번호는 여기서 1부터 다시 매긴다.
+    if is_drama(doc):
+        if fix.get("renumber") and isinstance(fix.get("cuts"), list) and fix["cuts"]:
+            fresh = []
+            for i, one in enumerate(fix["cuts"], 1):
+                c = dict(one)
+                c["n"] = i
+                c["turns"] = [list(t) for t in (c.get("turns") or [])]
+                c["who"] = list(c.get("who") or [])
+                c["say"] = list(c.get("say") or [])
+                c["sec"] = round(chars(c) / 4.6 + 1.2, 1)
+                fresh.append(c)
+            doc["cuts"] = fresh
+            log.append(f"컷을 다시 짰다 ({len(fresh)}컷)")
+            fix = {k: v for k, v in fix.items() if k not in ("cuts", "renumber")}
+        part = (doc.get("parts") or [{}])[0]
+        for k in ("yt_title", "card"):
+            v = fix.get(k)
+            if v and v != part.get(k):
+                part[k] = v
+                log.append(f"{k} → {str(v)[:34]}")
+        if isinstance(fix.get("cast"), list):
+            have = {str(p.get("name")): p for p in (doc.get("cast") or [])}
+            for p in fix["cast"]:
+                nm = str((p or {}).get("name") or "").strip()
+                if not nm:
+                    continue
+                have[nm] = {**(have.get(nm) or {}), **p}
+                log.append(f"인물 '{nm}' 고침")
+            doc["cast"] = list(have.values())
 
     for k in ("title", "series_label", "hook"):
         v = fix.get(k)
@@ -1039,6 +1258,8 @@ def apply_fix(doc, fix):
             tgt[k] = v
             log.append(f"컷{one['n']} {k} 고침")
         tgt["sec"] = round(chars(tgt) / 4.6 + 1.2, 1)
+    if is_drama(doc):
+        shape_drama(doc)                     # 컷 수가 바뀌면 편 범위·목소리도
     return log
 
 
@@ -1090,7 +1311,9 @@ def repair(llm, doc, bad, row=None):
        규격만 고칠 때는 안 줬는데(값을 아끼려고), 사실을 고치는 데는 필요하다.
     """
     body = prompts.build(
-        "story90_fix",
+        # ⭐ 규격이 둘이면 고치기도 둘이다 — 여러 편 규격을 2분 드라마에 보내면
+        #    AI 가 편을 나누거나 대사를 두 줄로 되돌린다
+        "drama120_fix" if is_drama(doc) else "story90_fix",
         CASE=(case_json(row) if row else "(판결문 없음 — 규격만 고치는 중이다)"),
         BAD="\n".join("· " + b for b in bad[:20]),
         DOC=json.dumps(doc, ensure_ascii=False, indent=1))
@@ -1151,10 +1374,27 @@ def report(**kw):
                       encoding="utf-8")
 
 
+def pick_format(asked, sid=None):
+    """어떤 대본으로 지을지 — 고른 것이 있으면 그것, 없으면
+    **이미 있던 사건은 그 형식 그대로**, 새 사건은 2분 드라마(손님 확정 2026-09-30).
+    ⚠️ '대본 다시 짓기' 로 옛 여러 편 사건이 조용히 2분 드라마로 바뀌면 안 된다."""
+    if asked in ("parts", DRAMA):
+        return asked
+    if sid:
+        old = load(SERIES / f"{sid}.story.json", {}) or {}
+        return DRAMA if is_drama(old) else "parts"
+    return DRAMA
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--case", default="", help="판례 번호 (비우면 점수 1등)")
     ap.add_argument("--sid", default="", help="사건 번호 (비우면 다음 번호)")
+    # ⭐ 2026-09-30 — 2분 드라마(한 편) · 옛 여러 편(60초씩)
+    ap.add_argument("--format", default=os.environ.get("VT_FORMAT") or None,
+                    choices=["parts", DRAMA],
+                    help="drama = 2분 드라마 한 편 · parts = 60초 여러 편 "
+                         "(비우면: 새 사건은 drama · 있던 사건은 그 형식 그대로)")
     a = ap.parse_args()
 
     row = pick_case(a.case or None)
@@ -1163,9 +1403,11 @@ def main():
     sid = (a.sid or again or next_sid()).upper()
     if again and not a.sid:
         print(f"■ 이 판례로 지은 대본({again})이 이미 있습니다 — 다시 짓습니다")
+    a.format = pick_format(a.format, again)
     name = str(row.get("one_line") or "")[:70]
     print(f"■ {sid} 대본 짓는 중 — 판례 {row['case_id']} · "
-          f"{row.get('case_type', '')}")
+          f"{row.get('case_type', '')}"
+          + (" · 2분 드라마" if a.format == DRAMA else ""))
     print(f"  {name}")
     report(sid=sid, case_id=str(row["case_id"]), name=name,
            state="짓는 중", why=[], krw=0)
@@ -1179,9 +1421,11 @@ def main():
         except Exception:                                    # noqa: BLE001
             return 0
 
-    body = prompts.build("story90_gen", CASE_JSON=case_json(row))
+    drama = a.format == DRAMA
+    body = prompts.build("drama120_gen" if drama else "story90_gen",
+                         CASE_JSON=case_json(row))
     doc = llm.json(body, tier="pro", max_output_tokens=32768, temperature=0.85,
-                   label="쇼츠 대본", effort="high")
+                   label="2분 드라마 대본" if drama else "쇼츠 대본", effort="high")
 
     doc["sid"] = sid
     doc["case_id"] = str(row["case_id"])
@@ -1192,6 +1436,8 @@ def main():
         c["turns"] = [list(t) for t in c["turns"]]
         c["who"] = list(c.get("who") or [])
         c["sec"] = round(chars(c) / 4.6 + 1.2, 1)
+    if drama:
+        shape_drama(doc)                     # 한 편짜리 parts · cast → people
 
     # ── ① 자동 손보기 (0원) ────────────────────────────────────
     fixed = autofix(doc)

@@ -751,13 +751,25 @@ def talkers(doc):
        켜야만 돌고 · 만들기 전에 얼마인지 적고 · 지문이 같으면 안 만들고
        (0원) · 실패하면 그 컷만 **그림으로** 돌아간다.
     """
-    import veo                                              # 늦게 부른다(열쇠 필요)
+    # ⭐⭐⭐ 2026-09-30 — **2분 드라마는 옴니 플래시로 산다** (손님 확정).
+    #    그 컷 그림을 첫 장면으로, 화면 인물의 시트 칸을 참조로 넣는다.
+    #    대사는 옴니가 직접 말한다 (손님 선택: "옴니 목소리 그대로").
+    #    안전 검사에 걸리면 첫 장면 없이 **참조만**으로 한 번 더 해 본다
+    #    (Veo 의 '씨앗 바꿔 다시' 자리 — 옴니는 씨앗을 안 받는다).
+    drama = talkplan.is_drama(doc)
+    if drama:
+        import omni                                         # 늦게 부른다(열쇠 필요)
+        MODEL, FILT, CAP = omni.MODEL, omni.OmniFiltered, omni.RunCapReached
+    else:
+        import veo                                          # 늦게 부른다(열쇠 필요)
+        MODEL, FILT, CAP = veo.MODEL, veo.RaiFiltered, veo.RunCapReached
     d = talk_dir()
     d.mkdir(parents=True, exist_ok=True)
     cs = talk_cuts(doc)
     st = OUT / "stills"
-    plan = [(c, talk_sec(turns_of(c)[0][1])) for c in cs]
-    tot = sum(cost.video_krw(veo.MODEL, x) for _, x in plan)
+    plan = [(c, c.get("omni_sec") if drama and c.get("omni_sec")
+             else talkplan.talk_sec_of(doc, turns_of(c)[0][1])) for c in cs]
+    tot = sum(cost.video_krw(MODEL, x) for _, x in plan)
     print(f"■ 대사 장면 영상 {len(plan)}컷 · 최대 약 {tot:,.0f}원")
     # ⭐ 이름이 밀려도 다시 안 사게 — 지문으로 찾아 옮겨 쓴다 (그림·소리와 같은 길)
     kept = salvage(d, ".mp4")
@@ -770,10 +782,13 @@ def talkers(doc):
         still = st / f"c{n:02d}.png"
         if not still.exists():
             raise Short90Error(f"컷{n} 그림이 없다 — 먼저 stills 를 돌린다")
-        prompt = talk_prompt(c, sec)
+        prompt = (c.get("omni") if drama else None) or talk_prompt(c, sec)
+        if drama and not c.get("omni"):
+            raise Short90Error(f"컷{n} 옴니 지문이 없다 — 대본을 다시 짓는다 "
+                               f"(tools/build_short90.py)")
         # ⚠️ 지문에 **그림 내용 전체**와 모델 이름까지 넣는다. 그림이 바뀌거나
         #    모델이 바뀌면 영상도 다시 만들어야 한다.
-        sig = talk_sig(c, sec, still, veo.MODEL, prompt)
+        sig = talk_sig(c, sec, still, MODEL, prompt)
         # ⭐⭐⭐ 2026-09-14 — **여기서 talk_ok 를 안 쓰고 있었다.**
         #    살리는 장치(그림이 같아 보이면 그대로 쓴다)를 조립하는 쪽
         #    (build_part → talk_ok)에만 넣고, 정작 **돈을 쓰는 이 자리**에는
@@ -797,7 +812,7 @@ def talkers(doc):
             continue
         if why:
             print(f"    ⚠️ {why} — 다시 만든다")
-        krw1 = cost.video_krw(veo.MODEL, sec)
+        krw1 = cost.video_krw(MODEL, sec)
         # ⭐⭐⭐ 2026-09-10 — **한 번 실행 한도가 여기에 없었다.**
         #    대사 컷이 14개면 12,900원이 나가는데, 이 채널이 정한 한 번 한도는
         #    3,000원이다. 다른 곳(still.py · veo.py)에는 다 걸려 있는데
@@ -817,25 +832,39 @@ def talkers(doc):
         #    이미 산 것을 버릴 까닭이 될 수는 없다.
         #    → 이번에 실제로 건드린 파일만 지운다.
         was = out.stat().st_mtime_ns if out.exists() else None
+        # 화면 인물의 시트 칸 (2분 드라마) — 지문의 Image2… 차례와 같다(who 차례)
+        refs = [ST.card_path(cards_dir(), ST_NAME.get(w, w))
+                for w in (c.get("who") or [])] if drama else []
+        if drama and not all(p.exists() for p in refs):
+            raise Short90Error(f"컷{n} 인물 시트 칸이 없다 — 인물 시트부터 "
+                               f"만든다 (src/castsheet.py make)")
         try:
-            # ⭐ 씨앗을 **말하는 사람**으로 묶는다. 컷 번호로 묶으면 같은 인물의
-            #   여러 컷이 확실히 다른 씨앗을 받아 목소리가 더 흔들린다.
-            veo.make_clip(prompt, sec, out, ratio=OPEN_RATIO,
-                          seed=veo._seed(doc.get("sid"), who, "talk"),
-                          start=still)
-        except veo.RaiFiltered:
-            print(f"    ⚠️ 안전 필터에 걸렸다 — 씨앗을 바꿔 **한 번만** "
-                  f"다시 해 본다 (약 {krw1:,.0f}원)")
-            try:
+            if drama:
+                omni.make(prompt, [still] + refs, out, sec, task="image_to_video")
+            else:
+                # ⭐ 씨앗을 **말하는 사람**으로 묶는다. 컷 번호로 묶으면 같은 인물의
+                #   여러 컷이 확실히 다른 씨앗을 받아 목소리가 더 흔들린다.
                 veo.make_clip(prompt, sec, out, ratio=OPEN_RATIO,
-                              seed=veo._seed(doc.get("sid"), who, "talk2"),
+                              seed=veo._seed(doc.get("sid"), who, "talk"),
                               start=still)
+        except FILT:
+            print(f"    ⚠️ 안전 필터에 걸렸다 — "
+                  + ("첫 장면 없이 **참조만**으로 " if drama else "씨앗을 바꿔 ")
+                  + f"**한 번만** 다시 해 본다 (약 {krw1:,.0f}원)")
+            try:
+                if drama:
+                    omni.make(c.get("omni_ref") or prompt, refs, out, sec,
+                              task="reference_to_video")
+                else:
+                    veo.make_clip(prompt, sec, out, ratio=OPEN_RATIO,
+                                  seed=veo._seed(doc.get("sid"), who, "talk2"),
+                                  start=still)
             except Exception as e2:                          # noqa: BLE001
                 print(f"    ⚠️ 두 번째도 못 만들었다 ({e2}) — 이 컷은 그림으로 갑니다")
                 drop_if_new(out, was)
                 miss.append(n)
                 continue
-        except veo.RunCapReached as e:
+        except CAP as e:
             # ⭐ 값이 모자라 멈춘 것이지 **고장이 아니다.** 그림으로 떨어뜨리지
             #   않고 여기서 멈춘다 — 다시 누르면 만든 것은 0원으로 쓰고
             #   없는 것만 이어서 만든다.
@@ -885,7 +914,7 @@ def talkers(doc):
     print(f"\n■ 대사 장면 {made}/{len(plan)}컷 · 이번에 쓴 값 약 {spent:,.0f}원")
     # ⭐ 아낀 값을 적는다. 아낀 값이 0이면 보관이 안 되고 있다는 뜻이다.
     if plan:
-        one = cost.video_krw(veo.MODEL, plan[0][1])
+        one = cost.video_krw(MODEL, plan[0][1])
         reuse.note("대사 영상", again, max(0, made - again), one)
     if miss:
         print("  ⚠️⚠️ 그림으로 가는 대사 컷: " + " · ".join(f"컷{n}" for n in miss))
@@ -919,11 +948,18 @@ def talk_sig(c, sec, still, model=None, prompt=None):
        "있으면 쓴다" 는 판단은 예전에도 세 번 사고를 냈다 (src/reuse.py).
        → 지문이 맞을 때만 쓴다. 셈하는 자리를 하나로 둔다.
     """
+    # ⭐ 2026-09-30 — 2분 드라마 컷은 옴니로 산다 (대본이 omni 지문을 들고 온다).
+    #    만들 때(talkers)와 쓸 때(talk_ok)가 **같은 모델·같은 지문**으로 재야
+    #    이미 산 영상을 알아본다 — 어긋나면 멀쩡한 영상을 버리고 또 산다.
     if model is None:
-        import veo                                           # noqa: E402
-        model = veo.MODEL
+        if c.get("omni"):
+            import omni                                      # noqa: E402
+            model = omni.MODEL
+        else:
+            import veo                                       # noqa: E402
+            model = veo.MODEL
     if prompt is None:
-        prompt = talk_prompt(c, sec)
+        prompt = c.get("omni") or talk_prompt(c, sec)
     # ⭐⭐⭐ 2026-09-13 — 지문을 **두 토막**으로 나눈다: "무슨 말을 하는가" 와
     #    "어느 그림에서 나왔는가". 나누는 까닭 —
     #    표시 지우기(wipe_mark)가 stills 를 돌릴 때마다 그림 파일을 다시
@@ -1000,7 +1036,7 @@ def talk_ok(c, clip, still):
     if reuse.by_hand(clip):          # 손으로 올린 것은 손님 것이다 — 늘 이긴다
         return True, ""
     try:
-        sec = talk_sec(turns_of(c)[0][1])
+        sec = c.get("omni_sec") or talk_sec(turns_of(c)[0][1])
         want = talk_sig(c, sec, still)
         ok, why = reuse.can_reuse(clip, want)
         if ok:
@@ -2273,7 +2309,8 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
             "size": title_size(parts_of(doc))}
     # ⭐ 왼쪽 위에 늘 뜨는 작은 표시 — 중간에 들어온 사람도 무슨 이야기의
     #    몇 번째인지 안다 (큰 제목 카드는 첫 2.5초만 뜨고 사라진다)
-    mark = f"{label} · {part['no']}편"
+    # ⭐ 2분 드라마는 한 편이 전부다 — "1편" 이라고 적으면 "2편이 있나" 한다
+    mark = label if talkplan.is_drama(doc) else f"{label} · {part['no']}편"
     # ⭐ 마지막 편이면 "완결", 아니면 "다음 편에 계속"
     nos = [int(x["no"]) for x in parts_of(doc)]
     tail = TAIL_LAST if int(part["no"]) == max(nos) else TAIL_NEXT
@@ -2373,9 +2410,14 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
               f"이어서 만듭니다 — 이미 만든 것은 0원입니다)")
     print(f"  ▶ {final.name} — {got:.1f}초 "
           f"({final.stat().st_size / 1e6:.1f}MB)")
-    if got > PART_MAX_SEC:
-        print(f"  ⚠️⚠️ {got:.0f}초 — **60초를 넘었다.** 이 채널은 60초 이하만"
-              f" 조회수가 나왔다(127초 편은 0회였다). 컷을 옮겨 나누십시오.")
+    wall = talkplan.part_max_sec(doc)
+    if got > wall:
+        if talkplan.is_drama(doc):
+            print(f"  ⚠️⚠️ {got:.0f}초 — **2분을 넘었다.** 2분 드라마는 "
+                  f"{wall:.0f}초 안이어야 한다. 나레이션을 줄여 다시 지으십시오.")
+        else:
+            print(f"  ⚠️⚠️ {got:.0f}초 — **60초를 넘었다.** 이 채널은 60초 이하만"
+                  f" 조회수가 나왔다(127초 편은 0회였다). 컷을 옮겨 나누십시오.")
     elif got < 15:
         print(f"  ⚠️ {got:.0f}초 — 너무 짧다. 컷이 빠지지 않았는지 보십시오.")
     return got

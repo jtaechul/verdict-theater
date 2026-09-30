@@ -69,18 +69,29 @@ def people(doc, first=()):
 
 
 def order(ps):
-    """여자와 남자를 번갈아 세운다 — 같은 성별이 붙으면 화장·머리색이 옆으로 번진다.
-    많은 쪽이 양 끝에 선다 (여자 셋·남자 둘이면 여 남 여 남 여)."""
-    w = [p for p in ps if sex_age(p)[0] == "woman"]
-    m = [p for p in ps if sex_age(p)[0] == "man"]
-    a, b = (w, m) if len(w) >= len(m) else (m, w)
-    out = []
-    for i in range(max(len(a), len(b))):
-        if i < len(a):
-            out.append(a[i])
-        if i < len(b):
-            out.append(b[i])
-    return out
+    """세우는 차례 — 같은 성별이 붙으면 화장·머리색이 옆 사람에게 번진다.
+    그래서 **남녀를 번갈아** 세우고, 여자 셋·남자 하나처럼 어쩔 수 없이
+    붙어야 하면 **나이가 가장 먼 둘**을 붙인다 (예전에 내연녀·딸이 똑같이
+    나왔다 — 비슷한 둘이 붙는 것이 가장 나쁘다).
+    여섯 명까지라 모든 차례(720가지)를 다 재 본다 — 같으면 원래 차례가 이긴다."""
+    import itertools
+
+    def pen(seq):
+        out = 0
+        for x, y in zip(seq, seq[1:]):
+            sx, ax = sex_age(x)
+            sy, ay = sex_age(y)
+            if sx == sy:
+                gap = abs((ax or 40) - (ay or 40))
+                out += 100 + max(0, 30 - gap)
+        return out
+
+    best, score = list(ps), None
+    for seq in itertools.permutations(ps):
+        p = pen(seq)
+        if score is None or p < score:
+            best, score = list(seq), p
+    return best
 
 
 def _who(ch):
@@ -207,12 +218,69 @@ def crop(sheet, n, out_dir, stem="cast"):
     return outs, how
 
 
+SHEET = "_sheet.png"          # 인물 카드 폴더 안에 둔다 — 함께 보관되어 다시 쓰인다
+
+
+def make(sid, out_dir):
+    """⭐ 2분 드라마 — 인물 시트 한 장을 그려 칸마다 잘라 **인물 카드**로 둔다.
+
+    카드 이름은 조립(src/short90.py)이 찾는 이름 그대로다 (아내 → 본처.png).
+    ⚠️ 시트는 **지문이 같으면 다시 안 그린다** (0원) — 인물 설계가 바뀌었을
+       때만 다시 그린다. 칸 자르기는 늘 다시 한다 (0원 · 1초).
+    ⚠️ 손님이 올린 얼굴(옛 방식)은 2분 드라마에서는 쓰지 않는다 — 시트 한 장에서
+       나온 얼굴끼리만 서로 다르게 그려졌다는 것이 보장된다.
+    """
+    sys.path.insert(0, str(ROOT / "src"))
+    import reuse                                             # noqa: E402
+    import still as ST                                       # noqa: E402
+    doc = json.loads((ROOT / "data" / "series" / f"{sid}.json")
+                     .read_text(encoding="utf-8"))
+    ps = order(people(doc))
+    if not ps:
+        raise RuntimeError(f"{sid} 에 인물 설계(characters)가 없다")
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    text = prompt(ps)
+    sheet = out_dir / SHEET
+    sig = reuse.sig_of(text)
+    ok, why = reuse.can_reuse(sheet, sig)
+    print(f"■ {sid} 인물 시트 — 왼쪽부터 " + " · ".join(p["name"] for p in ps))
+    if ok:
+        print("   (그대로다 — 다시 안 그린다 · 0원)")
+    else:
+        if why:
+            print(f"   ⚠️ {why} — 다시 그린다")
+        try:
+            ST.gen(text, sheet, ratio="16:9", size="4K", label="castsheet")
+        except ST.StillError as e:
+            if "HTTP 400" not in str(e):
+                raise
+            print(f"   4K 를 안 받아 2K 로 다시: {str(e)[:120]}")
+            ST.gen(text, sheet, ratio="16:9", size="2K", label="castsheet")
+        reuse.stamp(sheet, sig)
+    outs, how = crop(sheet, len(ps), out_dir, stem="_cast")
+    print(f"   칸 자르기 — {how}")
+    for (p, box), ch in zip(outs, ps):
+        name = ALIAS.get(ch["name"], ch["name"])
+        dst = out_dir / f"{name}.png"
+        dst.write_bytes(p.read_bytes())
+        # ⚠️ 카드에는 **시트 지문 + 칸 자리**를 적는다 — 시트가 바뀌면 카드도
+        #    바뀐 것이 되고, 그 카드로 그린 컷 그림도 다시 그려진다(reuse 규칙)
+        reuse.stamp(dst, reuse.sig_of(sig, name, str(box)))
+        print(f"   {dst.name}  ← {ch['name']} (가로 {box[0]}~{box[1]})")
+    return 0
+
+
 def main():
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("sid")
     ap.add_argument("--crop", help="이미 뽑은 시트를 칸으로 자르기만 한다")
+    ap.add_argument("--make", metavar="카드폴더",
+                    help="시트를 그려(지문이 같으면 0원) 칸마다 인물 카드로 둔다")
     a = ap.parse_args()
+    if a.make:
+        return make(a.sid.upper(), a.make)
     doc = json.loads((ROOT / "data" / "series" / f"{a.sid.upper()}.json")
                      .read_text(encoding="utf-8"))
     ps = order(people(doc))

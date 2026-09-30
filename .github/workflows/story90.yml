@@ -28,6 +28,19 @@ on:
         description: '사건 번호 (비우면 다음 번호를 저절로 붙입니다)'
         required: false
         default: ''
+      # ⭐⭐⭐ 2026-09-30 손님 확정: "2분 이내 쇼츠 드라마로 가자."
+      #    새 사건은 2분 드라마(한 편)가 기본이다. 옛 60초 여러 편도 남겨 둔다.
+      #    ⚠️ '알아서' = 새 사건은 2분 드라마, **이미 있던 사건은 그 형식 그대로**
+      #       (대본 다시 짓기로 옛 사건이 조용히 2분 드라마로 바뀌면 안 된다)
+      format:
+        description: '어떤 대본으로 지을까요'
+        required: false
+        default: '알아서 (새 사건은 2분 드라마 · 있던 사건은 그대로)'
+        type: choice
+        options:
+          - '알아서 (새 사건은 2분 드라마 · 있던 사건은 그대로)'
+          - '2분 드라마 (한 편 · 새 방식)'
+          - '60초 여러 편 (예전 방식)'
 
 permissions:
   contents: write
@@ -67,11 +80,18 @@ jobs:
         env:
           CASE: ${{ inputs.case_id }}
           SID: ${{ inputs.sid }}
+          FMT: ${{ inputs.format }}
         run: |
           set -o pipefail
           ARGS=""
           [ -n "$CASE" ] && ARGS="$ARGS --case $CASE"
           [ -n "$SID" ] && ARGS="$ARGS --sid $SID"
+          # ⚠️ '알아서'·빈 값이면 story90 이 정한다 — 새 사건은 2분 드라마,
+          #    이미 있던 사건은 그 형식 그대로 (src/story90.py pick_format)
+          case "$FMT" in
+            60초*) ARGS="$ARGS --format parts" ;;
+            2분*) ARGS="$ARGS --format drama" ;;
+          esac
           # ⚠️ 여기서 바로 죽으면 아래 '적어 두기' 가 건너뛰어져, 무엇이 왜
           #    안 됐는지 화면이 영영 모른다 (2026-09-03 에 실제로 그랬다:
           #    손님 "왜 아무것도 안떠?"). 실패해도 **적어 두기까지 간 다음에**

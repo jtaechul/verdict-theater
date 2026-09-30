@@ -1018,6 +1018,7 @@ function castOf() {
 }
 
 function short90Card() {
+  if (isDrama()) return dramaCastCard();
   const cast = castOf();
   let h = '<div class="card"><h2 data-t="① 인물 그림">① 인물 그림 '
         + '<small style="font-weight:400;color:#9599ab">'
@@ -1124,6 +1125,13 @@ async function s90Cuts() {
       foldify();
     }
   }
+  // ⭐ 대본이 와야 2분 드라마인지 안다 — ③ 칸 머리를 그때 다시 그린다
+  const hd = document.getElementById('w-head');
+  if (hd && isDrama() && !document.getElementById('w-drama')) {
+    hd.innerHTML = '<span id="w-drama"></span>' + dramaHead();
+  }
+  // 2분 드라마는 컷 영상을 손으로 올리지 않는다 (대사 컷은 옴니가 만든다)
+  if (isDrama()) { box.innerHTML = ''; return; }
   const cuts = (S90DOC && S90DOC.cuts) || [];
   if (!cuts.length) { box.innerHTML = ''; return; }
   const nv = Object.keys(S90CLIPS).length;
@@ -1500,10 +1508,63 @@ async function againStory(btn) {
 
 
 // ③④ 편마다 — 만들기 단추와 올리기 단추가 **따로** 있다
-function partsCard(w) {
+// ⭐⭐⭐ 2026-09-30 손님 확정 — **2분 드라마** (한 편 · 대사 컷 전부 옴니 영상)
+//    "2분 이내 쇼츠 드라마로 가자." · "결정적 영상만 입모양+대사, 나머지는
+//    인물그림+카메라무빙." · 대사 목소리는 "옴니 목소리 그대로".
+//    대본(S90DOC)에 format="drama" 가 찍힌 사건만 이 화면을 탄다.
+//    ⚠️ 값은 여기서 세지 않는다 — 대본을 지을 때 tools/build_short90.py 가
+//       talk.drama 에 찍어 둔 것을 그대로 읽는다 (화면·제작이 같은 셈).
+function isDrama() {
+  return !!(S90DOC && S90DOC.format === 'drama');
+}
+
+function dramaPlan() {
+  const d = (S90DOC && S90DOC.talk && S90DOC.talk.drama) || null;
+  if (!d || typeof d.krw !== 'number') return { stale: true, talk_n: 0, krw: 0 };
+  return d;
+}
+
+function dramaHead() {
+  const d = dramaPlan();
+  const nc = ((S90DOC && S90DOC.cuts) || []).length;
+  return '<div class="card"><h2>③ 2분 드라마 만들기</h2>'
+    + '<div class="uphint">한 편짜리 2분 드라마입니다. <b>대사 컷 ' + (d.talk_n || 0)
+    + '개</b>는 인물이 화면에서 직접 한국어로 말하는 영상(옴니)이고, 나머지 '
+    + Math.max(0, nc - (d.talk_n || 0)) + '컷은 그림에 카메라 무빙과 나레이션입니다.<br>'
+    + '인물은 <b>한 장</b>에 나란히 그려 칸마다 잘라 씁니다 — 얼굴이 서로 '
+    + '확실히 다르게 나옵니다.</div>'
+    + (d.stale
+       ? '<div class="uphint" style="color:#e0a33c">값을 아직 모릅니다 — '
+         + '[대본 다시 짓기] 를 한 번 하시면 뜹니다.</div>'
+       : '<div class="uphint">값: 약 <b>' + d.krw.toLocaleString() + '원</b> '
+         + '(대사 영상 ' + d.talk_krw.toLocaleString() + ' + 그림 '
+         + d.still_krw.toLocaleString() + ' + 인물 시트 '
+         + d.sheet_krw.toLocaleString() + ') · 이미 만든 것은 다시 눌러도 0원입니다.</div>')
+    + '<div class="btns" style="margin-top:12px">'
+    + '<button class="gold" id="w-make-all" onclick="workMake(0)">2분 드라마 만들기'
+    + (d.stale ? '' : ' (약 ' + d.krw.toLocaleString() + '원)') + '</button></div>'
+    + '<div id="w-make-msg" class="uphint"></div></div>';
+}
+
+// ① 인물 — 2분 드라마는 얼굴을 올리지 않는다 (인물 시트 한 장에서 잘라 쓴다)
+function dramaCastCard() {
+  const cast = (S90DOC && S90DOC.cast) || [];
+  let h = '<div class="card"><h2 data-t="① 인물">① 인물 '
+        + '<small style="font-weight:400;color:#9599ab">— 인물 시트 (자동)</small></h2>'
+        + '<div class="uphint">인물 ' + cast.length + '명을 <b>한 장</b>에 나란히 '
+        + '그려 칸마다 잘라 씁니다. <b>얼굴을 올리실 필요가 없습니다.</b> 한 번 '
+        + '그리면 인물 설계가 바뀌기 전까지 다시 안 그립니다 (약 265원).</div>';
+  cast.forEach(function (p) {
+    h += '<div class="row"><span class="k">' + esc(p.name || '') + '</span><span>'
+       + esc((p.sex || '') + ' · ' + (p.age || '') + '세') + '</span></div>';
+  });
+  return h + '</div>';
+}
+
+function partsHead(w) {
   const ps = partList(w);
   const n = ps.length || 3;
-  let h = '<div class="card"><h2>③ ' + partWord(n) + ' 만들기</h2>'
+  return '<div class="card"><h2>③ ' + partWord(n) + ' 만들기</h2>'
         + '<div class="uphint">그림과 목소리를 편들이 함께 씁니다. '
         + '<b>한 번에 만드는 쪽이 빠르고 돈이 덜 듭니다.</b> '
         + '처음에는 아래 단추 하나만 누르시면 됩니다.</div>'
@@ -1565,6 +1626,13 @@ function partsCard(w) {
         + '<button class="gold" id="w-make-all" onclick="workMake(0)">'
         + '전체 만들기 (' + (ps.length || 3) + '편)</button></div>'
         + '<div id="w-make-msg" class="uphint"></div></div>';
+}
+
+function partsCard(w) {
+  const ps = partList(w);
+  const n = ps.length || 3;
+  let h = '<div id="w-head">' + (isDrama() ? dramaHead() : partsHead(w))
+        + '</div>';
   if (!ps.length) {
     h += '<div class="card"><h2>④ 편</h2><div class="empty">'
        + '아직 편이 나뉘지 않았습니다. 대본을 먼저 지어 주십시오.</div></div>';
@@ -1926,13 +1994,25 @@ async function workMake(no) {
   const id = no ? 'w-make-' + no : 'w-make-all';
   if (WBUSY[id]) return;
   const msg = document.getElementById('w-make-msg');
-  const what = no ? (no + '편만 다시 만들기') : '전체 만들기';
+  const drama = isDrama();
+  const what = drama ? '2분 드라마 만들기'
+             : (no ? (no + '편만 다시 만들기') : '전체 만들기');
   // ⚠️ 값이 나가는 일은 **누르기 전에** 얼마인지 보여 드린다.
   const box = document.getElementById('w-open');
-  const kind = (box && box.value) || '';
+  // ⭐ 2분 드라마는 고를 것이 없다 — 대사 컷 전부 옴니 영상이다
+  const kind = drama ? 'drama' : ((box && box.value) || '');
   const nps = (partList((WORKS || {})[WORK] || {}) || []).length || 3;
   const lines = [what + ' 를 시작할까요?', '',
                  '그림과 목소리는 이미 만든 것을 그대로 씁니다 (0원).'];
+  if (kind === 'drama') {
+    // ⚠️ 값을 모르면 **모른다고 적는다.** 0원이라고 적으면 승인이 거짓이 된다.
+    const dp = dramaPlan();
+    lines.push(dp.stale
+      ? '2분 드라마: 값을 아직 모릅니다 — [대본 다시 짓기] 를 한 번 하시면 뜹니다.'
+      : ('2분 드라마: 대사 컷 ' + dp.talk_n + '개 옴니 영상 + 그림 ' + dp.stills
+         + '장 + 인물 시트 = 약 ' + dp.krw.toLocaleString() + '원'));
+    lines.push('  (한 번 누를 때 한도 16,000원 · 이미 만든 것은 0원으로 다시 씁니다)');
+  }
   if (kind === 'key') {
     // ⚠️ 값을 모르면 **모른다고 적는다.** 0원이라고 적으면 승인이 거짓이 된다.
     const kp = keyPlan();
@@ -1974,13 +2054,17 @@ async function workMake(no) {
   } else if (kind === 'open') {
     lines.push('편 첫 장면 영상: 켬 — ' + nps + '편 × 4초 = 약 '
                + (470 * nps).toLocaleString() + '원이 나갑니다.');
-  } else {
+  } else if (kind !== 'drama') {
     lines.push('진짜 영상: 끔 (전부 그림 · 0원)');
   }
   // ⭐⭐⭐ 2026-09-05 — 값이 나가기 직전 **마지막 문**이다.
   //    올린 얼굴이 화면 새로고침으로 사라져, 옛 얼굴로 조용히 그려진 적이
   //    있다. 어떤 얼굴로 그릴지 여기서 한 번 더 눈으로 보시게 한다.
-  const cast = castOf();
+  const cast = drama ? [] : castOf();
+  if (drama) {
+    lines.push('');
+    lines.push('인물: 인물 시트 한 장에서 잘라 씁니다 (올린 얼굴은 안 씁니다).');
+  }
   if (cast.length) {
     lines.push('');
     lines.push('이번에 쓸 얼굴:');
@@ -3023,8 +3107,10 @@ async function makeStory(btn) {
   const nm = (btn && btn.dataset && btn.dataset.nm) || '';
   if (!cid) return;
   if (WBUSY['story']) return;
-  if (!confirm(['이 사건으로 쇼츠 대본을 지을까요?', '', nm, '',
-                '값 약 2,100원이 듭니다.',
+  // ⭐ 2026-09-30 — 새 사건은 **2분 드라마**로 짓는다 (손님 확정)
+  if (!confirm(['이 사건으로 2분 드라마 대본을 지을까요?', '', nm, '',
+                '2분짜리 드라마 하나로 짓습니다 — 대사 컷 7~10개는 인물이 직접 말하는 영상입니다.',
+                '값 약 2,100원이 듭니다 (대본만 · 영상은 다음 단계).',
                 '5~10분 걸리고, 끝나면 목록에 새 작품이 생깁니다.'
                ].join(String.fromCharCode(10)))) return;
   WBUSY['story'] = 1;
@@ -4777,7 +4863,8 @@ export default {
         const vk = String((body && body.video_kind) || '');
         // ⚠️ 워크플로(short90.yml)의 choice **글자 그대로**여야 한다. 한 글자만
         //    달라도 깃허브가 그 값을 안 받고 실행이 통째로 안 뜬다.
-        const kindv = vk === 'talk' ? '대사 장면 (편마다 한 컷 · 약 2,100원)'
+        const kindv = vk === 'drama' ? '2분 드라마 (대사 컷 전부 옴니 영상)'
+                    : vk === 'talk' ? '대사 장면 (편마다 한 컷 · 약 2,100원)'
                     : vk === 'open' ? '편 첫 장면 (입 다문 4초 · 약 1,400원)'
                     : vk === 'key' ? '결정적 순간만 (편마다 한 컷 · 약 2,800원)'
                     : vk === 'people' ? '인물만 (사람 나오는 컷만 영상 · 사물·장소는 그림)'

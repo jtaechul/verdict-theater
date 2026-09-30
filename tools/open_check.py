@@ -187,7 +187,10 @@ def wiring():
     ck("화면에 켜고 끄는 자리가 있다", 'id="w-open"' in js)
     # ⚠️ 파일 전체에서 '약 …원' 을 찾으면 다른 칸의 값 표시에 속는다.
     #    **이 칸(③ 세 편 만들기) 안에서** 찾는다.
-    pc = (re.search(r"function partsCard\(w\)[\s\S]*?\n}", js) or [""])[0]
+    # ⚠️ 2026-09-30 — ③ 칸 머리가 partsHead(w) 로 옮겨 갔다 (2분 드라마는
+    #    dramaHead 가 그 자리를 쓴다). 고르는 칸은 옛 편 머리에 그대로 있다.
+    pc = (re.search(r"function partsHead\(w\)[\s\S]*?\n}", js)
+          or re.search(r"function partsCard\(w\)[\s\S]*?\n}", js) or [""])[0]
     ck("그 자리에 **값이 적혀 있다**",
        'id="w-open"' in pc and "+약 " in pc and "470" in pc)
     # ⭐⭐⭐ 2026-09-09 — 체크박스가 **고르기**로 바뀌었다. 손님 지시로

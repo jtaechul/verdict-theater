@@ -40,6 +40,33 @@ def plan(sid, open_video, talk_video=False, all_video=False):
     img_krw = one_img * uniq
     vid_krw = 0.0
     veo_cap = parts + 2                # 편마다 하나 + 안전 필터 재시도 두 번
+    # ⭐⭐⭐ 2026-09-30 — **2분 드라마** (대본 format="drama")
+    #    인물 시트 한 장(4K) + 대사 컷 전부 옴니 영상. 누른 단추가 아니라
+    #    **대본**을 보고 셈한다 — 화면·워크플로·실제 제작이 같은 셈을 쓴다.
+    if str(doc.get("format") or "") == "drama":
+        import omni                                          # noqa: E402
+        import talkplan                                      # noqa: E402
+        tp = talkplan.plan(doc, krw_per_sec=cost.video_krw(omni.MODEL, 1)
+                           / cost.USD_KRW, usd_krw=cost.USD_KRW)
+        sheet = cost.image_krw(ST.MODEL, "4K")
+        img_krw += sheet
+        vid_krw = float(tp["krw"])
+        run = round((img_krw + vid_krw) * SPARE_KRW + 200)
+        # ⚠️ 손님이 승인하신 선(cost.DRAMA_RUN_KRW)을 넘기지 않는다.
+        #    넘을 대본이면 만들다 멈춘다 — 대본 검사(story90)가 미리 막는다.
+        return {
+            "sid": sid, "cuts": len(cuts), "uniq": uniq, "lines": lines,
+            "parts": parts, "drama": True,
+            "still_cap": uniq + 1 + SPARE_CALLS,        # 시트 한 장 더
+            "tts_cap": lines + SPARE_CALLS,
+            "veo_cap": 0,
+            # 대사 컷 + 안전 검사에 걸린 컷마다 '참조만' 으로 한 번 더 (여유 셋)
+            "omni_cap": tp["n"] + 3,
+            "img_krw": img_krw, "vid_krw": vid_krw,
+            "vid_label": f"대사 영상 {tp['n']}컷(옴니)",
+            "run_krw": min(run, int(cost.DRAMA_RUN_KRW)),
+            "run_want": run,
+        }
     # ⭐⭐⭐ 2026-09-17 — 전체 영상(그림 먼저 → 모든 컷 영상).
     #    ⚠️ 상한을 **손으로 적지 않는다.** 편이 늘거나 컷이 늘면 손으로 적은
     #       숫자는 반드시 어긋나고, 그 자리에서 반쪽만 만들어진다
@@ -115,8 +142,14 @@ def main():
         print(f"STILL_CALL_CAP={p['still_cap']}")
         print(f"TTS_CALL_CAP={p['tts_cap']}")
         print(f"VEO_CALL_CAP={p['veo_cap']}")
+        if p.get("drama"):
+            print(f"OMNI_CALL_CAP={p['omni_cap']}")
         print(f"VT_RUN_KRW={p['run_krw']}")
         return 0
+    if p.get("drama") and p.get("run_want", 0) > p["run_krw"]:
+        print(f"⚠️ 이 대본은 약 {p['run_want']:,}원이 드는데, 2분 드라마 한 번 "
+              f"한도는 {p['run_krw']:,}원입니다 — 만들다 멈추면 한 번 더 "
+              f"누르십시오 (만든 것은 0원으로 다시 씁니다).")
 
     print(f"■ {p['sid']} — {p['parts']}편 · {p['cuts']}컷 "
           f"(서로 다른 그림 {p['uniq']}장 · 말 {p['lines']}줄)")
@@ -126,7 +159,8 @@ def main():
     print(f"   ─────────────────────────────")
     print(f"   이번 실행 뚜껑 {p['run_krw']:,}원 "
           f"(그림 {p['still_cap']}번 · 소리 {p['tts_cap']}번 · "
-          f"영상 {p['veo_cap']}번까지)")
+          + (f"옴니 {p['omni_cap']}번까지)" if p.get("drama")
+             else f"영상 {p['veo_cap']}번까지)"))
     return 0
 
 
