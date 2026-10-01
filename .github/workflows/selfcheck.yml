@@ -35,7 +35,10 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # ⚠️ 2026-10-01 — 10분 벽에 두 번 잘렸다 (09-30 · 10-01). 검사는 0원이고 평소
+    #    8분 20초~9분이 걸리는데, 깃허브 쪽 준비물 깔기(apt)가 느린 날은 그것만 6분 43초가
+    #    걸려 17번째 칸에서 끊겼다 — 코드 탓이 아니라 벽이 너무 바짝 붙어 있었다.
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
