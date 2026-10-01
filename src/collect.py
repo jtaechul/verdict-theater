@@ -29,6 +29,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lawapi import (LawAPI, DailyLimitReached, DAILY_LIMIT, DEFAULT_OC,  # noqa: E402
                     FULLTEXT)
+import topicmix                                                         # noqa: E402
 
 # 판례를 어디까지 뒤질지. 본문까지 뒤진다 — 제목만 뒤지면 '상간' 같은 말이 통째로 빠진다.
 # 이 값이 바뀌면 아래 main() 이 '이미 찾아봤다' 표시를 지우고 전부 다시 훑는다.
@@ -119,7 +120,7 @@ QUERIES = [q for qs in QUERY_GROUPS.values() for q in qs]
 TOPIC_OF = {q: t for t, qs in QUERY_GROUPS.items() for q in qs}
 # 2026-10-01 에 더한 어르신 갈래 — 사건명 잡음 거르기(noise_name)를 이 갈래에만 건다
 #   (옛 갈래는 지금까지 걸러 온 그대로 둔다 — 기준을 바꾸면 쌓인 대기열이 흔들린다)
-SENIOR_TOPICS = ("노후사기", "효도계약", "치매", "땅·선산", "요양")
+SENIOR_TOPICS = topicmix.SENIOR          # 노후사기 · 효도계약 · 치매 · 땅·선산 · 요양
 # 어르신 갈래 낱말로 걸리지만 **사람 이야기가 아닌** 사건명 (2026-10-01 실측):
 #   '효도' 는 임금·해임 사건에, '노후 생활' 은 하자보수·퇴직연금에, '치매' 는 보험금에
 #   잔뜩 걸렸다. 본문을 받기 **전에** 사건명만 보고 뺀다 — 호출과 심사값을 아낀다.
@@ -152,6 +153,23 @@ def rotate(queries, queue):
     names = list(QUERY_GROUPS)
     order = sorted(groups, key=lambda t: (have.get(t, 0),
                                           names.index(t) if t in names else 99))
+    out = []
+    while any(groups[t] for t in order):
+        for t in order:
+            if groups[t]:
+                out.append(groups[t].pop(0))
+    return out
+
+
+def interleave(items, topics):
+    """⭐⭐ 2026-10-01 — 본문 받을 차례도 **갈래를 돌아가며** 한 건씩 (갈래 안 차례는 그대로).
+
+    목록이 아무리 고르게 훑혀도, 본문은 '좁은 낱말부터' 받으므로 좁은 낱말이 많은
+    갈래 하나가 예산을 다 먹을 수 있다. 여러 갈래를 한 번에 모을 때만 쓴다."""
+    groups = {}
+    for q, r in items:
+        groups.setdefault(TOPIC_OF.get(q, ""), []).append((q, r))
+    order = [t for t in topics if t in groups] + [t for t in groups if t not in topics]
     out = []
     while any(groups[t] for t in order):
         for t in order:
@@ -395,15 +413,23 @@ def main():
     api = LawAPI(oc, used_today=st["calls_today"])
     CASES.mkdir(parents=True, exist_ok=True)
 
-    # 무엇을 훑을지 — 직접 적은 낱말 > 갈래 지정 > 전부
+    # 무엇을 훑을지 — 직접 적은 낱말 > 갈래 지정('어르신 다섯' 같은 묶음 포함) > 전부
+    want = (args.topic or "").strip()
+    custom = bool(args.queries.strip())
     todo = [q.strip() for q in args.queries.split(",") if q.strip()]
-    if not todo and args.topic:
-        todo = QUERY_GROUPS.get(args.topic.strip(), [])
+    if not todo and want in topicmix.TOPIC_SETS:
+        # 묶음 — 그 안의 갈래를 대기열에 적은 것부터 돌아가며 (전부와 같은 방식)
+        q0 = json.loads(QUEUE.read_text(encoding="utf-8")) if QUEUE.exists() else []
+        todo = rotate([q for t in topicmix.TOPIC_SETS[want] for q in QUERY_GROUPS[t]], q0)
+        print(f"'{want}' 를 돌아가며 훑는다 ({len(todo)}개 낱말): "
+              + " → ".join(dict.fromkeys(TOPIC_OF.get(q, "") for q in todo)))
+    elif not todo and want:
+        todo = QUERY_GROUPS.get(want, [])
         if not todo:
             print(f"'{args.topic}' 이라는 갈래는 없다. 있는 갈래: "
-                  + " · ".join(QUERY_GROUPS))
+                  + " · ".join(list(QUERY_GROUPS) + list(topicmix.TOPIC_SETS)))
             return 1
-        print(f"갈래 '{args.topic}' 만 훑는다 ({len(todo)}개 낱말)")
+        print(f"갈래 '{want}' 만 훑는다 ({len(todo)}개 낱말)")
     if not todo:
         # ⭐ '전부' 는 **갈래를 돌아가며** 훑는다 — 대기열에 적은 갈래부터 (2026-10-01)
         q0 = json.loads(QUEUE.read_text(encoding="utf-8")) if QUEUE.exists() else []
@@ -414,6 +440,32 @@ def main():
     new_cases, hard_counts = [], {}
     ran = []            # 이번에 실제로 훑은 검색어별 결과 (관리자 페이지에서 보여준다)
     left = []           # 목록엔 올랐는데 예산이 모자라 못 받은 것 (다음 실행이 이어받는다)
+    # ⭐⭐ 2026-10-01 — 지금 받을 차례인 목록. 중간에 **끊겨도** 여기서 못 받은 것을
+    #    pending 으로 남긴다. 예전엔 예산이 다 찼을 때만 남겨서, 목록을 다 본 뒤 연결이
+    #    끊기면 찾은 판례(노후사기 시험 136건)가 통째로 사라졌다 — 낱말은 '찾아봤음'
+    #    으로 적혀 다음 실행도 다시 안 찾는다.
+    pool = {"now": []}
+    # 지난번에 목록에만 올리고 못 받은 것. ⚠️ 끊겨도 이것까지 잃으면 안 되므로 먼저 읽어 둔다.
+    pend = [(p["q"], {"판례일련번호": p["id"], "법원명": p.get("court", "")})
+            for p in st.get("pending", [])
+            if p.get("id") not in fetched]
+    # ⭐ 갈래를 골랐으면 **그 갈래 것만** 이어받는다. 딴 갈래 것은 손대지 않고 남겨 둔다
+    #    (노후사기를 눌렀는데 지난번 상속 남은 것이 예산을 다 먹으면 안 된다).
+    aside = []
+    if want and not custom:
+        mine = set(topicmix.members(want))
+        aside = [x for x in pend if TOPIC_OF.get(x[0], "") not in mine]
+        pend = [x for x in pend if TOPIC_OF.get(x[0], "") in mine]
+
+    def unfinished():
+        seen_u, out = set(), []
+        for q, r in pend + pool["now"]:
+            cid = r["판례일련번호"]
+            if cid in fetched or cid in seen_u:
+                continue
+            seen_u.add(cid)
+            out.append((q, r))
+        return out
     # 이미 갖고 있는 판결의 사건번호. 같은 판결이 일련번호만 달라 또 들어오는 것을 막는다.
     seen_no = set()
     for f in CASES.glob("*.json"):
@@ -437,6 +489,7 @@ def main():
         # ⚠️ 한 쪽(100건)만 보면 안 된다. '부정한 행위' 는 46,563건이라
         #    첫 쪽만 보고 끝내면 나머지를 통째로 못 본다. 여러 쪽을 넘겨 받는다.
         candidates = []
+        pool["now"] = candidates             # 목록을 받는 대로 쌓인다 (같은 목록)
         for q in todo:
             qs = st["queries"].setdefault(q, {"total": 0, "listed": False})
             # 전에 1쪽만 봤는데 이번에 3쪽을 보라고 했으면 **다시 훑어야 한다.**
@@ -478,12 +531,12 @@ def main():
         #    본문은 예산이 모자라 몇 건밖에 못 받는다. 그러면 다음에 다시 돌려도
         #    목록을 건너뛰어 **남은 수백 건을 영영 못 받는다.**
         #    (2026-08-10: 불륜 후보 586건 중 83건만 받고 예산이 끝났다)
-        pend = [(p["q"], {"판례일련번호": p["id"], "법원명": p.get("court", "")})
-                for p in st.get("pending", [])
-                if p.get("id") not in fetched]
         if pend:
             print(f"지난번에 못 받은 {len(pend)}건을 먼저 이어받는다.")
+        if aside:
+            print(f"(딴 갈래에서 남은 {len(aside)}건은 그대로 남겨 둔다)")
         candidates = pend + candidates
+        pool["now"] = candidates
 
         # 중복 제거 (검색어가 겹쳐 같은 판례가 여러 번 잡힌다)
         seen, uniq = set(), []
@@ -511,6 +564,11 @@ def main():
             return (width.get(q, 99999), rank)
 
         uniq.sort(key=order)
+        # 여러 갈래를 한 번에 모을 때('전부' · '어르신 다섯')는 갈래를 돌아가며 받는다
+        spread = list(dict.fromkeys(TOPIC_OF.get(q, "") for q in todo))
+        if len(spread) > 1 and not custom:
+            uniq = interleave(uniq, spread)
+        pool["now"] = uniq
 
         print()
         print(f"1차 통과 {len(uniq)}건 (중복 제거 후). 남은 예산으로 본문을 받는다.")
@@ -581,15 +639,20 @@ def main():
                   f"{case.get('사건명','')[:26]}")
     except DailyLimitReached as e:
         print(f"\n{e}")
+        left = left or unfinished()
     except Exception as e:                    # 네트워크 오류 등 — 여기까지는 저장한다
         print(f"\n⚠️ 중단: {type(e).__name__}: {e}")
+        left = left or unfinished()
+        if left:
+            print(f"  찾아 둔 {len(left)}건은 다음 실행이 이어받는다 (잃지 않는다)")
 
     # 저장
     st["calls_today"] = api.used
     st["fetched"] = sorted(fetched)
     # 못 받고 남은 것을 적어 둔다. 다음 실행이 여기서부터 이어받는다.
+    #   (이번에 남은 것 + 딴 갈래라 이번에 손대지 않은 것)
     st["pending"] = [{"q": q, "id": r["판례일련번호"], "court": r.get("법원명", "")}
-                     for q, r in left if r["판례일련번호"] not in fetched]
+                     for q, r in left + aside if r["판례일련번호"] not in fetched]
     st["hard_rejected"] = {**st.get("hard_rejected", {}), **hard_counts}
     save_state(st)
 

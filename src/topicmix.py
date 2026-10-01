@@ -13,12 +13,33 @@
    ⚠️ 미룰 뿐 지우지 않는다 — 고를 것이 그것뿐이면 그것을 쓴다.
    ⚠️ 이 규칙을 바꾸면 admin/worker.js 의 mixOrder 도 같이 바꾼다
       (tools/topicmix_check.py 가 두 쪽 결과를 같은 시험으로 맞춰 본다).
+
+심사할 차례 ('전부' 로 심사할 때 — gate.py · judge_order):
+   쓸 만한 것(심사 통과 · 아직 안 만든 것)이 **적은 갈래부터 돌아가며** 한 건씩.
+   ENOUGH(5)건 넘게 쌓인 갈래는 맨 뒤 — 다른 갈래를 다 매긴 뒤에야 매긴다.
+   (예전엔 기계 점수 순이라 가족 낱말·억 단위가 많은 상속이 늘 먼저 매겨졌다)
 """
 import re
 
 INHERIT = "상속"
 INHERIT_MAX = 0.30
 RECENT = 10
+
+# ⭐⭐ 2026-10-01 — 어르신 갈래 다섯 (모으기·심사에서 한 번에 고르는 이름)
+#    손님은 아이폰 화면으로만 누르신다. 갈래마다 따로 누르면 다섯 번을 차례로
+#    기다려야 하고(모으기는 한 번에 하나만 돈다 — 겹쳐 누르면 앞의 것이 취소된다),
+#    '전부' 로 누르면 옛 갈래까지 섞여 새 갈래가 몇 건씩밖에 안 매겨진다.
+#    ⚠️ 이 이름은 collect.yml 선택지 · admin/worker.js 선택지와 **한 글자도** 같아야 한다.
+SENIOR = ("노후사기", "효도계약", "치매", "땅·선산", "요양")
+TOPIC_SETS = {"어르신 다섯": SENIOR}
+
+
+def members(choice):
+    """고른 이름 → 그 안의 갈래들. '어르신 다섯' 이면 다섯, 갈래 하나면 그 하나, 비면 ()."""
+    choice = (choice or "").strip()
+    if not choice:
+        return ()
+    return TOPIC_SETS.get(choice, (choice,))
 
 
 def _sid_no(sid):
@@ -61,3 +82,37 @@ def order(ready, recent):
                 -(c.get("gate_score") or 0),
                 -(c.get("machine_score") or 0))
     return sorted(ready or [], key=key)
+
+
+# ⭐⭐ 2026-10-01 — 쓸 만한 것이 이만큼 쌓인 갈래는 '전부' 심사에서 맨 뒤로 간다
+ENOUGH = 5
+
+
+def judge_order(queue, used=(), limit=10):
+    """'전부' 로 심사할 때 이번에 매길 것 — 아직 안 매긴 것 가운데 앞에서부터 limit 건.
+
+    쓸 만한 것(심사 통과 · 아직 안 만든 것)이 적은 갈래부터 돌아가며 한 건씩,
+    갈래 안에서는 기계 점수가 높은 것부터. ENOUGH 건 넘게 쌓인 갈래는 맨 뒤."""
+    used = {str(u) for u in used or ()}
+    stock = {}
+    for c in queue or []:
+        if c.get("gate_pass") and str(c.get("case_id")) not in used:
+            t = c.get("topic") or ""
+            stock[t] = stock.get(t, 0) + 1
+    groups = {}
+    rest = [c for c in queue or [] if c.get("gate_score") is None]
+    for c in sorted(rest, key=lambda c: -(c.get("machine_score") or 0)):
+        groups.setdefault(c.get("topic") or "", []).append(c)
+
+    def rank(t):
+        return (stock.get(t, 0), -(groups[t][0].get("machine_score") or 0), t)
+
+    hungry = sorted((t for t in groups if stock.get(t, 0) < ENOUGH), key=rank)
+    full = sorted((t for t in groups if stock.get(t, 0) >= ENOUGH), key=rank)
+    out = []
+    for tier in (hungry, full):
+        while len(out) < limit and any(groups[t] for t in tier):
+            for t in tier:
+                if groups[t] and len(out) < limit:
+                    out.append(groups[t].pop(0))
+    return out

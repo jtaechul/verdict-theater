@@ -25,6 +25,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import prompts                                    # noqa: E402
 import cost                                       # noqa: E402
 import money                                      # noqa: E402
+import shortstate                                 # noqa: E402
+import topicmix                                   # noqa: E402
 from llm import Gemini, LLMError, BudgetExceeded  # noqa: E402
 from claude import writer, grader, ClaudeError    # noqa: E402
 from claude import BudgetExceeded as ClaudeBudget # noqa: E402
@@ -121,11 +123,24 @@ def main():
     queue = load_queue()
     want = (args.topic or "").strip()
     rest = [c for c in queue if c.get("gate_score") is None]
-    if want:
+    if want in topicmix.TOPIC_SETS:
+        # '어르신 다섯' 같은 묶음 — 그 안의 갈래만, 쓸 만한 것이 적은 갈래부터 돌아가며
+        group = set(topicmix.TOPIC_SETS[want])
+        rest = [c for c in rest if (c.get("topic") or "") in group]
+        used = {v.get("case_id") for v in shortstate.load().values()}
+        todo = topicmix.judge_order([c for c in queue if (c.get("topic") or "") in group],
+                                    used, args.limit)
+    elif want:
         rest = [c for c in rest if (c.get("topic") or "") == want]
-    # ⭐ 점수 높은 것부터 매긴다 — 예산이 모자라도 쓸 만한 것이 먼저 걸린다
-    rest.sort(key=lambda c: -(c.get("machine_score") or 0))
-    todo = rest[:args.limit]
+        # ⭐ 점수 높은 것부터 매긴다 — 예산이 모자라도 쓸 만한 것이 먼저 걸린다
+        rest.sort(key=lambda c: -(c.get("machine_score") or 0))
+        todo = rest[:args.limit]
+    else:
+        # ⭐⭐ 2026-10-01 손님: "너무 유류분이냐 상속하고 이거에만 매몰되어 있는 것 같은데"
+        #    '전부' 를 기계 점수 순으로 매기면 가족 낱말·억 단위가 많은 상속이 늘 먼저
+        #    걸린다. → 쓸 만한 것이 적은 갈래부터 돌아가며 매긴다 (topicmix.judge_order)
+        used = {v.get("case_id") for v in shortstate.load().values()}
+        todo = topicmix.judge_order(queue, used, args.limit)
     if not todo:
         left = sum(1 for c in queue if c.get("gate_score") is None)
         print(f"평가할 판례가 없다{f' ({want} 갈래에는)' if want else ''}.")
@@ -134,6 +149,12 @@ def main():
     print(f"■ 심사할 것 {len(todo)}건"
           + (f" ({want} 갈래)" if want else "")
           + f" · 아직 안 매긴 것 {len(rest)}건")
+    if not want or want in topicmix.TOPIC_SETS:
+        by = {}
+        for c in todo:
+            by[c.get("topic") or "(갈래 없음)"] = by.get(c.get("topic") or "(갈래 없음)", 0) + 1
+        print("  갈래별 (쓸 만한 것이 적은 갈래부터): "
+              + " · ".join(f"{t} {n}" for t, n in by.items()))
 
     # ⭐ 심사는 **채점**이다. 글을 쓰는 일이 아니므로 값싼 쪽(Gemini)으로 보낸다.
     #    (2026-08-10 손님: "채점은 Gemini api로 하고, 대본 생성만 Claude api로")

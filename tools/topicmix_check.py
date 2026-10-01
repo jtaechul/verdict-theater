@@ -14,6 +14,9 @@
   ③ 고르기   바로 앞 편과 같은 갈래는 뒤로 · 상속 30% 넘김은 뒤로 · 어르신 먼저 —
              자동 고르기(story90)와 관리자 화면(worker.js)이 **같은 차례**를 낸다
   ④ 단추     관리자 페이지 · 워크플로 선택지에 새 갈래가 있다
+  ⑤ 심사 차례 '전부' 로 심사하면 쓸 만한 것이 적은 갈래부터 돌아가며 매긴다
+             (기계 점수 순이면 상속이 늘 먼저 걸린다)
+  ⑥ 어르신 다섯 새 갈래 다섯을 한 번 눌러 고르게 모으고 고르게 심사한다
 """
 import json
 import subprocess
@@ -154,10 +157,66 @@ on = wf.get("on") if isinstance(wf.get("on"), dict) else wf.get(True)
 opts = on["workflow_dispatch"]["inputs"]["topic"]["options"]
 ck("모으기 워크플로에서 새 갈래를 고를 수 있다", all(t in opts for t in NEW), str(opts))
 ck("갈래 선택지가 모으기 사전과 같다 (없는 갈래를 고르면 아무것도 안 모인다)",
-   set(opts) - {"전부"} == set(C.QUERY_GROUPS), str(set(opts) ^ (set(C.QUERY_GROUPS) | {"전부"})))
+   set(opts) - {"전부"} == set(C.QUERY_GROUPS) | set(TM.TOPIC_SETS),
+   str(set(opts) ^ (set(C.QUERY_GROUPS) | set(TM.TOPIC_SETS) | {"전부"})))
+
+# ── ⑤ 심사 차례 ───────────────────────────────────────────
+print("\n⑤ 심사 차례 — '전부' 는 쓸 만한 것이 적은 갈래부터 돌아가며")
+jq = ([{"case_id": f"i{i}", "topic": "상속", "machine_score": 90} for i in range(10)]
+      + [{"case_id": f"r{i}", "topic": "상속", "gate_score": 80, "gate_pass": True}
+         for i in range(6)]
+      + [{"case_id": f"n{i}", "topic": "노후사기", "machine_score": 50} for i in range(6)]
+      + [{"case_id": f"d{i}", "topic": "치매", "machine_score": 40} for i in range(3)]
+      + [{"case_id": f"p{i}", "topic": "재산", "machine_score": 60 - i} for i in range(4)])
+six = [c["topic"] for c in TM.judge_order(jq, set(), 6)]
+ck("기계 점수가 높아도 넉넉한 갈래(상속 6건 대기)는 뒤로 간다",
+   "상속" not in six, str(six))
+ck("모자란 갈래끼리는 한 건씩 돌아가며 매긴다",
+   six == ["재산", "노후사기", "치매"] * 2, str(six))
+twenty = [c["topic"] for c in TM.judge_order(jq, set(), 20)]
+ck("다른 갈래를 다 매긴 뒤에는 넉넉한 갈래도 매긴다 (미룰 뿐 안 버린다)",
+   twenty.count("상속") == 7 and twenty[-7:] == ["상속"] * 7, str(twenty))
+gone = {f"r{i}" for i in range(6)}
+ck("이미 만든 것은 '쌓인 것' 으로 안 센다 (다 만들었으면 상속도 모자란 갈래)",
+   "상속" in [c["topic"] for c in TM.judge_order(jq, gone, 4)])
+ck("이미 매긴 것은 다시 안 매긴다",
+   all(c.get("gate_score") is None for c in TM.judge_order(jq, set(), 99)))
+gs = (ROOT / "src" / "gate.py").read_text(encoding="utf-8")
+ck("심사(gate.py)가 '전부' 일 때 이 차례를 쓴다 (갈래를 고르면 그 갈래 점수 순)",
+   "todo = topicmix.judge_order(queue, used, args.limit)" in gs
+   and gs.index("elif want:") < gs.index("todo = topicmix.judge_order(queue, used, args.limit)"))
+
+# ── ⑥ 어르신 다섯 ─────────────────────────────────────────
+print("\n⑥ '어르신 다섯' — 새 갈래 다섯을 한 번에 (아이폰에서 한 번 누르기)")
+ck("'어르신 다섯' 은 새 갈래 다섯이다", set(TM.members("어르신 다섯")) == set(NEW),
+   str(TM.members("어르신 다섯")))
+ck("갈래 하나를 고르면 그 하나 · 비우면 없음",
+   TM.members("치매") == ("치매",) and TM.members("") == ())
+ck("묶음 이름이 갈래 이름과 겹치지 않는다", not set(TM.TOPIC_SETS) & set(C.QUERY_GROUPS))
+ck("모으기 잡음 거르기가 같은 다섯을 본다", set(C.SENIOR_TOPICS) == set(NEW))
+mix = C.interleave([("고수익", {"판례일련번호": "a1"}), ("원금보장", {"판례일련번호": "a2"}),
+                    ("투자사기", {"판례일련번호": "a3"}), ("치매", {"판례일련번호": "b1"}),
+                    ("요양원", {"판례일련번호": "c1"}), ("치매", {"판례일련번호": "b2"})],
+                   ["노후사기", "치매", "요양"])
+ck("본문 받을 차례도 갈래를 돌아가며 (좁은 낱말 갈래 하나가 예산을 다 먹지 않게)",
+   [r["판례일련번호"] for _, r in mix] == ["a1", "b1", "c1", "a2", "b2", "a3"],
+   str([r["판례일련번호"] for _, r in mix]))
+cs = (ROOT / "src" / "collect.py").read_text(encoding="utf-8")
+ck("여러 갈래를 한 번에 모을 때만 돌아가며 받는다 (갈래 하나·직접 낱말은 그대로)",
+   "if len(spread) > 1 and not custom:" in cs)
+ck("심사도 '어르신 다섯' 이면 그 다섯만 돌아가며 매긴다",
+   "topicmix.TOPIC_SETS[want]" in gs and gs.index("want in topicmix.TOPIC_SETS")
+   < gs.index("elif want:"))
+gq = [{"case_id": f"s{i}", "topic": "상속", "machine_score": 99} for i in range(5)] \
+    + [{"case_id": f"n{i}", "topic": t, "machine_score": 50}
+       for i, t in enumerate(["노후사기", "치매", "요양", "땅·선산", "효도계약"] * 2)]
+grp = set(TM.TOPIC_SETS["어르신 다섯"])
+picked = TM.judge_order([c for c in gq if c["topic"] in grp], set(), 5)
+ck("'어르신 다섯' 심사 5건이면 갈래마다 한 건씩 (상속은 안 낀다)",
+   sorted(c["topic"] for c in picked) == sorted(NEW), str([c["topic"] for c in picked]))
 
 print("─" * 56)
 if bad:
     print(f"❌ {len(bad)}개 걸렸습니다 — 고치고 다시")
     sys.exit(1)
-print("✅ 소재 섞기: 어르신 갈래 · 돌아가며 모으기 · 잡음 빼기 · 심사 · 고르기 · 단추")
+print("✅ 소재 섞기: 어르신 갈래 · 돌아가며 모으기 · 잡음 빼기 · 심사 · 고르기 · 단추 · 심사 차례 · 어르신 다섯")
