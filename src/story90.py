@@ -463,6 +463,24 @@ def is_narr_cut(c):
                                for t in turns)
 
 
+def still_who(c, drama=False):
+    """그 컷 그림에 **얼굴을 그릴** 사람들.
+
+    ⭐⭐⭐ 2026-10-01 손님: "나레이션컷에서도 등장인물 얼굴 나오는거로 반영해."
+       · 대사 컷        → who 그대로
+       · 나레이션 컷    → 2분 드라마면 who (그 순간의 인물 · 입은 다문다)
+                          옛 여러 편이면 [] (나레이션 = 장소 · 2026-09-10 규칙)
+    ⚠️⚠️ 그림 지문(build_short90.still_prompt) · 얼굴 참조(short90.stills) ·
+       카메라 무빙(short90.move_of) 이 **이 함수 하나**로 갈린다. 따로 가르면
+       지문은 사람인데 참조는 빈손인 그림이 나온다 — 2026-09-10 에 정확히 그
+       모양으로 낯선 얼굴이 그려졌다.
+    """
+    who = [w for w in (c.get("who") or []) if w and w != "나레이션"]
+    if is_narr_cut(c) and not drama:
+        return []
+    return who
+
+
 def autofix(doc):
     log = []
 
@@ -560,6 +578,102 @@ def autofix(doc):
 
     # ⑥ 격한 연기 지시를 눌러 담는다 (2026-09-04 에 넣은 것)
     log += cool_all(doc)
+
+    # ⑦ 2분 드라마 — 나레이션 컷에도 **등장인물 얼굴** (2026-10-01 손님 지시)
+    #    · 증거 확대 화면 표시가 규격에 안 맞으면 **빼고 간다** (0원).
+    #      꾸밈이지 이야기가 아니다 — 그것 때문에 대본을 반려하면 안 된다.
+    if is_drama(doc):
+        log += narr_faces(doc)
+        log += fix_inserts(doc)
+    return log
+
+
+def narr_faces(doc):
+    """2분 드라마 나레이션 컷마다 **그 순간의 등장인물**을 세운다 (0원).
+
+    고르는 차례 — ① 나레이션이 이름을 부른 인물(먼저 나온 차례)
+                  ② 앞 컷 화면 인물 ③ 뒤 컷 화면 인물 ④ 첫 인물(주인공)
+    화면 묘사에 그 이름이 없으면 앞에 세운다 — 그림 모델이 **누구를** 그릴지
+    알아야 얼굴 기준 그림(시트 칸)과 이어진다.
+    ⚠️ 사람은 cast 안에서만 고른다 (등장인물 외 사람 금지 · 핵심 규칙).
+    """
+    names = [str((p or {}).get("name") or "").strip() for p in doc.get("cast") or []]
+    names = [x for x in names if x and x not in NOT_PEOPLE]
+    if not names:
+        return []
+    log = []
+    cuts = doc.get("cuts") or []
+
+    def on(i):
+        if 0 <= i < len(cuts):
+            return [w for w in (cuts[i].get("who") or []) if w in names]
+        return []
+
+    for i, c in enumerate(cuts):
+        if not is_narr_cut(c):
+            continue
+        who = [w for w in (c.get("who") or []) if w in names]
+        if not who:
+            text = " ".join(str((t or ["", ""])[1]) for t in c.get("turns") or [])
+            said = sorted((w for w in names if w in text), key=text.index)
+            who = said or on(i - 1) or on(i + 1) or names[:1]
+            log.append(f"컷{c.get('n')}: 나레이션 화면에 {', '.join(who[:DRAMA_NARR_WHO_MAX])}"
+                       f" 을(를) 세웠다 (나레이션에도 등장인물 얼굴)")
+        if len(who) > DRAMA_NARR_WHO_MAX:
+            log.append(f"컷{c.get('n')}: 나레이션 화면 인물을 {DRAMA_NARR_WHO_MAX}명으로 "
+                       f"줄였다 (얼굴이 작아진다)")
+        who = who[:DRAMA_NARR_WHO_MAX]
+        c["who"] = who
+        sc = str(c.get("scene") or "").strip()
+        if not any(w in sc for w in who):
+            c["scene"] = (f"{' and '.join(who)}, faces clearly visible, in this place: "
+                          f"{sc}").strip()
+            log.append(f"컷{c.get('n')}: 화면 묘사에 {', '.join(who)} 을(를) 적었다")
+    return log
+
+
+def insert_ok(c):
+    """이 컷의 증거 확대 화면 표시가 쓸 만한가. (된다/안 된다, 왜)"""
+    ins = c.get("insert")
+    if not ins:
+        return True, ""
+    if not isinstance(ins, dict):
+        return False, "insert 가 {word, thing} 꼴이 아니다"
+    word = str(ins.get("word") or "").strip()
+    thing = str(ins.get("thing") or "").strip()
+    text = " ".join(str((t or ["", ""])[1]) for t in c.get("turns") or [])
+    if not is_narr_cut(c):
+        return False, "증거 확대는 나레이션 컷에만 둔다 (대사 컷은 옴니 영상이다)"
+    if not word or word not in text:
+        return False, f"확대할 낱말 '{word}' 이 나레이션에 없다"
+    if not thing or re.search(r"[가-힣]", thing):
+        return False, "확대할 물건(thing)은 영어로 적는다"
+    hit = NARR_PERSON.findall(scene_clean(thing))
+    if hit:
+        return False, f"확대 화면에 사람 낱말이 있다 ('{hit[0]}') — 물건만 적는다"
+    brand = [w for w in BRANDED if w in thing.lower()]
+    if brand:
+        return False, f"확대 화면에 '{brand[0]}' — 실제 상표·글자가 그려진다"
+    return True, ""
+
+
+def fix_inserts(doc):
+    """증거 확대 표시를 **규격 안으로** 돌린다 — 틀린 것·넘치는 것은 뺀다 (0원)."""
+    log, kept = [], 0
+    for c in doc.get("cuts") or []:
+        if not c.get("insert"):
+            c.pop("insert", None)
+            continue
+        ok, why = insert_ok(c)
+        if ok and kept < DRAMA_INSERT_MAX:
+            ins = c["insert"]
+            c["insert"] = {"word": str(ins["word"]).strip(),
+                           "thing": str(ins["thing"]).strip().rstrip(".")}
+            kept += 1
+            continue
+        c.pop("insert", None)
+        log.append(f"컷{c.get('n')}: 증거 확대를 뺐다 — "
+                   + (why or f"한 편에 {DRAMA_INSERT_MAX}개까지"))
     return log
 
 
@@ -623,6 +737,15 @@ DRAMA_RULES = {
 DRAMA_TALK_MIN, DRAMA_TALK_MAX = 7, 10      # 대사 컷(= 옴니 영상) 수
 DRAMA_LINE_MIN, DRAMA_LINE_MAX = 6, 32      # 대사 한 줄 글자 (프롬프트는 12~30 을 겨냥)
 DRAMA_CAST_MIN, DRAMA_CAST_MAX = 2, 6
+# ⭐⭐⭐ 2026-10-01 손님: "나레이션컷에서도 등장인물 얼굴 나오는거로 반영해."
+#    2분 드라마의 나레이션 컷은 빈 방이 아니라 **그 순간의 등장인물 얼굴**이다
+#    (입은 다문다 — 말하는 것은 나레이션이다). 얼굴이 또렷하려면 둘까지.
+#    ⚠️ 옛 여러 편은 그대로다 — 나레이션 = 장소 (2026-09-10 규칙).
+DRAMA_NARR_WHO_MAX = 2
+# ⭐ 2026-10-01 손님 승인 — **증거 확대 화면** (해양생물 쇼츠의 '특징 줌인').
+#    나레이션이 계약서·문자·녹음기 같은 증거를 말하는 순간 그 물건을 크게
+#    찍은 그림으로 넘어갔다가 인물 얼굴로 돌아온다. 한 장 약 200원 — 둘까지.
+DRAMA_INSERT_MAX = 2
 # 대사 영상값 상한 — 한 번 실행 한도(2분 드라마 16,000원 · 손님 승인
 # 2026-09-30) 안에 그림(약 3,000원)·시트(265원)와 함께 들어가게 한다
 DRAMA_OMNI_KRW_MAX = 10_000
@@ -758,6 +881,30 @@ def check_drama(doc, new=True):
     if new and not (DRAMA_TALK_MIN <= len(talk) <= DRAMA_TALK_MAX):
         bad.append(f"대사 컷이 {len(talk)}개다 — {DRAMA_TALK_MIN}~{DRAMA_TALK_MAX}개"
                    f"여야 한다 (대사 컷 하나가 입모양 영상 한 편이다)")
+    # ⭐⭐⭐ 2026-10-01 손님: "나레이션컷에서도 등장인물 얼굴 나오는거로 반영해."
+    #    autofix ⑦ 이 0원으로 세워 주므로 여기까지 오면 진짜 잘못이다.
+    ins_n = 0
+    for c in cuts:
+        if not is_narr_cut(c):
+            continue
+        on = [w for w in (c.get("who") or []) if w in names]
+        if not on:
+            bad.append(f"컷{c.get('n')}: 나레이션 컷 화면에 등장인물이 없다 — "
+                       f"나레이션 컷에도 그 순간의 인물 얼굴이 나온다 (who 에 넣는다)")
+        elif len(on) > DRAMA_NARR_WHO_MAX:
+            bad.append(f"컷{c.get('n')}: 나레이션 화면 인물이 {len(on)}명이다 — "
+                       f"{DRAMA_NARR_WHO_MAX}명까지 (얼굴이 작아진다)")
+        if c.get("insert"):
+            ins_n += 1
+            ok, why = insert_ok(c)
+            if not ok:
+                bad.append(f"컷{c.get('n')}: 증거 확대 — {why}")
+    for c in cuts:
+        if c.get("insert") and not is_narr_cut(c):
+            ok, why = insert_ok(c)
+            bad.append(f"컷{c.get('n')}: 증거 확대 — {why}")
+    if ins_n > DRAMA_INSERT_MAX:
+        bad.append(f"증거 확대가 {ins_n}개다 — 한 편에 {DRAMA_INSERT_MAX}개까지")
     if cuts:
         last = (cuts[-1].get("turns") or [["", ""]])[0]
         if last[0] != "나레이션" or "실제로 있었던 사건" not in str(last[1]):

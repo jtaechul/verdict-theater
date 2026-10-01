@@ -258,7 +258,21 @@ def still_prompt(c, prev=None, ctx=None):
     #    나레이션 컷에 who 가 남아 있으면 사람 갈래로 가서 사람이 그려졌다.
     #    나레이션은 **장소·사물·빛**, 대사는 **사람** — 이 둘을 섞지 않는다.
     #    (원래 설계도 그랬다: 나레이션은 그림, 대사는 영상)
-    who = [] if is_narr(c) else (c.get("who") or [])
+    # ⭐⭐⭐ 2026-10-01 손님: "나레이션컷에서도 등장인물 얼굴 나오는거로 반영해."
+    #    → **2분 드라마만** 나레이션 컷에도 그 순간의 등장인물을 그린다(입은
+    #      다문다). 옛 여러 편은 위 규칙 그대로다. 가르는 자리는 하나뿐이다
+    #      (story90.still_who — 얼굴 참조·카메라 무빙도 같은 함수를 쓴다).
+    drama = bool((ctx or {}).get("drama"))
+    who = ST90.still_who(c, drama)
+    if who and is_narr(c):
+        # ⚠️ 등장인물 **외의** 사람이 묘사에 섞이면 그대로 막는다 (핵심 규칙)
+        w = ST90.narr_people(c.get("scene"), {"format": ST90.DRAMA,
+                                              "people": {x: {} for x in who}})
+        if w:
+            raise SystemExit(
+                f"❌ 컷{c.get('n')}: 나레이션 화면 묘사에 등장인물이 아닌 사람이 "
+                f"있습니다 — '{w[0]}'\n   {c.get('scene')}\n"
+                f"   등장인물({', '.join(who)}) 이름으로만 적습니다 (값 0원).")
     if not who:
         # ⚠️⚠️ 마지막 관문. 나레이션 컷 화면 묘사가 사람을 부르고 있으면
         #    **조용히 그리지 않는다.** 얼굴 참조가 없어서 낯선 외국인이
@@ -274,7 +288,7 @@ def still_prompt(c, prev=None, ctx=None):
                 f"(얼굴 참조가 없어 낯선 외국인이 그려집니다).\n"
                 f"   고치기: python3 tools/edit_line.py --sid <사건> "
                 f"--cut {c.get('n')} --scene \"...\"   (값 0원)")
-    else:
+    elif not is_narr(c):
         # ⭐⭐⭐ 2026-09-12 손님: "장남이라고 해놓고선 등장인물이 아닌 사람이
         #    자꾸 나타나." 대사 컷 화면에 who 보다 사람이 많으면, 남는 사람은
         #    얼굴 참조가 없어 그림 모델이 지어낸다. 나레이션 쪽만 막아 두면
@@ -297,6 +311,11 @@ def still_prompt(c, prev=None, ctx=None):
         #    이었다. 36컷 구도가 전부 같으니 단조로울 수밖에 없었다.
         #    이제 영상과 **같은 구도표**(compose_of)를 읽는다. 움직임만 빠진다.
         shot, framing, cam = compose_of(c, prev, ctx, who)
+        if drama:
+            # ⭐ PEOPLE 줄과 **같은 이름**으로 부른다 (2분 드라마 · 2026-10-01).
+            #    PEOPLE 은 WIFE 인데 SHOT 은 '아내' 면 모델이 두 사람으로 읽을 수 있다.
+            for nm in sorted(who, key=len, reverse=True):
+                shot = shot.replace(nm, EN.get(nm, nm))
         body += [shot + " Mouths closed, holding the moment.", framing, cam]
     else:
         # ⚠️ 2026-08-31 에 "이 줄이 낯선 남녀를 부르는 것 같다" 고 적어 두고
@@ -309,6 +328,20 @@ def still_prompt(c, prev=None, ctx=None):
     body += ([COLOR, S.STYLE_STILL] if who else [COLOR_NOBODY, STYLE_NOBODY])
     body.append(NO_TEXT)
     return "\n".join(body)
+
+
+# ⭐⭐⭐ 2026-10-01 — **증거 확대 화면** (해양생물 쇼츠의 '특징 줌인' · 손님 승인)
+#    나레이션이 그 물건을 말하는 순간 이 그림으로 넘어갔다가 인물 얼굴로 돌아온다.
+#    ⚠️ 물건만 그린다 — 사람이라는 낱말이 한 번도 안 나오는 판(HEAD/COLOR/STYLE
+#       _NOBODY)을 쓴다. 2026-09-05 에 사람 판 한 줄 때문에 낯선 남녀가 그려졌다.
+#    ⚠️ 글자가 그려지면 안 된다 — 서류·휴대폰도 글씨는 흐리게만.
+def insert_prompt(thing):
+    return "\n".join([
+        HEAD_NOBODY.rstrip(".") + ". A single still frame, vertical 9:16 portrait.",
+        f"SHOT: An extreme close-up insert of {thing}, filling the frame, the single "
+        "most telling detail sharp and everything around it melting into soft blur. "
+        "Any writing on it stays soft and unreadable.",
+        FRAMING_NOBODY, "CAMERA: " + BLUR_NOBODY, COLOR_NOBODY, STYLE_NOBODY, NO_TEXT])
 
 
 # 나레이션 컷용 소리 지시 — **아무도 말하지 않는다.**
@@ -505,6 +538,198 @@ FRAMING_MID = ("FRAMING: vertical 9:16 portrait, filling the whole frame edge "
                "to edge, the person kept in the middle, " + EYE_LINE + ".")
 
 
+# ── ⭐⭐⭐ 2026-10-01 — **2분 드라마 구도 설계** (손님 승인) ─────────────
+#    반려동물 식당 쇼츠 · 해양생물 쇼츠에서 가져온 것:
+#      ① 구도마다 **화면 크기(size)·방향(dir)** 꼬리표를 단다 — 이웃한 두 컷은
+#         **둘 다** 달라야 한다 (같은 구도가 이어지면 컷이 끊겨 보인다).
+#         예전엔 표마다 컷 번호로 돌려 써서, 표가 다른 두 컷이 '유리 너머 →
+#         유리 너머' 로 이어질 수 있었다 (S93: 36컷 중 15컷이 유리·문틀).
+#      ② 유리 너머·문틀 같은 **특수 구도는 한 편에 SPECIAL_MAX 번까지**
+#         (해양생물 쪽 '단면 상자 구도 최대 2장면' 과 같은 생각).
+#      ③ 나레이션 컷도 **얼굴이 또렷한 구도**만 (손님 지시 2026-10-01 —
+#         뒷모습·실루엣·작게 담는 와이드는 2분 드라마에서 뺀다).
+#      ④ 그림과 옴니 영상이 **같은 계획**을 읽는다 (잣대 한 벌).
+#    ⚠️ 계획은 대본 차례로만 정해진다 — 무작위가 아니다. 같은 대본은 늘 같은
+#       구도라 다시 지어도 그림을 0원으로 다시 쓴다.
+#    ⚠️ 옛 여러 편 형식은 손대지 않는다 (위 표 · 컷 번호로 돌려 쓰기 그대로).
+SPECIAL_MAX = 4
+FR_FACE = ("FRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, "
+           "the face near the middle of the frame, clearly visible and sharp, {eye}.")
+FR_FACE_WIDE = ("FRAMING: vertical 9:16 portrait, filling the whole frame edge to "
+                "edge, seen from the knees up with the room around them, the face "
+                "near the middle and clearly readable, {eye}.")
+FR_GLASS = ("FRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, "
+            "the glass between the camera and them, a faint reflection laid over "
+            "the scene, the face near the middle and clearly readable, {eye}.")
+FR_DOOR = ("FRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, "
+           "a frame-within-the-frame made by the doorway, the outer edges dark, "
+           "the face near the middle and clearly readable, {eye}.")
+FR_TWO = ("FRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, "
+          "both faces clearly visible and sharp, {eye}.")
+FR_OTS = ("FRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, "
+          "the speaking face clearly visible and sharp past the soft near "
+          "shoulder, {eye}.")
+FR_TIGHT = ("FRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, "
+            "the face filling much of the frame, {eye}.")
+
+
+def _shot(key, size, dir_, text, framing, moves, special=False):
+    return {"key": key, "size": size, "dir": dir_, "text": text,
+            "framing": framing, "moves": list(moves), "special": special}
+
+
+# 한 사람 (나레이션 · 대사 공통) — 얼굴이 또렷한 것만
+FACE_SHOTS = [
+    _shot("mid-front", "medium", "front",
+          "A medium shot from the waist up, the camera facing them almost "
+          "straight on, {ang}", FR_FACE, ("push", "drift", "pull")),
+    _shot("close-3q", "close", "three-quarter",
+          "A close-up of the face and shoulders in three-quarter view, {ang}",
+          FR_FACE, ("push", "hold", "drift")),
+    _shot("wide-3q", "wide", "three-quarter",
+          "A medium-wide shot from the knees up in three-quarter view with the "
+          "room open around them, {ang}", FR_FACE_WIDE, ("push", "drift")),
+    _shot("mid-profile", "medium", "profile",
+          "A medium shot in clean side profile, {ang}, the profile of the face "
+          "sharp against the soft room", FR_FACE, ("drift", "push")),
+    _shot("close-front", "close", "front",
+          "A close-up of the face straight on, {ang}, intense steady gaze",
+          FR_FACE, ("push", "hold")),
+    _shot("glass", "medium", "through",
+          "Shot through the glass wall or glass door of the room, {ang}, the glass "
+          "catching a faint reflection of the lights across them", FR_GLASS,
+          ("drift", "push"), special=True),
+    _shot("wide-front", "wide", "front",
+          "A medium-wide shot from the knees up, facing them straight on in the "
+          "middle of the room, {ang}", FR_FACE_WIDE, ("push", "pull")),
+    _shot("close-profile", "close", "profile",
+          "A close-up in side profile, {ang}, the eye and the line of the jaw "
+          "sharp", FR_FACE, ("hold", "drift")),
+    _shot("doorway", "wide", "through",
+          "Framed standing inside a doorway seen from the next room, {ang}, "
+          "half-open blind slats throwing soft bars of shadow across the wall",
+          FR_DOOR, ("push", "drift"), special=True),
+]
+# 두 사람이 한 화면 (나레이션) — 두 얼굴 다
+TWO_SHOTS = [
+    _shot("two-mid", "medium", "front",
+          "A two-shot at medium distance, both of them facing the camera at a "
+          "slight angle, {ang}", FR_TWO, ("push", "drift")),
+    _shot("two-profile", "medium", "profile",
+          "A two-shot in side view across the space between them, both faces "
+          "in profile, {ang}", FR_TWO, ("drift", "push")),
+    _shot("two-wide", "wide", "three-quarter",
+          "A medium-wide two-shot in three-quarter view with the room around "
+          "them, {ang}", FR_TWO, ("push", "pull")),
+    _shot("two-glass", "medium", "through",
+          "A two-shot seen through a glass partition, {ang}, a faint reflection "
+          "of the lights laid over the glass", FR_TWO, ("drift",), special=True),
+]
+# 두 사람이 한 화면 (대사) — 말하는 얼굴이 또렷해야 입모양이 산다
+OTS_SHOTS = [
+    _shot("ots-mid", "medium", "ots",
+          "An over-the-shoulder shot past {other}, the near shoulder soft in the "
+          "foreground framing {speaker}, {ang}", FR_OTS, ("push", "drift", "hold")),
+    _shot("ots-close", "close", "ots",
+          "A close over-the-shoulder shot past {other}, the near shoulder a soft "
+          "blur at the edge, {speaker}'s face filling the frame, {ang}", FR_OTS,
+          ("hold", "push")),
+    _shot("two-mid", "medium", "front",
+          "A two-shot at medium distance, {speaker} facing the camera at a slight "
+          "angle and {other} turned towards them, {ang}", FR_TWO, ("push", "drift")),
+]
+# 결정적 순간 — 얼굴만 크게, 카메라는 멈춘다
+CLIMAX_SHOT = _shot("climax", "close", "front", "A tight close-up on the face, {ang}",
+                    FR_TIGHT, ("hold",))
+VERDICT_WORDS = ("판결", "선고", "법원은", "재판부")
+
+
+def drama_flip_from(cuts):
+    """2분 드라마는 한 편이다 — 판결이 나오는 나레이션부터 앵글을 뒤집는다.
+
+    ⚠️ 옛 여러 편은 '마지막 편부터' 뒤집었다. 2분 드라마에 그 셈을 그대로 쓰면
+       편이 하나라 **첫 컷부터 전부** 뒤집혀 있었다 (가진 쪽을 내려다봤다).
+    """
+    half = len(cuts) // 2
+    for i, c in enumerate(cuts):
+        if i < half or not is_narr(c):
+            continue
+        if any(w in text_of(c) for w in VERDICT_WORDS):
+            return int(c["n"])
+    return 10 ** 9
+
+
+def plan_shots(cuts, climax=()):
+    """2분 드라마 구도 계획 — 컷마다 구도 하나 (위 ① ~ ④).
+
+    고르는 법: 그 컷에 맞는 표에서, 컷 번호만큼 돌린 차례로 보며
+      ㉠ 앞 컷과 크기·방향이 **둘 다** 다르고 ㉡ 특수 구도는 한도 안인 것 중
+      ㉢ 이번 편에서 **덜 쓴 것**을 고른다. 없으면 하나만 달라도 되게 푼다.
+    움직임도 앞 컷과 다르게 고른다 (같은 움직임이 이어지면 안 움직여 보인다).
+    """
+    out, prev, used, special = [], None, {}, 0
+    for c in cuts:
+        who = ST90.still_who(c, True)
+        talks = not is_narr(c)
+        if not who:
+            out.append(None)
+            prev = None
+            continue
+        if talks and int(c["n"]) in set(climax):
+            pool = [CLIMAX_SHOT]
+        elif talks and len(who) >= 2:
+            pool = OTS_SHOTS
+        elif len(who) >= 2:
+            pool = TWO_SHOTS
+        else:
+            pool = FACE_SHOTS
+        k = (int(c["n"]) - 1) % len(pool)
+        order = pool[k:] + pool[:k]
+
+        def dir_of(s):
+            # 어깨 너머는 **말하는 사람**마다 방향이 다르다 (주고받기는 거울상)
+            return f"ots:{c['turns'][0][0]}" if s["dir"] == "ots" else s["dir"]
+
+        def room(s):
+            return not (s["special"] and special >= SPECIAL_MAX)
+
+        def both(s):
+            return prev is None or (s["size"] != prev["size"]
+                                    and dir_of(s) != prev["dir"])
+
+        def either(s):
+            return prev is None or (s["size"] != prev["size"]
+                                    or dir_of(s) != prev["dir"])
+
+        cand = ([s for s in order if room(s) and both(s)]
+                or [s for s in order if room(s) and either(s)]
+                or [s for s in order if room(s)] or order)
+        pick = min(cand, key=lambda s: (used.get(s["key"], 0), order.index(s)))
+        used[pick["key"]] = used.get(pick["key"], 0) + 1
+        special += 1 if pick["special"] else 0
+        mv_prev = prev["move"] if prev else None
+        moves = pick["moves"]
+        mk = (int(c["n"]) - 1) % len(moves)
+        mvs = moves[mk:] + moves[:mk]
+        move = next((m for m in mvs if m != mv_prev), mvs[0])
+        one = {"key": pick["key"], "size": pick["size"], "dir": dir_of(pick),
+               "special": pick["special"], "move": move,
+               "text": pick["text"], "framing": pick["framing"]}
+        out.append(one)
+        prev = one
+    return out
+
+
+# 움직임 이름 → 영상 지문 한 마디 (2분 드라마)
+DRAMA_MOVE = {
+    "push": "the camera pushing in very slowly and smoothly",
+    "pull": "the camera pulling back very slowly and smoothly",
+    "drift": "the camera drifting sideways in one slow steady move",
+    "hold": ("the camera locked off completely still on a tripod, so that only "
+             "the face moves"),
+}
+
+
 def compose_of(c, prev=None, ctx=None, who=None):
     """이 컷의 (구도 한 문장, FRAMING, CAMERA). **움직임은 안 들어간다.**
 
@@ -521,6 +746,17 @@ def compose_of(c, prev=None, ctx=None, who=None):
     scene = c["scene"]
     ctx = ctx or {}
     n = int(c.get("n") or 1) - 1      # 번호 없는 조각도 안 죽게
+    pick = ctx.get("pick")
+    if pick and who:
+        # ⭐ 2분 드라마 — 구도 계획(plan_shots)이 정한 것을 그대로 쓴다
+        speaker = str((c.get("turns") or [[who[0], ""]])[0][0])
+        if speaker not in who:
+            speaker = who[0]
+        other = next((w for w in who if w != speaker), "")
+        fill = {"ang": angle_of(speaker, ctx.get("flip")), "eye": EYE_LINE,
+                "speaker": speaker, "other": other}
+        return (f"SHOT: {scene}. {pick['text'].format(**fill)}.",
+                pick["framing"].format(**fill), "CAMERA: " + BLUR)
     if not who:
         shot, fr = PLACE_SHOTS[n % len(PLACE_SHOTS)]
         return (f"SHOT: {scene}. {shot}.", fr or FRAMING_NOBODY,
@@ -576,6 +812,9 @@ def move_line(c, ctx=None):
     """이 컷을 영상으로 살 때 붙일 **움직임** 한 마디."""
     ctx = ctx or {}
     n = int(c.get("n") or 1) - 1      # 번호 없는 조각도 안 죽게
+    if ctx.get("pick"):
+        # ⭐ 2분 드라마 — 움직임도 구도 계획이 정한다 (앞 컷과 다르게)
+        return DRAMA_MOVE[ctx["pick"]["move"]]
     if ctx.get("climax"):
         # ⭐ 결정적 순간엔 **카메라를 멈춘다.** 전부 움직이면 오히려 싸구려다.
         return ("the camera locked off completely still on a tripod with no "
@@ -673,24 +912,61 @@ OMNI_HEAD = ("A short fictional drama scene. Every character is invented for thi
              "story and resembles nobody.")
 OMNI_STYLE = ("STYLE: naturalistic cinematic drama, soft film grain, muted "
               "desaturated palette, soft practical lighting, shallow depth of field.")
-def omni_timeline(role, text, sec, listener=""):
+# ⭐⭐⭐ 2026-10-01 — 옴니 대사 컷에 **초 단위 카메라** (해양생물 쇼츠에서 · 손님 승인).
+#    예전 시간표에는 '몇 초에 무슨 말' 만 있고 카메라는 SHOT 줄 한 마디였다.
+#    해양생물 쪽 실측 — 뭉뚱그려 적으면 AI 가 방향·구도를 멋대로 해석했다.
+#    → 구간마다 카메라가 **어디서 어디로** 가는지 적는다. 말이 시작될 때 움직임이
+#      붙고, 숨 쉬는 틈에 한 박자 늦추고, 끝에서는 **멈춰 선다** (컷 끝에서
+#      흐트러지지 않게 · 다음 컷으로 깨끗하게 넘어가게).
+#    ⚠️ 움직임은 한 컷에 **한 방향 한 번**이다 (크게 움직이면 배경이 무너진다 —
+#       반려동물 식당 쇼츠 실측). 무엇을 할지는 구도 계획(plan_shots)이 정한다.
+OMNI_CAM = {
+    "push": ("starts a very slow push-in from the opening framing",
+             "the slow push-in continues towards {role}'s face",
+             "the push-in slows for a beat",
+             "settles to a stop on a slightly closer framing of {role} and holds"),
+    "pull": ("starts a very slow pull-back from the opening framing",
+             "the slow pull-back continues, a little more of the room opening up "
+             "around {role}",
+             "the pull-back slows for a beat",
+             "settles to a stop and holds"),
+    "drift": ("starts one slow sideways drift",
+              "the sideways drift continues with {role} clearly in view",
+              "the drift slows for a beat",
+              "settles to a stop and holds on {role}"),
+    "hold": ("locked off completely still on a tripod",
+             "still locked off while only {role}'s face moves",
+             "still locked off",
+             "still locked off until the end"),
+}
+
+
+def omni_timeline(role, text, sec, listener="", move=None):
     """[0.0-0.6s] 처럼 초를 박는다 (옴니 문서가 권하는 적기).
     ⚠️ 빠르기·숨·문장 나누기는 **talkplan 한 곳**의 값이다 — 산 길이(omni_sec)와
-       초 표가 다른 잣대를 쓰면 표가 산 길이를 넘어 말이 잘린다."""
+       초 표가 다른 잣대를 쓰면 표가 산 길이를 넘어 말이 잘린다.
+    move 를 주면 구간마다 카메라 한 마디를 붙인다 (OMNI_CAM · 2026-10-01)."""
+    cam = OMNI_CAM.get(move or "")
+
+    def cm(k):
+        return f" Camera: {cam[k].format(role=role)}." if cam else ""
+
     ss = talkplan.omni_sentences(text)
     rows = [f"[0.0-{talkplan.OMNI_LEAD:.1f}s] silent, {role} holds the moment"
             + (f" while {listener} listens with lips closed" if listener else "")
-            + "."]
+            + "." + cm(0)]
     t = talkplan.OMNI_LEAD
     for i, one in enumerate(ss):
         k = len(re.sub(r"[\s…·.,!?\"'~]", "", one)) / talkplan.OMNI_CHARS_PER_SEC
-        rows.append(f"[{t:.1f}-{t + k:.1f}s] {role} says in Korean: \"{one}\"")
+        rows.append(f"[{t:.1f}-{t + k:.1f}s] {role} says in Korean: \"{one}\""
+                    + cm(1))
         t += k
         if i + 1 < len(ss):
-            rows.append(f"[{t:.1f}-{t + talkplan.OMNI_PAUSE:.1f}s] one short breath.")
+            rows.append(f"[{t:.1f}-{t + talkplan.OMNI_PAUSE:.1f}s] one short breath."
+                        + cm(2))
             t += talkplan.OMNI_PAUSE
     rows.append(f"[{t:.1f}-{float(sec):.1f}s] silent, lips closed, {role} holds the "
-                "look until the end.")
+                "look until the end." + cm(3))
     return rows
 
 
@@ -722,7 +998,13 @@ def omni_prompt(c, prev, ctx, sec, chars, first=True):
     others = [en(x) for x in who if x != w]
     cast = " and ".join(f"{en(x)} {r}" for x, r in zip(who, refs))
     one = len(who) == 1
-    shot, framing, cam = shot_of(c, prev, ctx)
+    # ⭐ 구도 계획이 있으면(2분 드라마) 움직임은 시간표에 구간마다 적는다 —
+    #    SHOT 줄에도 적으면 두 지시가 겹친다 (한 줄은 '줌인', 시간표는 '옆으로').
+    pick = (ctx or {}).get("pick")
+    if pick:
+        shot, framing, cam = compose_of(c, prev, ctx)
+    else:
+        shot, framing, cam = shot_of(c, prev, ctx)
     for nm in sorted({x for x in who + [w]}, key=len, reverse=True):
         shot = shot.replace(nm, en(nm))
     say = "; ".join(str(x) for x in (c.get("say") or []) if str(x).strip())
@@ -737,7 +1019,8 @@ def omni_prompt(c, prev, ctx, sec, chars, first=True):
         "view — one single person.",
         shot, framing,
         "TIMELINE:",
-        *omni_timeline(role, text, sec, " and ".join(others)),
+        *omni_timeline(role, text, sec, " and ".join(others),
+                       move=pick["move"] if pick else None),
         f"DIALOGUE: [LANGUAGE: KOREAN] only {role} speaks, in natural fluent everyday "
         "Korean with standard Seoul intonation, at a brisk natural conversational "
         f"pace, lips moving in sync with every syllable. {role} says these exact "
@@ -888,14 +1171,19 @@ def main(argv=None):
             climax.add(talky[-1])
     # 판결이 난 뒤(마지막 편)에는 힘의 관계가 뒤집힌다 — 앵글도 뒤집는다
     last_a = parts_all[-1]["cuts"][0] if parts_all else 10 ** 9
+    # ⭐ 2분 드라마는 한 편이라 '마지막 편' 이 곧 전부다 — 판결 나레이션부터 뒤집는다
+    if drama:
+        last_a = drama_flip_from(story["cuts"])
+    # ⭐⭐⭐ 2026-10-01 — 2분 드라마 구도 계획 (크기·방향 · 이웃 컷 둘 다 다르게)
+    picks = plan_shots(story["cuts"], climax) if drama else [None] * len(story["cuts"])
 
     cuts = []
     prev = None                       # 주고받는 대사를 알아보려고 앞 컷을 쥔다
-    for c in story["cuts"]:
+    for c, pick in zip(story["cuts"], picks):
         c = dict(c)
         c["turns"] = [tuple(t) for t in c["turns"]]
         shot_ctx = {"talks": not is_narr(c), "climax": c["n"] in climax,
-                    "flip": c["n"] >= last_a}
+                    "flip": c["n"] >= last_a, "drama": drama, "pick": pick}
         cuts.append({
             "n": c["n"], "kind": kind_of(c), "sec": c["sec"],
             "narr": is_narr(c),
@@ -917,6 +1205,13 @@ def main(argv=None):
             "veo": veo_prompt(c, prev, shot_ctx),
             "flow": flow_prompt(c),
         })
+        if pick:
+            # ⭐ 조립(카메라 무빙)과 검사가 읽는다 — 그림·영상과 같은 계획
+            cuts[-1]["shot"] = {k: pick[k] for k in ("key", "size", "dir", "move")}
+        ins = c.get("insert") if drama else None
+        if ins and ins.get("word") and ins.get("thing"):
+            cuts[-1]["insert"] = {"word": ins["word"], "thing": ins["thing"],
+                                  "still": insert_prompt(ins["thing"])}
         # ⭐ 2분 드라마 — 대사 컷(한 사람 한 줄)은 옴니 영상 지문도 함께 짓는다
         if drama and not is_narr(c) and len(c["turns"]) == 1:
             sec_o = talkplan.omni_sec(c["turns"][0][1])
@@ -948,14 +1243,23 @@ def main(argv=None):
         import cost                                          # noqa: E402
         import omni                                          # noqa: E402
         import still as STL                                  # noqa: E402
+        import lookalike                                     # noqa: E402
         rate = cost.video_krw(omni.MODEL, 1) / cost.USD_KRW
         doc["talk"] = talkplan.plan(doc, krw_per_sec=rate, usd_krw=cost.USD_KRW)
         uniq = len({c["still"] for c in cuts})
-        img = cost.image_krw(STL.MODEL, STL.SIZE) * uniq
+        one = cost.image_krw(STL.MODEL, STL.SIZE)
+        # ⭐ 증거 확대 그림도 그림이다 — 값에 넣는다 (2026-10-01)
+        ins_n = len({c["insert"]["still"] for c in cuts if c.get("insert")})
+        img = one * (uniq + ins_n)
         sheet = cost.image_krw(STL.MODEL, "4K")
+        # ⭐ 이웃 컷이 닮아 다시 그릴 수 있는 몫 (많아야 REDRAW_MAX 장) — **최대값**을 적는다
+        redraw = one * lookalike.REDRAW_MAX
         doc["talk"]["drama"] = {
             "talk_n": doc["talk"]["n"], "talk_krw": doc["talk"]["krw"],
-            "stills": uniq, "still_krw": round(img), "sheet_krw": round(sheet),
+            "stills": uniq, "inserts": ins_n, "still_krw": round(img),
+            "sheet_krw": round(sheet), "redraw_krw": round(redraw),
+            # ⭐ 그림 먼저(①) · 영상(②) 을 따로 누르므로 값도 따로 적는다
+            "pic_krw": round(img + sheet + redraw),
             "krw": round(doc["talk"]["krw"] + img + sheet),
         }
     else:

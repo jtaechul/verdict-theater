@@ -1,6 +1,6 @@
 # drama120_gen.md — 2분 쇼츠 드라마 대본 프롬프트 (판례 1건 → 한 편)
 
-> **버전** v1.0 · 2026-09-30
+> **버전** v1.1 · 2026-10-01 (나레이션 컷에도 등장인물 얼굴 · 증거 확대 화면)
 > **용도** 판례 1건 → 100~110초짜리 쇼츠 드라마 **한 편**
 > **호출 위치** `src/story90.py --format drama` (관리자 페이지 [2분 드라마 대본 만들기])
 > **모델** Gemini (운영자 지시, 2026-08-18)
@@ -55,7 +55,7 @@
 
 | | **대사 컷** | **나레이션 컷** |
 |---|---|---|
-| 화면 | 그 사람이 화면에서 **직접** 말한다 — 입모양이 맞는 진짜 영상이 된다 | 장소·사물 그림 위에 나레이션 목소리 (카메라가 천천히 움직인다) |
+| 화면 | 그 사람이 화면에서 **직접** 말한다 — 입모양이 맞는 진짜 영상이 된다 | **그 순간의 등장인물 얼굴**이 나오는 그림 위에 나레이션 목소리 (인물은 입을 다문다 · 카메라가 천천히 움직인다) |
 | 몇 개 | **7~10개** | 나머지 전부 |
 | `turns` | **딱 한 줄** — `[["아내", "…"]]` | `[["나레이션", "…"]]` |
 | 한 줄 길이 | **12~30자** (띄어쓰기 뺀 글자 · 한 컷 4~7초) | 두 문장 안팎 |
@@ -100,10 +100,12 @@
 
 - `n` 번호 (1부터 이어진다)
 - `sec` 최소 길이(초) — 글자 수 ÷ 4.6 + 1.2 로 어림해 적는다
-- `who` 그 화면에 나오는 사람 (`cast` 의 이름만 쓴다. 아무도 없으면 빈 목록)
+- `who` 그 화면에 나오는 사람 (`cast` 의 이름만 쓴다). **나레이션 컷도 1~2명을
+  반드시 넣는다** — 그 나레이션이 말하고 있는 사람, 그 순간 그 자리에 있는 사람.
 - `turns` [[말하는 사람, 하는 말]] — **한 줄**
 - `say` 그 줄을 **어떻게 읽어야 하는지** (아래 참조. 빠뜨리면 안 된다)
 - `scene` 화면 묘사 — **영어로**, 지금 무엇이 보이는지 한 문장
+- `insert` (나레이션 컷에만 · 고를 때만) **증거 확대 화면** — 아래 참조
 
 ## ⭐ 한 컷은 한 걸음만 (가장 자주 어기는 규칙)
 
@@ -216,17 +218,20 @@
 
 ### ⭐⭐⭐ 나레이션 컷과 대사 컷은 **완전히 다르게** 적는다 (절대 위반 금지)
 
-- **나레이션 컷** — **기본은 장소 · 사물 · 빛.** 보통명사로 사람을 부르면
-  **절대 안 된다.** 그 컷에는 얼굴 기준 그림이 안 붙어, 사람을 부르면 이 사건
-  인물도 아닌 낯선 사람이 그려진다.
-  금지: man, woman, person, people, son, daughter, father, mother,
-  lawyer, judge, someone, couple, family, crowd …
-  · 좋다: `a thick folder is placed on a large wooden desk`
-  · 좋다: `an empty hospital bed with rumpled sheets under a dim lamp`
-  · 나쁘다: `the middle-aged man holds a smartphone`
-  요령: 그 사람이 **방금 떠난 자리**를 적는다 — 놓인 서류, 빈 의자, 식은 커피.
-  ⭐ 사람을 꼭 세워야 한다면 **`cast` 이름으로** 적고 `who` 에도 넣는다
-  (`아내 stands alone in an empty funeral hall`). 그래도 빈 장소가 기본이다.
+- **나레이션 컷** — **그 순간의 등장인물이 화면에 있다.** 빈 방이 아니다.
+  사람은 반드시 **`cast` 이름 그대로**(한국어) 부르고 `who` 에도 넣는다.
+  그 사람이 **지금 무엇을 하고 있는지**, 얼굴이 보이게 적는다. 입은 다물고
+  있다 (말하는 것은 나레이션이다).
+  · 좋다: `아내 sits alone at the kitchen table, staring at a small recorder`
+  · 좋다: `딸 stands by the window holding a folded letter, eyes lowered`
+  · 나쁘다: `an empty kitchen table with two cold cups of coffee` ← 사람이 없다
+  · 나쁘다: `the middle-aged man holds a smartphone` ← 이름이 아니다
+  보통명사로 사람을 부르면 **절대 안 된다** — 얼굴 기준 그림이 없는 낯선
+  사람이 그려진다. 금지: man, woman, person, people, son, daughter, father,
+  mother, lawyer, judge, someone, couple, family, crowd …
+  `cast` 에 없는 사람(돌아가신 분 · 법원 · 판사)의 일을 말하는 나레이션이면,
+  그 일을 **겪는 등장인물**을 세운다 (`아내 sits in the front row of a quiet
+  funeral hall`). 한 화면에 **둘까지** — 셋이 넘으면 얼굴이 작아진다.
 - **대사 컷** — 말하는 사람을 **한국어 이름 그대로** 부르고, 지금 그 사람이
   무엇을 하고 있는지 적는다. 그 사람이 `who` 에 반드시 있어야 한다.
   · 좋다: `장남 sits at a bank counter and looks down at a small book`
@@ -242,6 +247,21 @@
 - **"~가 없다" 는 식으로 쓰지 않는다.** 그림 모델은 부정문을 못 읽는다.
   바라는 것만 적는다.
 - 사람이 지나다니는 자리(법원 앞 계단 · 거리)는 피한다. 낯선 사람이 들어온다.
+
+### 증거 확대 화면 (`insert`) — 한 편에 **둘까지**, 고를 때만
+
+나레이션이 **이야기를 뒤집는 물건**(녹음기 · 유언장 · 휴대폰 문자 · 통장 · 반지 ·
+계약서 …)을 말하는 컷이면, 그 낱말이 나오는 순간 화면이 **그 물건을 크게
+찍은 그림**으로 넘어갔다가 인물 얼굴로 돌아온다. 그런 컷에 이것을 붙인다.
+
+```json
+"insert": {"word": "녹음기", "thing": "a small black voice recorder lying on a car seat"}
+```
+
+- `word` 는 **그 컷 나레이션에 나오는 낱말 그대로** (한국어).
+- `thing` 은 그 물건만 영어로 — **사람·손을 부르지 않는다.** 글자가 나올 물건은
+  `a folded document` · `a phone screen glowing in the dark` 처럼 쓴다.
+- 이야기를 뒤집는 물건이 없으면 **붙이지 않는다.** 꾸밈으로 붙이지 마라.
 
 # 정할 것
 
@@ -280,10 +300,10 @@
      "face": "…", "build": "…", "wear": "…", "voice": "…"}
   ],
   "cuts": [
-    {"n": 1, "sec": 9.8, "who": [],
+    {"n": 1, "sec": 9.8, "who": ["아내"],
      "turns": [["나레이션", "…"]],
      "say": ["사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"],
-     "scene": "an empty kitchen table with two cold cups of coffee under a dim lamp"},
+     "scene": "아내 sits alone at the kitchen table under a dim lamp, two cold cups of coffee in front of her"},
     {"n": 2, "sec": 5.1, "who": ["아내"],
      "turns": [["아내", "…"]],
      "say": ["50대 여성이, …"],

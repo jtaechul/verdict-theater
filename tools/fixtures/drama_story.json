@@ -53,7 +53,9 @@
   {
    "n": 1,
    "sec": 0,
-   "who": [],
+   "who": [
+    "아내"
+   ],
    "turns": [
     [
      "나레이션",
@@ -63,12 +65,14 @@
    "say": [
     "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
    ],
-   "scene": "an empty funeral hall with rows of folded chairs under dim light"
+   "scene": "아내 sits in the front row of a quiet funeral hall with rows of folded chairs under dim light"
   },
   {
    "n": 2,
    "sec": 0,
-   "who": [],
+   "who": [
+    "아내"
+   ],
    "turns": [
     [
      "나레이션",
@@ -78,7 +82,7 @@
    "say": [
     "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
    ],
-   "scene": "a thick folder of papers lies open on a bank counter"
+   "scene": "아내 stands at a bank counter looking down at a thick folder of papers"
   },
   {
    "n": 3,
@@ -100,7 +104,9 @@
   {
    "n": 4,
    "sec": 0,
-   "who": [],
+   "who": [
+    "내연녀"
+   ],
    "turns": [
     [
      "나레이션",
@@ -110,12 +116,14 @@
    "say": [
     "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
    ],
-   "scene": "two coffee cups on a cafe table by a rain-streaked window"
+   "scene": "내연녀 sits alone at a cafe table by a rain-streaked window with two coffee cups"
   },
   {
    "n": 5,
    "sec": 0,
-   "who": [],
+   "who": [
+    "아내"
+   ],
    "turns": [
     [
      "나레이션",
@@ -125,12 +133,18 @@
    "say": [
     "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
    ],
-   "scene": "a fountain pen lying on a signed document on a dark desk"
+   "scene": "아내 sits at a dark desk staring at a signed document beside a fountain pen",
+   "insert": {
+    "word": "유언장",
+    "thing": "a single folded sheet of paper and a fountain pen on a dark wooden desk"
+   }
   },
   {
    "n": 6,
    "sec": 0,
-   "who": [],
+   "who": [
+    "딸"
+   ],
    "turns": [
     [
      "나레이션",
@@ -140,7 +154,7 @@
    "say": [
     "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
    ],
-   "scene": "a folded letter on a kitchen table beside a cold cup of tea"
+   "scene": "딸 sits at the kitchen table reading a folded letter beside a cold cup of tea"
   },
   {
    "n": 7,
@@ -162,7 +176,9 @@
   {
    "n": 8,
    "sec": 0,
-   "who": [],
+   "who": [
+    "아내"
+   ],
    "turns": [
     [
      "나레이션",
@@ -172,7 +188,7 @@
    "say": [
     "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
    ],
-   "scene": "a quiet hotel lobby with a low table and two empty armchairs"
+   "scene": "아내 walks into a quiet hotel lobby with a low table and two armchairs"
   },
   {
    "n": 9,
@@ -213,7 +229,9 @@
   {
    "n": 11,
    "sec": 0,
-   "who": [],
+   "who": [
+    "내연녀"
+   ],
    "turns": [
     [
      "나레이션",
@@ -223,12 +241,15 @@
    "say": [
     "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
    ],
-   "scene": "a glass of water left untouched on a low table in a hotel lobby"
+   "scene": "내연녀 sits upright in a hotel lobby armchair beside an untouched glass of water"
   },
   {
    "n": 12,
    "sec": 0,
-   "who": [],
+   "who": [
+    "아내",
+    "딸"
+   ],
    "turns": [
     [
      "나레이션",
@@ -238,7 +259,7 @@
    "say": [
     "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
    ],
-   "scene": "a quiet office with a large wooden desk and tall bookshelves"
+   "scene": "아내 and 딸 sit side by side in a quiet office with a large wooden desk and tall bookshelves"
   },
   {
    "n": 13,
@@ -260,7 +281,9 @@
   {
    "n": 14,
    "sec": 0,
-   "who": [],
+   "who": [
+    "변호사"
+   ],
    "turns": [
     [
      "나레이션",
@@ -270,7 +293,7 @@
    "say": [
     "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
    ],
-   "scene": "a thick law book open on a desk under a green lamp"
+   "scene": "변호사 sits at a desk under a green lamp with a thick law book open in front of him"
   },
   {
    "n": 15,
@@ -309,7 +332,9 @@
   {
    "n": 17,
    "sec": 0,
-   "who": [],
+   "who": [
+    "아내"
+   ],
    "turns": [
     [
      "나레이션",
@@ -319,12 +344,19 @@
    "say": [
     "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
    ],
-   "scene": "a stack of papers tied with a string on a wooden desk"
+   "scene": "아내 sits at a wooden desk with a stack of papers tied with a string",
+   "insert": {
+    "word": "소송",
+    "thing": "a thick stack of papers tied with a white string on a wooden desk"
+   }
   },
   {
    "n": 18,
    "sec": 0,
-   "who": [],
+   "who": [
+    "아내",
+    "딸"
+   ],
    "turns": [
     [
      "나레이션",
@@ -334,7 +366,7 @@
    "say": [
     "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
    ],
-   "scene": "an empty courtroom with a wooden bench and a raised judge's desk"
+   "scene": "아내 and 딸 sit together on a wooden bench in a quiet courtroom"
   },
   {
    "n": 19,
@@ -357,7 +389,10 @@
   {
    "n": 20,
    "sec": 0,
-   "who": [],
+   "who": [
+    "아내",
+    "딸"
+   ],
    "turns": [
     [
      "나레이션",
@@ -367,7 +402,7 @@
    "say": [
     "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
    ],
-   "scene": "a warm lamp lit beside a family photo frame on a quiet shelf"
+   "scene": "아내 and 딸 stand together by a warm lamp beside a family photo frame on a quiet shelf"
   }
  ]
 }

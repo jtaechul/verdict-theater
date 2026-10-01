@@ -1129,6 +1129,7 @@ async function s90Cuts() {
   const hd = document.getElementById('w-head');
   if (hd && isDrama() && !document.getElementById('w-drama')) {
     hd.innerHTML = '<span id="w-drama"></span>' + dramaHead();
+    stillsShow();            // ⭐ 그려 둔 그림이 있으면 바로 보인다 (2026-10-01)
   }
   // 2분 드라마는 컷 영상을 손으로 올리지 않는다 (대사 컷은 옴니가 만든다)
   if (isDrama()) { box.innerHTML = ''; return; }
@@ -1524,26 +1525,164 @@ function dramaPlan() {
   return d;
 }
 
+// ⭐⭐⭐ 2026-10-01 손님 승인 — **그림 먼저 확인 → 그다음 영상** (해양생물 쇼츠의
+//    핵심 규칙). 예전엔 단추 하나로 그림과 옴니 영상(약 7천 원)을 한꺼번에 샀다.
+//    구도가 틀려도 영상값이 먼저 나갔다. 이제 ① 그림만 만들고 → 눈으로 보고 →
+//    고칠 컷만 다시 그리고 → ② 영상을 만든다.
+//    ⚠️ 값은 여기서 세지 않는다 — 대본 짓기가 talk.drama 에 찍어 둔 것을 읽는다.
+let STILLSVIEW = null;      // 마지막으로 불러온 그림 미리보기 (없으면 null)
+
 function dramaHead() {
   const d = dramaPlan();
   const nc = ((S90DOC && S90DOC.cuts) || []).length;
+  const pic = d.pic_krw || ((d.still_krw || 0) + (d.sheet_krw || 0));
   return '<div class="card"><h2>③ 2분 드라마 만들기</h2>'
     + '<div class="uphint">한 편짜리 2분 드라마입니다. <b>대사 컷 ' + (d.talk_n || 0)
     + '개</b>는 인물이 화면에서 직접 한국어로 말하는 영상(옴니)이고, 나머지 '
-    + Math.max(0, nc - (d.talk_n || 0)) + '컷은 그림에 카메라 무빙과 나레이션입니다.<br>'
-    + '인물은 <b>한 장</b>에 나란히 그려 칸마다 잘라 씁니다 — 얼굴이 서로 '
-    + '확실히 다르게 나옵니다.</div>'
+    + Math.max(0, nc - (d.talk_n || 0)) + '컷은 <b>등장인물 얼굴</b> 그림에 카메라 무빙과 '
+    + '나레이션입니다. 인물은 <b>한 장</b>에 나란히 그려 칸마다 잘라 씁니다.</div>'
     + (d.stale
        ? '<div class="uphint" style="color:#e0a33c">값을 아직 모릅니다 — '
-         + '[대본 다시 짓기] 를 한 번 하시면 뜹니다.</div>'
-       : '<div class="uphint">값: 약 <b>' + d.krw.toLocaleString() + '원</b> '
-         + '(대사 영상 ' + d.talk_krw.toLocaleString() + ' + 그림 '
-         + d.still_krw.toLocaleString() + ' + 인물 시트 '
-         + d.sheet_krw.toLocaleString() + ') · 이미 만든 것은 다시 눌러도 0원입니다.</div>')
-    + '<div class="btns" style="margin-top:12px">'
-    + '<button class="gold" id="w-make-all" onclick="workMake(0)">2분 드라마 만들기'
-    + (d.stale ? '' : ' (약 ' + d.krw.toLocaleString() + '원)') + '</button></div>'
-    + '<div id="w-make-msg" class="uphint"></div></div>';
+         + '[대본 다시 짓기] 를 한 번 하시면 뜹니다.</div>' : '')
+    + '<div class="upbox" style="margin-top:10px"><b>① 그림 먼저 만들기</b>'
+    + '<div class="uphint" style="margin:6px 0">컷 그림 ' + (d.stills || nc) + '장'
+    + (d.inserts ? ' + 증거 확대 ' + d.inserts + '장' : '') + ' + 인물 시트. '
+    + '<b>옴니 영상은 아직 안 삽니다.</b> 앞 컷과 너무 닮은 그림은 한 번 다시 그립니다'
+    + (d.redraw_krw ? ' (그 몫 최대 ' + d.redraw_krw.toLocaleString() + '원 포함)' : '')
+    + '.</div><div class="btns">'
+    + '<button class="gold" id="w-make-pic" onclick="dramaPics()">① 그림 먼저 만들기'
+    + (d.stale ? '' : ' (약 ' + pic.toLocaleString() + '원)') + '</button>'
+    + '<button class="mini" onclick="stillsShow()">그림 보기</button></div>'
+    + '<div id="w-pic-msg" class="uphint"></div><div id="w-pics"></div></div>'
+    + '<div class="upbox" style="margin-top:10px"><b>② 영상 만들기</b>'
+    + '<div class="uphint" style="margin:6px 0">그림을 보시고 마음에 드시면 누르십시오. '
+    + '대사 컷 ' + (d.talk_n || 0) + '개를 옴니 영상으로 사고 목소리·자막을 붙여 한 편으로 '
+    + '조립합니다. 그림은 이미 만든 것을 그대로 씁니다 (0원).</div><div class="btns">'
+    + '<button class="gold" id="w-make-all" onclick="workMake(0)">② 영상 만들기'
+    + (d.stale ? '' : ' (약 ' + (d.talk_krw || 0).toLocaleString() + '원)') + '</button></div>'
+    + '<div id="w-make-msg" class="uphint"></div></div></div>';
+}
+
+// ① 그림만 — 옴니 영상은 안 산다 (워크플로 step=stills). redo = 다시 그릴 컷 "3,7"
+async function dramaPics(redo) {
+  const id = 'w-make-pic';
+  if (WBUSY[id]) return;
+  const d = dramaPlan();
+  const msg = document.getElementById('w-pic-msg');
+  const one = (STILLSVIEW && STILLSVIEW.view && STILLSVIEW.view.one_krw) || 132;
+  const n = redo ? String(redo).split(',').length : 0;
+  const L = redo
+    ? ['고르신 컷 ' + redo + ' 의 그림을 새로 그릴까요?', '',
+       '값: 약 ' + (one * n).toLocaleString() + '원 (' + n + '장)',
+       '나머지 그림은 그대로 씁니다 (0원). 영상은 아직 안 삽니다.']
+    : ['① 그림 먼저 만들기를 시작할까요?', '',
+       d.stale ? '값: 아직 모릅니다 — [대본 다시 짓기] 를 한 번 하시면 뜹니다.'
+               : '값: 약 ' + (d.pic_krw || 0).toLocaleString() + '원 (이미 그린 것은 0원)',
+       '옴니 영상은 아직 안 삽니다 — 그림을 보시고 ② 를 누르시면 그때 삽니다.'];
+  L.push('', '3~8분 걸립니다. 끝나면 여기에 그림이 뜹니다.');
+  if (!confirm(L.join(String.fromCharCode(10)))) return;
+  WBUSY[id] = 1;
+  lock(id, 1);
+  if (msg) msg.textContent = '시작하는 중…';
+  const since = Date.now();
+  try {
+    const r = await fetch('/api/make-short90', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sid: WORK, part: '', video_kind: 'drama', step: 'stills',
+                             redo: redo || '', cards: {}, clips: {} }),
+    });
+    const j = await r.json();
+    if (!j.ok) {
+      showErr('그림 만들기를 시작하지 못했습니다', (j.error || '') + ' ' + (j.detail || ''));
+      if (msg) msg.textContent = '';
+    } else {
+      if (msg) msg.textContent = '그리는 중… (3~8분) 이 화면을 켜 두시면 끝나는 대로 그림이 뜹니다.';
+      watchRun('short90.yml', since, async (x) => {
+        WBUSY[id] = 0;
+        lock(id, 0);
+        if (!msg) return;
+        if (x.conclusion === 'success') {
+          msg.textContent = '그림을 다 그렸습니다. 아래에서 보시고, 고칠 컷만 골라 다시 그리십시오.';
+          await stillsShow();
+          return;
+        }
+        msg.innerHTML = '<b>그리다 멈췄습니다.</b> 그린 데까지는 보관해 뒀으니 다시 누르시면 '
+                      + '이어서 그립니다. '
+                      + (x.url ? '<a href="' + esc(x.url) + '" target="_blank" '
+                               + 'style="color:#5b7fd4">무엇이 걸렸는지 보기</a>' : '');
+      }, 20, 30);
+      return;
+    }
+  } catch (e) {
+    showErr('그림 만들기를 시작하지 못했습니다', String(e && e.message ? e.message : e));
+    if (msg) msg.textContent = '';
+  }
+  WBUSY[id] = 0;
+  lock(id, 0);
+}
+
+async function stillsShow() {
+  const box = document.getElementById('w-pics');
+  if (!box) return;
+  box.innerHTML = '<div class="uphint" style="margin-top:10px">찾는 중…</div>';
+  let j = {};
+  try {
+    j = await (await fetch('/api/stills-view?sid=' + encodeURIComponent(WORK)
+                           + '&t=' + Date.now(), { cache: 'no-store' })).json();
+  } catch (e) { j = {}; }
+  if (!j.ok) {
+    box.innerHTML = '<div class="uphint" style="margin-top:10px;color:#e0a33c">'
+      + '그림을 못 불러왔습니다. 잠시 뒤 다시 눌러 주십시오.</div>';
+    return;
+  }
+  if (j.none || !j.view) {
+    STILLSVIEW = null;
+    box.innerHTML = '<div class="uphint" style="margin-top:10px">아직 그림이 없습니다. '
+      + '[① 그림 먼저 만들기] 를 눌러 주십시오.</div>';
+    return;
+  }
+  STILLSVIEW = j;
+  const A = {};
+  (j.assets || []).forEach(function (a) { A[a.name] = a; });
+  const v = j.view;
+  const same = v.same || 0.55;
+  let h = '<div class="uphint" style="margin-top:10px">그린 때: ' + esc(v.at || '')
+        + ' · 이상한 컷은 <b>다시 그리기</b>를 고르고 아래 단추를 누르십시오 '
+        + '(한 장 약 ' + (v.one_krw || 132) + '원).</div>'
+        + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));'
+        + 'gap:8px;margin-top:8px">';
+  (v.cuts || []).forEach(function (c) {
+    const a = A[c.file];
+    const ins = c.insert ? A[c.insert] : null;
+    const close = (typeof c.like_prev === 'number' && c.like_prev >= same);
+    h += '<figure style="margin:0">'
+       + (a ? '<img src="/api/thumb?id=' + a.id + '" loading="lazy" '
+            + 'style="width:100%;border-radius:8px;display:block">'
+            : '<div class="uphint">그림 없음</div>')
+       + (ins ? '<img src="/api/thumb?id=' + ins.id + '" loading="lazy" '
+              + 'style="width:48%;border-radius:6px;display:block;margin-top:4px">'
+              + '<div class="uphint">증거 확대 — ' + esc(c.insert_word || '') + '</div>' : '')
+       + '<figcaption class="uphint"><b>컷 ' + c.n + '</b> '
+       + '<span style="color:' + (c.kind === '나레이션' ? '#9599ab' : '#c6a04a') + '">'
+       + esc(c.kind) + '</span> · ' + esc((c.who || []).join('·')) + '<br>'
+       + esc(c.text || '')
+       + (close ? '<br><span style="color:#e0a33c">앞 컷과 닮음 ' + c.like_prev + '</span>' : '')
+       + (c.redrawn ? '<br>닮아서 한 번 다시 그림' : '')
+       + (c.retake ? '<br>고르셔서 ' + c.retake + '번 다시 그림' : '')
+       + '<br><label><input type="checkbox" class="w-redo" value="' + c.n + '"> 다시 그리기</label>'
+       + '</figcaption></figure>';
+  });
+  h += '</div><div class="btns" style="margin-top:10px">'
+     + '<button onclick="stillsRedo()">고른 컷 다시 그리기</button></div>';
+  box.innerHTML = h;
+}
+
+function stillsRedo() {
+  const got = Array.prototype.slice.call(document.querySelectorAll('.w-redo'))
+    .filter(function (x) { return x.checked; }).map(function (x) { return x.value; });
+  if (!got.length) { showErr('고른 컷이 없습니다', '다시 그릴 컷의 [다시 그리기] 를 눌러 고르십시오.'); return; }
+  if (got.length > 10) { showErr('한 번에 열 컷까지입니다', '열 컷 이하로 골라 주십시오.'); return; }
+  dramaPics(got.join(','));
 }
 
 // ① 인물 — 2분 드라마는 얼굴을 올리지 않는다 (인물 시트 한 장에서 잘라 쓴다)
@@ -1995,7 +2134,7 @@ async function workMake(no) {
   if (WBUSY[id]) return;
   const msg = document.getElementById('w-make-msg');
   const drama = isDrama();
-  const what = drama ? '2분 드라마 만들기'
+  const what = drama ? '② 영상 만들기'
              : (no ? (no + '편만 다시 만들기') : '전체 만들기');
   // ⚠️ 값이 나가는 일은 **누르기 전에** 얼마인지 보여 드린다.
   const box = document.getElementById('w-open');
@@ -2009,9 +2148,15 @@ async function workMake(no) {
     const dp = dramaPlan();
     lines.push(dp.stale
       ? '2분 드라마: 값을 아직 모릅니다 — [대본 다시 짓기] 를 한 번 하시면 뜹니다.'
-      : ('2분 드라마: 대사 컷 ' + dp.talk_n + '개 옴니 영상 + 그림 ' + dp.stills
-         + '장 + 인물 시트 = 약 ' + dp.krw.toLocaleString() + '원'));
+      : ('대사 컷 ' + dp.talk_n + '개 옴니 영상 = 약 ' + (dp.talk_krw || 0).toLocaleString()
+         + '원 (그림을 먼저 만드셨으면 그림은 0원)'));
     lines.push('  (한 번 누를 때 한도 16,000원 · 이미 만든 것은 0원으로 다시 씁니다)');
+    // ⭐ 그림 먼저 확인 (2026-10-01) — 안 보셨으면 한 번 더 여쭌다
+    if (!STILLSVIEW) {
+      lines.push('');
+      lines.push('⚠️ 아직 그림을 안 보셨습니다. [① 그림 먼저 만들기] 로 그림부터 보시면 '
+                 + '구도가 틀린 채로 영상값이 나가는 일을 막을 수 있습니다.');
+    }
   }
   if (kind === 'key') {
     // ⚠️ 값을 모르면 **모른다고 적는다.** 0원이라고 적으면 승인이 거짓이 된다.
@@ -4758,6 +4903,34 @@ export default {
         return Response.json({ ok: true, assets: assets, result: result });
       }
 
+      // ⭐⭐⭐ 2026-10-01 — **그림 먼저 보기** (2분 드라마 · 손님 승인).
+      //    워크플로(tools/stills_view.py)가 릴리스 stillsview-<사건> 에 올려 둔
+      //    줄인 그림들과 view.json 을 읽어 준다. 그림은 /api/thumb 로 본다.
+      if (url.pathname === '/api/stills-view') {
+        const sid = String(url.searchParams.get('sid') || '').toUpperCase();
+        if (!/^S\d{1,4}$/.test(sid))
+          return Response.json({ ok: false, error: '사건 번호가 이상합니다' },
+                               { status: 400 });
+        let rel = null;
+        try { rel = await gh(env, `/repos/${REPO}/releases/tags/stillsview-${sid}`); }
+        catch (e) { rel = null; }
+        if (!rel) return Response.json({ ok: true, none: true });
+        const list = rel.assets || [];
+        const assets = list.map((a) => ({ name: a.name, id: a.id, size: a.size }));
+        let view = null;
+        const vj = list.find((a) => a.name === 'view.json');
+        if (vj) {
+          try {
+            const r0 = await fetch(`${GH}/repos/${REPO}/releases/assets/${vj.id}`, {
+              headers: { 'Authorization': `Bearer ${env.GH_TOKEN}`,
+                         'Accept': 'application/octet-stream',
+                         'User-Agent': 'verdict-theater-admin' } });
+            if (r0.ok) view = await r0.json();
+          } catch (e) { view = null; }
+        }
+        return Response.json({ ok: true, assets: assets, view: view });
+      }
+
       if (url.pathname === '/api/make-story' && req.method === 'POST') {
         let body = {};
         try { body = await req.json(); } catch (e) { body = {}; }
@@ -4830,7 +5003,11 @@ export default {
         // ⚠️ 넘기는 값은 **이 칸 안에서 만든 것**만 쓴다. 글자를 바로 적으면
         //    check_scope 가 "이 칸에 없는 것" 으로 잡는다 (일부러 그렇게 좁게
         //    본다 — 다른 칸 것을 잘못 넘기던 사고가 있었다).
-        const step = 'all';
+        // ⭐ 2026-10-01 — 2분 드라마 '① 그림 먼저' 는 step=stills (영상을 안 산다)
+        const step = (body && body.step === 'stills') ? 'stills' : 'all';
+        // 다시 그릴 컷 — "3,7" 꼴만 받는다 (열 컷까지)
+        const rr = String((body && body.redo) || '').trim();
+        const redo = /^\d{1,2}(,\d{1,2}){0,9}$/.test(rr) ? rr : '';
         const shots = JSON.stringify(clips);
         // ⭐ 2026-09-01 — 어느 사건의 어느 편을 만들 것인가.
         //    편을 비우면 전부 만든다(처음 만들 때). 한 편만 주면 그 편만
@@ -4875,10 +5052,10 @@ export default {
             method: 'POST', body: JSON.stringify({ ref: BRANCH,
               inputs: { step: step, sid: sid, part: part,
                         video_kind: kindv,
-                        cards: payload, clips: shots } }),
+                        cards: payload, clips: shots, redo: redo } }),
           });
           return Response.json({ ok: true, sid: sid, part: part,
-                                 video_kind: kindv,
+                                 video_kind: kindv, step: step, redo: redo,
                                  n: Object.keys(cards).length,
                                  clips: Object.keys(clips).length });
         } catch (e) {

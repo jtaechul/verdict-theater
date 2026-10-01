@@ -44,12 +44,19 @@ def plan(sid, open_video, talk_video=False, all_video=False):
     #    인물 시트 한 장(4K) + 대사 컷 전부 옴니 영상. 누른 단추가 아니라
     #    **대본**을 보고 셈한다 — 화면·워크플로·실제 제작이 같은 셈을 쓴다.
     if str(doc.get("format") or "") == "drama":
+        import lookalike                                     # noqa: E402
         import omni                                          # noqa: E402
         import talkplan                                      # noqa: E402
         tp = talkplan.plan(doc, krw_per_sec=cost.video_krw(omni.MODEL, 1)
                            / cost.USD_KRW, usd_krw=cost.USD_KRW)
         sheet = cost.image_krw(ST.MODEL, "4K")
-        img_krw += sheet
+        # ⭐ 2026-10-01 — 증거 확대 그림 · 이웃 컷 닮음 다시 그리기(많아야
+        #    REDRAW_MAX 장)도 그림이다. 뚜껑이 이것을 모르면 마지막 몇 장에서 멈춘다.
+        ins = len({(c.get("insert") or {}).get("still") for c in cuts
+                   if (c.get("insert") or {}).get("still")})
+        extra = ins + lookalike.REDRAW_MAX
+        img_krw += sheet + one_img * extra
+        uniq += extra
         vid_krw = float(tp["krw"])
         run = round((img_krw + vid_krw) * SPARE_KRW + 200)
         # ⚠️ 손님이 승인하신 선(cost.DRAMA_RUN_KRW)을 넘기지 않는다.

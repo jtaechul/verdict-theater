@@ -1,6 +1,6 @@
 # drama120_fix.md — 2분 드라마 대본 **고치기** 프롬프트 (규격에 걸린 자리만)
 
-> **버전** v1.0 · 2026-09-30
+> **버전** v1.1 · 2026-10-01 (나레이션 컷에도 등장인물 얼굴 · 증거 확대 화면)
 > **용도** 규격 검사에 걸린 2분 드라마 대본을 통째로 다시 짓지 않고 **그 자리만** 고친다
 > **호출 위치** `src/story90.py --format drama` (story90_fix.md 의 2분 드라마 판)
 > **모델** Gemini pro
@@ -67,11 +67,14 @@ story90_fix.md 는 **여러 편**(편마다 8~11컷 · 260~280자) 규격을 가
   이를 악물고 · 서슬 퍼렇게 · 몰아붙이듯 · 날카롭게 · 격하게 · 세게
 - `scene` 화면 묘사는 영어 한 문장. 글자가 나올 물건(bank statement,
   letterhead, business card, receipt, id card, newspaper)을 부르지 않는다.
-- ⭐⭐⭐ **나레이션 컷**의 `scene` 은 보통명사로 사람을 부르지 않는다 — 장소·사물·빛만.
-  금지: man, woman, person, people, he, she, his, her, son, daughter, father,
-  mother, wife, husband, lawyer, judge, someone, couple, family …
-  사람을 꼭 세우려면 `cast` 이름으로 적고 `who` 에도 넣는다.
+- ⭐⭐⭐ **나레이션 컷에도 그 순간의 등장인물 얼굴이 나온다** (빈 방이 아니다).
+  `who` 에 1~2명을 넣고, `scene` 은 그 사람을 **`cast` 이름 그대로** 불러
+  지금 무엇을 하고 있는지 적는다 (`아내 sits alone at the kitchen table`).
+  보통명사로 사람을 부르지 않는다. 금지: man, woman, person, people, son,
+  daughter, father, mother, wife, husband, lawyer, judge, someone, couple, family …
 - **대사 컷**의 `scene` 은 인물을 **한국어 이름 그대로** 부른다 (`장남`, `아버지`).
+- `insert`(증거 확대 화면)는 나레이션 컷에만, 한 편에 둘까지.
+  `{"word": "나레이션에 나오는 낱말 그대로", "thing": "그 물건만 영어로 · 사람 없이"}`
 
 # 내놓을 것
 

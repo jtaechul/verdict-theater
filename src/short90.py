@@ -1174,15 +1174,17 @@ def stills(doc):
     #    → 보관함을 이미 받아 온 뒤이므로(salvage), **진짜로 다시 그릴 것이
     #      몇 장인지 여기서 세어서** 그리기 전에 적는다.
     plan = []
+    drama = talkplan.is_drama(doc)
     # ⭐⭐ 2026-09-10 — 나레이션 컷에는 **얼굴 참조를 안 붙인다.**
     #    붙이면 장소 그림에 그 사람이 들어간다. 지문 조립(still_prompt)도
     #    같은 잣대로 갈린다 — 한쪽만 고치면 지문은 장소인데 참조는 사람인
     #    엇갈린 그림이 나온다.
+    # ⭐⭐⭐ 2026-10-01 손님: "나레이션컷에서도 등장인물 얼굴 나오는거로 반영해."
+    #    2분 드라마는 나레이션 컷에도 그 순간의 인물이 나온다 → 얼굴 참조를
+    #    **붙인다.** 가르는 자리는 지문과 같은 함수 하나(story90.still_who).
     def refs_of(c):
-        if is_narr(c):
-            return []
         return [p for p in (ST.card_path(cards_dir(), ST_NAME.get(w, w))
-                            for w in c.get("who") or []) if p.exists()]
+                            for w in ST90.still_who(c, drama)) if p.exists()]
 
     # ⭐⭐⭐ 2026-09-10 손님: **"장남이라고 해놓고선 등장인물이 아닌 사람이
     #    자꾸 나타나. 등장인물을 등록했으면 등록 인물만 나오게 해."**
@@ -1194,9 +1196,7 @@ def stills(doc):
     #      **그리기 전에 막는다.**
     lack = {}
     for c in doc["cuts"]:
-        if is_narr(c):
-            continue
-        for w in c.get("who") or []:
+        for w in ST90.still_who(c, drama):
             if not ST.card_path(cards_dir(), ST_NAME.get(w, w)).exists():
                 lack.setdefault(w, []).append(c["n"])
     # ⭐⭐⭐ 2026-09-12 손님: **"등장인물을 등록했으면 등록 인물만 나오게 해."**
@@ -1228,11 +1228,17 @@ def stills(doc):
               "다시 눌러 주십시오.\n"
               "   (얼굴 없이 그리면 값은 값대로 나가고 다시 그려야 합니다)")
 
+    # ⭐⭐⭐ 2026-10-01 — **그림 먼저 확인 → 고칠 컷만 다시** (손님 승인 · 해양생물 쇼츠의
+    #    '이미지 먼저 검토, 영상은 그 다음'). 관리자 페이지에서 고른 컷만 새 씨앗으로
+    #    다시 그린다. 몇 번째로 다시 그렸는지 남겨 두어(_retake.json · 보관함에 같이
+    #    들어간다) 같은 씨앗으로 같은 그림이 또 나오지 않게 한다.
+    redo = redo_cuts()
+    retake = load_retake(d)
     for c in doc["cuts"]:
         refs = refs_of(c)
         sig = reuse.sig_of(c["still"], *refs)
         ok, _why = reuse.can_reuse(d / f"c{c['n']:02d}.png", sig)
-        if not ok and sig not in kept:
+        if (not ok and sig not in kept) or c["n"] in redo:
             plan.append(c["n"])
     one = cost.image_krw(ST.MODEL, ST.SIZE)
     keep = len(doc["cuts"]) - len(plan)
@@ -1247,22 +1253,31 @@ def stills(doc):
         sig = reuse.sig_of(c["still"], *refs)
         ok, why = reuse.can_reuse(out, sig)
         print(f"  컷{c['n']:>2} {'·'.join(c.get('who') or []) or '—'}")
-        if ok:
+        again = c["n"] in redo
+        if ok and not again:
             print("    (그대로다 — 건너뛴다)")
             made += 1
             continue
         # ⭐ 이름은 어긋났어도 **같은 지문**의 그림이 있으면 그것을 옮겨 쓴다
         #    (컷을 끼워 넣어 번호가 밀렸을 때 — 값이 안 든다)
-        if sig in kept:
+        if sig in kept and not again:
             out.write_bytes(kept[sig])
             reuse.stamp(out, sig)
             print("    (이름만 밀렸다 — 그대로 옮겨 쓴다 · 0원)")
             made += 1
             continue
-        if why:
+        if again:
+            retake[str(c["n"])] = int(retake.get(str(c["n"])) or 0) + 1
+            print(f"    ↻ 관리자 페이지에서 고른 컷 — 새 씨앗으로 다시 그린다 "
+                  f"({retake[str(c['n'])]}번째)")
+        elif why:
             print(f"    ⚠️ {why} — 다시 만든다")
+        k = int(retake.get(str(c["n"])) or 0)
         ST.gen(c["still"], out, refs=refs, ratio="9:16",
-               seed=ST.seed_of(doc.get("sid") or SID, c["n"]))
+               seed=(ST.seed_of(doc.get("sid") or SID, c["n"]) if not k else
+                     ST.seed_of(doc.get("sid") or SID, c["n"], "retake", k)))
+        if again:
+            save_retake(d, retake)
         # ⚠️ 새로 그렸으면 **가린 표시를 지운다.** 안 지우면 "이미 가렸다" 며
         #    건너뛰는데, 새 그림에서는 상표가 다른 자리에 있을 수 있다.
         out.with_suffix(".scrubbed").unlink(missing_ok=True)
@@ -1273,6 +1288,10 @@ def stills(doc):
     print(f"\n■ 그림 {made}/{len(doc['cuts'])}장")
     # ⭐ 얼마를 아꼈는지 적는다 (보관이 조용히 죽으면 여기서 드러난다)
     reuse.note("컷 그림", made - len(plan), len(plan), one)
+    # ⭐⭐⭐ 2026-10-01 — 증거 확대 그림 · 이웃 컷 닮음 다시 그리기 (2분 드라마)
+    ins_ok = inserts(doc, d)
+    if drama:
+        redraw_alike(doc, d, refs_of)
     # ⭐⭐ 2026-08-31 손님: "특정 은행 브랜드가 언급되면 안 돼."
     #    그림 모델이 실제 상표(하나은행)를 그려 넣은 적이 있다. 정해 둔 자리를
     #    흐리게 만든다 (값 0원). 영상이 아니라 **그림**에 걸어야 카메라가
@@ -1287,7 +1306,139 @@ def stills(doc):
     #    영상(그 그림을 넣어 움직이게 한다)에도 안 딸려 간다.
     import wipe_mark                                         # noqa: E402
     wipe_mark.main_dir(d)
-    return 0 if made == len(doc["cuts"]) else 1
+    return 0 if (made == len(doc["cuts"]) and ins_ok) else 1
+
+
+RETAKE_LOG = "_retake.json"
+
+
+def redo_cuts():
+    """관리자 페이지에서 '다시 그리기' 로 고른 컷 번호 (VT_REDO_STILLS="3,7")."""
+    raw = os.environ.get("VT_REDO_STILLS", "")
+    out = set()
+    for x in re.split(r"[,\s]+", raw.strip()):
+        if x.isdigit() and 1 <= int(x) <= 99:
+            out.add(int(x))
+    return out
+
+
+def load_retake(d):
+    try:
+        got = json.loads((Path(d) / RETAKE_LOG).read_text(encoding="utf-8"))
+        return got if isinstance(got, dict) else {}
+    except Exception:                                        # noqa: BLE001
+        return {}
+
+
+def save_retake(d, retake):
+    (Path(d) / RETAKE_LOG).write_text(json.dumps(retake, ensure_ascii=False) + "\n",
+                                      encoding="utf-8")
+
+
+def insert_file(d, n):
+    """컷 n 의 증거 확대 그림 자리 (컷 그림 c07.png 옆에 i07.png)."""
+    return Path(d) / f"i{int(n):02d}.png"
+
+
+def inserts(doc, d):
+    """⭐⭐⭐ 2026-10-01 — **증거 확대 그림** (해양생물 쇼츠의 '특징 줌인' · 손님 승인).
+    나레이션이 그 물건을 말하는 순간 화면이 이 그림으로 넘어간다 (조립: cut_video).
+    물건만 그린다 — 얼굴 참조를 안 붙인다 (사람이 들어오면 안 되는 그림이다).
+    지문이 같으면 다시 안 그린다 (0원). 못 그려도 편을 죽이지 않는다 — 그 컷은
+    확대 없이 간다 (꾸밈이지 이야기가 아니다). 돌려주는 것: 다 됐는가."""
+    want = [c for c in doc["cuts"] if (c.get("insert") or {}).get("still")]
+    if not want:
+        return True
+    one = cost.image_krw(ST.MODEL, ST.SIZE)
+    todo = [c for c in want if not reuse.can_reuse(
+        insert_file(d, c["n"]), reuse.sig_of(c["insert"]["still"]))[0]]
+    print(f"\n■ 증거 확대 그림 {len(want)}장 — 새로 그릴 것 {len(todo)}장 "
+          f"· 약 {one * len(todo):,.0f}원")
+    ok = True
+    for c in want:
+        out = insert_file(d, c["n"])
+        sig = reuse.sig_of(c["insert"]["still"])
+        print(f"  컷{c['n']:>2} 확대 — {c['insert'].get('word', '')}")
+        if reuse.can_reuse(out, sig)[0]:
+            print("    (그대로다 — 건너뛴다)")
+            continue
+        try:
+            ST.gen(c["insert"]["still"], out, refs=[], ratio="9:16",
+                   seed=ST.seed_of(doc.get("sid") or SID, c["n"], "insert"))
+            reuse.stamp(out, sig)
+            out.with_suffix(".wiped").unlink(missing_ok=True)
+        except Exception as e:                                # noqa: BLE001
+            print(f"    ⚠️ 못 그렸다 ({e}) — 이 컷은 확대 없이 갑니다")
+            ok = False
+    return ok
+
+
+# ⭐⭐⭐ 2026-10-01 — **이웃 컷이 같은 구도로 보이면 그 컷만 한 번 다시** (손님 승인)
+#    반려동물 식당 쇼츠에서 가져왔다. 구도 계획(plan_shots)이 크기·방향을 다르게
+#    시켜도 그림 모델이 가끔 앞 컷과 거의 같은 화면을 그린다. 그림이 나온 뒤
+#    **눈으로 보듯** 견주고(src/lookalike.py), 너무 닮은 컷만 앞 컷을 보여 주며
+#    "확실히 다르게" 다시 그린다. 한 편에 lookalike.REDRAW_MAX 장까지.
+#    ⚠️ 같은 컷을 두 번 다시 그리지 않는다 — 기록(_alike.json)이 그림 보관함에
+#       함께 들어간다. 안 남기면 누를 때마다 또 그려 값이 샌다.
+ALIKE_LOG = "_alike.json"
+ALIKE_NOTE = ("The LAST reference image is the previous shot of this film. Use it only "
+              "to make this frame look clearly different from it: a different shot "
+              "size and a different camera angle, exactly as SHOT says. The people "
+              "look exactly like their own reference images.")
+
+
+def redraw_alike(doc, d, refs_of):
+    import lookalike                                         # noqa: E402
+    logp = Path(d) / ALIKE_LOG
+    try:
+        done = json.loads(logp.read_text(encoding="utf-8"))
+    except Exception:                                        # noqa: BLE001
+        done = {}
+    cuts = doc["cuts"]
+    hits = []
+    for a, b in zip(cuts, cuts[1:]):
+        pa, pb = Path(d) / f"c{a['n']:02d}.png", Path(d) / f"c{b['n']:02d}.png"
+        if not (pa.exists() and pb.exists()):
+            continue
+        v = lookalike.likeness(pa, pb)
+        sg = reuse.sig_file(pb)
+        sig_b = sg.read_text(encoding="utf-8").strip() if sg.exists() else ""
+        key = f"c{b['n']:02d}"
+        if v is None or v < lookalike.SAME:
+            continue
+        if (done.get(key) or {}).get("sig") == sig_b:
+            print(f"  컷{b['n']} 은 앞 컷과 닮았지만 이미 한 번 다시 그렸다 — 그대로 간다")
+            continue
+        hits.append((v, a, b, sig_b))
+    if not hits:
+        print("\n■ 이웃 컷 닮음 — 같은 구도로 보이는 컷 없음 (0원)")
+        return
+    pick = sorted(hits, key=lambda x: -x[0])[:lookalike.REDRAW_MAX]
+    pick.sort(key=lambda x: x[2]["n"])          # 앞 컷부터 — 뒤 컷은 고친 앞 컷을 본다
+    one = cost.image_krw(ST.MODEL, ST.SIZE)
+    print(f"\n■ 이웃 컷 닮음 {len(hits)}곳 — {len(pick)}장 다시 그린다 "
+          f"(약 {one * len(pick):,.0f}원)")
+    for v, a, b, sig_b in pick:
+        prev_png = Path(d) / f"c{a['n']:02d}.png"
+        out = Path(d) / f"c{b['n']:02d}.png"
+        print(f"  컷{b['n']} — 컷{a['n']} 과 닮음 {v:.2f} (잣대 {lookalike.SAME})")
+        try:
+            ST.gen(b["still"] + "\n" + ALIKE_NOTE, out, refs=refs_of(b) + [prev_png],
+                   ratio="9:16", seed=ST.seed_of(doc.get("sid") or SID, b["n"], "alike"))
+        except Exception as e:                                # noqa: BLE001
+            print(f"    ⚠️ 못 그렸다 ({e}) — 그대로 간다")
+            continue
+        # ⭐ 그 컷 지문 그대로 적는다 — 다음에 누르면 이 그림을 0원으로 다시 쓴다
+        reuse.stamp(out, sig_b)
+        out.with_suffix(".scrubbed").unlink(missing_ok=True)
+        out.with_suffix(".wiped").unlink(missing_ok=True)
+        after = lookalike.likeness(prev_png, out)
+        done[f"c{b['n']:02d}"] = {"sig": sig_b, "prev": f"c{a['n']:02d}",
+                                  "before": round(v, 3),
+                                  "after": None if after is None else round(after, 3)}
+        print(f"    → 닮음 {v:.2f} → {after if after is None else round(after, 2)}")
+    logp.write_text(json.dumps(done, ensure_ascii=False, indent=1) + "\n",
+                    encoding="utf-8")
 
 
 # ── ② 소리 ────────────────────────────────────────────────────
@@ -1893,8 +2044,146 @@ def move_of(c):
        붙였을 때 안 움직이는 것처럼 보인다. 같은 컷은 늘 같은 움직임이라
        다시 만들어도 화면이 안 달라진다(무작위로 하면 매번 달라진다).
     """
+    if (c.get("shot") or {}).get("move") in DRAMA_KB:
+        z0, z1, x0, x1, y0, y1 = DRAMA_KB[c["shot"]["move"]]
+        if c["shot"]["move"] == "drift" and int(c["n"]) % 2 == 0:
+            x0, x1 = x1, x0                      # 옆으로 훑기는 컷마다 방향을 바꾼다
+        return (z0, z1, x0, x1, y0, y1, f"2분 드라마 · {c['shot']['move']}")
     ring = MOVES_TALK if not is_narr(c) else MOVES_NARR
     return MOVES[ring[(int(c["n"]) - 1) % len(ring)]]
+
+
+# ── ⭐⭐⭐ 2026-10-01 — **2분 드라마 카메라 무빙** (손님 승인 · 다른 쇼츠에서 배운 것)
+#    ① **부드럽게 출발 · 부드럽게 멈춤** (smoothstep). 예전 켄번즈는 처음부터
+#       끝까지 같은 빠르기라 컷 경계에서 '툭' 시작해 '툭' 멈췄다.
+#    ② 나레이션이 **인물 이름을 부르는 순간** 그 얼굴 쪽으로 다가간다
+#       (반려동물 식당 쇼츠의 "심각하다" 줌 · 해양생물 쇼츠의 '특징 줌인').
+#       얼굴 자리는 구도 계획이 정해 둔다 — 가운데, 눈은 위에서 3분의 1.
+#    ③ 한 프레임에 줌이 STEP_MAX 넘게 변하지 않는다 (계단식 줌 금지 — 반려동물
+#       쇼츠에서 "뚝뚝 끊긴다" 로 실제로 걸렸다).
+#    ④ 나레이션이 **증거 물건**을 말하는 순간 그 물건 확대 그림으로 넘어갔다가
+#       돌아온다 (insert_bg).
+#    ⚠️ 옛 여러 편은 그대로다 — 컷에 shot(구도 계획)이 있을 때만 이 길로 간다.
+DRAMA_KB = {     # 움직임 → (줌 처음, 줌 끝, 가로 처음, 가로 끝, 세로 처음, 세로 끝)
+    "push": (1.04, 1.20, 0.50, 0.50, 0.50, 0.42),
+    "pull": (1.20, 1.05, 0.50, 0.50, 0.42, 0.50),
+    "drift": (1.12, 1.15, 0.38, 0.62, 0.46, 0.46),
+    "hold": (1.04, 1.09, 0.50, 0.50, 0.50, 0.46),
+}
+FACE_Z = (1.04, 1.08, 1.22)      # 이름 전 아주 느리게 → 이름 순간부터 얼굴 가까이
+# ⚠️ NAME_Y 는 이미 이름표 자리(1214)다 — 같은 이름을 쓰면 이름표가 죽는다 (2026-10-01 실제로 덮어썼다)
+FACE_Y = (0.50, 0.46, 0.28)      # 얼굴(눈이 위에서 3분의 1) 쪽으로 화면을 올린다
+NAME_PUSH_SEC = 1.6              # 이름에서 얼굴까지 다가가는 시간
+NAME_EARLY = 0.08                # 이름보다 아주 조금 먼저 움직이기 시작한다
+STEP_MAX = 0.02                  # 한 프레임 줌 변화 상한 (넘으면 '툭' 보인다)
+INSERT_SEC = 1.8                 # 증거 확대 화면이 떠 있는 시간
+INSERT_MIN = 0.8                 # 이보다 짧게밖에 못 띄우면 아예 안 띄운다
+INSERT_Z = (1.00, 1.10)          # 확대 화면 안에서도 천천히 다가간다
+
+
+def key_time(c, sec, words):
+    """나레이션에서 그 낱말이 **들리는 순간**(초) — 없으면 None.
+    ⚠️ 구글 목소리는 낱말 시각을 안 알려 준다. 자막(karaoke)과 같은 잣대로
+       글자 수로 나눈다 — 자막이 켜지는 순간과 카메라가 움직이는 순간이 같다."""
+    turns = turns_of(c)
+    if not turns or not is_narr(c):
+        return None
+    text = str(turns[0][1])
+    at = [text.find(w) for w in words if w and w in text]
+    if not at:
+        return None
+    spoken = max(0.5, sec - PAD)
+    before = len([x for x in text[:min(at)] if not x.isspace()])
+    return spoken * before / syl(text)
+
+
+def _ease(a, b, t="(on/{fps})"):
+    """a~b 초 사이를 0→1 로 부드럽게 (ffmpeg 수식). 그 밖은 0 또는 1."""
+    tt = t.format(fps=FPS)
+    span = max(0.05, b - a)
+    p = f"min(1,max(0,({tt}-{a:.3f})/{span:.3f}))"
+    return f"pow({p},2)*(3-2*{p})"
+
+
+def ease_at(a, b, t):
+    """_ease 의 파이썬 판 — 검사(tools/camera_check.py)가 수식과 같은 값을 잰다."""
+    p = min(1.0, max(0.0, (t - a) / max(0.05, b - a)))
+    return p * p * (3 - 2 * p)
+
+
+def drama_path(c, sec):
+    """2분 드라마 그림 컷의 카메라 길 — [(값 셋 (처음·가운데·끝), 1단 끝 초, 2단 끝 초)]
+    줌·가로·세로 세 갈래가 같은 때에 움직인다. 1단(0~t1)과 2단(t1~t2) 두 토막."""
+    z0, z1, x0, x1, y0, y1, _ = move_of(c)
+    who = [w for w in (c.get("who") or []) if w]
+    tk = key_time(c, sec, who)
+    if tk is not None and sec - tk >= NAME_PUSH_SEC * 0.6:
+        t1 = max(0.3, tk - NAME_EARLY)
+        t2 = min(sec - 0.05, t1 + NAME_PUSH_SEC)
+        return {"z": FACE_Z, "x": (0.5, 0.5, 0.5), "y": FACE_Y, "t1": t1, "t2": t2,
+                "why": f"이름이 들리는 {tk:.1f}초에 얼굴로"}
+    return {"z": (z0, z1, z1), "x": (x0, x1, x1), "y": (y0, y1, y1),
+            "t1": max(0.3, sec), "t2": max(0.3, sec) + 1.0, "why": "부드럽게 한 번"}
+
+
+def path_expr(v, t1, t2):
+    a, b, cc = v
+    return (f"{a:.4f}+({b - a:.4f})*{_ease(0.0, t1)}"
+            f"+({cc - b:.4f})*{_ease(t1, t2)}")
+
+
+def path_at(v, t1, t2, t):
+    a, b, cc = v
+    return a + (b - a) * ease_at(0.0, t1, t) + (cc - b) * ease_at(t1, t2, t)
+
+
+def drama_zoom(c, sec):
+    """drama_path → zoompan 필터 글."""
+    p = drama_path(c, sec)
+    f = max(2, int(round(sec * FPS)))
+    return (f"zoompan=z='{path_expr(p['z'], p['t1'], p['t2'])}':d={f}"
+            f":x='(iw-iw/zoom)*({path_expr(p['x'], p['t1'], p['t2'])})'"
+            f":y='(ih-ih/zoom)*({path_expr(p['y'], p['t1'], p['t2'])})'"
+            f":s={W}x{H}:fps={FPS}")
+
+
+def insert_span(c, sec):
+    """증거 확대 화면을 띄울 때 — (시작, 끝) 초. 못 띄우면 None."""
+    ins = c.get("insert") or {}
+    tk = key_time(c, sec, [ins.get("word")]) if ins.get("word") else None
+    if tk is None:
+        return None
+    a = max(0.2, tk - 0.05)
+    b = a + INSERT_SEC
+    # ⚠️ 끝에 얼굴이 0.5초도 안 남으면 깜빡 돌아왔다 끝나 **튀어 보인다** —
+    #    그때는 확대 화면으로 컷을 맺는다 (2026-10-01 시험 렌더에서 0.25초가 남았다)
+    if sec - b < 0.6:
+        b = sec
+    return (a, b) if b - a >= INSERT_MIN else None
+
+
+def insert_bg(c, still, sec, src, vf, nbg):
+    """⭐ 증거 확대 — 배경 [bg] 위에 그 물건 그림을 **그 낱말이 들리는 동안** 얹는다.
+    (그림이 없거나 시간이 모자라면 아무것도 안 한다 — 꾸밈이지 이야기가 아니다)"""
+    span = insert_span(c, sec)
+    ins = Path(still).parent / f"i{int(c['n']):02d}.png"
+    if not span or not ins.exists() or not vf.endswith("[bg];"):
+        return src, vf, nbg
+    a, b = span
+    dur = b - a
+    f = max(2, int(round(dur * FPS)))
+    sw, sh = int(W * ZOOM_SRC), int(H * ZOOM_SRC)
+    z = (f"{INSERT_Z[0]:.4f}+({INSERT_Z[1] - INSERT_Z[0]:.4f})*"
+         f"{_ease(0.0, dur)}")
+    src = src + ["-loop", "1", "-i", str(ins)]
+    vf = (vf[:-len("[bg];")] + "[bg0];"
+          + f"[{nbg}:v]scale={sw}:{sh}:force_original_aspect_ratio=increase,"
+          f"crop={sw}:{sh},zoompan=z='{z}':d={f}:x='(iw-iw/zoom)/2'"
+          f":y='(ih-ih/zoom)/2':s={W}x{H}:fps={FPS},{LIVE},"
+          f"trim=0:{dur:.3f},setpts=PTS-STARTPTS+{a:.3f}/TB[ins];"
+          f"[bg0][ins]overlay=0:0:eof_action=pass"
+          f":enable='gte(t,{a:.3f})*lt(t,{b:.3f})'[bg];")
+    return src, vf, nbg + 1
 
 
 def shot_plan(c, sec):
@@ -1928,9 +2217,11 @@ def still_bg(c, still, sec):
     sw, sh = int(W * ZOOM_SRC), int(H * ZOOM_SRC)
     src = ["-loop", "1", "-i", str(still)]
     d, mv = shot_plan(c, sec)[0]
+    # ⭐ 2분 드라마 — 부드럽게 출발·멈춤 + 이름이 들리는 순간 얼굴로 (위 설명)
+    zc = drama_zoom(c, d) if c.get("shot") else zoom_chain(mv, d)
     # ⭐ 얼어 있지 않게 (위 LIVE 설명 참고) — 값 0원
     return src, (f"[0:v]scale={sw}:{sh}:force_original_aspect_ratio=increase,"
-                 f"crop={sw}:{sh},{zoom_chain(mv, d)},{LIVE}[bg];"), 1
+                 f"crop={sw}:{sh},{zc},{LIVE}[bg];"), 1
 
 
 def cut_sec(c, voice, clip):
@@ -2095,6 +2386,9 @@ def cut_video(c, still, voice, clip, ovs, out, opener=None):
               f"crop={W}:{H},fps={FPS},trim=0:{sec:.3f},setpts=PTS-STARTPTS[bg];")
     else:
         src, vf, nbg = still_bg(c, still, sec)
+        # ⭐ 2분 드라마 — 증거를 말하는 순간 그 물건 확대 그림 (있을 때만)
+        if c.get("insert"):
+            src, vf, nbg = insert_bg(c, still, sec, src, vf, nbg)
     # ⭐ 한 컷 안에서 두 사람이 주고받으면 **자막도 차례대로** 바뀌어야 한다.
     #
     # ⭐⭐ 2026-08-31 손님: "대사 목소리와 자막이 시간차가 발생."

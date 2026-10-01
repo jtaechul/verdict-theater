@@ -49,6 +49,11 @@ on:
         description: '손님이 올린 컷 영상 (관리자 페이지가 넣는다 · 손대지 마십시오)'
         required: false
         default: ''
+      # ⭐⭐⭐ 2026-10-01 — 그림 먼저 보고 **고칠 컷만 다시** (관리자 페이지가 넣는다)
+      redo:
+        description: '그림을 다시 그릴 컷 (예: 3,7 · 관리자 페이지가 넣는다)'
+        required: false
+        default: ''
       # ⭐⭐⭐ 2026-09-09 손님: "나레이션은 이미지로, 대사만 영상으로."
       #    편 첫 장면(입 다문 4초 x 3 = 1,411원) 자리를 **대사 장면**이
       #    대신한다. 둘 다 켜면 값이 두 배가 되므로 하나만 고르게 둔다.
@@ -209,6 +214,8 @@ jobs:
 
       - name: 2) 컷 그림 (세로 9:16 · 장수는 대본이 정한다)
         if: env.STEP == 'all' || env.STEP == 'stills'
+        env:
+          VT_REDO_STILLS: ${{ inputs.redo }}
         run: |
           set -o pipefail
           python3 tools/release_file.py get "stills-$S" stills.zip build/stills.zip \
@@ -223,6 +230,18 @@ jobs:
           python3 -c "import shutil;shutil.make_archive('build/stills','zip','build/s90/stills')" || true
           python3 tools/release_file.py put "stills-$S" stills.zip build/stills.zip || echo "::warning::보관 실패 — 다음 실행에서 값을 처음부터 다시 씁니다. 위 ❌❌ 줄을 보십시오."
           [ "$FAIL" = 0 ] || { echo "❌ 컷 그림 단계 실패 — 만든 데까지는 보관했습니다"; exit 1; }
+
+      # ⭐⭐⭐ 2026-10-01 — **그림 먼저 보기** (2분 드라마 · 손님 승인 · 값 0원)
+      #    해양생물 쇼츠의 핵심 규칙 '이미지 먼저 검토, 영상은 그 다음'.
+      #    컷 그림을 폰에서 보기 좋게 줄여 보관함(stillsview-사건)에 올린다 —
+      #    관리자 페이지가 이것을 보여 주고, 고칠 컷만 골라 다시 그리게 한다.
+      #    ⚠️ 못 올려도 편을 죽이지 않는다 (보기 좋으라고 하는 일이다).
+      - name: 2-0) 그림 미리보기 올리기 (관리자 페이지에서 먼저 보기 · 0원)
+        if: env.VT_DRAMA == '1' && (env.STEP == 'all' || env.STEP == 'stills')
+        continue-on-error: true
+        run: |
+          python3 tools/stills_view.py "$S" build/s90/stills 2>&1 | tee -a make.log \
+            || echo "::warning::그림 미리보기를 못 올렸습니다 — 영상 만들기에는 지장 없습니다"
 
       # ⭐⭐⭐ 2026-09-17 손님: "Pexels videos 장소 컷에만 넣는 거 진행해!
       #    대신 우리의 색감은 입혀서 영상으로 제작하자."
@@ -278,7 +297,10 @@ jobs:
           python3 tools/release_file.py get "talk-$S" talk.zip build/talk.zip \
             && unzip -q -o build/talk.zip -d build/s90/talk \
             || echo "보관된 대사 장면 영상이 없다"
-          if [ "$VT_TALK_VIDEO" = "1" ] || [ "$VT_KEY_VIDEO" = "1" ]; then
+          # ⭐⭐⭐ 2026-10-01 — **그림만 만드는 실행(step=stills)에서는 안 산다.**
+          #    '그림 먼저 확인 → 그다음 영상' (손님 승인). 그림을 보고 고치기 전에
+          #    영상값이 나가면 그 규칙이 뜻이 없다.
+          if { [ "$VT_TALK_VIDEO" = "1" ] || [ "$VT_KEY_VIDEO" = "1" ]; } && [ "$STEP" = "all" ]; then
             python3 src/short90.py talk 2>&1 | tee -a make.log \
               || echo "⚠️ 대사 장면 영상을 못 만들었습니다 — 그림으로 갑니다"
           else
@@ -310,7 +332,10 @@ jobs:
           python3 tools/release_file.py put "voice-$S" voice.zip build/voice.zip || echo "::warning::보관 실패 — 다음 실행에서 값을 처음부터 다시 씁니다. 위 ❌❌ 줄을 보십시오."
           [ "$FAIL" = 0 ] || { echo "❌ 소리 단계 실패 — 만든 데까지는 보관했습니다"; exit 1; }
 
+      # ⚠️ 그림만 만드는 실행(step=stills)은 여기서 끝난다 — 조립·올리기를 안 한다
+      #    (소리도 영상도 아직 없다. 손님이 그림을 보고 ② 영상 만들기를 누른다)
       - name: 4) 한 편으로 조립
+        if: env.STEP != 'stills'
         env:
           CLIPS: ${{ inputs.clips }}
         run: |
@@ -337,6 +362,7 @@ jobs:
           python3 src/short90.py build --part "${{ inputs.part }}" 2>&1 | tee -a make.log
 
       - name: 릴리스에 올리기 (저장소에는 안 넣는다)
+        if: env.STEP != 'stills'
         run: |
           set -euo pipefail
           # ⭐ 2026-09-01 — 편마다 파일이 하나씩 나온다. 있는 것만 올린다
