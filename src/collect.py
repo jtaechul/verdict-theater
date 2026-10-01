@@ -39,6 +39,13 @@ SEARCH_SCOPE = FULLTEXT
 # 목록만 잔뜩 보고 본문을 못 받으면 저장되는 판례가 0건이 된다.
 LIST_SHARE = 0.35
 
+# ⭐⭐ 2026-10-02 — 법제처가 **연달아** 이만큼 응답을 안 하면 그 실행은 멈춘다.
+#    한두 번 실패는 그 낱말·그 판례만 건너뛰고 계속 간다 (다음 실행이 다시 한다).
+#    10-01 밤 깃허브 실행: 첫 낱말 하나가 네 번 내리 시간 초과 → 실행이 통째로 멈춰
+#    새 판례 0건이었다. 바로 뒤 낱말들은 멀쩡히 응답했을 수도 있다 (그날 실측:
+#    같은 시각 네 번 중 세 번은 1초 만에 응답, 한 번만 멈춤).
+FAIL_STREAK = 3
+
 ROOT = Path(__file__).resolve().parent.parent
 CASES = ROOT / "data" / "cases"
 STATE = ROOT / "state" / "collect_state.json"
@@ -445,6 +452,17 @@ def main():
     #    끊기면 찾은 판례(노후사기 시험 136건)가 통째로 사라졌다 — 낱말은 '찾아봤음'
     #    으로 적혀 다음 실행도 다시 안 찾는다.
     pool = {"now": []}
+    fails = {"n": 0, "broken": False}   # 연달은 실패 수 · 법제처가 응답 안 해 멈췄는가
+
+    def failed(what, e):
+        """한 번 실패 — 연달아 FAIL_STREAK 번이면 멈춘다(True)."""
+        fails["n"] += 1
+        print(f"  {what} — 못 받았다 ({type(e).__name__}). 다음 실행이 다시 한다")
+        if fails["n"] >= FAIL_STREAK:
+            fails["broken"] = True
+            print(f"\n⚠️ 법제처가 {FAIL_STREAK}번 연달아 응답하지 않는다 — 여기서 멈춘다 "
+                  "(찾아 둔 것은 남긴다)")
+        return fails["broken"]
     # 지난번에 목록에만 올리고 못 받은 것. ⚠️ 끊겨도 이것까지 잃으면 안 되므로 먼저 읽어 둔다.
     pend = [(p["q"], {"판례일련번호": p["id"], "법원명": p.get("court", "")})
             for p in st.get("pending", [])
@@ -503,8 +521,15 @@ def main():
             for page in range(1, args.pages + 1):
                 if api.used - st["calls_today"] >= list_budget:
                     break
+                try:
+                    total, rows = api.search(q, page=page, display=100, scope=SEARCH_SCOPE)
+                except DailyLimitReached:
+                    raise
+                except Exception as e:                # 연결 끊김·시간 초과 — 이 낱말만 건너뛴다
+                    failed(f"{q} 목록 {page}쪽", e)
+                    break
+                fails["n"] = 0
                 done = page
-                total, rows = api.search(q, page=page, display=100, scope=SEARCH_SCOPE)
                 for r in rows:
                     cid = r.get("판례일련번호")
                     if not cid or cid in fetched:
@@ -520,6 +545,10 @@ def main():
                     kept += 1
                 if len(rows) < 100:          # 마지막 쪽까지 봤다
                     break
+            if fails["broken"]:
+                break
+            if not done:
+                continue                      # 한 쪽도 못 봤다 — '찾아봤음' 으로 안 적는다
             qs["total"] = total
             qs["listed"] = True
             qs["pages"] = max(qs.get("pages", 0), done)   # 몇 쪽까지 봤는지 기억한다
@@ -581,8 +610,18 @@ def main():
                 left = uniq[i:]
                 print(f"  … 예산 소진. 남은 {len(left)}건은 다음 실행에서 이어받는다.")
                 break
+            if fails["broken"]:
+                break
             cid = r["판례일련번호"]
-            case = api.fetch(cid)
+            try:
+                case = api.fetch(cid)
+            except DailyLimitReached:
+                raise
+            except Exception as e:                    # 이 판례만 건너뛴다 — 다음 실행이 받는다
+                if failed(f"{cid} 본문", e):
+                    break
+                continue
+            fails["n"] = 0
             body = case.get("판례내용", "")
             if len(body) < MIN_BODY:
                 hard_counts[f"본문 {MIN_BODY}자 미만"] = hard_counts.get(f"본문 {MIN_BODY}자 미만", 0) + 1
@@ -639,12 +678,13 @@ def main():
                   f"{case.get('사건명','')[:26]}")
     except DailyLimitReached as e:
         print(f"\n{e}")
-        left = left or unfinished()
-    except Exception as e:                    # 네트워크 오류 등 — 여기까지는 저장한다
+    except Exception as e:                    # 뜻밖의 오류 — 여기까지는 저장한다
         print(f"\n⚠️ 중단: {type(e).__name__}: {e}")
-        left = left or unfinished()
-        if left:
-            print(f"  찾아 둔 {len(left)}건은 다음 실행이 이어받는다 (잃지 않는다)")
+        fails["broken"] = True
+    # 남은 것 = 찾아 두고 아직 못 받은 것 전부 (예산이 다 찼든 · 끊겼든 · 건너뛰었든)
+    left = unfinished()
+    if left and fails["broken"]:
+        print(f"  찾아 둔 {len(left)}건은 다음 실행이 이어받는다 (잃지 않는다)")
 
     # 저장
     st["calls_today"] = api.used
@@ -687,6 +727,10 @@ def main():
         "found": sum(r["total"] for r in ran),   # 검색으로 걸린 총 건수
         "passed": sum(r["kept"] for r in ran),   # 1차를 통과한 건수
         "new": len(new_cases),                   # 실제로 새로 받아 저장한 건수
+        # ⭐ 2026-10-02 — 법제처가 응답하지 않아 멈췄는가. 멈췄고 새 판례가 0건이면
+        #    collect.yml 이 돈이 드는 심사를 건너뛴다 (10-01 밤: 새 판례 0건인데
+        #    옛 '재산' 25건을 매기느라 1,560원이 나갔다 · 전부 탈락)
+        "broken": bool(fails["broken"]),
         "queue": len(queue),                     # 저장한 뒤 대기열 총 건수
         "calls": api.used,
         "limit": DAILY_LIMIT,
@@ -707,6 +751,8 @@ def main():
     print()
     print("─" * 60)
     print(f"새로 받은 판례 {len(new_cases)}건 · 대기열 총 {len(queue)}건")
+    if fails["broken"]:
+        print("⚠️ 법제처가 응답하지 않아 도중에 멈췄다 — 다시 누르면 남은 것부터 이어받는다")
     print(f"오늘 호출 {api.used}/{DAILY_LIMIT}회")
     if hard_counts:
         print("\n1차에서 걸러낸 것")

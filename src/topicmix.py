@@ -16,8 +16,10 @@
 
 심사할 차례 ('전부' 로 심사할 때 — gate.py · judge_order):
    쓸 만한 것(심사 통과 · 아직 안 만든 것)이 **적은 갈래부터 돌아가며** 한 건씩.
-   ENOUGH(5)건 넘게 쌓인 갈래는 맨 뒤 — 다른 갈래를 다 매긴 뒤에야 매긴다.
+   ENOUGH(5)건 넘게 쌓인 갈래는 그 뒤 — 다른 갈래를 다 매긴 뒤에야 매긴다.
    (예전엔 기계 점수 순이라 가족 낱말·억 단위가 많은 상속이 늘 먼저 매겨졌다)
+   매겨 봤더니 거의 안 나오는 갈래(10건 넘게 매겨 통과 10% 아래)는 맨 뒤.
+   (10-01 밤: 쓸 만한 것 0건인 '재산' 이 맨 앞에 와 25건 전부 탈락 · 1,560원)
 """
 import re
 
@@ -86,14 +88,34 @@ def order(ready, recent):
 
 # ⭐⭐ 2026-10-01 — 쓸 만한 것이 이만큼 쌓인 갈래는 '전부' 심사에서 맨 뒤로 간다
 ENOUGH = 5
+# ⭐⭐ 2026-10-02 — 매겨 봤더니 **거의 안 나오는 갈래**는 그보다도 뒤로 간다.
+#    10-01 밤: 쓸 만한 것이 0건이던 '재산' 이 맨 앞에 와서 심사 25건을 다 가져갔고,
+#    25건 전부 탈락했다 (세금·회사 다툼 — 1,560원). 재산 낱말(명의신탁·부당이득…)은
+#    법률 일반어라 사람 이야기가 드물다. '모자라다' 와 '안 나온다' 는 다르다.
+BARREN_MIN = 10       # 이만큼 매겨 봤는데
+BARREN_RATE = 0.10    # 통과가 이 비율 아래면 '거의 안 나오는 갈래'
 
 
-def judge_order(queue, used=(), limit=10):
+def judge_order(queue, used=(), limit=10, history=()):
     """'전부' 로 심사할 때 이번에 매길 것 — 아직 안 매긴 것 가운데 앞에서부터 limit 건.
 
     쓸 만한 것(심사 통과 · 아직 안 만든 것)이 적은 갈래부터 돌아가며 한 건씩,
-    갈래 안에서는 기계 점수가 높은 것부터. ENOUGH 건 넘게 쌓인 갈래는 맨 뒤."""
+    갈래 안에서는 기계 점수가 높은 것부터. ENOUGH 건 넘게 쌓인 갈래는 그 뒤,
+    매겨 본 것이 BARREN_MIN 건 넘는데 통과가 BARREN_RATE 아래인 갈래는 맨 뒤.
+    history = 대기열에서 치운 것(state/rejected.json) — 탈락 기록이 거기로 옮겨 가므로
+    '거의 안 나오는가' 는 그것까지 보고 센다."""
     used = {str(u) for u in used or ()}
+    judged, passed = {}, {}
+    for c in list(queue or []) + list(history or []):
+        if c.get("gate_score") is None:
+            continue
+        t = c.get("topic") or ""
+        judged[t] = judged.get(t, 0) + 1
+        passed[t] = passed.get(t, 0) + (1 if c.get("gate_pass") else 0)
+
+    def barren(t):
+        n = judged.get(t, 0)
+        return n >= BARREN_MIN and passed.get(t, 0) / n < BARREN_RATE
     stock = {}
     for c in queue or []:
         if c.get("gate_pass") and str(c.get("case_id")) not in used:
@@ -107,10 +129,11 @@ def judge_order(queue, used=(), limit=10):
     def rank(t):
         return (stock.get(t, 0), -(groups[t][0].get("machine_score") or 0), t)
 
-    hungry = sorted((t for t in groups if stock.get(t, 0) < ENOUGH), key=rank)
-    full = sorted((t for t in groups if stock.get(t, 0) >= ENOUGH), key=rank)
+    hungry = sorted((t for t in groups if stock.get(t, 0) < ENOUGH and not barren(t)), key=rank)
+    full = sorted((t for t in groups if stock.get(t, 0) >= ENOUGH and not barren(t)), key=rank)
+    dry = sorted((t for t in groups if barren(t)), key=rank)
     out = []
-    for tier in (hungry, full):
+    for tier in (hungry, full, dry):
         while len(out) < limit and any(groups[t] for t in tier):
             for t in tier:
                 if groups[t] and len(out) < limit:

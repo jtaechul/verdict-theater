@@ -35,7 +35,7 @@ on:
         required: false
         default: '3'
       judge:
-        description: '모은 뒤 몇 건을 심사할까요 (0이면 안 함 · 한 건에 약 30원)'
+        description: '모은 뒤 몇 건을 심사할까요 (0이면 안 함 · 한 건에 약 60원)'
         required: false
         default: '20'
   # ⚠️ 2026-08-27 — 지금 절차에서 안 쓰므로 자동 실행을 껐다
@@ -117,12 +117,22 @@ jobs:
       #    것은 화면에서 고를 수가 없다 — 손님 눈에는 옛날에 매긴 상속
       #    13건만 보였다.
       #    → 모은 김에 여기서 이어서 매긴다. 갈래를 고르면 그 갈래만.
-      - name: 모은 것 심사하기 (한 건에 약 30원)
+      # ⚠️⚠️ 2026-10-02 — 법제처가 응답하지 않아 모으기가 멈췄고 새 판례가 0건이면
+      #    **돈이 드는 심사를 건너뛴다.** 10-01 밤: 새 판례 0건인데 대기열에 남아 있던
+      #    옛 '재산' 25건을 매기느라 1,560원이 나갔다 (세금·회사 다툼이라 전부 탈락).
+      #    손님이 바란 것은 '새로 모은 것' 의 심사였다.
+      - name: 모은 것 심사하기 (한 건에 약 60원)
         if: ${{ inputs.judge != '0' && inputs.judge != '' }}
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           set -o pipefail
+          GO=$(python3 -c "import json; d = json.load(open('state/collect_last.json', encoding='utf-8')); print('skip' if d.get('broken') and not d.get('new') else 'go')" 2>/dev/null || echo go)
+          if [ "$GO" = "skip" ]; then
+            echo "법제처가 응답하지 않아 새로 받은 판례가 0건입니다 — 돈이 드는 심사는 건너뜁니다." | tee -a collect.log
+            echo "잠시 뒤 다시 누르면 남은 것부터 이어받습니다." | tee -a collect.log
+            exit 0
+          fi
           T="${{ inputs.topic }}"
           if [ "$T" = "전부" ] || [ -z "$T" ]; then T=""; fi
           python3 src/gate.py --limit "${{ inputs.judge }}" --topic "$T" \

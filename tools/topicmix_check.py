@@ -183,8 +183,39 @@ ck("이미 매긴 것은 다시 안 매긴다",
    all(c.get("gate_score") is None for c in TM.judge_order(jq, set(), 99)))
 gs = (ROOT / "src" / "gate.py").read_text(encoding="utf-8")
 ck("심사(gate.py)가 '전부' 일 때 이 차례를 쓴다 (갈래를 고르면 그 갈래 점수 순)",
-   "todo = topicmix.judge_order(queue, used, args.limit)" in gs
-   and gs.index("elif want:") < gs.index("todo = topicmix.judge_order(queue, used, args.limit)"))
+   "todo = topicmix.judge_order(queue, used, args.limit, load_rejected())" in gs
+   and gs.index("elif want:")
+   < gs.index("todo = topicmix.judge_order(queue, used, args.limit, load_rejected())"))
+# 10-01 밤 사고: 쓸 만한 것 0건인 '재산' 이 맨 앞에 와 25건을 다 가져갔다 — 전부 탈락
+dq = ([{"case_id": f"p{i}", "topic": "재산", "machine_score": 70} for i in range(30)]
+      + [{"case_id": f"s{i}", "topic": "상속", "machine_score": 60} for i in range(30)]
+      + [{"case_id": f"r{i}", "topic": "상속", "gate_score": 80, "gate_pass": True}
+         for i in range(6)]
+      + [{"case_id": f"n{i}", "topic": "치매", "machine_score": 40} for i in range(3)])
+dead = [{"case_id": f"x{i}", "topic": "재산", "gate_score": 10, "gate_pass": False}
+        for i in range(25)]
+pick = [c["topic"] for c in TM.judge_order(dq, set(), 10, dead)]
+ck("매겨 봤더니 거의 안 나오는 갈래(재산 25건 중 0건)는 맨 뒤 — 넉넉한 상속보다도 뒤",
+   pick[:3] == ["치매"] * 3 and "재산" not in pick, str(pick))
+ck("탈락 기록이 대기열에서 치워져(rejected.json) 있어도 센다",
+   "재산" not in [c["topic"] for c in TM.judge_order(dq, set(), 10, dead)]
+   and "재산" in [c["topic"] for c in TM.judge_order(dq, set(), 10, [])][:3])
+ck("다른 것을 다 매긴 뒤에는 그 갈래도 매긴다 (미룰 뿐 안 버린다)",
+   [c["topic"] for c in TM.judge_order(dq, set(), 99, dead)][-30:] == ["재산"] * 30)
+few = [{"case_id": f"y{i}", "topic": "재산", "gate_score": 10, "gate_pass": False}
+       for i in range(TM.BARREN_MIN - 1)]
+ck(f"매겨 본 것이 {TM.BARREN_MIN}건 미만이면 아직 판단하지 않는다",
+   "재산" in [c["topic"] for c in TM.judge_order(dq, set(), 10, few)][:3])
+gq = json.loads((ROOT / "state" / "queue.json").read_text(encoding="utf-8"))
+rj = json.loads((ROOT / "state" / "rejected.json").read_text(encoding="utf-8"))
+# 진짜 대기열 — 재산이 지금도 '거의 안 나오는 갈래' 일 때만 본다 (재산 낱말을 고쳐 통과가
+#   늘면 이 줄은 저절로 빠진다 · 그때는 재산을 다시 앞에 두는 것이 맞다)
+allj = [c for c in gq + rj if c.get("topic") == "재산" and c.get("gate_score") is not None]
+if len(allj) >= TM.BARREN_MIN and sum(1 for c in allj if c.get("gate_pass")) / len(allj) \
+        < TM.BARREN_RATE:
+    real25 = [c.get("topic") for c in TM.judge_order(gq, set(), 25, rj)]
+    ck("지금 진짜 대기열로 '전부' 25건을 매기면 재산 탈락 더미를 안 고른다",
+       "재산" not in real25 or set(real25) == {"재산"}, str(real25))
 
 # ── ⑥ 어르신 다섯 ─────────────────────────────────────────
 print("\n⑥ '어르신 다섯' — 새 갈래 다섯을 한 번에 (아이폰에서 한 번 누르기)")

@@ -34,12 +34,20 @@ from claude import BudgetExceeded as ClaudeBudget # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 CASES = ROOT / "data" / "cases"
 QUEUE = ROOT / "state" / "queue.json"
+REJECTED = ROOT / "state" / "rejected.json"   # 대기열에서 치운 것 (탈락 기록이 여기로 간다)
 
 PASS_MARK = 60
 
 
 def load_queue():
     return json.loads(QUEUE.read_text(encoding="utf-8")) if QUEUE.exists() else []
+
+
+def load_rejected():
+    try:
+        return json.loads(REJECTED.read_text(encoding="utf-8")) if REJECTED.exists() else []
+    except Exception:                                   # noqa: BLE001 — 없거나 깨졌으면 기록 없이
+        return []
 
 
 def save_queue(q):
@@ -129,7 +137,7 @@ def main():
         rest = [c for c in rest if (c.get("topic") or "") in group]
         used = {v.get("case_id") for v in shortstate.load().values()}
         todo = topicmix.judge_order([c for c in queue if (c.get("topic") or "") in group],
-                                    used, args.limit)
+                                    used, args.limit, load_rejected())
     elif want:
         rest = [c for c in rest if (c.get("topic") or "") == want]
         # ⭐ 점수 높은 것부터 매긴다 — 예산이 모자라도 쓸 만한 것이 먼저 걸린다
@@ -140,7 +148,7 @@ def main():
         #    '전부' 를 기계 점수 순으로 매기면 가족 낱말·억 단위가 많은 상속이 늘 먼저
         #    걸린다. → 쓸 만한 것이 적은 갈래부터 돌아가며 매긴다 (topicmix.judge_order)
         used = {v.get("case_id") for v in shortstate.load().values()}
-        todo = topicmix.judge_order(queue, used, args.limit)
+        todo = topicmix.judge_order(queue, used, args.limit, load_rejected())
     if not todo:
         left = sum(1 for c in queue if c.get("gate_score") is None)
         print(f"평가할 판례가 없다{f' ({want} 갈래에는)' if want else ''}.")
