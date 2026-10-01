@@ -194,6 +194,8 @@ def main():
             # 대본에 쓸 금액은 백만원 단위로 다듬는다. 여기서부터 맞춰 둔다.
             "amount_krw": money.floor(int(res.get("amount_krw") or 0)),
             "amount_label": money.tidy(res.get("amount_label", "")),
+            # ⭐ 2026-10-01 — 주인공이 50대 이상인가 (고를 때 어르신 이야기를 앞에 둔다)
+            "senior": bool(res.get("senior")),
             "gate_scores": res.get("scores", {}),
             "gate_reject": res.get("reject", []),
             "gate_note": res.get("note", ""),

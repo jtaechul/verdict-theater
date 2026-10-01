@@ -33,6 +33,7 @@ import claude                                                # noqa: E402
 import cost                                                  # noqa: E402
 import prompts                                               # noqa: E402
 import shortstate                                            # noqa: E402
+import topicmix                                              # noqa: E402
 
 QUEUE = ROOT / "state" / "queue.json"
 CASES = ROOT / "data" / "cases"
@@ -1013,13 +1014,15 @@ def pick_case(case_id=None):
         if not row:
             raise SystemExit(f"❌ 대기열에 그 판례가 없다: {case_id}")
         return row
-    used = {v.get("case_id") for v in shortstate.load().values()}
+    works = shortstate.load()
+    used = {v.get("case_id") for v in works.values()}
     ready = [c for c in q if c.get("gate_pass") and c["case_id"] not in used]
-    ready.sort(key=lambda c: (c.get("gate_score") or 0,
-                              c.get("machine_score") or 0), reverse=True)
     if not ready:
         raise SystemExit("❌ 쓸 판례가 없다. [1. 재판 기록 모으기] 를 먼저 돌려라")
-    return ready[0]
+    # ⭐⭐⭐ 2026-10-01 손님: "너무 유류분이냐 상속하고 이거에만 매몰되어 있는 것 같은데"
+    #    점수 순으로만 고르면 상속이 또 맨 위에 온다 → 갈래를 섞는 규칙으로 고른다
+    #    (바로 앞 편과 같은 갈래 · 상속 30% 넘김은 뒤로 · 어르신 이야기 먼저)
+    return topicmix.order(ready, topicmix.recent_topics(works, q))[0]
 
 
 def case_json(row):

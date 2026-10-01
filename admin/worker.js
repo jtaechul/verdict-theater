@@ -42,8 +42,9 @@ const WORKFLOWS = [
     desc: '판례를 모아 대기열에 쌓고, 이어서 드라마성을 심사합니다. '
         + '심사를 해야 [다음 사건 고르기] 에 뜹니다 (모으기 0원 · 심사 한 건 약 30원)',
     inputs: [{ k: 'topic', label: '어떤 갈래를 모을까요', type: 'select',
-               opts: ['불륜', '전부', '상속', '재산', '부양', '노년',
-                      '가업', '혼외자', '제사', '빚'] },
+               // ⭐ 2026-10-01 — 어르신 갈래 다섯을 더했다 (워크플로 선택지와 같은 글자)
+               opts: ['전부', '노후사기', '효도계약', '치매', '땅·선산', '요양',
+                      '불륜', '상속', '재산', '부양', '노년', '가업', '혼외자', '제사', '빚'] },
              { k: 'judge', label: '몇 건을 심사할까요 (0이면 안 함)',
                type: 'text', v: '20' },
              { k: 'max_calls', label: '최대 요청 수 (하루 200회)', type: 'text', v: '180' },
@@ -3196,13 +3197,62 @@ function collectCard() {
 //    혼자서는 시작조차 못 하셨다(손님은 파이썬을 못 쓰신다).
 //    이제 대기열에서 사건을 하나 골라 단추 한 번이면 대본이 나온다.
 // ⚠️ 값이 나가는 단추다(약 2,100원). 누르기 전에 값을 화면에 적고 묻는다.
+// ⭐⭐⭐ 2026-10-01 손님: "너무 유류분이냐 상속하고 이거에만 매몰되어 있는 것 같은데"
+//    점수 순으로만 늘어놓으면 상속이 또 맨 위에 온다. 갈래를 섞는 차례로 늘어놓고
+//    맨 위에 [추천] 을 단다. ⚠️ src/topicmix.py 와 **같은 규칙**이다 — 바꾸면 둘 다
+//    (tools/topicmix_check.py 가 같은 시험으로 맞춰 본다).
+const MIX_INHERIT = '상속', MIX_MAX = 0.30, MIX_RECENT = 10;
+
+function mixRecent(works, queue) {
+  const by = {};
+  (queue || []).forEach(function (c) { by[String(c.case_id)] = c.topic || ''; });
+  const no = function (s) { return parseInt(String(s).replace(/[^0-9]/g, ''), 10) || 0; };
+  const out = [];
+  Object.keys(works || {}).sort(function (a, b) { return no(a) - no(b); })
+    .forEach(function (k) {
+      const cid = String((works[k] || {}).case_id || '');
+      if (cid) out.push(by[cid] || '');
+    });
+  return out;
+}
+
+function mixHeld(topic, recent) {
+  const last = recent.length ? recent[recent.length - 1] : '';
+  if (topic && topic === last) return '바로 앞 편도 ' + topic;
+  if (topic === MIX_INHERIT) {
+    // 최근에 상속이 하나도 없으면 막지 않는다 (topicmix.held_back 과 같다)
+    const win = MIX_RECENT > 1 ? recent.slice(-(MIX_RECENT - 1)) : [];
+    const n = win.filter(function (t) { return t === MIX_INHERIT; }).length;
+    const share = (n + 1) / (win.length + 1);
+    if (n && share > MIX_MAX) return '최근 상속이 ' + Math.round(share * 100) + '%가 된다 (30% 넘음)';
+  }
+  return '';
+}
+
+function mixOrder(ready, recent) {
+  const key = function (c) {
+    return [mixHeld(c.topic || '', recent) ? 1 : 0, c.senior ? 0 : 1,
+            -(c.gate_score || 0), -(c.machine_score || 0)];
+  };
+  return (ready || []).slice().sort(function (a, b) {
+    const ka = key(a), kb = key(b);
+    for (let i = 0; i < ka.length; i++) if (ka[i] !== kb[i]) return ka[i] - kb[i];
+    return 0;
+  });
+}
+
 function queueCard(ready) {
-  const all = (ready || []).slice();
   // 이미 쇼츠로 만든 사건은 목록에서 뺀다 — 같은 사건을 두 번 짓지 않게
   const used = {};
   Object.keys(WORKS || {}).forEach(function (k) {
     const c = (WORKS[k] || {}).case_id; if (c) used[String(c)] = k;
   });
+  // ⭐ 갈래를 섞는 차례 — 아직 안 만든 것 먼저(추천 차례), 만든 것은 맨 뒤
+  const recent = mixRecent(WORKS, (S && S.queue) || []);
+  const pool = (ready || []).slice();
+  const fresh = pool.filter(function (q) { return !used[String(q.case_id || '')]; });
+  const all = mixOrder(fresh, recent).concat(
+    pool.filter(function (q) { return used[String(q.case_id || '')]; }));
   let h = '<div class="card"><h2>다음 사건 고르기 '
         + '<small style="font-weight:400;color:#9599ab">— 심사를 통과한 재판 기록 '
         + all.length + '건</small></h2>';
@@ -3213,14 +3263,22 @@ function queueCard(ready) {
   }
   h += '<div class="uphint">하나를 고르면 <b>쇼츠 대본</b>(컷·편 나누기·편별 제목)이 '
      + '한 번에 나옵니다. 대본 한 편에 <b>약 2,100원</b>이 듭니다.</div>';
+  h += '<div class="uphint" style="margin-top:4px">고르는 차례: 바로 앞 편과 <b>다른 갈래</b> · '
+     + '상속은 최근 <b>30% 이하</b> · <b>어르신 이야기</b> 먼저 — 맨 위가 추천입니다.</div>';
   const shown = all.slice(0, QMAX);
+  const top = fresh.length ? all[0] : null;
   shown.forEach(function (q) {
     const nm = q.case_type || q['사건명'] || ('판례 ' + q.case_id);
     const done = used[String(q.case_id || '')];
+    const why = done ? '' : mixHeld(q.topic || '', recent);
     h += '<div class="q"><b>' + (q.gate_score == null ? '-' : q.gate_score) + '점</b>'
       + esc(nm)
+      + (q === top ? ' <span class="pill ok">추천</span>' : '')
+      + (q.topic ? ' <span class="pill">' + esc(q.topic) + '</span>' : '')
+      + (q.senior ? ' <span class="pill">어르신</span>' : '')
       + (q.amount_label ? ' <span class="pill">' + esc(q.amount_label) + '</span>' : '')
       + (done ? ' <span class="pill ok">이미 만듦</span>' : '')
+      + (why ? '<div class="uphint" style="margin-top:2px">뒤로 미룸 — ' + esc(why) + '</div>' : '')
       + '<div style="color:#9599ab;font-size:13px;margin-top:3px">'
       + esc(q.one_line || '') + '</div>'
       + (done

@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+"""⭐ **소재가 한쪽으로 쏠리지 않는가** — 값 0원 · 인터넷 0회
+
+    python3 tools/topicmix_check.py
+
+2026-10-01 손님: "판례를 좀 다양한 걸 수집하면 안 되냐? 너무 유류분이냐 상속하고
+이거에만 매몰되어 있는 것 같은데 … 니치는 50대부터 70대, 80대 어르신들인 거는 유지하고."
+그때 대기열 165건 = 상속 99 · 재산 61 · 불륜 5, 만든 네 사건 가운데 셋이 상속.
+
+  ① 모으기   어르신 갈래 다섯(노후사기·효도계약·치매·땅·선산·요양)이 있고, 갈래마다
+             확인 낱말이 있다 · '전부' 는 대기열에 적은 갈래부터 돌아가며 훑는다 ·
+             어르신 갈래는 사람 이야기 아닌 사건명(임금·보험금…)을 본문 받기 전에 뺀다
+  ② 심사     어르신(50~80대) 기준 · 주인공 나이(senior) 칸 · 새 갈래 사건 유형
+  ③ 고르기   바로 앞 편과 같은 갈래는 뒤로 · 상속 30% 넘김은 뒤로 · 어르신 먼저 —
+             자동 고르기(story90)와 관리자 화면(worker.js)이 **같은 차례**를 낸다
+  ④ 단추     관리자 페이지 · 워크플로 선택지에 새 갈래가 있다
+"""
+import json
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+import yaml
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "src"))
+
+import collect as C                                          # noqa: E402
+import topicmix as TM                                        # noqa: E402
+
+bad = []
+
+
+def ck(name, ok, why=""):
+    print(("   ✅ " if ok else "   ❌ ") + name + (f" — {why}" if why and not ok else ""))
+    if not ok:
+        bad.append(name)
+
+
+print("⭐ 소재 갈래 섞기 점검 — 값 0원\n")
+
+# ── ① 모으기 ────────────────────────────────────────────────
+print("① 모으기 — 어르신 갈래 · 돌아가며 · 잡음 빼기")
+NEW = ("노후사기", "효도계약", "치매", "땅·선산", "요양")
+ck("어르신 갈래 다섯이 있다", all(t in C.QUERY_GROUPS and C.QUERY_GROUPS[t] for t in NEW))
+ck("갈래마다 '진짜 그 사건인지' 확인 낱말이 있다",
+   all(C.TOPIC_WORDS.get(t) for t in NEW))
+ck("검색어가 갈래끼리 겹치지 않는다 (겹치면 갈래가 엉뚱하게 붙는다)",
+   len(C.QUERIES) == len(set(C.QUERIES)))
+ck("옛 갈래 검색어는 그대로다 (쌓인 대기열의 갈래가 안 바뀐다)",
+   C.QUERY_GROUPS["상속"][0] == "유류분" and "상간" in C.QUERY_GROUPS["불륜"])
+queue = [{"topic": "상속"}] * 99 + [{"topic": "재산"}] * 61 + [{"topic": "불륜"}] * 5
+order = C.rotate(C.QUERIES, queue)
+first = [C.TOPIC_OF[q] for q in order[:len(C.QUERY_GROUPS)]]
+ck("'전부' 는 갈래마다 하나씩 번갈아 훑는다 (앞자리에 갈래가 하나씩)",
+   len(set(first)) == len(C.QUERY_GROUPS), str(first))
+ck("대기열에 많이 쌓인 갈래(상속·재산)는 뒤로 간다",
+   first.index("상속") > first.index("노후사기") and first.index("재산") > first.index("치매"))
+ck("검색어를 하나도 안 빠뜨린다", sorted(order) == sorted(C.QUERIES))
+ck("어르신 갈래는 사람 이야기 아닌 사건명을 뺀다 (임금·보험금…)",
+   C.noise_name("임금등", "노후사기") == "임금" and C.noise_name("보험금", "치매") == "보험금"
+   and C.noise_name("주위토지통행권확인", "땅·선산") == "")
+ck("옛 갈래에는 이 거르기를 안 건다 (지금까지 걸러 온 그대로)",
+   C.noise_name("임금등", "상속") == "")
+src = (ROOT / "src" / "collect.py").read_text(encoding="utf-8")
+ck("사건명 거르기를 **본문 받기 전에** 건다 (호출·심사값을 아낀다)",
+   src.index("noise_name(r.get(\"사건명\"") < src.index("case = api.fetch(cid)"))
+
+# ── ② 심사 ─────────────────────────────────────────────────
+print("\n② 심사 — 어르신 기준 · 주인공 나이")
+gp = (ROOT / "prompts" / "drama_gate.md").read_text(encoding="utf-8")
+body = gp.split("<!-- PROMPT:BEGIN -->")[1]
+ck("심사 기준이 50~80대 어르신이다", "50~80대" in body)
+ck("주인공 나이(senior) 칸을 낸다", '"senior": true' in body and "`senior`" in body)
+ck("새 갈래 사건 유형이 목록에 있다",
+   all(w in body for w in ("노후투자사기", "효도계약", "치매재산", "주위토지통행",
+                            "분묘기지권", "종중재산", "요양원사고")))
+ck("어르신을 노린 배신도 배신으로 본다", "어르신을 노린 배신도 배신이다" in body)
+gs = (ROOT / "src" / "gate.py").read_text(encoding="utf-8")
+ck("심사 결과의 senior 를 대기열에 적는다", '"senior": bool(res.get("senior"))' in gs)
+
+# ── ③ 고르기 ───────────────────────────────────────────────
+print("\n③ 고르기 — 같은 갈래 연속 금지 · 상속 30% · 어르신 먼저")
+ready = [
+    {"case_id": "1", "topic": "상속", "gate_score": 92, "senior": True},
+    {"case_id": "2", "topic": "땅·선산", "gate_score": 70, "senior": True},
+    {"case_id": "3", "topic": "노후사기", "gate_score": 81, "senior": False},
+    {"case_id": "4", "topic": "노후사기", "gate_score": 78, "senior": True},
+    {"case_id": "5", "topic": "치매", "gate_score": 65, "senior": True},
+    {"case_id": "6", "topic": "상속", "gate_score": 88, "senior": False},
+]
+made_q = [{"case_id": "a", "topic": "상속"}, {"case_id": "b", "topic": "불륜"},
+          {"case_id": "c", "topic": "상속"}, {"case_id": "d", "topic": "노후사기"}]
+works = {"S93": {"case_id": "d"}, "S90": {"case_id": "a"}, "S91": {"case_id": "b"},
+         "S92": {"case_id": "c"}}
+recent = TM.recent_topics(works, made_q + ready)
+ck("만든 차례를 사건 번호로 읽는다 (S90 → S93)",
+   recent == ["상속", "불륜", "상속", "노후사기"], str(recent))
+py = [c["case_id"] for c in TM.order(ready, recent)]
+ck("바로 앞 편(노후사기)과 같은 갈래는 뒤로 간다",
+   py.index("4") > py.index("2") and py.index("3") > py.index("5"), str(py))
+ck("상속은 최근 30%를 넘기면 뒤로 간다 (점수가 92점이어도)",
+   py.index("1") > py.index("5"), str(py))
+ck("어르신 이야기를 먼저 고른다", py[0] == "2", str(py))
+ck("미룰 뿐 지우지 않는다 (고를 것이 그것뿐이면 그것)",
+   sorted(py) == sorted(c["case_id"] for c in ready)
+   and TM.order([ready[0]], recent)[0]["case_id"] == "1")
+ck("만든 것이 없으면 점수·어르신 차례 그대로",
+   [c["case_id"] for c in TM.order(ready, [])][0] == "1")
+s90 = (ROOT / "src" / "story90.py").read_text(encoding="utf-8")
+ck("자동 고르기(story90.pick_case)가 이 규칙을 쓴다",
+   "topicmix.order(ready, topicmix.recent_topics(works, q))[0]" in s90)
+
+# 관리자 화면(worker.js)의 같은 규칙이 같은 차례를 내는가 — 진짜 화면 글을 돌려 본다
+#   만든 것 넷 · 하나도 없음 · 상속 아닌 한 편 · 상속 하나 낀 두 편 — 네 경우 모두 같아야 한다
+SCENES = [works, {}, {"S91": {"case_id": "b"}},
+          {"S90": {"case_id": "a"}, "S91": {"case_id": "b"}}]
+js_src = (ROOT / "admin" / "worker.js").read_text(encoding="utf-8")
+with tempfile.TemporaryDirectory() as td:
+    mod = Path(td) / "wk.mjs"
+    mod.write_text(js_src.replace("export default", "const _wk =")
+                   + "\nexport { appHtml };\n", encoding="utf-8")
+    run = Path(td) / "run.mjs"
+    run.write_text(
+        "const { appHtml } = await import('file://" + str(mod) + "');\n"
+        "const js = appHtml().match(/<script>([\\s\\S]*?)<\\/script>/)[1];\n"
+        "globalThis.document = { getElementById: () => ({ innerHTML: '', style: {} }),\n"
+        "  querySelectorAll: () => [], addEventListener: () => {},\n"
+        "  createElement: () => ({ style: {} }), body: { appendChild() {} } };\n"
+        "globalThis.window = { isSecureContext: true };\n"
+        "globalThis.fetch = async () => ({ status: 200, json: async () => ({}) });\n"
+        "const F = new Function('R', js + '; return { o: mixOrder(R.ready, mixRecent(R.works, R.q)).map(c => c.case_id), r: mixRecent(R.works, R.q) };');\n"
+        "const out = " + json.dumps([{"ready": ready, "works": w, "q": made_q + ready}
+                                     for w in SCENES], ensure_ascii=False) + ".map(F);\n"
+        "console.log(JSON.stringify(out));\nprocess.exit(0);\n", encoding="utf-8")
+    p = subprocess.run(["node", str(run)], capture_output=True, text=True, timeout=120)
+try:
+    js = json.loads(p.stdout.strip().splitlines()[-1])
+except Exception:                                            # noqa: BLE001
+    js = []
+want = []
+for w in SCENES:
+    r = TM.recent_topics(w, made_q + ready)
+    want.append({"o": [c["case_id"] for c in TM.order(ready, r)], "r": r})
+ck("관리자 화면도 똑같은 차례를 낸다 (worker.js mixOrder = topicmix.order)",
+   js == want, f"{js} · {want} · {p.stderr[-200:]}")
+ck("관리자 화면이 맨 위에 [추천] 을 단다", "' <span class=\"pill ok\">추천</span>'" in js_src)
+
+# ── ④ 단추 ─────────────────────────────────────────────────
+print("\n④ 단추 — 새 갈래를 고를 수 있다")
+wf = yaml.safe_load((ROOT / ".github" / "workflows" / "collect.yml").read_text(encoding="utf-8"))
+on = wf.get("on") if isinstance(wf.get("on"), dict) else wf.get(True)
+opts = on["workflow_dispatch"]["inputs"]["topic"]["options"]
+ck("모으기 워크플로에서 새 갈래를 고를 수 있다", all(t in opts for t in NEW), str(opts))
+ck("갈래 선택지가 모으기 사전과 같다 (없는 갈래를 고르면 아무것도 안 모인다)",
+   set(opts) - {"전부"} == set(C.QUERY_GROUPS), str(set(opts) ^ (set(C.QUERY_GROUPS) | {"전부"})))
+
+print("─" * 56)
+if bad:
+    print(f"❌ {len(bad)}개 걸렸습니다 — 고치고 다시")
+    sys.exit(1)
+print("✅ 소재 섞기: 어르신 갈래 · 돌아가며 모으기 · 잡음 빼기 · 심사 · 고르기 · 단추")
