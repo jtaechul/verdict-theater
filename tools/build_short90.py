@@ -1234,6 +1234,11 @@ def main(argv=None):
     if drama:
         doc["format"] = talkplan.DRAMA
         doc["cast"] = list(story.get("cast") or [])
+        # ⭐ 1분 전부 영상 (2026-10-02) — 모든 컷이 옴니 영상 · 조립이 틈을 잘라 붙인다
+        if story.get("all_video"):
+            doc["all_video"] = True
+            for cut, sc in zip(cuts, story["cuts"]):
+                cut["place"] = str(sc.get("place") or "")
     # ⭐⭐⭐ 2026-09-10 — 화면이 값을 **스스로 세지 않게** 여기서 찍어 둔다.
     #    화면은 `706원 × 편 수` 로 어림하고 있었다("편마다 한 컷" 시절 셈).
     #    대사 컷 전부를 영상으로 바꾸자 화면이 2,824원이라 적고 실제로는

@@ -169,6 +169,9 @@ WHITE = (255, 255, 255, 255)
 #    ⚠️ 말을 빠르게 하는 것은 **조립할 때** 한다(atempo). 목소리를 다시
 #       만들면 750원이 또 나가는데, 조립은 0원이기 때문이다.
 PAD = 0.40                       # 말이 끝난 뒤 남기는 여운(초)
+# ⭐⭐⭐ 2026-10-02 손님: "대사 사이사이에 쉬는 공간 없이 가서" — 1분 전부 영상(all_video)은
+#    목소리 앞뒤 무음을 잘라 두고(tools/drama60.py) 여운도 이만큼만 둔다.
+PAD_TIGHT = 0.12
 MIN_CUT = 2.2                    # 아무리 짧아도 이만큼은 보여 준다(깜빡임 방지)
 # ⭐ 2026-09-02 손님: "1.2배속으로 바꿔."
 #    1.08 → 1.20. 자막 시각도 이 값으로 나누므로(sub_windows) 함께 당겨진다 —
@@ -638,6 +641,12 @@ def stock_dir():
     AI 그림 컷과 색이 안 튄다. 받는 것은 src/stock_video.py 가 한다.
     """
     return OUT / "stock"
+
+
+def video_dir():
+    """⭐ 1분 전부 영상(all_video) — 컷마다 옴니가 만든 영상 (tools/drama60.py).
+    ⚠️ 손님이 손으로 올린 영상(clips/)·대사 영상(talk/)과 섞지 않는다."""
+    return OUT / "video60"
 
 
 def talk_dir():
@@ -2667,6 +2676,11 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
         # ⭐ 2026-09-09 — 손으로 올린 것이 **언제나 이긴다.** 없을 때만 기계가
         #    만든 대사 영상을 쓴다. 손님이 공들여 올린 영상이 조용히 기계
         #    것으로 덮이면 안 된다.
+        # ⭐ 1분 전부 영상 — 모든 컷이 옴니 영상이다 (손으로 올린 것이 있으면 그게 이긴다)
+        if not clip.exists() and doc.get("all_video"):
+            v = video_dir() / f"c{n:02d}.mp4"
+            if v.exists():
+                clip = v
         if not clip.exists():
             # ⭐⭐⭐ 2026-09-11 — **지문이 맞을 때만 쓴다.**
             #    예전에는 파일이 있으면 그냥 썼다. 그래서 9월 10일에 만든
@@ -2767,6 +2781,9 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
 
 def build(doc, only=None):
     """편마다 하나씩 만든다. only 를 주면 그 편만 (나머지는 손대지 않는다)."""
+    global PAD
+    if doc.get("all_video"):
+        PAD = PAD_TIGHT                  # 쉬는 틈 없이 (위 PAD_TIGHT)
     stills_d, voice_d = OUT / "stills", OUT / "voice"
     clips_d = OUT / "clips"
     parts_d = OUT / "parts"

@@ -51,7 +51,12 @@ import cost                                                  # noqa: E402
 BASE = "https://generativelanguage.googleapis.com/v1beta"
 MODEL = os.environ.get("OMNI_MODEL", "gemini-omni-1.1-flash")
 # 값이 720p 기준으로 매겨진다 (1초 5,792토큰). 화질을 올리면 값이 달라진다.
-RESOLUTION = "720p"
+RESOLUTION = os.environ.get("OMNI_RESOLUTION", "720p").strip() or "720p"
+# ⭐⭐⭐ 2026-10-02 손님: "360p로 … 9대16 비율로 만들어. 처음부터." (1분 전부 영상)
+#    1초에 나오는 영상 토큰 — 720p 는 구글 공시(5,792), 나머지는 같은 표의 공개 실측
+#    (360p 1,931 · 1080p 8,688 · 4K 17,376 — 2026-10-02 검색). 화질값은 이 비율로만 센다.
+#    다 만든 뒤 구글이 알려 준 **실제 토큰 값**이 더 크면 모자란 만큼 한 줄 더 적는다(아래).
+VIDEO_TOKENS_SEC = {"360p": 1931, "720p": 5792, "1080p": 8688, "4k": 17376}
 # 한 번 실행에서 옴니를 몇 번까지 부르나 — 실패가 겹쳐도 조용히 여러 번 사지 않게
 CALL_CAP = int(os.environ.get("OMNI_CALL_CAP", "2"))
 POLL_SEC, POLL_WAIT = 10, 900          # 10초마다 · 최대 15분
@@ -80,9 +85,16 @@ _calls = {"n": 0}
 _spent = {"krw": 0.0}
 
 
-def est_krw(sec):
-    """부르기 전 어림값(원). cost 의 영상 단가표 한 곳에서 나온다."""
-    return cost.video_krw(MODEL, sec)
+def est_krw(sec, res=None):
+    """부르기 전 어림값(원). cost 의 영상 단가표(720p) 한 곳에서 나와 화질 비율만 곱한다.
+    ⚠️ 입력·생각 토큰 몫(초당 약 $0.004)은 화질과 상관없으므로 그대로 둔다."""
+    base = cost.video_krw(MODEL, sec)
+    res = (res or RESOLUTION).lower()
+    if res == "720p" or res not in VIDEO_TOKENS_SEC:
+        return base
+    extra = 0.004 * max(0.0, float(sec)) * cost.USD_KRW
+    k = VIDEO_TOKENS_SEC[res] / VIDEO_TOKENS_SEC["720p"]
+    return (base - extra) * k + extra
 
 
 def usage_krw(u):
@@ -190,13 +202,15 @@ def _mime(p):
     return "image/png" if s.endswith(".png") else "image/jpeg"
 
 
-def make(prompt, images, out, sec, task="image_to_video", ratio="9:16"):
+def make(prompt, images, out, sec, task="image_to_video", ratio="9:16", res=None):
     """영상 한 토막. images 는 차례대로 프롬프트의 Image1 · Image2 … 와 맞는다.
+    res 를 주면 그 화질로 (비우면 RESOLUTION).
 
     돌려주는 것: {"krw", "usage", "wait", "task", "file"}"""
     if _calls["n"] >= CALL_CAP:
         raise OmniError(f"이번 실행의 옴니 부르기 상한({CALL_CAP}번)에 걸렸다.")
-    krw = est_krw(sec)
+    res = res or RESOLUTION
+    krw = est_krw(sec, res)
     # 한 번 실행 한도·한 달 한도는 **값이 나가는 이 자리**에서 본다 (veo.py 와 같다)
     if _spent["krw"] + krw > cost.RUN_KRW:
         raise RunCapReached(
@@ -211,10 +225,10 @@ def make(prompt, images, out, sec, task="image_to_video", ratio="9:16"):
                "data": base64.b64encode(Path(p).read_bytes()).decode()} for p in images]
     inputs.append({"type": "text", "text": prompt})
     body = {"model": MODEL, "input": inputs,
-            "response_format": {"type": "video", "resolution": RESOLUTION,
+            "response_format": {"type": "video", "resolution": res,
                                 "aspect_ratio": ratio},
             "generation_config": {"video_config": {"task": task}}}
-    print(f"    옴니 부르는 중… ({task} · {sec}초 · {RESOLUTION} · {ratio} · "
+    print(f"    옴니 부르는 중… ({task} · {sec}초 · {res} · {ratio} · "
           f"그림 {len(images)}장 · 약 {krw:,.0f}원)")
     _calls["n"] += 1
     t0 = time.time()
@@ -222,7 +236,7 @@ def make(prompt, images, out, sec, task="image_to_video", ratio="9:16"):
     # ⚠️ 받아 준 순간부터 값이 나간다고 보고 **지금** 적는다. 기다리다 실패해도
     #    나간 값은 나간 것이다 (veo.py 와 같은 원칙 — 장부는 모자라게 적지 않는다).
     _spent["krw"] += krw
-    cost.record("영상", krw, f"{MODEL} {sec}초 {Path(out).name} (어림)")
+    cost.record("영상", krw, f"{MODEL} {res} {sec}초 {Path(out).name} (어림)")
 
     busy = ("in_progress", "pending", "running", "queued", "processing")
     while not _find_video(j) and j.get("id") and \

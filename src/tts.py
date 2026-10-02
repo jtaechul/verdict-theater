@@ -1058,6 +1058,44 @@ def _rate_of(mime):
     return int(m.group(1)) if m else 24000
 
 
+def unwrap(b, rate=24000):
+    """⭐⭐⭐ 2026-10-02 — 새 목소리 모델(gemini-3.8-flash-tts)은 날것이 아니라 **wav 파일
+    통째**를 준다 — 앞에 wav 머리말(44바이트), 끝에 출처 표시(C2PA · SynthID 설명 글).
+    그것을 날것으로 알고 한 번 더 감싸면 머리말이 맨 앞 '틱' 으로, 끝 글이 **0.13초
+    찢어지는 잡음**으로 재생된다(실측: 끝 0.13초가 최대 음량). 소리 칸(data)만 꺼낸다.
+    돌려주는 것: (날것 16비트 홑소리, 표본율). 날것이면 그대로 돌려준다."""
+    # ⚠️ 앞에 몇 바이트가 끼어 있어도 찾는다 (옛 파일을 ffmpeg 로 한 번 거른 것)
+    at = b.find(b"RIFF", 0, 64)
+    if at < 0 or b[at + 8:at + 12] != b"WAVE":
+        return b, rate
+    i, ch, bits = at + 12, 1, 16
+    while i + 8 <= len(b):
+        cid, size = b[i:i + 4], int.from_bytes(b[i + 4:i + 8], "little")
+        body = b[i + 8:i + 8 + size]
+        if cid == b"fmt " and len(body) >= 16:
+            ch = int.from_bytes(body[2:4], "little")
+            rate = int.from_bytes(body[4:8], "little")
+            bits = int.from_bytes(body[14:16], "little")
+        elif cid == b"data":
+            if ch != 1 or bits != 16:
+                raise RuntimeError(f"목소리 규격이 다르다 ({ch}채널 · {bits}비트)")
+            return body[: len(body) // 2 * 2], rate
+        i += 8 + size + (size & 1)
+    return b, rate
+
+
+def unwrap_file(path):
+    """이미 만든 wav 안에 wav 가 한 겹 더 들어 있으면 벗겨 다시 쓴다 (0원 · 여러 번 해도 같다).
+    돌려주는 것: 벗겼으면 True."""
+    with wave.open(str(path), "rb") as w:
+        rate, frames = w.getframerate(), w.readframes(w.getnframes())
+    pcm, r = unwrap(frames, rate)
+    if pcm is frames:
+        return False
+    _pcm_wav(pcm, path, r)
+    return True
+
+
 # ⚠️ 2026-08-21 실제로 걸어 보고 알았다 — 같은 대사·같은 지시인데도 어떤
 #    때는 "SAFETY" 로 막힌다(들쭉날쭉하다). 막장 드라마 대사라 그렇다.
 #    ① 안전 기준을 드라마 대사 수준으로 낮춰 두고,
@@ -1179,13 +1217,33 @@ def _gem_once(model, prompt, voice, safe=True):
     except Exception:                                        # noqa: BLE001
         raise _Blocked(f"제미나이가 소리를 안 보냈다 "
                        f"(까닭: {cand.get('finishReason') or '모름'})") from None
-    return base64.b64decode(part["data"]), _rate_of(part.get("mimeType"))
+    return unwrap(base64.b64decode(part["data"]), _rate_of(part.get("mimeType")))
+
+
+# ⭐⭐⭐ 2026-10-02 — **지시문을 소리 내어 읽는** 모델이 있다 (gemini-3.8-flash-tts 실측).
+#    AI 스튜디오 길은 지시와 대사를 한 덩어리로 보낸다(direct). 그런데 이 모델은
+#    지시 형식을 뭘로 바꿔도(한국어 지시 · 영어 지시 · 구글 권장 "Say …:" · flat)
+#    **지시까지 읽었다** — 25자 나레이션이 7.3~17.3초. 맨 대사만 보내면 5.1초(정상).
+#    소리만 나오면 "됐다" 고 넘어가서, 영상에 지시문 낭독이 그대로 실릴 뻔했다.
+#    → **길이로 알아본다.** 글자 수에 비해 너무 길면 지시를 읽은 것이다 — 그 모델은
+#      이번 실행 내내 **맨 대사**로 간다 (구글 클라우드 길은 지시를 따로 받아 상관없다).
+READ_SEC_PER_CHAR = 0.24        # 정상 낭독은 글자당 약 0.18초 (쉼 포함)
+READ_SEC_SLACK = 0.9
+_READS_ALOUD = set()
+
+
+def read_aloud(pcm, rate, text):
+    """받은 소리가 지시문까지 읽은 길이인가."""
+    sec = len(pcm) / 2.0 / max(1, int(rate or 24000))
+    k = len(re.sub(r"[^0-9A-Za-z가-힣]", "", bare(text)))
+    return bool(k) and sec > k * READ_SEC_PER_CHAR + READ_SEC_SLACK
 
 
 def gem_say(text, voice, out, style=None, who=None):
     """제미나이로 한 마디. **연기 지시를 함께 보낸다.**
 
     막히면 지시를 순하게 → 지시 없이 → 다음 모델 순으로 물러서며 다시 만든다.
+    지시를 소리 내어 읽는 모델이면(위 READ_SEC_PER_CHAR) 맨 대사로 간다.
     """
     if not gem_key():
         raise RuntimeError("GEMINI_API_KEY 가 없다")
@@ -1193,7 +1251,7 @@ def gem_say(text, voice, out, style=None, who=None):
     why, spent, busy = "까닭을 못 받았다", 0.0, False
     for model in gem_order():
         dead = False
-        for lvl, prompt in enumerate(ways):
+        for lvl, prompt in enumerate([bare(text)] if model in _READS_ALOUD else ways):
             for t in range(GEM_TRIES):
                 try:
                     pcm, rate = _gem_once(model, prompt, voice)
@@ -1219,6 +1277,14 @@ def gem_say(text, voice, out, style=None, who=None):
                 if lvl:
                     print(f"    ⚠️ {WAY_NOTE[lvl]}")
                 bill_add(model, text)
+                if read_aloud(pcm, rate, text):
+                    if model not in _READS_ALOUD:
+                        print(f"    ⚠️ {model} 이(가) 지시문까지 소리 내어 읽었다 "
+                              f"({len(pcm) / 2.0 / max(1, int(rate or 24000)):.1f}초) — "
+                              f"이번 실행은 맨 대사로 간다")
+                    _READS_ALOUD.add(model)
+                    pcm, rate = _gem_once(model, bare(text), voice)
+                    bill_add(model, text)
                 return _pcm_wav(pcm, out, rate)
             if dead:
                 break

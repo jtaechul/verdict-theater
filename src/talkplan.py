@@ -104,8 +104,10 @@ def talk_sec_of(doc, text):
 
 
 def part_max_sec(doc):
-    """편 하나의 벽(초) — 2분 드라마는 2분, 옛 여러 편은 60초."""
-    return DRAMA_MAX_SEC if is_drama(doc) else PART_MAX_SEC
+    """편 하나의 벽(초) — 2분 드라마는 2분, 1분 전부 영상·옛 여러 편은 60초."""
+    if is_drama(doc) and not (doc or {}).get("all_video"):
+        return DRAMA_MAX_SEC
+    return PART_MAX_SEC
 
 
 def talk_cuts(doc):

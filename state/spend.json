@@ -2194,5 +2194,149 @@
     "kind": "image",
     "krw": 132,
     "note": "gemini-3.1-flash-image 2K 9:16 c01.png"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "image",
+    "krw": 265,
+    "note": "gemini-3.1-flash-image 4K 16:9 _sheet.png"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "목소리",
+    "krw": 193,
+    "note": "438자(어림) · gemini-3.8-flash-tts S94 90초 쇼츠"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "목소리",
+    "krw": 41,
+    "note": "93자(어림) · gemini-3.8-flash-tts S94 목소리 시험 (지시문 형식)"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "목소리",
+    "krw": 27,
+    "note": "62자(어림) · gemini-3.8-flash-tts S94 목소리 시험 (지시문 형식 2)"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "목소리",
+    "krw": 164,
+    "note": "372자(어림) · gemini-3.8-flash-tts S94 90초 쇼츠"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "영상",
+    "krw": 222,
+    "note": "gemini-omni-1.1-flash 360p 4초 c02.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "영상",
+    "krw": 2,
+    "note": "gemini-omni-1.1-flash c02.mp4 실제 토큰 값 차액"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "영상",
+    "krw": 222,
+    "note": "gemini-omni-1.1-flash 360p 4초 c01.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "영상",
+    "krw": 332,
+    "note": "gemini-omni-1.1-flash 360p 6초 c04.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "영상",
+    "krw": 222,
+    "note": "gemini-omni-1.1-flash 360p 4초 c03.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "영상",
+    "krw": 2,
+    "note": "gemini-omni-1.1-flash c03.mp4 실제 토큰 값 차액"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "영상",
+    "krw": 277,
+    "note": "gemini-omni-1.1-flash 360p 5초 c05.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "영상",
+    "krw": 277,
+    "note": "gemini-omni-1.1-flash 360p 5초 c07.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "영상",
+    "krw": 277,
+    "note": "gemini-omni-1.1-flash 360p 5초 c06.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "영상",
+    "krw": 277,
+    "note": "gemini-omni-1.1-flash 360p 5초 c09.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "영상",
+    "krw": 222,
+    "note": "gemini-omni-1.1-flash 360p 4초 c10.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "영상",
+    "krw": 277,
+    "note": "gemini-omni-1.1-flash 360p 5초 c11.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "영상",
+    "krw": 277,
+    "note": "gemini-omni-1.1-flash 360p 5초 c12.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "영상",
+    "krw": 222,
+    "note": "gemini-omni-1.1-flash 360p 4초 c13.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "영상",
+    "krw": 1,
+    "note": "gemini-omni-1.1-flash c13.mp4 실제 토큰 값 차액"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "영상",
+    "krw": 222,
+    "note": "gemini-omni-1.1-flash 360p 4초 c14.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "영상",
+    "krw": 277,
+    "note": "gemini-omni-1.1-flash 360p 5초 c15.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "영상",
+    "krw": 222,
+    "note": "gemini-omni-1.1-flash 360p 4초 c08.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-02",
+    "kind": "영상",
+    "krw": 1,
+    "note": "gemini-omni-1.1-flash c08.mp4 실제 토큰 값 차액"
   }
 ]

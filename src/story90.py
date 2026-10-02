@@ -736,6 +736,22 @@ DRAMA_RULES = {
     "PEOPLE_MAX": 6,
 }
 DRAMA_TALK_MIN, DRAMA_TALK_MAX = 7, 10      # 대사 컷(= 옴니 영상) 수
+# ⭐⭐⭐ 2026-10-02 손님: "1분이면 이미지 필요 없이 그냥 전체 다 영상으로 가고" ·
+#    "대사 사이사이에 쉬는 공간 없이" · "화소는 360p" — **1분 전부 영상 드라마** (all_video).
+#    2분 드라마의 짜임(한 컷 한 줄 · cast · 나레이션 컷에도 얼굴)은 그대로 두고, 길이와
+#    대사 컷 수만 1분에 맞춘다. 모든 컷이 옴니 360p 9:16 영상이다 (tools/drama60.py).
+DRAMA60_RULES = {
+    "PART_MIN_CUTS": 13, "PART_MAX_CUTS": 18,
+    "PART_SEC_MAX": 58.0, "PART_SEC_MIN": 45.0,
+    "PART_CHARS": 430, "PART_CHARS_MIN": 300,
+    "NARR_MIN_PER_PART": 6,
+    "ELLIPSIS_MAX": 3,
+}
+DRAMA60_TALK_MIN, DRAMA60_TALK_MAX = 4, 7
+# 길이 잣대 — 조립이 말 앞뒤 무음을 잘라 붙이고(여운 0.12초) 1.28배로 감는다.
+#   글자 잣대는 1.2배 실측(SEC_PER_CHAR)을 1.28배로 옮긴 값, 컷 잣대는 남는 틈만.
+SEC60_PER_CHAR = round(0.153 * 1.20 / 1.28, 4)
+SEC60_PER_CUT = 0.55
 DRAMA_LINE_MIN, DRAMA_LINE_MAX = 6, 32      # 대사 한 줄 글자 (프롬프트는 12~30 을 겨냥)
 DRAMA_CAST_MIN, DRAMA_CAST_MAX = 2, 6
 # ⭐⭐⭐ 2026-10-01 손님: "나레이션컷에서도 등장인물 얼굴 나오는거로 반영해."
@@ -766,6 +782,8 @@ def rules_of(doc):
     out = {k: globals()[k] for k in DRAMA_RULES}
     if is_drama(doc):
         out.update(DRAMA_RULES)
+        if (doc or {}).get("all_video"):
+            out.update(DRAMA60_RULES)
     return out
 
 
@@ -975,8 +993,10 @@ def check_drama(doc, new=True):
             if not DRAMA_LINE_MIN <= k <= DRAMA_LINE_MAX:
                 bad.append(f"컷{n}: 대사가 {k}자다 — 한 줄 {DRAMA_LINE_MIN}~"
                            f"{DRAMA_LINE_MAX}자 (옴니 영상 한 컷에 들어가는 길이)")
-    if new and not (DRAMA_TALK_MIN <= len(talk) <= DRAMA_TALK_MAX):
-        bad.append(f"대사 컷이 {len(talk)}개다 — {DRAMA_TALK_MIN}~{DRAMA_TALK_MAX}개"
+    lo, hi = ((DRAMA60_TALK_MIN, DRAMA60_TALK_MAX) if doc.get("all_video")
+              else (DRAMA_TALK_MIN, DRAMA_TALK_MAX))
+    if new and not (lo <= len(talk) <= hi):
+        bad.append(f"대사 컷이 {len(talk)}개다 — {lo}~{hi}개"
                    f"여야 한다 (대사 컷 하나가 입모양 영상 한 편이다)")
     # ⭐⭐⭐ 2026-10-01 손님: "나레이션컷에서도 등장인물 얼굴 나오는거로 반영해."
     #    autofix ⑦ 이 0원으로 세워 주므로 여기까지 오면 진짜 잘못이다.
@@ -1060,12 +1080,16 @@ def load(p, dflt):
         return dflt
 
 
-def part_sec(cuts):
+def part_sec(cuts, doc=None):
     """이 컷들이 몇 초가 되는가 — **재는 자리는 여기 하나뿐이다.**
 
     ⚠️ 글자 수만 세면 안 된다. 컷마다 1.4초가 고정으로 붙기 때문에, 같은
        글자 수라도 컷이 11개면 9개일 때보다 2.8초 길다. 옛 검사는 글자만
-       봐서 이것을 못 잡았다."""
+       봐서 이것을 못 잡았다.
+    1분 전부 영상(all_video)은 틈을 잘라 붙이므로 잣대가 따로다 (SEC60_*)."""
+    if (doc or {}).get("all_video"):
+        return (SEC60_PER_CHAR * sum(chars(c) for c in cuts)
+                + SEC60_PER_CUT * len(cuts))
     return (SEC_PER_CHAR * sum(chars(c) for c in cuts)
             + SEC_PER_CUT * len(cuts))
 
@@ -1151,7 +1175,7 @@ def check(doc, new=True):
     parts = doc.get("parts") or []
     # ⭐ 2026-09-30 — 규격은 대본마다 다르다 (2분 드라마 · 옛 여러 편)
     R = rules_of(doc)
-    wall = "2분" if is_drama(doc) else "60초"
+    wall = ("1분" if doc.get("all_video") else "2분") if is_drama(doc) else "60초"
     OK = who_ok(doc)                      # 기본 다섯 + 이 사건이 더 세운 사람
     extra = [w for w in people_of(doc) if w not in BASE_WHO]
     if len(extra) > R["PEOPLE_MAX"]:
@@ -1270,7 +1294,7 @@ def check(doc, new=True):
                        f"컷이 적으면 이야기가 껑충 뛴다)")
         ch = sum(chars(c) for c in mine)
         # ⭐⭐⭐ 2026-09-08 — **글자가 아니라 초로 잰다** (위 잣대 설명 참조)
-        ps = part_sec(mine)
+        ps = part_sec(mine, doc)
         if ps > R["PART_SEC_MAX"] or ch > R["PART_CHARS"]:
             bad.append(f"{no}편이 {ch}자 {len(mine)}컷 = 약 {ps:.0f}초다 — "
                        f"{R['PART_SEC_MAX']:.0f}초를 넘으면 {wall} 벽에 걸린다"
