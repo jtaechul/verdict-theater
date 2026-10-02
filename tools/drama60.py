@@ -29,7 +29,9 @@ import argparse
 import json
 import math
 import os
+import io
 import re
+import subprocess
 import sys
 import threading
 import time
@@ -92,6 +94,35 @@ _lock = threading.Lock()
 
 def vdir():
     return S9.video_dir()
+
+
+# ── ⭐ 영상 창고 — 같은 장면은 다시 안 산다 (2026-10-02) ─────────────────
+#    손님: "처음보는 사람이 보아도 스토리 전개를 이해하고 공감할 수 있도록" → 대본을 고쳐
+#    컷 차례·나레이션 길이가 바뀌었다. 컷 번호로 영상을 찾으면 15컷을 통째로 다시 사야 한다.
+#    → **화면 묘사 · 나오는 사람 · (대사 컷이면) 대사**가 같으면 같은 영상이다. 창고에서 꺼내
+#      그 구도 그대로 쓰고(카메라 계획에 고정), 길이는 늘이기·줄이기로 맞춘다 (0원).
+LIB = "library.json"
+
+
+def lib_path():
+    return vdir() / LIB
+
+
+def load_lib():
+    f = lib_path()
+    return json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
+
+
+def save_lib(lib):
+    lib_path().parent.mkdir(parents=True, exist_ok=True)
+    lib_path().write_text(json.dumps(lib, ensure_ascii=False, indent=1) + "\n",
+                          encoding="utf-8")
+
+
+def vkey(c):
+    """같은 장면인가 — 화면 묘사 · 나오는 사람 · 대사(대사 컷만). 컷 번호·길이는 안 본다."""
+    line = c["turns"][0][1] if is_talk(c) else ""
+    return reuse.sig_of("v60", c.get("scene") or "", "|".join(c.get("who") or []), line)
 
 
 def load(sid):
@@ -252,17 +283,32 @@ def prompt(c, shot, sec, by):
     return "\n".join(r for r in rows if r)
 
 
-def plan(doc):
-    """컷마다 {n, shot, sec, prompt, refs, krw} — 값 0원."""
+def stock(c, lib):
+    """창고에 이 장면이 있고 **길이도 맞출 수 있으면** 그 칸, 아니면 None."""
+    e = lib.get(vkey(c))
+    if not e or not (vdir() / e["raw"]).exists():
+        return None
+    if not is_talk(c) and S9.dur_of(vdir() / e["raw"]) * STRETCH_MAX < narr_len(c) + 0.05:
+        return None                    # 너무 짧다 — 늘여도 모자라면 새로 산다
+    return e
+
+
+def plan(doc, lib=None):
+    """컷마다 {n, shot, sec, prompt, refs, krw, lib} — 값 0원."""
     by = cast_of(doc)
-    shots = camera60.plan(doc["cuts"])
+    lib = load_lib() if lib is None else lib
+    have = {i: stock(c, lib) for i, c in enumerate(doc["cuts"])}
+    pinned = {i: e["shot"] for i, e in have.items() if e}
+    shots = camera60.plan(doc["cuts"], pinned)
     out = []
-    for c, sh in zip(doc["cuts"], shots):
-        sec = omni_sec(c)
+    for i, (c, sh) in enumerate(zip(doc["cuts"], shots)):
+        e = have.get(i)
+        sec = e["sec"] if e else omni_sec(c)
         refs = [card(w) for w in (c.get("who") or []) if w in by]
         out.append({"n": c["n"], "shot": sh, "sec": sec,
-                    "prompt": prompt(c, sh, sec, by), "refs": refs,
-                    "krw": omni.est_krw(sec, RES), "talk": is_talk(c)})
+                    "prompt": e["prompt"] if e else prompt(c, sh, sec, by),
+                    "refs": refs, "krw": 0 if e else omni.est_krw(sec, RES),
+                    "talk": is_talk(c), "lib": e, "key": vkey(c)})
     return out, camera60.check(doc["cuts"], shots)
 
 
@@ -273,10 +319,11 @@ def show_plan(doc, rows, bad, full=False):
         s = r["shot"]
         print(f"  {c['n']:>2} {'대사' if r['talk'] else '나레'} {r['sec']:>2}초 "
               f"{s['key']:<13} {s['lens']:<7} {s['height']:<6} {s['move']:<9} "
-              f"{c['text'][:26]}")
-    tot = sum(r["sec"] for r in rows)
+              f"{'창고 0원 ' if r['lib'] else ''}{c['text'][:26]}")
+    tot = sum(r["sec"] for r in rows if not r["lib"])
     krw = sum(r["krw"] for r in rows)
-    print(f"  ─ 옴니 {tot}초 · 약 {krw:,.0f}원 (지문이 같은 컷은 0원)")
+    print(f"  ─ 새로 살 옴니 {tot}초 · 약 {krw:,.0f}원 "
+          f"(창고에서 다시 쓰는 컷 {sum(1 for r in rows if r['lib'])}개는 0원)")
     for b in bad:
         print(f"  ⚠️ {b}")
     if full:
@@ -323,6 +370,61 @@ def step_voice(doc):
     return 0
 
 
+# ⭐ 2026-10-02 — 옴니가 가끔 **액자 속 그림**을 만든다 (S94 컷1: 위아래 약 10% · 좌우 약 4%
+#    옅은 하늘색 테두리 · 카메라가 움직여도 테두리는 그대로). 첫 컷이라 바로 눈에 띄었다.
+#    네 변 **모두**에 움직이지 않는 단색 띠가 있을 때만 안쪽을 9:16 으로 잘라 쓴다
+#    (하늘처럼 위쪽만 고른 화면을 테두리로 잘못 보고 자르지 않게).
+FRAME_MIN = 0.02
+
+
+def frame_box(raw):
+    """테두리 안쪽 (w, h, x, y) — 360×640 기준. 테두리가 없으면 None."""
+    from PIL import Image, ImageChops, ImageStat
+    dur = S9.dur_of(raw)
+    if dur <= 0.3:
+        return None
+    ims = []
+    for f in (0.2, 0.5, 0.8):
+        r = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{dur * f:.2f}", "-i", str(raw),
+                            "-frames:v", "1", "-vf", "scale=360:640", "-f", "image2pipe",
+                            "-vcodec", "png", "-"], capture_output=True)
+        if not r.stdout:
+            return None
+        ims.append(Image.open(io.BytesIO(r.stdout)).convert("L"))
+    w, h = ims[0].size
+    moved = ImageChops.lighter(ImageChops.difference(ims[0], ims[1]),
+                               ImageChops.difference(ims[1], ims[2]))
+    mid = ims[1]
+
+    def still_flat(box):
+        # 테두리는 **안 움직이고**(앞뒤 장면 차이 < 4) 거의 한 색이다(위아래로 옅은
+        # 그러데이션은 있어 표준편차 16 까지 본다). 화면 안쪽은 차이가 30 넘게 난다.
+        return (ImageStat.Stat(moved.crop(box)).mean[0] < 4.0
+                and ImageStat.Stat(mid.crop(box)).stddev[0] < 16.0)
+
+    def run(n, box_of):
+        k = 0
+        while k < n // 3 and still_flat(box_of(k)):
+            k += 1
+        return k
+
+    top = run(h, lambda k: (0, k, w, k + 1))
+    bot = run(h, lambda k: (0, h - 1 - k, w, h - k))
+    left = run(w, lambda k: (k, 0, k + 1, h))
+    right = run(w, lambda k: (w - 1 - k, 0, w - k, h))
+    if min(top, bot) < h * FRAME_MIN or min(left, right) < w * FRAME_MIN:
+        return None
+    iw, ih = w - left - right, h - top - bot
+    cw, ch = min(iw, ih * 9 // 16), min(ih, iw * 16 // 9)
+    cw, ch = cw - cw % 2, ch - ch % 2
+    return cw, ch, left + (iw - cw) // 2, top + (ih - ch) // 2
+
+
+def crop_of(raw):
+    b = frame_box(raw)
+    return f"crop={b[0]}:{b[1]}:{b[2]}:{b[3]},scale=360:640," if b else ""
+
+
 def post_talk(raw, out):
     """대사 컷 — 말 앞뒤만 남기고 화면·소리를 함께 1.28배로 (입이 안 어긋난다)."""
     dur = S9.dur_of(raw)
@@ -331,7 +433,7 @@ def post_talk(raw, out):
     fin = min(dur, (fin or dur) + TALK_TAIL)
     k = min(S9.SPEED, S9.SPEED_MAX)
     S9.run(["ffmpeg", "-y", "-v", "error", "-i", str(raw), "-filter_complex",
-            f"[0:v]trim={beg:.3f}:{fin:.3f},setpts=(PTS-STARTPTS)/{k:.4f}[v];"
+            f"[0:v]{crop_of(raw)}trim={beg:.3f}:{fin:.3f},setpts=(PTS-STARTPTS)/{k:.4f}[v];"
             f"[0:a]atrim={beg:.3f}:{fin:.3f},asetpts=PTS-STARTPTS,"
             f"{S9.tempo_filter(k)}[a]",
             "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "veryfast",
@@ -348,22 +450,28 @@ def post_narr(raw, out, need, land=False):
         k = max(SQUEEZE_MIN, need / max(0.1, dur)) if land else 1.0
     else:
         k = min(STRETCH_MAX, need / max(0.1, dur))
+    cr = crop_of(raw)
     S9.run(["ffmpeg", "-y", "-v", "error", "-i", str(raw), "-an", "-vf",
-            f"setpts={k:.4f}*PTS", "-c:v", "libx264", "-preset", "veryfast",
+            f"{cr}setpts={k:.4f}*PTS", "-c:v", "libx264", "-preset", "veryfast",
             "-crf", "18", "-pix_fmt", "yuv420p", str(out)])
     got = S9.dur_of(out)
     note = f"영상 {dur:.2f}초" + (f" → 느리게 {got:.2f}초" if k > 1.0 else
                                  f" → 빠르게 {got:.2f}초 (멈춘 얼굴까지)" if k < 1.0 else "")
     if got + 0.05 < need:
         note += f" ⚠️ 나레이션 {need:.2f}초보다 짧다"
+    if cr:
+        note += " · 액자 테두리를 잘라 냈다"
     return note
 
 
-def buy(c, r, by, d):
-    """한 컷을 산다 (지문이 같으면 0원). 돌려주는 것: (컷 번호, 글)"""
-    raw = d / "raw" / f"c{c['n']:02d}.mp4"
-    sig = reuse.sig_of(r["prompt"], r["sec"], RES, *r["refs"])
-    ok, _why = reuse.can_reuse(raw, sig)
+def buy(c, r, by, d, lib):
+    """한 컷을 산다 (창고에 있으면 0원). 돌려주는 것: (컷 번호, 글)"""
+    if r["lib"]:
+        raw = d / r["lib"]["raw"]
+        ok = True
+    else:
+        raw = d / "raw" / f"v_{r['key']}.mp4"
+        ok = False
     if not ok:
         tries = 0
         while True:
@@ -379,10 +487,14 @@ def buy(c, r, by, d):
                     time.sleep(25 * tries)
                     continue
                 raise
-        reuse.stamp(raw, sig)
+        with _lock:
+            lib[r["key"]] = {"raw": str(raw.relative_to(d)), "shot": r["shot"],
+                             "sec": r["sec"], "prompt": r["prompt"], "n": c["n"],
+                             "scene": c.get("scene"), "who": c.get("who") or []}
+            save_lib(lib)
         how = "새로 삼"
     else:
-        how = "그대로 씀 · 0원"
+        how = "창고에서 다시 씀 · 0원"
     out = d / f"c{c['n']:02d}.mp4"
     if r["talk"]:
         note = post_talk(raw, out)
@@ -393,8 +505,41 @@ def buy(c, r, by, d):
     return c["n"], f"{how} · {note}"
 
 
+def adopt(doc):
+    """옛 방식(컷 번호 raw/cNN.mp4 + 지문 .sig)으로 산 영상을 창고로 옮긴다 (0원 · 여러 번 해도 같다).
+    지문이 **지금 대본의 그 컷과 맞는 것만** 옮긴다 — 엉뚱한 컷 영상이 섞이지 않게."""
+    d = vdir()
+    lib = load_lib()
+    shots = camera60.plan(doc["cuts"])
+    by = cast_of(doc)
+    moved = 0
+    for c, sh in zip(doc["cuts"], shots):
+        raw = d / "raw" / f"c{c['n']:02d}.mp4"
+        if not raw.exists():
+            continue
+        sec = omni_sec(c)
+        p = prompt(c, sh, sec, by)
+        refs = [card(w) for w in (c.get("who") or []) if w in by]
+        ok, _ = reuse.can_reuse(raw, reuse.sig_of(p, sec, RES, *refs))
+        k = vkey(c)
+        if not ok or k in lib:
+            continue
+        dst = d / "raw" / f"v_{k}.mp4"
+        raw.replace(dst)
+        reuse.sig_file(raw).unlink(missing_ok=True)
+        lib[k] = {"raw": str(dst.relative_to(d)), "shot": sh, "sec": sec, "prompt": p,
+                  "n": c["n"], "scene": c.get("scene"), "who": c.get("who") or []}
+        moved += 1
+    if moved:
+        save_lib(lib)
+        print(f"■ 옛 컷 영상 {moved}개를 창고로 옮겼다 (0원)")
+    return moved
+
+
 def step_clips(doc, only=None):
-    rows, bad = plan(doc)
+    adopt(doc)
+    lib = load_lib()
+    rows, bad = plan(doc, lib)
     if bad:
         print("❌ 카메라 계획이 규칙에 안 맞는다 — 사지 않는다")
         for b in bad:
@@ -420,7 +565,7 @@ def step_clips(doc, only=None):
     fails = []
     try:
         with ThreadPoolExecutor(max_workers=WORKERS) as ex:
-            futs = {ex.submit(buy, c, r, by, d): c["n"]
+            futs = {ex.submit(buy, c, r, by, d, lib): c["n"]
                     for c, r in zip(doc["cuts"], rows)
                     if not only or c["n"] in only}
             for f in futs:

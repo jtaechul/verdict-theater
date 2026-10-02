@@ -208,15 +208,28 @@ def _talks(c):
     return any(w != "나레이션" for w, _ in (c.get("turns") or []))
 
 
-def plan(cuts):
+def plan(cuts, pinned=None):
     """컷마다 구도 하나 — [{key, kind, lens, height, move, text, cam, special}…].
 
     고르는 차례: 마지막 나레이션 → 끝 구도 · 뒤집히는 나레이션 → 돌리줌 먼저 ·
     장소에 **처음** 온 나레이션 → 어디인지 보여 주는 구도 · 나머지 → 대사/나레이션 표.
-    표 안에서는 ㉠ 앞 컷과 꼬리표가 둘 이상 다르고 ㉡ 덜 쓴 것을 고른다."""
+    표 안에서는 ㉠ 앞 컷과 꼬리표가 둘 이상 다르고 ㉡ 덜 쓴 것을 고른다.
+
+    pinned = {컷 차례: 구도} — **이미 산 영상**의 구도는 그대로 둔다 (다시 안 산다 · 0원).
+    그 옆 컷은 고정된 이웃과도 둘 이상 다르게 고른다."""
+    pinned = pinned or {}
     out, prev, used, special, seen = [], None, {}, 0, set()
+    special = sum(1 for s in pinned.values() if s.get("special"))
     last = len(cuts) - 1
     for i, c in enumerate(cuts):
+        if i in pinned:
+            pick = pinned[i]
+            seen.add(str(c.get("place") or "") or f"#{i}")
+            used[pick["key"]] = used.get(pick["key"], 0) + 1
+            out.append(dict(pick))
+            prev = pick
+            continue
+        nxt = pinned.get(i + 1)
         who = list(c.get("who") or [])
         place = str(c.get("place") or "") or f"#{i}"
         outdoor = is_outdoor(c.get("scene"))
@@ -256,6 +269,9 @@ def plan(cuts):
             pick = next(s for s in cand if s["need"] == "twist")
         else:
             good = [s for s in cand if diff(s, prev) >= MIN_DIFF and
+                    (prev is None or s["key"] != prev["key"]) and
+                    (nxt is None or diff(s, nxt) >= MIN_DIFF)] or \
+                   [s for s in cand if diff(s, prev) >= MIN_DIFF and
                     (prev is None or s["key"] != prev["key"])] or cand
             pick = min(good, key=lambda s: (used.get(s["key"], 0), order.index(s)))
         used[pick["key"]] = used.get(pick["key"], 0) + 1

@@ -749,9 +749,11 @@ DRAMA60_RULES = {
 }
 DRAMA60_TALK_MIN, DRAMA60_TALK_MAX = 4, 7
 # 길이 잣대 — 조립이 말 앞뒤 무음을 잘라 붙이고(여운 0.12초) 1.28배로 감는다.
-#   글자 잣대는 1.2배 실측(SEC_PER_CHAR)을 1.28배로 옮긴 값, 컷 잣대는 남는 틈만.
-SEC60_PER_CHAR = round(0.153 * 1.20 / 1.28, 4)
-SEC60_PER_CUT = 0.55
+#   ⭐ 실측(S94 v1 · 2026-10-02): 346자 15컷 → 50.5초. 나레이션 글자당 0.1405초(1.28배),
+#   대사 컷은 한 컷 약 2.2초. 처음 잡은 잣대(0.1434 · 컷당 0.55)는 58초라 했다 — 8초를
+#   못 쓰고 버리게 만들었다. 실측에 조금 넉넉히 맞춘다.
+SEC60_PER_CHAR = 0.142
+SEC60_PER_CUT = 0.15
 DRAMA_LINE_MIN, DRAMA_LINE_MAX = 6, 32      # 대사 한 줄 글자 (프롬프트는 12~30 을 겨냥)
 DRAMA_CAST_MIN, DRAMA_CAST_MAX = 2, 6
 # ⭐⭐⭐ 2026-10-01 손님: "나레이션컷에서도 등장인물 얼굴 나오는거로 반영해."
@@ -767,6 +769,15 @@ DRAMA_INSERT_MAX = 2
 # 2026-09-30) 안에 그림(약 3,000원)·시트(265원)와 함께 들어가게 한다
 DRAMA_OMNI_KRW_MAX = 10_000
 CAST_KEYS = ("name", "sex", "age", "role_en", "face", "build", "wear", "voice")
+# ⭐ 2026-10-02 손님: "처음보는 사람이 보아도 스토리 전개를 이해하고 공감할 수 있도록"
+#    인물이 **처음 나오는 컷**에 이름표와 함께 관계 한 줄을 띄운다 (short90 · 이름 · 관계).
+#    예) 이복동생 → "아버지가 밖에서 낳은 아들". 없어도 되지만 있으면 짧게(INTRO_MAX 자).
+CAST_OPT = ("intro", "alias")
+INTRO_MAX = 16
+# ⭐ 2026-10-02 손님: "등장인물 구분 옆에 괄호넣고 각각의 이름도 넣어줘."
+#    이름표가 "딸 (윤정숙)" 이 된다. 판결문에는 실명이 없다(소외1 · 피고2) — **가명**을 짓고
+#    끝 화면에 "등장인물 이름은 모두 가명입니다" 를 띄운다. 같은 아버지 자식은 같은 성으로.
+ALIAS_RE = r"[가-힣]{2,4}"
 # 인물 시트 그림이 막히는 낱말 (series.RISKY 와 같은 까닭 — 몸매·노출)
 CAST_BAN = ("sexy", "seductive", "revealing", "low-cut", "lingerie", "cleavage",
             "busty", "curvy", "hourglass", "nude", "naked", "underwear",
@@ -924,6 +935,9 @@ def shape_drama(doc):
             continue
         q = {k: (str(p.get(k)).strip() if p.get(k) is not None else "")
              for k in CAST_KEYS}
+        for k in CAST_OPT:
+            if str(p.get(k) or "").strip():
+                q[k] = str(p[k]).strip()
         try:
             q["age"] = int(str(q["age"]).rstrip("대세살"))
         except ValueError:
@@ -944,6 +958,9 @@ def check_drama(doc, new=True):
                    f"{DRAMA_CAST_MAX}명이어야 한다 (한 장에 나란히 그린다)")
     if len(set(names)) != len(names):
         bad.append(f"인물 이름이 겹친다: {names}")
+    al = [str(p.get("alias")) for p in cast if (p or {}).get("alias")]
+    if len(set(al)) != len(al):
+        bad.append(f"가명이 겹친다: {al}")
     for p in cast:
         nm = str(p.get("name") or "?")
         miss = [k for k in CAST_KEYS if not str(p.get(k) or "").strip()]
@@ -965,6 +982,13 @@ def check_drama(doc, new=True):
         if hot:
             bad.append(f"인물 '{nm}' 의 생김새·옷에 그림이 막히는 낱말이 있다: "
                        f"{', '.join(hot)} — 옷은 색과 종류로만 적는다")
+        al = str(p.get("alias") or "")
+        if al and not re.fullmatch(ALIAS_RE, al):
+            bad.append(f"인물 '{nm}' 의 가명(alias)은 한글 2~4자 ({al})")
+        it = str(p.get("intro") or "")
+        if it and (len(re.sub(r"\s", "", it)) > INTRO_MAX or not re.search(r"[가-힣]", it)):
+            bad.append(f"인물 '{nm}' 의 관계 한 줄(intro)은 한국어 {INTRO_MAX}자 안으로 "
+                       f"({it})")
         if "korean" not in str(p.get("voice") or "").lower():
             bad.append(f"인물 '{nm}' 의 목소리에 한국어 원어민(native Korean "
                        f"speaker)이라고 적지 않았다")

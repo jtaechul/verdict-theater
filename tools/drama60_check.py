@@ -169,6 +169,90 @@ s9 = (ROOT / "src" / "short90.py").read_text(encoding="utf-8")
 ck("조립 여운은 0.12초 (쉬는 틈 없이)", S9.PAD_TIGHT == 0.12 and "PAD = PAD_TIGHT" in s9)
 ck("조립은 옴니 영상 폴더(video60)를 읽는다", "video_dir() / f\"c{n:02d}.mp4\"" in s9)
 
+print("\n⑦ 처음 보는 사람용 (인물 이름 · 관계)")
+story_cast = {p["name"]: p.get("intro") for p in story["cast"]}
+ck("대본 인물마다 관계 한 줄(intro)이 살아 있다 (꼴 맞추기가 안 지운다)",
+   all(story_cast.values()), str(story_cast))
+it = S9.intro_of(doc)
+firsts = {}
+for c in cuts:
+    for w in ([c["turns"][0][0]] if not c["narr"] else c["who"]):
+        firsts.setdefault(w, c["n"])
+ck("사람마다 **처음 나오는 컷**에 이름과 관계가 뜬다",
+   all(it.get(n, ("", ""))[0] == w and it[n][1] for w, n in firsts.items()), str(it))
+later = [c for c in cuts if c["narr"] and c["n"] not in firsts.values()]
+ck("그 뒤 나레이션 컷에도 화면 속 사람 이름표가 뜬다 (관계는 다시 안 붙인다)",
+   all(it.get(c["n"]) == (c["who"][0], "") for c in later), str(later[:1]))
+with tempfile.TemporaryDirectory() as t:
+    a, b = Path(t) / "a.png", Path(t) / "b.png"
+    nc = next(c for c in cuts if c["narr"])
+    S9.overlay(nc, a, None, now=0, mark="x")
+    S9.overlay(nc, b, None, now=0, mark="x", intro=("딸", "어머니 묘를 지키는 친딸"))
+    from PIL import Image, ImageChops
+    box = (0, S9.NAME_Y - 20, S9.W, S9.NAME_Y + 80)
+    ck("나레이션 컷에도 이름표가 실제로 그려진다",
+       ImageChops.difference(Image.open(a).crop(box), Image.open(b).crop(box)).getbbox()
+       is not None)
+al = S9.aliases_of(doc)
+ck("인물마다 가명이 있다 (이름표가 '딸 (윤정숙)' 이 된다)", len(al) == len(doc["cast"]), str(al))
+with tempfile.TemporaryDirectory() as t:
+    from PIL import Image, ImageChops
+    a, b = Path(t) / "a.png", Path(t) / "b.png"
+    tc0 = next(c for c in cuts if not c["narr"])
+    S9.overlay(tc0, a, None, now=0, mark="x")
+    S9.overlay(tc0, b, None, now=0, mark="x", alias=al)
+    box = (0, S9.NAME_Y - 20, S9.W, S9.NAME_Y + 80)
+    ck("이름표에 가명이 괄호로 실제로 그려진다",
+       ImageChops.difference(Image.open(a).crop(box), Image.open(b).crop(box)).getbbox()
+       is not None)
+    e1, e2 = Path(t) / "e1.png", Path(t) / "e2.png"
+    S9.end_card(S9.TAIL_LAST, e1)
+    S9.end_card(S9.TAIL_LAST, e2, note=S9.ALIAS_NOTE)
+    ck("끝 화면에 '등장인물 이름은 모두 가명입니다' 가 붙는다",
+       ImageChops.difference(Image.open(e1), Image.open(e2)).getbbox() is not None)
+s1 = dict(story, cast=[dict(story["cast"][0], alias="Kim")] + story["cast"][1:])
+ck("가명은 한글 2~4자 — 아니면 대본 검사가 잡는다",
+   any("가명" in x for x in T.check_drama(s1)))
+s2 = dict(story, cast=[dict(p, alias="윤정숙") for p in story["cast"]])
+ck("가명이 겹치면 대본 검사가 잡는다", any("가명이 겹친다" in x for x in T.check_drama(s2)))
+bad_cast = [dict(story["cast"][0], intro="가" * 30)]
+ck("관계 한 줄이 너무 길면 대본 검사가 잡는다",
+   any("관계 한 줄" in x for x in T.check_drama(dict(story, cast=bad_cast + story["cast"][1:]))))
+
+print("\n⑧ 영상 창고 (같은 장면은 다시 안 산다)")
+c0 = dict(cuts[0])
+ck("컷 번호·나레이션이 바뀌어도 같은 장면이면 같은 영상",
+   D.vkey(c0) == D.vkey(dict(c0, n=9, turns=[["나레이션", "다른 말"]])))
+tc = next(c for c in cuts if not c["narr"])
+ck("대사 컷은 대사가 바뀌면 다른 영상 (입이 안 맞는다)",
+   D.vkey(tc) != D.vkey(dict(tc, turns=[[tc["turns"][0][0], "다른 대사"]])))
+ck("화면 묘사가 바뀌면 다른 영상", D.vkey(c0) != D.vkey(dict(c0, scene="x")))
+pins = {0: shots[0], 5: shots[5]}
+again2 = C.plan(cuts, pinned=pins)
+ck("이미 산 영상의 구도는 계획에서 그대로 고정된다",
+   again2[0]["key"] == shots[0]["key"] and again2[5]["key"] == shots[5]["key"])
+ck("고정된 구도 옆도 규칙을 지킨다", not C.check(cuts, again2), "; ".join(C.check(cuts, again2)))
+with tempfile.TemporaryDirectory() as t:
+    t = Path(t)
+    framed, plain = t / "framed.mp4", t / "plain.mp4"
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i",
+                    "testsrc2=s=288x512:r=24:d=3", "-vf",
+                    "pad=360:640:36:64:color=0xA6C4BE", "-pix_fmt", "yuv420p",
+                    str(framed)], check=True)
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i",
+                    "testsrc2=s=360x640:r=24:d=3", "-pix_fmt", "yuv420p", str(plain)],
+                   check=True)
+    fb = D.frame_box(framed)
+    inside = (fb is not None and fb[2] >= 33 and fb[3] >= 61
+              and fb[2] + fb[0] <= 36 + 288 + 3 and fb[3] + fb[1] <= 64 + 512 + 3)
+    ck("옴니의 '액자 속 그림' 테두리를 찾아 안쪽만 쓴다 (테두리는 안 남고 그림은 85% 넘게 살린다)",
+       inside and fb[0] * fb[1] >= 0.85 * 288 * 512, str(fb))
+    ck("테두리가 없는 영상은 손대지 않는다", D.frame_box(plain) is None)
+
+vt = (ROOT / "tools" / "viewer_test.py").read_text(encoding="utf-8")
+ck("처음 보는 시청자 시험 도구가 있다 (헷갈린 순간 · 관계 · 점수를 묻고 값을 장부에 적는다)",
+   "헷갈리거나 이해가 안 된 순간" in vt and "관계" in vt and 'cost.record("검토"' in vt)
+
 print("─" * 56)
 if bad:
     print(f"❌ {len(bad)}개 걸렸습니다 — 고치고 다시")

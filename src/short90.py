@@ -95,6 +95,8 @@ NAME_Y, NAME_SIZE = 1214, 54
 NAME_BAR_W = 7          # 왼쪽 세로 막대 두께
 NAME_BAR_GAP = 20       # 막대와 글자 사이
 NAME_BAR_PAD = 7        # 막대가 글자 위아래로 더 뻗는 정도
+INTRO_SIZE = 46         # 처음 나오는 사람의 관계 한 줄 (이름 옆 · 어르신 눈에 읽히게)
+INTRO_GAP = 16
 # ⭐⭐⭐ 2026-09-01 손님: "영상 상단에는 1편 제목, 2편 제목이 하나 들어가
 #    줘야 되는 거 아니야?"
 #    맞다. 그리고 자리가 중요하다 —
@@ -1683,12 +1685,15 @@ def fit(d, text, size_max, max_w, max_h, one_line=False):
     return f, wrap(d, text, f, max_w)[:SUB_LINES], SUB_MIN
 
 
-def overlay(c, out, turn=None, now=None, mark=""):
+def overlay(c, out, turn=None, now=None, mark="", intro=None, alias=None):
     """컷 하나(또는 그 안의 한 차례)의 자막·이름표를 투명 그림으로 그린다.
 
     now  — 지금 말하고 있는 **낱말 번호** (0부터). None 이면 전부 흰색.
     mark — 왼쪽 위에 늘 띄울 작은 글 ("32억 상속 사건 · 1편"). 큰 제목 카드는
            첫 2.5초만 뜨므로, 중간에 들어온 사람을 위해 이것을 계속 둔다.
+    intro — (이름, 관계) — 그 사람이 **처음 나오는 컷**이면 이름표 자리에 이름과
+           관계 한 줄을 띄운다 (나레이션 컷이어도). intro_of() 가 정한다.
+    alias — {관계 이름: 가명} — 이름표가 "딸 (윤정숙)" 이 된다 (aliases_of).
     """
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
 
@@ -1723,14 +1728,27 @@ def overlay(c, out, turn=None, now=None, mark=""):
     #   ⭐ 왼쪽 금색 세로 막대 + 왼쪽 맞춤 글자 + 검은 테두리.
     #     막대 높이는 **글자가 실제로 차지하는 높이**를 재서 맞춘다 —
     #     이름이 두 글자든 세 글자든 늘 글자와 나란하다.
-    if who != "나레이션":
+    #   ⭐ 2026-10-02 — 처음 나오는 사람이면(intro) 나레이션 컷에도 이름표를 띄우고,
+    #     이름 옆에 관계 한 줄을 작게 붙인다 ("이복동생 · 아버지가 밖에서 낳은 아들").
+    tag = who if who != "나레이션" else (intro[0] if intro else "")
+    if tag:
+        label = f"{tag} ({alias[tag]})" if alias and alias.get(tag) else tag
         nf = ImageFont.truetype(str(FONT_NAME), NAME_SIZE)
         tx = SIDE + NAME_BAR_W + NAME_BAR_GAP
-        box = d.textbbox((tx, NAME_Y), who, font=nf, anchor="la")
+        box = d.textbbox((tx, NAME_Y), label, font=nf, anchor="la")
         d.rectangle([SIDE, box[1] - NAME_BAR_PAD,
                      SIDE + NAME_BAR_W, box[3] + NAME_BAR_PAD], fill=GOLD)
-        d.text((tx, NAME_Y), who, font=nf, fill=GOLD_BRIGHT, anchor="la",
+        d.text((tx, NAME_Y), label, font=nf, fill=GOLD_BRIGHT, anchor="la",
                stroke_width=3, stroke_fill=(0, 0, 0, 205))
+        if intro and intro[0] == tag and intro[1]:
+            rf = ImageFont.truetype(str(FONT_NAME), INTRO_SIZE)
+            rel = f"· {intro[1]}"
+            rx = box[2] + INTRO_GAP
+            room = W - SIDE - rx
+            while d.textlength(rel, font=rf) > room and rf.size > 28:
+                rf = ImageFont.truetype(str(FONT_NAME), rf.size - 2)
+            d.text((rx, box[3]), rel, font=rf, fill=(255, 255, 255, 235),
+                   anchor="ld", stroke_width=3, stroke_fill=(0, 0, 0, 205))
 
     # 자막 — **그 토막만** 그린다 (2026-08-31 손님 확정)
     #   now 가 숫자면 그 토막 하나만 화면에 뜬다. 짧으니 글자가 훨씬 크다.
@@ -1777,7 +1795,7 @@ def tail_sub(text):
     return TAIL_SUB_LAST if str(text) == TAIL_LAST else TAIL_SUB_NEXT
 
 
-def end_card(text, out, alpha=1.0):
+def end_card(text, out, alpha=1.0, note=""):
     """영상 끝에 뜨는 알림 — "다음 편에 계속" / "완결".
 
     ⭐⭐ 2026-09-02 손님: "끝날 때 다음화에 계속이 들어가야 하는거 아니야?"
@@ -1793,6 +1811,12 @@ def end_card(text, out, alpha=1.0):
     sy = y2 + 18                                 # 큰 글 바로 아래
     s1, _st, s2, sb = d.textbbox((W / 2, sy), sub, font=sf, anchor="ma")
     x1, x2, y2 = min(x1, s1), max(x2, s2), sb    # 판을 두 줄에 맞춰 넓힌다
+    # ⭐ 가명 알림 (2026-10-02) — 셋째 줄 · 더 작고 옅게
+    nfnt = ImageFont.truetype(str(FONT_NAME), max(24, int(TAIL_SUB_SIZE * 0.8)))
+    ny = y2 + 14
+    if note:
+        n1, _nt, n2, nb = d.textbbox((W / 2, ny), note, font=nfnt, anchor="ma")
+        x1, x2, y2 = min(x1, n1), max(x2, n2), nb
     pad_x, pad_y = 46, 26
     # 글자 뒤에 어두운 판을 깔아 밝은 그림 위에서도 읽히게 한다
     plate = Image.new("RGBA", (W, H), (0, 0, 0, 0))
@@ -1809,6 +1833,9 @@ def end_card(text, out, alpha=1.0):
     # 유도 한 줄 — 흰색·작게. 큰 글보다 조용해야 한다.
     d.text((W / 2, sy), sub, font=sf, fill=(255, 255, 255, 230), anchor="ma",
            stroke_width=3, stroke_fill=(0, 0, 0, 200))
+    if note:
+        d.text((W / 2, ny), note, font=nfnt, fill=(255, 255, 255, 170), anchor="ma",
+               stroke_width=2, stroke_fill=(0, 0, 0, 180))
     if alpha < 1.0:
         img.putalpha(img.split()[3].point(lambda v: int(v * alpha)))
     img.save(out)
@@ -2299,7 +2326,46 @@ def cut_sec(c, voice, clip):
     return max(MIN_CUT, dur_of(voice) / speed() + PAD), False
 
 
-def karaoke(c, sec, voice, d, n, title=None, mark='', tail='', clip=None):
+ALIAS_NOTE = "등장인물 이름은 모두 가명입니다"
+
+
+def aliases_of(doc):
+    """{관계 이름: 가명} — 대본 인물표의 alias (없으면 빈 것)."""
+    return {str(p.get("name")): str(p.get("alias")).strip()
+            for p in doc.get("cast") or [] if str(p.get("alias") or "").strip()}
+
+
+def intro_of(doc):
+    """{컷 번호: (이름, 관계)} — 인물이 **처음 나오는 컷**에 관계 한 줄을 띄운다.
+
+    ⭐⭐⭐ 2026-10-02 손님: "처음보는 사람이 보아도 스토리 전개를 이해하고 공감할 수 있도록."
+       처음 보는 시청자 시험(AI 가 60대 시청자로 본 것)에서 가장 먼저 걸린 것이 **누가 누구인지**
+       였다 (딸 · 이복동생 · 새어머니 · 땅주인). 대본의 cast.intro 가 있으면 첫 등장에 붙인다.
+    대사 컷은 말하는 사람만, 나레이션 컷은 화면의 첫 새 인물만 (한 컷에 이름표 하나).
+
+    ⭐ 처음 보는 시청자 시험 두 번째(같은 날): "인물 관계가 너무 빠르게 지나가서 한 번 보고는
+       정리하기가 헷갈린다." → 나레이션 컷에도 **화면 속 사람의 이름표를 늘** 띄운다
+       (관계 한 줄은 첫 등장에만 · 그다음은 이름만). 대사 컷은 원래 이름표가 있다.
+    """
+    rel = {str(p.get("name")): str(p.get("intro") or "").strip()
+           for p in doc.get("cast") or [] if str(p.get("intro") or "").strip()}
+    seen, out = set(), {}
+    for c in doc.get("cuts") or []:
+        if is_narr(c):
+            order = [w for w in (c.get("who") or []) if w in rel]
+        else:
+            order = [turns_of(c)[0][0]]
+        new = next((w for w in order if w not in seen), None)
+        if new and new in rel:
+            out[c["n"]] = (new, rel[new])
+            seen.add(new)
+        elif is_narr(c) and order:
+            out[c["n"]] = (order[0], "")
+    return out
+
+
+def karaoke(c, sec, voice, d, n, title=None, mark='', tail='', clip=None, intro=None,
+            alias=None, note=''):
     """카라오케 자막 장들 — [(그림, 언제부터, 언제까지), …].
 
     ⭐⭐ 2026-08-31 손님: "카라오케 자막으로 변경하자."
@@ -2343,7 +2409,7 @@ def karaoke(c, sec, voice, d, n, title=None, mark='', tail='', clip=None):
             if b - a < 0.02:
                 continue
             png = d / f"c{n:02d}_tail{k}.png"
-            end_card(tail, png, alpha=al)
+            end_card(tail, png, alpha=al, note=note)
             out.append((png, a, b))
     for i, ((who, text), (a, b)) in enumerate(zip(turns, wins)):
         parts = chunks_of(text)
@@ -2355,7 +2421,7 @@ def karaoke(c, sec, voice, d, n, title=None, mark='', tail='', clip=None):
         for k, w in enumerate(parts):
             t1 = b if k == len(parts) - 1 else t0 + span * syl(w) / tot
             png = d / f"c{n:02d}_{i}_{k:02d}.png"
-            overlay(c, png, (who, text), now=k, mark=mark)
+            overlay(c, png, (who, text), now=k, mark=mark, intro=intro, alias=alias)
             out.append((png, t0, t1))
             t0 = t1
     return out
@@ -2668,6 +2734,8 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
     print(f"\n■ {part['no']}편 — {part['card'][0]} / {part['card'][1]} "
           f"({len(cuts)}컷)")
     total, made = 0.0, []
+    intros = intro_of(doc)
+    alias = aliases_of(doc)
     for i, c in enumerate(cuts):
         n = c["n"]
         still = stills_d / f"c{n:02d}.png"
@@ -2718,7 +2786,9 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
                       tail=tail if i == len(cuts) - 1 else "",
                       # ⭐ 영상 소리를 쓰는 컷이면 그 영상에서 말이 나는
                       #    구간을 재서 자막을 거기에 맞춘다 (값 0원)
-                      clip=clip if (uca and clip.exists()) else None)
+                      clip=clip if (uca and clip.exists()) else None,
+                      intro=intros.get(n), alias=alias,
+                      note=ALIAS_NOTE if alias else "")
         out = parts_d / f"c{n:02d}.mp4"
         sec = cut_video(c, still, voice, clip if clip.exists() else None, ovs,
                         out, opener=opener)
