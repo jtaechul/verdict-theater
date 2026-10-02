@@ -792,6 +792,102 @@ def people_from_cast(doc):
     return out
 
 
+# ⭐⭐⭐ 인물 목소리 — **나이 · 성별 · 톤** 고정 (2026-10-02 손님 · 핵심 규칙)
+#    손님: "등장인물별로 목소리 섞이지 않게 그 목소리에 아이디 부여하고 톤 부여하고"
+#          "나이 성별 톤 부분은 핵심 규칙에 넣으라고 했을 텐데"
+#    옴니는 목소리 파일을 못 받는다(공식 문서) — **같은 글을 매 컷 똑같이** 넣는
+#    것이 목소리를 고정하는 유일한 길이다. 그래서 인물표의 voice 한 줄이 곧
+#    그 사람의 목소리 아이디다. 그 한 줄이 반드시 갖출 것:
+#      ① 성별   — "man's voice" / "woman's voice" (인물표 sex 와 맞아야)
+#      ② 나이대 — "in his fifties" / "in her sixties" (인물표 age 와 맞아야)
+#      ③ 한국어 원어민 — "native Korean speaker"
+#      ④ 톤     — 그 뒤에 결 한 줄 (없으면 나이·성별로 기본 결)
+#    그리고 **같은 성별·나이대인 두 사람**은 결을 하나 더 붙여 갈라 놓는다
+#    (글이 거의 같으면 옴니가 같은 목소리를 낸다 — 섞임).
+#    AI 가 틀리게 적어도 반려하지 않고 여기서 고쳐서 끝낸다(0원).
+DECADE_EN = {10: "teens", 20: "twenties", 30: "thirties", 40: "forties",
+             50: "fifties", 60: "sixties", 70: "seventies", 80: "eighties"}
+VOICE_NATIVE = "native Korean speaker"
+VOICE_SPLIT = ("noticeably deeper and slower than the others",
+               "a little brighter and higher-pitched than the others",
+               "slightly husky with a soft rasp",
+               "crisp and nasal with a quick clipped rhythm")
+
+
+def _voice_sex(p):
+    sx = str((p or {}).get("sex") or "").strip().lower()
+    return "man" if sx in ("남", "male", "m", "man") else "woman"
+
+
+def _voice_decade(p):
+    try:
+        a = int(str((p or {}).get("age")).strip().rstrip("대세살"))
+    except (TypeError, ValueError):
+        return None
+    return DECADE_EN[max(10, min(80, a // 10 * 10))]
+
+
+def voice_line(p):
+    """인물 하나 → 고정 목소리 한 줄 (성별 · 나이대 · 원어민 · 톤을 반드시 갖춘다).
+    이미 갖춘 줄은 그대로 돌려준다 — 여러 번 불러도 같다."""
+    p = p or {}
+    sex = _voice_sex(p)
+    dec = _voice_decade(p)
+    pron = "his" if sex == "man" else "her"
+    nat = VOICE_NATIVE.lower()
+    v = re.sub(r"\s+", " ", str(p.get("voice") or "")).strip().rstrip(".")
+    low = v.lower()
+    other = r"\bwoman'?s?\b|\bfemale\b" if sex == "man" else r"\bman'?s?\b|\bmale\b"
+    sex_ok = bool(re.search(rf"\b{sex}'?s?\b", low)) and not re.search(other, low)
+    dec_ok = dec is None or bool(re.search(rf"\b{pron} {dec}\b", low))
+    if v and sex_ok and dec_ok and nat in low and low.split(nat, 1)[1].strip(" ,;"):
+        return v
+    # 톤 = 성별·나이대·원어민을 걷어 내고 남은 결 (없으면 나이·성별로 기본 결)
+    if nat in low:
+        tone = v[low.index(nat) + len(nat):]
+    else:
+        tone = re.sub(r"^.*?\b(?:wo)?man'?s voice\b", "", v, flags=re.I)
+        tone = re.sub(r"^.*?\b(?:fe)?male voice\b", "", tone, flags=re.I)
+    tone = re.sub(r"\bin (his|her) \w+\b|\bnative\b|\bkorean\b|\bspeaker\b",
+                  "", tone, flags=re.I)
+    tone = re.sub(r"\s*,\s*(,\s*)+", ", ", re.sub(r"\s+", " ", tone)).strip(" ,;.")
+    if not tone:
+        try:
+            age = int(str(p.get("age")).strip().rstrip("대세살"))
+        except (TypeError, ValueError):
+            age = 45
+        tone = ("calm, low and measured" if sex == "man" and age >= 50 else
+                "steady and plain" if sex == "man" else
+                "warm and a little weary" if age >= 50 else "clear and composed")
+    base = ("a low, steady man's voice" if sex == "man" else
+            "a warm mid-range woman's voice")
+    age_s = f" in {pron} {dec}" if dec else ""
+    return f"{base}{age_s}, {VOICE_NATIVE}, {tone}"
+
+
+def fix_voices(cast):
+    """인물표 전체의 목소리를 고정 꼴로 맞추고, 겹치는 사람끼리 갈라 놓는다.
+    새 목록을 돌려준다 (넘겨받은 것은 건드리지 않는다)."""
+    out, seen, groups = [], set(), {}
+    for p in cast or []:
+        if not isinstance(p, dict):
+            continue
+        q = dict(p)
+        v = voice_line(q)
+        key = (_voice_sex(q), _voice_decade(q))
+        n = groups.get(key, 0)
+        groups[key] = n + 1
+        # 같은 성별·나이대 둘째부터, 또는 글이 똑같으면 결을 하나 더 붙인다
+        if n or v.lower() in seen:
+            add = VOICE_SPLIT[min(len(VOICE_SPLIT) - 1, max(0, n - 1))]
+            if add not in v:
+                v = f"{v}, {add}"
+        seen.add(v.lower())
+        q["voice"] = v
+        out.append(q)
+    return out
+
+
 def shape_drama(doc):
     """AI 가 낸 2분 드라마 꼴을 제작 쪽이 아는 꼴로 맞춘다 (0원).
     · 한 편짜리 parts 를 만든다 — 조립·올리기가 편 단위로 돈다
@@ -815,7 +911,7 @@ def shape_drama(doc):
         except ValueError:
             pass
         cast.append(q)
-    doc["cast"] = cast
+    doc["cast"] = fix_voices(cast)          # 목소리 = 나이·성별·톤 고정
     doc["people"] = people_from_cast(doc)
     return doc
 

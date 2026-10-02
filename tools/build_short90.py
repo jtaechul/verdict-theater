@@ -982,7 +982,7 @@ def omni_prompt(c, prev, ctx, sec, chars, first=True):
        같은 설명을 매 컷 똑같이 넣는 것이 고정하는 길이다."""
     who = list(c.get("who") or [])
     w, text = c["turns"][0]
-    by = {x.get("name"): x for x in chars}
+    by = {x.get("name"): x for x in ST90.fix_voices(chars)}
 
     def en(nm):
         return str((by.get(nm) or {}).get("role_en") or EN.get(nm, nm))
@@ -1023,9 +1023,10 @@ def omni_prompt(c, prev, ctx, sec, chars, first=True):
                        move=pick["move"] if pick else None),
         f"DIALOGUE: [LANGUAGE: KOREAN] only {role} speaks, in natural fluent everyday "
         "Korean with standard Seoul intonation, at a brisk natural conversational "
-        f"pace, lips moving in sync with every syllable. {role} says these exact "
+        "pace with every consonant and syllable crisp and clearly articulated, "
+        f"lips moving in sync with every syllable. {role} says these exact "
         f"words once and nothing more: \"{text}\"",
-        f"VOICE: {role} — {ch.get('voice') or 'a natural native Korean voice'}."
+        f"VOICE: {role} — {ST90.voice_line(ch)}."
         + (f" Delivery (Korean note): {say}." if say else ""),
         f"SOUND: {role}'s voice with quiet room tone underneath, and nothing else.",
         cam, COLOR, OMNI_STYLE, NO_TEXT,

@@ -174,7 +174,54 @@ MIN_CUT = 2.2                    # 아무리 짧아도 이만큼은 보여 준�
 #    1.08 → 1.20. 자막 시각도 이 값으로 나누므로(sub_windows) 함께 당겨진다 —
 #    여기 한 곳만 고치면 목소리와 자막이 같이 빨라진다.
 #    ⚠️ 목소리를 다시 만들지 않는다. 조립할 때 빨리 감는다(atempo) → 0원.
-SPEED = 1.20                     # 말 빠르기 (1.28 을 넘기면 발음이 뭉개진다)
+SPEED = 1.28                     # 말 빠르기 (2026-10-02 손님: "1.28배로 가자")
+# ⭐⭐⭐ 2026-10-02 손님: "발음 뭉개지지 않게끔 … 방지하는 것도 코드에 넣고" (핵심 규칙)
+#    뭉개짐은 지금까지 두 번 났다. 둘 다 **빨리 감기를 겹쳐 건** 탓이다
+#    (2026-08-08 1.12×1.2=1.34배 · 2026-08-22 1.35배). 그래서 세 겹으로 막는다.
+#    ① 상한 — 목소리를 만들 때 걸린 배속 × 조립 배속이 SPEED_MAX 를 넘지 않는다
+#       (말투 결 '담백하게' 는 1.12배로 만든다 → 조립은 1.28/1.12 ≈ 1.14배만 건다)
+#    ② 한 번만 — 조립할 때 **한 번** 건다. 이미 빨라진 소리를 또 감지 않는다
+#    ③ 자음을 살리는 감기 — atempo 대신 rubberband(transients=crisp ·
+#       formant=preserved). 자음의 터지는 소리를 뭉개지 않고 늘이고 줄인다.
+#       ffmpeg 에 없으면 atempo 로 물러선다(깃허브 러너에는 있다).
+SPEED_MAX = 1.28                 # tts.RATE_MAX 와 같은 값 — 넘기면 한국어 자음이 무너진다
+_RB = None
+
+
+def baked_rate():
+    """목소리를 **만들 때** 이미 걸린 배속 (말투 결이 정한다 · 기본 1.0)."""
+    try:
+        import tts                                           # 늦게 부른다
+        return max(1.0, float(tts.style_of().get("rate") or 1.0))
+    except Exception:                                        # noqa: BLE001
+        return 1.0
+
+
+def speed():
+    """조립할 때 걸 배속 — 만들 때 걸린 배속과 곱해 SPEED_MAX 를 넘지 않는다."""
+    return max(1.0, min(SPEED, SPEED_MAX / baked_rate()))
+
+
+def has_rubberband():
+    global _RB
+    if _RB is None:
+        try:
+            r = subprocess.run(["ffmpeg", "-hide_banner", "-filters"],
+                               capture_output=True, text=True)
+            _RB = " rubberband " in r.stdout
+        except OSError:
+            _RB = False
+    return _RB
+
+
+def tempo_filter(k):
+    """소리를 k 배로 빨리 감는 필터 한 줄 (높낮이는 그대로)."""
+    if abs(k - 1.0) < 0.005:
+        return "anull"
+    if has_rubberband():
+        return (f"rubberband=tempo={k:.4f}:transients=crisp:detector=compound:"
+                f"formant=preserved:pitchq=quality:channels=together")
+    return f"atempo={k:.4f}"
 
 # ⭐⭐ 2026-08-31 손님: "배경음악이 좀 하나 깔려야 될 거 같거든? 우리 만들어
 #    놓은 게 있으니까 그거 하나를 좀 깔도록 하고."
@@ -646,7 +693,8 @@ def talk_prompt(c, sec):
         "real spontaneous speech with uneven rhythm and short breaths "
         "between phrases",
         "spoken at a brisk natural conversational pace, no pauses between "
-        "phrases and no drawn-out syllables")
+        "phrases and no drawn-out syllables, every consonant crisp and "
+        "clearly articulated")
     return txt
 
 
@@ -2015,7 +2063,7 @@ def sub_windows(c, sec, voice, clip=None):
                 if isinstance(got, list) and len(got) == len(turns):
                     # ⚠️ 소리를 SPEED 배로 빨리 감으므로 자막도 그만큼 당긴다.
                     #    안 그러면 자막만 원래 속도로 남아 말과 어긋난다.
-                    real = [float(x) / SPEED for x in got]
+                    real = [float(x) / speed() for x in got]
             except Exception:                                # noqa: BLE001
                 real = []
     # ⭐ 영상 소리를 쓰는 컷(우리 목소리가 없는 컷)은 **말이 나는 구간**만 쓴다
@@ -2239,7 +2287,7 @@ def cut_sec(c, voice, clip):
     # ⚠️ 예전에는 대본에 적힌 sec 과 견줘 **큰 쪽**을 썼다. 그런데 그 숫자는
     #    Veo 영상 길이(4·6·8초)라 그림 컷에는 뜻이 없고, 말보다 길면 그만큼
     #    화면이 멈춰 있다. 이제 **말 길이가 정한다.**
-    return max(MIN_CUT, dur_of(voice) / SPEED + PAD), False
+    return max(MIN_CUT, dur_of(voice) / speed() + PAD), False
 
 
 def karaoke(c, sec, voice, d, n, title=None, mark='', tail='', clip=None):
@@ -2432,7 +2480,7 @@ def cut_video(c, still, voice, clip, ovs, out, opener=None):
          # ⭐ 소리를 여기서 빨리 감는다 (atempo). 목소리를 다시 만들면 값이
          #   나가지만 조립은 0원이다. 올린 영상의 소리는 손대지 않는다.
          "-map", "[v]", "-map", amap,
-         "-af", ("apad" if use_clip_audio else f"atempo={SPEED:.3f},apad"),
+         "-af", ("apad" if use_clip_audio else f"{tempo_filter(speed())},apad"),
          "-t", f"{sec:.3f}", "-r", str(FPS),
          "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
          "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k", "-ar", "48000",

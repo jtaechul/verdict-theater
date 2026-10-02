@@ -9,6 +9,13 @@
 #   쓰기: bash tools/checkall.sh
 set -uo pipefail
 cd "$(dirname "$0")/.."
+# ⚠️⚠️ 2026-10-02 — 작업 칸에 GEMINI_API_KEY 가 들어 있는 채로 돌렸더니
+#    그림 검사(short90 시험)가 **진짜 그림을 한 장 샀다(132원).** 깃허브 자체 점검에는
+#    열쇠가 없어 0원으로 도는 검사다. 여기서도 깃허브와 똑같이 **열쇠를 빼고** 돌린다.
+#    (검사는 0원이어야 한다 — 돈 드는 확인은 따로, 손님 허락을 받고 한다)
+unset ANTHROPIC_API_KEY CLAUDE_API_KEY GEMINI_API_KEY GOOGLE_TTS_KEY TYPECAST_API_KEY \
+      PEXELS_API_KEY PIXABAY_API_KEY TELEGRAM_BOT_TOKEN VT_KEY_VIDEO \
+      YOUTUBE_CLIENT_SECRET YOUTUBE_REFRESH_TOKEN GH_TOKEN GITHUB_TOKEN
 # ⚠️ 2026-09-01 — 임시 파일 이름이 /tmp/_chk.txt 로 **고정**이었다. 두 번을
 #    겹쳐 돌리면 서로 덮어써서 남의 실패 글이 내 결과로 보인다. 실행마다 따로.
 LOG=$(mktemp -t vtchk.XXXXXX)
