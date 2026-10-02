@@ -1928,6 +1928,9 @@ selected → scripting → evaluated → rendering
   네 번 중 세 번은 1초 · 한 번은 멈춤). 그래서 ⑪ 처럼 건너뛰고 · 멈추고 · 이어받게 했다
 - 검사: `tools/topicmix_check.py` · `tools/collect_resume_check.py` (가짜 법제처로 끊어 본다) ·
   `tools/gate_here_check.py` (작업 칸 심사가 돈 드는 심사와 똑같이 적는가)
+- ⚠️ 코드 커밋과 `[skip ci]` 데이터 커밋을 **한 번에 밀지 않는다** — 맨 위 커밋에 `[skip ci]` 가
+  있으면 그 밀기의 워크플로(자체 점검·관리자 배포)가 통째로 안 돈다 (2026-10-02 실제로 겪음).
+  코드를 먼저 밀고, 점검이 돈 뒤 데이터를 민다
 - 작업 칸 심사 하는 법: `python3 tools/gate_here.py export --topic "어르신 다섯" --out <폴더>` →
   판례마다 채점표 출력 형식 JSON 을 만든다(여러 명이 나눠 매길 때도 같은 지시서) →
   `python3 tools/gate_here.py merge <결과.json>…` (합·통과·유형은 도구가 다시 맞춘다)

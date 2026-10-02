@@ -3605,9 +3605,10 @@ function nextStep(eps, ready, ungated) {
 
   if (ungated.length)
     return { title: '소재를 살펴볼 차례입니다',
+             // ⭐ 2026-10-02 손님: "그냥 니가 여기서 심사하고 올려 돈쓰지마" — 0원 길을 먼저 적는다
              body: '아직 안 살펴본 기록이 <b>' + ungated.length + '건</b> 있습니다. '
-                 + '10건을 점수 매겨 쓸 만한 것을 고릅니다.<br>'
-                 + '<span style="color:#9599ab">약 4분 · 852원쯤 듭니다.</span>',
+                 + '클로드에게 <b>"심사해 줘"</b> 하시면 <b>0원</b>으로 매겨 올립니다.<br>'
+                 + '<span style="color:#9599ab">아래 단추는 제미나이로 10건 · 약 600원 (한 건 약 60원)</span>',
              btn: '소재 살펴보기', act: 'goNext(\\'gate\\')' };
 
   if (!(S.queue || []).length)
