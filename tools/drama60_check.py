@@ -12,7 +12,13 @@
   ③ 360p 값       720p 의 약 3분의 1 · make() 가 화질을 그대로 보낸다
   ④ 목소리 파일   wav 안의 wav(머리말 틱 · 끝 출처 글 잡음)를 벗긴다 · 지시문 낭독을 길이로 잡는다
   ⑤ 대사 후처리   말 앞뒤만 남기고 화면·소리를 함께 1.28배 · 나레이션 컷은 멈춘 얼굴까지
-  ⑥ 1분 규격      all_video 대본은 13~18컷 · 대사 4~7 · 60초 벽 · 조립 여운 0.12초
+  ⑥ 길이 규격     all_video 대본은 13~40컷 · 대사 4~7 · 벽은 쇼츠 한도(3분) · 말 사이 쉼은 대본이
+  ⑦ 처음 보는 사람용 이름표 · 관계 한 줄 · 가명
+  ⑧ 영상 창고      같은 장면은 다시 안 산다 · 액자 테두리
+  ⑨ 설명 드라마(v5) 그림 컷 0원 · 이름표 「윤정숙 (딸)」 · 대목 표시 · 자막 덩어리 · 끝 멈춤
+
+⚠️ ①②⑦⑧ 은 1분 시험작(S94 v3) 그대로의 고정 대본(tools/fixtures/drama60_s94_v3.json)으로 본다.
+   지금 S94 는 손님이 고르신 v5(약 2분 50초 · 그림 컷 17개)로 바뀌었다 (2026-10-02).
 """
 import io
 import json
@@ -45,8 +51,9 @@ def ck(name, ok, why=""):
         bad.append(name)
 
 
-doc = json.loads((ROOT / "data" / "series" / "S94.json").read_text(encoding="utf-8"))
+doc = json.loads((ROOT / "tools" / "fixtures" / "drama60_s94_v3.json").read_text(encoding="utf-8"))
 cuts = doc["cuts"]
+live = json.loads((ROOT / "data" / "series" / "S94.json").read_text(encoding="utf-8"))
 
 print("⭐ 1분 전부 영상 드라마 점검\n")
 print("① 카메라 계획")
@@ -149,24 +156,31 @@ with tempfile.TemporaryDirectory() as t:
        abs(S9.dur_of(st) - 5.0) < 0.2, f"{S9.dur_of(st):.2f}")
     ck("나레이션 컷 영상에는 소리를 안 남긴다", not S9.has_audio(st))
 
-print("\n⑥ 1분 규격")
-ck("S94 는 1분 전부 영상 대본이다", doc.get("all_video") is True)
+print("\n⑥ 길이 규격 (60초 벽을 풀었다 · 2026-10-02 손님)")
+ck("S94 는 전부 영상 대본이다", live.get("all_video") is True)
 story = json.loads((ROOT / "data" / "series" / "S94.story.json").read_text(encoding="utf-8"))
-ck("1분 대본이 규격 검사를 통과한다", not T.check(story), "; ".join(T.check(story)))
+ck("S94 대본이 규격 검사를 통과한다", not T.check(story), "; ".join(T.check(story)))
+ck("S94 대본이 드라마 검사를 통과한다", not T.check_drama(story), "; ".join(T.check_drama(story)))
 R = T.rules_of(story)
-ck("1분 규격: 13~18컷", (R["PART_MIN_CUTS"], R["PART_MAX_CUTS"]) == (13, 18))
-ck("1분 길이 잣대는 1.28배 · 틈 없는 조립으로 잰다",
+ck("전부 영상 규격: 13~40컷 · 쇼츠 한도(3분) 안", (R["PART_MIN_CUTS"], R["PART_MAX_CUTS"]) == (13, 40)
+   and R["PART_SEC_MAX"] < 180)
+gap = float(story.get("gap") or T.GAP_TIGHT)
+ck("길이 잣대는 말 사이 쉼(gap)만큼 컷마다 늘어난다",
    abs(T.part_sec(story["cuts"], story) -
        (T.SEC60_PER_CHAR * sum(T.chars(c) for c in story["cuts"])
-        + T.SEC60_PER_CUT * len(story["cuts"]))) < 1e-6)
+        + (T.SEC60_PER_CUT + gap - T.GAP_TIGHT) * len(story["cuts"]))) < 1e-6)
 ck("2분 드라마 잣대는 그대로 (손대지 않았다)",
    T.rules_of({"format": "drama"})["PART_MAX_CUTS"] == 24
    and abs(T.part_sec(story["cuts"]) - (T.SEC_PER_CHAR * sum(T.chars(c) for c in story["cuts"])
                                          + T.SEC_PER_CUT * len(story["cuts"]))) < 1e-6)
-ck("벽은 60초", talkplan.part_max_sec(doc) == 59.5
-   and talkplan.part_max_sec({"format": "drama"}) == talkplan.DRAMA_MAX_SEC)
+ck("벽 — 전부 영상은 쇼츠 한도 179.5초 · 2분 드라마 2분 · 옛 여러 편 60초",
+   talkplan.part_max_sec(live) == talkplan.SHORTS_MAX_SEC == 179.5
+   and talkplan.part_max_sec({"format": "drama"}) == talkplan.DRAMA_MAX_SEC
+   and talkplan.part_max_sec({}) == 59.5)
 s9 = (ROOT / "src" / "short90.py").read_text(encoding="utf-8")
-ck("조립 여운은 0.12초 (쉬는 틈 없이)", S9.PAD_TIGHT == 0.12 and "PAD = PAD_TIGHT" in s9)
+ck("말 사이 쉼은 대본이 정한다 (없으면 0.12초)",
+   S9.PAD_TIGHT == 0.12 and "PAD = gap_of(doc)" in s9 and S9.gap_of({}) == 0.12
+   and S9.gap_of({"gap": 0.5}) == 0.5)
 ck("조립은 옴니 영상 폴더(video60)를 읽는다", "video_dir() / f\"c{n:02d}.mp4\"" in s9)
 
 print("\n⑦ 처음 보는 사람용 (인물 이름 · 관계)")
@@ -253,8 +267,80 @@ vt = (ROOT / "tools" / "viewer_test.py").read_text(encoding="utf-8")
 ck("처음 보는 시청자 시험 도구가 있다 (헷갈린 순간 · 관계 · 점수를 묻고 값을 장부에 적는다)",
    "헷갈리거나 이해가 안 된 순간" in vt and "관계" in vt and 'cost.record("검토"' in vt)
 
+print("\n⑨ 설명 드라마 v5 (그림 컷 · 이름표 · 대목 · 자막)")
+figs = [c for c in live["cuts"] if c.get("fig")]
+ck("그림 컷이 있고, 그림 설계가 대본에 있다", figs and all(c["fig"]["id"] in live["figs"]
+                                                       for c in figs))
+rows, _bad = D.plan(live)
+ck("그림 컷은 옴니를 안 산다 (값 0원)",
+   all(r.get("fig") and r["krw"] == 0 for r, c in zip(rows, live["cuts"]) if c.get("fig")))
+# ⚠️ 영상 창고(build/)는 이 작업 칸에만 있다 — 깃허브 자체 점검에는 없으니 그때는 건너뛴다
+if (S9.video_dir() / "library.json").exists():
+    ck("그림 컷 밖의 컷은 전부 창고 영상이다 (새로 사는 컷 0개)",
+       all(r["lib"] for r, c in zip(rows, live["cuts"]) if not c.get("fig")),
+       str([c["n"] for r, c in zip(rows, live["cuts"]) if not c.get("fig") and not r["lib"]]))
+else:
+    print("   ⏭  영상 창고가 없다 (깃허브) — '전부 창고 영상' 은 작업 칸에서만 본다")
+lb = S9.labels_of(live)
+ck("이름표는 이름이 먼저 — 「윤정숙 (딸)」 「윤기철 (배다른 남동생)」",
+   lb.get("딸") == "윤정숙 (딸)" and lb.get("이복동생") == "윤기철 (배다른 남동생)", str(lb))
+ck("옛 대본은 옛 이름표 그대로 (name_first 가 없으면 빈 것)", S9.labels_of(doc) == {})
+ck("자막 토막 — 「윤정숙 씨」 · 「1억 5천만 원」 · 「40여 년」 이 안 갈린다",
+   all(" 씨" not in x[:2] and not x.startswith("씨") for x in
+       S9.chunks_of("서류상으로는 윤정숙 씨의 친동생이 된 셈입니다."))
+   and any("1억 5천만 원" in x for x in S9.chunks_of("모두 1억 5천만 원을 보냈습니다."))
+   and any("40여 년" in x for x in S9.chunks_of("사연은 40여 년 전으로 거슬러 올라갑니다.")))
+with tempfile.TemporaryDirectory() as t:
+    from PIL import Image, ImageChops
+    t = Path(t)
+    cc = next(c for c in live["cuts"] if c.get("chapter") and not c.get("fig"))
+    a, b = t / "a.png", t / "b.png"
+    S9.overlay(dict(cc, chapter=""), a, None, now=0, mark="x")
+    S9.overlay(cc, b, None, now=0, mark="x")
+    top = (0, S9.CHAP_Y - 40, S9.W, S9.CHAP_Y + 40)
+    ck("화면 위 대목 표시가 실제로 그려진다",
+       ImageChops.difference(Image.open(a).crop(top), Image.open(b).crop(top)).getbbox())
+    fc = figs[0]
+    S9.overlay(fc, a, None, now=0, mark="x")
+    S9.overlay(dict(fc, chapter="재판"), b, None, now=0, mark="x")
+    ck("그림 컷에는 대목 표시를 안 얹는다 (그림에 제목이 있다)",
+       not ImageChops.difference(Image.open(a).crop(top), Image.open(b).crop(top)).getbbox())
+    tc5 = next(c for c in live["cuts"] if not c["narr"])
+    S9.overlay(tc5, a, None, now=0, mark="x", labels=lb, intro=(tc5["turns"][0][0], "산을 새로 산 사람"))
+    S9.overlay(tc5, b, None, now=0, mark="x", labels=lb)
+    up = (0, S9.NAME_Y - 90, S9.W, S9.NAME_Y - 10)
+    ck("처음 나오는 사람의 관계 한 줄은 이름 **위**에 (긴 이름표 옆에 자리가 없다)",
+       ImageChops.difference(Image.open(a).crop(up), Image.open(b).crop(up)).getbbox())
+    import diagram60 as G
+    ck("그림 설계 일곱 가지가 다 있다",
+       set(G.FIGS) >= {"card", "family", "timeline", "issue", "money", "paper", "verdict"})
+    sh, adds = G.schedule(live, figs[1], 6.0)
+    ck("그림 요소는 신호 낱말을 말할 때 나타난다 (빈 신호는 첫머리에 차례로)",
+       adds and all(0 <= tt <= 6.0 for _, tt in adds))
+    later_f = next(c for c in figs[2:] if c["fig"]["id"] == figs[1]["fig"]["id"])
+    sh2, _ = G.schedule(live, later_f, 6.0)
+    ck("같은 그림의 뒤 컷은 앞 컷 요소를 처음부터 보인다 (그림이 이어진다)", len(sh2) >= len(adds))
+    mp = t / "fig.mp4"
+    G.render(live, figs[1], 0.5, mp, frames=8)
+    ck("그림 컷이 실제로 영상이 된다 (1080×1920 · 소리 없음)",
+       mp.exists() and S9.dur_of(mp) > 0.2 and not S9.has_audio(mp))
+    raw = t / "raw.mp4"
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i",
+                    "testsrc2=s=360x640:r=24:d=2", "-pix_fmt", "yuv420p", str(raw)], check=True)
+    hold = t / "hold.mp4"
+    D.post_narr(raw, hold, 4.5, stretch=D.STRETCH_REUSE)
+    ck("창고 영상이 나레이션보다 짧으면 1.6배까지 늘이고 나머지는 끝 장면에서 멈춘다",
+       abs(S9.dur_of(hold) - 4.5) < 0.25, f"{S9.dur_of(hold):.2f}")
+s3 = dict(story, end_note="")
+ck("끝 화면 글(end_note)에 '실제' 가 없으면 마지막 컷 규칙이 다시 잡는다",
+   any("마지막 컷" in x for x in T.check_drama(s3)))
+ck("우리말 나레이션 — 마디 문장 · 인용 · 「한옥자 씨도」 는 주어 검사에 안 걸린다",
+   not T.needs_subject("경기도 용인의 한 야산.") and not T.needs_subject("한옥자 씨도 그렇게 증언했습니다.")
+   and not T.needs_subject("'한옥자, 윤기철 모자와 법적으로 다투지 않는다.'")
+   and T.needs_subject("법원을 끝까지 믿었습니다."))
+
 print("─" * 56)
 if bad:
     print(f"❌ {len(bad)}개 걸렸습니다 — 고치고 다시")
     sys.exit(1)
-print("✅ 1분 전부 영상: 카메라 · 지문 · 360p · 목소리 · 후처리 · 1분 규격")
+print("✅ 전부 영상 드라마: 카메라 · 지문 · 360p · 목소리 · 후처리 · 길이 · 이름표 · 그림 컷")

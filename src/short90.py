@@ -97,6 +97,8 @@ NAME_BAR_GAP = 20       # 막대와 글자 사이
 NAME_BAR_PAD = 7        # 막대가 글자 위아래로 더 뻗는 정도
 INTRO_SIZE = 46         # 처음 나오는 사람의 관계 한 줄 (이름 옆 · 어르신 눈에 읽히게)
 INTRO_GAP = 16
+INTRO_ABOVE = 42        # 이름이 먼저인 이름표 — 관계 한 줄을 이름 위에 (2026-10-02)
+CHAP_Y, CHAP_SIZE = 128, 34   # 화면 위 대목 표시 (마크 아래 가운데)
 # ⭐⭐⭐ 2026-09-01 손님: "영상 상단에는 1편 제목, 2편 제목이 하나 들어가
 #    줘야 되는 거 아니야?"
 #    맞다. 그리고 자리가 중요하다 —
@@ -174,6 +176,17 @@ PAD = 0.40                       # 말이 끝난 뒤 남기는 여운(초)
 # ⭐⭐⭐ 2026-10-02 손님: "대사 사이사이에 쉬는 공간 없이 가서" — 1분 전부 영상(all_video)은
 #    목소리 앞뒤 무음을 잘라 두고(tools/drama60.py) 여운도 이만큼만 둔다.
 PAD_TIGHT = 0.12
+
+
+def gap_of(doc):
+    """말과 말 사이 쉼(초) — 전부 영상 드라마만 대본이 정한다.
+
+    ⭐⭐⭐ 2026-10-02 손님: "말과 말 사이에 0.5초 정도는 남겨도 괜찮아." (S94 v5 · gap 0.5)
+       처음엔 "쉬는 공간 없이"(0.12초)였다. 대본에 gap 이 없으면 그 값 그대로다."""
+    try:
+        return max(0.0, float(doc.get("gap"))) if doc.get("gap") is not None else PAD_TIGHT
+    except (TypeError, ValueError):
+        return PAD_TIGHT
 MIN_CUT = 2.2                    # 아무리 짧아도 이만큼은 보여 준다(깜빡임 방지)
 # ⭐ 2026-09-02 손님: "1.2배속으로 바꿔."
 #    1.08 → 1.20. 자막 시각도 이 값으로 나누므로(sub_windows) 함께 당겨진다 —
@@ -1685,7 +1698,8 @@ def fit(d, text, size_max, max_w, max_h, one_line=False):
     return f, wrap(d, text, f, max_w)[:SUB_LINES], SUB_MIN
 
 
-def overlay(c, out, turn=None, now=None, mark="", intro=None, alias=None):
+def overlay(c, out, turn=None, now=None, mark="", intro=None, alias=None, labels=None,
+            bare=False):
     """컷 하나(또는 그 안의 한 차례)의 자막·이름표를 투명 그림으로 그린다.
 
     now  — 지금 말하고 있는 **낱말 번호** (0부터). None 이면 전부 흰색.
@@ -1694,6 +1708,10 @@ def overlay(c, out, turn=None, now=None, mark="", intro=None, alias=None):
     intro — (이름, 관계) — 그 사람이 **처음 나오는 컷**이면 이름표 자리에 이름과
            관계 한 줄을 띄운다 (나레이션 컷이어도). intro_of() 가 정한다.
     alias — {관계 이름: 가명} — 이름표가 "딸 (윤정숙)" 이 된다 (aliases_of).
+    bare — 자막 글은 빼고 그늘·마크·이름표·대목 표시만 (말 앞뒤 쉼 · 아래 karaoke).
+    labels — {관계 이름: 이름표 글} — 있으면 이것이 이긴다 (labels_of · 「윤정숙 (딸)」).
+           이름이 먼저인 이름표(name_first)는 관계 한 줄을 이름 **위에** 얹는다 —
+           「윤기철 (배다른 남동생)」 처럼 길어 옆에 붙일 자리가 없다.
     """
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
 
@@ -1730,9 +1748,17 @@ def overlay(c, out, turn=None, now=None, mark="", intro=None, alias=None):
     #     이름이 두 글자든 세 글자든 늘 글자와 나란하다.
     #   ⭐ 2026-10-02 — 처음 나오는 사람이면(intro) 나레이션 컷에도 이름표를 띄우고,
     #     이름 옆에 관계 한 줄을 작게 붙인다 ("이복동생 · 아버지가 밖에서 낳은 아들").
+    # ⭐ 화면 위 가운데 — 지금 어느 대목인지 (「재판 · 땅주인 주장 ②」 · 2026-10-02 S94 v5)
+    #    그림 컷(관계도 등)은 그림에 제목이 있으므로 안 띄운다.
+    chap = str(c.get("chapter") or "").strip()
+    if chap and not c.get("fig"):
+        chapter_chip(img, chap)
+        d = ImageDraw.Draw(img)
+
     tag = who if who != "나레이션" else (intro[0] if intro else "")
     if tag:
-        label = f"{tag} ({alias[tag]})" if alias and alias.get(tag) else tag
+        label = ((labels or {}).get(tag)
+                 or (f"{tag} ({alias[tag]})" if alias and alias.get(tag) else tag))
         nf = ImageFont.truetype(str(FONT_NAME), NAME_SIZE)
         tx = SIDE + NAME_BAR_W + NAME_BAR_GAP
         box = d.textbbox((tx, NAME_Y), label, font=nf, anchor="la")
@@ -1740,7 +1766,13 @@ def overlay(c, out, turn=None, now=None, mark="", intro=None, alias=None):
                      SIDE + NAME_BAR_W, box[3] + NAME_BAR_PAD], fill=GOLD)
         d.text((tx, NAME_Y), label, font=nf, fill=GOLD_BRIGHT, anchor="la",
                stroke_width=3, stroke_fill=(0, 0, 0, 205))
-        if intro and intro[0] == tag and intro[1]:
+        if intro and intro[0] == tag and intro[1] and labels:
+            # 이름이 먼저인 이름표 — 관계 한 줄은 이름 바로 **위**에 (흰 글자)
+            rf = ImageFont.truetype(str(FONT_NAME), INTRO_ABOVE)
+            d.text((tx, box[1] - NAME_BAR_PAD - 12), intro[1], font=rf,
+                   fill=(255, 255, 255, 240), anchor="ld",
+                   stroke_width=3, stroke_fill=(0, 0, 0, 205))
+        elif intro and intro[0] == tag and intro[1]:
             rf = ImageFont.truetype(str(FONT_NAME), INTRO_SIZE)
             rel = f"· {intro[1]}"
             rx = box[2] + INTRO_GAP
@@ -1749,6 +1781,10 @@ def overlay(c, out, turn=None, now=None, mark="", intro=None, alias=None):
                 rf = ImageFont.truetype(str(FONT_NAME), rf.size - 2)
             d.text((rx, box[3]), rel, font=rf, fill=(255, 255, 255, 235),
                    anchor="ld", stroke_width=3, stroke_fill=(0, 0, 0, 205))
+
+    if bare:
+        img.save(out)
+        return out
 
     # 자막 — **그 토막만** 그린다 (2026-08-31 손님 확정)
     #   now 가 숫자면 그 토막 하나만 화면에 뜬다. 짧으니 글자가 훨씬 크다.
@@ -1788,6 +1824,35 @@ def overlay(c, out, turn=None, now=None, mark="", intro=None, alias=None):
         y += step
     img.save(out)
     return out
+
+
+def chapter_chip(img, text):
+    """화면 위 가운데 작은 띠 — 「재판 · 땅주인 주장 ②」 (금색 테두리 · 어두운 바탕)."""
+    d = ImageDraw.Draw(img)
+    f = ImageFont.truetype(str(FONT_SUB), CHAP_SIZE)
+    w = d.textlength(text, font=f)
+    h = CHAP_SIZE + 22
+    x1, x2 = W / 2 - w / 2 - 22, W / 2 + w / 2 + 22
+    plate = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ImageDraw.Draw(plate).rounded_rectangle([x1, CHAP_Y - h / 2, x2, CHAP_Y + h / 2],
+                                            radius=h / 2, fill=(14, 18, 26, 200),
+                                            outline=GOLD_BRIGHT, width=3)
+    img.alpha_composite(plate)
+    ImageDraw.Draw(img).text((W / 2, CHAP_Y + 1), text, font=f, fill=GOLD_BRIGHT,
+                             anchor="mm")
+
+
+def labels_of(doc):
+    """{관계 이름: 이름표 글}. name_first 면 「윤정숙 (딸)」 (괄호 안은 tag · 없으면 관계 이름),
+    아니면 옛 모양 「딸 (윤정숙)」. 가명이 없으면 빈 것 (이름표는 관계 이름 그대로)."""
+    out = {}
+    for p in doc.get("cast") or []:
+        nm, al = str(p.get("name") or ""), str(p.get("alias") or "").strip()
+        if not nm or not al:
+            continue
+        tag = str(p.get("tag") or nm).strip()
+        out[nm] = f"{al} ({tag})" if doc.get("name_first") else f"{nm} ({al})"
+    return out if doc.get("name_first") else {}
 
 
 def tail_sub(text):
@@ -1975,11 +2040,20 @@ def hangs(w):
 
 def merge_units(ws):
     """숫자와 단위를 **한 덩어리로 붙인다** — 「삼천만 / 원짜리」로 갈리면
-    돈이 얼마인지가 두 화면에 걸친다. 이 채널은 금액이 핵심이다."""
+    돈이 얼마인지가 두 화면에 걸친다. 이 채널은 금액이 핵심이다.
+
+    ⭐ 2026-10-02 (S94 v5 그림 시안에서 잡았다) — 「윤정숙 / 씨의」 처럼 이름과 '씨' 가
+       두 화면에 갈렸다. '씨'·'씨의'·'씨는' 은 앞 이름에 붙인다. 「1억 / 5천만 원」 ·
+       「40여 / 년」 도 한 덩어리로 (앞이 억·만·천으로 끝나고 뒤가 숫자로 시작하면 붙인다).
+    """
     out = []
     for w in ws:
-        if out and w.startswith(UNIT) and (out[-1][-1:].isdigit()
-                                           or out[-1].endswith(NUMWORD)):
+        prev = out[-1].rstrip(",") if out else ""
+        if out and out[-1][-1:] != "," and (
+                (w.startswith(UNIT) and (prev[-1:].isdigit() or prev.endswith(NUMWORD)
+                                         or re.search(r"\d여$", prev)))
+                or (w.startswith("씨") and re.fullmatch(r"씨[가-힣]{0,3}[.,!?]?", w))
+                or (w[:1].isdigit() and re.search(r"\d(억|만|천)$", prev))):
             out[-1] = out[-1] + " " + w
         else:
             out.append(w)
@@ -2365,7 +2439,7 @@ def intro_of(doc):
 
 
 def karaoke(c, sec, voice, d, n, title=None, mark='', tail='', clip=None, intro=None,
-            alias=None, note=''):
+            alias=None, note='', labels=None):
     """카라오케 자막 장들 — [(그림, 언제부터, 언제까지), …].
 
     ⭐⭐ 2026-08-31 손님: "카라오케 자막으로 변경하자."
@@ -2411,6 +2485,7 @@ def karaoke(c, sec, voice, d, n, title=None, mark='', tail='', clip=None, intro=
             png = d / f"c{n:02d}_tail{k}.png"
             end_card(tail, png, alpha=al, note=note)
             out.append((png, a, b))
+    words = []
     for i, ((who, text), (a, b)) in enumerate(zip(turns, wins)):
         parts = chunks_of(text)
         if not parts:
@@ -2421,9 +2496,25 @@ def karaoke(c, sec, voice, d, n, title=None, mark='', tail='', clip=None, intro=
         for k, w in enumerate(parts):
             t1 = b if k == len(parts) - 1 else t0 + span * syl(w) / tot
             png = d / f"c{n:02d}_{i}_{k:02d}.png"
-            overlay(c, png, (who, text), now=k, mark=mark, intro=intro, alias=alias)
-            out.append((png, t0, t1))
+            overlay(c, png, (who, text), now=k, mark=mark, intro=intro, alias=alias,
+                    labels=labels)
+            words.append((png, t0, t1))
             t0 = t1
+    # ⭐⭐ 2026-10-02 (S94 v5 · 말 사이 0.5초) — 영상 속 배우가 말하는 컷은 자막이 **말하는 동안만**
+    #    뜬다(talksub_test). 그런데 그 밖의 순간엔 겹그림이 통째로 빠져 **그늘·마크·이름표·대목
+    #    표시가 0.5초씩 꺼졌다 켜졌다** (쉼이 0.12초일 땐 안 보였다). → 말 앞뒤에는 자막 글만 뺀
+    #    겹그림(bare)을 깐다. 자막 글은 그대로 말하는 동안만 뜬다.
+    if words:
+        bare = d / f"c{n:02d}_bare.png"
+        first, last = words[0][1], words[-1][2]
+        if first > 0.02 or sec - last > 0.02:
+            overlay(c, bare, turns[0], mark=mark, intro=intro, alias=alias, labels=labels,
+                    bare=True)
+        if first > 0.02:
+            out.append((bare, 0.0, first))
+        out += words
+        if sec - last > 0.02:
+            out.append((bare, last, sec))
     return out
 
 
@@ -2736,6 +2827,8 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
     total, made = 0.0, []
     intros = intro_of(doc)
     alias = aliases_of(doc)
+    labels = labels_of(doc)
+    note = str(doc.get("end_note") or "") or (ALIAS_NOTE if alias else "")
     for i, c in enumerate(cuts):
         n = c["n"]
         still = stills_d / f"c{n:02d}.png"
@@ -2787,8 +2880,7 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
                       # ⭐ 영상 소리를 쓰는 컷이면 그 영상에서 말이 나는
                       #    구간을 재서 자막을 거기에 맞춘다 (값 0원)
                       clip=clip if (uca and clip.exists()) else None,
-                      intro=intros.get(n), alias=alias,
-                      note=ALIAS_NOTE if alias else "")
+                      intro=intros.get(n), alias=alias, note=note, labels=labels)
         out = parts_d / f"c{n:02d}.mp4"
         sec = cut_video(c, still, voice, clip if clip.exists() else None, ovs,
                         out, opener=opener)
@@ -2853,7 +2945,7 @@ def build(doc, only=None):
     """편마다 하나씩 만든다. only 를 주면 그 편만 (나머지는 손대지 않는다)."""
     global PAD
     if doc.get("all_video"):
-        PAD = PAD_TIGHT                  # 쉬는 틈 없이 (위 PAD_TIGHT)
+        PAD = gap_of(doc)                # 말 사이 쉼 — 대본이 정한다 (기본 0.12초)
     stills_d, voice_d = OUT / "stills", OUT / "voice"
     clips_d = OUT / "clips"
     parts_d = OUT / "parts"

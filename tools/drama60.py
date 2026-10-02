@@ -67,6 +67,9 @@ RES = "360p"
 SEC_MIN, SEC_MAX = 4, 10           # 옴니 한 토막 (talkplan.OMNI_MIN_SEC/OMNI_MAX_SEC 와 같다)
 NARR_MARGIN = 0.35                 # 나레이션보다 영상을 이만큼 넉넉히 산다
 STRETCH_MAX = 1.4                  # 영상이 모자라면 화면만 이만큼까지 느리게 늘인다
+# ⭐ 창고 영상을 **다시 쓸 때**는 조금 더 늘이고(1.6배), 그래도 모자라면 마지막 장면에서
+#    멈춰 선다 — 새로 사지 않는다 (2026-10-02 · S94 v5 · 손님: "살릴 수 있는 영상은 최대한 살리고")
+STRETCH_REUSE = 1.6
 SQUEEZE_MIN = 0.75                 # 끝이 얼굴인 움직임은 화면을 이만큼까지 빠르게 담는다
 # 카메라가 **움직여 얼굴에서 멈추는** 구도 — 나레이션이 먼저 끝나면 그 멈춤이 잘려 나간다
 # (S94 컷9: 법정을 훑다가 땅주인을 찾기 전에 컷이 넘어가 빈 법정만 2초 보였다)
@@ -90,6 +93,8 @@ REF_ONLY = ("Use the given images only as references for how the people look; th
             "video opens on a fresh shot of the scene.")
 
 _lock = threading.Lock()
+GAP = S9.PAD_TIGHT                 # 말 사이 쉼 — load() 가 대본(gap)에서 정한다
+NO_BUY = False                     # --no-buy : 창고에 없는 컷이 있으면 사지 말고 멈춘다
 
 
 def vdir():
@@ -133,6 +138,9 @@ def load(sid):
     doc = json.loads(f.read_text(encoding="utf-8"))
     if not doc.get("all_video"):
         raise SystemExit(f"❌ {sid} 는 1분 전부 영상 대본이 아니다 (all_video 가 없다)")
+    global GAP
+    GAP = S9.gap_of(doc)
+    S9.PAD = GAP                   # 조립(cut_sec)과 같은 값으로 컷 길이를 센다
     return doc
 
 
@@ -160,14 +168,19 @@ def is_talk(c):
     return not S9.is_narr(c)
 
 
+def is_fig(c):
+    """그림 컷 — 관계도·연표 등 우리가 직접 그린다 (옴니 안 씀 · 0원 · src/diagram60.py)."""
+    return bool(c.get("fig"))
+
+
 # ── 길이 ─────────────────────────────────────────────────────────
 def narr_len(c):
     """나레이션이 화면에 머무는 길이(초) — 앞뒤 무음을 자른 목소리 ÷ 배속 + 여운.
     목소리가 아직 없으면 글자 잣대로 어림한다."""
     w = S9.OUT / "voice" / f"c{c['n']:02d}.wav"
     if w.exists():
-        return S9.dur_of(w) / S9.speed() + S9.PAD_TIGHT
-    return ST90.SEC60_PER_CHAR * ST90.chars(c) + S9.PAD_TIGHT + 0.3
+        return S9.dur_of(w) / S9.speed() + GAP
+    return ST90.SEC60_PER_CHAR * ST90.chars(c) + GAP + 0.3
 
 
 def omni_sec(c):
@@ -284,32 +297,53 @@ def prompt(c, shot, sec, by):
 
 
 def stock(c, lib):
-    """창고에 이 장면이 있고 **길이도 맞출 수 있으면** 그 칸, 아니면 None."""
+    """창고에 이 장면이 있으면 그 칸, 아니면 None.
+
+    ⚠️ 예전에는 늘여도(1.4배) 나레이션보다 짧으면 **새로 샀다.** 2026-10-02 손님이 "살릴 수
+       있는 영상은 최대한 살리고" 하셨다 → 1.6배까지 늘이고, 그래도 모자란 만큼은 마지막
+       장면에서 멈춰 선다(hold). 몇 초 멈추는지는 계획표에 찍힌다."""
     e = lib.get(vkey(c))
     if not e or not (vdir() / e["raw"]).exists():
         return None
-    if not is_talk(c) and S9.dur_of(vdir() / e["raw"]) * STRETCH_MAX < narr_len(c) + 0.05:
-        return None                    # 너무 짧다 — 늘여도 모자라면 새로 산다
+    if not is_talk(c):
+        short = narr_len(c) + 0.05 - S9.dur_of(vdir() / e["raw"]) * STRETCH_REUSE
+        e = dict(e, hold=round(max(0.0, short), 2))
     return e
 
 
+FIG_SHOT = {"key": "그림", "kind": "fig", "lens": "-", "height": "-", "move": "-",
+            "special": False}
+
+
 def plan(doc, lib=None):
-    """컷마다 {n, shot, sec, prompt, refs, krw, lib} — 값 0원."""
+    """컷마다 {n, shot, sec, prompt, refs, krw, lib} — 값 0원.
+    그림 컷(fig)은 옴니를 안 사므로 카메라 계획에서 빼고 따로 줄을 세운다."""
     by = cast_of(doc)
     lib = load_lib() if lib is None else lib
-    have = {i: stock(c, lib) for i, c in enumerate(doc["cuts"])}
+    real = [c for c in doc["cuts"] if not is_fig(c)]
+    have = {i: stock(c, lib) for i, c in enumerate(real)}
     pinned = {i: e["shot"] for i, e in have.items() if e}
-    shots = camera60.plan(doc["cuts"], pinned)
-    out = []
-    for i, (c, sh) in enumerate(zip(doc["cuts"], shots)):
+    shots = camera60.plan(real, pinned)
+    rows = {}
+    for i, (c, sh) in enumerate(zip(real, shots)):
         e = have.get(i)
         sec = e["sec"] if e else omni_sec(c)
         refs = [card(w) for w in (c.get("who") or []) if w in by]
-        out.append({"n": c["n"], "shot": sh, "sec": sec,
-                    "prompt": e["prompt"] if e else prompt(c, sh, sec, by),
-                    "refs": refs, "krw": 0 if e else omni.est_krw(sec, RES),
-                    "talk": is_talk(c), "lib": e, "key": vkey(c)})
-    return out, camera60.check(doc["cuts"], shots)
+        rows[c["n"]] = {"n": c["n"], "shot": sh, "sec": sec,
+                        "prompt": e["prompt"] if e else prompt(c, sh, sec, by),
+                        "refs": refs, "krw": 0 if e else omni.est_krw(sec, RES),
+                        "talk": is_talk(c), "lib": e, "key": vkey(c), "fig": False}
+    out = [rows.get(c["n"]) or {"n": c["n"], "shot": FIG_SHOT, "sec": 0, "prompt": "",
+                                "refs": [], "krw": 0, "talk": False, "lib": None,
+                                "key": "", "fig": True}
+           for c in doc["cuts"]]
+    bad = camera60.check(real, shots)
+    # ⚠️ 다 창고 영상(이미 산 것)이면 구도 규칙은 알리기만 한다 — 살 것이 없으니 막을 까닭이 없다
+    if bad and all(have.get(i) for i in range(len(real))):
+        for b in bad:
+            print(f"  ℹ️ (창고 영상끼리라 그대로 씀) {b}")
+        bad = []
+    return out, bad
 
 
 def show_plan(doc, rows, bad, full=False):
@@ -317,10 +351,15 @@ def show_plan(doc, rows, bad, full=False):
           f"{len(rows)}컷")
     for c, r in zip(doc["cuts"], rows):
         s = r["shot"]
+        if r.get("fig"):
+            print(f"  {c['n']:>2} 그림 — 「{c['fig'].get('id')}」 직접 그림 0원 · {c['text'][:26]}")
+            continue
+        hold = (r["lib"] or {}).get("hold") or 0
         print(f"  {c['n']:>2} {'대사' if r['talk'] else '나레'} {r['sec']:>2}초 "
               f"{s['key']:<13} {s['lens']:<7} {s['height']:<6} {s['move']:<9} "
-              f"{'창고 0원 ' if r['lib'] else ''}{c['text'][:26]}")
-    tot = sum(r["sec"] for r in rows if not r["lib"])
+              f"{'창고 0원 ' if r['lib'] else ''}"
+              f"{f'(끝 {hold:.1f}초 멈춤) ' if hold > 0.05 else ''}{c['text'][:26]}")
+    tot = sum(r["sec"] for r in rows if not r["lib"] and not r.get("fig"))
     krw = sum(r["krw"] for r in rows)
     print(f"  ─ 새로 살 옴니 {tot}초 · 약 {krw:,.0f}원 "
           f"(창고에서 다시 쓰는 컷 {sum(1 for r in rows if r['lib'])}개는 0원)")
@@ -430,8 +469,9 @@ def post_talk(raw, out):
     dur = S9.dur_of(raw)
     beg, fin = S9.speech_span(raw)
     beg = max(0.0, (beg or 0.0) - TALK_LEAD)
-    fin = min(dur, (fin or dur) + TALK_TAIL)
     k = min(S9.SPEED, S9.SPEED_MAX)
+    # ⭐ 말 뒤 쉼 — 감은 뒤에 gap 초가 되도록 (기본은 TALK_TAIL · S94 v5 0.5초)
+    fin = min(dur, (fin or dur) + max(TALK_TAIL, GAP * k))
     S9.run(["ffmpeg", "-y", "-v", "error", "-i", str(raw), "-filter_complex",
             f"[0:v]{crop_of(raw)}trim={beg:.3f}:{fin:.3f},setpts=(PTS-STARTPTS)/{k:.4f}[v];"
             f"[0:a]atrim={beg:.3f}:{fin:.3f},asetpts=PTS-STARTPTS,"
@@ -442,21 +482,26 @@ def post_talk(raw, out):
     return f"말 {beg:.2f}~{fin:.2f}초 → {S9.dur_of(out):.2f}초"
 
 
-def post_narr(raw, out, need, land=False):
+def post_narr(raw, out, need, land=False, stretch=STRETCH_MAX):
     """나레이션 컷 — 소리는 안 쓴다. 나레이션보다 짧으면 화면만 살짝 느리게 늘인다.
     land=True(움직여 얼굴에서 멈추는 구도)면 길 때 화면을 조금 빠르게 담아 **멈춘 얼굴까지** 보인다."""
     dur = S9.dur_of(raw)
     if dur >= need:
         k = max(SQUEEZE_MIN, need / max(0.1, dur)) if land else 1.0
     else:
-        k = min(STRETCH_MAX, need / max(0.1, dur))
+        k = min(stretch, need / max(0.1, dur))
     cr = crop_of(raw)
+    # ⭐ 늘여도 모자라면 마지막 장면에서 멈춰 선다 (되돌려 이으면 장면이 튄다)
+    hold = max(0.0, need - dur * k)
+    pad = f",tpad=stop_mode=clone:stop_duration={hold + 0.1:.2f}" if hold > 0.02 else ""
     S9.run(["ffmpeg", "-y", "-v", "error", "-i", str(raw), "-an", "-vf",
-            f"{cr}setpts={k:.4f}*PTS", "-c:v", "libx264", "-preset", "veryfast",
+            f"{cr}setpts={k:.4f}*PTS{pad}", "-c:v", "libx264", "-preset", "veryfast",
             "-crf", "18", "-pix_fmt", "yuv420p", str(out)])
     got = S9.dur_of(out)
     note = f"영상 {dur:.2f}초" + (f" → 느리게 {got:.2f}초" if k > 1.0 else
                                  f" → 빠르게 {got:.2f}초 (멈춘 얼굴까지)" if k < 1.0 else "")
+    if hold > 0.02:
+        note += f" · 끝 {hold:.1f}초 멈춤"
     if got + 0.05 < need:
         note += f" ⚠️ 나레이션 {need:.2f}초보다 짧다"
     if cr:
@@ -501,7 +546,8 @@ def buy(c, r, by, d, lib):
     else:
         sh = r["shot"]
         note = post_narr(raw, out, narr_len(c) + 0.05,
-                         land=sh["kind"] in ("est", "end") or sh["move"] in LAND_MOVES)
+                         land=sh["kind"] in ("est", "end") or sh["move"] in LAND_MOVES,
+                         stretch=STRETCH_REUSE if r["lib"] else STRETCH_MAX)
     return c["n"], f"{how} · {note}"
 
 
@@ -510,10 +556,11 @@ def adopt(doc):
     지문이 **지금 대본의 그 컷과 맞는 것만** 옮긴다 — 엉뚱한 컷 영상이 섞이지 않게."""
     d = vdir()
     lib = load_lib()
-    shots = camera60.plan(doc["cuts"])
+    real = [c for c in doc["cuts"] if not is_fig(c)]
+    shots = camera60.plan(real)
     by = cast_of(doc)
     moved = 0
-    for c, sh in zip(doc["cuts"], shots):
+    for c, sh in zip(real, shots):
         raw = d / "raw" / f"c{c['n']:02d}.mp4"
         if not raw.exists():
             continue
@@ -553,6 +600,11 @@ def step_clips(doc, only=None):
     d = vdir()
     (d / "raw").mkdir(parents=True, exist_ok=True)
     show_plan(doc, rows, bad)
+    need = [r["n"] for r in rows if not r.get("fig") and not r["lib"]
+            and (not only or r["n"] in only)]
+    if NO_BUY and need:
+        print(f"❌ --no-buy — 창고에 없는 컷 {need} 이 있다 (사지 않고 멈춘다)")
+        return 1
     omni.CALL_CAP = len(rows) + 6
     rec = cost.record
 
@@ -567,7 +619,7 @@ def step_clips(doc, only=None):
         with ThreadPoolExecutor(max_workers=WORKERS) as ex:
             futs = {ex.submit(buy, c, r, by, d, lib): c["n"]
                     for c, r in zip(doc["cuts"], rows)
-                    if not only or c["n"] in only}
+                    if not r.get("fig") and (not only or c["n"] in only)}
             for f in futs:
                 n = futs[f]
                 try:
@@ -586,6 +638,25 @@ def step_clips(doc, only=None):
     return 0
 
 
+def step_figs(doc):
+    """그림 컷 → 영상 (값 0원). 목소리 길이를 알아야 컷 길이가 정해지므로 voice 뒤에 돈다."""
+    import diagram60                                          # noqa: E402
+    figs = [c for c in doc["cuts"] if is_fig(c)]
+    if not figs:
+        return 0
+    miss = [c["n"] for c in figs if not (S9.OUT / "voice" / f"c{c['n']:02d}.wav").exists()]
+    if miss:
+        print(f"❌ 목소리가 없는 그림 컷: {miss} — `voice` 를 먼저 돌린다")
+        return 1
+    print(f"■ 그림 컷 {len(figs)}개 — 직접 그린다 (0원)")
+    for c in figs:
+        sec, _ = S9.cut_sec(c, S9.OUT / "voice" / f"c{c['n']:02d}.wav", None)
+        out = vdir() / f"c{c['n']:02d}.mp4"
+        diagram60.render(doc, c, sec + 0.25, out)
+        print(f"  ✅ 컷{c['n']:>2} 「{c['fig']['id']}」 {sec:.2f}초 → {out.name}")
+    return 0
+
+
 def step_build(doc):
     miss = [c["n"] for c in doc["cuts"] if not (vdir() / f"c{c['n']:02d}.mp4").exists()]
     if miss:
@@ -598,7 +669,7 @@ def step_build(doc):
     got = S9.dur_of(final)
     print(f"■ 다 됐다 — {final.relative_to(ROOT)} · {got:.1f}초")
     if got > talkplan.part_max_sec(doc):
-        print(f"⚠️ {got:.1f}초 — 1분을 넘었다")
+        print(f"⚠️ {got:.1f}초 — 벽({talkplan.part_max_sec(doc):.0f}초)을 넘었다")
         return 1
     return 0
 
@@ -606,10 +677,14 @@ def step_build(doc):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("sid")
-    ap.add_argument("what", choices=["plan", "cast", "voice", "clips", "build", "all"])
+    ap.add_argument("what", choices=["plan", "cast", "voice", "clips", "figs", "build", "all"])
+    ap.add_argument("--no-buy", action="store_true",
+                    help="clips — 창고에 없는 컷이 있으면 사지 않고 멈춘다 (0원 보장)")
     ap.add_argument("--full", action="store_true", help="plan — 영상 지문까지 다 보인다")
     ap.add_argument("--only", default="", help="clips — 이 컷만 (예: 2 또는 2,5) · 먼저 한 컷 시험")
     a = ap.parse_args()
+    global NO_BUY
+    NO_BUY = a.no_buy
     sid = a.sid.upper()
     doc = load(sid)
     if a.what == "plan":
@@ -622,6 +697,8 @@ def main():
         return 1
     only = {int(x) for x in a.only.replace(" ", "").split(",") if x}
     if a.what in ("clips", "all") and step_clips(doc, only):
+        return 1
+    if a.what in ("figs", "all") and step_figs(doc):
         return 1
     if a.what in ("build", "all") and step_build(doc):
         return 1

@@ -1,0 +1,412 @@
+{
+ "sid": "S94",
+ "title": "어머니 묘를 파내라",
+ "series_label": "어머니 묘 사건",
+ "format": "drama",
+ "all_video": true,
+ "parts": [
+  {
+   "no": 1,
+   "cuts": [
+    1,
+    15
+   ],
+   "yt_title": "\"묘 옮기세요\" 이복동생이 판 산에서 어머니 묘를 지킨 딸",
+   "card": [
+    "40년 된 어머니 묘를",
+    "파내라는 소장이 왔다"
+   ]
+  }
+ ],
+ "people": {
+  "딸": {
+   "age": "60대",
+   "sex": "여"
+  },
+  "땅주인": {
+   "age": "50대",
+   "sex": "남"
+  },
+  "이복동생": {
+   "age": "40대",
+   "sex": "남"
+  },
+  "새어머니": {
+   "age": "60대",
+   "sex": "여"
+  }
+ },
+ "cast": [
+  {
+   "name": "딸",
+   "sex": "여",
+   "age": 62,
+   "role_en": "the daughter",
+   "face": "round face with soft cheeks, gentle tired eyes, short grey-streaked black hair parted to one side",
+   "build": "small and slightly stooped, ordinary everyday build",
+   "wear": "a plain navy quilted jacket over a cream knit sweater, dark grey trousers and black walking shoes",
+   "voice": "a warm mid-range woman's voice in her sixties, native Korean speaker, quiet and steady with a slight tremble",
+   "intro": "어머니 묘를 지키는 친딸",
+   "alias": "윤정숙"
+  },
+  {
+   "name": "땅주인",
+   "sex": "남",
+   "age": 56,
+   "role_en": "the new landowner",
+   "face": "broad square face, thick dark eyebrows, short receding grey hair",
+   "build": "stocky and broad-shouldered",
+   "wear": "a khaki outdoor windbreaker over a blue checked shirt, dark trousers and brown hiking boots",
+   "voice": "a gruff low man's voice in his fifties, native Korean speaker, blunt and businesslike",
+   "intro": "산을 새로 산 사람",
+   "alias": "오병철"
+  },
+  {
+   "name": "이복동생",
+   "sex": "남",
+   "age": 43,
+   "role_en": "the half-brother",
+   "face": "long narrow face, sharp narrow eyes, neat short black hair with a side part",
+   "build": "tall and lean",
+   "wear": "a dark brown leather jacket over a black polo shirt, beige trousers and brown loafers",
+   "voice": "a smooth mid-range man's voice in his forties, native Korean speaker, offhand and cool",
+   "intro": "아버지가 밖에서 낳은 아들",
+   "alias": "윤기철"
+  },
+  {
+   "name": "새어머니",
+   "sex": "여",
+   "age": 68,
+   "role_en": "the stepmother",
+   "face": "long oval face, thin arched eyebrows, sharp eyes, short permed hair dyed dark reddish brown",
+   "build": "slim and upright",
+   "wear": "a black wool coat over a black blouse, a single strand of pearls and black low heels",
+   "voice": "a low husky woman's voice in her sixties, native Korean speaker, cool and unhurried, noticeably deeper and slower than the others",
+   "intro": "이복동생의 친엄마",
+   "alias": "한옥자"
+  }
+ ],
+ "cuts": [
+  {
+   "n": 1,
+   "kind": "나레이션",
+   "narr": true,
+   "turns": [
+    [
+     "나레이션",
+     "산을 새로 산 땅주인이 딸에게 소장을 보냈습니다. 어머니 묘를 파내라는 겁니다."
+    ]
+   ],
+   "who": [
+    "딸"
+   ],
+   "text": "산을 새로 산 땅주인이 딸에게 소장을 보냈습니다. 어머니 묘를 파내라는 겁니다.",
+   "scene": "딸 kneels beside a grassy grave mound with a low stone table and a pair of short stone pillars on a pine-covered hillside in autumn, holding a folded document in both hands",
+   "place": "산소",
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "sec": 8.6
+  },
+  {
+   "n": 2,
+   "kind": "땅주인",
+   "narr": false,
+   "turns": [
+    [
+     "땅주인",
+     "이제 제 산입니다. 묘 옮기세요."
+    ]
+   ],
+   "who": [
+    "땅주인",
+    "딸"
+   ],
+   "text": "이제 제 산입니다. 묘 옮기세요.",
+   "scene": "땅주인 stands on the hillside path beside the grave mound facing 딸, one hand pointing at the mound",
+   "place": "산소",
+   "say": [
+    "50대 남성이, 귀찮다는 듯 힘을 빼고 툭 던지듯"
+   ],
+   "sec": 4.2
+  },
+  {
+   "n": 3,
+   "kind": "딸",
+   "narr": false,
+   "turns": [
+    [
+     "딸",
+     "어머니가 사십 년 넘게 계신 곳이에요."
+    ]
+   ],
+   "who": [
+    "딸",
+    "땅주인"
+   ],
+   "text": "어머니가 사십 년 넘게 계신 곳이에요.",
+   "scene": "딸 stands by the grave mound facing 땅주인, one hand resting on the low stone table",
+   "place": "산소",
+   "say": [
+    "60대 여성이, 목이 메어 말끝이 조금 흔들리는 낮은 목소리로"
+   ],
+   "sec": 4.7
+  },
+  {
+   "n": 4,
+   "kind": "나레이션",
+   "narr": true,
+   "turns": [
+    [
+     "나레이션",
+     "산을 처음 판 사람은 이복동생. 아버지가 밖에서 낳은 아들이었습니다."
+    ]
+   ],
+   "who": [
+    "이복동생"
+   ],
+   "text": "산을 처음 판 사람은 이복동생. 아버지가 밖에서 낳은 아들이었습니다.",
+   "scene": "이복동생 sits at a plain desk in a small quiet office and slides a folded document across the desk with two fingers",
+   "place": "사무실",
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "sec": 7.7
+  },
+  {
+   "n": 5,
+   "kind": "나레이션",
+   "narr": true,
+   "turns": [
+    [
+     "나레이션",
+     "아버지는 그를 어머니 아들로 호적에 올렸고, 1996년엔 이 산까지 물려줬습니다."
+    ]
+   ],
+   "who": [
+    "이복동생"
+   ],
+   "text": "아버지는 그를 어머니 아들로 호적에 올렸고, 1996년엔 이 산까지 물려줬습니다.",
+   "scene": "이복동생 sits on the wooden floor of an old Korean house beside a low wooden cabinet, turning a worn folded document over in his hands",
+   "place": "옛집",
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "sec": 9.0
+  },
+  {
+   "n": 6,
+   "kind": "나레이션",
+   "narr": true,
+   "turns": [
+    [
+     "나레이션",
+     "이복동생은 아버지가 숨지기 두 달 전, 그 산을 팔아 버렸습니다."
+    ]
+   ],
+   "who": [
+    "이복동생"
+   ],
+   "text": "이복동생은 아버지가 숨지기 두 달 전, 그 산을 팔아 버렸습니다.",
+   "scene": "이복동생 leans back in his chair in the small office and looks out of the window with a cool, unreadable face",
+   "place": "사무실",
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "sec": 7.1
+  },
+  {
+   "n": 7,
+   "kind": "나레이션",
+   "narr": true,
+   "turns": [
+    [
+     "나레이션",
+     "아버지가 떠난 날부터 이복동생의 친엄마인 새어머니가 딸에게 1억 5천을 보냈습니다."
+    ]
+   ],
+   "who": [
+    "새어머니"
+   ],
+   "text": "아버지가 떠난 날부터 이복동생의 친엄마인 새어머니가 딸에게 1억 5천을 보냈습니다.",
+   "scene": "새어머니 walks slowly down a quiet funeral hall corridor lined with white chrysanthemums, holding a phone against her chest",
+   "place": "장례식장",
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "sec": 9.2
+  },
+  {
+   "n": 8,
+   "kind": "새어머니",
+   "narr": false,
+   "turns": [
+    [
+     "새어머니",
+     "이거 받고, 우리랑 다투지 마라."
+    ]
+   ],
+   "who": [
+    "새어머니",
+    "딸"
+   ],
+   "text": "이거 받고, 우리랑 다투지 마라.",
+   "scene": "새어머니 sits across a low wooden table from 딸 in a quiet tea room with paper sliding doors and pushes a folded document across the table towards her",
+   "place": "장례식장",
+   "say": [
+    "60대 여성이, 옅게 웃음기를 섞어 조용하고 차갑게"
+   ],
+   "sec": 4.2
+  },
+  {
+   "n": 9,
+   "kind": "나레이션",
+   "narr": true,
+   "turns": [
+    [
+     "나레이션",
+     "5년 뒤 법정. 땅주인은 묘의 주인이 딸이 아니라 호적상 아들이라고 했습니다."
+    ]
+   ],
+   "who": [
+    "땅주인"
+   ],
+   "text": "5년 뒤 법정. 땅주인은 묘의 주인이 딸이 아니라 호적상 아들이라고 했습니다.",
+   "scene": "땅주인 stands at the plaintiff's table in a wood-panelled courtroom holding a thick stack of papers, the raised wooden bench soft behind him",
+   "place": "법정",
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "sec": 8.4
+  },
+  {
+   "n": 10,
+   "kind": "땅주인",
+   "narr": false,
+   "turns": [
+    [
+     "땅주인",
+     "1억 5천 받고 묘를 판 거 아닙니까?"
+    ]
+   ],
+   "who": [
+    "땅주인",
+    "딸"
+   ],
+   "text": "1억 5천 받고 묘를 판 거 아닙니까?",
+   "scene": "땅주인 turns from his table in the courtroom towards 딸, who sits at the opposite table",
+   "place": "법정",
+   "say": [
+    "50대 남성이, 조용히 되묻듯 한 마디씩 눌러서 단단하게"
+   ],
+   "sec": 4.5
+  },
+  {
+   "n": 11,
+   "kind": "나레이션",
+   "narr": true,
+   "turns": [
+    [
+     "나레이션",
+     "그런데 그 아들은 산을 팔기 5년 전, 호적의 어머니를 친엄마로 바꿨습니다."
+    ]
+   ],
+   "who": [
+    "이복동생"
+   ],
+   "text": "그런데 그 아들은 산을 팔기 5년 전, 호적의 어머니를 친엄마로 바꿨습니다.",
+   "scene": "이복동생 sits alone at a kitchen table at night under a single hanging lamp, looking down at a folded document in front of him",
+   "place": "이복동생집",
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "sec": 8.2
+  },
+  {
+   "n": 12,
+   "kind": "나레이션",
+   "narr": true,
+   "turns": [
+    [
+     "나레이션",
+     "어머니와 남이 된 겁니다. 법원은 묘를 지킬 권리가 친딸에게 있다고 봤습니다."
+    ]
+   ],
+   "who": [
+    "딸"
+   ],
+   "text": "어머니와 남이 된 겁니다. 법원은 묘를 지킬 권리가 친딸에게 있다고 봤습니다.",
+   "scene": "딸 sits very still at the defendant's table in the courtroom with her hands folded, her eyes slowly closing in relief",
+   "place": "법정",
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "sec": 8.4
+  },
+  {
+   "n": 13,
+   "kind": "나레이션",
+   "narr": true,
+   "turns": [
+    [
+     "나레이션",
+     "1억 5천도 다투지 말자는 돈일 뿐, 묘값이라는 증거는 없었습니다."
+    ]
+   ],
+   "who": [
+    "새어머니",
+    "딸"
+   ],
+   "text": "1억 5천도 다투지 말자는 돈일 뿐, 묘값이라는 증거는 없었습니다.",
+   "scene": "새어머니 sits in the back row of the courtroom with her lips pressed together, 딸 soft in the near foreground",
+   "place": "법정",
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "sec": 7.5
+  },
+  {
+   "n": 14,
+   "kind": "딸",
+   "narr": false,
+   "turns": [
+    [
+     "딸",
+     "엄마, 이제 아무도 못 건드려요."
+    ]
+   ],
+   "who": [
+    "딸"
+   ],
+   "text": "엄마, 이제 아무도 못 건드려요.",
+   "scene": "딸 kneels at the grave mound and wipes the low stone table with a white cloth, speaking softly towards the mound",
+   "place": "산소",
+   "say": [
+    "60대 여성이, 목이 메어 말끝이 조금 흔들리는 낮은 목소리로"
+   ],
+   "sec": 4.2
+  },
+  {
+   "n": 15,
+   "kind": "나레이션",
+   "narr": true,
+   "turns": [
+    [
+     "나레이션",
+     "땅주인은 항소심에서도 졌습니다. 실제로 있었던 사건입니다."
+    ]
+   ],
+   "who": [
+    "딸"
+   ],
+   "text": "땅주인은 항소심에서도 졌습니다. 실제로 있었던 사건입니다.",
+   "scene": "딸 sits quietly beside the grave mound in golden afternoon light, the pine-covered mountain spreading out around her",
+   "place": "산소",
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "sec": 7.1
+  }
+ ],
+ "_note": "S94 v3 (1분 · 15컷 · 2026-10-02) 그대로 — 카메라 계획·영상 지문·이름표 시험용. 지금 S94 는 v5(설명 드라마 · 그림 컷)로 바뀌었다."
+}

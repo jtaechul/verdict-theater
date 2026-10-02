@@ -1239,6 +1239,14 @@ def main(argv=None):
             doc["all_video"] = True
             for cut, sc in zip(cuts, story["cuts"]):
                 cut["place"] = str(sc.get("place") or "")
+                # ⭐ 그림 컷(관계도·연표 · 0원)과 화면 위 대목 표시 (2026-10-02 · S94 v5)
+                for k in ("fig", "chapter"):
+                    if sc.get(k):
+                        cut[k] = sc[k]
+            # ⭐ 말 사이 쉼 · 이름표 「이름 (관계)」 · 끝 화면 글 · 그림 설계 (손님 확정)
+            for k in ("gap", "name_first", "end_note", "figs"):
+                if story.get(k) is not None:
+                    doc[k] = story[k]
     # ⭐⭐⭐ 2026-09-10 — 화면이 값을 **스스로 세지 않게** 여기서 찍어 둔다.
     #    화면은 `706원 × 편 수` 로 어림하고 있었다("편마다 한 컷" 시절 셈).
     #    대사 컷 전부를 영상으로 바꾸자 화면이 2,824원이라 적고 실제로는

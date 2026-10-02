@@ -336,15 +336,15 @@
     ],
     "cuts": [
      1,
-     15
+     30
     ]
    }
   },
-  "script_sig": "00c0e75998bc",
+  "script_sig": "4461160aaca1",
   "title": "어머니 묘를 파내라",
   "label": "어머니 묘 사건",
   "case_id": "190939",
-  "cuts": 15,
+  "cuts": 30,
   "scripted_at": "2026-10-02T11:40:36Z"
  }
 }

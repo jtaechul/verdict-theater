@@ -3,6 +3,9 @@
  "series_label": "어머니 묘 사건",
  "hook": "이복동생이 판 산의 새 주인이 어머니 묘를 파내라 하자, 법원은 친딸 편에 섰다",
  "all_video": true,
+ "sid": "S94",
+ "case_id": "190939",
+ "narr": "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게",
  "cast": [
   {
    "name": "딸",
@@ -13,8 +16,9 @@
    "build": "small and slightly stooped, ordinary everyday build",
    "wear": "a plain navy quilted jacket over a cream knit sweater, dark grey trousers and black walking shoes",
    "voice": "a warm mid-range woman's voice in her sixties, native Korean speaker, quiet and steady with a slight tremble",
-   "intro": "어머니 묘를 지키는 친딸",
-   "alias": "윤정숙"
+   "intro": "묘에 계신 어머니의 친딸",
+   "alias": "윤정숙",
+   "tag": "딸"
   },
   {
    "name": "땅주인",
@@ -26,7 +30,8 @@
    "wear": "a khaki outdoor windbreaker over a blue checked shirt, dark trousers and brown hiking boots",
    "voice": "a gruff low man's voice in his fifties, native Korean speaker, blunt and businesslike",
    "intro": "산을 새로 산 사람",
-   "alias": "오병철"
+   "alias": "오병철",
+   "tag": "땅주인"
   },
   {
    "name": "이복동생",
@@ -37,8 +42,9 @@
    "build": "tall and lean",
    "wear": "a dark brown leather jacket over a black polo shirt, beige trousers and brown loafers",
    "voice": "a smooth mid-range man's voice in his forties, native Korean speaker, offhand and cool",
-   "intro": "아버지가 밖에서 낳은 아들",
-   "alias": "윤기철"
+   "intro": "아버지와 한옥자 씨의 아들",
+   "alias": "윤기철",
+   "tag": "배다른 남동생"
   },
   {
    "name": "새어머니",
@@ -49,36 +55,52 @@
    "build": "slim and upright",
    "wear": "a black wool coat over a black blouse, a single strand of pearls and black low heels",
    "voice": "a low husky woman's voice in her sixties, native Korean speaker, cool and unhurried, noticeably deeper and slower than the others",
-   "intro": "이복동생의 친엄마",
-   "alias": "한옥자"
+   "intro": "윤기철 씨의 친어머니",
+   "alias": "한옥자",
+   "tag": "새어머니"
   }
  ],
  "cuts": [
   {
-   "n": 1,
    "place": "산소",
-   "who": [
-    "딸"
-   ],
    "turns": [
     [
      "나레이션",
-     "산을 새로 산 땅주인이 딸에게 소장을 보냈습니다. 어머니 묘를 파내라는 겁니다."
+     "경기도 용인의 한 야산. 이곳엔 1969년 세상을 떠난 윤정숙 씨 어머니의 묘가 있습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "딸 sits quietly beside the grave mound in golden afternoon light, the pine-covered mountain spreading out around her",
+   "who": [
+    "딸"
+   ],
+   "chapter": "사건",
+   "n": 1,
+   "sec": 6.0
+  },
+  {
+   "place": "산소",
+   "turns": [
+    [
+     "나레이션",
+     "그런데 2011년, 산을 새로 산 땅주인이 어머니 묘를 파내 달라며 윤정숙 씨를 상대로 소송을 겁니다."
     ]
    ],
    "say": [
     "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
    ],
    "scene": "딸 kneels beside a grassy grave mound with a low stone table and a pair of short stone pillars on a pine-covered hillside in autumn, holding a folded document in both hands",
-   "sec": 8.6
-  },
-  {
-   "n": 2,
-   "place": "산소",
    "who": [
-    "땅주인",
     "딸"
    ],
+   "chapter": "사건",
+   "n": 2,
+   "sec": 6.7
+  },
+  {
+   "place": "산소",
    "turns": [
     [
      "땅주인",
@@ -89,15 +111,16 @@
     "50대 남성이, 귀찮다는 듯 힘을 빼고 툭 던지듯"
    ],
    "scene": "땅주인 stands on the hillside path beside the grave mound facing 딸, one hand pointing at the mound",
-   "sec": 4.2
+   "who": [
+    "땅주인",
+    "딸"
+   ],
+   "chapter": "사건",
+   "n": 3,
+   "sec": 2.6
   },
   {
-   "n": 3,
    "place": "산소",
-   "who": [
-    "딸",
-    "땅주인"
-   ],
    "turns": [
     [
      "딸",
@@ -108,87 +131,300 @@
     "60대 여성이, 목이 메어 말끝이 조금 흔들리는 낮은 목소리로"
    ],
    "scene": "딸 stands by the grave mound facing 땅주인, one hand resting on the low stone table",
-   "sec": 4.7
+   "who": [
+    "딸",
+    "땅주인"
+   ],
+   "chapter": "사건",
+   "n": 4,
+   "sec": 2.9
   },
   {
-   "n": 4,
-   "place": "사무실",
-   "who": [
-    "이복동생"
-   ],
+   "place": "그림",
    "turns": [
     [
      "나레이션",
-     "산을 처음 판 사람은 이복동생. 아버지가 밖에서 낳은 아들이었습니다."
+     "사연은 40여 년 전으로 거슬러 올라갑니다."
     ]
    ],
    "say": [
     "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
    ],
-   "scene": "이복동생 sits at a plain desk in a small quiet office and slides a folded document across the desk with two fingers",
-   "sec": 7.7
+   "scene": "",
+   "who": [],
+   "fig": {
+    "id": "intro",
+    "add": [
+     [
+      "card",
+      ""
+     ]
+    ]
+   },
+   "n": 5,
+   "sec": 3.3
   },
   {
-   "n": 5,
-   "place": "옛집",
-   "who": [
-    "이복동생"
-   ],
+   "place": "그림",
    "turns": [
     [
      "나레이션",
-     "아버지는 그를 어머니 아들로 호적에 올렸고, 1996년엔 이 산까지 물려줬습니다."
+     "윤정숙 씨의 아버지에게는 아내 말고도 내연녀 한옥자 씨가 있었습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "",
+   "who": [],
+   "fig": {
+    "id": "family",
+    "add": [
+     [
+      "heading",
+      ""
+     ],
+     [
+      "legend",
+      ""
+     ],
+     [
+      "child1",
+      ""
+     ],
+     [
+      "father",
+      "아버지"
+     ],
+     [
+      "mother",
+      "아내"
+     ],
+     [
+      "line_fm",
+      "아내"
+     ],
+     [
+      "line_m1",
+      "아내"
+     ],
+     [
+      "other",
+      "내연녀"
+     ],
+     [
+      "line_fo",
+      "내연녀"
+     ],
+     [
+      "rel_fo",
+      "내연녀"
+     ],
+     [
+      "other_label",
+      "한옥자"
+     ]
+    ]
+   },
+   "n": 6,
+   "sec": 4.9
+  },
+  {
+   "place": "그림",
+   "turns": [
+    [
+     "나레이션",
+     "1968년, 두 사람 사이에서 윤정숙 씨의 배다른 남동생, 윤기철 씨가 태어납니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "",
+   "who": [],
+   "fig": {
+    "id": "family",
+    "add": [
+     [
+      "child2",
+      "윤기철"
+     ],
+     [
+      "line_o2",
+      "윤기철"
+     ]
+    ]
+   },
+   "n": 7,
+   "sec": 5.7
+  },
+  {
+   "place": "그림",
+   "turns": [
+    [
+     "나레이션",
+     "그런데 아버지는 출생 신고를 하면서, 어머니 칸에 한옥자 씨가 아닌 본처, 윤정숙 씨 어머니의 이름을 올립니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "",
+   "who": [],
+   "fig": {
+    "id": "family",
+    "add": [
+     [
+      "paper",
+      "본처"
+     ]
+    ]
+   },
+   "n": 8,
+   "sec": 7.3
+  },
+  {
+   "place": "그림",
+   "turns": [
+    [
+     "나레이션",
+     "서류상으로는 윤정숙 씨의 친동생이 된 셈입니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "",
+   "who": [],
+   "fig": {
+    "id": "family",
+    "add": [
+     [
+      "sibling",
+      "친동생"
+     ]
+    ]
+   },
+   "n": 9,
+   "sec": 3.6
+  },
+  {
+   "place": "그림",
+   "turns": [
+    [
+     "나레이션",
+     "이듬해 윤정숙 씨의 어머니가 세상을 떠났고, 아버지는 자신의 산에 아내를 묻었습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "",
+   "who": [],
+   "fig": {
+    "id": "family",
+    "add": [
+     [
+      "mother_gone",
+      "세상을"
+     ],
+     [
+      "grave",
+      "묻었습니다"
+     ]
+    ]
+   },
+   "n": 10,
+   "sec": 5.9
+  },
+  {
+   "place": "그림",
+   "turns": [
+    [
+     "나레이션",
+     "4년 뒤 아버지는 한옥자 씨와 재혼했고, 한옥자 씨는 윤정숙 씨의 새어머니가 됩니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "",
+   "who": [],
+   "fig": {
+    "id": "family",
+    "add": [
+     [
+      "remarry",
+      "재혼"
+     ],
+     [
+      "other_new",
+      "새어머니"
+     ]
+    ]
+   },
+   "n": 11,
+   "sec": 5.7
+  },
+  {
+   "place": "옛집",
+   "turns": [
+    [
+     "나레이션",
+     "세월이 흘러 1996년, 아버지는 아내의 묘가 있는 이 산을 아들 윤기철 씨에게 물려줍니다."
     ]
    ],
    "say": [
     "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
    ],
    "scene": "이복동생 sits on the wooden floor of an old Korean house beside a low wooden cabinet, turning a worn folded document over in his hands",
-   "sec": 9.0
-  },
-  {
-   "n": 6,
-   "place": "사무실",
    "who": [
     "이복동생"
    ],
+   "chapter": "산과 돈",
+   "n": 12,
+   "sec": 6.1
+  },
+  {
+   "place": "사무실",
    "turns": [
     [
      "나레이션",
-     "이복동생은 아버지가 숨지기 두 달 전, 그 산을 팔아 버렸습니다."
+     "그런데 2006년, 윤기철 씨는 이 산을 팔아 버립니다. 아버지가 세상을 떠나기 두 달 전이었습니다."
     ]
    ],
    "say": [
     "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
    ],
-   "scene": "이복동생 leans back in his chair in the small office and looks out of the window with a cool, unreadable face",
-   "sec": 7.1
+   "scene": "이복동생 sits at a plain desk in a small quiet office and slides a folded document across the desk with two fingers",
+   "who": [
+    "이복동생"
+   ],
+   "chapter": "산과 돈",
+   "n": 13,
+   "sec": 6.7
   },
   {
-   "n": 7,
    "place": "장례식장",
-   "who": [
-    "새어머니"
-   ],
    "turns": [
     [
      "나레이션",
-     "아버지가 떠난 날부터 이복동생의 친엄마인 새어머니가 딸에게 1억 5천을 보냈습니다."
+     "그리고 아버지가 세상을 떠난 바로 그날, 새어머니 한옥자 씨가 윤정숙 씨에게 4천만 원을 보냅니다."
     ]
    ],
    "say": [
     "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
    ],
    "scene": "새어머니 walks slowly down a quiet funeral hall corridor lined with white chrysanthemums, holding a phone against her chest",
-   "sec": 9.2
+   "who": [
+    "새어머니"
+   ],
+   "chapter": "산과 돈",
+   "n": 14,
+   "sec": 6.6
   },
   {
-   "n": 8,
    "place": "장례식장",
-   "who": [
-    "새어머니",
-    "딸"
-   ],
    "turns": [
     [
      "새어머니",
@@ -199,106 +435,455 @@
     "60대 여성이, 옅게 웃음기를 섞어 조용하고 차갑게"
    ],
    "scene": "새어머니 sits across a low wooden table from 딸 in a quiet tea room with paper sliding doors and pushes a folded document across the table towards her",
-   "sec": 4.2
+   "who": [
+    "새어머니",
+    "딸"
+   ],
+   "chapter": "산과 돈",
+   "n": 15,
+   "sec": 2.6
   },
   {
-   "n": 9,
-   "place": "법정",
-   "who": [
-    "땅주인"
-   ],
+   "place": "그림",
    "turns": [
     [
      "나레이션",
-     "5년 뒤 법정. 땅주인은 묘의 주인이 딸이 아니라 호적상 아들이라고 했습니다."
+     "두 달여 동안 세 번, 모두 1억 5천만 원. 조건은 확인서에 적었습니다. '한옥자, 윤기철 모자와 법적으로 다투지 않는다.'"
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "",
+   "who": [],
+   "fig": {
+    "id": "timeline",
+    "add": [
+     [
+      "heading",
+      ""
+     ],
+     [
+      "r1969",
+      ""
+     ],
+     [
+      "r1996",
+      ""
+     ],
+     [
+      "r2006a",
+      ""
+     ],
+     [
+      "r2006b",
+      "두 달여"
+     ],
+     [
+      "card",
+      "확인서"
+     ]
+    ]
+   },
+   "n": 16,
+   "sec": 8.1
+  },
+  {
+   "place": "그림",
+   "turns": [
+    [
+     "나레이션",
+     "윤기철 씨가 판 산은 2008년 한 번 더 팔렸고, 이때 산을 산 사람 중 한 명이 바로 오병철 씨입니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "",
+   "who": [],
+   "fig": {
+    "id": "timeline",
+    "add": [
+     [
+      "r2008",
+      "2008년"
+     ],
+     [
+      "owner",
+      "오병철"
+     ]
+    ]
+   },
+   "n": 17,
+   "sec": 6.4
+  },
+  {
+   "place": "법정",
+   "turns": [
+    [
+     "나레이션",
+     "다시 2011년. 산 주인이라도 남의 묘를 마음대로 파낼 수는 없습니다."
     ]
    ],
    "say": [
     "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
    ],
    "scene": "땅주인 stands at the plaintiff's table in a wood-panelled courtroom holding a thick stack of papers, the raised wooden bench soft behind him",
-   "sec": 8.4
+   "who": [
+    "땅주인"
+   ],
+   "chapter": "재판",
+   "n": 18,
+   "sec": 5.0
   },
   {
-   "n": 10,
-   "place": "법정",
-   "who": [
-    "땅주인",
-    "딸"
-   ],
-   "turns": [
-    [
-     "땅주인",
-     "1억 5천 받고 묘를 판 거 아닙니까?"
-    ]
-   ],
-   "say": [
-    "50대 남성이, 조용히 되묻듯 한 마디씩 눌러서 단단하게"
-   ],
-   "scene": "땅주인 turns from his table in the courtroom towards 딸, who sits at the opposite table",
-   "sec": 4.5
-  },
-  {
-   "n": 11,
-   "place": "이복동생집",
-   "who": [
-    "이복동생"
-   ],
+   "place": "그림",
    "turns": [
     [
      "나레이션",
-     "그런데 그 아들은 산을 팔기 5년 전, 호적의 어머니를 친엄마로 바꿨습니다."
+     "묘를 지킬 권리는 그 묘의 제사를 모시는 사람에게 있기 때문입니다. 재판의 쟁점은 결국, 어머니의 제사를 모실 사람이 누구냐였습니다."
     ]
    ],
    "say": [
     "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
    ],
-   "scene": "이복동생 sits alone at a kitchen table at night under a single hanging lamp, looking down at a folded document in front of him",
-   "sec": 8.2
+   "scene": "",
+   "who": [],
+   "fig": {
+    "id": "issue",
+    "add": [
+     [
+      "heading",
+      ""
+     ],
+     [
+      "suit",
+      ""
+     ],
+     [
+      "rule",
+      "묘를"
+     ],
+     [
+      "question",
+      "쟁점은"
+     ],
+     [
+      "cands",
+      "누구냐"
+     ]
+    ]
+   },
+   "n": 19,
+   "sec": 8.7
   },
   {
-   "n": 12,
-   "place": "법정",
-   "who": [
-    "딸"
-   ],
+   "place": "그림",
    "turns": [
     [
      "나레이션",
-     "어머니와 남이 된 겁니다. 법원은 묘를 지킬 권리가 친딸에게 있다고 봤습니다."
+     "오병철 씨는 그 사람이 윤정숙 씨가 아니라며, 두 가지를 주장했습니다."
     ]
    ],
    "say": [
     "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
    ],
-   "scene": "딸 sits very still at the defendant's table in the courtroom with her hands folded, her eyes slowly closing in relief",
-   "sec": 8.4
+   "scene": "",
+   "who": [],
+   "fig": {
+    "id": "issue",
+    "add": [
+     [
+      "claim_no",
+      "아니라며"
+     ]
+    ]
+   },
+   "n": 20,
+   "sec": 4.9
   },
   {
-   "n": 13,
-   "place": "법정",
-   "who": [
-    "새어머니",
-    "딸"
-   ],
+   "place": "그림",
    "turns": [
     [
      "나레이션",
-     "1억 5천도 다투지 말자는 돈일 뿐, 묘값이라는 증거는 없었습니다."
+     "첫째, 제사는 아들이 모시는 법. 어머니가 묻힐 당시 호적상 아들은 윤기철 씨였으니, 권리도 윤기철 씨에게 있다는 겁니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "",
+   "who": [],
+   "fig": {
+    "id": "family",
+    "add": [
+     [
+      "claim1",
+      "첫째"
+     ],
+     [
+      "claim1_glow",
+      "호적상"
+     ]
+    ]
+   },
+   "n": 21,
+   "sec": 8.0
+  },
+  {
+   "place": "그림",
+   "turns": [
+    [
+     "나레이션",
+     "둘째, 설령 윤정숙 씨에게 권리가 있더라도, 1억 5천만 원을 받고 그 권리를 포기하기로 약속했다는 겁니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "",
+   "who": [],
+   "fig": {
+    "id": "money",
+    "add": [
+     [
+      "heading",
+      ""
+     ],
+     [
+      "people",
+      ""
+     ],
+     [
+      "flow",
+      "1억"
+     ],
+     [
+      "claim",
+      "포기하기로"
+     ]
+    ]
+   },
+   "n": 22,
+   "sec": 7.1
+  },
+  {
+   "place": "법정",
+   "turns": [
+    [
+     "나레이션",
+     "한옥자 씨도 그렇게 증언했습니다."
     ]
    ],
    "say": [
     "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
    ],
    "scene": "새어머니 sits in the back row of the courtroom with her lips pressed together, 딸 soft in the near foreground",
-   "sec": 7.5
+   "who": [
+    "새어머니",
+    "딸"
+   ],
+   "chapter": "재판 · 땅주인 주장 ②",
+   "n": 23,
+   "sec": 2.7
   },
   {
-   "n": 14,
-   "place": "산소",
+   "place": "이복동생집",
+   "turns": [
+    [
+     "나레이션",
+     "원칙대로라면 아들인 윤기철 씨가 제사를 모시는 게 맞습니다. 하지만 법원은 특별한 사정에 주목했습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "이복동생 sits alone at a kitchen table at night under a single hanging lamp, looking down at a folded document in front of him",
+   "who": [
+    "이복동생"
+   ],
+   "chapter": "법원의 판단",
+   "n": 24,
+   "sec": 7.0
+  },
+  {
+   "place": "그림",
+   "turns": [
+    [
+     "나레이션",
+     "2001년, 윤기철 씨는 스스로 '나는 윤정숙 씨 어머니의 친아들이 아니다'라는 판결을 받아, 호적의 어머니를 한옥자 씨로 고쳤습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "",
+   "who": [],
+   "fig": {
+    "id": "paper",
+    "add": [
+     [
+      "heading",
+      ""
+     ],
+     [
+      "son",
+      ""
+     ],
+     [
+      "slots",
+      ""
+     ],
+     [
+      "link_paper",
+      ""
+     ],
+     [
+      "link_real",
+      ""
+     ],
+     [
+      "year",
+      "2001년"
+     ],
+     [
+      "ruling",
+      "판결을"
+     ],
+     [
+      "fix",
+      "고쳤습니다"
+     ]
+    ]
+   },
+   "n": 25,
+   "sec": 9.0
+  },
+  {
+   "place": "그림",
+   "turns": [
+    [
+     "나레이션",
+     "서류상으로도 윤정숙 씨 어머니와 남남이 된 거죠."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "",
+   "who": [],
+   "fig": {
+    "id": "paper",
+    "add": [
+     [
+      "broken",
+      "남남"
+     ]
+    ]
+   },
+   "n": 26,
+   "sec": 3.6
+  },
+  {
+   "place": "법정",
+   "turns": [
+    [
+     "나레이션",
+     "법원은 스스로 남남이 된 윤기철 씨는 제사를 모실 수 없고, 친딸 윤정숙 씨가 제사를 모시며 묘를 지켜야 한다고 판단했습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "딸 sits very still at the defendant's table in the courtroom with her hands folded, her eyes slowly closing in relief",
    "who": [
     "딸"
    ],
+   "chapter": "법원의 판단",
+   "n": 27,
+   "sec": 8.0
+  },
+  {
+   "place": "그림",
+   "turns": [
+    [
+     "나레이션",
+     "1억 5천만 원도 마찬가지. 확인서엔 '다투지 않는다'는 조건뿐 묘 이야기는 없었고, 법원은 한옥자 씨의 증언도 믿기 어렵다고 봤습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "",
+   "who": [],
+   "fig": {
+    "id": "money",
+    "add": [
+     [
+      "doc",
+      "확인서엔"
+     ],
+     [
+      "nograve",
+      "묘 이야기는"
+     ],
+     [
+      "cross",
+      "없었고"
+     ],
+     [
+      "testimony",
+      "증언도"
+     ]
+    ]
+   },
+   "n": 28,
+   "sec": 9.0
+  },
+  {
+   "place": "그림",
+   "turns": [
+    [
+     "나레이션",
+     "결국 오병철 씨는 1심에 이어 항소심에서도 졌습니다. 어머니의 묘는 그 자리에 그대로 남게 됐습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "",
+   "who": [],
+   "fig": {
+    "id": "verdict",
+    "add": [
+     [
+      "heading",
+      ""
+     ],
+     [
+      "row1",
+      ""
+     ],
+     [
+      "row2",
+      ""
+     ],
+     [
+      "lose",
+      "졌습니다"
+     ],
+     [
+      "stay",
+      "그대로"
+     ]
+    ]
+   },
+   "n": 29,
+   "sec": 6.7
+  },
+  {
+   "place": "산소",
    "turns": [
     [
      "딸",
@@ -309,31 +894,64 @@
     "60대 여성이, 목이 메어 말끝이 조금 흔들리는 낮은 목소리로"
    ],
    "scene": "딸 kneels at the grave mound and wipes the low stone table with a white cloth, speaking softly towards the mound",
-   "sec": 4.2
-  },
-  {
-   "n": 15,
-   "place": "산소",
    "who": [
     "딸"
    ],
-   "turns": [
-    [
-     "나레이션",
-     "땅주인은 항소심에서도 졌습니다. 실제로 있었던 사건입니다."
-    ]
-   ],
-   "say": [
-    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
-   ],
-   "scene": "딸 sits quietly beside the grave mound in golden afternoon light, the pine-covered mountain spreading out around her",
-   "sec": 7.1
+   "chapter": "결과",
+   "n": 30,
+   "sec": 2.6
   }
  ],
- "sid": "S94",
- "case_id": "190939",
- "narr": "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게",
+ "gap": 0.5,
+ "name_first": true,
+ "end_note": "실제 판결을 재구성했습니다 · 등장인물 이름은 모두 가명입니다",
+ "figs": {
+  "intro": {
+   "type": "card",
+   "bg": 15,
+   "text": "40여 년 전",
+   "sub": "1968년"
+  },
+  "family": {
+   "type": "family",
+   "bg": 3
+  },
+  "timeline": {
+   "type": "timeline",
+   "bg": 7
+  },
+  "issue": {
+   "type": "issue",
+   "bg": 9
+  },
+  "money": {
+   "type": "money",
+   "bg": 13
+  },
+  "paper": {
+   "type": "paper",
+   "bg": 11
+  },
+  "verdict": {
+   "type": "verdict",
+   "bg": 12
+  }
+ },
  "format": "drama",
+ "parts": [
+  {
+   "no": 1,
+   "cuts": [
+    1,
+    30
+   ],
+   "yt_title": "\"묘 옮기세요\" 이복동생이 판 산에서 어머니 묘를 지킨 딸",
+   "card": [
+    "40년 된 어머니 묘를",
+    "파내라는 소장이 왔다"
+   ]
+  }
+ ],
  "people": {
   "딸": {
    "age": "60대",
@@ -351,19 +969,5 @@
    "age": "60대",
    "sex": "여"
   }
- },
- "parts": [
-  {
-   "no": 1,
-   "cuts": [
-    1,
-    15
-   ],
-   "yt_title": "\"묘 옮기세요\" 이복동생이 판 산에서 어머니 묘를 지킨 딸",
-   "card": [
-    "40년 된 어머니 묘를",
-    "파내라는 소장이 왔다"
-   ]
-  }
- ]
+ }
 }

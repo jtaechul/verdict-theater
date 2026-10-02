@@ -699,14 +699,28 @@ def sentences(t):
     return [x.strip() for x in re.split(r"(?<=[.?!])\s+", str(t or "")) if x.strip()]
 
 
+# ⭐ 2026-10-02 (S94 v5 · 손님 확정 대본) — 우리말 나레이션에서 흔한 세 모양은 주어가 없어도
+#    누구 이야기인지 분명하다. 이것까지 걸면 손님이 고른 자연스러운 문장을 고치게 된다.
+#      · 이름 + 씨도/씨만  — 「한옥자 씨도 그렇게 증언했습니다.」 (도·만도 주어 자리다)
+#      · 말끝이 서술어가 아닌 마디 — 「경기도 용인의 한 야산.」 「모두 1억 5천만 원.」
+#      · 따옴표로 묶은 인용 — 「'한옥자, 윤기철 모자와 법적으로 다투지 않는다.'」
+SUBJ_ALSO = re.compile(r"씨(?:도|만)(?=\s|,|$)")
+PRED_END = ("다", "요", "죠", "까", "네", "군")
+
+
 def needs_subject(one):
     """이 문장이 **주어를 밝혀야 하는데 안 밝혔는가**."""
     t = one.strip()
     if len(re.sub(r"[^가-힣]", "", t)) < 6:      # 아주 짧은 말은 안 본다
         return False
-    if t.rstrip(".!?").endswith(COPULA):         # 무엇인지를 밝히는 문장
+    core = t.rstrip(".!?…")
+    if core[:1] in "'\"‘“" or core[-1:] in "'\"’”":   # 인용
         return False
-    return not SUBJ.search(t + " ")
+    if not core.endswith(PRED_END):              # 서술어로 안 끝나는 마디 (무엇·얼마)
+        return False
+    if core.endswith(COPULA):                    # 무엇인지를 밝히는 문장
+        return False
+    return not (SUBJ.search(t + " ") or SUBJ_ALSO.search(t + " "))
 
 
 # 기본 다섯의 **나이 기본값**. 대본이 안 적어 줬을 때만 쓴다.
@@ -740,10 +754,14 @@ DRAMA_TALK_MIN, DRAMA_TALK_MAX = 7, 10      # 대사 컷(= 옴니 영상) 수
 #    "대사 사이사이에 쉬는 공간 없이" · "화소는 360p" — **1분 전부 영상 드라마** (all_video).
 #    2분 드라마의 짜임(한 컷 한 줄 · cast · 나레이션 컷에도 얼굴)은 그대로 두고, 길이와
 #    대사 컷 수만 1분에 맞춘다. 모든 컷이 옴니 360p 9:16 영상이다 (tools/drama60.py).
+# ⭐⭐⭐ 2026-10-02 손님: "60초가 넘어도 돼 … 말과 말 사이에 0.5초 정도는 남겨도 괜찮아.
+#    그런건 규칙에 걸지마. 60초가 넘더라도 확실하게 이해를 시킬 수 있게끔 해줘."
+#    → 1분 벽을 푼다. 남는 벽은 **유튜브 쇼츠 한도(3분)** 하나뿐이다 (넘으면 쇼츠가 아니다).
+#      컷 수·글자 수도 이해에 필요한 만큼 (S94 v5: 30컷 · 약 2분 50초).
 DRAMA60_RULES = {
-    "PART_MIN_CUTS": 13, "PART_MAX_CUTS": 18,
-    "PART_SEC_MAX": 58.0, "PART_SEC_MIN": 45.0,
-    "PART_CHARS": 430, "PART_CHARS_MIN": 300,
+    "PART_MIN_CUTS": 13, "PART_MAX_CUTS": 40,
+    "PART_SEC_MAX": 172.0, "PART_SEC_MIN": 45.0,
+    "PART_CHARS": 1500, "PART_CHARS_MIN": 300,
     "NARR_MIN_PER_PART": 6,
     "ELLIPSIS_MAX": 3,
 }
@@ -754,6 +772,7 @@ DRAMA60_TALK_MIN, DRAMA60_TALK_MAX = 4, 7
 #   못 쓰고 버리게 만들었다. 실측에 조금 넉넉히 맞춘다.
 SEC60_PER_CHAR = 0.142
 SEC60_PER_CUT = 0.15
+GAP_TIGHT = 0.12                      # short90.PAD_TIGHT 와 같다 (기본 말 사이)
 DRAMA_LINE_MIN, DRAMA_LINE_MAX = 6, 32      # 대사 한 줄 글자 (프롬프트는 12~30 을 겨냥)
 DRAMA_CAST_MIN, DRAMA_CAST_MAX = 2, 6
 # ⭐⭐⭐ 2026-10-01 손님: "나레이션컷에서도 등장인물 얼굴 나오는거로 반영해."
@@ -772,7 +791,9 @@ CAST_KEYS = ("name", "sex", "age", "role_en", "face", "build", "wear", "voice")
 # ⭐ 2026-10-02 손님: "처음보는 사람이 보아도 스토리 전개를 이해하고 공감할 수 있도록"
 #    인물이 **처음 나오는 컷**에 이름표와 함께 관계 한 줄을 띄운다 (short90 · 이름 · 관계).
 #    예) 이복동생 → "아버지가 밖에서 낳은 아들". 없어도 되지만 있으면 짧게(INTRO_MAX 자).
-CAST_OPT = ("intro", "alias")
+CAST_OPT = ("intro", "alias", "tag")
+# ⭐ 이름표에 괄호로 붙일 관계 (없으면 name) — 「윤기철 (배다른 남동생)」 (2026-10-02)
+TAG_MAX = 8
 INTRO_MAX = 16
 # ⭐ 2026-10-02 손님: "등장인물 구분 옆에 괄호넣고 각각의 이름도 넣어줘."
 #    이름표가 "딸 (윤정숙)" 이 된다. 판결문에는 실명이 없다(소외1 · 피고2) — **가명**을 짓고
@@ -985,6 +1006,9 @@ def check_drama(doc, new=True):
         al = str(p.get("alias") or "")
         if al and not re.fullmatch(ALIAS_RE, al):
             bad.append(f"인물 '{nm}' 의 가명(alias)은 한글 2~4자 ({al})")
+        tg = str(p.get("tag") or "")
+        if tg and (len(re.sub(r"\s", "", tg)) > TAG_MAX or not re.search(r"[가-힣]", tg)):
+            bad.append(f"인물 '{nm}' 의 이름표 관계(tag)는 한국어 {TAG_MAX}자 안으로 ({tg})")
         it = str(p.get("intro") or "")
         if it and (len(re.sub(r"\s", "", it)) > INTRO_MAX or not re.search(r"[가-힣]", it)):
             bad.append(f"인물 '{nm}' 의 관계 한 줄(intro)은 한국어 {INTRO_MAX}자 안으로 "
@@ -1029,6 +1053,9 @@ def check_drama(doc, new=True):
         if not is_narr_cut(c):
             continue
         on = [w for w in (c.get("who") or []) if w in names]
+        # ⭐ 그림 컷(관계도·연표 등 · 0원)은 사람 얼굴 대신 그림이 설명한다 (2026-10-02)
+        if not on and c.get("fig"):
+            continue
         if not on:
             bad.append(f"컷{c.get('n')}: 나레이션 컷 화면에 등장인물이 없다 — "
                        f"나레이션 컷에도 그 순간의 인물 얼굴이 나온다 (who 에 넣는다)")
@@ -1048,8 +1075,12 @@ def check_drama(doc, new=True):
         bad.append(f"증거 확대가 {ins_n}개다 — 한 편에 {DRAMA_INSERT_MAX}개까지")
     if cuts:
         last = (cuts[-1].get("turns") or [["", ""]])[0]
-        if last[0] != "나레이션" or "실제로 있었던 사건" not in str(last[1]):
-            bad.append("마지막 컷은 나레이션 「실제로 있었던 사건입니다.」 로 맺는다")
+        # ⭐ 끝 화면 글(end_note)에 '실제' 판결이라고 적으면 그것으로 갈음한다 (S94 v5 —
+        #    손님이 고른 대본은 딸의 한마디로 끝난다 · 끝 화면에 "실제 판결을 재구성했습니다")
+        said = last[0] == "나레이션" and "실제로 있었던 사건" in str(last[1])
+        if not said and "실제" not in str(doc.get("end_note") or ""):
+            bad.append("마지막 컷은 나레이션 「실제로 있었던 사건입니다.」 로 맺는다 "
+                       "(또는 끝 화면 글 end_note 에 실제 판결이라고 적는다)")
     # ⭐ 값은 **사기 전에** 본다 — 대사 영상값이 한 번 실행 한도를 넘으면
     #    만들다 멈춘다 (만든 것은 남지만 손님이 두 번 누르셔야 한다)
     try:
@@ -1112,8 +1143,9 @@ def part_sec(cuts, doc=None):
        봐서 이것을 못 잡았다.
     1분 전부 영상(all_video)은 틈을 잘라 붙이므로 잣대가 따로다 (SEC60_*)."""
     if (doc or {}).get("all_video"):
-        return (SEC60_PER_CHAR * sum(chars(c) for c in cuts)
-                + SEC60_PER_CUT * len(cuts))
+        # ⭐ 말 사이 쉼(gap)을 두면 컷마다 그만큼 길어진다 (기본 0.12초 → S94 v5 0.5초)
+        per = SEC60_PER_CUT + max(0.0, float((doc or {}).get("gap") or GAP_TIGHT) - GAP_TIGHT)
+        return SEC60_PER_CHAR * sum(chars(c) for c in cuts) + per * len(cuts)
     return (SEC_PER_CHAR * sum(chars(c) for c in cuts)
             + SEC_PER_CUT * len(cuts))
 
@@ -1247,7 +1279,8 @@ def check(doc, new=True):
                 bad.append(f"컷{n}: 연기 지시가 너무 격하다 — '{hot}' "
                            f"(감정은 속으로 눌러 담는 말로 적는다)")
         sc = str(c.get("scene") or "")
-        if not sc.strip():
+        # ⭐ 그림 컷(관계도·연표 · 0원 · 2026-10-02)은 영상을 안 사므로 화면 묘사가 없다
+        if not sc.strip() and not c.get("fig"):
             bad.append(f"컷{n}: 화면 묘사(scene)가 비었다")
         # ⭐⭐⭐ 나레이션 컷 배경에는 **사람이 없어야 한다** (손님 지시)
         #    얼굴 참조가 없는 컷이라, 사람을 부르면 그림 모델이 생판 남을
@@ -1426,6 +1459,8 @@ def check(doc, new=True):
         first = parts[0]
         lo, hi = (first.get("cuts") or [0, 0])[:2]
         said, jumped = "", set()
+        alias_of = {str(p.get("name")): str(p.get("alias") or "")
+                    for p in (doc.get("cast") or []) if isinstance(p, dict)}
         for c in cuts:
             if not (lo <= c.get("n", 0) <= hi):
                 continue
@@ -1433,7 +1468,9 @@ def check(doc, new=True):
                 if w == "나레이션":
                     said += " " + str(t)
                     continue
-                if w in OK and w not in jumped and w not in said:
+                # ⭐ 나레이션이 **가명**으로 불러 줬어도 된다 (S94 v5 — 「윤정숙 씨」 = 딸)
+                nick = alias_of.get(w, "")
+                if w in OK and w not in jumped and w not in said and not (nick and nick in said):
                     bad.append(f"컷{c.get('n')}: 1편에서 '{w}' 가 나레이션에 "
                                f"한 번도 안 나온 채 말을 한다 — 말하기 전에 "
                                f"나레이션이 '{w}' 를 먼저 불러 주어라")

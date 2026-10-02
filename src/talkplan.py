@@ -104,8 +104,14 @@ def talk_sec_of(doc, text):
 
 
 def part_max_sec(doc):
-    """편 하나의 벽(초) — 2분 드라마는 2분, 1분 전부 영상·옛 여러 편은 60초."""
-    if is_drama(doc) and not (doc or {}).get("all_video"):
+    """편 하나의 벽(초) — 2분 드라마는 2분, 전부 영상 드라마는 쇼츠 한도(3분), 옛 여러 편은 60초.
+
+    ⭐⭐⭐ 2026-10-02 손님: "60초가 넘어도 돼 … 그런건 규칙에 걸지마. 60초가 넘더라도
+       확실하게 이해를 시킬 수 있게끔 해줘." → 전부 영상 드라마(all_video)는 60초 벽을 푼다.
+       남는 벽은 유튜브가 정한 쇼츠 한도(3분) 하나뿐이다 — 넘으면 쇼츠가 아니게 된다."""
+    if is_drama(doc) and (doc or {}).get("all_video"):
+        return SHORTS_MAX_SEC
+    if is_drama(doc):
         return DRAMA_MAX_SEC
     return PART_MAX_SEC
 
@@ -174,6 +180,7 @@ def key_cuts(doc):
 #    **66초로** 뛴다. 사고 나고 경고를 찍는 것으로는 늦다(그때는 이미 값을
 #    다 쓴 뒤다). **사기 전에** 재서, 넘칠 것 같으면 그 편의 대사 컷을 덜어낸다.
 PART_MAX_SEC = 59.5
+SHORTS_MAX_SEC = 179.5                 # 유튜브 쇼츠 한도 3분 (전부 영상 드라마의 벽)
 # ⚠️ 실측 잣대는 컷마다 최대 1.6초쯤 어긋난다(27컷 최소자승, 2026-09-08).
 #    벽에 딱 붙여 놓으면 그 오차가 그대로 넘김이 된다. 안전분을 둔다.
 SAFE_MARGIN = 2.5

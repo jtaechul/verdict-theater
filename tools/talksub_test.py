@@ -111,7 +111,12 @@ def main():
 
     print("\n③ 낱말 자막이 말하는 동안에만 나오는가")
     ovs = S9.karaoke(cut, sec, None, tmp / "ov", 5, clip=clip)
-    spans = [(x[1], x[2]) for x in ovs]
+    # ⚠️ 말 앞뒤의 '자막 글 없는 겹그림'(_bare · 그늘·이름표만)은 낱말이 아니다 (2026-10-02)
+    spans = [(x[1], x[2]) for x in ovs if "_bare" not in Path(x[0]).name]
+    bare = [x for x in ovs if "_bare" in Path(x[0]).name]
+    ck("말 앞뒤에는 자막 글 없는 겹그림이 깔린다 (이름표·그늘이 안 깜빡인다)",
+       bare and min(x[1] for x in ovs) <= 0.01 and abs(max(x[2] for x in ovs) - sec) <= 0.01,
+       str([(round(x[1], 2), round(x[2], 2)) for x in bare]))
     early = [t for t, _ in spans if t < HEAD - 0.35]
     late = [t for _, t in spans if t > HEAD + TALK + S9.SUB_TAIL + 0.35]
     ck(f"말보다 먼저 켜지는 낱말이 없다 ({len(spans)}장)",
