@@ -58,6 +58,33 @@ def save_queue(q):
     QUEUE.write_text(json.dumps(q, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def apply_result(row, res):
+    """심사 결과 하나를 대기열 줄에 적는다 — 통과면 True.
+
+    ⭐ 2026-10-02 — 돈 드는 심사(이 파일)와 작업 칸 심사(tools/gate_here.py)가
+       **같은 함수**로 적는다. 칸 이름·통과 규칙이 두 곳에서 갈라지면 안 된다."""
+    total = int(res.get("total", 0))
+    ok = bool(res.get("pass")) and total >= PASS_MARK and not res.get("reject")
+    row.update({
+        "gate_score": total,
+        "gate_pass": ok,
+        "case_type": res.get("case_type", ""),
+        "one_line": res.get("one_line", ""),
+        "twist_hint": res.get("twist_hint", ""),
+        "victim": res.get("victim", ""),
+        "villain": res.get("villain", ""),
+        # 대본에 쓸 금액은 백만원 단위로 다듬는다. 여기서부터 맞춰 둔다.
+        "amount_krw": money.floor(int(res.get("amount_krw") or 0)),
+        "amount_label": money.tidy(res.get("amount_label", "")),
+        # ⭐ 2026-10-01 — 주인공이 50대 이상인가 (고를 때 어르신 이야기를 앞에 둔다)
+        "senior": bool(res.get("senior")),
+        "gate_scores": res.get("scores", {}),
+        "gate_reject": res.get("reject", []),
+        "gate_note": res.get("note", ""),
+    })
+    return ok
+
+
 # ⭐ 심사에 넣을 판례 본문 길이 (앞 / 뒤, 글자 수)
 #
 #   여기는 **채점**이지 대본을 쓰는 자리가 아니다. 0~100점을 매기는 데
@@ -209,26 +236,9 @@ def main():
             failed += 1
             continue
 
-        total = int(res.get("total", 0))
-        ok = bool(res.get("pass")) and total >= PASS_MARK and not res.get("reject")
         row = by_id[cid]
-        row.update({
-            "gate_score": total,
-            "gate_pass": ok,
-            "case_type": res.get("case_type", ""),
-            "one_line": res.get("one_line", ""),
-            "twist_hint": res.get("twist_hint", ""),
-            "victim": res.get("victim", ""),
-            "villain": res.get("villain", ""),
-            # 대본에 쓸 금액은 백만원 단위로 다듬는다. 여기서부터 맞춰 둔다.
-            "amount_krw": money.floor(int(res.get("amount_krw") or 0)),
-            "amount_label": money.tidy(res.get("amount_label", "")),
-            # ⭐ 2026-10-01 — 주인공이 50대 이상인가 (고를 때 어르신 이야기를 앞에 둔다)
-            "senior": bool(res.get("senior")),
-            "gate_scores": res.get("scores", {}),
-            "gate_reject": res.get("reject", []),
-            "gate_note": res.get("note", ""),
-        })
+        ok = apply_result(row, res)
+        total = row["gate_score"]
         done += 1
         passed += 1 if ok else 0
         mark = "통과" if ok else "폐기"
