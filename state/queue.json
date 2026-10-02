@@ -416,757 +416,6 @@
     "topic": "상속"
   },
   {
-    "case_id": "614315",
-    "사건명": "명의신탁해지에따른주식인도청구의소등",
-    "법원명": "대법원",
-    "선고일자": "2025-07-18",
-    "machine_score": 46,
-    "query": "명의신탁",
-    "body_len": 3362,
-    "gate_score": 51,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "명의신탁",
-    "one_line": "이혼 후 전 남편의 명의를 빌려 세운 회사를 전 남편이 자기 것이라며 가로채려 했다.",
-    "twist_hint": "남편이 자본금과 보증금을 낸 것처럼 보였으나, 사실 아내가 남편 계좌로 설립 비용을 모두 입금해준 정황을 나중에 밝힌다.",
-    "victim": "전 아내 · 40~50대 여성 · 실질적 회사 설립 및 운영자",
-    "villain": "전 남편 · 40~50대 남성 · 명의만 빌려주고 주주 행세",
-    "amount_krw": 3000000,
-    "amount_label": "300만 원",
-    "senior": true,
-    "gate_scores": {
-      "conflict": 14,
-      "betrayal": 12,
-      "twist": 7,
-      "empathy": 10,
-      "catharsis": 3,
-      "amount": 0,
-      "detail": 5
-    },
-    "gate_reject": [],
-    "gate_note": "대법원 파기환송 사건이라 결말 카타르시스가 부족하고, 다투는 재산(자본금 300만 원)의 규모가 너무 작아 극적 긴장감이 떨어집니다."
-  },
-  {
-    "case_id": "606345",
-    "사건명": "소유권이전청구권가등기말소절차이행등",
-    "법원명": "서울동부지방법원",
-    "선고일자": "2023-06-09",
-    "machine_score": 53,
-    "query": "소유권이전등기말소",
-    "body_len": 11745,
-    "gate_score": 32,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "소유권이전등기",
-    "one_line": "시장 재건축 사업을 둘러싸고 법인과 투자자들 사이에 벌어진 복잡한 가등기 양도 분쟁.",
-    "twist_hint": "가등기가 여러 번 양도되는 과정을 추적하는 형태로 구성할 수 있으나, 가족 드라마로의 각색은 불가능하다.",
-    "victim": "없음 (사업적 이권 다툼)",
-    "villain": "없음",
-    "amount_krw": 2850000000,
-    "amount_label": "28억 5,000만 원",
-    "senior": false,
-    "gate_scores": {
-      "conflict": 2,
-      "betrayal": 2,
-      "twist": 2,
-      "empathy": 2,
-      "catharsis": 10,
-      "amount": 8,
-      "detail": 6
-    },
-    "gate_reject": [
-      "no_person"
-    ],
-    "gate_note": "가족 간 분쟁이 아닌 시장 재건축 관련 법인과 종친회, 투자자 간의 복잡한 이권 다툼으로, 채널 성격에 전혀 맞지 않음."
-  },
-  {
-    "case_id": "616615",
-    "사건명": "부당이득금반환청구의소",
-    "법원명": "서울고등법원",
-    "선고일자": "2024-09-11",
-    "machine_score": 43,
-    "query": "부당이득반환",
-    "body_len": 21294,
-    "gate_score": 31,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "부당이득",
-    "one_line": "프랜차이즈 본사가 가맹점주들에게 계약에 없는 물류 마진을 떼어갔다가 소송을 당했다.",
-    "twist_hint": "가족 간의 숨겨진 비밀이나 반전은 없으며, 본사가 몰래 챙긴 마진율(차액가맹금)이 법정에서 계산되어 드러나는 것이 전부다.",
-    "victim": "가맹점주들 (다수)",
-    "villain": "프랜차이즈 본사 (법인)",
-    "amount_krw": 0,
-    "amount_label": "특정 불가 (별지 참조)",
-    "senior": false,
-    "gate_scores": {
-      "conflict": 4,
-      "betrayal": 2,
-      "twist": 2,
-      "empathy": 3,
-      "catharsis": 10,
-      "amount": 8,
-      "detail": 2
-    },
-    "gate_reject": [
-      "no_person"
-    ],
-    "gate_note": "가맹본부와 가맹점주 간의 순수 비즈니스 및 가맹사업법 해석 다툼입니다. 가족 간의 갈등이나 어르신들의 노후 자금 문제 등 '사람 냄새' 나는 드라마적 요소가 전혀 없어 채널 성격과 맞지 않습니다."
-  },
-  {
-    "case_id": "599857",
-    "사건명": "소유권이전등기·부당이득금[토지의 소유자가 현 등기부상 명의자 겸 점유자를 상대로 소유물반환청구 없이 진정명의회복등기만을 청구하여, 등기부상 명의자 겸 점유자의 민법 제203조에 따른 비용상환청구권 및 민법 제741조에 따른 부당이득반환청구권 행사 여부가 문제된 사건]",
-    "법원명": "대법원",
-    "선고일자": "2024-12-24",
-    "machine_score": 43,
-    "query": "부당이득반환",
-    "body_len": 3463,
-    "gate_score": 29,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "소유권이전등기",
-    "one_line": "동명이인이 몰래 팔아넘긴 땅에 산업단지가 들어서자, 진짜 주인이 소유권을 되찾으려 나섰다.",
-    "twist_hint": "이름이 똑같은 가짜 주인이 나타나 땅을 팔았다는 사실을 초반 미스터리로 배치하여 시청자의 호기심을 유발할 수 있다.",
-    "victim": "원고 · 토지 소유자",
-    "villain": "동명이인 사기꾼 및 공동사업시행자(피고)",
-    "amount_krw": 0,
-    "amount_label": "금액 특정 불가 (11,705㎡ 부지)",
-    "senior": true,
-    "gate_scores": {
-      "conflict": 6,
-      "betrayal": 0,
-      "twist": 4,
-      "empathy": 4,
-      "catharsis": 13,
-      "amount": 0,
-      "detail": 2
-    },
-    "gate_reject": [],
-    "gate_note": "가족이나 지인 간의 배신이 없는 순수 제3자(동명이인)에 의한 부동산 사기 및 법인 간 소유권 이전 다툼임. 대법원 판결문 특성상 인간적인 갈등 서사가 전혀 없어 가족 드라마로 각색하기 매우 어려움."
-  },
-  {
-    "case_id": "616617",
-    "사건명": "부당이득금반환청구의소",
-    "법원명": "부산고등법원",
-    "선고일자": "2025-02-06",
-    "machine_score": 68,
-    "query": "부당이득반환",
-    "body_len": 8642,
-    "gate_score": 27,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "부당이득",
-    "one_line": "산업단지 부지를 불법 전매하려던 두 회사 간의 13억 원 계약금 반환 다툼.",
-    "twist_hint": "산업집적법 위반으로 계약 자체가 원천 무효가 되는 법리적 반전뿐, 인간적인 반전은 없다.",
-    "victim": "법인 (물류회사)",
-    "villain": "법인 (부동산 투기 의심 회사)",
-    "amount_krw": 1300000000,
-    "amount_label": "13억 원",
-    "senior": false,
-    "gate_scores": {
-      "conflict": 2,
-      "betrayal": 0,
-      "twist": 2,
-      "empathy": 0,
-      "catharsis": 10,
-      "amount": 8,
-      "detail": 5
-    },
-    "gate_reject": [
-      "no_person"
-    ],
-    "gate_note": "원고와 피고 모두 주식회사이며, 산업단지 내 공장용지 전매 제한 규정을 둘러싼 순수 기업 간 부동산 거래 분쟁임. 가족 서사나 개인의 감정선이 전혀 없어 채널 성격에 맞지 않음."
-  },
-  {
-    "case_id": "613295",
-    "사건명": "부당이득금반환등",
-    "법원명": "의정부지방법원",
-    "선고일자": "2024-07-04",
-    "machine_score": 68,
-    "query": "부당이득반환",
-    "body_len": 9737,
-    "gate_score": 27,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "부당이득",
-    "one_line": "지역주택조합이 가입을 유도하며 써준 '환불 보장 각서'의 법적 효력을 두고 벌어진 단순 계약금 반환 다툼.",
-    "twist_hint": "조합이 가입자를 안심시키려 발급한 '배액보상증서'가 총회 결의를 거치지 않아 무효가 되고, 이로 인해 가입 계약 전체가 무효가 되어 돈을 돌려받게 되는 법적 아이러니를 설명하는 데 집중해야 한다.",
-    "victim": "아파트 분양을 원했던 조합원 가입자",
-    "villain": "지역주택조합",
-    "amount_krw": 20000000,
-    "amount_label": "2,000만 원",
-    "senior": false,
-    "gate_scores": {
-      "conflict": 4,
-      "betrayal": 2,
-      "twist": 3,
-      "empathy": 3,
-      "catharsis": 13,
-      "amount": 0,
-      "detail": 2
-    },
-    "gate_reject": [
-      "too_short"
-    ],
-    "gate_note": "전형적인 지역주택조합 안심보장증서 무효 판례. 가족 간의 갈등이나 인간적인 배신 서사가 전혀 없고, 순수한 법리 다툼(총유물 처분행위, 일부무효의 법리)에 불과하여 가족 드라마 소재로 부적합함."
-  },
-  {
-    "case_id": "242085",
-    "사건명": "소유권이전등기말소청구등",
-    "법원명": "인천지방법원",
-    "선고일자": "2023-02-16",
-    "machine_score": 74,
-    "query": "소유권이전등기말소",
-    "body_len": 7016,
-    "gate_score": 25,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "소유권이전등기",
-    "one_line": "재건축 조합이 10년이나 미루다 이제야 대금을 공탁하고 집을 빼앗아가자 주민들이 소송을 냈으나 패소했다.",
-    "twist_hint": "인물 간의 숨겨진 사연이나 반전은 없으며, 조합의 10년 지연이 소멸시효에 해당하는지에 대한 순수 법리 다툼이다.",
-    "victim": "재건축 구역 내 원주민들 · 고령층 추정",
-    "villain": "재건축정비사업조합",
-    "amount_krw": 1569000000,
-    "amount_label": "약 15억 6,900만 원",
-    "senior": true,
-    "gate_scores": {
-      "conflict": 4,
-      "betrayal": 0,
-      "twist": 2,
-      "empathy": 5,
-      "catharsis": 4,
-      "amount": 8,
-      "detail": 2
-    },
-    "gate_reject": [],
-    "gate_note": "개인과 재건축조합 간의 부동산 소유권 이전 및 소멸시효에 관한 법리 다툼입니다. 가족 간의 갈등이나 인간적인 배신 서사가 전혀 없어 가족 드라마 소재로는 부적합합니다."
-  },
-  {
-    "case_id": "242055",
-    "사건명": "소유권이전등기말소청구등",
-    "법원명": "서울고등법원(인천)",
-    "선고일자": "2024-03-28",
-    "machine_score": 58,
-    "query": "소유권이전등기말소",
-    "body_len": 8593,
-    "gate_score": 25,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "소유권이전등기",
-    "one_line": "재건축 조합이 10년이나 방치하다가 집값이 오르자 뒤늦게 소유권을 빼앗아간 사건.",
-    "twist_hint": "조합이 10년 동안 아무런 조치도 취하지 않다가 갑자기 등기를 이전해버린 사실을 부각할 수 있으나, 가족 간의 얽힌 사연이 없어 극적 반전으로 쓰기 어렵다.",
-    "victim": "재건축에 반대했던 주택 소유자들 (원고)",
-    "villain": "재건축정비사업조합 (피고)",
-    "amount_krw": 847000000,
-    "amount_label": "약 8억 4,700만 원",
-    "senior": true,
-    "gate_scores": {
-      "conflict": 4,
-      "betrayal": 2,
-      "twist": 2,
-      "empathy": 5,
-      "catharsis": 2,
-      "amount": 8,
-      "detail": 2
-    },
-    "gate_reject": [
-      "no_person"
-    ],
-    "gate_note": "개인과 재건축조합 간의 전형적인 부동산 법리 다툼(매도청구권, 소멸시효, 환매청구권 등)으로, 채널 성격에 맞는 가족 간의 배신이나 인간적인 갈등 요소가 전혀 없습니다."
-  },
-  {
-    "case_id": "241569",
-    "사건명": "부당이득금[조합의 해산에 따른 잔여재산 분배청구와 조합의 탈퇴에 따른 지분반환청구의 구별이 문제된 사건]",
-    "법원명": "대법원",
-    "선고일자": "2024-09-13",
-    "machine_score": 53,
-    "query": "부당이득반환",
-    "body_len": 4239,
-    "gate_score": 24,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "부당이득",
-    "one_line": "20년 전 동업했던 토지 매수 자금을 돌려달라고 소송을 냈으나 시효가 지나 패소했다.",
-    "twist_hint": "20년 전 투자금 반환을 청구했으나, 이미 소멸시효가 완성되어 한 푼도 받을 수 없게 된다.",
-    "victim": "원고 · 동업자",
-    "villain": "피고 · 동업 법인(주식회사)",
-    "amount_krw": 1000000000,
-    "amount_label": "10억 원",
-    "senior": true,
-    "gate_scores": {
-      "conflict": 3,
-      "betrayal": 2,
-      "twist": 2,
-      "empathy": 2,
-      "catharsis": 5,
-      "amount": 8,
-      "detail": 2
-    },
-    "gate_reject": [
-      "too_short"
-    ],
-    "gate_note": "가족 이야기가 전혀 없는 단순 동업 정산금 다툼이며, 피고가 법인이고 사실관계 서술이 매우 짧아 드라마화가 불가능함."
-  },
-  {
-    "case_id": "241289",
-    "사건명": "소유권이전등기말소등기청구의소",
-    "법원명": "서울고등법원(인천)",
-    "선고일자": "2024-01-17",
-    "machine_score": 68,
-    "query": "소유권이전등기말소",
-    "body_len": 8280,
-    "gate_score": 19,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "소유권이전등기",
-    "one_line": "지방공기업이 법인에 임대주택을 매각한 뒤, 뒤늦게 법 위반을 이유로 계약 무효를 주장하다 패소했다.",
-    "twist_hint": "법인 간의 부동산 매매계약 무효 및 신의칙 위반 다툼으로, 가족 드라마를 위한 반전 요소를 설계할 수 없다.",
-    "victim": "없음 (법인 간 다툼)",
-    "villain": "없음",
-    "amount_krw": 0,
-    "amount_label": "특정 불가",
-    "senior": false,
-    "gate_scores": {
-      "conflict": 2,
-      "betrayal": 0,
-      "twist": 1,
-      "empathy": 0,
-      "catharsis": 13,
-      "amount": 0,
-      "detail": 3
-    },
-    "gate_reject": [
-      "no_person"
-    ],
-    "gate_note": "당사자가 모두 법인 및 기관(인천도시공사, 주식회사, 자산신탁)으로, 사람 이야기나 가족 간의 갈등이 전혀 없는 사건이다."
-  },
-  {
-    "case_id": "619231",
-    "사건명": "소유권이전등기말소등",
-    "법원명": "제주지방법원",
-    "선고일자": "2025-02-07",
-    "machine_score": 49,
-    "query": "소유권이전등기말소",
-    "body_len": 7881,
-    "gate_score": 19,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "소유권이전등기",
-    "one_line": "경매로 땅을 낙찰받은 매수인이 기존 상속인의 선순위 가등기를 지우려다 패소한 사건.",
-    "twist_hint": "가족 간의 서사가 전무하고 경매 매수인의 권리 분석 실패가 핵심이므로, 대본화한다면 매수인의 시점에서 '경매로 싸게 산 줄 알았는데 숨어있던 가등기에 당했다'는 식의 전개만 가능하다.",
-    "victim": "없음 (경매 투자자와 기존 지분권자의 법리 다툼)",
-    "villain": "없음",
-    "amount_krw": 0,
-    "amount_label": "금액 특정 안 됨",
-    "senior": false,
-    "gate_scores": {
-      "conflict": 5,
-      "betrayal": 2,
-      "twist": 3,
-      "empathy": 2,
-      "catharsis": 5,
-      "amount": 0,
-      "detail": 2
-    },
-    "gate_reject": [],
-    "gate_note": "가족 간의 감정적 대립이나 배신이 전혀 보이지 않는, 공유물분할 경매와 최선순위 가등기 인수 여부에 관한 순수 부동산 법리 다툼입니다. 시청자가 이입할 대상이 없어 가족 드라마 소재로 부적합합니다."
-  },
-  {
-    "case_id": "240903",
-    "사건명": "부당이득금[상호저축은행이 대출 및 수익분배에 관한 약정에 따라 취득한 주식에 대한 유상감자대금이 부당이득으로서 반환되어야 하는지 문제된 사건]",
-    "법원명": "대법원",
-    "선고일자": "2024-06-17",
-    "machine_score": 53,
-    "query": "부당이득반환",
-    "body_len": 5025,
-    "gate_score": 18,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "부당이득",
-    "one_line": "부동산 개발 특수목적법인과 저축은행 간의 수백억 대 수익 분배 효력 다툼.",
-    "twist_hint": "사람 이야기가 전혀 없는 법인 간의 법리 다툼이므로 반전을 설계할 수 없다.",
-    "victim": "없음 (법인 간 분쟁)",
-    "villain": "없음",
-    "amount_krw": 28090000000,
-    "amount_label": "280억 9,000만 원",
-    "senior": false,
-    "gate_scores": {
-      "conflict": 2,
-      "betrayal": 0,
-      "twist": 1,
-      "empathy": 0,
-      "catharsis": 5,
-      "amount": 8,
-      "detail": 2
-    },
-    "gate_reject": [
-      "no_person"
-    ],
-    "gate_note": "당사자가 모두 법인이며, 상호저축은행법상 주식 보유 한도 규정의 법적 성질(단속규정 여부)을 다투는 순수 기업·금융 사건이므로 가족 드라마 소재로 완전히 부적합하다."
-  },
-  {
-    "case_id": "615963",
-    "사건명": "부당이득금반환청구의소",
-    "법원명": "대법원",
-    "선고일자": "2026-01-15",
-    "machine_score": 43,
-    "query": "부당이득반환",
-    "body_len": 6559,
-    "gate_score": 18,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "부당이득",
-    "one_line": "프랜차이즈 본사가 가맹점주들에게 계약에 없는 부당한 물류 마진을 챙기다 반환하게 된 사건.",
-    "twist_hint": "가맹계약서 조항(제5.3조 등) 뒤에 교묘하게 숨겨져 있던 본사의 마진(차액가맹금) 징수 사실이 드러나는 과정을 조명할 수 있다.",
-    "victim": "가맹점주들",
-    "villain": "프랜차이즈 본사 (한국○○○ 유한회사)",
-    "amount_krw": 0,
-    "amount_label": "금액 미상",
-    "senior": false,
-    "gate_scores": {
-      "conflict": 2,
-      "betrayal": 2,
-      "twist": 1,
-      "empathy": 2,
-      "catharsis": 10,
-      "amount": 0,
-      "detail": 1
-    },
-    "gate_reject": [
-      "no_person"
-    ],
-    "gate_note": "가맹사업법 및 계약 해석을 다루는 전형적인 기업 대 가맹점 간의 상거래 분쟁입니다. 가족 갈등이나 노후 자금 문제 등 50~80대 시청층이 '내 일'처럼 공감할 만한 인물 중심의 서사가 전혀 없어 채널 성격과 맞지 않습니다."
-  },
-  {
-    "case_id": "236053",
-    "사건명": "부당이득금반환",
-    "법원명": "전주지법",
-    "선고일자": "2023-05-10",
-    "machine_score": 50,
-    "query": "부당이득반환",
-    "body_len": 4517,
-    "gate_score": 12,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "부당이득",
-    "one_line": "에너지 회사가 땅주인에게 건넨 1억 원이 매매 계약금인지 부당이득인지 다투는 사건.",
-    "twist_hint": "반전 요소가 없다. 단순한 계약 성립 여부에 대한 법리적 다툼이다.",
-    "victim": "없음 (법인과 개인 간의 거래 다툼)",
-    "villain": "없음",
-    "amount_krw": 100000000,
-    "amount_label": "1억 원",
-    "senior": false,
-    "gate_scores": {
-      "conflict": 2,
-      "betrayal": 0,
-      "twist": 1,
-      "empathy": 0,
-      "catharsis": 4,
-      "amount": 3,
-      "detail": 2
-    },
-    "gate_reject": [
-      "no_person"
-    ],
-    "gate_note": "원고가 주식회사인 법인 간 거래 분쟁으로, 가족 간의 갈등이나 배신 등 시청자가 이입할 만한 사람 이야기가 전혀 없다."
-  },
-  {
-    "case_id": "607785",
-    "사건명": "부당이득금[집합건물 대지공유자들이 구분소유자들을 상대로 대지 사용·수익에 따른 차임 상당의 부당이득반환을 청구한 사건]",
-    "법원명": "대법원",
-    "선고일자": "2025-07-17",
-    "machine_score": 43,
-    "query": "부당이득반환",
-    "body_len": 5243,
-    "gate_score": 12,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "부당이득",
-    "one_line": "건물 소유자들과 땅 지분권자 수십 명이 얽혀 벌이는 복잡한 토지 사용료 정산 다툼.",
-    "twist_hint": "인물 간의 서사가 전혀 없어 반전을 설계할 수 없다. 1960년대 재개발 당시의 행정 지연이 유일한 배경 변수다.",
-    "victim": "특정 불가 (다수의 지분권자 집단)",
-    "villain": "특정 불가 (다수의 건물 소유자 집단)",
-    "amount_krw": 0,
-    "amount_label": "특정 안 됨",
-    "senior": false,
-    "gate_scores": {
-      "conflict": 4,
-      "betrayal": 2,
-      "twist": 2,
-      "empathy": 0,
-      "catharsis": 2,
-      "amount": 0,
-      "detail": 2
-    },
-    "gate_reject": [],
-    "gate_note": "전형적인 대규모 집합건물의 대지권 미등기 및 과소지분에 관한 복잡한 대법원 법리 다툼 사건. 가족 간의 서사나 감정선이 전혀 존재하지 않아 드라마 소재로 부적합함."
-  },
-  {
-    "case_id": "606239",
-    "사건명": "부당이득금반환청구의소",
-    "법원명": "서울중앙지방법원",
-    "선고일자": "2023-06-30",
-    "machine_score": 88,
-    "query": "부당이득반환",
-    "body_len": 21998,
-    "gate_score": 11,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "기타",
-    "one_line": "외국계 사모펀드 법인들과 대한민국 과세관청 간의 수천억 원대 세금 환급 다툼.",
-    "twist_hint": "사람 이야기가 전혀 없는 순수 조세 및 법인 간의 다툼이므로 드라마로 구성할 수 없습니다.",
-    "victim": "없음 (외국계 사모펀드 법인들)",
-    "villain": "없음 (대한민국 과세관청)",
-    "amount_krw": 153470000000,
-    "amount_label": "약 1,534억 원",
-    "senior": false,
-    "gate_scores": {
-      "conflict": 0,
-      "betrayal": 0,
-      "twist": 0,
-      "empathy": 0,
-      "catharsis": 3,
-      "amount": 8,
-      "detail": 0
-    },
-    "gate_reject": [
-      "tax_case",
-      "no_person"
-    ],
-    "gate_note": "부당이득금반환청구로 명명되어 있으나, 실질은 외국계 사모펀드의 조세회피(도관회사 설립) 및 법인세·원천징수 환급을 둘러싼 거액의 조세 소송입니다. 당사자가 모두 법인과 국가기관이며 가족이나 개인의 서사가 전혀 없어 채널 기획 의도와 완전히 어긋납니다."
-  },
-  {
-    "case_id": "601847",
-    "사건명": "임금·부당이득금반환",
-    "법원명": "수원지방법원",
-    "선고일자": "2023-08-24",
-    "machine_score": 68,
-    "query": "부당이득반환",
-    "body_len": 12861,
-    "gate_score": 11,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "기타",
-    "one_line": "택시 기사가 소정근로시간 단축 합의가 무효라며 회사를 상대로 미지급 임금을 청구했다.",
-    "twist_hint": "개인사나 가족 간의 얽힘이 전혀 없는 순수 노동 사건이므로 반전을 만들 요소가 없다.",
-    "victim": "택시 기사 (원고)",
-    "villain": "택시 회사 (피고)",
-    "amount_krw": 7000000,
-    "amount_label": "700만 원",
-    "senior": true,
-    "gate_scores": {
-      "conflict": 2,
-      "betrayal": 0,
-      "twist": 0,
-      "empathy": 2,
-      "catharsis": 4,
-      "amount": 0,
-      "detail": 3
-    },
-    "gate_reject": [],
-    "gate_note": "가족 드라마 채널 성격과 전혀 맞지 않는 순수 노동/임금 소송(최저임금법 및 노사협정 해석 다툼)입니다. 사람 이야기가 없습니다."
-  },
-  {
-    "case_id": "603647",
-    "사건명": "부당이득금반환등",
-    "법원명": "서울고등법원",
-    "선고일자": "2023-10-12",
-    "machine_score": 58,
-    "query": "부당이득반환",
-    "body_len": 13737,
-    "gate_score": 10,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "기타",
-    "one_line": "음악저작권협회와 매장 운영 회사 간의 매장 음악 재생에 따른 저작권 침해 법리 다툼.",
-    "twist_hint": "순수 법인 간의 저작권 법리 해석 다툼이므로 드라마적 반전 요소를 도출할 수 없다.",
-    "victim": "없음 (법인 및 단체)",
-    "villain": "없음 (법인 및 단체)",
-    "amount_krw": 828000000,
-    "amount_label": "8억 2,800만 원",
-    "senior": false,
-    "gate_scores": {
-      "conflict": 0,
-      "betrayal": 0,
-      "twist": 0,
-      "empathy": 0,
-      "catharsis": 0,
-      "amount": 8,
-      "detail": 2
-    },
-    "gate_reject": [
-      "no_person"
-    ],
-    "gate_note": "원고는 저작권협회, 피고는 주식회사로 매장음악서비스의 '판매용 음반' 해당 여부를 다투는 순수 지식재산권 법리 다툼. 사람의 서사나 가족 간의 갈등이 전혀 없어 채널 성격과 맞지 않음."
-  },
-  {
-    "case_id": "606341",
-    "사건명": "부당이득금반환청구의소",
-    "법원명": "서울중앙지방법원",
-    "선고일자": "2023-06-30",
-    "machine_score": 88,
-    "query": "부당이득반환",
-    "body_len": 33377,
-    "gate_score": 8,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "부당이득",
-    "one_line": "외국계 펀드가 잘못 납부한 세금을 돌려달라며 지자체를 상대로 낸 소송이다.",
-    "twist_hint": "가족 드라마로 각색할 수 없는 기업 간 조세 소송이다.",
-    "victim": "없음 (외국계 펀드 법인들)",
-    "villain": "없음 (과세관청)",
-    "amount_krw": 17634000000,
-    "amount_label": "약 176억 원",
-    "senior": false,
-    "gate_scores": {
-      "conflict": 0,
-      "betrayal": 0,
-      "twist": 0,
-      "empathy": 0,
-      "catharsis": 0,
-      "amount": 8,
-      "detail": 0
-    },
-    "gate_reject": [
-      "no_person",
-      "tax_case"
-    ],
-    "gate_note": "순수 조세 환급 관련 법인 간 소송으로 가족 드라마 소재로 부적합함."
-  },
-  {
-    "case_id": "609481",
-    "사건명": "부당이득금[파산채무자가 재단법인을 설립하여 부동산을 출연하고 소유권이전등기를 마쳐주었는데 원인행위인 출연행위는 부인되지 않고 등기행위만 부인된 경우, 부동산을 점유·사용할 권원이 없게 되어 부당이득반환책임을 부담하는지 문제된 사건]",
-    "법원명": "대법원",
-    "선고일자": "2025-09-11",
-    "machine_score": 43,
-    "query": "부당이득반환",
-    "body_len": 4785,
-    "gate_score": 8,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "부당이득",
-    "one_line": "파산한 회사의 파산관재인과 재단법인 사이의 부동산 점유 부당이득 반환 다툼.",
-    "twist_hint": "법인 간의 파산 법리 다툼으로 가족 드라마적 반전 요소를 만들기 어렵다.",
-    "victim": "없음 (법인 간 분쟁)",
-    "villain": "없음",
-    "amount_krw": 0,
-    "amount_label": "특정 불가",
-    "senior": false,
-    "gate_scores": {
-      "conflict": 2,
-      "betrayal": 0,
-      "twist": 2,
-      "empathy": 0,
-      "catharsis": 2,
-      "amount": 0,
-      "detail": 2
-    },
-    "gate_reject": [
-      "no_person"
-    ],
-    "gate_note": "당사자가 모두 법인(파산관재인, 재단법인)이며, 파산법상 부인권과 부당이득에 관한 순수 법리 다툼으로 가족 드라마 소재로 부적합함."
-  },
-  {
-    "case_id": "605939",
-    "사건명": "부당이득금반환청구의소",
-    "법원명": "대법원",
-    "선고일자": "2025-04-24",
-    "machine_score": 43,
-    "query": "부당이득반환",
-    "body_len": 4993,
-    "gate_score": 6,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "기타",
-    "one_line": "외국 법인과 지자체 간의 복잡한 세금 환급금 귀속 다툼.",
-    "twist_hint": "사람 이야기가 없는 순수 법인 간 조세 분쟁이므로 드라마화가 불가능합니다.",
-    "victim": "없음 (외국 법인)",
-    "villain": "없음 (지방자치단체)",
-    "amount_krw": 0,
-    "amount_label": "특정 불가",
-    "senior": false,
-    "gate_scores": {
-      "conflict": 2,
-      "betrayal": 0,
-      "twist": 0,
-      "empathy": 0,
-      "catharsis": 2,
-      "amount": 0,
-      "detail": 2
-    },
-    "gate_reject": [
-      "tax_case",
-      "no_person"
-    ],
-    "gate_note": "외국법인, 특별징수의무자(은행), 과세관청 간의 법인세 및 지방소득세 환급금 귀속 주체를 다루는 고도의 기술적인 조세/행정 성격의 민사 소송입니다. 가족이나 개인의 서사가 전혀 없어 채널 방향과 맞지 않습니다."
-  },
-  {
-    "case_id": "241307",
-    "사건명": "소유권이전등기말소등기청구의소",
-    "법원명": "인천지방법원",
-    "선고일자": "2022-08-26",
-    "machine_score": 65,
-    "query": "소유권이전등기말소",
-    "body_len": 7905,
-    "gate_score": 5,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "기타",
-    "one_line": "도시공사와 민간기업 간의 임대주택 매매계약 무효 다툼.",
-    "twist_hint": "법인 간의 법리 다툼으로 반전 요소를 만들기 어렵다.",
-    "victim": "없음",
-    "villain": "없음",
-    "amount_krw": 0,
-    "amount_label": "0원",
-    "senior": false,
-    "gate_scores": {
-      "conflict": 2,
-      "betrayal": 0,
-      "twist": 0,
-      "empathy": 0,
-      "catharsis": 2,
-      "amount": 0,
-      "detail": 1
-    },
-    "gate_reject": [
-      "no_person"
-    ],
-    "gate_note": "당사자가 모두 법인이며, 공공임대주택 매각 제한 규정 위반에 따른 법리적 다툼이므로 가족 드라마 소재로 부적합함."
-  },
-  {
-    "case_id": "609335",
-    "사건명": "부당이득금반환청구의소",
-    "법원명": "서울중앙지방법원",
-    "선고일자": "2023-12-06",
-    "machine_score": 65,
-    "query": "부당이득반환",
-    "body_len": 10957,
-    "gate_score": 3,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "부당이득",
-    "one_line": "은행과 과세관청 간의 차명계좌 세금 부과를 둘러싼 법리 다툼.",
-    "twist_hint": "사람 이야기가 전혀 없는 세금 관련 법리 다툼이므로 드라마화 불가.",
-    "victim": "없음 (법인)",
-    "villain": "없음 (국가)",
-    "amount_krw": 50000000,
-    "amount_label": "5,000만 원",
-    "senior": false,
-    "gate_scores": {
-      "conflict": 0,
-      "betrayal": 0,
-      "twist": 0,
-      "empathy": 0,
-      "catharsis": 0,
-      "amount": 3,
-      "detail": 0
-    },
-    "gate_reject": [
-      "tax_case",
-      "no_person"
-    ],
-    "gate_note": "원고가 은행, 피고가 국가인 순수 세금 및 법리 다툼 사건으로 가족 드라마 소재로 전혀 부적합함."
-  },
-  {
     "case_id": "154316",
     "사건명": "손해배상(기)",
     "법원명": "서울동부지방법원",
@@ -1175,6 +424,17 @@
     "query": "유언무효",
     "topic": "상속",
     "body_len": 26795,
+    "gate_score": null
+  },
+  {
+    "case_id": "188416",
+    "사건명": "손해배상(기)",
+    "법원명": "광주지방법원 순천지원",
+    "선고일자": "2014-04-29",
+    "machine_score": 115,
+    "query": "노인요양",
+    "topic": "요양",
+    "body_len": 40360,
     "gate_score": null
   },
   {
@@ -1266,6 +526,94 @@
     "gate_score": null
   },
   {
+    "case_id": "230781",
+    "사건명": "근저당권말소",
+    "법원명": "서울고등법원",
+    "선고일자": "2017-06-28",
+    "machine_score": 105,
+    "query": "망은행위",
+    "topic": "효도계약",
+    "body_len": 22914,
+    "gate_score": null
+  },
+  {
+    "case_id": "615739",
+    "사건명": "기타(금전)",
+    "법원명": "전주지방법원",
+    "선고일자": "2022-06-21",
+    "machine_score": 105,
+    "query": "분묘기지권",
+    "topic": "땅·선산",
+    "body_len": 11016,
+    "gate_score": null
+  },
+  {
+    "case_id": "600363",
+    "사건명": "회장지위부존재확인등",
+    "법원명": "수원지방법원",
+    "선고일자": "2023-07-20",
+    "machine_score": 103,
+    "query": "분묘기지권",
+    "topic": "땅·선산",
+    "body_len": 10470,
+    "gate_score": null
+  },
+  {
+    "case_id": "205512",
+    "사건명": "손해배상",
+    "법원명": "서울중앙지방법원",
+    "선고일자": "2014-10-30",
+    "machine_score": 103,
+    "query": "고수익",
+    "topic": "노후사기",
+    "body_len": 38897,
+    "gate_score": null
+  },
+  {
+    "case_id": "172204",
+    "사건명": "부당이득반환등",
+    "법원명": "서울중앙지방법원",
+    "선고일자": "2010-11-29",
+    "machine_score": 103,
+    "query": "고수익",
+    "topic": "노후사기",
+    "body_len": 57703,
+    "gate_score": null
+  },
+  {
+    "case_id": "160373",
+    "사건명": "분묘굴 이등",
+    "법원명": "수원지방법원",
+    "선고일자": "2009-02-05",
+    "machine_score": 103,
+    "query": "분묘기지권",
+    "topic": "땅·선산",
+    "body_len": 26218,
+    "gate_score": null
+  },
+  {
+    "case_id": "139109",
+    "사건명": "손해배상(기)",
+    "법원명": "서울남부지법",
+    "선고일자": "2009-08-14",
+    "machine_score": 103,
+    "query": "고수익",
+    "topic": "노후사기",
+    "body_len": 21968,
+    "gate_score": null
+  },
+  {
+    "case_id": "220633",
+    "사건명": "예금반환",
+    "법원명": "서울중앙지방법원",
+    "선고일자": "2006-10-19",
+    "machine_score": 103,
+    "query": "고수익",
+    "topic": "노후사기",
+    "body_len": 25222,
+    "gate_score": null
+  },
+  {
     "case_id": "608249",
     "사건명": "유류분반환",
     "법원명": "부산고등법원",
@@ -1275,6 +623,39 @@
     "body_len": 16781,
     "gate_score": null,
     "topic": "상속"
+  },
+  {
+    "case_id": "619233",
+    "사건명": "손해배상",
+    "법원명": "서울중앙지법",
+    "선고일자": "2013-01-17",
+    "machine_score": 100,
+    "query": "고수익",
+    "topic": "노후사기",
+    "body_len": 31243,
+    "gate_score": null
+  },
+  {
+    "case_id": "186631",
+    "사건명": "손해배상(기)",
+    "법원명": "서울남부지방법원",
+    "선고일자": "2009-08-14",
+    "machine_score": 100,
+    "query": "고수익",
+    "topic": "노후사기",
+    "body_len": 32640,
+    "gate_score": null
+  },
+  {
+    "case_id": "142995",
+    "사건명": "손해배상(기)",
+    "법원명": "서울중앙지방법원",
+    "선고일자": "2005-09-01",
+    "machine_score": 100,
+    "query": "고수익",
+    "topic": "노후사기",
+    "body_len": 37903,
+    "gate_score": null
   },
   {
     "case_id": "220361",
@@ -1398,6 +779,50 @@
     "gate_score": null
   },
   {
+    "case_id": "148104",
+    "사건명": "소유권이전등기등",
+    "법원명": "부산고등법원",
+    "선고일자": "2007-02-08",
+    "machine_score": 95,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 14276,
+    "gate_score": null
+  },
+  {
+    "case_id": "612923",
+    "사건명": "손해배상(기)",
+    "법원명": "서울북부지방법원",
+    "선고일자": "2025-04-17",
+    "machine_score": 93,
+    "query": "고수익",
+    "topic": "노후사기",
+    "body_len": 11950,
+    "gate_score": null
+  },
+  {
+    "case_id": "221275",
+    "사건명": "손해배상(기)",
+    "법원명": "서울중앙지방법원",
+    "선고일자": "2009-02-04",
+    "machine_score": 93,
+    "query": "고수익",
+    "topic": "노후사기",
+    "body_len": 10246,
+    "gate_score": null
+  },
+  {
+    "case_id": "70253",
+    "사건명": "정정보도등",
+    "법원명": "서울중앙지법",
+    "선고일자": "2005-12-28",
+    "machine_score": 93,
+    "query": "고수익",
+    "topic": "노후사기",
+    "body_len": 13191,
+    "gate_score": null
+  },
+  {
     "case_id": "233335",
     "사건명": "유언효력확인의소",
     "법원명": "광주고등법원(제주)",
@@ -1428,6 +853,17 @@
     "query": "유언효력",
     "topic": "상속",
     "body_len": 6593,
+    "gate_score": null
+  },
+  {
+    "case_id": "601439",
+    "사건명": "소유권이전등기",
+    "법원명": "대전지방법원",
+    "선고일자": "2023-10-18",
+    "machine_score": 92,
+    "query": "부양을 조건으로",
+    "topic": "효도계약",
+    "body_len": 12073,
     "gate_score": null
   },
   {
@@ -1464,6 +900,105 @@
     "gate_score": null
   },
   {
+    "case_id": "220249",
+    "사건명": "손해배상(기)",
+    "법원명": "대구고법",
+    "선고일자": "2022-03-23",
+    "machine_score": 90,
+    "query": "망은행위",
+    "topic": "효도계약",
+    "body_len": 20082,
+    "gate_score": null
+  },
+  {
+    "case_id": "173047",
+    "사건명": "손해배상",
+    "법원명": "서울중앙지방법원",
+    "선고일자": "2010-05-13",
+    "machine_score": 90,
+    "query": "고수익",
+    "topic": "노후사기",
+    "body_len": 11367,
+    "gate_score": null
+  },
+  {
+    "case_id": "220649",
+    "사건명": "소유권이전등기",
+    "법원명": "수원지방법원 성남지원",
+    "선고일자": "2006-07-21",
+    "machine_score": 90,
+    "query": "고수익",
+    "topic": "노후사기",
+    "body_len": 13595,
+    "gate_score": null
+  },
+  {
+    "case_id": "227615",
+    "사건명": "약속어음금",
+    "법원명": "춘천지법 원주지원",
+    "선고일자": "1993-07-16",
+    "machine_score": 89,
+    "query": "요양원",
+    "topic": "요양",
+    "body_len": 19437,
+    "gate_score": null
+  },
+  {
+    "case_id": "239121",
+    "사건명": "손해배상(기)",
+    "법원명": "서울중앙지방법원",
+    "선고일자": "2022-11-17",
+    "machine_score": 89,
+    "query": "부양을 조건으로",
+    "topic": "효도계약",
+    "body_len": 22575,
+    "gate_score": null
+  },
+  {
+    "case_id": "78326",
+    "사건명": "분묘굴이등",
+    "법원명": "전주지방법원",
+    "선고일자": "2006-11-17",
+    "machine_score": 89,
+    "query": "분묘기지권",
+    "topic": "땅·선산",
+    "body_len": 4454,
+    "gate_score": null
+  },
+  {
+    "case_id": "613039",
+    "사건명": "손해배상(기)",
+    "법원명": "서울고등법원",
+    "선고일자": "2025-04-24",
+    "machine_score": 86,
+    "query": "요양원",
+    "topic": "요양",
+    "body_len": 10269,
+    "gate_score": null
+  },
+  {
+    "case_id": "188304",
+    "사건명": "분묘철거등",
+    "법원명": "춘천지방법원 원주지원",
+    "선고일자": "2012-06-29",
+    "machine_score": 86,
+    "query": "분묘기지권",
+    "topic": "땅·선산",
+    "body_len": 4359,
+    "gate_score": null
+  },
+  {
+    "case_id": "179980",
+    "사건명": "치료비",
+    "법원명": "부산지방법원",
+    "선고일자": "2012-11-09",
+    "machine_score": 86,
+    "query": "노인요양",
+    "topic": "요양",
+    "body_len": 5089,
+    "gate_score": null
+  },
+  {
     "case_id": "160477",
     "사건명": "유류분 반환",
     "법원명": "서울고등법원",
@@ -1483,6 +1018,94 @@
     "query": "유언무효",
     "topic": "상속",
     "body_len": 13358,
+    "gate_score": null
+  },
+  {
+    "case_id": "622353",
+    "사건명": "유익비",
+    "법원명": "대구고등법원",
+    "선고일자": "2025-12-11",
+    "machine_score": 85,
+    "query": "요양원",
+    "topic": "요양",
+    "body_len": 13224,
+    "gate_score": null
+  },
+  {
+    "case_id": "233417",
+    "사건명": "소유권이전등기",
+    "법원명": "대전지방법원",
+    "선고일자": "2019-10-31",
+    "machine_score": 85,
+    "query": "부양을 조건으로",
+    "topic": "효도계약",
+    "body_len": 18533,
+    "gate_score": null
+  },
+  {
+    "case_id": "200548",
+    "사건명": "채무부존재확인",
+    "법원명": "서울중앙지방법원",
+    "선고일자": "2017-08-09",
+    "machine_score": 83,
+    "query": "보이스피싱",
+    "topic": "노후사기",
+    "body_len": 8013,
+    "gate_score": null
+  },
+  {
+    "case_id": "222893",
+    "사건명": "대여금",
+    "법원명": "부산지방법원",
+    "선고일자": "2019-01-18",
+    "machine_score": 83,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 3958,
+    "gate_score": null
+  },
+  {
+    "case_id": "200557",
+    "사건명": "채무부존재확인",
+    "법원명": "서울중앙지방법원",
+    "선고일자": "2016-11-11",
+    "machine_score": 83,
+    "query": "보이스피싱",
+    "topic": "노후사기",
+    "body_len": 8992,
+    "gate_score": null
+  },
+  {
+    "case_id": "230753",
+    "사건명": "부당이득금",
+    "법원명": "서울고등법원",
+    "선고일자": "2021-04-29",
+    "machine_score": 83,
+    "query": "요양원",
+    "topic": "요양",
+    "body_len": 9492,
+    "gate_score": null
+  },
+  {
+    "case_id": "159726",
+    "사건명": "토지인도·손해배상(기)",
+    "법원명": "수원지방법원 성남지원",
+    "선고일자": "2010-10-28",
+    "machine_score": 83,
+    "query": "분묘기지권",
+    "topic": "땅·선산",
+    "body_len": 8186,
+    "gate_score": null
+  },
+  {
+    "case_id": "204542",
+    "사건명": "손해배상(기)",
+    "법원명": "서울남부지방법원",
+    "선고일자": "2017-07-14",
+    "machine_score": 83,
+    "query": "노인요양",
+    "topic": "요양",
+    "body_len": 3705,
     "gate_score": null
   },
   {
@@ -1574,6 +1197,83 @@
     "gate_score": null
   },
   {
+    "case_id": "217177",
+    "사건명": "분묘지료청구",
+    "법원명": "수원지방법원 평택지원",
+    "선고일자": "2019-08-23",
+    "machine_score": 80,
+    "query": "분묘기지권",
+    "topic": "땅·선산",
+    "body_len": 4891,
+    "gate_score": null
+  },
+  {
+    "case_id": "178261",
+    "사건명": "손해배상(기)",
+    "법원명": "서울남부지방법원",
+    "선고일자": "2013-05-10",
+    "machine_score": 80,
+    "query": "고수익",
+    "topic": "노후사기",
+    "body_len": 8622,
+    "gate_score": null
+  },
+  {
+    "case_id": "205468",
+    "사건명": "근저당권말소",
+    "법원명": "서울고등법원",
+    "선고일자": "2015-05-14",
+    "machine_score": 80,
+    "query": "요양원",
+    "topic": "요양",
+    "body_len": 8026,
+    "gate_score": null
+  },
+  {
+    "case_id": "148100",
+    "사건명": "분묘굴이",
+    "법원명": "대전지방법원",
+    "선고일자": "2010-06-23",
+    "machine_score": 80,
+    "query": "분묘기지권",
+    "topic": "땅·선산",
+    "body_len": 3578,
+    "gate_score": null
+  },
+  {
+    "case_id": "217539",
+    "사건명": "부당이득금",
+    "법원명": "서울중앙지방법원",
+    "선고일자": "2016-06-02",
+    "machine_score": 80,
+    "query": "노인요양",
+    "topic": "요양",
+    "body_len": 23725,
+    "gate_score": null
+  },
+  {
+    "case_id": "614333",
+    "사건명": "기타(금전)",
+    "법원명": "대법원",
+    "선고일자": "2025-12-11",
+    "machine_score": 80,
+    "query": "분묘기지권",
+    "topic": "땅·선산",
+    "body_len": 8962,
+    "gate_score": null
+  },
+  {
+    "case_id": "69680",
+    "사건명": "예금반환",
+    "법원명": "의정부지법",
+    "선고일자": "2004-02-05",
+    "machine_score": 80,
+    "query": "고수익",
+    "topic": "노후사기",
+    "body_len": 6603,
+    "gate_score": null
+  },
+  {
     "case_id": "202979",
     "사건명": "보험금",
     "법원명": "서울고등법원",
@@ -1582,6 +1282,17 @@
     "query": "유언무효",
     "topic": "상속",
     "body_len": 6082,
+    "gate_score": null
+  },
+  {
+    "case_id": "421498",
+    "사건명": "부당이득금",
+    "법원명": "서울중앙지방법원",
+    "선고일자": "2010-09-10",
+    "machine_score": 79,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 11357,
     "gate_score": null
   },
   {
@@ -1604,6 +1315,138 @@
     "query": "유언효력",
     "topic": "상속",
     "body_len": 4137,
+    "gate_score": null
+  },
+  {
+    "case_id": "77996",
+    "사건명": "반론보도심판청구",
+    "법원명": "서울지방법원",
+    "선고일자": "2002-02-01",
+    "machine_score": 76,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 16951,
+    "gate_score": null
+  },
+  {
+    "case_id": "209411",
+    "사건명": "손해배상(기)",
+    "법원명": "서울고등법원",
+    "선고일자": "2013-07-10",
+    "machine_score": 76,
+    "query": "부양을 조건으로",
+    "topic": "효도계약",
+    "body_len": 24295,
+    "gate_score": null
+  },
+  {
+    "case_id": "78333",
+    "사건명": "손해배상(기)",
+    "법원명": "서울고등법원",
+    "선고일자": "2005-07-08",
+    "machine_score": 76,
+    "query": "분묘기지권",
+    "topic": "땅·선산",
+    "body_len": 9959,
+    "gate_score": null
+  },
+  {
+    "case_id": "421486",
+    "사건명": "부당이득금",
+    "법원명": "울산지방법원",
+    "선고일자": "2009-02-04",
+    "machine_score": 75,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 11271,
+    "gate_score": null
+  },
+  {
+    "case_id": "226419",
+    "사건명": "소유권말소등기",
+    "법원명": "수원고등법원",
+    "선고일자": "2020-06-18",
+    "machine_score": 75,
+    "query": "부양을 조건으로",
+    "topic": "효도계약",
+    "body_len": 11815,
+    "gate_score": null
+  },
+  {
+    "case_id": "138884",
+    "사건명": "소유권말소등기",
+    "법원명": "서울고등법원",
+    "선고일자": "2006-03-31",
+    "machine_score": 75,
+    "query": "부양을 조건으로",
+    "topic": "효도계약",
+    "body_len": 14778,
+    "gate_score": null
+  },
+  {
+    "case_id": "149312",
+    "사건명": "손해배상(기)",
+    "법원명": "부산지법",
+    "선고일자": "2011-03-23",
+    "machine_score": 74,
+    "query": "고수익",
+    "topic": "노후사기",
+    "body_len": 12528,
+    "gate_score": null
+  },
+  {
+    "case_id": "159751",
+    "사건명": "토지인도·손해배상(기)",
+    "법원명": "서울고등법원",
+    "선고일자": "2011-07-07",
+    "machine_score": 73,
+    "query": "분묘기지권",
+    "topic": "땅·선산",
+    "body_len": 6142,
+    "gate_score": null
+  },
+  {
+    "case_id": "143413",
+    "사건명": "친생자관계존부확인",
+    "법원명": "부산지방법원 가정지원",
+    "선고일자": "2009-04-14",
+    "machine_score": 72,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 5332,
+    "gate_score": null
+  },
+  {
+    "case_id": "218693",
+    "사건명": "분묘기지권확인등ㆍ토지임료(지료)",
+    "법원명": "의정부지방법원",
+    "선고일자": "2016-12-23",
+    "machine_score": 72,
+    "query": "분묘기지권",
+    "topic": "땅·선산",
+    "body_len": 6507,
+    "gate_score": null
+  },
+  {
+    "case_id": "227425",
+    "사건명": "양육비",
+    "법원명": "서울민사지법",
+    "선고일자": "1993-02-04",
+    "machine_score": 72,
+    "query": "부양을 조건으로",
+    "topic": "효도계약",
+    "body_len": 6409,
+    "gate_score": null
+  },
+  {
+    "case_id": "599707",
+    "사건명": "기타(금전)",
+    "법원명": "서울고등법원",
+    "선고일자": "2021-01-15",
+    "machine_score": 72,
+    "query": "부양을 조건으로",
+    "topic": "효도계약",
+    "body_len": 21596,
     "gate_score": null
   },
   {
@@ -1651,6 +1494,50 @@
     "gate_score": null
   },
   {
+    "case_id": "183184",
+    "사건명": "대여이자금",
+    "법원명": "수원지방법원 안양지원",
+    "선고일자": "2013-07-12",
+    "machine_score": 70,
+    "query": "노인요양",
+    "topic": "요양",
+    "body_len": 9618,
+    "gate_score": null
+  },
+  {
+    "case_id": "223471",
+    "사건명": "손해배상(기)",
+    "법원명": "서울중앙지방법원",
+    "선고일자": "2021-01-20",
+    "machine_score": 69,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 11999,
+    "gate_score": null
+  },
+  {
+    "case_id": "138188",
+    "사건명": "손해배상금",
+    "법원명": "서울중앙지법",
+    "선고일자": "2009-06-23",
+    "machine_score": 68,
+    "query": "고수익",
+    "topic": "노후사기",
+    "body_len": 25355,
+    "gate_score": null
+  },
+  {
+    "case_id": "70359",
+    "사건명": "대여금",
+    "법원명": "울산지법",
+    "선고일자": "2006-04-07",
+    "machine_score": 68,
+    "query": "고수익",
+    "topic": "노후사기",
+    "body_len": 11731,
+    "gate_score": null
+  },
+  {
     "case_id": "202073",
     "사건명": "소유권이전등기말소",
     "법원명": "창원지방법원",
@@ -1659,6 +1546,17 @@
     "query": "유언효력",
     "topic": "상속",
     "body_len": 3363,
+    "gate_score": null
+  },
+  {
+    "case_id": "231615",
+    "사건명": "손해배상(기)",
+    "법원명": "서울고등법원",
+    "선고일자": "2022-02-18",
+    "machine_score": 67,
+    "query": "부양을 조건으로",
+    "topic": "효도계약",
+    "body_len": 56533,
     "gate_score": null
   },
   {
@@ -1684,6 +1582,61 @@
     "gate_score": null
   },
   {
+    "case_id": "182840",
+    "사건명": "손해배상(기)",
+    "법원명": "서울북부지방법원",
+    "선고일자": "2013-12-06",
+    "machine_score": 66,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 12591,
+    "gate_score": null
+  },
+  {
+    "case_id": "152358",
+    "사건명": "소유권이전등기등",
+    "법원명": "대구지방법원",
+    "선고일자": "2010-01-28",
+    "machine_score": 66,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 8840,
+    "gate_score": null
+  },
+  {
+    "case_id": "619347",
+    "사건명": "손해배상(기)",
+    "법원명": "서울고등법원",
+    "선고일자": "2023-09-22",
+    "machine_score": 66,
+    "query": "부양을 조건으로",
+    "topic": "효도계약",
+    "body_len": 8506,
+    "gate_score": null
+  },
+  {
+    "case_id": "193130",
+    "사건명": "손해배상(기)",
+    "법원명": "대구고등법원",
+    "선고일자": "2017-02-08",
+    "machine_score": 66,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 7031,
+    "gate_score": null
+  },
+  {
+    "case_id": "77832",
+    "사건명": "해고무효확인",
+    "법원명": "부산고등법원",
+    "선고일자": "2005-04-20",
+    "machine_score": 66,
+    "query": "부양을 조건으로",
+    "topic": "효도계약",
+    "body_len": 8722,
+    "gate_score": null
+  },
+  {
     "case_id": "240645",
     "사건명": "소유권이전등기",
     "법원명": "대법원",
@@ -1692,6 +1645,72 @@
     "query": "유언무효",
     "topic": "상속",
     "body_len": 3624,
+    "gate_score": null
+  },
+  {
+    "case_id": "172205",
+    "사건명": "부당이득금반환등",
+    "법원명": "서울중앙지방법원",
+    "선고일자": "2010-11-29",
+    "machine_score": 65,
+    "query": "고수익",
+    "topic": "노후사기",
+    "body_len": 52315,
+    "gate_score": null
+  },
+  {
+    "case_id": "241425",
+    "사건명": "대여금(잔부판결)",
+    "법원명": "서울서부지법",
+    "선고일자": "2024-04-30",
+    "machine_score": 65,
+    "query": "노인요양",
+    "topic": "요양",
+    "body_len": 4646,
+    "gate_score": null
+  },
+  {
+    "case_id": "138584",
+    "사건명": "손해배상",
+    "법원명": "수원지법",
+    "선고일자": "2009-07-23",
+    "machine_score": 65,
+    "query": "고수익",
+    "topic": "노후사기",
+    "body_len": 7237,
+    "gate_score": null
+  },
+  {
+    "case_id": "227353",
+    "사건명": "소유권이전등기말소",
+    "법원명": "대전고법",
+    "선고일자": "1993-12-28",
+    "machine_score": 65,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 6222,
+    "gate_score": null
+  },
+  {
+    "case_id": "119434",
+    "사건명": "소유권보존등기말소등",
+    "법원명": "대구고법",
+    "선고일자": "1992-10-22",
+    "machine_score": 65,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 9910,
+    "gate_score": null
+  },
+  {
+    "case_id": "75549",
+    "사건명": "소유권이전등기청구사건",
+    "법원명": "서울고법",
+    "선고일자": "1983-03-25",
+    "machine_score": 65,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 7833,
     "gate_score": null
   },
   {
@@ -1739,6 +1758,61 @@
     "gate_score": null
   },
   {
+    "case_id": "77336",
+    "사건명": "소유권이전등기등",
+    "법원명": "창원지방법원",
+    "선고일자": "2005-09-23",
+    "machine_score": 63,
+    "query": "망은행위",
+    "topic": "효도계약",
+    "body_len": 5975,
+    "gate_score": null
+  },
+  {
+    "case_id": "172794",
+    "사건명": "손해배상(기)",
+    "법원명": "인천지방법원",
+    "선고일자": "2012-11-16",
+    "machine_score": 63,
+    "query": "요양원",
+    "topic": "요양",
+    "body_len": 3560,
+    "gate_score": null
+  },
+  {
+    "case_id": "152343",
+    "사건명": "소유권이전등기등",
+    "법원명": "대구지방법원 김천지원",
+    "선고일자": "2009-02-11",
+    "machine_score": 63,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 11226,
+    "gate_score": null
+  },
+  {
+    "case_id": "147111",
+    "사건명": "구상금",
+    "법원명": "서울중앙지방법원",
+    "선고일자": "2010-03-25",
+    "machine_score": 63,
+    "query": "노인요양",
+    "topic": "요양",
+    "body_len": 5185,
+    "gate_score": null
+  },
+  {
+    "case_id": "188239",
+    "사건명": "손해배상(기)",
+    "법원명": "광주고등법원",
+    "선고일자": "2013-12-31",
+    "machine_score": 63,
+    "query": "노인요양",
+    "topic": "요양",
+    "body_len": 34441,
+    "gate_score": null
+  },
+  {
     "case_id": "240913",
     "사건명": "유류분반환청구의소[계약명의신탁의 명의수탁자가 명의신탁된 부동산을 명의신탁자에게 양도하고 사망한 경우 소유권이전등기의 효력 및 그 부동산이 유류분 산정의 기초재산에 산입되는 증여에 해당하는지 문제된 사건]",
     "법원명": "대법원",
@@ -1772,38 +1846,48 @@
     "gate_score": null
   },
   {
-    "case_id": "606237",
-    "사건명": "부당이득금반환청구의소",
-    "법원명": "서울고등법원",
-    "선고일자": "2024-09-05",
-    "machine_score": 58,
-    "query": "부당이득반환",
-    "body_len": 5736,
-    "gate_score": 0,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "부당이득",
-    "one_line": "외국계 기업과 지방자치단체 간의 복잡한 지방소득세 환급 다툼.",
-    "twist_hint": "사람의 이야기가 전혀 없는 순수 세무/행정 소송이므로 드라마적 반전을 설계할 수 없다.",
-    "victim": "없음 (외국계 법인)",
-    "villain": "없음 (지방자치단체)",
-    "amount_krw": 0,
-    "amount_label": "특정 불가",
-    "senior": false,
-    "gate_scores": {
-      "conflict": 0,
-      "betrayal": 0,
-      "twist": 0,
-      "empathy": 0,
-      "catharsis": 0,
-      "amount": 0,
-      "detail": 0
-    },
-    "gate_reject": [
-      "tax_case",
-      "no_person"
-    ],
-    "gate_note": "원고는 외국계 법인들이고 피고는 강남구와 서울특별시임. 조세(지방소득세) 불복 사건이 민사상 부당이득반환청구로 제기된 건으로, 가족이나 개인 간의 서사가 전혀 없어 채널 성격과 완전히 무관함."
+    "case_id": "205652",
+    "사건명": "손해배상(기)·손해배상(기)·손해배상(기)·손해배상(기)·손해배상(기)",
+    "법원명": "서울중앙지법",
+    "선고일자": "2018-07-19",
+    "machine_score": 60,
+    "query": "부양을 조건으로",
+    "topic": "효도계약",
+    "body_len": 21532,
+    "gate_score": null
+  },
+  {
+    "case_id": "190939",
+    "사건명": "분묘굴이등",
+    "법원명": "서울중앙지법",
+    "선고일자": "2013-02-20",
+    "machine_score": 60,
+    "query": "분묘기지권",
+    "topic": "땅·선산",
+    "body_len": 5091,
+    "gate_score": null
+  },
+  {
+    "case_id": "179180",
+    "사건명": "손해배상(기)",
+    "법원명": "서울중앙지법",
+    "선고일자": "2015-07-16",
+    "machine_score": 60,
+    "query": "부양을 조건으로",
+    "topic": "효도계약",
+    "body_len": 45918,
+    "gate_score": null
+  },
+  {
+    "case_id": "75596",
+    "사건명": "소유권이전등기말소청구사건",
+    "법원명": "대구고법",
+    "선고일자": "1983-12-22",
+    "machine_score": 59,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 3702,
+    "gate_score": null
   },
   {
     "case_id": "113513",
@@ -1817,6 +1901,17 @@
     "gate_score": null
   },
   {
+    "case_id": "149301",
+    "사건명": "부당이득금",
+    "법원명": "서울동부지법",
+    "선고일자": "2011-03-28",
+    "machine_score": 58,
+    "query": "보이스피싱",
+    "topic": "노후사기",
+    "body_len": 3715,
+    "gate_score": null
+  },
+  {
     "case_id": "237131",
     "사건명": "유류분반환청구",
     "법원명": "서울고등법원",
@@ -1826,6 +1921,17 @@
     "body_len": 8683,
     "gate_score": null,
     "topic": "상속"
+  },
+  {
+    "case_id": "75131",
+    "사건명": "소유권이전등기말소청구사건",
+    "법원명": "서울고법",
+    "선고일자": "1981-02-23",
+    "machine_score": 56,
+    "query": "망은행위",
+    "topic": "효도계약",
+    "body_len": 3249,
+    "gate_score": null
   },
   {
     "case_id": "219297",
@@ -1861,6 +1967,39 @@
     "gate_score": null
   },
   {
+    "case_id": "153127",
+    "사건명": "약정금",
+    "법원명": "서울중앙지법",
+    "선고일자": "2011-06-15",
+    "machine_score": 55,
+    "query": "요양원",
+    "topic": "요양",
+    "body_len": 4570,
+    "gate_score": null
+  },
+  {
+    "case_id": "69494",
+    "사건명": "위자료",
+    "법원명": "광주지법",
+    "선고일자": "2003-07-01",
+    "machine_score": 55,
+    "query": "요양원",
+    "topic": "요양",
+    "body_len": 7185,
+    "gate_score": null
+  },
+  {
+    "case_id": "193020",
+    "사건명": "외국판결의승인및집행판결",
+    "법원명": "서울고등법원",
+    "선고일자": "2012-01-27",
+    "machine_score": 53,
+    "query": "부양을 조건으로",
+    "topic": "효도계약",
+    "body_len": 6058,
+    "gate_score": null
+  },
+  {
     "case_id": "239727",
     "사건명": "유류분반환청구의소",
     "법원명": "대법원",
@@ -1883,6 +2022,50 @@
     "topic": "상속"
   },
   {
+    "case_id": "609553",
+    "사건명": "소유권이전등기·토지인도",
+    "법원명": "대법원",
+    "선고일자": "2025-03-27",
+    "machine_score": 52,
+    "query": "분묘기지권",
+    "topic": "땅·선산",
+    "body_len": 3629,
+    "gate_score": null
+  },
+  {
+    "case_id": "615827",
+    "사건명": "기타(금전)",
+    "법원명": "전주지방법원",
+    "선고일자": "2023-07-06",
+    "machine_score": 51,
+    "query": "분묘기지권",
+    "topic": "땅·선산",
+    "body_len": 5058,
+    "gate_score": null
+  },
+  {
+    "case_id": "214507",
+    "사건명": "손해배상청구",
+    "법원명": "서울중앙지법",
+    "선고일자": "2020-11-20",
+    "machine_score": 51,
+    "query": "부양을 조건으로",
+    "topic": "효도계약",
+    "body_len": 25583,
+    "gate_score": null
+  },
+  {
+    "case_id": "228023",
+    "사건명": "부당이득금반환",
+    "법원명": "서울중앙지법",
+    "선고일자": "2008-11-18",
+    "machine_score": 51,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 5697,
+    "gate_score": null
+  },
+  {
     "case_id": "77376",
     "사건명": "손해배상(기)",
     "법원명": "서울고등법원",
@@ -1891,6 +2074,50 @@
     "query": "유언효력",
     "topic": "상속",
     "body_len": 12852,
+    "gate_score": null
+  },
+  {
+    "case_id": "235079",
+    "사건명": "유해인도",
+    "법원명": "의정부지방법원 고양지원",
+    "선고일자": "2017-12-22",
+    "machine_score": 50,
+    "query": "부양을 조건으로",
+    "topic": "효도계약",
+    "body_len": 8697,
+    "gate_score": null
+  },
+  {
+    "case_id": "77726",
+    "사건명": "손해배상(기)",
+    "법원명": "서울고등법원",
+    "선고일자": "2003-11-20",
+    "machine_score": 50,
+    "query": "요양원",
+    "topic": "요양",
+    "body_len": 6746,
+    "gate_score": null
+  },
+  {
+    "case_id": "228707",
+    "사건명": "소유권이전등기말소청구사건",
+    "법원명": "서울지법 남부지원",
+    "선고일자": "1990-08-16",
+    "machine_score": 50,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 6710,
+    "gate_score": null
+  },
+  {
+    "case_id": "118282",
+    "사건명": "부동산소유권이전등기말소",
+    "법원명": "부산지법",
+    "선고일자": "1988-01-19",
+    "machine_score": 50,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 3374,
     "gate_score": null
   },
   {
@@ -1903,6 +2130,17 @@
     "body_len": 5527,
     "gate_score": null,
     "topic": "상속"
+  },
+  {
+    "case_id": "231367",
+    "사건명": "토지소유권이전등기말소등기등",
+    "법원명": "광주지법",
+    "선고일자": "1988-06-24",
+    "machine_score": 47,
+    "query": "분묘기지권",
+    "topic": "땅·선산",
+    "body_len": 6268,
+    "gate_score": null
   },
   {
     "case_id": "144535",
@@ -1960,37 +2198,59 @@
     "gate_score": null
   },
   {
-    "case_id": "609409",
-    "사건명": "부당이득금반환등",
-    "법원명": "대법원",
-    "선고일자": "2025-01-23",
-    "machine_score": 43,
-    "query": "부당이득반환",
-    "body_len": 4400,
-    "gate_score": 0,
-    "topic": "재산",
-    "gate_pass": false,
-    "case_type": "기타",
-    "one_line": "음악저작권협회와 전자회사 간의 매장 배경음악 저작권료 분쟁.",
-    "twist_hint": "가족 드라마로 각색할 수 있는 인간관계나 반전 요소가 전혀 없습니다.",
-    "victim": "없음 (법인)",
-    "villain": "없음 (법인)",
-    "amount_krw": 0,
-    "amount_label": "금액 특정 안 됨",
-    "senior": false,
-    "gate_scores": {
-      "conflict": 0,
-      "betrayal": 0,
-      "twist": 0,
-      "empathy": 0,
-      "catharsis": 0,
-      "amount": 0,
-      "detail": 0
-    },
-    "gate_reject": [
-      "no_person"
-    ],
-    "gate_note": "순수 기업 간 저작권 법리 다툼으로 사람 이야기가 전혀 없음."
+    "case_id": "214713",
+    "사건명": "손해배상(기)",
+    "법원명": "서울중앙지법",
+    "선고일자": "2018-08-22",
+    "machine_score": 44,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 9725,
+    "gate_score": null
+  },
+  {
+    "case_id": "75863",
+    "사건명": "손해배상청구사건",
+    "법원명": "마산지법",
+    "선고일자": "1984-08-03",
+    "machine_score": 44,
+    "query": "요양원",
+    "topic": "요양",
+    "body_len": 4566,
+    "gate_score": null
+  },
+  {
+    "case_id": "64818",
+    "사건명": "손해배상(기)",
+    "법원명": "수원지법 성남지원",
+    "선고일자": "2008-09-11",
+    "machine_score": 44,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 9014,
+    "gate_score": null
+  },
+  {
+    "case_id": "177821",
+    "사건명": "해고무효확인등",
+    "법원명": "대구고법",
+    "선고일자": "2015-01-21",
+    "machine_score": 44,
+    "query": "부양을 조건으로",
+    "topic": "효도계약",
+    "body_len": 19104,
+    "gate_score": null
+  },
+  {
+    "case_id": "212135",
+    "사건명": "손해배상(기)",
+    "법원명": "광주고법",
+    "선고일자": "2000-10-12",
+    "machine_score": 44,
+    "query": "부양을 조건으로",
+    "topic": "효도계약",
+    "body_len": 21818,
+    "gate_score": null
   },
   {
     "case_id": "603649",
@@ -2035,6 +2295,17 @@
     "body_len": 12940,
     "gate_score": null,
     "topic": "재산"
+  },
+  {
+    "case_id": "612985",
+    "사건명": "손해배상(기)",
+    "법원명": "대법원",
+    "선고일자": "2025-10-30",
+    "machine_score": 43,
+    "query": "요양원",
+    "topic": "요양",
+    "body_len": 3629,
+    "gate_score": null
   },
   {
     "case_id": "187693",
@@ -2089,6 +2360,28 @@
     "query": "유언효력",
     "topic": "상속",
     "body_len": 6228,
+    "gate_score": null
+  },
+  {
+    "case_id": "145685",
+    "사건명": "손해배상(기)",
+    "법원명": "부산지법",
+    "선고일자": "2006-02-10",
+    "machine_score": 41,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 6956,
+    "gate_score": null
+  },
+  {
+    "case_id": "153116",
+    "사건명": "선원재해보상금",
+    "법원명": "인천지법",
+    "선고일자": "2011-04-13",
+    "machine_score": 41,
+    "query": "노인요양",
+    "topic": "요양",
+    "body_len": 7095,
     "gate_score": null
   },
   {
@@ -2147,6 +2440,28 @@
     "topic": "재산"
   },
   {
+    "case_id": "209310",
+    "사건명": "손해배상(기)",
+    "법원명": "광주고법",
+    "선고일자": "2019-08-21",
+    "machine_score": 40,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 6895,
+    "gate_score": null
+  },
+  {
+    "case_id": "118420",
+    "사건명": "부동산소유권이전등기말소",
+    "법원명": "부산고법",
+    "선고일자": "1988-09-30",
+    "machine_score": 40,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 4965,
+    "gate_score": null
+  },
+  {
     "case_id": "161617",
     "사건명": "유류분 반환",
     "법원명": "대법원",
@@ -2202,6 +2517,28 @@
     "gate_score": null
   },
   {
+    "case_id": "160659",
+    "사건명": "시설물 수거 및 대지 인도",
+    "법원명": "서울고법",
+    "선고일자": "2012-01-11",
+    "machine_score": 38,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 4489,
+    "gate_score": null
+  },
+  {
+    "case_id": "620709",
+    "사건명": "위자료청구사건",
+    "법원명": "서울고법",
+    "선고일자": "1979-11-23",
+    "machine_score": 37,
+    "query": "부양을 조건으로",
+    "topic": "효도계약",
+    "body_len": 6684,
+    "gate_score": null
+  },
+  {
     "case_id": "199887",
     "사건명": "소유권이전등기말소",
     "법원명": "대법원",
@@ -2246,6 +2583,28 @@
     "gate_score": null
   },
   {
+    "case_id": "164094",
+    "사건명": "부당이득금",
+    "법원명": "전주지법",
+    "선고일자": "2012-05-23",
+    "machine_score": 35,
+    "query": "보이스피싱",
+    "topic": "노후사기",
+    "body_len": 4290,
+    "gate_score": null
+  },
+  {
+    "case_id": "222025",
+    "사건명": "소유권이전등기",
+    "법원명": "서울고법",
+    "선고일자": "1998-09-15",
+    "machine_score": 34,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 10518,
+    "gate_score": null
+  },
+  {
     "case_id": "217445",
     "사건명": "소유권이전청구권가등기말소등기",
     "법원명": "대법원",
@@ -2266,6 +2625,39 @@
     "body_len": 6082,
     "gate_score": null,
     "topic": "재산"
+  },
+  {
+    "case_id": "220239",
+    "사건명": "소유권이전등기·소유권이전등기",
+    "법원명": "대법원",
+    "선고일자": "2022-03-11",
+    "machine_score": 32,
+    "query": "망은행위",
+    "topic": "효도계약",
+    "body_len": 6466,
+    "gate_score": null
+  },
+  {
+    "case_id": "210575",
+    "사건명": "소유권이전등기",
+    "법원명": "대구고법",
+    "선고일자": "2019-10-10",
+    "machine_score": 31,
+    "query": "요양원",
+    "topic": "요양",
+    "body_len": 19643,
+    "gate_score": null
+  },
+  {
+    "case_id": "224041",
+    "사건명": "대여금청구사건",
+    "법원명": "서울고법",
+    "선고일자": "1984-11-22",
+    "machine_score": 31,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 5748,
+    "gate_score": null
   },
   {
     "case_id": "238029",
@@ -2301,6 +2693,17 @@
     "topic": "재산"
   },
   {
+    "case_id": "144362",
+    "사건명": "손해배상(기)",
+    "법원명": "서울고법",
+    "선고일자": "2010-06-01",
+    "machine_score": 28,
+    "query": "후견인",
+    "topic": "치매",
+    "body_len": 11676,
+    "gate_score": null
+  },
+  {
     "case_id": "608467",
     "사건명": "사해행위취소[배당요구 종기 이후 이루어진 경매 목적물 양도행위에 대하여 사해행위 취소 및 원상회복을 청구하는 사건]",
     "법원명": "대법원",
@@ -2332,6 +2735,28 @@
     "body_len": 4414,
     "gate_score": null,
     "topic": "재산"
+  },
+  {
+    "case_id": "184652",
+    "사건명": "계약효력부존재확인",
+    "법원명": "서울고법",
+    "선고일자": "2017-03-30",
+    "machine_score": 25,
+    "query": "요양원",
+    "topic": "요양",
+    "body_len": 7372,
+    "gate_score": null
+  },
+  {
+    "case_id": "231453",
+    "사건명": "토지인도·소유권이전등기",
+    "법원명": "대법원",
+    "선고일자": "2022-09-29",
+    "machine_score": 23,
+    "query": "망은행위",
+    "topic": "효도계약",
+    "body_len": 3238,
+    "gate_score": null
   },
   {
     "case_id": "215229",
@@ -2574,5 +2999,27 @@
     "body_len": 3300,
     "gate_score": null,
     "topic": "상속"
+  },
+  {
+    "case_id": "217789",
+    "사건명": "분묘기지권확인등ㆍ토지임료(지료)",
+    "법원명": "대법원",
+    "선고일자": "2021-09-16",
+    "machine_score": 13,
+    "query": "분묘기지권",
+    "topic": "땅·선산",
+    "body_len": 3158,
+    "gate_score": null
+  },
+  {
+    "case_id": "196546",
+    "사건명": "이사회결의부존재확인",
+    "법원명": "대법원",
+    "선고일자": "1997-06-24",
+    "machine_score": 10,
+    "query": "요양원",
+    "topic": "요양",
+    "body_len": 4112,
+    "gate_score": null
   }
 ]
