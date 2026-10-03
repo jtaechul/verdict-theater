@@ -170,6 +170,10 @@ const STAGE_LABEL = {
 //    부부 38,272 · 사이다사연 36,400 · 반전사연 35,163
 //    뺀 것(검색량 안 잡힘): 법률사연 · 쇼츠드라마 · 실화사연 · 외도 · shorts
 //    ⚠️ src/ytmeta.py 의 LEAD_TAGS·BASE_TAGS 와 **짝**이다 (pair_check 가 본다).
+// ⭐ 2026-10-03 손님: "공개(지금당장)" — 공개 시각. short90-upload.yml 의 when 칸과
+//    **글자 하나까지 같아야** 한다 (다르면 깃허브가 422 로 통째로 거절한다).
+const WHEN_SLOT = '예약 — 한국 아침 8시 (권장)';
+const WHEN_NOW = '지금 바로 공개';
 const YT_LEAD_TAGS = ['사연'];
 const YT_BASE_TAGS = ['사이다사연', '반전사연', '막장드라마', '부부',
                       '판결극장', '사연극장', '실화사건'];
@@ -685,6 +689,8 @@ function appHtml() {
 <script>
 const WF = ${JSON.stringify(WORKFLOWS)};
 const STAGE = ${JSON.stringify(STAGE_LABEL)};
+const WHEN_SLOT = ${JSON.stringify(WHEN_SLOT)};
+const WHEN_NOW = ${JSON.stringify(WHEN_NOW)};
 let S = null;
 let VIEW = 'home';   // 지금 보고 있는 화면. 대본을 보는 중에 첫 화면이 끼어들지 않게 한다
 let QTOPIC = '';     // 대기열에서 지금 고른 갈래 (''=전체)
@@ -1856,6 +1862,14 @@ function partsCard(w) {
        + '<option>비공개 (나만 보기)</option>'
        + '<option>일부공개 (링크 아는 사람만)</option>'
        + '<option>공개 (모두에게)</option></select></div>';
+    // ⭐ 2026-10-03 손님: "공개(지금당장)" — 공개를 고르셨을 때만 쓰인다. 기본은 예약이다.
+    h += '<div style="margin-top:10px"><b>공개를 고르셨다면 언제</b>'
+       + '<select id="w-when-' + no + '" style="width:100%;font-size:14px;'
+       + 'margin-top:4px">'
+       + '<option>' + WHEN_SLOT + '</option>'
+       + '<option>' + WHEN_NOW + '</option></select>'
+       + '<div class="uphint">예약이 조회수가 훨씬 좋았습니다 (바로 공개 2건 349·0회 · '
+       + '예약 8건 1,212~2,946회).</div></div>';
     h += '<div class="btns" style="margin-top:12px">'
        + mini('연습 (올리지 않고 확인만)', 'workUp(' + no + ',1)')
        + '<button class="gold" id="w-up-' + no + '" onclick="workUp(' + no + ',0)">'
@@ -2308,10 +2322,14 @@ async function workUp(no, dry) {
   const p = ((w.parts || {})[String(no)]) || {};
   const priv = (document.getElementById('w-priv-' + no) || {}).value
              || '비공개 (나만 보기)';
+  const when = (document.getElementById('w-when-' + no) || {}).value || WHEN_SLOT;
   const body = partBody(no);
   if (!body.title) { showErr('제목이 비었습니다', no + '편 제목을 적어 주십시오.'); return; }
   if (!dry) {
     const lines = [no + '편을 유튜브에 올릴까요?', '', body.title, '', '공개 범위: ' + priv];
+    if (priv === '공개 (모두에게)')
+      lines.push('공개 시각: ' + (when === WHEN_NOW ? '올라가는 대로 바로'
+                                                 : '한국 아침 8시 예약'));
     if (p.uploaded)
       lines.push('', '⚠️ 이 편은 이미 올렸습니다 (' + (p.uploaded.privacy || '') + ').',
                  '누르면 같은 영상이 하나 더 올라갑니다.');
@@ -2336,7 +2354,7 @@ async function workUp(no, dry) {
   try {
     const r = await fetch('/api/upload-short90', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sid: WORK, part: String(no), privacy: priv,
+      body: JSON.stringify({ sid: WORK, part: String(no), privacy: priv, when: when,
                              dry: !!dry, parts: [body] }),
     });
     const j = await r.json();
@@ -4813,6 +4831,8 @@ export default {
           ? String(body.privacy) : PRIV[0];
         const mode = (body && body.dry)
           ? '연습 (올리지 않고 확인만)' : '진짜로 올리기';
+        // ⭐ 2026-10-03 — 공개 시각: 손님이 [지금 바로 공개] 를 고르셨을 때만 예약을 뺀다
+        const when = String((body && body.when) || '') === WHEN_NOW ? WHEN_NOW : WHEN_SLOT;
         // 예약 간격 — all 일 때만 쓴다. 기본 하루.
         const eh = parseInt((body && body.every_hours) || '', 10);
         const every = (Number.isInteger(eh) && eh >= 1 && eh <= 168)
@@ -4825,7 +4845,7 @@ export default {
         try {
           await gh(env, `/repos/${REPO}/actions/workflows/short90-upload.yml/dispatches`, {
             method: 'POST', body: JSON.stringify({ ref: BRANCH,
-              inputs: { sid: sid, part: part, privacy: priv, mode: mode,
+              inputs: { sid: sid, part: part, privacy: priv, mode: mode, when: when,
                         every_hours: every, meta: fresh || '',
                         fix_only: fixOnly ? '예 — 제목·설명만 고친다'
                                           : '아니오 — 새로 올린다' } }),
