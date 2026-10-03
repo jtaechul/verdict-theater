@@ -182,9 +182,10 @@ def gap_of(doc):
     """말과 말 사이 쉼(초) — 전부 영상 드라마만 대본이 정한다.
 
     ⭐⭐⭐ 2026-10-02 손님: "말과 말 사이에 0.5초 정도는 남겨도 괜찮아." (S94 v5 · gap 0.5)
-       처음엔 "쉬는 공간 없이"(0.12초)였다. 대본에 gap 이 없으면 그 값 그대로다."""
+       처음엔 "쉬는 공간 없이"(0.12초)였다. 대본에 gap 이 없으면 그 값 그대로다.
+       설명 드라마(style="explainer")는 적지 않아도 0.5초다 (story90.EXPLAINER_DEFAULTS)."""
     try:
-        return max(0.0, float(doc.get("gap"))) if doc.get("gap") is not None else PAD_TIGHT
+        return max(0.0, float(ST90.style_get(doc, "gap", PAD_TIGHT)))
     except (TypeError, ValueError):
         return PAD_TIGHT
 MIN_CUT = 2.2                    # 아무리 짧아도 이만큼은 보여 준다(깜빡임 방지)
@@ -1844,15 +1845,17 @@ def chapter_chip(img, text):
 
 def labels_of(doc):
     """{관계 이름: 이름표 글}. name_first 면 「윤정숙 (딸)」 (괄호 안은 tag · 없으면 관계 이름),
-    아니면 옛 모양 「딸 (윤정숙)」. 가명이 없으면 빈 것 (이름표는 관계 이름 그대로)."""
+    아니면 옛 모양 「딸 (윤정숙)」. 가명이 없으면 빈 것 (이름표는 관계 이름 그대로).
+    설명 드라마(style="explainer")는 적지 않아도 name_first 다."""
+    first = bool(ST90.style_get(doc, "name_first", False))
     out = {}
     for p in doc.get("cast") or []:
         nm, al = str(p.get("name") or ""), str(p.get("alias") or "").strip()
         if not nm or not al:
             continue
         tag = str(p.get("tag") or nm).strip()
-        out[nm] = f"{al} ({tag})" if doc.get("name_first") else f"{nm} ({al})"
-    return out if doc.get("name_first") else {}
+        out[nm] = f"{al} ({tag})" if first else f"{nm} ({al})"
+    return out if first else {}
 
 
 def tail_sub(text):
@@ -2828,7 +2831,7 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
     intros = intro_of(doc)
     alias = aliases_of(doc)
     labels = labels_of(doc)
-    note = str(doc.get("end_note") or "") or (ALIAS_NOTE if alias else "")
+    note = str(ST90.style_get(doc, "end_note") or "") or (ALIAS_NOTE if alias else "")
     for i, c in enumerate(cuts):
         n = c["n"]
         still = stills_d / f"c{n:02d}.png"

@@ -337,14 +337,18 @@
     "cuts": [
      1,
      30
-    ]
+    ],
+    "sec": 171.8,
+    "made_at": "2026-10-02T15:37:54Z",
+    "talk_gaps": []
    }
   },
-  "script_sig": "4461160aaca1",
+  "script_sig": "5ffd9c385921",
   "title": "어머니 묘를 파내라",
   "label": "어머니 묘 사건",
   "case_id": "190939",
   "cuts": 30,
-  "scripted_at": "2026-10-02T11:40:36Z"
+  "scripted_at": "2026-10-02T11:40:36Z",
+  "wall": 179.5
  }
 }

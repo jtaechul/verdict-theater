@@ -71,11 +71,13 @@ def row(d, sid):
     return d.setdefault(sid, {"sid": sid, "parts": {}})
 
 
-def from_doc(doc):
+def from_doc(doc, wall=None):
     """대본(<SID>.json)에 맞춰 사건·편 칸을 만들어 둔다. 이미 있는 값은 안 지운다.
 
     ⚠️ 올린 기록(uploaded)은 **절대 건드리지 않는다.** 대본을 다시 지었다고
        올린 사실이 사라지면, 화면이 '안 올림' 으로 보여 같은 영상을 두 번 올린다.
+    ⭐ wall = 그 사건 형식의 편 길이 벽(초 · talkplan.part_max_sec) — 화면과 검사가
+       60초로 못 박지 않고 이 값을 본다 (2026-10-02 · 설명 드라마는 쇼츠 한도 179.5초).
     """
     d = load()
     sid = doc.get("sid") or "S90"
@@ -85,6 +87,8 @@ def from_doc(doc):
     r["case_id"] = doc.get("case_id") or r.get("case_id", "")
     r["cuts"] = len(doc.get("cuts") or [])
     r["scripted_at"] = r.get("scripted_at") or now()
+    if wall:
+        r["wall"] = round(float(wall), 1)
     keep = r.get("parts") or {}
     parts = {}
     for p in doc.get("parts") or []:

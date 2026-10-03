@@ -48,7 +48,7 @@ def ck(name, ok, why=""):
         bad.append(name)
 
 
-def run_block(privacy, part, every="24"):
+def run_block(privacy, part, every="24", when=""):
     """워크플로의 올리는 칸을 **그대로 뽑아** 돌린다 (업로드는 흉내만)."""
     y = (ROOT / ".github" / "workflows" / "short90-upload.yml").read_text(
         encoding="utf-8")
@@ -67,7 +67,7 @@ def run_block(privacy, part, every="24"):
     (d / "src").mkdir()
     (d / "src" / "upload.py").write_text(
         "import sys\nprint('UP ' + ' '.join(sys.argv[1:]))\n")
-    sh = f'P={privacy}\nPART={part}\nDRY=""\nS=S91\nEVERY={every}\n' + blk
+    sh = f'P={privacy}\nPART={part}\nDRY=""\nS=S91\nEVERY={every}\nWHEN="{when}"\n' + blk
     r = subprocess.run(["bash", "-c", sh], cwd=d, capture_output=True, text=True)
     out = []
     for line in r.stdout.splitlines():
@@ -107,6 +107,15 @@ def main():
     ck("한 편만 올려도 예약이 걸린다", one and one[0][1], str(one))
     ck("그 한 편도 아침 8시다",
        one and one[0][1] and kst(one[0][1]).hour == NS.HOUR_KST)
+
+    print("\n② -2 [지금 바로 공개] 는 손님이 **고르셨을 때만** (2026-10-03 손님: \"공개(지금당장)\")")
+    now = run_block("public", "1", when="지금 바로 공개")
+    ck("고르시면 예약 없이 바로 공개한다", now and not now[0][1], str(now))
+    dflt = run_block("public", "1", when="예약 — 한국 아침 8시 (권장)")
+    ck("기본(예약)을 고르시면 예약이다", dflt and dflt[0][1], str(dflt))
+    y = (ROOT / ".github" / "workflows" / "short90-upload.yml").read_text(encoding="utf-8")
+    ck("단추의 기본값은 예약이다 (관리자 페이지 단추는 예전 그대로)",
+       "default: '예약 — 한국 아침 8시 (권장)'" in y and "WHEN: ${{ inputs.when }}" in y)
 
     print("\n③ 비공개·일부공개를 고르면 예약을 안 거는가")
     for pv in ("private", "unlisted"):

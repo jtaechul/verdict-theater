@@ -760,12 +760,34 @@ DRAMA_TALK_MIN, DRAMA_TALK_MAX = 7, 10      # 대사 컷(= 옴니 영상) 수
 #      컷 수·글자 수도 이해에 필요한 만큼 (S94 v5: 30컷 · 약 2분 50초).
 DRAMA60_RULES = {
     "PART_MIN_CUTS": 13, "PART_MAX_CUTS": 40,
-    "PART_SEC_MAX": 172.0, "PART_SEC_MIN": 45.0,
+    # 잣대 실측(S94 v5): 1093자 30컷 → 잣대 171.1초 · 실제 170.6초. 쇼츠 한도 179.5초에서 4.5초 물러선다.
+    "PART_SEC_MAX": 175.0, "PART_SEC_MIN": 45.0,
     "PART_CHARS": 1500, "PART_CHARS_MIN": 300,
     "NARR_MIN_PER_PART": 6,
     "ELLIPSIS_MAX": 3,
 }
 DRAMA60_TALK_MIN, DRAMA60_TALK_MAX = 4, 7
+# ⭐⭐⭐ 2026-10-02 손님: "실제로 우리가 업로드할 영상 같은 경우에는 720p 또는 360p를 선택할 수 있도록"
+#    처음엔 "화소는 360p … 처음부터" 였다(시험은 싸게). 올릴 영상은 **고른다** — 대본의 res
+#    (없으면 360p) · 한 번만 바꿔 보려면 tools/drama60.py … --res 720p.
+#    720p 는 옴니 1초 약 154원(360p 약 55원 · 약 2.8배). 조립 화면은 어느 쪽이든 1080×1920.
+RES_CHOICES = ("360p", "720p")
+RES_DEFAULT = "360p"
+# ── ⭐⭐⭐ 설명 드라마 (style="explainer") — 판결극장 영상의 **기본 짜임** (2026-10-02 · S94 v5.1) ──
+#    손님: "지금 이렇게 제작하는 거는 스킬로도 저장해 놓고 앞으로 우리가 제작하는 영상에서도
+#           동일한 방식으로 제작이 될수 있게끔 규칙에도 반영하고 코드에도 반영해줘. 영상이 마음에 쏙 든다."
+#    대본에 style 만 적으면 아래 값이 따라오고(대본이 따로 적은 값이 이긴다), 대본 검사가
+#    설명 드라마 규칙(check_explainer)을 함께 본다.
+#    짓는 법·본보기: .claude/skills/verdict-explainer/SKILL.md · 본보기 대본 S94.story.json
+EXPLAINER = "explainer"
+EXPLAINER_DEFAULTS = {
+    "gap": 0.5,                 # 말과 말 사이 쉼 — 손님: "0.5초 정도는 남겨도 괜찮아"
+    "name_first": True,         # 이름표 「윤정숙 (딸)」 — 손님: "이름을 넣고 괄호 열고 딸"
+    "end_note": "실제 판결을 재구성했습니다 · 등장인물 이름은 모두 가명입니다",
+}
+# 설명 드라마에 꼭 있어야 할 그림 — 누가 누구인지 · 왜 재판까지 왔나 · 어떻게 끝났나
+EXPLAINER_FIGS = (("relations", "인물 관계도"), ("issue", "재판의 쟁점"), ("verdict", "판결 정리"))
+FIG_KIND = {"family": "relations", "money": "flow", "paper": "compare"}   # 옛 이름 (S94 첫 판)
 # 길이 잣대 — 조립이 말 앞뒤 무음을 잘라 붙이고(여운 0.12초) 1.28배로 감는다.
 #   ⭐ 실측(S94 v1 · 2026-10-02): 346자 15컷 → 50.5초. 나레이션 글자당 0.1405초(1.28배),
 #   대사 컷은 한 컷 약 2.2초. 처음 잡은 잣대(0.1434 · 컷당 0.55)는 58초라 했다 — 8초를
@@ -807,6 +829,21 @@ CAST_BAN = ("sexy", "seductive", "revealing", "low-cut", "lingerie", "cleavage",
 
 def is_drama(doc):
     return str((doc or {}).get("format") or "") == DRAMA
+
+
+def is_explainer(doc):
+    return str((doc or {}).get("style") or "") == EXPLAINER
+
+
+def style_get(doc, key, dflt=None):
+    """대본 값 → (설명 드라마면) 기본값 → dflt. **대본이 적은 값이 언제나 이긴다.**
+    gap · name_first · end_note 를 읽는 자리는 전부 여기를 거친다 (short90 · part_sec · 검사)."""
+    v = (doc or {}).get(key)
+    if v is not None and v != "":
+        return v
+    if is_explainer(doc) and key in EXPLAINER_DEFAULTS:
+        return EXPLAINER_DEFAULTS[key]
+    return dflt
 
 
 def rules_of(doc):
@@ -950,6 +987,11 @@ def shape_drama(doc):
     card = doc.pop("card", None) or old.get("card") or []
     doc["parts"] = [{"no": 1, "cuts": [1, len(cuts)], "yt_title": str(yt).strip(),
                      "card": [str(x).strip() for x in card][:2]}]
+    # ⭐ 그 사건에 맞는 해시태그 (yt_tags · 2026-10-03) — 낱말로 고르는 갈래 태그(ytmeta.TOPIC)가
+    #    빗나갈 때 대본이 정한다. S94 는 '내연' 이 보여 #불륜 #이혼사연 이 붙었다(묘 사건인데).
+    tags = doc.pop("yt_tags", None) or old.get("tags") or []
+    if tags:
+        doc["parts"][0]["tags"] = [str(t).strip().lstrip("#") for t in tags if str(t).strip()]
     cast = []
     for p in doc.get("cast") or []:
         if not isinstance(p, dict):
@@ -1078,9 +1120,13 @@ def check_drama(doc, new=True):
         # ⭐ 끝 화면 글(end_note)에 '실제' 판결이라고 적으면 그것으로 갈음한다 (S94 v5 —
         #    손님이 고른 대본은 딸의 한마디로 끝난다 · 끝 화면에 "실제 판결을 재구성했습니다")
         said = last[0] == "나레이션" and "실제로 있었던 사건" in str(last[1])
-        if not said and "실제" not in str(doc.get("end_note") or ""):
+        if not said and "실제" not in str(style_get(doc, "end_note") or ""):
             bad.append("마지막 컷은 나레이션 「실제로 있었던 사건입니다.」 로 맺는다 "
                        "(또는 끝 화면 글 end_note 에 실제 판결이라고 적는다)")
+    # ⭐ 옴니 영상 화질은 둘 중 하나 (2026-10-02 손님 — 올릴 영상은 360p / 720p 를 고른다)
+    if doc.get("all_video") and str(doc.get("res") or RES_DEFAULT) not in RES_CHOICES:
+        bad.append(f"영상 화질(res)은 {' 또는 '.join(RES_CHOICES)} 가운데 하나다 — "
+                   f"지금 '{doc.get('res')}'")
     # ⭐ 값은 **사기 전에** 본다 — 대사 영상값이 한 번 실행 한도를 넘으면
     #    만들다 멈춘다 (만든 것은 남지만 손님이 두 번 누르셔야 한다)
     try:
@@ -1094,6 +1140,113 @@ def check_drama(doc, new=True):
     except ImportError:
         pass
     return bad
+
+
+# ── ⭐⭐⭐ 설명 드라마 검사 (S94 v5 에서 손님이 짚은 것을 못으로) ─────────────────
+# 따옴표로 묶은 인용 — 확인서·판결 문구는 원문 그대로 둔다 (이름 + 씨 · 대명사 검사 밖)
+QUOTED = re.compile(r"'[^']*'|\"[^\"]*\"|‘[^’]*’|“[^”]*”")
+# 번역 투 대명사 — 손님: "이름으로 안 하고 … 이해가 안 돼요" (누구인지 이름으로 부른다)
+PRONOUN = re.compile(r"(?<![가-힣])(그녀[가-힣]*|그(?:는|가|의|를|에게)|그 (?:여자|남자))(?![가-힣])")
+# 두 갈래로 들리는 말 — 손님이 실제로 잘못 알아들은 것 (S94 v3·v4)
+AMBIG = (
+    (r"묘를 판(?!결|단)", "‘묘를 판’ 은 파낸 것(파다)인지 판 것(팔다)인지 헷갈린다 — "
+                         "‘파낸’ · ‘옮긴’, 땅이면 ‘산을 판’ 처럼 가려 쓴다"),
+    (r"묘의 주인", "‘묘의 주인’ 은 묻힌 분인지 묘를 지킬 사람인지 헷갈린다 — 누구인지 이름으로"),
+    (r"친(?:엄마|어머니)로", "누구의 친엄마인지 헷갈린다 (손님: \"친엄마로 만들었다 이게 무슨 말이야\") — "
+                          "‘호적의 어머니를 한옥자 씨로 고쳤습니다’ 처럼 이름으로"),
+    (r"날부터[^.?!]*?(?:보냈|보내|줬|주었|건넸)", "‘그날부터 … 보냈다’ 는 매일 보낸 것으로 들린다 "
+                                                 "(손님: \"매일 보냈다는 거야?\") — ‘두 달여 동안 세 번’ 처럼 언제·몇 번을 숫자로"),
+)
+
+
+def bare_names(text, aliases):
+    """나레이션에서 **씨 없이** 부른 가명 (인용 속은 뺀다) — 「윤정숙이」 가 아니라 「윤정숙 씨가」."""
+    t = QUOTED.sub(" ", str(text or ""))
+    out = []
+    for a in aliases:
+        for m in re.finditer(re.escape(a), t):
+            if not re.match(r"\s*씨", t[m.end():]):
+                out.append(a)
+                break
+    return out
+
+
+def names_said(doc, w, text):
+    """화면 속 사람 w 를 나레이션이 불렀는가 — 가명 · 관계 이름 · 이름표 관계 중 하나라도."""
+    p = next((q for q in doc.get("cast") or [] if str(q.get("name")) == w), {})
+    keys = {w, str(p.get("alias") or ""), str(p.get("tag") or "")} - {""}
+    return any(k in str(text) for k in keys)
+
+
+def check_explainer(doc, new=True):
+    """설명 드라마(style="explainer")에만 거는 규격 — S94 v5 에서 손님이 짚은 것들.
+
+    ① 화면 속 사람 = 나레이션이 말하는 사람 (S94 컷18 · 1분 36초)
+       땅주인 얼굴 위에 「산 주인이라도 남의 묘를 마음대로 파낼 수는 없습니다」 가 흘렀다.
+       손님: "오병철 씨가 한 건 안 맞지 않나? … 반대로 딸이 주장하거나 해야 되는 거 아니야?"
+       → 보는 사람은 화면 속 사람이 그 말을 하거나 주장하는 줄 안다. 얼굴이 나오는 나레이션은
+         **그 사람 이름을 부르고 그 사람이 한 일**을 말한다. 법 원칙·해설은 그림 컷(fig)에서.
+    ② 이름 + 씨 · 대명사 금지 · 두 갈래로 들리는 말 금지 (손님이 실제로 헷갈린 말)
+    ③ 짜임 — 인물 관계도 · 재판의 쟁점 · 판결 정리 그림 · 영상 컷마다 대목 표시 · 이름표 셋
+    ④ 그림 설계와 그림 컷이 맞물린다 (diagram60.validate — 틀리면 말없이 엉뚱하게 그려진다)
+    """
+    bad = []
+    if not (is_drama(doc) and doc.get("all_video")):
+        return ["설명 드라마(style=explainer)는 전부 영상 드라마다 — format=drama · all_video=true"]
+    cast = [p for p in doc.get("cast") or [] if isinstance(p, dict)]
+    for p in cast:
+        miss = [k for k in ("alias", "tag", "intro") if not str(p.get(k) or "").strip()]
+        if miss:
+            bad.append(f"인물 '{p.get('name')}' 의 {', '.join(miss)} 가 비었다 — 설명 드라마 이름표는 "
+                       f"「가명 (관계)」 + 처음 나올 때 관계 한 줄이다")
+    aliases = [str(p["alias"]).strip() for p in cast if str(p.get("alias") or "").strip()]
+    figs = doc.get("figs") or {}
+    used = set()
+    for c in doc.get("cuts") or []:
+        n = c.get("n")
+        w, t = ((c.get("turns") or [["", ""]])[0] + ["", ""])[:2]
+        fg = c.get("fig")
+        if fg:
+            fid = (fg or {}).get("id")
+            if fid in figs:
+                used.add(FIG_KIND.get(figs[fid].get("type"), figs[fid].get("type")))
+            if w != "나레이션":
+                bad.append(f"컷{n}: 그림 컷은 나레이션만 — 대사는 그 사람 얼굴 영상에서 한다")
+        elif not str(c.get("chapter") or "").strip():
+            bad.append(f"컷{n}: 화면 위 대목 표시(chapter)가 없다 — 「사건」「산과 돈」「재판」"
+                       f"「법원의 판단」「결과」 처럼 지금 어디쯤인지 늘 보인다")
+        if w != "나레이션" or not new:
+            continue
+        on = [x for x in (c.get("who") or []) if x != "나레이션"]
+        if on and not fg and not any(names_said(doc, x, t) for x in on):
+            al = {str(p.get("name")): str(p.get("alias") or p.get("name")) for p in cast}
+            bad.append(f"컷{n}: 화면에는 {', '.join(al.get(x, x) for x in on)} 씨 얼굴이 나오는데 "
+                       f"나레이션은 그 사람 이야기를 안 한다 — 보는 사람은 화면 속 사람이 그 말을 "
+                       f"하거나 주장하는 줄 안다 (S94 컷18: 땅주인 얼굴 위 「산 주인이라도 남의 묘를 "
+                       f"마음대로 파낼 수는 없습니다」). 그 사람 이름으로 그 사람이 한 일을 쓰거나, "
+                       f"원칙·해설이면 그림 컷(fig)으로 옮긴다: 「{t[:24]}」")
+        for a in bare_names(t, aliases):
+            bad.append(f"컷{n}: 나레이션이 '{a}' 를 씨 없이 부른다 — 「{a} 씨」 (실제 사람 이야기다)")
+        m = PRONOUN.search(QUOTED.sub(" ", t))
+        if m:
+            bad.append(f"컷{n}: 나레이션에 대명사 '{m.group(1)}' — 번역 투이고 누구인지 헷갈린다. "
+                       f"이름(○○ 씨)으로 부른다")
+        for pat, why in AMBIG:
+            if re.search(pat, t):
+                bad.append(f"컷{n}: {why}")
+    for kind, label in EXPLAINER_FIGS:
+        if kind not in used:
+            bad.append(f"설명 드라마에 {label} 그림 컷({kind})이 없다 — 누가 누구인지 · 왜 재판까지 "
+                       f"왔나 · 어떻게 끝났나는 그림으로 보여 준다")
+    note = str(style_get(doc, "end_note") or "")
+    if aliases and "가명" not in note:
+        bad.append("가명을 썼으면 끝 화면 글(end_note)에 '등장인물 이름은 모두 가명입니다' 를 적는다")
+    # ⚠️ 그림 검사는 그림 라이브러리(PIL)가 필요하다 — 없는 곳(대본 짓는 워크플로)에서는 건너뛴다
+    try:
+        import diagram60                                     # noqa: E402
+    except ImportError:
+        return bad
+    return bad + diagram60.validate(doc)
 
 
 PEOPLE_BASE = {"아내": {"age": "50대", "sex": "여"},
@@ -1144,7 +1297,7 @@ def part_sec(cuts, doc=None):
     1분 전부 영상(all_video)은 틈을 잘라 붙이므로 잣대가 따로다 (SEC60_*)."""
     if (doc or {}).get("all_video"):
         # ⭐ 말 사이 쉼(gap)을 두면 컷마다 그만큼 길어진다 (기본 0.12초 → S94 v5 0.5초)
-        per = SEC60_PER_CUT + max(0.0, float((doc or {}).get("gap") or GAP_TIGHT) - GAP_TIGHT)
+        per = SEC60_PER_CUT + max(0.0, float(style_get(doc, "gap", GAP_TIGHT)) - GAP_TIGHT)
         return SEC60_PER_CHAR * sum(chars(c) for c in cuts) + per * len(cuts)
     return (SEC_PER_CHAR * sum(chars(c) for c in cuts)
             + SEC_PER_CUT * len(cuts))
@@ -1231,7 +1384,7 @@ def check(doc, new=True):
     parts = doc.get("parts") or []
     # ⭐ 2026-09-30 — 규격은 대본마다 다르다 (2분 드라마 · 옛 여러 편)
     R = rules_of(doc)
-    wall = ("1분" if doc.get("all_video") else "2분") if is_drama(doc) else "60초"
+    wall = ("쇼츠 3분" if doc.get("all_video") else "2분") if is_drama(doc) else "60초"
     OK = who_ok(doc)                      # 기본 다섯 + 이 사건이 더 세운 사람
     extra = [w for w in people_of(doc) if w not in BASE_WHO]
     if len(extra) > R["PEOPLE_MAX"]:
@@ -1504,6 +1657,8 @@ def check(doc, new=True):
             bad.append(f"{k} 가 비었다")
     if is_drama(doc):
         bad += check_drama(doc, new)
+    if is_explainer(doc):
+        bad += check_explainer(doc, new)
     return bad
 
 

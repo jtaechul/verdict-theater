@@ -1792,7 +1792,11 @@ function partsCard(w) {
       ? (Math.round(p.sec) + '초'
          + ((p.talk_gaps || []).length ? ' · 덜 됨' : ''))
       : '아직 안 만듦';
-    const long = p.sec && p.sec > 59.5;
+    // ⭐ 2026-10-02 — 벽은 형식마다 다르다 (상태 파일의 wall · build_short90 이 적는다).
+    //    옛 여러 편 60초 · 2분 드라마 2분 · 설명 드라마 쇼츠 한도 179.5초
+    //    (손님: "60초가 넘어도 돼 … 그런건 규칙에 걸지마").
+    const wall = Number((w && w.wall) || 59.5);
+    const long = p.sec && p.sec > wall;
     h += '<div class="card"><h2 data-t="쇼츠 ' + no + '편">' + no + '편 '
        + '<small style="font-weight:400;color:#9599ab">— '
        + esc((p.card || [])[0] || '') + ' / ' + esc((p.card || [])[1] || '')
@@ -1800,7 +1804,11 @@ function partsCard(w) {
     h += '<div class="row"><span class="k">상태</span><span>'
        + esc(madeTxt) + ' · ' + (u ? '올림 (' + esc(u.privacy || '') + ')'
                                   : '아직 안 올림') + '</span></div>';
-    if (long)
+    if (long && wall > 60)
+      h += '<div class="uphint" style="color:#e0a33c"><b>이 형식의 길이 벽('
+         + Math.round(wall) + '초)을 넘었습니다.</b> 유튜브 쇼츠로 안 올라갈 수 '
+         + '있습니다. 컷을 줄여 다시 만드는 것이 좋습니다.</div>';
+    else if (long)
       h += '<div class="uphint" style="color:#e0a33c"><b>60초를 넘었습니다.</b> '
          + '이 채널은 60초 이하만 조회수가 나왔습니다(127초 편은 0회였습니다). '
          + '컷을 옮겨 나누는 것이 좋습니다.</div>';

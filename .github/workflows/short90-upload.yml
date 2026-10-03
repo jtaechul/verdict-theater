@@ -29,6 +29,16 @@ on:
           - '비공개 (나만 보기)'
           - '일부공개 (링크 아는 사람만)'
           - '공개 (모두에게)'
+      # ⭐ 2026-10-03 손님: "공개(지금당장)" — 고르셨을 때만 예약 없이 바로 공개한다.
+      #    기본은 예약(한국 아침 8시)이다 — 즉시 공개 2건 349·0회 · 예약 8건 1,212~2,946회.
+      when:
+        description: '공개를 고르셨을 때 언제 공개할까요 (예약이 조회수가 훨씬 좋았습니다)'
+        required: false
+        default: '예약 — 한국 아침 8시 (권장)'
+        type: choice
+        options:
+          - '예약 — 한국 아침 8시 (권장)'
+          - '지금 바로 공개'
       mode:
         description: '연습이면 올리지 않고 되는지만 봅니다'
         required: true
@@ -182,6 +192,7 @@ jobs:
           PART: ${{ inputs.part }}
           EVERY: ${{ inputs.every_hours }}
           SID: ${{ inputs.sid }}
+          WHEN: ${{ inputs.when }}
         run: |
           set -o pipefail
           case "${{ inputs.privacy }}" in
@@ -210,8 +221,10 @@ jobs:
           #      (실측: 아침 8시 4건 평균 1,849 · 오후 1시 3건 1,269 · 저녁 349)
           # ⚠️ '공개' 를 고르셨을 때만 예약을 건다. 비공개·일부공개를 고르셨는데
           #    저절로 공개되면 안 된다.
+          # ⭐ 2026-10-03 손님: "공개(지금당장)" — [지금 바로 공개] 를 **고르셨을 때만** 예약을 뺀다.
+          #    고르지 않으면(관리자 페이지 단추도) 예전 그대로 예약이다.
           RC=0
-          SLOT() { [ "$P" = "public" ] && echo "--publish-at $(python3 tools/next_slot.py $1)"; }
+          SLOT() { [ "$P" = "public" ] && [ "${WHEN:-}" != "지금 바로 공개" ] && echo "--publish-at $(python3 tools/next_slot.py $1)"; }
           if [ "$PART" = "all" ]; then
             I=0
             for F in build/s90/part*.mp4; do

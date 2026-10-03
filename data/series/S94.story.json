@@ -3,6 +3,7 @@
  "series_label": "어머니 묘 사건",
  "hook": "이복동생이 판 산의 새 주인이 어머니 묘를 파내라 하자, 법원은 친딸 편에 섰다",
  "all_video": true,
+ "style": "explainer",
  "sid": "S94",
  "case_id": "190939",
  "narr": "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게",
@@ -522,7 +523,7 @@
    "turns": [
     [
      "나레이션",
-     "다시 2011년. 산 주인이라도 남의 묘를 마음대로 파낼 수는 없습니다."
+     "다시 2011년 법정. 오병철 씨는 왜 소송까지 냈을까요?"
     ]
    ],
    "say": [
@@ -534,14 +535,14 @@
    ],
    "chapter": "재판",
    "n": 18,
-   "sec": 5.0
+   "sec": 4.1
   },
   {
    "place": "그림",
    "turns": [
     [
      "나레이션",
-     "묘를 지킬 권리는 그 묘의 제사를 모시는 사람에게 있기 때문입니다. 재판의 쟁점은 결국, 어머니의 제사를 모실 사람이 누구냐였습니다."
+     "땅주인이라도 남의 묘를 함부로 파낼 수는 없기 때문입니다. 묘를 지킬 권리는 제사를 모시는 사람에게 있고, 그래서 재판의 쟁점은 어머니의 제사를 모실 사람이 누구냐였습니다."
     ]
    ],
    "say": [
@@ -562,7 +563,7 @@
      ],
      [
       "rule",
-      "묘를"
+      "묘를 지킬"
      ],
      [
       "question",
@@ -575,7 +576,7 @@
     ]
    },
    "n": 19,
-   "sec": 8.7
+   "sec": 11.1
   },
   {
    "place": "그림",
@@ -902,9 +903,6 @@
    "sec": 2.6
   }
  ],
- "gap": 0.5,
- "name_first": true,
- "end_note": "실제 판결을 재구성했습니다 · 등장인물 이름은 모두 가명입니다",
  "figs": {
   "intro": {
    "type": "card",
@@ -913,28 +911,355 @@
    "sub": "1968년"
   },
   "family": {
-   "type": "family",
-   "bg": 3
+   "type": "relations",
+   "bg": 3,
+   "title": "인물 관계도",
+   "legend": true,
+   "nodes": [
+    {
+     "id": "father",
+     "ghost": true,
+     "name": "아버지",
+     "at": [
+      540,
+      400
+     ],
+     "r": 78,
+     "label": "right"
+    },
+    {
+     "id": "mother",
+     "ghost": true,
+     "name": "어머니",
+     "role": "본처",
+     "at": [
+      235,
+      660
+     ],
+     "r": 92
+    },
+    {
+     "id": "other",
+     "who": "새어머니",
+     "at": [
+      845,
+      660
+     ],
+     "r": 104,
+     "label": false
+    },
+    {
+     "id": "child1",
+     "who": "딸",
+     "at": [
+      235,
+      1010
+     ],
+     "r": 112,
+     "gold": true
+    },
+    {
+     "id": "child2",
+     "who": "이복동생",
+     "at": [
+      845,
+      1010
+     ],
+     "r": 112,
+     "size": 44
+    }
+   ],
+   "labels": [
+    {
+     "id": "other_label",
+     "node": "other",
+     "role": "내연녀"
+    },
+    {
+     "id": "other_new",
+     "node": "other",
+     "role": "새어머니",
+     "replaces": [
+      "other_label"
+     ]
+    }
+   ],
+   "edges": [
+    {
+     "id": "line_fm",
+     "a": "father",
+     "b": "mother",
+     "text": "부부",
+     "text_at": [
+      350,
+      506
+     ]
+    },
+    {
+     "id": "line_fo",
+     "a": "father",
+     "b": "other"
+    },
+    {
+     "id": "line_m1",
+     "a": "mother",
+     "b": "child1",
+     "down": true
+    },
+    {
+     "id": "line_o2",
+     "a": "other",
+     "b": "child2",
+     "down": true
+    },
+    {
+     "id": "paper",
+     "a": "child2",
+     "b": "mother",
+     "style": "paper",
+     "chip": "서류상: 본처의 아들",
+     "chip_t": 0.38
+    },
+    {
+     "id": "sibling",
+     "a": "child1",
+     "b": "child2",
+     "style": "sibling",
+     "chip": "서류상 친동생"
+    }
+   ],
+   "texts": [
+    {
+     "id": "rel_fo",
+     "text": "내연 관계",
+     "at": [
+      740,
+      506
+     ]
+    },
+    {
+     "id": "remarry",
+     "text": "1973년 재혼",
+     "at": [
+      740,
+      506
+     ],
+     "color": "gold",
+     "replaces": [
+      "rel_fo"
+     ]
+    }
+   ],
+   "marks": [
+    {
+     "id": "mother_gone",
+     "kind": "caption",
+     "node": "mother",
+     "text": "1969 별세"
+    },
+    {
+     "id": "grave",
+     "kind": "grave",
+     "at": [
+      92,
+      556
+     ],
+     "text": "산에 묘"
+    },
+    {
+     "id": "claim1",
+     "kind": "banner",
+     "tag": "땅주인 주장 ①",
+     "text": "제사는 아들이 → 권리는 윤기철",
+     "replaces": [
+      "legend"
+     ]
+    },
+    {
+     "id": "claim1_glow",
+     "kind": "glow",
+     "node": "child2",
+     "color": "red"
+    }
+   ]
   },
   "timeline": {
    "type": "timeline",
-   "bg": 7
+   "bg": 7,
+   "title": "산과 돈, 일어난 순서",
+   "rows": [
+    {
+     "id": "r1969",
+     "year": "1969",
+     "who": "어머니 별세",
+     "what": "아버지의 산에 묘"
+    },
+    {
+     "id": "r1996",
+     "year": "1996",
+     "who": "아버지 → 윤기철",
+     "what": "산을 물려줌"
+    },
+    {
+     "id": "r2006a",
+     "year": "2006.6",
+     "who": "윤기철 → 다른 사람",
+     "what": "산을 팖 (아버지 별세 두 달 전)"
+    },
+    {
+     "id": "r2006b",
+     "year": "2006.8",
+     "who": "아버지 별세 · 한옥자 → 윤정숙",
+     "what": "세 번에 걸쳐 1억 5천만 원",
+     "what_color": "gold"
+    },
+    {
+     "id": "r2008",
+     "year": "2008",
+     "who": "오병철 씨 등 → 산을 삼",
+     "what": "소송을 낸 땅주인"
+    }
+   ],
+   "cards": [
+    {
+     "id": "card",
+     "after": "r2006b",
+     "title": "확인서",
+     "text": "'한옥자, 윤기철 모자와 법적으로 다투지 않는다'"
+    }
+   ],
+   "faces": [
+    {
+     "id": "owner",
+     "row": "r2008",
+     "who": "땅주인"
+    }
+   ]
   },
   "issue": {
    "type": "issue",
-   "bg": 9
+   "bg": 9,
+   "title": "재판의 쟁점",
+   "suit": {
+    "from": "땅주인",
+    "to": "딸",
+    "quote": "\"묘를 파내 달라\"",
+    "year": "2011년 소송"
+   },
+   "rule": [
+    [
+     "grave",
+     "묘를 지킬 권리는"
+    ],
+    [
+     "table",
+     "제사를 모시는 사람에게"
+    ]
+   ],
+   "question": "어머니 제사를 모실 사람은?",
+   "cands": [
+    {
+     "who": "이복동생",
+     "role": "호적상 아들"
+    },
+    {
+     "who": "딸",
+     "role": "친딸",
+     "gold": true
+    }
+   ],
+   "chips": [
+    {
+     "id": "claim_no",
+     "under": 1,
+     "text": "땅주인: 윤정숙 씨는 아니다",
+     "color": "red"
+    }
+   ]
   },
   "money": {
-   "type": "money",
-   "bg": 13
+   "type": "flow",
+   "bg": 13,
+   "title": "1억 5천만 원",
+   "from": {
+    "who": "새어머니"
+   },
+   "to": {
+    "who": "딸"
+   },
+   "amount": "1억 5천만 원",
+   "sub": "세 번에 나눠",
+   "claim": {
+    "tag": "땅주인 주장",
+    "text": "묘를 포기한 대가였다"
+   },
+   "doc": {
+    "tag": "확인서",
+    "text": "한옥자·윤기철 모자와 법적으로 다투지 않는다"
+   },
+   "chips": [
+    {
+     "id": "nograve",
+     "text": "묘 이야기 없음",
+     "color": "gold",
+     "solid": true,
+     "side": "right"
+    },
+    {
+     "id": "testimony",
+     "text": "증언도 못 믿는다",
+     "color": "red",
+     "side": "left"
+    }
+   ]
   },
   "paper": {
-   "type": "paper",
-   "bg": 11
+   "type": "compare",
+   "bg": 11,
+   "title": "윤기철 씨의 어머니는?",
+   "subject": {
+    "who": "이복동생"
+   },
+   "left": {
+    "chip": "서류상 엄마",
+    "ghost": true,
+    "name": "윤정숙 씨 어머니"
+   },
+   "right": {
+    "chip": "진짜 엄마",
+    "who": "새어머니"
+   },
+   "year": "2001년",
+   "ruling": "'친아들 아님' 판결",
+   "fix": "호적 정정",
+   "broken": "남남",
+   "result": "서류상으로도 남남"
   },
   "verdict": {
    "type": "verdict",
-   "bg": 12
+   "bg": 12,
+   "title": "판결",
+   "rows": [
+    {
+     "id": "row1",
+     "icon": {
+      "who": "이복동생"
+     },
+     "claim": "호적상 아들이 제사?",
+     "answer": "→ 친딸 윤정숙 씨가 지킨다"
+    },
+    {
+     "id": "row2",
+     "icon": "coin",
+     "claim": "돈 받고 묘 포기?",
+     "answer": "→ 확인서에 묘 이야기 없음"
+    }
+   ],
+   "lose": "1심 · 항소심 모두 땅주인 패소",
+   "stay": {
+    "icon": "grave",
+    "text": "어머니 묘는 그대로"
+   }
   }
  },
  "format": "drama",
@@ -949,6 +1274,10 @@
    "card": [
     "40년 된 어머니 묘를",
     "파내라는 소장이 왔다"
+   ],
+   "tags": [
+    "상속분쟁",
+    "상속"
    ]
   }
  ],

@@ -133,15 +133,29 @@ def main():
     ck("60초 벽을 말로 알려 준다", "60초 벽 안" in js)
 
     print("\n④ 만들어 둔 편 가운데 벽을 넘은 것이 없는가")
+    # ⭐ 2026-10-02 — 벽은 형식마다 다르다 (옛 여러 편 60초 · 2분 드라마 2분 ·
+    #    설명 드라마 쇼츠 한도 179.5초 — 손님: "60초가 넘어도 돼 … 그런건 규칙에 걸지마").
+    #    상태 파일의 wall(build_short90 이 talkplan.part_max_sec 로 적는다)을 보고,
+    #    없으면 대본 파일로 셈한다. 둘 다 없으면 60초다.
     st = json.loads((ROOT / "state" / "shorts.json").read_text(encoding="utf-8"))
     over2 = []
     for sid, row in st.items():
+        wall = row.get("wall")
+        if not wall:
+            f = ROOT / "data" / "series" / f"{sid}.json"
+            try:
+                wall = TP.part_max_sec(json.loads(f.read_text(encoding="utf-8")))
+            except (OSError, ValueError):
+                wall = TP.PART_MAX_SEC
         for no, p in (row.get("parts") or {}).items():
             sec = p.get("sec")
-            if sec and float(sec) > TP.PART_MAX_SEC:
-                over2.append(f"{sid} {no}편 {sec}초")
-    ck("60초를 넘은 편이 없다", not over2, " · ".join(over2)
-       + "  ← 다시 만들거나 대본을 줄여야 한다")
+            if sec and float(sec) > float(wall):
+                over2.append(f"{sid} {no}편 {sec}초 (벽 {float(wall):.0f}초)")
+    ck("벽을 넘은 편이 없다 (옛 여러 편 60초 · 2분 드라마 2분 · 설명 드라마 쇼츠 한도)",
+       not over2, " · ".join(over2) + "  ← 다시 만들거나 대본을 줄여야 한다")
+    ck("설명 드라마(전부 영상)의 벽은 쇼츠 한도다 — 60초로 못 박지 않는다",
+       TP.part_max_sec({"format": "drama", "all_video": True}) == TP.SHORTS_MAX_SEC
+       and TP.part_max_sec({}) == TP.PART_MAX_SEC)
 
     print("\n⑤ 대본 규격이 벽 안쪽에 있는가")
     for sid in ("S90", "S91", "S92"):

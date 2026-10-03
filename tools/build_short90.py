@@ -1244,7 +1244,9 @@ def main(argv=None):
                     if sc.get(k):
                         cut[k] = sc[k]
             # ⭐ 말 사이 쉼 · 이름표 「이름 (관계)」 · 끝 화면 글 · 그림 설계 (손님 확정)
-            for k in ("gap", "name_first", "end_note", "figs"):
+            #    style="explainer"(설명 드라마)면 앞의 셋은 안 적어도 기본값이 따라온다
+            #    res = 옴니 영상 화질 360p / 720p (손님이 고른다 · 없으면 360p)
+            for k in ("style", "res", "gap", "name_first", "end_note", "figs"):
                 if story.get(k) is not None:
                     doc[k] = story[k]
     # ⭐⭐⭐ 2026-09-10 — 화면이 값을 **스스로 세지 않게** 여기서 찍어 둔다.
@@ -1303,7 +1305,9 @@ def main(argv=None):
     # ⭐ 사건·편 칸을 상태 파일에 만들어 둔다 — 관리자 페이지가 이것만 읽는다.
     #   (올린 기록은 건드리지 않는다. 지우면 같은 영상을 두 번 올리게 된다)
     import shortstate                                        # noqa: E402
-    shortstate.from_doc(doc)
+    # ⭐ 편 길이 벽도 적는다 — 화면 경고·검사가 형식마다 다른 벽을 본다
+    #    (옛 여러 편 60초 · 2분 드라마 2분 · 설명 드라마 쇼츠 한도 179.5초)
+    shortstate.from_doc(doc, wall=talkplan.part_max_sec(doc))
 
     narr = sum(1 for c in cuts if c["narr"])
     print(f"■ {out_p.relative_to(ROOT)} — {len(cuts)}컷 "

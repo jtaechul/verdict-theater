@@ -1,28 +1,40 @@
 #!/usr/bin/env python3
-"""⭐ 1분 전부 영상 드라마 — 모든 컷을 옴니 360p 9:16 영상으로 (2026-10-02 신설)
+"""⭐ 전부 영상 드라마 · 설명 드라마 — 모든 컷을 옴니 9:16 영상(360p · 720p 고른다) 또는 그림 컷으로 (2026-10-02 신설)
 
+    python3 tools/drama60.py S94 check    값 0원 — 대본 검사 (설명 드라마 규칙 · 그림 맞물림 · 대본↔제작본)
     python3 tools/drama60.py S94 plan     값 0원 — 카메라 계획 · 컷 길이 · 영상 지문 · 값 어림
     python3 tools/drama60.py S94 cast     인물 시트 한 장 (약 265원 · 지문이 같으면 0원)
     python3 tools/drama60.py S94 voice    나레이션 목소리 (같으면 0원) + 앞뒤 무음 자르기 (0원)
-    python3 tools/drama60.py S94 clips    컷마다 옴니 영상 (360p · 1초 약 55원 · 같으면 0원)
+    python3 tools/drama60.py S94 clips    컷마다 옴니 영상 (360p 1초 약 55원 · 720p 약 154원 · 같으면 0원)
+                                          --no-buy: 창고에 없는 컷이 있으면 사지 않고 멈춘다 (0원 보장)
+                                          --res 720p: 이번만 그 화질로 (늘 그렇게 하려면 대본 res)
+    python3 tools/drama60.py S94 figs     그림 컷(관계도·쟁점·판결 등)을 직접 그린다 (0원 · src/diagram60.py)
     python3 tools/drama60.py S94 build    조립 (0원) → build/s90/<사건>_part1.mp4
-    python3 tools/drama60.py S94 all      위를 차례로
+    python3 tools/drama60.py S94 sheet    완성 영상 검수 (0원) — 컷마다 한 장 + 컷 시간표
+                                          --at 1:36 : 손님이 짚은 시각이 몇 번 컷인지
+    python3 tools/drama60.py S94 all      check → cast → voice → clips → figs → build 를 차례로
+
+    설명 드라마(대본 style="explainer" · 판결극장 기본 짜임) 짓는 법:
+    .claude/skills/verdict-explainer/SKILL.md (본보기 대본 data/series/S94.story.json)
 
 ⭐⭐⭐ 2026-10-02 손님:
     "1분이면 이미지 필요 없이 그냥 전체 다 영상으로 가고 나레이션이던 대화이던 영상으로"
     "대사 사이사이에 쉬는 공간 없이 … 충분하게 이해시킬 수 있을 만큼 풍부해야"
     "화소는 360p … 9대16 비율로 만들어. 처음부터." · "1.28배로 가자"
     "카메라나 인물 구도, 화면 구도도 이런 식으로 좀 다채롭게"
+    "실제로 우리가 업로드할 영상 같은 경우에는 720p 또는 360p를 선택할 수 있도록" (→ 대본 res · --res)
 
 어떻게 도나
-    · 인물은 시트 한 장에서 잘라 쓴다 (2분 드라마와 같다 · src/castsheet.py) — 그림 컷은 없다.
+    · 인물은 시트 한 장에서 잘라 쓴다 (2분 드라마와 같다 · src/castsheet.py).
+    · 그림 컷(대본 컷의 fig)은 옴니를 안 산다 — 직접 그린 관계도·쟁점·판결 그림 (0원).
     · 컷마다 옴니 reference_to_video — 그 컷에 나오는 사람의 시트 칸만 참조로 넣는다.
     · 카메라는 src/camera60.py 가 정한다 (렌즈 · 높이 · 움직임 — 이웃 컷은 둘 이상 다르게).
     · 대사 컷: 옴니가 입을 맞춰 직접 말한다 (목소리 = 인물표 한 줄 고정 · 나이·성별·톤).
       말 앞뒤 무음을 잘라 내고 **화면과 소리를 함께** 1.28배로 감는다 (입이 안 어긋난다).
     · 나레이션 컷: 사람은 입을 다물고, 성우 목소리(앞뒤 무음을 자른 것)를 얹는다.
       영상이 나레이션보다 짧으면 화면만 살짝 느리게 늘인다 (되돌려 잇지 않는다).
-    · 조립은 src/short90.py build 그대로 (자막 · 이름표 · 배경음악) — 여운만 0.12초.
+    · 조립은 src/short90.py build 그대로 (자막 · 이름표 · 배경음악) — 말 사이 쉼은 대본 gap
+      (설명 드라마 0.5초 · 없으면 0.12초).
     · 같은 지문은 다시 안 산다 (src/reuse.py — 0원). 값은 전부 장부에 적힌다.
 """
 import argparse
@@ -63,7 +75,11 @@ import short90 as S9                                          # noqa: E402
 import story90 as ST90                                        # noqa: E402
 import talkplan                                               # noqa: E402
 
-RES = "360p"
+# ⭐⭐⭐ 옴니 영상 화질 — 2026-10-02 손님: "실제로 우리가 업로드할 영상 같은 경우에는 720p 또는
+#    360p를 선택할 수 있도록". 대본 res(없으면 360p)를 따르고, --res 가 이긴다 (load() 가 정한다).
+#    720p 는 1초 약 154원 · 360p 약 55원. 조립 화면은 어느 쪽이든 1080×1920.
+RES_CHOICES = ST90.RES_CHOICES
+RES = ST90.RES_DEFAULT
 SEC_MIN, SEC_MAX = 4, 10           # 옴니 한 토막 (talkplan.OMNI_MIN_SEC/OMNI_MAX_SEC 와 같다)
 NARR_MARGIN = 0.35                 # 나레이션보다 영상을 이만큼 넉넉히 산다
 STRETCH_MAX = 1.4                  # 영상이 모자라면 화면만 이만큼까지 느리게 늘인다
@@ -130,7 +146,21 @@ def vkey(c):
     return reuse.sig_of("v60", c.get("scene") or "", "|".join(c.get("who") or []), line)
 
 
-def load(sid):
+def res_of(doc, asked=""):
+    """옴니 영상 화질 — --res 가 이기고, 없으면 대본 res, 그것도 없으면 360p."""
+    r = str(asked or (doc or {}).get("res") or ST90.RES_DEFAULT).strip().lower()
+    if r not in RES_CHOICES:
+        raise SystemExit(f"❌ 화질은 {' 또는 '.join(RES_CHOICES)} 가운데 하나다 (받은 것: {r})")
+    return r
+
+
+def rank(r):
+    """화질 높낮이 — 창고 영상은 고른 화질 **이상**일 때만 다시 쓴다."""
+    r = str(r or ST90.RES_DEFAULT).lower()
+    return RES_CHOICES.index(r) if r in RES_CHOICES else 0
+
+
+def load(sid, res=""):
     f = ROOT / "data" / "series" / f"{sid}.json"
     if not f.exists():
         raise SystemExit(f"❌ data/series/{sid}.json 이 없다 — "
@@ -138,9 +168,10 @@ def load(sid):
     doc = json.loads(f.read_text(encoding="utf-8"))
     if not doc.get("all_video"):
         raise SystemExit(f"❌ {sid} 는 1분 전부 영상 대본이 아니다 (all_video 가 없다)")
-    global GAP
+    global GAP, RES
     GAP = S9.gap_of(doc)
     S9.PAD = GAP                   # 조립(cut_sec)과 같은 값으로 컷 길이를 센다
+    RES = res_of(doc, res)
     return doc
 
 
@@ -305,6 +336,10 @@ def stock(c, lib):
     e = lib.get(vkey(c))
     if not e or not (vdir() / e["raw"]).exists():
         return None
+    # ⭐ 고른 화질보다 낮게 산 영상은 안 쓴다 — 720p 영상에 360p 컷이 섞이면 그 컷만 흐리다.
+    #    (창고에 옛 화질 표시가 없으면 360p 로 산 것이다 — 2026-10-02 까지는 360p 뿐이었다)
+    if rank(e.get("res")) < rank(RES):
+        return None
     if not is_talk(c):
         short = narr_len(c) + 0.05 - S9.dur_of(vdir() / e["raw"]) * STRETCH_REUSE
         e = dict(e, hold=round(max(0.0, short), 2))
@@ -315,14 +350,16 @@ FIG_SHOT = {"key": "그림", "kind": "fig", "lens": "-", "height": "-", "move": 
             "special": False}
 
 
-def plan(doc, lib=None):
+def plan(doc, lib=None, quiet=False):
     """컷마다 {n, shot, sec, prompt, refs, krw, lib} — 값 0원.
     그림 컷(fig)은 옴니를 안 사므로 카메라 계획에서 빼고 따로 줄을 세운다."""
     by = cast_of(doc)
     lib = load_lib() if lib is None else lib
     real = [c for c in doc["cuts"] if not is_fig(c)]
     have = {i: stock(c, lib) for i, c in enumerate(real)}
-    pinned = {i: e["shot"] for i, e in have.items() if e}
+    # ⭐ 낮은 화질로 산 영상을 720p 로 다시 살 때도 **구도는 그대로** 둔다 (손님이 본 그 화면)
+    pinned = {i: (have.get(i) or lib.get(vkey(c)))["shot"] for i, c in enumerate(real)
+              if have.get(i) or (lib.get(vkey(c)) or {}).get("shot")}
     shots = camera60.plan(real, pinned)
     rows = {}
     for i, (c, sh) in enumerate(zip(real, shots)):
@@ -338,16 +375,36 @@ def plan(doc, lib=None):
                                 "key": "", "fig": True}
            for c in doc["cuts"]]
     bad = camera60.check(real, shots)
-    # ⚠️ 다 창고 영상(이미 산 것)이면 구도 규칙은 알리기만 한다 — 살 것이 없으니 막을 까닭이 없다
-    if bad and all(have.get(i) for i in range(len(real))):
-        for b in bad:
-            print(f"  ℹ️ (창고 영상끼리라 그대로 씀) {b}")
+    # ⚠️ 구도가 전부 정해져 있으면(이미 산 영상 · 화질만 올려 다시 사는 영상) 구도 규칙은
+    #    알리기만 한다 — 손님이 이미 본 화면이라 막을 까닭이 없다
+    if bad and len(pinned) == len(real):
+        for b in ([] if quiet else bad):
+            print(f"  ℹ️ (이미 정해진 구도라 그대로 씀) {b}")
         bad = []
     return out, bad
 
 
+def price(doc, res, lib=None):
+    """그 화질로 만들면 (새로 살 초, 값) — 창고에 그 화질 이상이 있는 컷은 0원 (0원 · 어림)."""
+    global RES
+    keep, RES = RES, res
+    try:
+        rows, _ = plan(doc, lib, quiet=True)
+    finally:
+        RES = keep
+    return (sum(r["sec"] for r in rows if not r.get("fig") and not r["lib"]),
+            sum(r["krw"] for r in rows))
+
+
+def run_cap():
+    """옴니 한 번 실행 한도 — 드라마는 손님이 승인한 한 편 한도(16,000원 · 2026-09-30).
+    720p 한 편(영상 약 1만 2천 원)이 8,000원 기본 한도에서 반쪽만 사고 멈추지 않게.
+    VT_RUN_KRW 를 따로 주면 그 값이 이긴다."""
+    return cost.RUN_KRW if os.environ.get("VT_RUN_KRW") else max(cost.RUN_KRW, cost.DRAMA_RUN_KRW)
+
+
 def show_plan(doc, rows, bad, full=False):
-    print(f"■ {doc['sid']} 「{doc['title']}」 — 1분 전부 영상 · {RES} 9:16 · "
+    print(f"■ {doc['sid']} 「{doc['title']}」 — 전부 영상 드라마 · 옴니 {RES} 9:16 · "
           f"{len(rows)}컷")
     for c, r in zip(doc["cuts"], rows):
         s = r["shot"]
@@ -361,8 +418,17 @@ def show_plan(doc, rows, bad, full=False):
               f"{f'(끝 {hold:.1f}초 멈춤) ' if hold > 0.05 else ''}{c['text'][:26]}")
     tot = sum(r["sec"] for r in rows if not r["lib"] and not r.get("fig"))
     krw = sum(r["krw"] for r in rows)
-    print(f"  ─ 새로 살 옴니 {tot}초 · 약 {krw:,.0f}원 "
+    print(f"  ─ 새로 살 옴니 {tot}초 · 약 {krw:,.0f}원 · {RES} "
           f"(창고에서 다시 쓰는 컷 {sum(1 for r in rows if r['lib'])}개는 0원)")
+    # ⭐ 화질은 손님이 고른다 — 다른 화질로 만들면 얼마인지 늘 같이 보인다
+    for alt in RES_CHOICES:
+        if alt != RES:
+            t2, k2 = price(doc, alt)
+            print(f"    · {alt} 로 만들면: 새로 살 옴니 {t2}초 · 약 {k2:,.0f}원 "
+                  f"(--res {alt} · 대본 res 에 적으면 늘 그 화질)")
+    if krw > run_cap():
+        print(f"  ⚠️ 한 번 실행 한도 {run_cap():,.0f}원을 넘는다 — 한도에서 멈추면 다시 돌린다 "
+              f"(산 컷은 창고에 남아 없는 것만 산다)")
     for b in bad:
         print(f"  ⚠️ {b}")
     if full:
@@ -459,9 +525,28 @@ def frame_box(raw):
     return cw, ch, left + (iw - cw) // 2, top + (ih - ch) // 2
 
 
+def size_of(raw):
+    """영상 (가로, 세로) — 360p 는 360×640, 720p 는 720×1280."""
+    r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+                        "stream=width,height", "-of", "csv=p=0:s=x", str(raw)],
+                       capture_output=True, text=True)
+    try:
+        w, h = (int(x) for x in r.stdout.strip().split("x")[:2])
+        return w, h
+    except ValueError:
+        return 360, 640
+
+
 def crop_of(raw):
+    """테두리 안쪽만 잘라 **원래 크기**로 — 상자는 360×640 에서 재고 영상 크기만큼 곱한다
+    (720p 영상을 360 기준 자리로 자르면 엉뚱한 곳이 잘린다)."""
     b = frame_box(raw)
-    return f"crop={b[0]}:{b[1]}:{b[2]}:{b[3]},scale=360:640," if b else ""
+    if not b:
+        return ""
+    w, h = size_of(raw)
+    k = w / 360.0
+    cw, ch, x, y = (int(round(v * k)) for v in b)
+    return f"crop={cw // 2 * 2}:{ch // 2 * 2}:{x}:{y},scale={w}:{h},"
 
 
 def post_talk(raw, out):
@@ -515,7 +600,9 @@ def buy(c, r, by, d, lib):
         raw = d / r["lib"]["raw"]
         ok = True
     else:
-        raw = d / "raw" / f"v_{r['key']}.mp4"
+        # 360p 는 옛 이름 그대로 · 다른 화질은 이름에 화질을 붙여 낮은 화질 파일을 덮지 않는다
+        raw = d / "raw" / (f"v_{r['key']}.mp4" if RES == ST90.RES_DEFAULT
+                           else f"v_{r['key']}_{RES}.mp4")
         ok = False
     if not ok:
         tries = 0
@@ -535,7 +622,7 @@ def buy(c, r, by, d, lib):
         with _lock:
             lib[r["key"]] = {"raw": str(raw.relative_to(d)), "shot": r["shot"],
                              "sec": r["sec"], "prompt": r["prompt"], "n": c["n"],
-                             "scene": c.get("scene"), "who": c.get("who") or []}
+                             "scene": c.get("scene"), "who": c.get("who") or [], "res": RES}
             save_lib(lib)
         how = "새로 삼"
     else:
@@ -575,7 +662,7 @@ def adopt(doc):
         raw.replace(dst)
         reuse.sig_file(raw).unlink(missing_ok=True)
         lib[k] = {"raw": str(dst.relative_to(d)), "shot": sh, "sec": sec, "prompt": p,
-                  "n": c["n"], "scene": c.get("scene"), "who": c.get("who") or []}
+                  "n": c["n"], "scene": c.get("scene"), "who": c.get("who") or [], "res": RES}
         moved += 1
     if moved:
         save_lib(lib)
@@ -606,6 +693,7 @@ def step_clips(doc, only=None):
         print(f"❌ --no-buy — 창고에 없는 컷 {need} 이 있다 (사지 않고 멈춘다)")
         return 1
     omni.CALL_CAP = len(rows) + 6
+    cost.RUN_KRW = run_cap()                   # 드라마 한 편 한도 (720p 도 한 번에 끝나게)
     rec = cost.record
 
     def locked(*a, **k):
@@ -657,6 +745,112 @@ def step_figs(doc):
     return 0
 
 
+def stale(story, doc):
+    """대본(.story.json)을 고치고 build_short90 을 안 돌렸는가 — 제작은 제작본(.json)을 읽는다."""
+    def key(d):
+        return [(c.get("n"), c.get("turns"), c.get("fig"), c.get("chapter") or "",
+                 list(c.get("who") or [])) for c in d.get("cuts") or []]
+    return (key(story) != key(doc) or (story.get("figs") or {}) != (doc.get("figs") or {})
+            or any((story.get(k) or "") != (doc.get(k) or "") for k in ("style", "res")))
+
+
+def step_check(sid, doc):
+    """대본 검사 (0원) — 규격 · 드라마 · 설명 드라마(화면 속 사람 = 나레이션 · 이름 + 씨 ·
+    헷갈리는 말 · 대목 표시 · 그림 맞물림). 목소리(값)를 만들기 **전에** 돈다."""
+    f = ROOT / "data" / "series" / f"{sid}.story.json"
+    if f.exists():
+        story = json.loads(f.read_text(encoding="utf-8"))
+        bad = ST90.check(story)
+        if stale(story, doc):
+            bad.append(f"data/series/{sid}.json 이 대본과 다르다 — "
+                       f"python3 tools/build_short90.py {sid} 를 다시 돌린다")
+    else:
+        import diagram60                                      # noqa: E402
+        bad = diagram60.validate(doc)
+    kind = "설명 드라마" if ST90.is_explainer(doc) else "전부 영상 드라마"
+    if bad:
+        print(f"❌ {sid} 대본 검사 ({kind}) — {len(bad)}군데")
+        for b in bad:
+            print(f"   · {b}")
+        return 1
+    secs = ST90.part_sec(doc["cuts"], doc)
+    print(f"✅ {sid} 대본 검사 통과 ({kind} · {len(doc['cuts'])}컷 · 잣대 약 {secs:.0f}초 · 옴니 {RES})")
+    return 0
+
+
+def timetable(doc, durs):
+    """[(컷, 시작, 끝, 종류, 말)] — 완성 영상에서 컷마다 몇 초부터 몇 초까지인가."""
+    out, t = [], 0.0
+    for c, d in zip(doc["cuts"], durs):
+        kind = "그림" if is_fig(c) else ("대사" if is_talk(c) else "나레이션")
+        out.append((c["n"], t, t + d, kind, str(c["turns"][0][1])))
+        t += d
+    return out
+
+
+def mmss(t):
+    return f"{int(t // 60)}:{t % 60:04.1f}"
+
+
+def secs_of(s):
+    """'1:36' · '1분 36초' · '96' → 96.0"""
+    m = re.fullmatch(r"\s*(?:(\d+)\s*(?::|분)\s*)?(\d+(?:\.\d+)?)\s*초?\s*", str(s))
+    if not m:
+        raise SystemExit(f"❌ 시각을 못 읽었다: {s} (예: 1:36)")
+    return int(m.group(1) or 0) * 60 + float(m.group(2))
+
+
+def cut_at(rows, t):
+    return next((r for r in rows if r[1] <= t < r[2]), rows[-1] if rows else None)
+
+
+def step_sheet(doc, at=""):
+    """완성 영상 검수 (0원) — 컷마다 한가운데 한 장을 모은 그림 + 컷 시간표.
+    손님이 "1분 36초" 처럼 시각으로 짚으면 --at 1:36 으로 몇 번 컷인지 바로 찾는다
+    (S94 v5: 1:36 = 컷18 · 땅주인 얼굴 위에 법 원칙 나레이션 — 화면 속 사람과 말이 어긋났다)."""
+    from PIL import Image, ImageDraw, ImageFont
+    final = S9.part_file(doc, 1)
+    parts = [S9.OUT / "parts" / f"c{c['n']:02d}.mp4" for c in doc["cuts"]]
+    if not final.exists() or not all(p.exists() for p in parts):
+        print("❌ 완성 영상이나 컷 조각이 없다 — `build` 를 먼저 돌린다")
+        return 1
+    durs = [S9.dur_of(p) for p in parts]
+    got = S9.dur_of(final)
+    if abs(sum(durs) - got) > 0.5:
+        print(f"❌ 컷 조각 합({sum(durs):.1f}초)이 완성 영상({got:.1f}초)과 다르다 — "
+              f"다른 사건을 조립한 조각이다. `build` 를 다시 돌린다")
+        return 1
+    rows = timetable(doc, durs)
+    lines = [f"컷{n:>2}  {mmss(a)}~{mmss(b)}  {k:<4}  {t[:34]}" for n, a, b, k, t in rows]
+    sid = doc.get("sid") or S9.SID
+    (S9.OUT / f"{sid}_cuts.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    if at:
+        for s in at.split(","):
+            r = cut_at(rows, secs_of(s))
+            print(f"■ {s.strip()} → 컷{r[0]} ({mmss(r[1])}~{mmss(r[2])} · {r[3]}) 「{r[4]}」")
+        return 0
+    print("\n".join(lines))
+    tw_, th_, cols, lab = 216, 384, 6, 40
+    rows_n = math.ceil(len(rows) / cols)
+    sheet = Image.new("RGB", (cols * (tw_ + 8) + 8, rows_n * (th_ + lab + 8) + 8), (16, 18, 24))
+    fnt = ImageFont.truetype(str(ROOT / "assets" / "fonts" / "KoPub_Dotum_Pro_Medium.otf"), 24)
+    d = ImageDraw.Draw(sheet)
+    for i, (n, a, b, k, _t) in enumerate(rows):
+        mid = a + (b - a) * 0.55
+        r = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{mid:.2f}", "-i", str(final),
+                            "-frames:v", "1", "-vf", f"scale={tw_}:{th_}", "-f", "image2pipe",
+                            "-vcodec", "png", "-"], capture_output=True)
+        x, y = 8 + (i % cols) * (tw_ + 8), 8 + (i // cols) * (th_ + lab + 8)
+        if r.stdout:
+            sheet.paste(Image.open(io.BytesIO(r.stdout)).convert("RGB"), (x, y + lab))
+        d.text((x + 4, y + 6), f"컷{n} {mmss(a)} {k}", font=fnt,
+               fill=(232, 197, 112) if k == "그림" else (236, 236, 236))
+    out = S9.OUT / f"{sid}_sheet.jpg"
+    sheet.save(out, quality=88)
+    print(f"■ 검수 그림 {out.relative_to(ROOT)} · 시간표 {sid}_cuts.txt (0원)")
+    return 0
+
+
 def step_build(doc):
     miss = [c["n"] for c in doc["cuts"] if not (vdir() / f"c{c['n']:02d}.mp4").exists()]
     if miss:
@@ -677,20 +871,32 @@ def step_build(doc):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("sid")
-    ap.add_argument("what", choices=["plan", "cast", "voice", "clips", "figs", "build", "all"])
+    ap.add_argument("what", choices=["check", "plan", "cast", "voice", "clips", "figs", "build",
+                                     "sheet", "all"])
     ap.add_argument("--no-buy", action="store_true",
                     help="clips — 창고에 없는 컷이 있으면 사지 않고 멈춘다 (0원 보장)")
     ap.add_argument("--full", action="store_true", help="plan — 영상 지문까지 다 보인다")
     ap.add_argument("--only", default="", help="clips — 이 컷만 (예: 2 또는 2,5) · 먼저 한 컷 시험")
+    ap.add_argument("--at", default="", help="sheet — 이 시각이 몇 번 컷인지 (예: 1:36 또는 1:36,2:05)")
+    ap.add_argument("--res", default="", choices=("",) + RES_CHOICES,
+                    help="plan·clips — 옴니 영상 화질 (360p 싸게 · 720p 선명하게). "
+                         "비우면 대본 res, 그것도 없으면 360p")
     a = ap.parse_args()
     global NO_BUY
     NO_BUY = a.no_buy
     sid = a.sid.upper()
-    doc = load(sid)
+    doc = load(sid, a.res)
+    if a.what == "check":
+        return step_check(sid, doc)
+    if a.what == "sheet":
+        return step_sheet(doc, a.at)
     if a.what == "plan":
         rows, bad = plan(doc)
         show_plan(doc, rows, bad, full=a.full)
         return 1 if bad else 0
+    # ⭐ 값을 쓰기 전에 대본부터 본다 — 걸린 채로 목소리·영상을 사면 고칠 때 또 산다
+    if a.what == "all" and step_check(sid, doc):
+        return 1
     if a.what in ("cast", "all") and step_cast(sid):
         return 1
     if a.what in ("voice", "all") and step_voice(doc):

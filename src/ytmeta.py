@@ -321,13 +321,18 @@ def part_meta(doc, part, last=False):
     #    같은 말을 띄운다 — 화면과 설명이 따로 놀면 안 된다.
     #    ⚠️ 마지막 편에는 "다음 편" 이라고 하지 않는다 (없는 편을 기다리게 된다).
     body += ["", CTA_LAST if last else CTA_NEXT]
-    body += [
-        "",
-        "실제 판결을 바탕으로 각색한 이야기입니다.",
-        "등장인물의 이름과 지명은 바꾸었고, 판사의 실명은 밝히지 않습니다.",
-        "",
-        " ".join("#" + t for t in tags),
-    ]
+    # ⭐ 2026-10-03 — 설명 드라마는 **끝 화면 글(end_note)과 같은 말**을 쓴다.
+    #    S94 는 판결문의 지명(경기도 용인)을 그대로 말한다 — "지명은 바꾸었고" 라고
+    #    쓰면 거짓이 된다. 끝 화면과 설명이 따로 놀아서도 안 된다.
+    import story90                                           # noqa: E402 (늦게 부른다)
+    note = clean(story90.style_get(doc, "end_note"))
+    if note:
+        say = [x.strip().rstrip(".") + "." for x in note.split("·") if x.strip()]
+        say += ["판사의 실명은 밝히지 않습니다."]
+    else:
+        say = ["실제 판결을 바탕으로 각색한 이야기입니다.",
+               "등장인물의 이름과 지명은 바꾸었고, 판사의 실명은 밝히지 않습니다."]
+    body += [""] + say + ["", " ".join("#" + t for t in tags)]
     desc = "\n".join(body)[:DESC_MAX]
 
     return {"sid": doc.get("sid") or "S90", "part": part["no"],

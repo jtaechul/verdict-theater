@@ -16,6 +16,9 @@
   ⑦ 처음 보는 사람용 이름표 · 관계 한 줄 · 가명
   ⑧ 영상 창고      같은 장면은 다시 안 산다 · 액자 테두리
   ⑨ 설명 드라마(v5) 그림 컷 0원 · 이름표 「윤정숙 (딸)」 · 대목 표시 · 자막 덩어리 · 끝 멈춤
+  ⑩ 기본 짜임       style="explainer" 하나로 쉼 0.5 · 이름표 · 끝 글 · 대본 검사(화면 속 사람 =
+                    나레이션 · 이름 + 씨 · 헷갈리는 말 · 그림 맞물림) · 검수 시간표 · 받아쓰기 비교
+                    (2026-10-02 손님: "앞으로 우리가 제작하는 영상에서도 동일한 방식으로")
 
 ⚠️ ①②⑦⑧ 은 1분 시험작(S94 v3) 그대로의 고정 대본(tools/fixtures/drama60_s94_v3.json)으로 본다.
    지금 S94 는 손님이 고르신 v5(약 2분 50초 · 그림 컷 17개)로 바뀌었다 (2026-10-02).
@@ -23,6 +26,7 @@
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -164,7 +168,7 @@ ck("S94 대본이 드라마 검사를 통과한다", not T.check_drama(story), "
 R = T.rules_of(story)
 ck("전부 영상 규격: 13~40컷 · 쇼츠 한도(3분) 안", (R["PART_MIN_CUTS"], R["PART_MAX_CUTS"]) == (13, 40)
    and R["PART_SEC_MAX"] < 180)
-gap = float(story.get("gap") or T.GAP_TIGHT)
+gap = float(T.style_get(story, "gap", T.GAP_TIGHT))
 ck("길이 잣대는 말 사이 쉼(gap)만큼 컷마다 늘어난다",
    abs(T.part_sec(story["cuts"], story) -
        (T.SEC60_PER_CHAR * sum(T.chars(c) for c in story["cuts"])
@@ -331,7 +335,8 @@ with tempfile.TemporaryDirectory() as t:
     D.post_narr(raw, hold, 4.5, stretch=D.STRETCH_REUSE)
     ck("창고 영상이 나레이션보다 짧으면 1.6배까지 늘이고 나머지는 끝 장면에서 멈춘다",
        abs(S9.dur_of(hold) - 4.5) < 0.25, f"{S9.dur_of(hold):.2f}")
-s3 = dict(story, end_note="")
+# ⚠️ 설명 드라마는 end_note 를 안 적어도 기본 글('실제 판결을 재구성…')이 따라온다 — style 도 뺀다
+s3 = {k: v for k, v in story.items() if k not in ("end_note", "style")}
 ck("끝 화면 글(end_note)에 '실제' 가 없으면 마지막 컷 규칙이 다시 잡는다",
    any("마지막 컷" in x for x in T.check_drama(s3)))
 ck("우리말 나레이션 — 마디 문장 · 인용 · 「한옥자 씨도」 는 주어 검사에 안 걸린다",
@@ -339,8 +344,215 @@ ck("우리말 나레이션 — 마디 문장 · 인용 · 「한옥자 씨도」
    and not T.needs_subject("'한옥자, 윤기철 모자와 법적으로 다투지 않는다.'")
    and T.needs_subject("법원을 끝까지 믿었습니다."))
 
+print("\n⑩ 설명 드라마 = 기본 짜임 (손님: \"앞으로 우리가 제작하는 영상에서도 동일한 방식으로\")")
+import copy                                                   # noqa: E402
+import diagram60 as G                                         # noqa: E402
+import listen_check as L                                      # noqa: E402
+ck("본보기 S94 대본이 설명 드라마다 (style=explainer)", T.is_explainer(story) and T.is_explainer(live))
+ex = {"format": "drama", "all_video": True, "style": "explainer",
+      "cast": [{"name": "딸", "alias": "윤정숙", "tag": "딸"}]}
+ck("style 하나로 쉼 0.5초 · 이름표 「윤정숙 (딸)」 · 끝 화면 글이 따라온다",
+   S9.gap_of(ex) == 0.5 and S9.labels_of(ex) == {"딸": "윤정숙 (딸)"}
+   and "실제" in T.style_get(ex, "end_note") and "가명" in T.style_get(ex, "end_note"))
+ck("대본이 따로 적은 값이 이긴다 (gap 0.3 · name_first false)",
+   S9.gap_of(dict(ex, gap=0.3)) == 0.3 and S9.labels_of(dict(ex, name_first=False)) == {})
+ck("style 이 없는 옛 대본은 그대로 (쉼 0.12 · 옛 이름표)",
+   S9.gap_of({"format": "drama", "all_video": True}) == 0.12 and S9.labels_of(doc) == {}
+   and T.style_get({}, "gap", 0.12) == 0.12)
+ck("길이 잣대도 style 의 쉼(0.5초)으로 잰다",
+   abs(T.part_sec(story["cuts"], {"all_video": True, "style": "explainer"})
+       - T.part_sec(story["cuts"], {"all_video": True, "gap": 0.5})) < 1e-9)
+b94 = (ROOT / "tools" / "build_short90.py").read_text(encoding="utf-8")
+ck("제작본(build_short90)이 style 을 옮겨 적는다", 'for k in ("style", ' in b94)
+
+
+def cut_of(d, n):
+    return next(c for c in d["cuts"] if c["n"] == n)
+
+
+def hit(d, needle):
+    return any(needle in b for b in T.check(d))
+
+
+s = copy.deepcopy(story)
+cut_of(s, 18)["turns"] = [["나레이션", "다시 2011년. 산 주인이라도 남의 묘를 마음대로 파낼 수는 없습니다."]]
+ck("⭐ 화면 속 사람 = 나레이션 — 옛 컷18(땅주인 얼굴 위 법 원칙)을 잡는다 (손님 1분 36초)",
+   hit(s, "얼굴이 나오는데"))
+ck("지금 컷18 「오병철 씨는 왜 소송까지 냈을까요?」 는 통과한다", not hit(story, "얼굴이 나오는데"))
+s = copy.deepcopy(story)
+cut_of(s, 2)["turns"] = [["나레이션", "그런데 2011년, 땅주인이 어머니 묘를 파내 달라며 윤정숙을 상대로 소송을 겁니다."]]
+ck("나레이션은 이름 + 씨 — 「윤정숙을」 을 잡는다 (따옴표 속 인용은 그대로 둔다)",
+   hit(s, "씨 없이") and not T.bare_names("'한옥자, 윤기철 모자와 법적으로 다투지 않는다.'",
+                                         ["한옥자", "윤기철"]))
+s = copy.deepcopy(story)
+cut_of(s, 10)["turns"] = [["나레이션", "이듬해 그녀의 어머니가 세상을 떠났고, 아버지는 산에 아내를 묻었습니다."]]
+ck("번역 투 대명사(그녀 · 그는)를 잡는다 — '그 사람이' · '그래서' 는 괜찮다",
+   hit(s, "대명사") and not T.PRONOUN.search("오병철 씨는 그 사람이 윤정숙 씨가 아니라며, 그래서 그날")
+   and T.PRONOUN.search("그는 끝까지 버텼습니다"))
+amb = [("둘째, 윤정숙 씨가 1억 5천만 원을 받고 묘를 판 것이라는 겁니다.", "묘를 판"),
+       ("아버지가 떠난 날부터 한옥자 씨가 윤정숙 씨에게 1억 5천을 보냈습니다.", "매일"),
+       ("2001년, 윤기철 씨는 판결로 한옥자 씨를 친엄마로 만들었습니다.", "친엄마")]
+got = []
+for line, needle in amb:
+    s = copy.deepcopy(story)
+    cut_of(s, 22)["turns"] = [["나레이션", line]]
+    got.append(hit(s, needle))
+ck("손님이 실제로 헷갈린 말(묘를 판 · 그날부터 보냈다 · 친엄마로)을 잡는다", all(got), str(got))
+s = copy.deepcopy(story)
+cut_of(s, 12).pop("chapter")
+ck("영상 컷에 대목 표시(chapter)가 없으면 잡는다", hit(s, "대목 표시"))
+s = copy.deepcopy(story)
+cut_of(s, 29)["fig"] = {"id": "paper", "add": [["result", ""]]}
+ck("관계도 · 쟁점 · 판결 그림 가운데 하나라도 없으면 잡는다", hit(s, "판결 정리"))
+s = copy.deepcopy(story)
+s["cast"][0] = {k: v for k, v in s["cast"][0].items() if k != "intro"}
+ck("인물마다 가명 · 이름표 관계 · 관계 한 줄이 있어야 한다", hit(s, "intro"))
+ck("설명 드라마 규칙은 style 이 없는 대본에는 안 건다",
+   not [b for b in T.check(dict(story, style="")) if "얼굴이 나오는데" in b or "대목" in b])
+ck("그림 설계와 그림 컷이 맞물린다 (S94)", not G.validate(story), "; ".join(G.validate(story)))
+s = copy.deepcopy(story)
+cut_of(s, 19)["fig"]["add"][2] = ["rule", "묘를 지킬 권리가"]
+cut_of(s, 20)["fig"]["add"].append(["rules", ""])
+cut_of(s, 21)["fig"]["id"] = "familly"
+s["figs"]["issue"]["cands"][0]["who"] = "아들"
+v = G.validate(s)
+ck("그림 검사 — 신호 낱말 · 없는 요소 · 없는 그림 · 인물표에 없는 얼굴을 잡는다",
+   all(any(x in b for b in v) for x in ("신호 낱말", "요소가 없다", "figs 에 없다", "인물표(cast)에 없다")),
+   "; ".join(v))
+empty = [k for k, f in G.ICONS.items()
+         if not (lambda im: (f(im, 540, 960), im)[1])(G.canvas()).getbbox()]
+ck("작은 그림 일곱 가지가 실제로 그려진다 (묘·제사상·돈·집·서류·저울·반지)",
+   len(G.ICONS) == 7 and not empty, str(empty))
+rel = {"type": "relations", "nodes": [{"id": "a", "who": "딸", "at": [300, 600]},
+                                      {"id": "b", "ghost": True, "name": "어머니", "at": [780, 600]}],
+       "edges": [{"id": "e", "a": "a", "b": "b"}]}
+names = lambda sp: [e.name for e in G.fig_relations(story, sp)]       # noqa: E731
+ck("선 뜻풀이는 서류상 선이 있을 때만 저절로 (true · false · 직접 적기도 된다)",
+   "legend" not in names(rel)
+   and "legend" in names(dict(rel, edges=[dict(rel["edges"][0], style="paper")]))
+   and "legend" not in names(dict(rel, legend=False, edges=[dict(rel["edges"][0], style="paper")]))
+   and "legend" in names(dict(rel, legend=[["solid", "혼인"]])))
+vd = {"type": "verdict", "rows": [{"id": "r", "icon": "home", "claim": "집을 나눠라?",
+                                   "answer": "→ 받아들였다", "mark": "o"}],
+      "lose": "원고 일부 승소", "stay": {"text": "집은 절반씩"}}
+o = {e.name: e for e in G.fig_verdict(story, vd)}
+x = {e.name: e for e in G.fig_verdict(story, dict(vd, rows=[dict(vd["rows"][0], mark="x")]))}
+from PIL import ImageChops                                    # noqa: E402
+ck("판결 줄 표시는 받아들임 O · 안 받아들임 X (기본 X)",
+   ImageChops.difference(o["r"].build().sprite, x["r"].build().sprite).getbbox() is not None)
+rows = D.timetable(live, [2.0] * len(live["cuts"]))
+ck("검수 시간표 — 손님이 짚은 시각(1:36 · 1분 36초)을 컷으로 찾는다",
+   D.secs_of("1:36") == 96 and D.secs_of("1분 36초") == 96 and D.secs_of("96") == 96
+   and D.cut_at(rows, 5.0)[0] == 3 and rows[-1][2] == 2.0 * len(live["cuts"]))
+ck("대본 검사가 대본(.story)과 제작본(.json)이 어긋난 것을 잡는다",
+   not D.stale(story, live) and D.stale(dict(story, cuts=story["cuts"][:-1]), live))
+import explainer_story as E                                   # noqa: E402
+sh = E.shape(json.loads(json.dumps(story)))
+ck("대본 손질(explainer_story shape)은 본보기 S94 를 그대로 둔다 (여러 번 돌려도 같다)",
+   sh == story and E.shape(json.loads(json.dumps(sh))) == sh)
+ck("받아쓰기 비교 — 숫자 덩어리(연도 · 1억 5천만)만 보고 한 자리 숫자는 뺀다",
+   L.numbers_of("1969년 · 모두 1억 5천만 원 · 1심 · 4천만 원") == ["1969", "1억5천만", "4천만"])
+heard = "1969년 ... 2011년 ... 1억5천만 원 ... 윤정숙 씨"
+mini = {"cuts": [{"turns": [["나레이션", "1969년 윤정숙 씨 · 2011년 · 모두 1억 5천만 원 · 2008년"]]}],
+        "cast": [{"alias": "윤정숙"}, {"alias": "오병철"}]}
+ck("받아쓰기 비교 — 안 들린 숫자만 집는다 (대본에 없는 이름은 안 본다)",
+   L.compare(mini, heard) == (["2008"], []))
+
+print("\n⑪ 올릴 영상 화질 — 360p / 720p 를 고른다 (손님: \"720p 또는 360p를 선택할 수 있도록\")")
+ck("화질은 --res 가 이기고, 없으면 대본 res, 그것도 없으면 360p",
+   D.res_of({}) == "360p" and D.res_of({"res": "720p"}) == "720p"
+   and D.res_of({"res": "720p"}, "360p") == "360p" and D.RES == "360p")
+try:
+    D.res_of({"res": "1080p"})
+    ck("고를 수 있는 화질은 360p · 720p 둘뿐이다", False)
+except SystemExit:
+    ck("고를 수 있는 화질은 360p · 720p 둘뿐이다", T.RES_CHOICES == ("360p", "720p"))
+ck("대본 검사가 엉뚱한 화질(res)을 잡는다",
+   any("화질" in b for b in T.check_drama(dict(story, res="1080p")))
+   and not any("화질" in b for b in T.check_drama(dict(story, res="720p"))))
+ck("제작본(build_short90)이 화질(res)을 옮겨 적는다",
+   '("style", "res", "gap", "name_first", "end_note", "figs")' in b94)
+with tempfile.TemporaryDirectory() as t:
+    t = Path(t)
+    keep_vd = S9.video_dir
+    S9.video_dir = lambda: t                                   # noqa: E731
+    try:
+        nc = next(c for c in live["cuts"] if not c.get("fig") and not c["narr"])
+        (t / "raw").mkdir()
+        (t / "raw" / "v.mp4").write_bytes(b"x")
+        e360 = {"raw": "raw/v.mp4", "shot": {"key": "x"}, "sec": 6}
+        D.RES = "720p"
+        lo = D.stock(nc, {D.vkey(nc): e360}) is None
+        hi = D.stock(nc, {D.vkey(nc): dict(e360, res="720p")}) is not None
+        D.RES = "360p"
+        down = D.stock(nc, {D.vkey(nc): dict(e360, res="720p")}) is not None
+    finally:
+        D.RES = "360p"
+        S9.video_dir = keep_vd
+    ck("720p 로 만들 때 360p 로 산 창고 영상은 안 쓴다 (흐린 컷이 안 섞인다) · 720p 영상은 360p 에도 쓴다",
+       lo and hi and down, f"{lo} {hi} {down}")
+t360, k360b = D.price(live, "360p", lib={})
+t720, k720b = D.price(live, "720p", lib={})
+ck("계획은 두 화질 값을 함께 센다 — 720p 는 360p 의 약 2.8배",
+   t360 == t720 > 0 and 2.5 < k720b / k360b < 3.2 and D.RES == "360p", f"{k360b:.0f}/{k720b:.0f}")
+old_env = os.environ.pop("VT_RUN_KRW", None)
+try:
+    cap_default = D.run_cap()
+    os.environ["VT_RUN_KRW"] = "5000"
+    cap_env = D.run_cap()
+finally:
+    os.environ.pop("VT_RUN_KRW", None)
+    if old_env is not None:
+        os.environ["VT_RUN_KRW"] = old_env
+ck("옴니 한 번 한도는 드라마 한 편 한도(16,000원) — 720p 한 편도 한 번에 끝난다 (VT_RUN_KRW 를 주면 그 값)",
+   cap_default == S9.cost.DRAMA_RUN_KRW == 16000 and cap_env == S9.cost.RUN_KRW
+   and k720b < cap_default, f"{cap_default} {cap_env} {k720b:.0f}")
+with tempfile.TemporaryDirectory() as t:
+    t = Path(t)
+    framed = t / "framed720.mp4"
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i",
+                    "testsrc2=s=576x1024:r=24:d=3", "-vf",
+                    "pad=720:1280:72:128:color=0xA6C4BE", "-pix_fmt", "yuv420p",
+                    str(framed)], check=True)
+    cr = D.crop_of(framed)
+    m = re.match(r"crop=(\d+):(\d+):(\d+):(\d+),scale=720:1280,", cr)
+    inside = bool(m) and int(m.group(3)) >= 66 and int(m.group(4)) >= 122 \
+        and int(m.group(1)) + int(m.group(3)) <= 72 + 576 + 6 \
+        and int(m.group(2)) + int(m.group(4)) <= 128 + 1024 + 6
+    ck("720p 영상의 액자 테두리도 제자리를 잘라 720×1280 으로 둔다 (360 기준 자리 × 2)",
+       inside and D.size_of(framed) == (720, 1280), cr)
+
+print("\n⑫ 올릴 준비 (손님: \"유튜브에 올릴 수 있게 준비까지 마무리해줘\")")
+import ytmeta as Y                                            # noqa: E402
+import stage_video as SV                                      # noqa: E402
+sh2 = T.shape_drama({"cuts": [], "yt_tags": ["#상속분쟁", "상속"], "yt_title": "제목", "card": ["가", "나"]})
+ck("대본의 yt_tags 가 편 해시태그로 들어간다 (꼴 맞추기가 안 지운다)",
+   sh2["parts"][0].get("tags") == ["상속분쟁", "상속"]
+   and T.shape_drama(json.loads(json.dumps(sh2)))["parts"][0].get("tags") == ["상속분쟁", "상속"])
+m94 = json.loads((ROOT / "data" / "series" / "S94.meta.json").read_text(encoding="utf-8"))["parts"][0]
+ck("S94 올릴 글 — 묘 사건에 #불륜 · #이혼사연 이 안 붙고 #상속분쟁 이 붙는다",
+   "#상속분쟁" in m94["title"] and "불륜" not in m94["tags"] and "이혼사연" not in m94["tags"]
+   and m94["tags"][:3] == ["사연", "상속분쟁", "상속"], m94["title"])
+ck("설명 드라마 설명의 맺음말 = 끝 화면 글 (판결문 지명을 쓰므로 '지명은 바꾸었고' 를 안 쓴다)",
+   "등장인물 이름은 모두 가명입니다." in m94["description"]
+   and "지명은 바꾸었고" not in m94["description"])
+old_meta = Y.part_meta(doc, doc["parts"][0], last=True)
+ck("옛 대본(설명 드라마 아님)의 맺음말은 그대로", "지명은 바꾸었고" in old_meta["description"])
+_f, _b = SV.ready("S999")
+ck("보관함에 넣기 전에 막힐 것을 먼저 본다 (없는 사건은 밀어 넣지 않는다)", not _f and _b)
+wf = (ROOT / ".github" / "workflows" / "stage-video.yml").read_text(encoding="utf-8")
+ck("임시 가지는 보관함에 옮긴 뒤 지운다 (영상이 main 에 안 남는다)",
+   "stage/S*" in wf and "--delete" in wf and "stage_video.py --release" in wf
+   and "GEMINI_API_KEY" not in wf)
+if (S9.OUT / "S94_part1.mp4").exists():
+    _f94, _b94 = SV.ready("S94")
+    ck("S94 는 올릴 준비가 됐다 (영상 · 썸네일 · 길이 · 만든 기록 · 올릴 글)",
+       not _b94 and set(_f94) == {"part1.mp4", "part1.jpg", "meta.json"}, "; ".join(_b94))
+else:
+    print("   ⏭  완성 영상이 없다 (깃허브) — 'S94 올릴 준비' 는 작업 칸에서만 본다")
+
 print("─" * 56)
 if bad:
     print(f"❌ {len(bad)}개 걸렸습니다 — 고치고 다시")
     sys.exit(1)
-print("✅ 전부 영상 드라마: 카메라 · 지문 · 360p · 목소리 · 후처리 · 길이 · 이름표 · 그림 컷")
+print("✅ 전부 영상 드라마: 카메라 · 지문 · 화질(360p·720p) · 목소리 · 후처리 · 길이 · 이름표 · 그림 컷 · 기본 짜임")

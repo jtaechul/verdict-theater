@@ -271,6 +271,58 @@ def table_icon(im, cx, cy, s=1.0, color=GOLD_B):
                   fill=(255, 196, 92, 255))
 
 
+def coin_icon(im, cx, cy, s=1.0, color=GOLD_B):
+    """돈 — 금색 동전에 ₩."""
+    ImageDraw.Draw(im).ellipse(P(cx - 48 * s, cy - 48 * s, cx + 48 * s, cy + 48 * s), fill=color + (255,))
+    text(im, cx, cy + 2 * s, "₩", 54 * s, PANEL, F_UI_B, anchor="mm", stroke=0)
+
+
+def home_icon(im, cx, cy, s=1.0, color=GOLD_B):
+    """집·땅 — 지붕 + 벽 + 문."""
+    d = ImageDraw.Draw(im)
+    d.polygon([P(cx - 52 * s, cy - 6 * s), P(cx, cy - 50 * s), P(cx + 52 * s, cy - 6 * s)],
+              fill=color + (255,))
+    d.rectangle(P(cx - 38 * s, cy - 8 * s, cx + 38 * s, cy + 40 * s), fill=color + (255,))
+    d.rectangle(P(cx - 10 * s, cy + 10 * s, cx + 10 * s, cy + 40 * s), fill=PANEL + (255,))
+
+
+def doc_icon(im, cx, cy, s=1.0, color=GOLD_B):
+    """서류 — 귀퉁이 접힌 종이 + 글줄."""
+    d = ImageDraw.Draw(im)
+    d.polygon([P(cx - 36 * s, cy - 48 * s), P(cx + 18 * s, cy - 48 * s), P(cx + 36 * s, cy - 30 * s),
+               P(cx + 36 * s, cy + 48 * s), P(cx - 36 * s, cy + 48 * s)], fill=color + (255,))
+    for k in range(3):
+        y = cy - 14 * s + k * 20 * s
+        d.rectangle(P(cx - 22 * s, y, cx + 22 * s, y + 6 * s), fill=PANEL + (255,))
+
+
+def scale_icon(im, cx, cy, s=1.0, color=GOLD_B):
+    """법 — 저울."""
+    d = ImageDraw.Draw(im)
+    d.rectangle(P(cx - 4 * s, cy - 44 * s, cx + 4 * s, cy + 36 * s), fill=color + (255,))
+    d.rectangle(P(cx - 30 * s, cy + 34 * s, cx + 30 * s, cy + 44 * s), fill=color + (255,))
+    d.rectangle(P(cx - 50 * s, cy - 40 * s, cx + 50 * s, cy - 33 * s), fill=color + (255,))
+    for x in (-42, 42):
+        d.line(P(cx + x * s, cy - 36 * s, cx + (x - 14) * s, cy), fill=color + (255,), width=int(3 * SS))
+        d.line(P(cx + x * s, cy - 36 * s, cx + (x + 14) * s, cy), fill=color + (255,), width=int(3 * SS))
+        d.pieslice(P(cx + (x - 18) * s, cy - 14 * s, cx + (x + 18) * s, cy + 14 * s), 0, 180,
+                   fill=color + (255,))
+
+
+def ring_icon(im, cx, cy, s=1.0, color=GOLD_B):
+    """혼인 — 반지."""
+    d = ImageDraw.Draw(im)
+    d.ellipse(P(cx - 36 * s, cy - 24 * s, cx + 36 * s, cy + 48 * s), outline=color + (255,),
+              width=int(9 * s * SS))
+    d.polygon([P(cx, cy - 50 * s), P(cx + 16 * s, cy - 32 * s), P(cx, cy - 18 * s),
+               P(cx - 16 * s, cy - 32 * s)], fill=INK + (255,))
+
+
+# 그림 속 작은 그림 — 쟁점의 원칙 줄 · 판결 줄 · 끝줄에 이름으로 고른다 (사건마다 맞는 것)
+ICONS = {"grave": grave_icon, "table": table_icon, "coin": coin_icon, "home": home_icon,
+         "doc": doc_icon, "scale": scale_icon, "ring": ring_icon}
+
+
 def ring_glow(im, cx, cy, r, color=RED):
     """얼굴은 그대로 두고 둘레만 빛나게 (붉은 고리 + 번진 빛 · 안쪽은 비운다)."""
     lay = Image.new("RGBA", im.size, (0, 0, 0, 0))
@@ -345,7 +397,17 @@ def frame_of(el, k, t):
     return sp, (x, y)
 
 
-# ── 그림 설계 ───────────────────────────────────────────────────────
+# ── 그림 설계 (대본 figs 가 정한다 · 코드에는 사건 글이 없다) ─────────────────
+#    ⭐ 2026-10-02 손님: "앞으로 우리가 제작하는 영상에서도 동일한 방식으로 제작이 될 수 있게끔"
+#       → 사람·글·자리를 전부 대본의 figs[id] 에 적는다. 여기는 **그리는 법**만 안다.
+#       대본 짓는 법·예시는 .claude/skills/verdict-explainer/SKILL.md (S94 가 본보기).
+COLORS = {"gold": GOLD_B, "red": RED, "ink": INK, "soft": SOFT, "grey": GREY, "mute": MUTE}
+
+
+def col(name, default=GOLD_B):
+    return COLORS.get(str(name or ""), default) if not isinstance(name, (list, tuple)) else tuple(name)
+
+
 def labels(doc):
     """{관계 이름: (가명, 이름표 관계)} — 대본 인물표에서."""
     out = {}
@@ -353,6 +415,12 @@ def labels(doc):
         out[str(p.get("name"))] = (str(p.get("alias") or p.get("name")),
                                    str(p.get("tag") or p.get("name")))
     return out
+
+
+def who_name(doc, who, role=None):
+    """인물표의 사람 → (이름, 괄호 관계). role 을 주면 괄호를 그것으로."""
+    nm, tg = labels(doc).get(who, (who, who))
+    return nm, (tg if role is None else role)
 
 
 def fig_card(doc, spec):
@@ -365,267 +433,466 @@ def fig_card(doc, spec):
     return [El("card", card, anim="fade")]
 
 
-def fig_family(doc, spec):
-    L = labels(doc)
-    jn, jt = L.get("딸", ("딸", "딸"))
-    gn, gt = L.get("이복동생", ("이복동생", "이복동생"))
-    on, _ot = L.get("새어머니", ("새어머니", "새어머니"))
-    F, M, O, C1, C2 = (540, 400), (235, 660), (845, 660), (235, 1010), (845, 1010)
-    rF, rM, rO, rC = 78, 92, 104, 112
+def _edge(a, b, ra, rb, pad=12):
+    (x1, y1), (x2, y2) = a, b
+    n = math.hypot(x2 - x1, y2 - y1) or 1
+    ux, uy = (x2 - x1) / n, (y2 - y1) / n
+    return (x1 + ux * (ra + pad), y1 + uy * (ra + pad)), (x2 - ux * (rb + pad), y2 - uy * (rb + pad))
 
-    def edge(a, b, ra, rb, pad=12):
-        (x1, y1), (x2, y2) = a, b
-        n = math.hypot(x2 - x1, y2 - y1)
-        ux, uy = (x2 - x1) / n, (y2 - y1) / n
-        return (x1 + ux * (ra + pad), y1 + uy * (ra + pad)), (x2 - ux * (rb + pad), y2 - uy * (rb + pad))
 
-    fm = edge(F, M, rF, rM)
-    fo = edge(F, O, rF, rO)
-    m1 = ((M[0], M[1] + rM + 14 + 58), (C1[0], C1[1] - rC - 12))
-    o2 = ((O[0], O[1] + rO + 14 + 58), (C2[0], C2[1] - rC - 12))
-    pp = edge(C2, M, rC, rM, pad=14)
-    sib = ((C1[0] + rC + 14, C1[1]), (C2[0] - rC - 14, C2[1]))
-    t = 0.38
-    chip_xy = (pp[0][0] + (pp[1][0] - pp[0][0]) * t, pp[0][1] + (pp[1][1] - pp[0][1]) * t)
+def fig_relations(doc, spec):
+    """인물 관계도 — nodes(사람) · edges(선) · labels(이름표 바꿔 끼우기) · texts · marks.
 
-    def legend(im):
-        line(im, (205, 262), (262, 262), LINE, 5)
-        text(im, 276, 262, "실제 관계", 32, MUTE, F_UI, anchor="lm")
-        line(im, (532, 262), (590, 262), GOLD_B, 6, dash=(14, 9))
-        text(im, 604, 262, "서류(호적)상 관계", 32, MUTE, F_UI, anchor="lm")
+    node  {"id", "who"(인물표) | "ghost": true + "name", "at": [x, y], "r", "role",
+           "gold", "size", "label": "below"(기본) | "right" | false}
+    edge  {"id", "a", "b", "style": "solid" | "paper"(금색 점선 · 서류상) | "sibling",
+           "down": true(위 사람 이름표 아래에서 곧장 내려온다), "text", "text_at", "chip", "chip_t"}
+    label {"id", "node", "role", "replaces": [...]}   texts {"id", "text", "at", "color", "replaces"}
+    marks {"id", "kind": "caption" | "grave" | "banner" | "glow", …}"""
+    nodes = {n["id"]: n for n in spec.get("nodes") or []}
+    els = [El("heading", lambda im: heading(im, spec.get("title") or "인물 관계도"), anim="fade")]
+    # 선 뜻풀이 — true: 실제/서류상 둘 · 없으면 서류상 선(paper)이 있을 때만 · false: 안 그린다
+    #             [["solid", "실제 관계"], ["paper", "서류(호적)상 관계"]] 처럼 직접 적어도 된다
+    lg = spec.get("legend", "auto")
+    if lg == "auto":
+        lg = any((e.get("style") or "") == "paper" for e in spec.get("edges") or [])
+    if lg is True:
+        lg = [["solid", "실제 관계"], ["paper", "서류(호적)상 관계"]]
+    if lg:
+        def legend(im, lg=lg):
+            gap = 135                                  # S94 의 자리 그대로 (205 에서 시작)
+            ws = [71 + tw(s, 32, F_UI) for _, s in lg]
+            x = max(60, min(205, 540 - (sum(ws) + gap * (len(ws) - 1)) / 2))
+            for (st, s), w in zip(lg, ws):
+                if st == "solid":
+                    line(im, (x, 262), (x + 57, 262), LINE, 5)
+                else:
+                    line(im, (x, 262), (x + 58, 262), GOLD_B, 6, dash=(14, 9))
+                text(im, x + (71 if st == "solid" else 72), 262, s, 32, MUTE, F_UI, anchor="lm")
+                x += w + gap
+        els.append(El("legend", legend, anim="fade"))
 
-    def claim1(im):
-        chip(im, 300, 262, "땅주인 주장 ①", RED, 32)
-        text(im, 430, 262, "제사는 아들이 → 권리는 윤기철", 34, INK, F_UI_B, anchor="lm")
+    def xy(n):
+        return tuple(nodes[n]["at"])
 
-    return [
-        El("heading", lambda im: heading(im, "인물 관계도"), anim="fade"),
-        El("legend", legend, anim="fade"),
-        El("line_fm", lambda im: (line(im, *fm, LINE, 5),
-                                  text(im, 350, 506, "부부", 36, SOFT, F_UI, anchor="mm")),
-           anim="wipe", wipe=fm),
-        El("line_fo", lambda im: line(im, *fo, LINE, 5), anim="wipe", wipe=fo),
-        El("rel_fo", lambda im: text(im, 740, 506, "내연 관계", 36, SOFT, F_UI, anchor="mm"),
-           anim="fade"),
-        El("line_m1", lambda im: line(im, *m1, LINE, 5), anim="wipe", wipe=m1),
-        El("line_o2", lambda im: line(im, *o2, LINE, 5), anim="wipe", wipe=o2),
-        El("paper", lambda im: (line(im, *pp, GOLD_B, 7, dash=(24, 14)),
-                                chip(im, chip_xy[0] + 6, chip_xy[1], "서류상: 본처의 아들",
-                                     GOLD_B, 34)),
-           anim="wipe", wipe=pp),
-        El("sibling", lambda im: (line(im, *sib, GOLD_B, 6, dash=(18, 12)),
-                                  chip(im, 540, C1[1], "서류상 친동생", GOLD_B, 32)), anim="fade"),
-        El("father", lambda im: (ghost(im, *F, rF), text(im, F[0] + rF + 24, F[1], "아버지", 52,
-                                                          INK, anchor="lm"))),
-        El("mother", lambda im: (ghost(im, *M, rM),
-                                 nametag(im, M[0], M[1] + rM + 14, "어머니", "본처"))),
-        El("other", lambda im: person(im, "새어머니", *O, rO)),
-        El("other_label", lambda im: nametag(im, O[0], O[1] + rO + 14, on, "내연녀"),
-           anim="fade"),
-        El("child1", lambda im: (person(im, "딸", *C1, rC, ring=GOLD_B),
-                                 nametag(im, C1[0], C1[1] + rC + 14, jn, jt, color=GOLD_B))),
-        El("child2", lambda im: (person(im, "이복동생", *C2, rC),
-                                 nametag(im, C2[0], C2[1] + rC + 14, gn, gt, size=44))),
-        El("mother_gone", lambda im: chip(im, M[0], M[1] + rM - 20, "1969 별세", GREY, 30,
-                                          solid=True, tcolor=PANEL), anim="fade"),
-        El("grave", lambda im: (badge(im, 92, M[1] - rM - 12),
-                                text(im, 92, M[1] - rM + 40, "산에 묘", 30, GOLD_B,
-                                     F_UI_B, anchor="ma"))),
-        El("remarry", lambda im: text(im, 740, 506, "1973년 재혼", 36, GOLD_B, F_UI_B,
-                                      anchor="mm"), anim="fade", replaces=("rel_fo",)),
-        El("other_new", lambda im: nametag(im, O[0], O[1] + rO + 14, on, "새어머니"),
-           anim="fade", replaces=("other_label",)),
-        El("claim1", claim1, anim="fade", replaces=("legend",)),
-        El("claim1_glow", lambda im: ring_glow(im, *C2, rC, RED), anim="fade", pulse=True),
-    ]
+    def rad(n):
+        return int(nodes[n].get("r") or 104)
+
+    def name_of(n, role=None):
+        nd = nodes[n]
+        if nd.get("who"):
+            return who_name(doc, nd["who"], nd.get("role") if role is None else role)
+        return nd.get("name") or "", (nd.get("role") if role is None else role)
+
+    for e in spec.get("edges") or []:
+        a, b = e["a"], e["b"]
+        st = e.get("style") or "solid"
+        if e.get("down"):
+            (ax, ay), (bx, by) = xy(a), xy(b)
+            seg = ((ax, ay + rad(a) + 14 + 58), (bx, by - rad(b) - 12))
+        elif st == "sibling":
+            (ax, ay), (bx, by) = xy(a), xy(b)
+            seg = ((ax + rad(a) + 14, ay), (bx - rad(b) - 14, by))
+        else:
+            seg = _edge(xy(a), xy(b), rad(a), rad(b), pad=14 if st == "paper" else 12)
+
+        def draw(im, e=e, seg=seg, st=st):
+            if st == "paper":
+                line(im, *seg, GOLD_B, 7, dash=(24, 14))
+            elif st == "sibling":
+                line(im, *seg, GOLD_B, 6, dash=(18, 12))
+            else:
+                line(im, *seg, LINE, 5)
+            if e.get("text"):
+                tx, ty = e.get("text_at") or ((seg[0][0] + seg[1][0]) / 2, (seg[0][1] + seg[1][1]) / 2)
+                text(im, tx, ty, e["text"], 36, col(e.get("color"), SOFT), F_UI, anchor="mm")
+            if e.get("chip"):
+                if st == "sibling":
+                    cx, cy = (seg[0][0] + seg[1][0]) / 2, seg[0][1]
+                else:
+                    t = float(e.get("chip_t") or 0.38)
+                    cx = seg[0][0] + (seg[1][0] - seg[0][0]) * t + 6
+                    cy = seg[0][1] + (seg[1][1] - seg[0][1]) * t
+                chip(im, cx, cy, e["chip"], GOLD_B, 32 if st == "sibling" else 34)
+        els.append(El(e["id"], draw, anim="fade" if st == "sibling" else "wipe", wipe=seg))
+
+    for nid, nd in nodes.items():
+        def draw(im, nid=nid, nd=nd):
+            x, y = xy(nid)
+            r = rad(nid)
+            if nd.get("ghost"):
+                ghost(im, x, y, r)
+            else:
+                person(im, nd["who"], x, y, r, ring=GOLD_B if nd.get("gold") else (228, 224, 216))
+            lab = nd.get("label", "below")
+            if lab is False:
+                return
+            nm, rl = name_of(nid)
+            if lab == "right":
+                text(im, x + r + 24, y, nm, 52, INK, anchor="lm")
+            else:
+                nametag(im, x, y + r + 14, nm, rl or None, color=GOLD_B if nd.get("gold") else INK,
+                        size=int(nd.get("size") or 48))
+        els.append(El(nid, draw))
+
+    for lb in spec.get("labels") or []:
+        def draw(im, lb=lb):
+            x, y = xy(lb["node"])
+            nm, rl = name_of(lb["node"], lb.get("role"))
+            nametag(im, x, y + rad(lb["node"]) + 14, nm, rl or None,
+                    size=int(nodes[lb["node"]].get("size") or 48))
+        els.append(El(lb["id"], draw, anim="fade", replaces=lb.get("replaces") or ()))
+
+    for tx in spec.get("texts") or []:
+        els.append(El(tx["id"], lambda im, tx=tx: text(
+            im, *tx["at"], tx["text"], int(tx.get("size") or 36), col(tx.get("color"), SOFT),
+            F_UI_B if tx.get("color") == "gold" else F_UI, anchor="mm"),
+            anim="fade", replaces=tx.get("replaces") or ()))
+
+    for mk in spec.get("marks") or []:
+        k = mk.get("kind")
+        if k == "caption":
+            def draw(im, mk=mk):
+                x, y = xy(mk["node"])
+                chip(im, x, y + rad(mk["node"]) - 20, mk["text"], GREY, 30, solid=True, tcolor=PANEL)
+        elif k == "grave":
+            def draw(im, mk=mk):
+                x, y = mk["at"]
+                badge(im, x, y)
+                if mk.get("text"):
+                    text(im, x, y + 52, mk["text"], 30, GOLD_B, F_UI_B, anchor="ma")
+        elif k == "banner":
+            def draw(im, mk=mk):
+                cw = tw(mk["tag"], 32, F_UI_B) + 40
+                w = cw + 22 + tw(mk["text"], 34, F_UI_B)
+                x0 = 540 - w / 2
+                chip(im, x0 + cw / 2, 262, mk["tag"], col(mk.get("color"), RED), 32)
+                text(im, x0 + cw + 22, 262, mk["text"], 34, INK, F_UI_B, anchor="lm")
+        elif k == "glow":
+            def draw(im, mk=mk):
+                ring_glow(im, *xy(mk["node"]), rad(mk["node"]), col(mk.get("color"), RED))
+        else:
+            continue
+        els.append(El(mk["id"], draw, anim="fade", replaces=mk.get("replaces") or (),
+                      pulse=(k == "glow")))
+    return els
 
 
 def fig_timeline(doc, spec):
+    """연표 — rows [{"id", "year", "who", "what", "color": "gold"|"red", "what_color"}] ·
+    cards [{"id", "after": 줄 id, "title", "text"}] · faces [{"id", "row", "who"}]."""
     X = 170
-    rows = {
-        "r1969": (330, "1969", "어머니 별세", "아버지의 산에 묘", GOLD_B, SOFT),
-        "r1996": (470, "1996", "아버지 → 윤기철", "산을 물려줌", GOLD_B, SOFT),
-        "r2006a": (610, "2006.6", "윤기철 → 다른 사람", "산을 팖 (아버지 별세 두 달 전)", GOLD_B, SOFT),
-        "r2006b": (750, "2006.8", "아버지 별세 · 한옥자 → 윤정숙", "세 번에 걸쳐 1억 5천만 원",
-                   GOLD_B, GOLD_B),
-        "r2008": (1090, "2008", "오병철 씨 등 → 산을 삼", "소송을 낸 땅주인", GOLD_B, SOFT),
-    }
+    rows = spec.get("rows") or []
+    cards = {c["after"]: c for c in spec.get("cards") or []}
+    y, at, card_at = 330, {}, {}
+    for r in rows:
+        at[r["id"]] = y
+        y += 140
+        if r["id"] in cards:
+            top = y - 55
+            card_at[cards[r["id"]]["id"]] = (top, top + 175)
+            y = top + 175 + 80
+    bottom = (max(at.values()) if at else 330) + 90
 
-    def row(key):
-        y, yr, who, what, cc, wc = rows[key]
-
+    def row(r):
         def draw(im):
-            chip(im, X, y, yr, cc, 30)
-            text(im, 262, y - 30, who, 42, INK)
-            text(im, 262, y + 24, what, 34, wc, F_UI)
+            yy = at[r["id"]]
+            c = col(r.get("color"), GOLD_B)
+            chip(im, X, yy, r["year"], c, 30)
+            text(im, 262, yy - 30, r["who"], 42, INK)
+            if r.get("what"):
+                text(im, 262, yy + 24, r["what"], 34, col(r.get("what_color"), SOFT), F_UI)
         return draw
 
-    def card(im):
-        box(im, 262, 835, 1010, 1010, outline=GOLD_B, dash=(16, 10))
-        text(im, 292, 868, "확인서", 32, GOLD_B, F_UI_B)
-        para(im, 292, 914, "'한옥자, 윤기철 모자와 법적으로 다투지 않는다'", 36, 690, INK, F_UI_B)
+    def card(cd):
+        def draw(im):
+            t, b = card_at[cd["id"]]
+            box(im, 262, t, 1010, b, outline=GOLD_B, dash=(16, 10))
+            text(im, 292, t + 33, cd.get("title") or "", 32, GOLD_B, F_UI_B)
+            para(im, 292, t + 79, cd.get("text") or "", 36, 690, INK, F_UI_B)
+        return draw
 
-    els = [El("heading", lambda im: (heading(im, "산과 돈, 일어난 순서"),
-                                     line(im, (X, 300), (X, 1180), LINE, 4, alpha=170)),
+    els = [El("heading", lambda im: (heading(im, spec.get("title") or "일어난 순서"),
+                                     line(im, (X, 300), (X, bottom), LINE, 4, alpha=170)),
               anim="fade")]
-    els += [El(k, row(k), anim="fade") for k in ("r1969", "r1996", "r2006a", "r2006b")]
-    els += [El("card", card), El("r2008", row("r2008"), anim="fade"),
-            El("owner", lambda im: person(im, "땅주인", 960, 1090, 56))]
+    for r in rows:
+        els.append(El(r["id"], row(r), anim="fade"))
+        if r["id"] in cards:
+            els.append(El(cards[r["id"]]["id"], card(cards[r["id"]])))
+    for fc in spec.get("faces") or []:
+        els.append(El(fc["id"], lambda im, fc=fc: person(im, fc["who"], 960, at[fc["row"]], 56)))
     return els
 
 
 def fig_issue(doc, spec):
-    L = labels(doc)
-    on_, ot_ = L.get("땅주인", ("땅주인", "땅주인"))
-    jn, jt = L.get("딸", ("딸", "딸"))
-    gn, _gt = L.get("이복동생", ("이복동생", "이복동생"))
+    """재판의 쟁점 — suit(누가 누구를 · 무엇을) · rule(법 원칙 두 줄 · 그림) · question · cands(두 사람)."""
+    su = spec.get("suit") or {}
     A, B = (210, 345), (870, 345)
 
     def suit(im):
-        person(im, "땅주인", *A, 74)
-        person(im, "딸", *B, 74, ring=GOLD_B)
-        nametag(im, A[0], A[1] + 88, on_, ot_, size=38)
-        nametag(im, B[0], B[1] + 88, jn, jt, size=38, color=GOLD_B)
+        person(im, su["from"], *A, 74)
+        person(im, su["to"], *B, 74, ring=GOLD_B)
+        nametag(im, A[0], A[1] + 88, *who_name(doc, su["from"]), size=38)
+        nametag(im, B[0], B[1] + 88, *who_name(doc, su["to"]), size=38, color=GOLD_B)
         arrow(im, (300, 345), (782, 345), RED, 7, head=30)
-        text(im, 541, 300, "\"묘를 파내 달라\"", 38, INK, F_UI_B, anchor="mm")
-        text(im, 541, 392, "2011년 소송", 32, RED, F_UI_B, anchor="mm")
+        if su.get("quote"):
+            text(im, 541, 300, su["quote"], 38, INK, F_UI_B, anchor="mm")
+        if su.get("year"):
+            text(im, 541, 392, su["year"], 32, RED, F_UI_B, anchor="mm")
 
     def rule(im):
+        rows = spec.get("rule") or []
         box(im, 70, 520, 1010, 760, outline=GOLD_B)
-        grave_icon(im, 170, 600, s=0.95)
-        text(im, 250, 600, "묘를 지킬 권리는", 42, INK, F_UI_B, anchor="lm")
-        table_icon(im, 170, 696, s=0.95)
-        text(im, 250, 692, "제사를 모시는 사람에게", 46, GOLD_B, F_NAME, anchor="lm")
+        for i, (ic, s) in enumerate(rows[:2]):
+            y = 600 + i * 94
+            if ic in ICONS:
+                ICONS[ic](im, 170, y, s=0.95)
+            text(im, 250, y - (0 if i == 0 else 4), s, 42 if i == 0 else 46,
+                 INK if i == 0 else GOLD_B, F_UI_B if i == 0 else F_NAME, anchor="lm")
 
-    def question(im):
-        text(im, 540, 838, "어머니 제사를 모실 사람은?", 54, INK, F_NAME, anchor="mm", stroke=3)
+    cs = spec.get("cands") or []
+    xs = (300, 780) if len(cs) > 1 else (540, 540)        # 후보가 한 명이면 가운데
 
     def cands(im):
-        person(im, "이복동생", 300, 1010, 108)
-        person(im, "딸", 780, 1010, 108, ring=GOLD_B)
-        text(im, 540, 1010, "vs", 52, MUTE, F_NAME, anchor="mm")
-        nametag(im, 300, 1132, gn, "호적상 아들", size=42)
-        nametag(im, 780, 1132, jn, "친딸", size=42, color=GOLD_B)
+        for (x, cd) in zip(xs, cs):
+            person(im, cd["who"], x, 1010, 108, ring=GOLD_B if cd.get("gold") else (228, 224, 216))
+            nametag(im, x, 1132, who_name(doc, cd["who"])[0], cd.get("role"), size=42,
+                    color=GOLD_B if cd.get("gold") else INK)
+        if len(cs) > 1:
+            text(im, 540, 1010, "vs", 52, MUTE, F_NAME, anchor="mm")
 
-    return [El("heading", lambda im: heading(im, "재판의 쟁점"), anim="fade"),
-            El("suit", suit, anim="fade"), El("rule", rule), El("question", question),
-            El("cands", cands),
-            El("claim_no", lambda im: chip(im, 780, 1238, "땅주인: 윤정숙 씨는 아니다", RED, 32)),
-            El("two", lambda im: None)]
+    els = [El("heading", lambda im: heading(im, spec.get("title") or "재판의 쟁점"), anim="fade"),
+           El("suit", suit, anim="fade"), El("rule", rule),
+           El("question", lambda im: text(im, 540, 838, spec.get("question") or "", 54, INK, F_NAME,
+                                          anchor="mm", stroke=3)),
+           El("cands", cands)]
+    for c in spec.get("chips") or []:
+        els.append(El(c["id"], lambda im, c=c: chip(im, xs[min(1, int(c.get("under") or 0))], 1238,
+                                                    c["text"], col(c.get("color"), RED), 32)))
+    return els
 
 
-def fig_money(doc, spec):
-    L = labels(doc)
-    hn, ht = L.get("새어머니", ("새어머니", "새어머니"))
-    jn, jt = L.get("딸", ("딸", "딸"))
+def fig_flow(doc, spec):
+    """돈·물건이 간 길 — from → to · amount · claim(주장 · X 가 붙는다) · doc(증거 글) · chips."""
     A, B = (215, 390), (865, 390)
+    fr, to = spec["from"], spec["to"]
 
     def people(im):
-        person(im, "새어머니", *A, 100)
-        person(im, "딸", *B, 100, ring=GOLD_B)
-        nametag(im, A[0], A[1] + 114, hn, ht, size=42)
-        nametag(im, B[0], B[1] + 114, jn, jt, size=42, color=GOLD_B)
+        person(im, fr["who"], *A, 100)
+        person(im, to["who"], *B, 100, ring=GOLD_B)
+        nametag(im, A[0], A[1] + 114, *who_name(doc, fr["who"]), size=42)
+        nametag(im, B[0], B[1] + 114, *who_name(doc, to["who"]), size=42, color=GOLD_B)
 
     def flow(im):
         arrow(im, (330, 390), (750, 390), GOLD_B, 8, head=32)
-        text(im, 540, 338, "1억 5천만 원", 52, GOLD_B, F_NAME, anchor="mm", stroke=3)
-        text(im, 540, 440, "세 번에 나눠", 32, SOFT, F_UI, anchor="mm")
+        text(im, 540, 338, spec.get("amount") or "", 52, GOLD_B, F_NAME, anchor="mm", stroke=3)
+        if spec.get("sub"):
+            text(im, 540, 440, spec["sub"], 32, SOFT, F_UI, anchor="mm")
 
     def claim(im):
+        cl = spec.get("claim") or {}
         box(im, 70, 610, 1010, 800, outline=RED)
-        chip(im, 210, 652, "땅주인 주장", RED, 32)
-        text(im, 110, 730, "묘를 포기한 대가였다", 48, INK, F_NAME)
+        chip(im, 70 + 40 + tw(cl.get("tag") or "", 32, F_UI_B) / 2 + 20, 652, cl.get("tag") or "",
+             RED, 32)
+        text(im, 110, 730, cl.get("text") or "", 48, INK, F_NAME)
 
     def docu(im):
+        dc = spec.get("doc") or {}
         box(im, 70, 840, 1010, 1040, outline=GOLD_B)
-        chip(im, 180, 882, "확인서", GOLD_B, 32)
-        para(im, 110, 930, "한옥자·윤기철 모자와 법적으로 다투지 않는다", 40, 860, INK, F_UI_B)
+        chip(im, 70 + 40 + tw(dc.get("tag") or "", 32, F_UI_B) / 2 + 20, 882, dc.get("tag") or "",
+             GOLD_B, 32)
+        para(im, 110, 930, dc.get("text") or "", 40, 860, INK, F_UI_B)
 
-    return [El("heading", lambda im: heading(im, "1억 5천만 원"), anim="fade"),
-            El("people", people, anim="fade"), El("flow", flow, anim="fade"),
-            El("claim", claim), El("doc", docu),
-            El("nograve", lambda im: chip(im, 790, 1092, "묘 이야기 없음", GOLD_B, 34,
-                                          solid=True)),
-            El("cross", lambda im: cross(im, 940, 705, k=46, width=15)),
-            El("testimony", lambda im: chip(im, 290, 1092, "증언도 못 믿는다", RED, 34))]
+    els = [El("heading", lambda im: heading(im, spec.get("title") or ""), anim="fade"),
+           El("people", people, anim="fade"), El("flow", flow, anim="fade"),
+           El("claim", claim), El("doc", docu),
+           El("cross", lambda im: cross(im, 940, 705, k=46, width=15))]
+    for c in spec.get("chips") or []:
+        x = 790 if c.get("side") == "right" else 290
+        els.append(El(c["id"], lambda im, c=c, x=x: chip(im, x, 1092, c["text"],
+                                                          col(c.get("color"), GOLD_B), 34,
+                                                          solid=bool(c.get("solid")))))
+    return els
 
 
-def fig_paper(doc, spec):
-    L = labels(doc)
-    gn, _gt = L.get("이복동생", ("이복동생", "이복동생"))
-    hn, _ht = L.get("새어머니", ("새어머니", "새어머니"))
-    jn, _jt = L.get("딸", ("딸", "딸"))
+def fig_compare(doc, spec):
+    """서류 vs 실제 — subject(한 사람) · left(서류상 · 흔히 고인 윤곽) · right(실제) · year · ruling ·
+    fix(바로잡음 화살표) · broken(끊김 + 결과)."""
+    sj, lf, rt = spec["subject"], spec["left"], spec["right"]
     S_, A, B = (540, 370), (255, 790), (825, 790)
     pl = ((S_[0] - 70, S_[1] + 90), (A[0] + 60, A[1] - 110))
     rl = ((S_[0] + 70, S_[1] + 90), (B[0] - 60, B[1] - 110))
 
-    def son(im):
-        person(im, "이복동생", *S_, 104)
-        nametag(im, S_[0], S_[1] + 118, gn, None, size=46)
-
-    def slots(im):
-        ghost(im, *A, 100, ring=GOLD_B, dash=True)
-        person(im, "새어머니", *B, 100)
-        chip(im, A[0], A[1] + 140, "서류상 엄마", GOLD_B, 34)
-        chip(im, B[0], B[1] + 140, "진짜 엄마", INK, 34)
-        text(im, A[0], A[1] + 186, f"{jn} 씨 어머니", 36, SOFT, F_UI_B, anchor="ma")
-        text(im, B[0], B[1] + 186, hn, 40, INK, F_NAME, anchor="ma")
-
-    def fix(im):
-        cross(im, A[0], A[1], k=58, width=16)
-        arrow(im, (B[0] - 112, B[1] + 6), (A[0] + 116, A[1] + 6), GOLD_B, 7, head=28)
-        text(im, 540, A[1] + 56, "호적 정정", 34, GOLD_B, F_UI_B, anchor="mm")
+    def slot(im, side, x, y, color):
+        if side.get("ghost"):
+            ghost(im, x, y, 100, ring=color, dash=True)
+        else:
+            person(im, side["who"], x, y, 100)
+        chip(im, x, y + 140, side.get("chip") or "", color, 34)
+        nm = side.get("name") or (who_name(doc, side["who"])[0] if side.get("who") else "")
+        text(im, x, y + 186, nm, 38, SOFT if side.get("ghost") else INK,
+             F_UI_B if side.get("ghost") else F_NAME, anchor="ma")
 
     def broken(im):
         (x1, y1), (x2, y2) = pl
         mx, my = (x1 + x2) / 2, (y1 + y2) / 2
         line(im, (x1, y1), (mx + 22, my - 30), RED, 8)
         line(im, (mx - 22, my + 30), (x2, y2), RED, 8)
-        chip(im, mx - 96, my - 30, "남남", RED, 40, solid=True, tcolor=(255, 255, 255))
-        chip(im, 540, 1150, "서류상으로도 남남", RED, 40, solid=True, tcolor=(255, 255, 255))
+        if spec.get("broken"):
+            chip(im, mx - 96, my - 30, spec["broken"], RED, 40, solid=True, tcolor=(255, 255, 255))
+        if spec.get("result"):
+            chip(im, 540, 1150, spec["result"], RED, 40, solid=True, tcolor=(255, 255, 255))
 
-    return [El("heading", lambda im: heading(im, f"{gn} 씨의 어머니는?"), anim="fade"),
-            El("son", son), El("slots", slots, anim="fade"),
-            El("link_paper", lambda im: line(im, *pl, GOLD_B, 7, dash=(22, 13)), anim="wipe",
-               wipe=pl),
+    def fix(im):
+        cross(im, A[0], A[1], k=58, width=16)
+        arrow(im, (B[0] - 112, B[1] + 6), (A[0] + 116, A[1] + 6), GOLD_B, 7, head=28)
+        if spec.get("fix"):
+            text(im, 540, A[1] + 56, spec["fix"], 34, GOLD_B, F_UI_B, anchor="mm")
+
+    return [El("heading", lambda im: heading(im, spec.get("title") or ""), anim="fade"),
+            El("son", lambda im: (person(im, sj["who"], *S_, 104),
+                                  nametag(im, S_[0], S_[1] + 118, who_name(doc, sj["who"])[0], None,
+                                          size=46))),
+            El("slots", lambda im: (slot(im, lf, *A, GOLD_B), slot(im, rt, *B, INK)), anim="fade"),
+            El("link_paper", lambda im: line(im, *pl, GOLD_B, 7, dash=(22, 13)), anim="wipe", wipe=pl),
             El("link_real", lambda im: line(im, *rl, INK, 6), anim="wipe", wipe=rl),
-            El("year", lambda im: chip(im, 540, 1040, "2001년", RED, 40, solid=True,
+            El("year", lambda im: chip(im, 540, 1040, spec.get("year") or "", RED, 40, solid=True,
                                        tcolor=(255, 255, 255))),
-            El("ruling", lambda im: text(im, 540, 1108, "'친아들 아님' 판결", 38, RED, F_UI_B,
+            El("ruling", lambda im: text(im, 540, 1108, spec.get("ruling") or "", 38, RED, F_UI_B,
                                          anchor="mm"), anim="fade"),
             El("fix", fix),
             El("broken", broken, replaces=("year", "ruling", "link_paper"))]
 
 
 def fig_verdict(doc, spec):
-    def row(y, icon, claim, answer):
+    """판결 정리 — rows [{"id", "icon": {"who"} | ICONS 이름, "claim", "answer", "mark": "x"|"o"|""}]
+    (1~3줄 · 주장이 받아들여지지 않았으면 x(기본), 받아들여졌으면 o) · lose(결론 띠) · stay(끝 한 줄)."""
+    rows = spec.get("rows") or []
+    n = max(1, len(rows))
+    hgt, step = (250, 290) if n <= 2 else (210, 236)
+    y0 = 280
+    end = y0 + step * (n - 1) + hgt
+
+    def row(i, r):
         def draw(im):
-            box(im, 60, y, 1020, y + 250, outline=LINE)
-            icon(im, 150, y + 92)
-            text(im, 228, y + 92, claim, 46, INK, F_NAME, anchor="lm")
-            cross(im, 945, y + 92, k=40, width=14)
-            text(im, 228, y + 186, answer, 38, GOLD_B, F_UI_B, anchor="lm")
+            y = y0 + step * i
+            box(im, 60, y, 1020, y + hgt, outline=LINE)
+            ic = r.get("icon")
+            if isinstance(ic, dict) and ic.get("who"):
+                person(im, ic["who"], 150, y + 92, 52)
+            elif ic in ICONS:
+                ICONS[ic](im, 150, y + 92, s=0.9 if ic == "grave" else 1.0)
+            text(im, 228, y + 92, r.get("claim") or "", 46, INK, F_NAME, anchor="lm")
+            mk = r.get("mark", "x")
+            if mk == "x":
+                cross(im, 945, y + 92, k=40, width=14)
+            elif mk == "o":
+                ImageDraw.Draw(im).ellipse(P(945 - 42, y + 92 - 42, 945 + 42, y + 92 + 42),
+                                           outline=GOLD_B + (255,), width=int(13 * SS))
+            text(im, 228, y + hgt - 64, r.get("answer") or "", 38, GOLD_B, F_UI_B, anchor="lm")
         return draw
 
-    def coin(im, cx, cy):
-        ImageDraw.Draw(im).ellipse(P(cx - 48, cy - 48, cx + 48, cy + 48), fill=GOLD_B + (255,))
-        text(im, cx, cy + 2, "₩", 54, PANEL, F_UI_B, anchor="mm", stroke=0)
+    st = spec.get("stay") or {}
 
-    return [El("heading", lambda im: heading(im, "판결"), anim="fade"),
-            El("row1", row(280, lambda im, x, y: person(im, "이복동생", x, y, 52),
-                           "호적상 아들이 제사?", "→ 친딸 윤정숙 씨가 지킨다")),
-            El("row2", row(570, coin, "돈 받고 묘 포기?", "→ 확인서에 묘 이야기 없음")),
-            El("lose", lambda im: (box(im, 60, 880, 1020, 1000, outline=GOLD_B, fill=GOLD_B,
+    def stay(im):
+        ic = st.get("icon")
+        if ic in ICONS:
+            ICONS[ic](im, 340, end + 240, s=0.9)
+            text(im, 410, end + 242, st.get("text") or "", 48, INK, F_NAME, anchor="lm")
+        else:
+            text(im, 540, end + 242, st.get("text") or "", 48, INK, F_NAME, anchor="mm")
+
+    els = [El("heading", lambda im: heading(im, spec.get("title") or "판결"), anim="fade")]
+    els += [El(r["id"], row(i, r)) for i, r in enumerate(rows)]
+    els += [El("lose", lambda im: (box(im, 60, end + 30, 1020, end + 150, outline=GOLD_B, fill=GOLD_B,
                                        alpha=245),
-                                   text(im, 540, 940, "1심 · 항소심 모두 땅주인 패소", 46, PANEL,
-                                        F_NAME, anchor="mm", stroke=0))),
-            El("stay", lambda im: (grave_icon(im, 340, 1090, s=0.9),
-                                   text(im, 410, 1092, "어머니 묘는 그대로", 48, INK, F_NAME,
-                                        anchor="lm")))]
+                                   text(im, 540, end + 90, spec.get("lose") or "", 46, PANEL, F_NAME,
+                                        anchor="mm", stroke=0))),
+            El("stay", stay)]
+    return els
 
 
-FIGS = {"card": fig_card, "family": fig_family, "timeline": fig_timeline,
-        "issue": fig_issue, "money": fig_money, "paper": fig_paper, "verdict": fig_verdict}
+# 옛 이름(S94 v5 첫 판)도 받는다 — family · money · paper
+FIGS = {"card": fig_card, "relations": fig_relations, "family": fig_relations,
+        "timeline": fig_timeline, "issue": fig_issue, "flow": fig_flow, "money": fig_flow,
+        "compare": fig_compare, "paper": fig_compare, "verdict": fig_verdict}
+KIND = {"family": "relations", "money": "flow", "paper": "compare"}
+# 종류마다 꼭 있어야 할 칸 (없으면 빈 그림이 나온다)
+NEEDS = {"card": ("text",), "relations": ("nodes",), "timeline": ("rows",),
+         "issue": ("suit", "rule", "question"), "flow": ("from", "to", "amount"),
+         "compare": ("subject", "left", "right"), "verdict": ("rows", "lose")}
+
+
+def kind_of(t):
+    return KIND.get(t, t)
+
+
+def whos(spec):
+    """그림이 얼굴을 그리는 사람들 (인물표 이름) — 종류마다 자리가 다르다."""
+    k, out = kind_of(spec.get("type")), []
+    if k == "relations":
+        out = [n.get("who") for n in spec.get("nodes") or [] if not n.get("ghost")]
+    elif k == "timeline":
+        out = [f.get("who") for f in spec.get("faces") or []]
+    elif k == "issue":
+        su = spec.get("suit") or {}
+        out = [su.get("from"), su.get("to")] + [c.get("who") for c in spec.get("cands") or []]
+    elif k == "flow":
+        out = [(spec.get("from") or {}).get("who"), (spec.get("to") or {}).get("who")]
+    elif k == "compare":
+        out = [(spec.get(s) or {}).get("who") for s in ("subject", "left", "right")
+               if not (spec.get(s) or {}).get("ghost")]
+    elif k == "verdict":
+        out = [r["icon"].get("who") for r in spec.get("rows") or [] if isinstance(r.get("icon"), dict)]
+    return [w for w in out if w]
+
+
+def validate(doc):
+    """그림 설계와 그림 컷이 맞물리는가 — 틀려도 그리기는 **말없이** 지나간다 (값 0원 · 그리지 않는다).
+    · 그림 이름(fig.id)이 figs 에 있는가 · 종류(type)를 아는가 · 종류마다 꼭 있어야 할 칸
+    · add 의 요소가 그 그림에 있는가 — 없으면 그 요소가 **안 나온다**
+    · 신호 낱말이 그 컷 나레이션에 있는가 — 없으면 말과 상관없이 **첫머리에** 나온다
+    · 그림 속 얼굴(who)이 인물표에 있는가 — 없으면 얼굴 대신 **윤곽**이 나온다"""
+    bad = []
+    figs = doc.get("figs") or {}
+    cast = {str(p.get("name")) for p in doc.get("cast") or [] if isinstance(p, dict)}
+    names = {}
+    for fid, spec in figs.items():
+        t = (spec or {}).get("type")
+        if t not in FIGS:
+            bad.append(f"그림 「{fid}」 의 종류 '{t}' 를 모른다 — "
+                       f"{', '.join(sorted({kind_of(x) for x in FIGS}))} 가운데 하나")
+            continue
+        miss = [k for k in NEEDS.get(kind_of(t), ()) if not spec.get(k)]
+        if miss:
+            bad.append(f"그림 「{fid}」({kind_of(t)}) 에 {', '.join(miss)} 칸이 없다")
+            continue
+        try:
+            names[fid] = [e.name for e in FIGS[t](doc, spec)]
+        except (KeyError, TypeError, ValueError, IndexError) as ex:
+            bad.append(f"그림 「{fid}」 설계가 틀렸다 — {type(ex).__name__}: {ex}")
+            continue
+        for w in sorted(set(whos(spec)) - cast):
+            bad.append(f"그림 「{fid}」 의 얼굴 '{w}' 가 인물표(cast)에 없다 — 얼굴 대신 윤곽이 나온다")
+    for c in doc.get("cuts") or []:
+        fg = c.get("fig")
+        if not fg:
+            continue
+        n, fid = c.get("n"), fg.get("id")
+        if fid not in figs:
+            bad.append(f"컷{n}: 그림 「{fid}」 설계가 figs 에 없다")
+            continue
+        if fid not in names:
+            continue
+        said = str(((c.get("turns") or [["", ""]])[0] + ["", ""])[1])
+        for nm, trig in fg.get("add") or []:
+            if nm not in names[fid]:
+                bad.append(f"컷{n}: 그림 「{fid}」 에 '{nm}' 요소가 없다 — 안 나온다 "
+                           f"(있는 것: {', '.join(names[fid])})")
+            if trig and trig not in said:
+                bad.append(f"컷{n}: 신호 낱말 「{trig}」 가 나레이션에 없다 — '{nm}' 이(가) 말과 "
+                           f"상관없이 첫머리에 나온다")
+    return bad
 
 
 # ── 바탕 · 시간 · 그리기 ────────────────────────────────────────────

@@ -1,0 +1,55 @@
+name: 4-1b. 작업 칸에서 만든 영상 보관함에 넣기 (자동 · 0원)
+
+# ⭐ 2026-10-03 손님: "이거 유튜브에 올릴 수 있게 준비까지 마무리해줘"
+#
+#   올리기 단추(4-2 · short90-upload.yml)는 보관함(릴리스 short90-<사건>)에서
+#   part1.mp4 · part1.jpg 를 꺼내 올린다. 그런데 설명 드라마(S94~)는 작업 칸(Claude
+#   세션)에서 만들고, 작업 칸은 보관함을 직접 만들 수 없다 (세션 권한).
+#   → 작업 칸이 영상을 **임시 가지 stage/<사건>** 에 실어 밀어 넣으면
+#     (python3 tools/stage_video.py <사건>), 여기서 보관함으로 옮기고 임시 가지를 지운다.
+#
+# ⚠️ 영상은 main 이력에 절대 안 남는다 — MP4 는 커밋하지 않는다(tools/release_file.py 머리말).
+#    임시 가지는 옮기자마자 지운다.
+# ⚠️ 값 0원 — 유료 열쇠를 쓰지 않는다(tools/auto_spend_check.py). 그래서 단추 없이
+#    임시 가지가 올라오면 돈다.
+
+on:
+  push:
+    branches:
+      - 'stage/S*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stage-video-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 보관함에 넣기 (0원)
+        run: python3 tools/stage_video.py --release "$GITHUB_REF_NAME"
+
+      - name: 임시 가지 지우기
+        if: always()
+        run: git push origin --delete "$GITHUB_REF_NAME" || true
+
+      - name: 결과 화면
+        if: always()
+        run: |
+          {
+            echo "## 작업 칸 영상 → 보관함"
+            echo ""
+            echo "가지 \`$GITHUB_REF_NAME\` 의 영상을 보관함(short90-${GITHUB_REF_NAME#stage/})에 넣고 가지를 지웠습니다."
+            echo "이제 관리자 페이지 [4-2. 쇼츠 유튜브에 올리기] 로 올릴 수 있습니다."
+          } >> "$GITHUB_STEP_SUMMARY"
