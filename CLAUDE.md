@@ -39,7 +39,7 @@
 | 길이 | 이해가 먼저다. 벽은 쇼츠 한도 179.5초 하나다(대본 잣대 175초) | `DRAMA60_RULES` |
 | ⭐ 화질 | 올릴 영상은 **360p / 720p 를 손님이 고르신다**. `plan` 의 두 값 어림을 들고 선택 메뉴로 여쭌다. 고른 값은 대본 `res` 에 적는다(없으면 360p) | 대본 `res` · `drama60 … --res` · `story90.RES_CHOICES` |
 | 검수 | `drama60 <SID> check` → … → `sheet`(컷마다 한 장 · `--at 1:36`) · `tools/listen_check.py`(받아쓰기 약 15원) | `tools/drama60.py` |
-| ⭐ 올릴 준비 | `python3 tools/stage_video.py <SID>` → 보관함(릴리스 short90-<SID>)에 영상·썸네일·올릴 글. 올리기는 손님이 관리자 페이지 **4-2** 에서 하시거나, 손님이 작업 칸에서 올리라고 하시면 `python3 tools/upload_request.py <SID> --privacy 공개 --when 지금|예약` | `tools/stage_video.py` · `stage-video.yml` · `tools/upload_request.py` · `upload-request.yml` |
+| ⭐ 올릴 준비 | `python3 tools/stage_video.py <SID>` → 보관함(릴리스 short90-<SID>)에 영상·썸네일·올릴 글. 그다음 손님이 관리자 페이지 **4-2** 에서 올리신다 | `tools/stage_video.py` · `stage-video.yml` |
 
 ### ⭐ 올릴 준비 — 작업 칸 영상 → 보관함 (2026-10-03 손님: "유튜브에 올릴 수 있게 준비까지 마무리해줘")
 
@@ -60,12 +60,6 @@
   `build_short90` 이 상태 파일에 `wall` 을 적고, 관리자 화면 경고와 `wall_check` 가 그 값을 본다.
   예전엔 60초로 못 박혀 S94(171.8초)에 "60초를 넘었습니다"가 떴다.
 - 올리지 **않을** 시험 영상만 만든 기록(`sec`·`made_at`·`talk_gaps`)을 지우고 커밋한다. 올릴 영상은 남긴다(화면에 「172초」 · [영상 보기]).
-- **작업 칸에서 올리기** — 손님: "유튜브에 올리는 것까지 마무리해줘" (S94 · 2026-10-03).
-  - 작업 칸은 워크플로 단추를 못 누른다(403 "Resource not accessible by integration").
-  - `upload_request.py` 가 요청(`upload/request.json`)을 임시 가지 `upload/<SID>` 에 실어 보낸다.
-    `upload-request.yml` 이 저장소 열쇠로 **4-2 를 관리자 페이지 단추와 같은 값으로 누르고** 가지를 지운다.
-  - 올리는 일 자체는 4-2 가 한다(벽·덜 된 편·두 번 올리기·#shorts 문지기 그대로).
-  - ⚠️ 되돌릴 수 없다 — **손님이 그 자리에서 올리라고 하시고 공개 범위·시각을 고르셨을 때만** 쓴다.
 
 ### ⭐ 화면 속 사람 = 나레이션이 말하는 사람 (S94 1분 36초 · 2026-10-02)
 

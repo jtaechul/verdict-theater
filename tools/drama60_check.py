@@ -544,16 +544,6 @@ wf = (ROOT / ".github" / "workflows" / "stage-video.yml").read_text(encoding="ut
 ck("임시 가지는 보관함에 옮긴 뒤 지운다 (영상이 main 에 안 남는다)",
    "stage/S*" in wf and "--delete" in wf and "stage_video.py --release" in wf
    and "GEMINI_API_KEY" not in wf)
-import upload_request as UR                                   # noqa: E402
-rq = UR.request_of("S94", 1, "공개", "지금", "진짜")
-ck("작업 칸의 올리기 요청은 4-2 가 받는 값 그대로다 (다르면 422 로 통째로 거절)",
-   rq["privacy"] in UR.options("privacy") and rq["when"] in UR.options("when")
-   and rq["mode"] in UR.options("mode") and rq["when"] == "지금 바로 공개"
-   and UR.request_of("S94", 1, "비공개", "예약", "연습")["when"] in UR.options("when"), str(rq))
-uw = (ROOT / ".github" / "workflows" / "upload-request.yml").read_text(encoding="utf-8")
-ck("올리기 요청은 임시 가지로만 · 4-2 를 누르고 가지를 지운다 (올리는 일은 4-2 가 한다)",
-   "upload/S*" in uw and "actions: write" in uw and "--delete" in uw
-   and "upload_request.py --dispatch" in uw and "YOUTUBE_" not in uw)
 if (S9.OUT / "S94_part1.mp4").exists():
     _f94, _b94 = SV.ready("S94")
     ck("S94 는 올릴 준비가 됐다 (영상 · 썸네일 · 길이 · 만든 기록 · 올릴 글)",
