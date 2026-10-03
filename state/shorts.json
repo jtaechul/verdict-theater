@@ -340,7 +340,13 @@
     ],
     "sec": 171.8,
     "made_at": "2026-10-02T15:37:54Z",
-    "talk_gaps": []
+    "talk_gaps": [],
+    "uploaded": {
+     "video_id": "SiBelOeIMZU",
+     "privacy": "public",
+     "at": "2026-10-03T01:03:37Z",
+     "publish_at": null
+    }
    }
   },
   "script_sig": "5ffd9c385921",
