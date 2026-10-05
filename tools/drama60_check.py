@@ -582,6 +582,33 @@ ck("금액 읽기: 1억 5천만 원 · 2억 2,500만 · 13억 · 4천만 원 · 
 ck("대본 검사(check)가 익명화를 함께 본다", "bad += check_anon(doc, new)" in
    (ROOT / "src" / "story90.py").read_text(encoding="utf-8"))
 
+print("\n⑭ 긴 영상 (layout=long · 2026-10-05 손님: 긴 영상 + 싼 쇼츠) · 같은 장면은 한 번만 산다")
+LR = T.rules_of({"format": "drama", "all_video": True, "layout": "long"})
+ck("긴 영상 잣대: 8분 15초~13분 · 60~160컷 (8분이 넘어야 중간 광고)",
+   LR["PART_SEC_MIN"] >= 480 + 15 and LR["PART_SEC_MAX"] <= 780 and (LR["PART_MIN_CUTS"], LR["PART_MAX_CUTS"]) == (60, 160))
+ck("긴 영상의 벽은 15분 · 쇼츠 벽(3분)은 그대로",
+   talkplan.part_max_sec({"format": "drama", "all_video": True, "layout": "long"}) == talkplan.LONG_MAX_SEC == 899.0
+   and talkplan.part_max_sec(live) == 179.5)
+ck("쇼츠 대본의 잣대는 그대로 (긴 영상 규칙이 새지 않는다)",
+   T.rules_of({"format": "drama", "all_video": True})["PART_SEC_MAX"] == 175.0)
+dd = json.loads(json.dumps(story))
+narr_i = [i for i, c in enumerate(dd["cuts"]) if not c.get("fig") and c["turns"][0][0] == "나레이션"]
+a_i, b_i = narr_i[0], narr_i[-1]
+dd["cuts"][b_i]["scene"], dd["cuts"][b_i]["who"] = dd["cuts"][a_i]["scene"], list(dd["cuts"][a_i]["who"])
+rows_d, _ = D.plan(dd, lib={}, quiet=True)
+ra, rb = rows_d[a_i], rows_d[b_i]
+ck("같은 장면 나레이션 컷이 둘이면 뒤 컷은 앞 컷 영상을 다시 쓴다 (0원)",
+   rb.get("dup_of") == ra["n"] and rb["krw"] == 0 and ra["krw"] > 0, f"{rb.get('dup_of')} {rb['krw']}")
+ck("다시 쓰는 컷의 구도는 앞 컷과 같다 (실제로 같은 영상이다)", ra["shot"]["key"] == rb["shot"]["key"],
+   f"{ra['shot']['key']} / {rb['shot']['key']}")
+t_all, k_all = D.price(dd, "360p", lib={})
+ck("값 어림 = 실제로 살 컷만 (같은 장면 다시 쓰는 컷은 0원 · 사는 컷은 빠짐없이 센다)",
+   abs(k_all - sum(r["krw"] for r in rows_d)) < 1 and t_all == sum(r["sec"] for r in rows_d
+                                                                  if not r.get("fig") and not r.get("dup_of")))
+srcd = (ROOT / "tools" / "drama60.py").read_text(encoding="utf-8")
+ck("사기 단계도 같은 장면 컷은 사지 않고 창고에서 꺼낸다", "if not r.get(\"dup_of\")}" in srcd
+   and "같은 장면 컷은 앞 컷이 산 영상을 창고에서 다시 쓴다" in srcd)
+
 print("─" * 56)
 if bad:
     print(f"❌ {len(bad)}개 걸렸습니다 — 고치고 다시")

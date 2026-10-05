@@ -110,6 +110,9 @@ def part_max_sec(doc):
        확실하게 이해를 시킬 수 있게끔 해줘." → 전부 영상 드라마(all_video)는 60초 벽을 푼다.
        남는 벽은 유튜브가 정한 쇼츠 한도(3분) 하나뿐이다 — 넘으면 쇼츠가 아니게 된다."""
     if is_drama(doc) and (doc or {}).get("all_video"):
+        # ⭐ 긴 영상(layout="long")은 쇼츠가 아니다 — 벽은 확인 안 된 계정의 업로드 한도 15분
+        if str((doc or {}).get("layout") or "") == "long":
+            return LONG_MAX_SEC
         return SHORTS_MAX_SEC
     if is_drama(doc):
         return DRAMA_MAX_SEC
@@ -181,6 +184,7 @@ def key_cuts(doc):
 #    다 쓴 뒤다). **사기 전에** 재서, 넘칠 것 같으면 그 편의 대사 컷을 덜어낸다.
 PART_MAX_SEC = 59.5
 SHORTS_MAX_SEC = 179.5                 # 유튜브 쇼츠 한도 3분 (전부 영상 드라마의 벽)
+LONG_MAX_SEC = 899.0                   # 긴 영상 벽 — 유튜브 확인 안 된 계정의 한도 15분 (2026-10-05)
 # ⚠️ 실측 잣대는 컷마다 최대 1.6초쯤 어긋난다(27컷 최소자승, 2026-09-08).
 #    벽에 딱 붙여 놓으면 그 오차가 그대로 넘김이 된다. 안전분을 둔다.
 SAFE_MARGIN = 2.5

@@ -767,6 +767,19 @@ DRAMA60_RULES = {
     "ELLIPSIS_MAX": 3,
 }
 DRAMA60_TALK_MIN, DRAMA60_TALK_MAX = 4, 7
+# ── ⭐⭐⭐ 긴 영상 (layout="long") — 가로 16:9 · 8~13분 (2026-10-05 손님: "긴 영상 + 싼 쇼츠") ──
+#    쇼츠는 올린 날만 솟고 사흘 안에 0이 된다(90일 27,549회 · 31편). 돈이 되는 자리는 8분이 넘어
+#    중간 광고가 붙는 긴 영상이다. 짜임·말·그림 규칙은 설명 드라마 그대로이고, 길이 잣대만 다르다.
+#    ⚠️ 8분 아래로 내리지 않는다 (중간 광고). 잣대 오차(컷마다 최대 1.6초)만큼 15초 물러선다.
+LONG = "long"
+LONG_RULES = {
+    "PART_MIN_CUTS": 60, "PART_MAX_CUTS": 160,
+    "PART_SEC_MAX": 780.0, "PART_SEC_MIN": 495.0,
+    "PART_CHARS": 5600, "PART_CHARS_MIN": 2800,
+    "NARR_MIN_PER_PART": 30,
+    "ELLIPSIS_MAX": 6,
+}
+LONG_TALK_MIN, LONG_TALK_MAX = 5, 12
 # ⭐⭐⭐ 2026-10-02 손님: "실제로 우리가 업로드할 영상 같은 경우에는 720p 또는 360p를 선택할 수 있도록"
 #    처음엔 "화소는 360p … 처음부터" 였다(시험은 싸게). 올릴 영상은 **고른다** — 대본의 res
 #    (없으면 360p) · 한 번만 바꿔 보려면 tools/drama60.py … --res 720p.
@@ -835,6 +848,11 @@ def is_explainer(doc):
     return str((doc or {}).get("style") or "") == EXPLAINER
 
 
+def is_long(doc):
+    """가로 16:9 긴 영상 (8분 넘게 · 중간 광고) — 대본에 layout="long"."""
+    return str((doc or {}).get("layout") or "") == LONG
+
+
 def style_get(doc, key, dflt=None):
     """대본 값 → (설명 드라마면) 기본값 → dflt. **대본이 적은 값이 언제나 이긴다.**
     gap · name_first · end_note 를 읽는 자리는 전부 여기를 거친다 (short90 · part_sec · 검사)."""
@@ -853,6 +871,8 @@ def rules_of(doc):
         out.update(DRAMA_RULES)
         if (doc or {}).get("all_video"):
             out.update(DRAMA60_RULES)
+            if is_long(doc):
+                out.update(LONG_RULES)
     return out
 
 
@@ -1083,7 +1103,8 @@ def check_drama(doc, new=True):
             if not DRAMA_LINE_MIN <= k <= DRAMA_LINE_MAX:
                 bad.append(f"컷{n}: 대사가 {k}자다 — 한 줄 {DRAMA_LINE_MIN}~"
                            f"{DRAMA_LINE_MAX}자 (옴니 영상 한 컷에 들어가는 길이)")
-    lo, hi = ((DRAMA60_TALK_MIN, DRAMA60_TALK_MAX) if doc.get("all_video")
+    lo, hi = ((LONG_TALK_MIN, LONG_TALK_MAX) if is_long(doc)
+              else (DRAMA60_TALK_MIN, DRAMA60_TALK_MAX) if doc.get("all_video")
               else (DRAMA_TALK_MIN, DRAMA_TALK_MAX))
     if new and not (lo <= len(talk) <= hi):
         bad.append(f"대사 컷이 {len(talk)}개다 — {lo}~{hi}개"
@@ -1518,7 +1539,8 @@ def check(doc, new=True):
     parts = doc.get("parts") or []
     # ⭐ 2026-09-30 — 규격은 대본마다 다르다 (2분 드라마 · 옛 여러 편)
     R = rules_of(doc)
-    wall = ("쇼츠 3분" if doc.get("all_video") else "2분") if is_drama(doc) else "60초"
+    wall = (("긴 영상 15분" if is_long(doc) else "쇼츠 3분") if doc.get("all_video") else "2분") \
+        if is_drama(doc) else "60초"
     OK = who_ok(doc)                      # 기본 다섯 + 이 사건이 더 세운 사람
     extra = [w for w in people_of(doc) if w not in BASE_WHO]
     if len(extra) > R["PEOPLE_MAX"]:

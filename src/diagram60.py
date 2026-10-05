@@ -812,15 +812,119 @@ def fig_verdict(doc, spec):
     return els
 
 
+# ── ⭐ 글판(board) — 법 원칙 · 몫 셈 · 주장과 판단을 **한 줄씩** 쌓는다 (2026-10-05 · S95 긴 영상) ──
+#    관계도·연표처럼 정해진 꼴이 없는 설명(유류분이란 · 빚을 빼야 하나 · 기한 · 셈)을 위한 그림이다.
+#    items 는 위에서부터 쌓이고, 칸이 차면 **다음 장**으로 넘어간다(앞 장 줄은 사라지고 제목은 남는다).
+#    item {"id", "kind", "text", "sub", "icon"(ICONS), "tag", "color", "segs"(bar)}
+#      kind: big(큰 말 + 풀이) · line(그림 + 한 줄) · chip(알약) · claim(주장 · cross 로 X) ·
+#            quote(판결 말 · 따옴표 띠) · result(결론 · 금색) · eq(셈) · bar(몫 막대 · segs)
+#    cross: claim 줄 id — 그 줄에 X 를 긋는 요소 이름도 "cross" 다.
+BOARD_H = {"big": 168, "line": 92, "chip": 84, "claim": 150, "quote": 112, "result": 104,
+           "eq": 96, "bar": 212}
+BOARD_TOP, BOARD_BOTTOM = 300, 1250        # 세로 화면 그림 칸 (아래는 자막 자리)
+
+
+def board_pages(items, top=BOARD_TOP, bottom=BOARD_BOTTOM, gap=22):
+    """줄마다 (장 번호, 위 y). 칸을 넘으면 다음 장 맨 위로."""
+    out, page, y = {}, 0, top
+    for it in items:
+        h = BOARD_H.get(it.get("kind") or "line", 92)
+        if y + h > bottom and y > top:
+            page, y = page + 1, top
+        out[it["id"]] = (page, y)
+        y += h + gap
+    return out
+
+
+def fig_board(doc, spec):
+    items = [it for it in spec.get("items") or [] if isinstance(it, dict)]
+    pos = board_pages(items)
+    L, R, CX = 70, 1010, 540
+
+    def draw_item(it):
+        def draw(im):
+            k = it.get("kind") or "line"
+            y = pos[it["id"]][1]
+            c = col(it.get("color"), GOLD_B)
+            s = it.get("text") or ""
+            if k == "big":
+                box(im, L, y, R, y + BOARD_H["big"], outline=GOLD_B)
+                x = L + 40
+                if it.get("icon") in ICONS:
+                    ICONS[it["icon"]](im, L + 90, y + 84, s=1.05)
+                    x = L + 170
+                text(im, x, y + 58, s, 64, GOLD_B, F_NAME, anchor="lm", stroke=3)
+                if it.get("sub"):
+                    text(im, x, y + 124, it["sub"], 38, INK, F_UI_B, anchor="lm")
+            elif k == "line":
+                x = L + 20
+                if it.get("icon") in ICONS:
+                    ICONS[it["icon"]](im, L + 56, y + 46, s=0.72)
+                    x = L + 120
+                para(im, x, y + 18, s, 44, R - x - 10, col(it.get("color"), INK), F_UI_B)
+            elif k == "chip":
+                chip(im, CX, y + 42, s, c, 38, solid=bool(it.get("solid")))
+            elif k == "claim":
+                box(im, L, y, R, y + BOARD_H["claim"], outline=RED)
+                tag = it.get("tag") or "주장"
+                chip(im, L + 40 + tw(tag, 32, F_UI_B) / 2 + 20, y + 40, tag, RED, 32)
+                para(im, L + 40, y + 76, s, 42, R - L - 160, INK, F_NAME)
+            elif k == "quote":
+                box(im, L + 30, y, R - 30, y + BOARD_H["quote"], outline=SOFT, dash=(14, 10))
+                para(im, CX, y + 30, f"“{s}”", 40, R - L - 120, SOFT, F_NAME_M, anchor="ma")
+            elif k == "result":
+                text(im, CX, y + 52, s, 56, c, F_NAME, anchor="mm", stroke=3)
+                if it.get("sub"):
+                    text(im, CX, y + 98, it["sub"], 34, SOFT, F_UI, anchor="mm")
+            elif k == "eq":
+                text(im, CX, y + 48, s, 50, INK, F_NAME, anchor="mm", stroke=3)
+            elif k == "bar":
+                segs = it.get("segs") or []
+                n = sum(int(g.get("n") or 1) for g in segs) or 1
+                x0, x1, top = L + 30, R - 30, y + 64
+                cw = (x1 - x0) / n
+                text(im, CX, y + 24, s, 38, SOFT, F_UI_B, anchor="mm")
+                k0 = 0
+                for g in segs:
+                    m = int(g.get("n") or 1)
+                    gc = col(g.get("color"), GREY)
+                    for j in range(m):
+                        xa = x0 + (k0 + j) * cw
+                        box(im, xa + 4, top, xa + cw - 4, top + 84, outline=gc, fill=gc,
+                            alpha=235 if g.get("color") else 150, r=12)
+                    text(im, x0 + (k0 + m / 2) * cw, top + 124, f"{g.get('label') or ''} {m}", 38,
+                         gc if g.get("color") else INK, F_UI_B, anchor="mm")
+                    k0 += m
+        return draw
+
+    first = {}
+    for it in items:
+        first.setdefault(pos[it["id"]][0], it["id"])
+    els = [El("heading", lambda im: heading(im, spec.get("title") or ""), anim="fade")]
+    for it in items:
+        pg = pos[it["id"]][0]
+        # 새 장의 첫 줄이 나오면 앞 장 줄들은 사라진다 (제목은 남는다)
+        rep = [x["id"] for x in items if pos[x["id"]][0] == pg - 1] if first[pg] == it["id"] and pg else []
+        els.append(El(it["id"], draw_item(it), anim="fade" if it.get("kind") in ("quote", "eq") else "pop",
+                      replaces=rep))
+    cid = spec.get("cross")
+    if cid and cid in pos:
+        it = next(x for x in items if x["id"] == cid)
+        y = pos[cid][1]
+        els.append(El("cross", lambda im: cross(im, R - 70, y + BOARD_H.get(it.get("kind"), 92) / 2,
+                                                k=44, width=15)))
+    return els
+
+
 # 옛 이름(S94 v5 첫 판)도 받는다 — family · money · paper
 FIGS = {"card": fig_card, "relations": fig_relations, "family": fig_relations,
         "timeline": fig_timeline, "issue": fig_issue, "flow": fig_flow, "money": fig_flow,
-        "compare": fig_compare, "paper": fig_compare, "verdict": fig_verdict}
+        "compare": fig_compare, "paper": fig_compare, "verdict": fig_verdict, "board": fig_board}
 KIND = {"family": "relations", "money": "flow", "paper": "compare"}
 # 종류마다 꼭 있어야 할 칸 (없으면 빈 그림이 나온다)
 NEEDS = {"card": ("text",), "relations": ("nodes",), "timeline": ("rows",),
          "issue": ("suit", "rule", "question"), "flow": ("from", "to", "amount"),
-         "compare": ("subject", "left", "right"), "verdict": ("rows", "lose")}
+         "compare": ("subject", "left", "right"), "verdict": ("rows", "lose"), "board": ("items",)}
 
 
 def kind_of(t):

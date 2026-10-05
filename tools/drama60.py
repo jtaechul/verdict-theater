@@ -357,19 +357,38 @@ def plan(doc, lib=None, quiet=False):
     lib = load_lib() if lib is None else lib
     real = [c for c in doc["cuts"] if not is_fig(c)]
     have = {i: stock(c, lib) for i, c in enumerate(real)}
+    # ⭐ 같은 장면의 나레이션 컷이 한 편에 두 번 이상 나오면 **한 번만 산다** (2026-10-05 · S95)
+    #    예전에는 컷마다 따로 사서 같은 영상 값을 두세 번 냈다 (S95 긴 영상: 나레이션 16컷 중 6컷).
+    #    뒤 컷은 앞 컷이 산 영상을 창고에서 다시 쓴다(구도도 같다). 대사 컷은 입모양이 달라 따로 산다.
+    first, dup = {}, {}
+    for i, c in enumerate(real):
+        if have.get(i) or is_talk(c):
+            continue
+        dup_i = first.setdefault(vkey(c), i)
+        if dup_i != i:
+            dup[i] = dup_i
     # ⭐ 낮은 화질로 산 영상을 720p 로 다시 살 때도 **구도는 그대로** 둔다 (손님이 본 그 화면)
     pinned = {i: (have.get(i) or lib.get(vkey(c)))["shot"] for i, c in enumerate(real)
               if have.get(i) or (lib.get(vkey(c)) or {}).get("shot")}
     shots = camera60.plan(real, pinned)
+    if dup:
+        # 앞 컷과 뒤 컷을 **둘 다** 앞 컷 구도에 못 박는다 — 뒤만 박으면 다시 짤 때 앞 컷 구도가 바뀐다
+        for i, j in dup.items():
+            pinned.setdefault(j, shots[j])
+            pinned[i] = pinned[j]
+        shots = camera60.plan(real, pinned)
     rows = {}
     for i, (c, sh) in enumerate(zip(real, shots)):
         e = have.get(i)
-        sec = e["sec"] if e else omni_sec(c)
+        j = dup.get(i)
+        sec = e["sec"] if e else omni_sec(real[j] if j is not None else c)
         refs = [card(w) for w in (c.get("who") or []) if w in by]
         rows[c["n"]] = {"n": c["n"], "shot": sh, "sec": sec,
-                        "prompt": e["prompt"] if e else prompt(c, sh, sec, by),
-                        "refs": refs, "krw": 0 if e else omni.est_krw(sec, RES),
-                        "talk": is_talk(c), "lib": e, "key": vkey(c), "fig": False}
+                        "prompt": e["prompt"] if e else prompt(real[j] if j is not None else c,
+                                                               sh, sec, by),
+                        "refs": refs, "krw": 0 if (e or j is not None) else omni.est_krw(sec, RES),
+                        "talk": is_talk(c), "lib": e, "key": vkey(c), "fig": False,
+                        "dup_of": real[j]["n"] if j is not None else None}
     out = [rows.get(c["n"]) or {"n": c["n"], "shot": FIG_SHOT, "sec": 0, "prompt": "",
                                 "refs": [], "krw": 0, "talk": False, "lib": None,
                                 "key": "", "fig": True}
@@ -392,7 +411,7 @@ def price(doc, res, lib=None):
         rows, _ = plan(doc, lib, quiet=True)
     finally:
         RES = keep
-    return (sum(r["sec"] for r in rows if not r.get("fig") and not r["lib"]),
+    return (sum(r["sec"] for r in rows if not r.get("fig") and not r["lib"] and not r.get("dup_of")),
             sum(r["krw"] for r in rows))
 
 
@@ -412,14 +431,16 @@ def show_plan(doc, rows, bad, full=False):
             print(f"  {c['n']:>2} 그림 — 「{c['fig'].get('id')}」 직접 그림 0원 · {c['text'][:26]}")
             continue
         hold = (r["lib"] or {}).get("hold") or 0
+        same = f"컷{r['dup_of']} 영상 다시 씀 0원 " if r.get("dup_of") else ""
         print(f"  {c['n']:>2} {'대사' if r['talk'] else '나레'} {r['sec']:>2}초 "
               f"{s['key']:<13} {s['lens']:<7} {s['height']:<6} {s['move']:<9} "
-              f"{'창고 0원 ' if r['lib'] else ''}"
+              f"{'창고 0원 ' if r['lib'] else ''}{same}"
               f"{f'(끝 {hold:.1f}초 멈춤) ' if hold > 0.05 else ''}{c['text'][:26]}")
-    tot = sum(r["sec"] for r in rows if not r["lib"] and not r.get("fig"))
+    tot = sum(r["sec"] for r in rows if not r["lib"] and not r.get("fig") and not r.get("dup_of"))
     krw = sum(r["krw"] for r in rows)
     print(f"  ─ 새로 살 옴니 {tot}초 · 약 {krw:,.0f}원 · {RES} "
-          f"(창고에서 다시 쓰는 컷 {sum(1 for r in rows if r['lib'])}개는 0원)")
+          f"(창고에서 다시 쓰는 컷 {sum(1 for r in rows if r['lib'])}개 · "
+          f"같은 장면 다시 쓰는 컷 {sum(1 for r in rows if r.get('dup_of'))}개는 0원)")
     # ⭐ 화질은 손님이 고른다 — 다른 화질로 만들면 얼마인지 늘 같이 보인다
     for alt in RES_CHOICES:
         if alt != RES:
@@ -687,7 +708,7 @@ def step_clips(doc, only=None):
     d = vdir()
     (d / "raw").mkdir(parents=True, exist_ok=True)
     show_plan(doc, rows, bad)
-    need = [r["n"] for r in rows if not r.get("fig") and not r["lib"]
+    need = [r["n"] for r in rows if not r.get("fig") and not r["lib"] and not r.get("dup_of")
             and (not only or r["n"] in only)]
     if NO_BUY and need:
         print(f"❌ --no-buy — 창고에 없는 컷 {need} 이 있다 (사지 않고 멈춘다)")
@@ -704,10 +725,10 @@ def step_clips(doc, only=None):
     spent0 = cost.month_total()
     fails = []
     try:
+        mine = [(c, r) for c, r in zip(doc["cuts"], rows)
+                if not r.get("fig") and (not only or c["n"] in only)]
         with ThreadPoolExecutor(max_workers=WORKERS) as ex:
-            futs = {ex.submit(buy, c, r, by, d, lib): c["n"]
-                    for c, r in zip(doc["cuts"], rows)
-                    if not r.get("fig") and (not only or c["n"] in only)}
+            futs = {ex.submit(buy, c, r, by, d, lib): c["n"] for c, r in mine if not r.get("dup_of")}
             for f in futs:
                 n = futs[f]
                 try:
@@ -716,6 +737,18 @@ def step_clips(doc, only=None):
                 except (omni.OmniError, cost.MonthlyCapReached) as e:
                     fails.append(n)
                     print(f"  ❌ 컷{n:>2} {str(e)[:220]}")
+        # 같은 장면 컷은 앞 컷이 산 영상을 창고에서 다시 쓴다 (0원 · 앞 컷이 못 샀으면 같이 못 산다)
+        for c, r in mine:
+            if not r.get("dup_of"):
+                continue
+            e = lib.get(r["key"])
+            if not e:
+                fails.append(c["n"])
+                print(f"  ❌ 컷{c['n']:>2} 앞 컷{r['dup_of']} 영상이 없다 — 다시 돌리면 같이 산다")
+                continue
+            short = narr_len(c) + 0.05 - S9.dur_of(d / e["raw"]) * STRETCH_REUSE
+            _n, note = buy(c, dict(r, lib=dict(e, hold=round(max(0.0, short), 2))), by, d, lib)
+            print(f"  ✅ 컷{c['n']:>2} {note} (컷{r['dup_of']} 과 같은 장면)")
     finally:
         cost.record = rec
     print(f"■ 이번에 쓴 돈 약 {cost.month_total() - spent0:,.0f}원 "
