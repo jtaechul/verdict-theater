@@ -551,6 +551,37 @@ if (S9.OUT / "S94_part1.mp4").exists():
 else:
     print("   ⏭  완성 영상이 없다 (깃허브) — 'S94 올릴 준비' 는 작업 칸에서만 본다")
 
+print("\n⑬ 익명화 — 실제 지명·연도·나라·금액·직업 (2026-10-05 · S94 「경기도 용인」 이 그대로 나갔다)")
+s94 = json.loads((ROOT / "data" / "series" / "S94.story.json").read_text(encoding="utf-8"))
+ck("이미 올린 S90~S94 는 건드리지 않는다 (손님: \"그대로 두기\")", not T.check_anon(s94))
+new94 = dict(s94, sid="S95")
+an = T.check_anon(new94)
+ck("새 대본이 S94 처럼 쓰면 잡는다 — 지명 (「용인의 한 야산」 처럼 '시' 를 떼도)",
+   any("'경기도'" in b and "'용인'" in b for b in an), "; ".join(an))
+ck("연도를 잡는다 (나레이션 「1969년」 · 연표 칸 「1996」)", any("연도" in b and "1996" in b for b in an))
+ck("금액 배율(amount_scale)이 없으면 잡는다", any("amount_scale 이 None" in b for b in an))
+ck("판결문 금액 그대로(1억 5천만 원)를 잡는다 — 배율을 적어도",
+   any("1억 5,000만 원" in b for b in T.check_anon(dict(new94, amount_scale=1.3))))
+clean = {"sid": "S95", "case_id": "190939", "amount_scale": 1.3,
+         "title": "어머니 묘", "cuts": [{"n": 1, "turns": [["나레이션",
+         "지방 소도시의 한 야산. 40여 년 전 세상을 떠난 어머니의 묘가 있습니다. 모두 1억 9,500만 원."]]}],
+         "figs": {"t": {"type": "timeline", "rows": [{"year": "40여 년 전", "what": "묘"}]}}}
+ck("가상 지명 · 상대 연도 · 배율 곱한 금액은 통과한다", not T.check_anon(clean), "; ".join(T.check_anon(clean)))
+ck("해외 나라·돈 단위를 잡는다 (「오사카의 땅」 「2,507만 엔」)",
+   len([b for b in T.check_anon(dict(clean, cuts=[{"n": 1, "turns": [["나레이션",
+       "오사카에 있는 땅, 2,507만 엔."]]}]))]) == 2)
+ck("판결문에 나온 직업을 잡는다 (S92 판결문: 경찰공무원)",
+   any("직업" in b for b in T.check_anon(dict(clean, case_id="601919", cuts=[{"n": 1, "turns": [["나레이션",
+       "장남은 경찰이었습니다."]]}]))))
+ck("「병원을 하던 남편」 을 잡는다 (S90)",
+   any("직업" in b for b in T.check_anon(dict(clean, cuts=[{"n": 1, "turns": [["나레이션",
+       "병원을 하던 남편이 세상을 떠났습니다."]]}]))))
+ck("금액 읽기: 1억 5천만 원 · 2억 2,500만 · 13억 · 4천만 원 · 150,000,000원",
+   [T.amount_of(x) for x in ("1억 5천만 원", "2억 2,500만", "13억", "4천만 원", "150,000,000원")]
+   == [150_000_000, 225_000_000, 1_300_000_000, 40_000_000, 150_000_000])
+ck("대본 검사(check)가 익명화를 함께 본다", "bad += check_anon(doc, new)" in
+   (ROOT / "src" / "story90.py").read_text(encoding="utf-8"))
+
 print("─" * 56)
 if bad:
     print(f"❌ {len(bad)}개 걸렸습니다 — 고치고 다시")

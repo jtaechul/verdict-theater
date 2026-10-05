@@ -1249,6 +1249,140 @@ def check_explainer(doc, new=True):
     return bad + diagram60.validate(doc)
 
 
+# ── ⭐⭐⭐ 익명화 — 실제 지명 · 연도 · 나라 · 금액 · 직업 (2026-10-05) ───────────────
+#    CLAUDE.md 6장 「익명화 (필수 치환 6항목)」 이 옛 긴 영상 검사(validate_script)에만 있었고
+#    쇼츠·설명 드라마 검사에는 없었다. 그래서 S94 에 「경기도 용인의 한 야산」 「1969년」
+#    「1억 5천만 원」 이 판결문 그대로 나갔고, S90 에는 「2017년 2월, 병원을 하던 남편」 이 나갔다.
+#    이름만 바꾸면 아는 사람은 알아본다 — 익명화가 명예훼손(형법 307조)의 유일한 방어선이다.
+#    손님(2026-10-05): S90·S94 는 "그대로 두기" → 이미 올린 S90~S94 는 건드리지 않고,
+#    **새로 짓는 대본(S95 부터)** 을 여기서 막는다.
+ANON_FROM = 95
+# 연도 — 「1969년」 「2006.6」 「1996」(그림의 연표 칸). '20여 년 전' 처럼 상대로 쓴다.
+#    「2000만 원」 처럼 금액 앞자리는 걸리지 않게, 뒤에 '년' · '.숫자' · 글 끝이 올 때만 잡는다.
+YEAR_RE = re.compile(r"(?<![\d,])(?:19[3-9]\d|20[0-3]\d)(?=\s*년|\.\d|\s*$)")
+# 해외 — 나라·도시를 밝히지 않는다 (CLAUDE.md "해외는 국가 미특정"). 돈 단위도 나라를 밝힌다.
+ABROAD = ("일본", "오사카", "도쿄", "교토", "후쿠오카", "중국", "베이징", "상하이", "홍콩", "대만",
+          "미국", "뉴욕", "하와이", "캐나다", "호주", "베트남", "필리핀", "태국", "러시아",
+          "독일", "프랑스", "영국")
+FX_RE = re.compile(r"\d[\d,]*\s*(?:천|백)?\s*(?:만|억)?\s*(?:엔|달러|위안|유로)(?![가-힣])")
+# 직업 — 판결문에 나온 당사자의 직업이 대본에 그대로 나오면 잡는다 (판결문에 있을 때만 → 헛짚음이 적다)
+OCCUPATION = ("경찰", "공무원", "교사", "교수", "목사", "약사", "군인", "간호사", "세무사",
+              "회계사", "법무사", "기자", "소방관", "조종사", "원장")
+OCC_SCRIPT = (r"병원을\s*(?:하|운영)", r"의사(?:였|이었|로 일|인 남편|인 아내)")
+# 금액 — 「1억 5천만 원」 「2억 2,500만 원」 「13억」 「4천만 원」 「150,000,000원」
+AMT_RE = re.compile(r"(?:\d[\d,]*\s*[천백십]?\s*[조억만]\s*)+(?:\d[\d,]*\s*[천백십]?\s*)?원?"
+                    r"|\d{1,3}(?:,\d{3}){2,}\s*원")
+AMT_MIN = 1_000_000            # 백만 원 아래는 셈하지 않는다 (money.floor 와 같은 까닭)
+AMT_NEAR = 0.03                # 판결문 금액과 3% 안이면 '그대로 쓴 것'
+SCALE_MIN = 0.30               # amount_scale 은 0.7 이하 또는 1.3 이상 (validate_script 와 같다)
+
+
+def amount_of(expr):
+    """'1억 5천만 원' → 150000000 · '2억 2,500만' → 225000000 · '150,000,000원' → 150000000."""
+    total = 0.0
+    for num, small, big in re.findall(r"(\d[\d,]*(?:\.\d+)?)\s*([천백십]?)\s*([조억만]?)", str(expr)):
+        v = float(num.replace(",", ""))
+        v *= {"천": 1000, "백": 100, "십": 10, "": 1}[small]
+        v *= {"조": 10 ** 12, "억": 10 ** 8, "만": 10 ** 4, "": 1}[big]
+        total += v
+    return int(total)
+
+
+def amounts_in(text, won_only=False):
+    """글 속 금액들(백만 원 이상). won_only 면 '원' 으로 끝나는 것만 (판결문의 엔·달러를 빼려고)."""
+    out = []
+    for m in AMT_RE.finditer(str(text or "")):
+        s = m.group(0)
+        if won_only and not s.rstrip().endswith("원"):
+            continue
+        v = amount_of(s)
+        if v >= AMT_MIN:
+            out.append(v)
+    return out
+
+
+def anon_text(doc):
+    """화면·목소리·올릴 글로 나가는 글 전부 — 익명화 검사가 보는 곳."""
+    out = []
+
+    def walk(v):
+        if isinstance(v, str):
+            out.append(v)
+        elif isinstance(v, dict):
+            for k, x in v.items():
+                if k not in ("type", "id", "bg", "at", "r", "label", "icon", "who", "color"):
+                    walk(x)
+        elif isinstance(v, (list, tuple)):
+            for x in v:
+                walk(x)
+
+    for k in ("title", "series_label", "hook", "yt_title", "card", "yt_tags", "yt_desc"):
+        walk(doc.get(k))
+    for c in doc.get("cuts") or []:
+        for _w, t in c.get("turns") or []:
+            out.append(str(t))
+        walk(c.get("chapter"))
+    for p in doc.get("parts") or []:
+        walk((p or {}).get("title"))
+        walk((p or {}).get("card"))
+    for p in doc.get("cast") or []:
+        for k in ("alias", "tag", "intro"):
+            walk((p or {}).get(k))
+    walk(doc.get("figs"))
+    return out
+
+
+def check_anon(doc, new=True):
+    """새 대본(S95~)이 판결문의 실제 지명·연도·나라·금액·직업을 그대로 쓰지 않는가."""
+    m = re.fullmatch(r"S(\d+)", str(doc.get("sid") or ""))
+    if not new or not m or int(m.group(1)) < ANON_FROM:
+        return []
+    import validate_script                                   # noqa: E402 — 지명 표는 한 곳에만 둔다
+    V = validate_script
+    lines = anon_text(doc)
+    blob = "\n".join(lines)
+    body = str(load(CASES / f"{doc.get('case_id')}.json", {}).get("판례내용") or "")
+    bad = []
+    hits = sorted(set(V._RE_SIDO.findall(blob)) | {"".join(x) for x in V._RE_SIGUN.findall(blob)})
+    # 판결문에 나온 시·군 이름은 '시' 를 떼고 불러도 잡는다 (S94: 「용인의 한 야산」)
+    hits += sorted({s for s in V.SIGUN if re.search(re.escape(s) + r"\s*(?:시|군|구)", body)
+                    and s in blob} - set(hits))
+    hits += [a for a in ABROAD if a in blob]
+    if hits:
+        bad.append(f"익명화: 실제 지명·나라가 있다 {hits[:6]} — 가상의 지명(한서시 · 유천시)이나 "
+                   f"「지방 소도시」 「바다 건너」 처럼 뭉갠다 (CLAUDE.md 6장 익명화)")
+    fx = sorted({x.group(0) for x in FX_RE.finditer(blob)})
+    if fx:
+        bad.append(f"익명화: 나라를 드러내는 돈 단위 {fx[:3]} — 원으로 바꾸고 amount_scale 을 곱한다")
+    yrs = sorted({y for t in lines for y in YEAR_RE.findall(t)})
+    if yrs:
+        bad.append(f"익명화: 연도를 그대로 썼다 {yrs[:6]} — 「40여 년 전」 「재혼하기 11개월 전」 "
+                   f"처럼 상대로 쓴다 (연표 칸도)")
+    occ = [w for w in OCCUPATION if w in body and w in blob]
+    occ += [p for p in OCC_SCRIPT if re.search(p, blob)]
+    if occ:
+        bad.append(f"익명화: 당사자 직업이 그대로 나온다 {occ[:4]} — 「작은 가게를 하던」 처럼 뭉갠다")
+    got = sorted(set(amounts_in(blob)))
+    # ⚠️ 판결문이 없으면(검사용 가짜 대본 S999 · 000000) 금액은 견줄 수 없다 — 지명·연도만 본다
+    if got and body:
+        try:
+            s = float(doc.get("amount_scale") or 0)
+        except (TypeError, ValueError):
+            s = 0.0
+        if not (s > 0 and abs(s - 1) >= SCALE_MIN):
+            bad.append(f"익명화: 금액이 있는데 amount_scale 이 {doc.get('amount_scale')!r} 이다 — "
+                       f"판결문 금액에 0.7 이하 또는 1.3 이상을 곱해 쓰고, 그 배율을 대본에 적는다")
+        real = sorted(set(amounts_in(body, won_only=True)))
+        near = lambda a, b: abs(a - b) <= AMT_NEAR * b                  # noqa: E731
+        same = [a for a in got if any(near(a, b) for b in real)
+                and not (s > 0 and any(abs(a - b * s) <= 0.05 * b * s for b in real))]
+        if same:
+            import money                                     # noqa: E402
+            bad.append(f"익명화: 판결문 금액을 그대로 썼다 {[money.fmt(a) for a in same[:4]]} — "
+                       f"amount_scale 을 곱한 값으로 바꾼다")
+    return bad
+
+
 PEOPLE_BASE = {"아내": {"age": "50대", "sex": "여"},
                "남편": {"age": "50대", "sex": "남"},
                "내연녀": {"age": "30대", "sex": "여"},
@@ -1659,6 +1793,7 @@ def check(doc, new=True):
         bad += check_drama(doc, new)
     if is_explainer(doc):
         bad += check_explainer(doc, new)
+    bad += check_anon(doc, new)
     return bad
 
 

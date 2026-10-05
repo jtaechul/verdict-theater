@@ -5,14 +5,14 @@
 - `"bg"`: 바탕으로 깔 창고 영상 번호. `library.json` 의 `n`
 - `"title"`(선택)
 
-화면은 1080×1920이다. 그림은 위쪽 180~1250에 앉히고, 그 아래는 자막·쇼츠 단추 자리로 비운다.
+화면은 1080×1920이다. 연도·금액·지명은 그림 글에도 익명화 규칙(SKILL.md 0장 9)을 지킨다. 그림은 위쪽 180~1250에 앉히고, 그 아래는 자막·쇼츠 단추 자리로 비운다.
 색 이름은 `gold` · `red` · `ink` · `soft` · `grey` · `mute` 를 쓴다. `who` 에는 인물표의 **관계 이름**(`딸`, `땅주인` …)을 적는다.
 얼굴은 인물 시트 카드에서 잘라 온다. 이름표는 「가명 (관계)」로 저절로 붙는다.
 
 컷의 `add` 에는 아래 **요소 이름**만 쓴다. 틀리면 `drama60 check` 가 잡는다.
 
 ## card — 때 넘김
-`{"type": "card", "text": "40여 년 전", "sub": "1968년"}`
+`{"type": "card", "text": "40여 년 전", "sub": "사연의 시작"}`  ← 연도는 상대로 (SKILL.md 0장 9 익명화)
 요소: `card`
 
 ## relations — 인물 관계도 (S94 `family`)
@@ -42,14 +42,14 @@ S94 쌓는 차례 (컷 6~11):
 - 컷7: 「윤기철」 에 child2·선
 - 컷8: 「본처」 에 paper(서류상: 본처의 아들)
 - 컷9: 「친동생」 에 sibling
-- 컷10: 「세상을」 에 1969 별세, 「묻었습니다」 에 산에 묘
+- 컷10: 「세상을」 에 별세, 「묻었습니다」 에 산에 묘 (S94 당시엔 「1969 별세」 — 새 대본은 연도를 안 쓴다)
 - 컷11: 「재혼」 · 「새어머니」 에서 글과 이름표를 갈아 끼운다
 
 주장 ① 은 같은 그림에 banner(legend 를 갈아 끼운다) + glow 로 보였다 (컷21).
 
 ## timeline — 연표
 ```
-rows  [{"id", "year": "2006.8", "who": "아버지 별세 · 한옥자 → 윤정숙", "what": "세 번에 걸쳐 1억 5천만 원",
+rows  [{"id", "year": "10년 뒤", "who": "아버지 별세 · 한옥자 → 윤정숙", "what": "세 번에 걸쳐 1억 9,500만 원",
         "color": "gold"|"red", "what_color"}]      ← 다섯 줄 안팎 (줄마다 140px)
 cards [{"id", "after": 줄 id, "title": "확인서", "text": "'…다투지 않는다'"}]
 faces [{"id", "row": 줄 id, "who"}]               ← 그 줄 오른쪽에 얼굴
@@ -58,7 +58,7 @@ faces [{"id", "row": 줄 id, "who"}]               ← 그 줄 오른쪽에 얼�
 
 ## issue — 재판의 쟁점 (소송 배경 → 원칙 → 쟁점)
 ```
-suit     {"from": 원고, "to": 피고, "quote": "\"묘를 파내 달라\"", "year": "2011년 소송"}
+suit     {"from": 원고, "to": 피고, "quote": "\"묘를 파내 달라\"", "year": "40여 년 뒤 소송"}
 rule     [["grave", "묘를 지킬 권리는"], ["table", "제사를 모시는 사람에게"]]   ← 두 줄 · 작은 그림 이름 + 글
 question "어머니 제사를 모실 사람은?"
 cands    [{"who", "role": "호적상 아들"}, {"who", "role": "친딸", "gold": true}]   ← 한 명이면 가운데
@@ -68,7 +68,7 @@ chips    [{"id", "under": 0|1, "text": "땅주인: 윤정숙 씨는 아니다", 
 
 ## flow — 돈·물건이 간 길 (S94 `money`)
 ```
-from {"who"} · to {"who"} · amount "1억 5천만 원" · sub "세 번에 나눠"
+from {"who"} · to {"who"} · amount "1억 9,500만 원" · sub "세 번에 나눠"   ← 판결문 금액 × amount_scale
 claim {"tag": "땅주인 주장", "text": "묘를 포기한 대가였다"}     ← cross 요소로 X 를 긋는다
 doc   {"tag": "확인서", "text": "한옥자·윤기철 모자와 법적으로 다투지 않는다"}
 chips [{"id", "text", "color", "solid", "side": "left"|"right"}]
@@ -80,7 +80,7 @@ chips [{"id", "text", "color", "solid", "side": "left"|"right"}]
 subject {"who": 이복동생}
 left    {"chip": "서류상 엄마", "ghost": true, "name": "윤정숙 씨 어머니"}
 right   {"chip": "진짜 엄마", "who": 새어머니}
-year "2001년" · ruling "'친아들 아님' 판결" · fix "호적 정정" · broken "남남" · result "서류상으로도 남남"
+year "그보다 앞서" · ruling "'친아들 아님' 판결" · fix "호적 정정" · broken "남남" · result "서류상으로도 남남"
 ```
 요소: `heading` · `son` · `slots` · `link_paper` · `link_real` · `year` · `ruling` · `fix` · `broken`
 (`broken` 이 나오면 `year` · `ruling` · `link_paper` 는 사라진다)
