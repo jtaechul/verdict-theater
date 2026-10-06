@@ -1249,8 +1249,9 @@ def main(argv=None):
             #    layout = "long" 이면 가로 16:9 긴 영상 (2026-10-05) · amount_scale = 금액 배율(익명화)
             #    yt_chapters = 설명란 대목 [컷 번호, 이름] (긴 영상 · 2026-10-06 · drama60 meta)
             #    thumb = 긴 영상 썸네일 {컷 · 장면 · 얼굴 자리 · 확대 · 글 두 줄} (drama60 thumb_long)
+            #    ai_label = 유튜브 「변경되거나 합성된 콘텐츠」 표시 (upload.py series · 2026-10-06 손님 「켜기」)
             for k in ("style", "res", "gap", "name_first", "end_note", "figs", "layout",
-                      "amount_scale", "yt_chapters", "thumb"):
+                      "amount_scale", "yt_chapters", "thumb", "ai_label"):
                 if story.get(k) is not None:
                     doc[k] = story[k]
     # ⭐⭐⭐ 2026-09-10 — 화면이 값을 **스스로 세지 않게** 여기서 찍어 둔다.

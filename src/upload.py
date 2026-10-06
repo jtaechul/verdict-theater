@@ -216,8 +216,36 @@ def build_srt(doc, durs, path):
 
 
 # ── 업로드 ──────────────────────────────────────────────
+def video_meta(title, description, tags, privacy="private", publish_at=None, synthetic=False):
+    """유튜브에 보낼 영상 글·공개 설정 (0원 · 시험이 그대로 본다)."""
+    meta = {
+        "snippet": {
+            "title": title[:100],
+            "description": description[:4900],
+            "tags": (tags or [])[:15],
+            "categoryId": "24",                 # 엔터테인먼트
+            "defaultLanguage": "ko",
+        },
+        "status": {
+            # ⭐ 2026-08-07 부터 관리자 페이지에서 **바로 공개**로도 올린다.
+            #    영상을 눈으로 보고 누르는 버튼이라 따로 검수 단계가 필요 없다.
+            "privacyStatus": privacy,
+            "selfDeclaredMadeForKids": False,
+            "license": "youtube",
+            "embeddable": True,
+        },
+    }
+    if publish_at:
+        meta["status"]["publishAt"] = publish_at
+    if synthetic:
+        # ⭐ 2026-10-06 손님(선택 메뉴 「켜기」 · S95): 실제처럼 보이는 AI 인물이 나온다 →
+        #    유튜브 「변경되거나 합성된 콘텐츠」 표시를 켠다 (대본 ai_label · 0원)
+        meta["status"]["containsSyntheticMedia"] = True
+    return meta
+
+
 def upload_video(token, path, title, description, tags, vertical=False,
-                 privacy="private", publish_at=None):
+                 privacy="private", publish_at=None, synthetic=False):
     """재개 가능 업로드. 큰 파일이라 한 번에 밀어 넣지 않는다.
 
     publish_at — **예약 공개** 시각 (2026-09-01T10:00:00Z 꼴). 주면 그때 저절로
@@ -248,25 +276,7 @@ def upload_video(token, path, title, description, tags, vertical=False,
             f"❌ 제목에 '쇼츠' 해시태그가 있어 올리기를 막았습니다: {title!r}\n"
             f"   2026-09-06·2026-09-20 손님이 두 번 금지하신 것입니다. "
             f"제목을 고치고 다시 시도하십시오.")
-    meta = {
-        "snippet": {
-            "title": title[:100],
-            "description": description[:4900],
-            "tags": (tags or [])[:15],
-            "categoryId": "24",                 # 엔터테인먼트
-            "defaultLanguage": "ko",
-        },
-        "status": {
-            # ⭐ 2026-08-07 부터 관리자 페이지에서 **바로 공개**로도 올린다.
-            #    영상을 눈으로 보고 누르는 버튼이라 따로 검수 단계가 필요 없다.
-            "privacyStatus": privacy,
-            "selfDeclaredMadeForKids": False,
-            "license": "youtube",
-            "embeddable": True,
-        },
-    }
-    if publish_at:
-        meta["status"]["publishAt"] = publish_at
+    meta = video_meta(title, description, tags, privacy, publish_at, synthetic)
     size = path.stat().st_size
     req = urllib.request.Request(
         f"{UPLOAD}/videos?" + urllib.parse.urlencode(
@@ -747,12 +757,16 @@ def cmd_series(args):
     got = float(made.get("sec") or 0)
     # ⭐⭐⭐ 2026-09-30 — **2분 드라마는 벽이 2분이다** (손님 확정 · 대본이 정한다).
     #    옛 여러 편은 60초 그대로다. 대본 형식은 대본 파일을 보고 안다.
+    _doc = {}
     try:
         _doc = json.loads((ROOT / "data" / "series" / f"{sid}.json")
                           .read_text(encoding="utf-8"))
         MAX_SHORT_SEC = talkplan.part_max_sec(_doc)
     except (OSError, ValueError):
         pass
+    # ⭐ 2026-10-06 — AI 표시는 **대본**이 정한다 (관리자 화면 글을 거치지 않는다)
+    synthetic = bool((_doc or {}).get("ai_label"))
+    srt = Path(args.srt) if getattr(args, "srt", "") else None
     if got > MAX_SHORT_SEC and not args.long_ok:
         print(f"❌ {sid} {no}편은 {got:.0f}초다 — 벽은 {MAX_SHORT_SEC:.0f}초다. "
               f"이 채널은 **60초 이하**만"
@@ -791,13 +805,16 @@ def cmd_series(args):
     print(f"  제목: {title}")
     print(f"  해시태그: {' '.join('#' + t for t in tags)}")
     print(f"  공개 범위: {privacy}" + (f" · 예약 공개 {at}" if at else ""))
+    print(f"  AI 표시(변경되거나 합성된 콘텐츠): {'켬' if synthetic else '끔'}")
+    if srt:
+        print(f"  자막 파일: {srt.name}" + ("" if srt.exists() else " — ⚠️ 없다 (영상만 올린다)"))
     if args.dry:
         print("\n(연습이라 실제로는 올리지 않았다)")
         return 0
 
     token = access_token()
     vid = upload_video(token, video, title, desc, tags,
-                       vertical=True, privacy=privacy, publish_at=at)
+                       vertical=True, privacy=privacy, publish_at=at, synthetic=synthetic)
     print(f"\n✅ 올렸다 — https://youtu.be/{vid}")
     # ⭐⭐⭐ 2026-09-07 손님: "섬네일을 내가 지정한 걸로 똑바로 올렸으면
     #    이런 일 없잖아." 맞다 — 여기에 썸네일을 올리는 자리가 아예 없었다.
@@ -813,6 +830,15 @@ def cmd_series(args):
     else:
         print("  ⚠️ 썸네일이 없어 유튜브가 아무 장면이나 고릅니다 "
               "(쇼츠 만들기를 다시 누르면 생깁니다)")
+    # ⭐ 2026-10-06 (S95 긴 영상) — 화면 자막은 영상에 박혀 유튜브가 못 읽는다.
+    #    자막 파일을 같이 올려 검색(「유류분」 「재혼 상속」)에 걸리게 한다.
+    #    ⚠️ 썸네일처럼 실패해도 영상은 이미 올라갔다 — 죽이지 않고 알리기만 한다.
+    if srt and srt.exists():
+        try:
+            upload_caption(token, vid, srt)
+            print(f"  ▤ 자막 파일도 올렸다 ({srt.name})")
+        except Exception as e:                               # noqa: BLE001
+            print(f"  ⚠️ 자막 파일은 못 올렸다 ({str(e)[:90]}) — 영상은 올라갔다")
     shortstate.mark_uploaded(sid, no, vid, "private" if at else privacy, at)
 
     # ⚠️ 옛 화면(state/series.json)도 아직 이것을 본다 — 같이 적어 둔다.
@@ -945,6 +971,8 @@ def main():
     r.add_argument("--privacy", default="", help="private / unlisted / public")
     r.add_argument("--publish-at", dest="publish_at", default="",
                    help="예약 공개 시각 (2026-09-02T10:00:00Z)")
+    r.add_argument("--srt", default="",
+                   help="자막 파일(.srt) — 긴 영상 (화면 자막은 유튜브가 못 읽는다 · 검색에 걸리게)")
     r.add_argument("--gap-ok", dest="gap_ok", action="store_true",
                    help="대사 컷이 그림으로 떨어진 편도 그냥 올린다 (권하지 않음)")
     r.add_argument("--long-ok", dest="long_ok", action="store_true",

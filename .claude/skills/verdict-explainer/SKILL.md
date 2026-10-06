@@ -279,3 +279,8 @@ S94 컷18~19를 고칠 때는 71원이 들었다(목소리 두 줄 + 지시문 �
     후보 장면은 `thumb_frame` 으로 여러 장 뽑아 보고, 만든 썸네일은 **Read 로 직접 본다**(글이 얼굴을 덮으면 안 된다).
   - `build_short90` 을 다시 돌리면 올릴 글이 대목 없이 다시 써진다 → 그 뒤에 `drama60 <SID> meta` 를 다시 돌린다.
 - S95 실제 값: 인물 그림 265 · 목소리 1,966 · 영상 13,276 · 받아쓰기 51 = **15,558원** (어림 약 16,400원 · 8분 41초 · 45MB).
+- 올리기: 대본에 `"ai_label": true` 를 적는다 → 유튜브 「변경되거나 합성된 콘텐츠」 표시를 켠다
+  (실제처럼 보이는 AI 인물 · 2026-10-06 손님 S95 「켜기」). 자막 파일은 `stage_video` 가 보관함에 넣고(part1.srt),
+  4-2 올리기가 영상 다음에 함께 올린다(실패해도 영상은 그대로). 올리기 전 연습:
+  `python3 src/upload.py series <SID> --part 1 --video build/s90/<SID>_part1.mp4 --meta data/series/<SID>.meta.json
+  --thumb build/s90/<SID>_part1.jpg --srt build/s90/<SID>_part1.srt --privacy public --dry` (0원 · 인터넷 0회).

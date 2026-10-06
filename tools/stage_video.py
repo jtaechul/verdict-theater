@@ -74,6 +74,12 @@ def ready(sid):
             files[f"part{no}.jpg"] = jpg
         else:
             print(f"  ⚠️ {no}편 썸네일이 없다 — 유튜브가 아무 장면이나 고른다")
+        # ⭐ 2026-10-06 — 긴 영상은 자막 파일(.srt · drama60 meta)도 같이 보관한다 (올리기가 함께 올린다)
+        srt = mp4.with_suffix(".srt")
+        if srt.exists():
+            files[f"part{no}.srt"] = srt
+        elif str(doc.get("layout") or "") == "long":
+            print(f"  ⚠️ {no}편 자막 파일이 없다 — `drama60 {sid} meta` 를 먼저 (검색에 안 걸린다)")
     meta = ROOT / "data" / "series" / f"{sid}.meta.json"
     if not meta.exists():
         bad.append(f"올릴 글이 없다 ({meta.relative_to(ROOT)}) — build_short90 을 다시")
@@ -128,7 +134,7 @@ def release(ref):
         return 2
     src = ROOT / "stage" / sid
     names = sorted(p.name for p in src.glob("*")
-                   if re.fullmatch(r"part\d+\.(mp4|jpg)|meta\.json", p.name))
+                   if re.fullmatch(r"part\d+\.(mp4|jpg|srt)|meta\.json", p.name))
     if not names:
         print(f"❌ 넣을 파일이 없다 (stage/{sid}/part1.mp4 …)")
         return 2

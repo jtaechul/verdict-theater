@@ -562,6 +562,29 @@ wf = (ROOT / ".github" / "workflows" / "stage-video.yml").read_text(encoding="ut
 ck("임시 가지는 보관함에 옮긴 뒤 지운다 (영상이 main 에 안 남는다)",
    "stage/S*" in wf and "--delete" in wf and "stage_video.py --release" in wf
    and "GEMINI_API_KEY" not in wf)
+# ⭐ 긴 영상 올리기 (2026-10-06 · S95 — 손님 「예약 공개 · 정면 얼굴 · AI 표시 켜기」)
+import upload as UP                                           # noqa: E402
+_vm1 = UP.video_meta("제목", "설명", ["유류분"], synthetic=True)
+_vm0 = UP.video_meta("제목", "설명", ["유류분"])
+ck("AI 표시(변경되거나 합성된 콘텐츠)는 대본 ai_label 일 때만 켠다",
+   _vm1["status"].get("containsSyntheticMedia") is True and "containsSyntheticMedia" not in _vm0["status"])
+_ups = (ROOT / "src" / "upload.py").read_text(encoding="utf-8")
+_ser = _ups[_ups.index("def cmd_series"):_ups.index("def cmd_fixmeta")]
+ck("올리기가 AI 표시를 대본에서 읽고, 자막 파일을 영상 다음에 올린다 (실패해도 영상은 그대로)",
+   'get("ai_label")' in _ser and "synthetic=synthetic" in _ser and "upload_caption(token, vid, srt)" in _ser
+   and '"--srt"' in _ups)
+_svs = (ROOT / "tools" / "stage_video.py").read_text(encoding="utf-8")
+ck("보관함에 자막 파일(part1.srt)도 넣는다", 'files[f"part{no}.srt"]' in _svs and "mp4|jpg|srt" in _svs)
+_upw = (ROOT / ".github" / "workflows" / "short90-upload.yml").read_text(encoding="utf-8")
+ck("올리기 워크플로가 자막 파일을 꺼내 함께 넘긴다",
+   '"part$K.srt"' in _upw and _upw.count("--srt ") == 2)
+_s95d = json.loads((ROOT / "data" / "series" / "S95.json").read_text(encoding="utf-8"))
+ck("S95 대본: AI 표시 켬 · 썸네일 정면 얼굴(컷37)", _s95d.get("ai_label") is True
+   and (_s95d.get("thumb") or {}).get("cut") == 37)
+if (S9.OUT / "S95_part1.mp4").exists():
+    _f95, _b95 = SV.ready("S95")
+    ck("S95 는 올릴 준비가 됐다 (영상 · 썸네일 · 자막 파일 · 올릴 글)",
+       not _b95 and set(_f95) == {"part1.mp4", "part1.jpg", "part1.srt", "meta.json"}, "; ".join(_b95))
 if (S9.OUT / "S94_part1.mp4").exists():
     _f94, _b94 = SV.ready("S94")
     ck("S94 는 올릴 준비가 됐다 (영상 · 썸네일 · 길이 · 만든 기록 · 올릴 글)",
