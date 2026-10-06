@@ -32,7 +32,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageChops, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import cost                                                  # noqa: E402
@@ -98,7 +98,7 @@ NAME_BAR_PAD = 7        # 막대가 글자 위아래로 더 뻗는 정도
 INTRO_SIZE = 46         # 처음 나오는 사람의 관계 한 줄 (이름 옆 · 어르신 눈에 읽히게)
 INTRO_GAP = 16
 INTRO_ABOVE = 42        # 이름이 먼저인 이름표 — 관계 한 줄을 이름 위에 (2026-10-02)
-CHAP_Y, CHAP_SIZE = 128, 34   # 화면 위 대목 표시 (마크 아래 가운데)
+CHAP_Y, CHAP_SIZE = 128, 37   # 화면 위 대목 표시 (마크 아래 가운데 · 바탕체라 고딕 34 보다 조금 크게)
 # ⭐⭐⭐ 2026-09-01 손님: "영상 상단에는 1편 제목, 2편 제목이 하나 들어가
 #    줘야 되는 거 아니야?"
 #    맞다. 그리고 자리가 중요하다 —
@@ -1843,20 +1843,77 @@ def overlay(c, out, turn=None, now=None, mark="", intro=None, alias=None, labels
     return out
 
 
+# ⭐⭐ 2026-10-06 손님: "화면 위쪽에 사건이라던가 판결이라던가 … 네모난 박스 안에 들어가는 글자 …
+#    프레임 부분 좀 디자인을 영상 전체적인 분위기와 좀 어울리게 좀더 디자인을 고급스럽게 바꿔줘"
+#    → 금색 테두리 알약 상자 + 고딕 글씨를 버렸다. 그림 제목(—— 인물 관계도 ——)과 같은 말씨로:
+#      가운데가 짙고 양끝이 스며드는 어두운 띠 · 위아래 금색 가는 줄 · 양옆 작은 마름모 ·
+#      바탕체 금색 글(글자 사이를 조금 띄운다) · 글 뒤 흐린 그림자. 상자 테두리가 없어도
+#      띠가 깔려 밝은 화면(숲 · 흰 벽)에서도 읽힌다 (S94 실제 화면 네 장에 대 보고 골랐다).
+_CHAP_PLATE = {}
+
+
+def _fade(n, flat):
+    """가로 세기 [0~1] — 가운데 flat 만큼은 1, 양끝으로 부드럽게 0 (smoothstep)."""
+    out = []
+    for i in range(n):
+        u = abs((i + 0.5) / n * 2 - 1)
+        t = 0.0 if u <= flat else (u - flat) / (1 - flat)
+        out.append(1 - (3 * t * t - 2 * t * t * t))
+    return out
+
+
+def chapter_plate(text):
+    """대목 표시 판 한 장 (RGBA · 화면 1배 크기) — 같은 글 · 같은 크기면 한 번만 그린다."""
+    key = (text, CHAP_SIZE)
+    if key in _CHAP_PLATE:
+        return _CHAP_PLATE[key]
+    k = 2                                           # 두 배로 그려 줄인다 (가는 줄이 매끈하다)
+    s = CHAP_SIZE * k
+    f = ImageFont.truetype(str(FONT_NAME), int(s))
+    d0 = ImageDraw.Draw(Image.new("RGBA", (4, 4)))
+    tr = s * 0.12                                   # 글자 사이 (띄어쓰기는 제 폭 그대로 — 「알게 된 것」)
+    chars, at, x = list(text), [], 0.0
+    for i, ch in enumerate(chars):
+        at.append(x)
+        x += d0.textlength(ch, font=f) + (tr if i + 1 < len(chars) else 0.0)
+    tw = x
+    gap, dia = s * 0.75, s * 0.16
+    bw = int(tw + 2 * (gap + s * 3.0))
+    band = int(s * 1.62)
+    bh = int(band + s * 0.9)
+    cx, cy = bw / 2, bh / 2
+    lay = Image.new("RGBA", (bw, bh), (0, 0, 0, 0))
+    top, bot = int(cy - band / 2), int(cy + band / 2)
+    a = Image.new("L", (bw, 1))
+    a.putdata([int(185 * v) for v in _fade(bw, 0.42)])
+    lay.paste(Image.new("RGBA", (bw, bot - top), (7, 9, 15, 255)), (0, top), a.resize((bw, bot - top)))
+    th = max(2, int(round(1.4 * k)))                # 위아래 금색 가는 줄 — 띠보다 조금 일찍 사라진다
+    a = Image.new("L", (bw, 1))
+    a.putdata([int(235 * v ** 1.6) for v in _fade(bw, 0.30)])
+    for y in (top, bot - th):
+        lay.paste(Image.new("RGBA", (bw, th), GOLD[:3] + (255,)), (0, y), a.resize((bw, th)))
+    dd = ImageDraw.Draw(lay)
+    for side in (-1, 1):
+        mx = cx + side * (tw / 2 + gap * 0.62)
+        dd.polygon([(mx - dia, cy), (mx, cy - dia), (mx + dia, cy), (mx, cy + dia)],
+                   fill=GOLD_BRIGHT[:3] + (255,))
+    shade = Image.new("RGBA", (bw, bh), (0, 0, 0, 0))
+    ds = ImageDraw.Draw(shade)
+    for ch, x0 in zip(chars, at):
+        ds.text((cx - tw / 2 + x0, cy + s * 0.03), ch, font=f, fill=(0, 0, 0, 255), anchor="lm")
+    lay.alpha_composite(shade.filter(ImageFilter.GaussianBlur(s * 0.07)))
+    dd = ImageDraw.Draw(lay)
+    for ch, x0 in zip(chars, at):
+        dd.text((cx - tw / 2 + x0, cy), ch, font=f, fill=GOLD_BRIGHT[:3] + (255,), anchor="lm")
+    out = lay.resize((bw // k, bh // k), Image.LANCZOS)
+    _CHAP_PLATE[key] = out
+    return out
+
+
 def chapter_chip(img, text):
-    """화면 위 가운데 작은 띠 — 「재판 · 땅주인 주장 ②」 (금색 테두리 · 어두운 바탕)."""
-    d = ImageDraw.Draw(img)
-    f = ImageFont.truetype(str(FONT_SUB), CHAP_SIZE)
-    w = d.textlength(text, font=f)
-    h = CHAP_SIZE + 22
-    x1, x2 = W / 2 - w / 2 - 22, W / 2 + w / 2 + 22
-    plate = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    ImageDraw.Draw(plate).rounded_rectangle([x1, CHAP_Y - h / 2, x2, CHAP_Y + h / 2],
-                                            radius=h / 2, fill=(14, 18, 26, 200),
-                                            outline=GOLD_BRIGHT, width=3)
-    img.alpha_composite(plate)
-    ImageDraw.Draw(img).text((W / 2, CHAP_Y + 1), text, font=f, fill=GOLD_BRIGHT,
-                             anchor="mm")
+    """화면 위 가운데 대목 표시 — 「사건」 「약속」 「판결」 (chapter_plate 를 얹는다)."""
+    pl = chapter_plate(text)
+    img.alpha_composite(pl, (int(W / 2 - pl.width / 2), int(CHAP_Y - pl.height / 2)))
 
 
 def labels_of(doc):
@@ -2857,7 +2914,7 @@ LAYOUT_KEYS = ("W", "H", "SIDE", "SUB_TOP", "SUB_BOT", "SUB_MAX", "SUB_MIN", "SU
 LAYOUT_TALL = {k: globals()[k] for k in LAYOUT_KEYS}
 LAYOUT_LONG = dict(LAYOUT_TALL, W=1920, H=1080, SIDE=80, SUB_TOP=868, SUB_BOT=1040,
                    SUB_MAX=96, SUB_MIN=62, SUB_FIXED=88, NAME_Y=752, NAME_SIZE=52,
-                   INTRO_SIZE=40, INTRO_ABOVE=38, CHAP_Y=54, CHAP_SIZE=32,
+                   INTRO_SIZE=40, INTRO_ABOVE=38, CHAP_Y=56, CHAP_SIZE=35,
                    TITLE_Y=150, TITLE_LABEL=36, TITLE_MAX=84, TITLE_MIN=56, TITLE_SCRIM=440,
                    TAIL_Y=330, TAIL_SIZE=80, TAIL_SUB_SIZE=40, SCRIM_TOP=640, FIG_SCRIM_TOP=770,
                    MARK_SIZE=30, MARK_Y=34)

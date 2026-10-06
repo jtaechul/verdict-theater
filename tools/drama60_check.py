@@ -307,6 +307,19 @@ with tempfile.TemporaryDirectory() as t:
     top = (0, S9.CHAP_Y - 40, S9.W, S9.CHAP_Y + 40)
     ck("화면 위 대목 표시가 실제로 그려진다",
        ImageChops.difference(Image.open(a).crop(top), Image.open(b).crop(top)).getbbox())
+    # ⭐ 2026-10-06 손님: "네모난 박스 … 프레임 부분 좀 디자인을 … 고급스럽게" — 상자 대신 띠
+    pl = S9.chapter_plate("알게 된 것")
+    pw, ph = pl.size
+    rule_y = next(y for y in range(ph) if pl.getpixel((pw // 2, y))[3] > 150)
+    gold = pl.getpixel((pw // 2, rule_y))
+    ck("대목 표시는 상자가 아니다 — 양끝이 스며드는 어두운 띠 · 위 금색 가는 줄 · 바탕체 금색 글",
+       pl.getpixel((2, ph // 2))[3] < 25 and pl.getpixel((int(pw * 0.33), ph // 2 + 8))[3] > 120
+       and gold[0] > 150 and gold[1] > 110 and gold[2] < 120
+       and "f = ImageFont.truetype(str(FONT_NAME), int(s))" in
+       (ROOT / "src" / "short90.py").read_text(encoding="utf-8"),
+       f"{pl.getpixel((2, ph // 2))} {pl.getpixel((int(pw * 0.33), ph // 2 + 8))} {gold}")
+    ck("대목 표시 띄어쓰기가 보인다 (「알게 된 것」 이 「알게된것」 으로 붙지 않는다)",
+       S9.chapter_plate("알게 된 것").width > S9.chapter_plate("알게된것").width + 8)
     fc = figs[0]
     S9.overlay(fc, a, None, now=0, mark="x")
     S9.overlay(dict(fc, chapter="재판"), b, None, now=0, mark="x")

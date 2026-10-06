@@ -2,7 +2,7 @@
  "sid": "S95",
  "case_id": "608371",
  "title": "재혼 아내의 유류분",
- "hook": "재혼 11개월 전 맺은 사인증여로 남편의 유일한 땅이 아들에게 — 10년 함께 산 아내가 13년 만에 몫을 되찾은 사건",
+ "hook": "재혼 11개월 전 맺은 사인증여로 남편의 유일한 땅이 아들에게 — 10년 함께 산 아내가 남편이 떠난 지 13년 반 만에 1심에서 몫을 인정받은 사건",
  "series_label": "재혼 아내의 몫",
  "parts": [
   {
@@ -32,7 +32,7 @@
    "sex": "남"
   },
   "아들": {
-   "age": "40대",
+   "age": "50대",
    "sex": "남"
   }
  },
@@ -78,13 +78,13 @@
    "turns": [
     [
      "나레이션",
-     "이정희 씨 남편이 예전에 살았던 외국에, 남편 이름으로 된 땅이 있었던 겁니다."
+     "남편이 예전에 살았던 외국에, 이정희 씨가 몰랐던 남편의 땅이 있었던 겁니다."
     ]
    ],
    "who": [
     "아내"
    ],
-   "text": "이정희 씨 남편이 예전에 살았던 외국에, 남편 이름으로 된 땅이 있었던 겁니다.",
+   "text": "남편이 예전에 살았던 외국에, 이정희 씨가 몰랐던 남편의 땅이 있었던 겁니다.",
    "scene": "아내 sits at a desk with a laptop and a stack of papers, a phone pressed to her ear, focused, medium shot",
    "say": [
     "긴 사연을 전하는 낮고 차분한 목소리로, 담담하고 또렷하게"
@@ -153,7 +153,7 @@
    "text": "아버지가 저한테 주신 땅입니다.",
    "scene": "아들 stands by a large window in a bright modern office, turning his head toward the camera, medium shot",
    "say": [
-    "40대 남성이, 예의는 갖추되 차갑고 담담하게"
+    "50대 남성이, 예의는 갖추되 차갑고 담담하게"
    ],
    "still_of": null,
    "scrub": null,
@@ -167,8 +167,8 @@
     "move": "hold"
    },
    "omni_sec": 4,
-   "omni": "[# Sources <FIRST_FRAME>@Image1] [# References <IMAGE_REF_0>@Image2]\nA short fictional drama scene. Every character is invented for this story and resembles nobody. Vertical 9:16, exactly 4 seconds, one single continuous shot from the first frame to the last.\nCAST: the husband's son <IMAGE_REF_0> is the only person in this scene, each looking exactly like their own reference the whole time. Each reference shows that person twice — a close view and a full-length view — one single person.\nSHOT: the husband's son stands by a large window in a bright modern office, turning his head toward the camera, medium shot. A close-up of the face straight on, shot at eye level, level and plain, intense steady gaze.\nFRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, the face near the middle of the frame, clearly visible and sharp, the eye line held about a third of the way down from the top of the vertical frame.\nTIMELINE:\n[0.0-0.6s] silent, the husband's son holds the moment. Camera: locked off completely still on a tripod.\n[0.6-2.9s] the husband's son says in Korean: \"아버지가 저한테 주신 땅입니다.\" Camera: still locked off while only the husband's son's face moves.\n[2.9-4.0s] silent, lips closed, the husband's son holds the look until the end. Camera: still locked off until the end.\nDIALOGUE: [LANGUAGE: KOREAN] only the husband's son speaks, in natural fluent everyday Korean with standard Seoul intonation, at a brisk natural conversational pace with every consonant and syllable crisp and clearly articulated, lips moving in sync with every syllable. the husband's son says these exact words once and nothing more: \"아버지가 저한테 주신 땅입니다.\"\nVOICE: the husband's son — a low, steady man's voice in his forties, native Korean speaker, polite but cool and distant. Delivery (Korean note): 40대 남성이, 예의는 갖추되 차갑고 담담하게.\nSOUND: the husband's son's voice with quiet room tone underneath, and nothing else.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the people are sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones, the exact same colour grade in every shot of this story.\nSTYLE: naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.\nUse Image1 as the starting frame. Use the other images as references for the people.",
-   "omni_ref": "[# References <IMAGE_REF_0>@Image1]\nA short fictional drama scene. Every character is invented for this story and resembles nobody. Vertical 9:16, exactly 4 seconds, one single continuous shot from the first frame to the last.\nCAST: the husband's son <IMAGE_REF_0> is the only person in this scene, each looking exactly like their own reference the whole time. Each reference shows that person twice — a close view and a full-length view — one single person.\nSHOT: the husband's son stands by a large window in a bright modern office, turning his head toward the camera, medium shot. A close-up of the face straight on, shot at eye level, level and plain, intense steady gaze.\nFRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, the face near the middle of the frame, clearly visible and sharp, the eye line held about a third of the way down from the top of the vertical frame.\nTIMELINE:\n[0.0-0.6s] silent, the husband's son holds the moment. Camera: locked off completely still on a tripod.\n[0.6-2.9s] the husband's son says in Korean: \"아버지가 저한테 주신 땅입니다.\" Camera: still locked off while only the husband's son's face moves.\n[2.9-4.0s] silent, lips closed, the husband's son holds the look until the end. Camera: still locked off until the end.\nDIALOGUE: [LANGUAGE: KOREAN] only the husband's son speaks, in natural fluent everyday Korean with standard Seoul intonation, at a brisk natural conversational pace with every consonant and syllable crisp and clearly articulated, lips moving in sync with every syllable. the husband's son says these exact words once and nothing more: \"아버지가 저한테 주신 땅입니다.\"\nVOICE: the husband's son — a low, steady man's voice in his forties, native Korean speaker, polite but cool and distant. Delivery (Korean note): 40대 남성이, 예의는 갖추되 차갑고 담담하게.\nSOUND: the husband's son's voice with quiet room tone underneath, and nothing else.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the people are sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones, the exact same colour grade in every shot of this story.\nSTYLE: naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.\nUse the given images only as references for how the people look; the video opens on a fresh shot of the scene.",
+   "omni": "[# Sources <FIRST_FRAME>@Image1] [# References <IMAGE_REF_0>@Image2]\nA short fictional drama scene. Every character is invented for this story and resembles nobody. Vertical 9:16, exactly 4 seconds, one single continuous shot from the first frame to the last.\nCAST: the husband's son <IMAGE_REF_0> is the only person in this scene, each looking exactly like their own reference the whole time. Each reference shows that person twice — a close view and a full-length view — one single person.\nSHOT: the husband's son stands by a large window in a bright modern office, turning his head toward the camera, medium shot. A close-up of the face straight on, shot at eye level, level and plain, intense steady gaze.\nFRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, the face near the middle of the frame, clearly visible and sharp, the eye line held about a third of the way down from the top of the vertical frame.\nTIMELINE:\n[0.0-0.6s] silent, the husband's son holds the moment. Camera: locked off completely still on a tripod.\n[0.6-2.9s] the husband's son says in Korean: \"아버지가 저한테 주신 땅입니다.\" Camera: still locked off while only the husband's son's face moves.\n[2.9-4.0s] silent, lips closed, the husband's son holds the look until the end. Camera: still locked off until the end.\nDIALOGUE: [LANGUAGE: KOREAN] only the husband's son speaks, in natural fluent everyday Korean with standard Seoul intonation, at a brisk natural conversational pace with every consonant and syllable crisp and clearly articulated, lips moving in sync with every syllable. the husband's son says these exact words once and nothing more: \"아버지가 저한테 주신 땅입니다.\"\nVOICE: the husband's son — a low, steady man's voice in his fifties, native Korean speaker, polite but cool and distant. Delivery (Korean note): 50대 남성이, 예의는 갖추되 차갑고 담담하게.\nSOUND: the husband's son's voice with quiet room tone underneath, and nothing else.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the people are sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones, the exact same colour grade in every shot of this story.\nSTYLE: naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.\nUse Image1 as the starting frame. Use the other images as references for the people.",
+   "omni_ref": "[# References <IMAGE_REF_0>@Image1]\nA short fictional drama scene. Every character is invented for this story and resembles nobody. Vertical 9:16, exactly 4 seconds, one single continuous shot from the first frame to the last.\nCAST: the husband's son <IMAGE_REF_0> is the only person in this scene, each looking exactly like their own reference the whole time. Each reference shows that person twice — a close view and a full-length view — one single person.\nSHOT: the husband's son stands by a large window in a bright modern office, turning his head toward the camera, medium shot. A close-up of the face straight on, shot at eye level, level and plain, intense steady gaze.\nFRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, the face near the middle of the frame, clearly visible and sharp, the eye line held about a third of the way down from the top of the vertical frame.\nTIMELINE:\n[0.0-0.6s] silent, the husband's son holds the moment. Camera: locked off completely still on a tripod.\n[0.6-2.9s] the husband's son says in Korean: \"아버지가 저한테 주신 땅입니다.\" Camera: still locked off while only the husband's son's face moves.\n[2.9-4.0s] silent, lips closed, the husband's son holds the look until the end. Camera: still locked off until the end.\nDIALOGUE: [LANGUAGE: KOREAN] only the husband's son speaks, in natural fluent everyday Korean with standard Seoul intonation, at a brisk natural conversational pace with every consonant and syllable crisp and clearly articulated, lips moving in sync with every syllable. the husband's son says these exact words once and nothing more: \"아버지가 저한테 주신 땅입니다.\"\nVOICE: the husband's son — a low, steady man's voice in his fifties, native Korean speaker, polite but cool and distant. Delivery (Korean note): 50대 남성이, 예의는 갖추되 차갑고 담담하게.\nSOUND: the husband's son's voice with quiet room tone underneath, and nothing else.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the people are sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones, the exact same colour grade in every shot of this story.\nSTYLE: naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.\nUse the given images only as references for how the people look; the video opens on a fresh shot of the scene.",
    "place": "사무실",
    "chapter": "사건"
   },
@@ -211,16 +211,16 @@
   {
    "n": 6,
    "kind": "나레이션",
-   "sec": 6.6,
+   "sec": 6.4,
    "narr": true,
    "turns": [
     [
      "나레이션",
-     "남편이 재혼하기 11개월 전에 맺어 둔 약속 하나. 그 약속을 두고 13년에 걸친 다툼이 시작됩니다."
+     "남편이 재혼하기 11개월 전에 맺어 둔 약속 하나. 그 약속을 두고 12년 넘게 다툼이 이어집니다."
     ]
    ],
    "who": [],
-   "text": "남편이 재혼하기 11개월 전에 맺어 둔 약속 하나. 그 약속을 두고 13년에 걸친 다툼이 시작됩니다.",
+   "text": "남편이 재혼하기 11개월 전에 맺어 둔 약속 하나. 그 약속을 두고 12년 넘게 다툼이 이어집니다.",
    "scene": "",
    "say": [
     "긴 사연을 전하는 낮고 차분한 목소리로, 담담하고 또렷하게"
@@ -1137,18 +1137,18 @@
   {
    "n": 33,
    "kind": "나레이션",
-   "sec": 5.9,
+   "sec": 6.0,
    "narr": true,
    "turns": [
     [
      "나레이션",
-     "그리고 재혼 10년 8개월째 되던 해 겨울, 이정희 씨는 남편 최만석 씨를 떠나보냅니다."
+     "그리고 재혼하고 10년 8개월이 지난 겨울, 이정희 씨는 남편 최만석 씨를 떠나보냅니다."
     ]
    ],
    "who": [
     "아내"
    ],
-   "text": "그리고 재혼 10년 8개월째 되던 해 겨울, 이정희 씨는 남편 최만석 씨를 떠나보냅니다.",
+   "text": "그리고 재혼하고 10년 8개월이 지난 겨울, 이정희 씨는 남편 최만석 씨를 떠나보냅니다.",
    "scene": "아내 sits alone on a sofa in a quiet Korean apartment living room at dusk, holding a framed photo in both hands, wide shot",
    "say": [
     "긴 사연을 전하는 낮고 차분한 목소리로, 담담하고 또렷하게"
@@ -1442,11 +1442,11 @@
    "turns": [
     [
      "나레이션",
-     "7개월 뒤에는 그 나라 법원에 조정도 신청합니다. 아내로서 상당한 돈을 받고 싶다는 신청이었습니다."
+     "반년쯤 뒤에는 그 나라 법원에 조정도 신청합니다. 아내로서 상당한 돈을 받고 싶다는 신청이었습니다."
     ]
    ],
    "who": [],
-   "text": "7개월 뒤에는 그 나라 법원에 조정도 신청합니다. 아내로서 상당한 돈을 받고 싶다는 신청이었습니다.",
+   "text": "반년쯤 뒤에는 그 나라 법원에 조정도 신청합니다. 아내로서 상당한 돈을 받고 싶다는 신청이었습니다.",
    "scene": "",
    "say": [
     "긴 사연을 전하는 낮고 차분한 목소리로, 담담하고 또렷하게"
@@ -1583,7 +1583,7 @@
    "text": "그 땅엔 빚이 더 많습니다. 드릴 게 없어요.",
    "scene": "아들 stands with arms crossed in a modern office, cool daylight, looking straight ahead, medium shot",
    "say": [
-    "40대 남성이, 감정 없이 사무적으로"
+    "50대 남성이, 감정 없이 사무적으로"
    ],
    "still_of": null,
    "scrub": null,
@@ -1597,8 +1597,8 @@
     "move": "hold"
    },
    "omni_sec": 5,
-   "omni": "[# Sources <FIRST_FRAME>@Image1] [# References <IMAGE_REF_0>@Image2]\nA short fictional drama scene. Every character is invented for this story and resembles nobody. Vertical 9:16, exactly 5 seconds, one single continuous shot from the first frame to the last.\nCAST: the husband's son <IMAGE_REF_0> is the only person in this scene, each looking exactly like their own reference the whole time. Each reference shows that person twice — a close view and a full-length view — one single person.\nSHOT: the husband's son stands with arms crossed in a modern office, cool daylight, looking straight ahead, medium shot. A close-up of the face straight on, shot at eye level, level and plain, intense steady gaze.\nFRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, the face near the middle of the frame, clearly visible and sharp, the eye line held about a third of the way down from the top of the vertical frame.\nTIMELINE:\n[0.0-0.6s] silent, the husband's son holds the moment. Camera: locked off completely still on a tripod.\n[0.6-2.4s] the husband's son says in Korean: \"그 땅엔 빚이 더 많습니다.\" Camera: still locked off while only the husband's son's face moves.\n[2.4-2.8s] one short breath. Camera: still locked off.\n[2.8-3.9s] the husband's son says in Korean: \"드릴 게 없어요.\" Camera: still locked off while only the husband's son's face moves.\n[3.9-5.0s] silent, lips closed, the husband's son holds the look until the end. Camera: still locked off until the end.\nDIALOGUE: [LANGUAGE: KOREAN] only the husband's son speaks, in natural fluent everyday Korean with standard Seoul intonation, at a brisk natural conversational pace with every consonant and syllable crisp and clearly articulated, lips moving in sync with every syllable. the husband's son says these exact words once and nothing more: \"그 땅엔 빚이 더 많습니다. 드릴 게 없어요.\"\nVOICE: the husband's son — a low, steady man's voice in his forties, native Korean speaker, polite but cool and distant. Delivery (Korean note): 40대 남성이, 감정 없이 사무적으로.\nSOUND: the husband's son's voice with quiet room tone underneath, and nothing else.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the people are sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones, the exact same colour grade in every shot of this story.\nSTYLE: naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.\nUse Image1 as the starting frame. Use the other images as references for the people.",
-   "omni_ref": "[# References <IMAGE_REF_0>@Image1]\nA short fictional drama scene. Every character is invented for this story and resembles nobody. Vertical 9:16, exactly 5 seconds, one single continuous shot from the first frame to the last.\nCAST: the husband's son <IMAGE_REF_0> is the only person in this scene, each looking exactly like their own reference the whole time. Each reference shows that person twice — a close view and a full-length view — one single person.\nSHOT: the husband's son stands with arms crossed in a modern office, cool daylight, looking straight ahead, medium shot. A close-up of the face straight on, shot at eye level, level and plain, intense steady gaze.\nFRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, the face near the middle of the frame, clearly visible and sharp, the eye line held about a third of the way down from the top of the vertical frame.\nTIMELINE:\n[0.0-0.6s] silent, the husband's son holds the moment. Camera: locked off completely still on a tripod.\n[0.6-2.4s] the husband's son says in Korean: \"그 땅엔 빚이 더 많습니다.\" Camera: still locked off while only the husband's son's face moves.\n[2.4-2.8s] one short breath. Camera: still locked off.\n[2.8-3.9s] the husband's son says in Korean: \"드릴 게 없어요.\" Camera: still locked off while only the husband's son's face moves.\n[3.9-5.0s] silent, lips closed, the husband's son holds the look until the end. Camera: still locked off until the end.\nDIALOGUE: [LANGUAGE: KOREAN] only the husband's son speaks, in natural fluent everyday Korean with standard Seoul intonation, at a brisk natural conversational pace with every consonant and syllable crisp and clearly articulated, lips moving in sync with every syllable. the husband's son says these exact words once and nothing more: \"그 땅엔 빚이 더 많습니다. 드릴 게 없어요.\"\nVOICE: the husband's son — a low, steady man's voice in his forties, native Korean speaker, polite but cool and distant. Delivery (Korean note): 40대 남성이, 감정 없이 사무적으로.\nSOUND: the husband's son's voice with quiet room tone underneath, and nothing else.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the people are sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones, the exact same colour grade in every shot of this story.\nSTYLE: naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.\nUse the given images only as references for how the people look; the video opens on a fresh shot of the scene.",
+   "omni": "[# Sources <FIRST_FRAME>@Image1] [# References <IMAGE_REF_0>@Image2]\nA short fictional drama scene. Every character is invented for this story and resembles nobody. Vertical 9:16, exactly 5 seconds, one single continuous shot from the first frame to the last.\nCAST: the husband's son <IMAGE_REF_0> is the only person in this scene, each looking exactly like their own reference the whole time. Each reference shows that person twice — a close view and a full-length view — one single person.\nSHOT: the husband's son stands with arms crossed in a modern office, cool daylight, looking straight ahead, medium shot. A close-up of the face straight on, shot at eye level, level and plain, intense steady gaze.\nFRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, the face near the middle of the frame, clearly visible and sharp, the eye line held about a third of the way down from the top of the vertical frame.\nTIMELINE:\n[0.0-0.6s] silent, the husband's son holds the moment. Camera: locked off completely still on a tripod.\n[0.6-2.4s] the husband's son says in Korean: \"그 땅엔 빚이 더 많습니다.\" Camera: still locked off while only the husband's son's face moves.\n[2.4-2.8s] one short breath. Camera: still locked off.\n[2.8-3.9s] the husband's son says in Korean: \"드릴 게 없어요.\" Camera: still locked off while only the husband's son's face moves.\n[3.9-5.0s] silent, lips closed, the husband's son holds the look until the end. Camera: still locked off until the end.\nDIALOGUE: [LANGUAGE: KOREAN] only the husband's son speaks, in natural fluent everyday Korean with standard Seoul intonation, at a brisk natural conversational pace with every consonant and syllable crisp and clearly articulated, lips moving in sync with every syllable. the husband's son says these exact words once and nothing more: \"그 땅엔 빚이 더 많습니다. 드릴 게 없어요.\"\nVOICE: the husband's son — a low, steady man's voice in his fifties, native Korean speaker, polite but cool and distant. Delivery (Korean note): 50대 남성이, 감정 없이 사무적으로.\nSOUND: the husband's son's voice with quiet room tone underneath, and nothing else.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the people are sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones, the exact same colour grade in every shot of this story.\nSTYLE: naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.\nUse Image1 as the starting frame. Use the other images as references for the people.",
+   "omni_ref": "[# References <IMAGE_REF_0>@Image1]\nA short fictional drama scene. Every character is invented for this story and resembles nobody. Vertical 9:16, exactly 5 seconds, one single continuous shot from the first frame to the last.\nCAST: the husband's son <IMAGE_REF_0> is the only person in this scene, each looking exactly like their own reference the whole time. Each reference shows that person twice — a close view and a full-length view — one single person.\nSHOT: the husband's son stands with arms crossed in a modern office, cool daylight, looking straight ahead, medium shot. A close-up of the face straight on, shot at eye level, level and plain, intense steady gaze.\nFRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, the face near the middle of the frame, clearly visible and sharp, the eye line held about a third of the way down from the top of the vertical frame.\nTIMELINE:\n[0.0-0.6s] silent, the husband's son holds the moment. Camera: locked off completely still on a tripod.\n[0.6-2.4s] the husband's son says in Korean: \"그 땅엔 빚이 더 많습니다.\" Camera: still locked off while only the husband's son's face moves.\n[2.4-2.8s] one short breath. Camera: still locked off.\n[2.8-3.9s] the husband's son says in Korean: \"드릴 게 없어요.\" Camera: still locked off while only the husband's son's face moves.\n[3.9-5.0s] silent, lips closed, the husband's son holds the look until the end. Camera: still locked off until the end.\nDIALOGUE: [LANGUAGE: KOREAN] only the husband's son speaks, in natural fluent everyday Korean with standard Seoul intonation, at a brisk natural conversational pace with every consonant and syllable crisp and clearly articulated, lips moving in sync with every syllable. the husband's son says these exact words once and nothing more: \"그 땅엔 빚이 더 많습니다. 드릴 게 없어요.\"\nVOICE: the husband's son — a low, steady man's voice in his fifties, native Korean speaker, polite but cool and distant. Delivery (Korean note): 50대 남성이, 감정 없이 사무적으로.\nSOUND: the husband's son's voice with quiet room tone underneath, and nothing else.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the people are sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones, the exact same colour grade in every shot of this story.\nSTYLE: naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.\nUse the given images only as references for how the people look; the video opens on a fresh shot of the scene.",
    "place": "사무실",
    "chapter": "맞선 주장"
   },
@@ -1619,7 +1619,7 @@
    "text": "10년이 지났습니다. 너무 늦으셨어요.",
    "scene": "아들 stands by a large window in a bright modern office, turning his head toward the camera, medium shot",
    "say": [
-    "40대 남성이, 짧고 단호하게"
+    "50대 남성이, 짧고 단호하게"
    ],
    "still_of": null,
    "scrub": null,
@@ -1633,8 +1633,8 @@
     "move": "push"
    },
    "omni_sec": 5,
-   "omni": "[# Sources <FIRST_FRAME>@Image1] [# References <IMAGE_REF_0>@Image2]\nA short fictional drama scene. Every character is invented for this story and resembles nobody. Vertical 9:16, exactly 5 seconds, one single continuous shot from the first frame to the last.\nCAST: the husband's son <IMAGE_REF_0> is the only person in this scene, each looking exactly like their own reference the whole time. Each reference shows that person twice — a close view and a full-length view — one single person.\nSHOT: the husband's son stands by a large window in a bright modern office, turning his head toward the camera, medium shot. A medium-wide shot from the knees up in three-quarter view with the room open around them, shot at eye level, level and plain.\nFRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, seen from the knees up with the room around them, the face near the middle and clearly readable, the eye line held about a third of the way down from the top of the vertical frame.\nTIMELINE:\n[0.0-0.6s] silent, the husband's son holds the moment. Camera: starts a very slow push-in from the opening framing.\n[0.6-2.2s] the husband's son says in Korean: \"10년이 지났습니다.\" Camera: the slow push-in continues towards the husband's son's face.\n[2.2-2.6s] one short breath. Camera: the push-in slows for a beat.\n[2.6-3.9s] the husband's son says in Korean: \"너무 늦으셨어요.\" Camera: the slow push-in continues towards the husband's son's face.\n[3.9-5.0s] silent, lips closed, the husband's son holds the look until the end. Camera: settles to a stop on a slightly closer framing of the husband's son and holds.\nDIALOGUE: [LANGUAGE: KOREAN] only the husband's son speaks, in natural fluent everyday Korean with standard Seoul intonation, at a brisk natural conversational pace with every consonant and syllable crisp and clearly articulated, lips moving in sync with every syllable. the husband's son says these exact words once and nothing more: \"10년이 지났습니다. 너무 늦으셨어요.\"\nVOICE: the husband's son — a low, steady man's voice in his forties, native Korean speaker, polite but cool and distant. Delivery (Korean note): 40대 남성이, 짧고 단호하게.\nSOUND: the husband's son's voice with quiet room tone underneath, and nothing else.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the people are sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones, the exact same colour grade in every shot of this story.\nSTYLE: naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.\nUse Image1 as the starting frame. Use the other images as references for the people.",
-   "omni_ref": "[# References <IMAGE_REF_0>@Image1]\nA short fictional drama scene. Every character is invented for this story and resembles nobody. Vertical 9:16, exactly 5 seconds, one single continuous shot from the first frame to the last.\nCAST: the husband's son <IMAGE_REF_0> is the only person in this scene, each looking exactly like their own reference the whole time. Each reference shows that person twice — a close view and a full-length view — one single person.\nSHOT: the husband's son stands by a large window in a bright modern office, turning his head toward the camera, medium shot. A medium-wide shot from the knees up in three-quarter view with the room open around them, shot at eye level, level and plain.\nFRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, seen from the knees up with the room around them, the face near the middle and clearly readable, the eye line held about a third of the way down from the top of the vertical frame.\nTIMELINE:\n[0.0-0.6s] silent, the husband's son holds the moment. Camera: starts a very slow push-in from the opening framing.\n[0.6-2.2s] the husband's son says in Korean: \"10년이 지났습니다.\" Camera: the slow push-in continues towards the husband's son's face.\n[2.2-2.6s] one short breath. Camera: the push-in slows for a beat.\n[2.6-3.9s] the husband's son says in Korean: \"너무 늦으셨어요.\" Camera: the slow push-in continues towards the husband's son's face.\n[3.9-5.0s] silent, lips closed, the husband's son holds the look until the end. Camera: settles to a stop on a slightly closer framing of the husband's son and holds.\nDIALOGUE: [LANGUAGE: KOREAN] only the husband's son speaks, in natural fluent everyday Korean with standard Seoul intonation, at a brisk natural conversational pace with every consonant and syllable crisp and clearly articulated, lips moving in sync with every syllable. the husband's son says these exact words once and nothing more: \"10년이 지났습니다. 너무 늦으셨어요.\"\nVOICE: the husband's son — a low, steady man's voice in his forties, native Korean speaker, polite but cool and distant. Delivery (Korean note): 40대 남성이, 짧고 단호하게.\nSOUND: the husband's son's voice with quiet room tone underneath, and nothing else.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the people are sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones, the exact same colour grade in every shot of this story.\nSTYLE: naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.\nUse the given images only as references for how the people look; the video opens on a fresh shot of the scene.",
+   "omni": "[# Sources <FIRST_FRAME>@Image1] [# References <IMAGE_REF_0>@Image2]\nA short fictional drama scene. Every character is invented for this story and resembles nobody. Vertical 9:16, exactly 5 seconds, one single continuous shot from the first frame to the last.\nCAST: the husband's son <IMAGE_REF_0> is the only person in this scene, each looking exactly like their own reference the whole time. Each reference shows that person twice — a close view and a full-length view — one single person.\nSHOT: the husband's son stands by a large window in a bright modern office, turning his head toward the camera, medium shot. A medium-wide shot from the knees up in three-quarter view with the room open around them, shot at eye level, level and plain.\nFRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, seen from the knees up with the room around them, the face near the middle and clearly readable, the eye line held about a third of the way down from the top of the vertical frame.\nTIMELINE:\n[0.0-0.6s] silent, the husband's son holds the moment. Camera: starts a very slow push-in from the opening framing.\n[0.6-2.2s] the husband's son says in Korean: \"10년이 지났습니다.\" Camera: the slow push-in continues towards the husband's son's face.\n[2.2-2.6s] one short breath. Camera: the push-in slows for a beat.\n[2.6-3.9s] the husband's son says in Korean: \"너무 늦으셨어요.\" Camera: the slow push-in continues towards the husband's son's face.\n[3.9-5.0s] silent, lips closed, the husband's son holds the look until the end. Camera: settles to a stop on a slightly closer framing of the husband's son and holds.\nDIALOGUE: [LANGUAGE: KOREAN] only the husband's son speaks, in natural fluent everyday Korean with standard Seoul intonation, at a brisk natural conversational pace with every consonant and syllable crisp and clearly articulated, lips moving in sync with every syllable. the husband's son says these exact words once and nothing more: \"10년이 지났습니다. 너무 늦으셨어요.\"\nVOICE: the husband's son — a low, steady man's voice in his fifties, native Korean speaker, polite but cool and distant. Delivery (Korean note): 50대 남성이, 짧고 단호하게.\nSOUND: the husband's son's voice with quiet room tone underneath, and nothing else.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the people are sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones, the exact same colour grade in every shot of this story.\nSTYLE: naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.\nUse Image1 as the starting frame. Use the other images as references for the people.",
+   "omni_ref": "[# References <IMAGE_REF_0>@Image1]\nA short fictional drama scene. Every character is invented for this story and resembles nobody. Vertical 9:16, exactly 5 seconds, one single continuous shot from the first frame to the last.\nCAST: the husband's son <IMAGE_REF_0> is the only person in this scene, each looking exactly like their own reference the whole time. Each reference shows that person twice — a close view and a full-length view — one single person.\nSHOT: the husband's son stands by a large window in a bright modern office, turning his head toward the camera, medium shot. A medium-wide shot from the knees up in three-quarter view with the room open around them, shot at eye level, level and plain.\nFRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, seen from the knees up with the room around them, the face near the middle and clearly readable, the eye line held about a third of the way down from the top of the vertical frame.\nTIMELINE:\n[0.0-0.6s] silent, the husband's son holds the moment. Camera: starts a very slow push-in from the opening framing.\n[0.6-2.2s] the husband's son says in Korean: \"10년이 지났습니다.\" Camera: the slow push-in continues towards the husband's son's face.\n[2.2-2.6s] one short breath. Camera: the push-in slows for a beat.\n[2.6-3.9s] the husband's son says in Korean: \"너무 늦으셨어요.\" Camera: the slow push-in continues towards the husband's son's face.\n[3.9-5.0s] silent, lips closed, the husband's son holds the look until the end. Camera: settles to a stop on a slightly closer framing of the husband's son and holds.\nDIALOGUE: [LANGUAGE: KOREAN] only the husband's son speaks, in natural fluent everyday Korean with standard Seoul intonation, at a brisk natural conversational pace with every consonant and syllable crisp and clearly articulated, lips moving in sync with every syllable. the husband's son says these exact words once and nothing more: \"10년이 지났습니다. 너무 늦으셨어요.\"\nVOICE: the husband's son — a low, steady man's voice in his fifties, native Korean speaker, polite but cool and distant. Delivery (Korean note): 50대 남성이, 짧고 단호하게.\nSOUND: the husband's son's voice with quiet room tone underneath, and nothing else.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the people are sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones, the exact same colour grade in every shot of this story.\nSTYLE: naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.\nUse the given images only as references for how the people look; the video opens on a fresh shot of the scene.",
    "place": "사무실",
    "chapter": "맞선 주장"
   },
@@ -2267,16 +2267,16 @@
   {
    "n": 66,
    "kind": "나레이션",
-   "sec": 4.3,
+   "sec": 3.7,
    "narr": true,
    "turns": [
     [
      "나레이션",
-     "법원은 그것이 유류분 제도의 뜻에 크게 어긋난다고 봤습니다."
+     "그것은 유류분 제도의 뜻에 크게 어긋난다는 겁니다."
     ]
    ],
    "who": [],
-   "text": "법원은 그것이 유류분 제도의 뜻에 크게 어긋난다고 봤습니다.",
+   "text": "그것은 유류분 제도의 뜻에 크게 어긋난다는 겁니다.",
    "scene": "",
    "say": [
     "긴 사연을 전하는 낮고 차분한 목소리로, 담담하고 또렷하게"
@@ -2284,8 +2284,8 @@
    "still_of": null,
    "scrub": null,
    "still": "Fictional scene, photoreal grounded drama. A single still frame, vertical 9:16 portrait.\nSHOT: . Backlit hard from a window so the objects in the foreground fall into flat dark shapes against the pale light, long slatted shadows from the blinds lying across the floor. The place itself is the subject: the objects and the light fill the frame, quiet and empty.\nFRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, the bright window high in the frame and the dark shapes below it.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the subject is sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, the exact same colour grade in every shot of this story.\nSTYLE: a single photograph of one moment, photoreal look with natural surface texture and true-to-life proportions of the objects, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.",
-   "veo": "Fictional scene, invented characters, photoreal grounded drama. 8-second single continuous take, vertical portrait format (9 x 16).\nSHOT: . Backlit hard from a window so the objects in the foreground fall into flat dark shapes against the pale light, long slatted shadows from the blinds lying across the floor, the camera holding still while only the light shifts.\nFRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, the bright window high in the frame and the dark shapes below it.\nACTION: , unfolding slowly and quietly over the whole take, with small natural movement — a breath, a hand shifting, light moving. Mouths stay closed the whole time.\nAUDIO: nobody speaks and nobody moves their lips at any point; only the quiet room tone of the location, no music, no voice, no narration.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the subject is sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones, the exact same colour grade in every shot of this story.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, photoreal look with natural skin texture and true-to-life body proportions, ordinary everyday Korean faces with unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.",
-   "flow": "A short fictional drama scene. Every character is invented for this story and resembles nobody. 8-second single continuous take, vertical portrait format (9 x 16).\nSHOT: . Static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, the subject kept in the middle of the frame.\nACTION: the moment unfolds slowly and quietly over the whole take, with small natural movement — a breath, a hand shifting, light moving. Mouths stay closed the whole time.\nAUDIO: nobody speaks at any point; only quiet room tone, no music, no voice, no narration.\nCAMERA: background strongly out of focus, heavy bokeh, only the subject sharp.\nCOLOR: warm neutral base, low contrast, slightly lifted blacks, soft amber lamplight, muted greens and cyans.\nSTYLE: one unbroken take in one place, naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo.",
+   "veo": "Fictional scene, invented characters, photoreal grounded drama. 6-second single continuous take, vertical portrait format (9 x 16).\nSHOT: . Backlit hard from a window so the objects in the foreground fall into flat dark shapes against the pale light, long slatted shadows from the blinds lying across the floor, the camera holding still while only the light shifts.\nFRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, the bright window high in the frame and the dark shapes below it.\nACTION: , unfolding slowly and quietly over the whole take, with small natural movement — a breath, a hand shifting, light moving. Mouths stay closed the whole time.\nAUDIO: nobody speaks and nobody moves their lips at any point; only the quiet room tone of the location, no music, no voice, no narration.\nCAMERA: The background is strongly out of focus and softly blurred, heavy bokeh, only the subject is sharp and in focus.\nCOLOR: warm neutral base, low overall contrast, slightly lifted blacks, soft amber light from the practical lamps, muted greens and cyans, natural unsaturated skin tones, the exact same colour grade in every shot of this story.\nSTYLE: one single continuous take, from first frame to last in the same place with the same people, photoreal look with natural skin texture and true-to-life body proportions, ordinary everyday Korean faces with unexaggerated features, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo, no speech bubbles, no typography anywhere on screen.",
+   "flow": "A short fictional drama scene. Every character is invented for this story and resembles nobody. 6-second single continuous take, vertical portrait format (9 x 16).\nSHOT: . Static camera. The movement is already under way in the very first frame.\nFRAMING: vertical 9:16 portrait, filling the whole frame edge to edge, the subject kept in the middle of the frame.\nACTION: the moment unfolds slowly and quietly over the whole take, with small natural movement — a breath, a hand shifting, light moving. Mouths stay closed the whole time.\nAUDIO: nobody speaks at any point; only quiet room tone, no music, no voice, no narration.\nCAMERA: background strongly out of focus, heavy bokeh, only the subject sharp.\nCOLOR: warm neutral base, low contrast, slightly lifted blacks, soft amber lamplight, muted greens and cyans.\nSTYLE: one unbroken take in one place, naturalistic cinematic drama, soft film grain, muted desaturated palette, soft practical lighting, shallow depth of field, the same colour grade in every shot.\nON SCREEN: no text, no letters, no subtitles, no captions, no watermark, no logo.",
    "place": "그림",
    "fig": {
     "id": "debt",
@@ -2705,11 +2705,11 @@
    "turns": [
     [
      "나레이션",
-     "7개월 뒤 그 나라 법원에 낸 조정 신청에도, 그 땅과 사인증여가 분명히 적혀 있었습니다."
+     "반년쯤 뒤 그 나라 법원에 낸 조정 신청에도, 그 땅과 사인증여가 분명히 적혀 있었습니다."
     ]
    ],
    "who": [],
-   "text": "7개월 뒤 그 나라 법원에 낸 조정 신청에도, 그 땅과 사인증여가 분명히 적혀 있었습니다.",
+   "text": "반년쯤 뒤 그 나라 법원에 낸 조정 신청에도, 그 땅과 사인증여가 분명히 적혀 있었습니다.",
    "scene": "",
    "say": [
     "긴 사연을 전하는 낮고 차분한 목소리로, 담담하고 또렷하게"
@@ -2898,16 +2898,16 @@
   {
    "n": 85,
    "kind": "나레이션",
-   "sec": 5.1,
+   "sec": 5.4,
    "narr": true,
    "turns": [
     [
      "나레이션",
-     "그 청구로 생긴 권리도, 다시 10년이 지나기 전에 소송을 냈기 때문입니다."
+     "그 청구로 생긴 권리에 대해서도, 10년이 지나기 전에 소송을 냈기 때문입니다."
     ]
    ],
    "who": [],
-   "text": "그 청구로 생긴 권리도, 다시 10년이 지나기 전에 소송을 냈기 때문입니다.",
+   "text": "그 청구로 생긴 권리에 대해서도, 10년이 지나기 전에 소송을 냈기 때문입니다.",
    "scene": "",
    "say": [
     "긴 사연을 전하는 낮고 차분한 목소리로, 담담하고 또렷하게"
@@ -3354,18 +3354,18 @@
   {
    "n": 99,
    "kind": "나레이션",
-   "sec": 7.3,
+   "sec": 7.0,
    "narr": true,
    "turns": [
     [
      "나레이션",
-     "법원이 이정희 씨에게 돌려주라고 한 것은 남편이 남긴 땅값의 14분의 3. 아내로서 법이 지켜 준 몫이었습니다."
+     "법원이 이정희 씨 몫으로 인정한 것은 남편이 남긴 땅값의 14분의 3. 아내로서 법이 지켜 준 몫이었습니다."
     ]
    ],
    "who": [
     "아내"
    ],
-   "text": "법원이 이정희 씨에게 돌려주라고 한 것은 남편이 남긴 땅값의 14분의 3. 아내로서 법이 지켜 준 몫이었습니다.",
+   "text": "법원이 이정희 씨 몫으로 인정한 것은 남편이 남긴 땅값의 14분의 3. 아내로서 법이 지켜 준 몫이었습니다.",
    "scene": "아내 stands alone by a window with soft morning light on her face, looking out, medium close-up",
    "say": [
     "긴 사연을 전하는 낮고 차분한 목소리로, 담담하고 또렷하게"
@@ -3516,11 +3516,11 @@
    "name": "아들",
    "role_en": "the husband's son",
    "sex": "남",
-   "age": 41,
-   "flow_prompt": "Korean man, 41 years old, long lean face, sharp jawline, narrow composed eyes, neat short black hair.",
-   "flow_sheet": "FACE AND HAIR: long lean face, sharp jawline, narrow composed eyes, neat short black hair.\nBUILD: tall and lean.\nWEARING: a navy suit jacket over a light grey shirt, no tie.",
-   "face_tag": "41, long lean face, sharp jawline, narrow composed eyes, neat short black hair",
-   "voice": "a low, steady man's voice in his forties, native Korean speaker, polite but cool and distant",
+   "age": 55,
+   "flow_prompt": "Korean man, 55 years old, long lean face, sharp jawline, narrow composed eyes, neat short black hair greying at the temples.",
+   "flow_sheet": "FACE AND HAIR: long lean face, sharp jawline, narrow composed eyes, neat short black hair greying at the temples.\nBUILD: tall and lean.\nWEARING: a navy suit jacket over a light grey shirt, no tie.",
+   "face_tag": "55, long lean face, sharp jawline, narrow composed eyes, neat short black hair greying at ",
+   "voice": "a low, steady man's voice in his fifties, native Korean speaker, polite but cool and distant",
    "body": "tall and lean",
    "outfit": "a navy suit jacket over a light grey shirt, no tie"
   }
@@ -3556,12 +3556,12 @@
   {
    "name": "아들",
    "sex": "남",
-   "age": 41,
+   "age": 55,
    "role_en": "the husband's son",
-   "face": "long lean face, sharp jawline, narrow composed eyes, neat short black hair",
+   "face": "long lean face, sharp jawline, narrow composed eyes, neat short black hair greying at the temples",
    "build": "tall and lean",
    "wear": "a navy suit jacket over a light grey shirt, no tie",
-   "voice": "a low, steady man's voice in his forties, native Korean speaker, polite but cool and distant",
+   "voice": "a low, steady man's voice in his fifties, native Korean speaker, polite but cool and distant",
    "intro": "땅을 넘겨받은 남편의 아들",
    "alias": "최동준",
    "tag": "남편의 아들"
@@ -3575,7 +3575,7 @@
   "hook": {
    "type": "card",
    "text": "재혼 11개월 전의 약속",
-   "sub": "13년에 걸친 다툼"
+   "sub": "12년 넘게 이어진 다툼"
   },
   "family": {
    "type": "relations",
@@ -3734,13 +3734,13 @@
     {
      "id": "r3",
      "year": "22일 뒤",
-     "who": "최동준이 빌린 돈",
+     "who": "최동준 씨가 빌린 돈",
      "what": "23억 6,400만 원"
     },
     {
      "id": "r4",
      "year": "넉 달 뒤",
-     "who": "최동준이 또 빌린 돈",
+     "who": "최동준 씨가 또 빌린 돈",
      "what": "13억 2,500만 원 · 최만석 씨 보증"
     },
     {
@@ -3752,7 +3752,7 @@
     {
      "id": "r6",
      "year": "10년 8개월 뒤",
-     "who": "최만석 별세",
+     "who": "최만석 씨 별세",
      "what": "땅은 최동준 씨에게",
      "color": "red"
     }
@@ -3790,7 +3790,7 @@
     },
     {
      "id": "t2",
-     "year": "7개월 뒤",
+     "year": "반년쯤 뒤",
      "who": "이정희",
      "what": "외국 법원에 조정 신청"
     },
@@ -3901,7 +3901,7 @@
     ],
     [
      "doc",
-     "아내 몫은 14분의 3"
+     "아내의 유류분은 14분의 3"
     ]
    ],
    "question": "쟁점은 두 가지",
@@ -4171,7 +4171,7 @@
   "cap": 3000.0,
   "presses": 2,
   "parts": {
-   "1": 672.9
+   "1": 672.3
   },
   "over": [],
   "max_sec": 899.0,
