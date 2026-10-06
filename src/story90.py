@@ -853,6 +853,33 @@ def is_long(doc):
     return str((doc or {}).get("layout") or "") == LONG
 
 
+# ⭐⭐⭐ 말 빠르기 (조립할 때 거는 배속 · 목소리는 늘 보통 빠르기로 만든다 → 바꿔도 목소리 값 0원)
+#    쇼츠 1.28배 — 2026-10-02 손님: "1.28배로 가자" (3분 한도 · 피드에서는 빠른 편이 덜 넘긴다)
+#    긴 영상 1.15배 — 2026-10-06 손님: "다음번부터는 말속도를 좀 더 천천히" → 선택 메뉴 「1.15배 (추천)」
+#      S95 는 1.28배 = 1분에 약 409자(목소리 원래 빠르기 약 320자). 1.15배 = 약 368자 · 같은 대본이 약 11% 길어진다
+#      (S95 기준 8분 41초 → 약 9분 33초 · 얼굴 영상값 약 +460원). 50~80대 시청자 · 법 낱말 · 숫자가 많다.
+#    대본에 `speed` 를 적으면 그 값이 이긴다 (S95 는 만든 그대로 1.28 을 적어 두었다).
+SPEED_TALL = 1.28
+SPEED_LONG = 1.15
+SPEED_RANGE = (1.0, 1.28)                    # short90.SPEED_MAX · tts.RATE_MAX — 넘기면 자음이 무너진다
+
+
+def speed_of(doc):
+    """그 대본의 말 빠르기 — 대본 speed → 긴 영상 1.15 · 쇼츠 1.28."""
+    v = (doc or {}).get("speed")
+    if v is not None:
+        try:
+            return min(SPEED_RANGE[1], max(SPEED_RANGE[0], float(v)))
+        except (TypeError, ValueError):
+            pass
+    return SPEED_LONG if is_long(doc) else SPEED_TALL
+
+
+def char_sec(speed=SPEED_TALL):
+    """한 글자가 영상에서 몇 초인가 — 잣대 SEC60_PER_CHAR 는 1.28배에서 잰 값이라 배속으로 고친다."""
+    return SEC60_PER_CHAR * SPEED_TALL / max(0.5, float(speed))
+
+
 def style_get(doc, key, dflt=None):
     """대본 값 → (설명 드라마면) 기본값 → dflt. **대본이 적은 값이 언제나 이긴다.**
     gap · name_first · end_note 를 읽는 자리는 전부 여기를 거친다 (short90 · part_sec · 검사)."""
@@ -1144,6 +1171,14 @@ def check_drama(doc, new=True):
         if not said and "실제" not in str(style_get(doc, "end_note") or ""):
             bad.append("마지막 컷은 나레이션 「실제로 있었던 사건입니다.」 로 맺는다 "
                        "(또는 끝 화면 글 end_note 에 실제 판결이라고 적는다)")
+    # ⭐ 말 빠르기를 적었으면 1.0~1.28배 안이다 (넘기면 한국어 자음이 무너진다 · 2026-10-02 핵심 규칙)
+    if doc.get("speed") is not None:
+        try:
+            ok = SPEED_RANGE[0] <= float(doc["speed"]) <= SPEED_RANGE[1]
+        except (TypeError, ValueError):
+            ok = False
+        if not ok:
+            bad.append(f"말 빠르기(speed)는 {SPEED_RANGE[0]}~{SPEED_RANGE[1]}배 사이다 — 지금 '{doc.get('speed')}'")
     # ⭐ 옴니 영상 화질은 둘 중 하나 (2026-10-02 손님 — 올릴 영상은 360p / 720p 를 고른다)
     if doc.get("all_video") and str(doc.get("res") or RES_DEFAULT) not in RES_CHOICES:
         bad.append(f"영상 화질(res)은 {' 또는 '.join(RES_CHOICES)} 가운데 하나다 — "
@@ -1453,7 +1488,8 @@ def part_sec(cuts, doc=None):
     if (doc or {}).get("all_video"):
         # ⭐ 말 사이 쉼(gap)을 두면 컷마다 그만큼 길어진다 (기본 0.12초 → S94 v5 0.5초)
         per = SEC60_PER_CUT + max(0.0, float(style_get(doc, "gap", GAP_TIGHT)) - GAP_TIGHT)
-        return SEC60_PER_CHAR * sum(chars(c) for c in cuts) + per * len(cuts)
+        # ⭐ 말 빠르기를 따라 글자 길이가 달라진다 (긴 영상 1.15배면 글자마다 약 11% 길다)
+        return char_sec(speed_of(doc)) * sum(chars(c) for c in cuts) + per * len(cuts)
     return (SEC_PER_CHAR * sum(chars(c) for c in cuts)
             + SEC_PER_CUT * len(cuts))
 

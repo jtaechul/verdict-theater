@@ -9,7 +9,7 @@
    "앞으로 우리가 제작하는 영상에서도 동일한 방식으로 제작이 될수 있게끔".
    설명 드라마 대본은 AI 대본 짓기(story90 main · 워크플로)를 거치지 않고 작업 칸에서 짓는다.
    그때 손으로 하던 일(컷 번호 · 길이 어림 · parts/people · 목소리 꼴)을 여기 한 곳에 둔다.
-   짓는 법·본보기: .claude/skills/verdict-explainer/SKILL.md · data/series/S94.story.json
+   짓는 법·본보기: .claude/skills/verdict-explainer/SKILL.md · 쇼츠 data/series/S94.story.json · 긴 영상 S95.story.json
 
 shape 가 하는 일 (여러 번 돌려도 같다)
     · style="explainer" · all_video=true · format="drama" 를 박는다
@@ -41,7 +41,8 @@ def shape(doc):
         c.setdefault("scene", "")
         c.setdefault("who", [])
         c.setdefault("say", [doc.get("narr") or ""])
-        c["sec"] = round(ST.SEC60_PER_CHAR * ST.chars(c) + 0.6, 1)
+        # ⭐ 컷 길이 어림은 그 대본의 말 빠르기로 (긴 영상 1.15배 · 쇼츠 1.28배)
+        c["sec"] = round(ST.char_sec(ST.speed_of(doc)) * ST.chars(c) + 0.6, 1)
         cuts.append(c)
     doc["cuts"] = cuts
     return ST.shape_drama(doc)

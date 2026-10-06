@@ -2911,9 +2911,11 @@ LAYOUT_KEYS = ("W", "H", "SIDE", "SUB_TOP", "SUB_BOT", "SUB_MAX", "SUB_MIN", "SU
                "NAME_Y", "NAME_SIZE", "INTRO_SIZE", "INTRO_ABOVE", "CHAP_Y", "CHAP_SIZE",
                "TITLE_Y", "TITLE_LABEL", "TITLE_MAX", "TITLE_MIN", "TITLE_SCRIM",
                "TAIL_Y", "TAIL_SIZE", "TAIL_SUB_SIZE", "SCRIM_TOP", "FIG_SCRIM_TOP",
-               "MARK_SIZE", "MARK_Y")
+               "MARK_SIZE", "MARK_Y", "SPEED")
 LAYOUT_TALL = {k: globals()[k] for k in LAYOUT_KEYS}
-LAYOUT_LONG = dict(LAYOUT_TALL, W=1920, H=1080, SIDE=80, SUB_TOP=868, SUB_BOT=1040,
+# ⭐ 말 빠르기도 꼴을 따라간다 — 쇼츠 1.28배 · 긴 영상 1.15배 (2026-10-06 손님 · story90.SPEED_LONG)
+LAYOUT_LONG = dict(LAYOUT_TALL, SPEED=ST90.SPEED_LONG,
+                   W=1920, H=1080, SIDE=80, SUB_TOP=868, SUB_BOT=1040,
                    SUB_MAX=96, SUB_MIN=62, SUB_FIXED=88, NAME_Y=752, NAME_SIZE=52,
                    INTRO_SIZE=40, INTRO_ABOVE=38, CHAP_Y=56, CHAP_SIZE=35,
                    TITLE_Y=150, TITLE_LABEL=36, TITLE_MAX=84, TITLE_MIN=56, TITLE_SCRIM=440,
@@ -2930,6 +2932,9 @@ def use_layout(doc):
     global LAYOUT
     want = "long" if ST90.is_long(doc) else "tall"
     globals().update(LAYOUT_LONG if want == "long" else LAYOUT_TALL)
+    # 대본이 말 빠르기를 적었으면 그 값 (S95 는 만든 그대로 1.28 — 다시 조립해도 올린 영상과 같다)
+    if (doc or {}).get("speed") is not None:
+        globals()["SPEED"] = ST90.speed_of(doc)
     LAYOUT = want
     return want
 

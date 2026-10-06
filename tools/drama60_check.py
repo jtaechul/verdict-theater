@@ -741,6 +741,28 @@ finally:
     S9.use_layout(live)
     D.RATIO = "9:16"
 ck("검사 뒤 세로로 되돌아온다 (1080×1920 · 옴니 9:16)", (S9.W, S9.H, D.RATIO) == (1080, 1920, "9:16"))
+# ⭐ 말 빠르기 — 쇼츠 1.28배 · 긴 영상 1.15배 · 대본 speed 가 이긴다 (2026-10-06 손님 「1.15배 · 긴 영상만」)
+try:
+    S9.use_layout({"layout": "long"})
+    _sp_long = S9.speed()
+    S9.use_layout(s95)
+    _sp_95 = S9.speed()
+finally:
+    S9.use_layout(live)
+ck("말 빠르기: 긴 영상 1.15배 · 쇼츠 1.28배 · 대본 speed 가 이긴다 (S95 는 만든 그대로 1.28)",
+   abs(_sp_long - 1.15) < 1e-9 and abs(_sp_95 - 1.28) < 1e-9 and abs(S9.speed() - 1.28) < 1e-9
+   and T.speed_of({"layout": "long"}) == 1.15 and T.speed_of({}) == 1.28 and s95.get("speed") == 1.28
+   # 조립 쪽(short90) 배속과 대본 잣대 쪽(story90) 배속이 같은 값이다 — 한쪽만 고치면 길이 셈이 틀린다
+   and S9.LAYOUT_TALL["SPEED"] == T.SPEED_TALL and S9.LAYOUT_LONG["SPEED"] == T.SPEED_LONG,
+   f"{_sp_long} {_sp_95} {S9.speed()}")
+_lc = [{"n": 1, "turns": [["나레이션", "가" * 100]]}]
+_ld = {"all_video": True, "layout": "long", "style": "explainer"}
+ck("긴 영상 대본 길이 잣대도 배속을 따른다 (1.15배면 글자마다 1.28/1.15 배 길다)",
+   abs((T.part_sec(_lc, _ld) - T.part_sec(_lc, dict(_ld, speed=1.28)))
+       - 100 * T.SEC60_PER_CHAR * (1.28 / 1.15 - 1)) < 1e-6)
+ck("대본 검사가 말 빠르기 범위(1.0~1.28배)를 지킨다",
+   any("말 빠르기" in b for b in T.check_drama(dict(story, speed=1.4)))
+   and not any("말 빠르기" in b for b in T.check_drama(dict(story, speed=1.15))))
 ck("세로 지문은 한 글자도 안 바뀌었다 (Vertical 9:16 · 세로 화면 눈높이 줄)",
    "Vertical 9:16, exactly 5 seconds" in pn and "FRAMING: vertical 9:16 portrait" in pn + pt
    and D.EYE_LINE in pt and "top of the vertical frame" in D.EYE_LINE)

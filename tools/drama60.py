@@ -18,7 +18,7 @@
     python3 tools/drama60.py S94 all      check → cast → voice → clips → figs → build 를 차례로
 
     설명 드라마(대본 style="explainer" · 판결극장 기본 짜임) 짓는 법:
-    .claude/skills/verdict-explainer/SKILL.md (본보기 대본 data/series/S94.story.json)
+    .claude/skills/verdict-explainer/SKILL.md (본보기 대본 쇼츠 data/series/S94.story.json · 긴 영상 S95.story.json)
 
 ⭐⭐⭐ 2026-10-02 손님:
     "1분이면 이미지 필요 없이 그냥 전체 다 영상으로 가고 나레이션이던 대화이던 영상으로"
@@ -248,7 +248,7 @@ def narr_len(c):
     w = voice_file(c)
     if w:
         return S9.dur_of(w) / S9.speed() + GAP
-    return ST90.SEC60_PER_CHAR * ST90.chars(c) + GAP + 0.3
+    return ST90.char_sec(S9.speed()) * ST90.chars(c) + GAP + 0.3
 
 
 def omni_sec(c):
@@ -1086,7 +1086,7 @@ PREVIEW_RATE = 24000
 
 def preview_len(c):
     """그 컷 목소리 길이(초 · 배속으로 감기 **전**) — 글자 잣대로 어림한다."""
-    return max(0.6, ST90.SEC60_PER_CHAR * ST90.chars(c) * S9.speed())
+    return max(0.6, ST90.char_sec(S9.speed()) * ST90.chars(c) * S9.speed())
 
 
 def silent_wav(c, out):

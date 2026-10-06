@@ -4219,6 +4219,7 @@
   ]
  },
  "ai_label": true,
+ "speed": 1.28,
  "talk": {
   "n": 7,
   "cuts": [

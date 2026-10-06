@@ -1385,7 +1385,7 @@ def speech_sec(c):
     if w.exists():
         return S9.dur_of(w) / S9.speed()
     import story90 as ST90
-    return ST90.SEC60_PER_CHAR * ST90.chars(c)
+    return ST90.char_sec(S9.speed()) * ST90.chars(c)
 
 
 def when(c, trigger, speech):
