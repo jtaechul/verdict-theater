@@ -3145,6 +3145,12 @@ def main():
     only = [int(x) for x in a.part.replace(" ", "").split(",") if x] or None
     try:
         doc = load()
+        # ⭐ 2026-10-06 — 미끼 쇼츠(본편 영상 조각으로 짓는 쇼츠)는 작업 칸의 tools/teaser.py 가 만든다.
+        #    여기서 만들면 없는 그림·목소리를 사러 가거나 만든 영상을 덮는다 (관리자 단추로 눌려도 멈춘다).
+        if str(doc.get("format") or "") == "teaser":
+            print(f"❌ {SID} 는 미끼 쇼츠다 — 작업 칸에서 `python3 tools/teaser.py {SID} build "
+                  f"--part N` 으로 만든다 (여기서는 만들지 않는다 · 0원)")
+            return 2
         # ⭐ meta 는 돈이 안 나간다 — 만들기와 따로 부를 수 있어야 한다
         #   (관리자 페이지가 올릴 글을 미리 보여 줄 때 이것만 부른다)
         if a.what == "meta":

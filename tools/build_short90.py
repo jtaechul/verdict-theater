@@ -1143,6 +1143,11 @@ def main(argv=None):
     if not re.fullmatch(r"S\d{1,4}", sid):
         raise SystemExit(f"❌ 사건 번호가 이상합니다: {sid!r} (S90 처럼 적습니다)")
     story_p, out_p, meta_p = paths(sid)
+    # ⭐ 2026-10-06 — 미끼 쇼츠(tools/teaser.py)는 대본(.story.json) 없이 S<번호>.json 이 곧 대본이다.
+    #    여기서 지으면 그 대본과 올릴 글(손으로 쓴 것)을 덮는다 → 멈춘다.
+    if out_p.exists() and json.loads(out_p.read_text(encoding="utf-8")).get("format") == "teaser":
+        print(f"❌ {sid} 는 미끼 쇼츠다 — tools/teaser.py 가 짓는다 (대본·올릴 글을 덮지 않는다)")
+        return 1
     story = load_story(story_p)
     # ⭐ 2026-09-30 — 2분 드라마면 인물 참조가 시트 칸이다 (위 SHEET_REFS)
     global SHEET_REFS

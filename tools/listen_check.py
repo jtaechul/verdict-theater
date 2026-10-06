@@ -73,7 +73,9 @@ def listen(mp4):
     tin = int(u.get("promptTokenCount") or 0)
     tout = int(u.get("candidatesTokenCount") or 0) + int(u.get("thoughtsTokenCount") or 0)
     won = cost.krw(MODEL, tin, tout)
-    cost.record("검토", won, f"받아쓰기 점검 {Path(mp4).name} (목소리가 대본대로인지)")
+    # ⭐ 2026-10-06 — 29초 쇼츠가 232원(9분 긴 영상은 51원)이었다. 생각 토큰이 들쭉날쭉하다 → 장부에 토큰도 적는다
+    cost.record("검토", won, f"받아쓰기 점검 {Path(mp4).name} (목소리가 대본대로인지) · 토큰 들어간 {tin:,} · "
+                           f"나온 {int(u.get('candidatesTokenCount') or 0):,} · 생각 {int(u.get('thoughtsTokenCount') or 0):,}")
     return text, won
 
 

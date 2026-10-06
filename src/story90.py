@@ -1517,9 +1517,11 @@ def sid_for(case_id):
 
 
 def next_sid():
-    """다음 사건 번호. 이미 있는 대본을 덮어쓰지 않는다."""
+    """다음 사건 번호. 이미 있는 대본을 덮어쓰지 않는다.
+    ⭐ 2026-10-06 — 대본(.story.json) 없이 사는 사건도 센다 (미끼 쇼츠 S96 = S95 본편 조각으로 짓는 쇼츠 ·
+       tools/teaser.py). story 만 세면 다음 판례가 S96 을 받아 data/series/S96.json 을 덮는다."""
     n = 0
-    for f in SERIES.glob("S*.story.json"):
+    for f in list(SERIES.glob("S*.story.json")) + list(SERIES.glob("S*.json")):
         m = re.fullmatch(r"S(\d+)", f.name.split(".")[0])
         if m:
             n = max(n, int(m.group(1)))
