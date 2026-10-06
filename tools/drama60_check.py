@@ -19,6 +19,9 @@
   ⑩ 기본 짜임       style="explainer" 하나로 쉼 0.5 · 이름표 · 끝 글 · 대본 검사(화면 속 사람 =
                     나레이션 · 이름 + 씨 · 헷갈리는 말 · 그림 맞물림) · 검수 시간표 · 받아쓰기 비교
                     (2026-10-02 손님: "앞으로 우리가 제작하는 영상에서도 동일한 방식으로")
+  ⑪ 화질 360p/720p · ⑫ 올릴 준비 · ⑬ 익명화 · ⑭ 긴 영상 잣대 · 같은 장면 한 번만 사기
+  ⑮ 가로 화면(layout=long · 1920×1080) — 세로 자리값·지문 그대로 · 가로 그림이 자막 칸 위 ·
+     글판 장 넘김 · 옴니 16:9 · 끝 화면 · 맛보기(0원 · 상태 파일 안 건드림)
 
 ⚠️ ①②⑦⑧ 은 1분 시험작(S94 v3) 그대로의 고정 대본(tools/fixtures/drama60_s94_v3.json)으로 본다.
    지금 S94 는 손님이 고르신 v5(약 2분 50초 · 그림 컷 17개)로 바뀌었다 (2026-10-02).
@@ -470,8 +473,10 @@ except SystemExit:
 ck("대본 검사가 엉뚱한 화질(res)을 잡는다",
    any("화질" in b for b in T.check_drama(dict(story, res="1080p")))
    and not any("화질" in b for b in T.check_drama(dict(story, res="720p"))))
-ck("제작본(build_short90)이 화질(res)을 옮겨 적는다",
-   '("style", "res", "gap", "name_first", "end_note", "figs")' in b94)
+_keys = b94[b94.index('for k in ("style"'):b94.index("if story.get(k) is not None")]
+ck("제작본(build_short90)이 화질(res) · 화면 꼴(layout) · 금액 배율(amount_scale)을 옮겨 적는다",
+   all(f'"{k}"' in _keys for k in ("res", "gap", "name_first", "end_note", "figs", "layout",
+                                    "amount_scale")))
 with tempfile.TemporaryDirectory() as t:
     t = Path(t)
     keep_vd = S9.video_dir
@@ -608,6 +613,150 @@ ck("값 어림 = 실제로 살 컷만 (같은 장면 다시 쓰는 컷은 0원 �
 srcd = (ROOT / "tools" / "drama60.py").read_text(encoding="utf-8")
 ck("사기 단계도 같은 장면 컷은 사지 않고 창고에서 꺼낸다", "if not r.get(\"dup_of\")}" in srcd
    and "같은 장면 컷은 앞 컷이 산 영상을 창고에서 다시 쓴다" in srcd)
+
+print("\n⑮ 가로 화면 (layout=long · 1920×1080 · 2026-10-05) — 세로 쇼츠는 한 점도 안 바뀐다")
+import diagram60 as DG                                        # noqa: E402
+s95 = json.loads((ROOT / "data" / "series" / "S95.json").read_text(encoding="utf-8"))
+LT = S9.LAYOUT_TALL
+ck("세로 자리값은 예전 그대로 (1080×1920 · 자막 1300~1620 · 이름표 1214 · 대목 128)",
+   (LT["W"], LT["H"], LT["SUB_TOP"], LT["SUB_BOT"], LT["NAME_Y"], LT["CHAP_Y"], LT["TAIL_Y"])
+   == (1080, 1920, 1300, 1620, 1214, 128, 900))
+ck("세로 대본(S94)은 세로로 · 긴 영상 대본(S95)은 가로로 고른다",
+   S9.use_layout(live) == "tall" and S9.use_layout(s95) == "long")
+try:
+    ck("가로 자리값 — 1920×1080 · 자막 868~1040 · 이름표 752",
+       (S9.W, S9.H, S9.SUB_TOP, S9.SUB_BOT, S9.NAME_Y) == (1920, 1080, 868, 1040, 752))
+    vb = DG.validate(s95)
+    ck("가로 그림이 대본과 맞물린다 (S95 그림 14종 · 79컷)", not vb, "; ".join(vb[:3]))
+    over, side = [], []
+    for fid in s95["figs"]:
+        for nm, e in DG.elements(s95, fid).items():
+            if e.xy[1] + e.sprite.height > S9.SUB_TOP - 20:
+                over.append(f"{fid}.{nm}")
+            if e.sprite.width > 2 and (e.xy[0] < 40 or e.xy[0] + e.sprite.width > S9.W - 40):
+                side.append(f"{fid}.{nm}")
+    ck("가로 그림은 자막 칸(868~) 위에 앉는다 — 요소 하나도 안 내려온다", not over, ", ".join(over))
+    ck("가로 그림이 화면 옆 끝(40px)을 넘지 않는다", not side, ", ".join(side))
+    # 글판 — 장 넘김 · X · 셈과 답 · new
+    items = [{"id": "a", "kind": "line"}, {"id": "cl", "kind": "claim"},
+             {"id": "b", "kind": "chip", "new": True}, {"id": "c", "kind": "chip"},
+             {"id": "e1", "kind": "eq"}, {"id": "r1", "kind": "result"}]
+    pg = DG.board_pages(items, top=170, bottom=640)
+    ck("글판: new 가 붙은 줄은 칸이 남아도 새 장", pg["cl"][0] == 0 and pg["b"][0] == 1)
+    ck("글판: 셈(eq)과 바로 뒤 답(result)은 같은 장 (S95 셈 둘째 줄이 혼자 넘어갔다)",
+       pg["e1"][0] == pg["r1"][0])
+    bd = {e.name: e for e in DG.fig_board(s95, {"items": items, "cross": "cl", "title": "t"})}
+    ck("글판: 주장 장이 넘어가면 그 주장에 그은 X 도 사라진다", "cross" in bd["b"].replaces)
+    sp = s95["figs"]["debt"]
+    pos = DG.board_pages(sp["items"])
+    ck("S95 첫째 쟁점 글판 — 주장·이유·판결 말·보증이 장마다 나뉜다 (4장)",
+       len({v[0] for v in pos.values()}) == 4 and pos["claim"][0] == 0 and pos["unsure"][0] == 1)
+    ck("가로 글판 글씨는 1.12배 (세로는 1배 그대로)", DG.bk() == 1.12 and DG.BOARD_K["tall"] == 1.0)
+    # 옴니 지문 — 가로
+    D.RATIO = "16:9"
+    p16 = D.prompt(narr, sh_n, 5, by)
+    t16 = D.prompt(talk, sh_t, 4, by)
+    ck("가로 지문: 16:9 와이드 · 세로 낱말이 하나도 없다",
+       "Horizontal 16:9 widescreen, exactly 5 seconds" in p16 and "horizontal 16:9 widescreen landscape"
+       in t16 and "9:16" not in p16 + t16 and "vertical" not in (p16 + t16).lower())
+    k16 = D.vkey(narr)
+    D.CUR["doc"] = s95
+    rows95, bad95 = D.plan(s95, lib={}, quiet=True)
+    ck("S95 카메라 계획이 깨끗하다 — 사기 단계(clips)가 안 막힌다", not bad95, "; ".join(bad95))
+    ck("S95 같은 장면 6컷은 0원 (뒤 컷은 앞 컷 영상을 다시 쓴다)",
+       sum(1 for r in rows95 if r.get("dup_of")) == 6 and all(r["krw"] == 0 for r in rows95 if r.get("dup_of")))
+    D.CUR.pop("doc", None)
+    D.RATIO = "9:16"
+    ck("가로 영상 창고 열쇠는 세로와 다르다 (세로로 산 영상을 가로에 다시 안 쓴다)", k16 != D.vkey(narr))
+    ck("세로 창고 열쇠는 예전 그대로 (이미 산 S94 영상이 그대로 맞는다)",
+       D.vkey(narr) == D.reuse.sig_of("v60", narr.get("scene") or "", "|".join(narr.get("who") or []), ""))
+finally:
+    S9.use_layout(live)
+    D.RATIO = "9:16"
+ck("검사 뒤 세로로 되돌아온다 (1080×1920 · 옴니 9:16)", (S9.W, S9.H, D.RATIO) == (1080, 1920, "9:16"))
+ck("세로 지문은 한 글자도 안 바뀌었다 (Vertical 9:16 · 세로 화면 눈높이 줄)",
+   "Vertical 9:16, exactly 5 seconds" in pn and "FRAMING: vertical 9:16 portrait" in pn + pt
+   and D.EYE_LINE in pt and "top of the vertical frame" in D.EYE_LINE)
+libf = S9.video_dir() / "library.json"
+if libf.exists():
+    lib94 = json.loads(libf.read_text(encoding="utf-8"))
+    by94 = D.cast_of(json.loads((ROOT / "data" / "series" / "S94.json").read_text(encoding="utf-8")))
+    real94 = [c for c in live["cuts"] if not D.is_fig(c)]
+    same = [c["n"] for c in real94 if (lib94.get(D.vkey(c)) or {}).get("prompt") ==
+            D.prompt(c, lib94[D.vkey(c)]["shot"], lib94[D.vkey(c)]["sec"], by94)]
+    have = [c["n"] for c in real94 if D.vkey(c) in lib94]
+    ck("S94 창고 영상의 지문이 지금 지문과 글자까지 같다 (세로가 안 바뀐 증거)",
+       have and same == have, f"{len(same)}/{len(have)}")
+else:
+    print("   ⏭  S94 영상 창고가 없다 (깃허브) — '산 지문 그대로' 는 작업 칸에서만 본다")
+_sh = C.plan([{"n": 1, "turns": [["나레이션", "가"]], "who": ["딸"], "scene": "a"}])[0]
+_sp = dict(_sh, special=True)
+ck("이웃 규칙은 화면에서 바로 붙는 얼굴 컷끼리만 (사이에 그림 컷이 끼면 안 본다)",
+   C.check([{"n": 1}, {"n": 5}], [_sh, _sh]) == [] and len(C.check([{"n": 1}, {"n": 2}], [_sh, _sh])) == 1)
+ck("같은 장면을 다시 쓰는 컷은 특별한 시점 수에 두 번 안 센다",
+   not C.check([{"n": 1}, {"n": 9}, {"n": 19}], [_sp, _sp, _sp], reuse={2})
+   and any("특별한 시점" in b for b in C.check([{"n": 1}, {"n": 9}, {"n": 19}], [_sp, _sp, _sp])))
+srcd = (ROOT / "tools" / "drama60.py").read_text(encoding="utf-8")
+src9 = (ROOT / "src" / "short90.py").read_text(encoding="utf-8")
+ck("옴니에 영상 꼴(16:9)을 그대로 넘긴다 · 창고에 꼴을 적는다",
+   'res=RES, ratio=RATIO)' in srcd and '"ratio": RATIO' in srcd)
+ck("대본의 layout · amount_scale 을 고치고 제작본을 안 다시 지으면 잡는다",
+   D.stale({"cuts": [], "layout": "long"}, {"cuts": []})
+   and D.stale({"cuts": [], "amount_scale": 1.3}, {"cuts": []})
+   and not D.stale({"cuts": [], "layout": "long"}, {"cuts": [], "layout": "long"}))
+ck("긴 영상은 끝 알림을 마지막 컷에 얹지 않고 끝 화면을 붙인다 (그림 카드와 겹쳤다)",
+   'tail=tail if (i == len(cuts) - 1 and not long_end) else ""' in src9
+   and 'end_screen(tail, parts_d / "end.mp4", note)' in src9)
+ck(f"끝 화면은 {S9.END_SEC:g}초 — 유튜브 최종 화면(5~20초)이 들어갈 길이", 5 <= S9.END_SEC <= 20)
+ck("검수 시간표는 끝 화면을 컷으로 세지 않는다", 'got -= S9.dur_of(endc)' in srcd)
+with tempfile.TemporaryDirectory() as td:
+    keep_out = S9.OUT
+    try:
+        S9.use_layout(s95)
+        e_mp4 = S9.end_screen("완결", Path(td) / "end.mp4", "등장인물 이름은 가명입니다")
+        pr = subprocess.run(["ffprobe", "-v", "error", "-show_entries",
+                             "stream=codec_name,width,height,sample_rate,channels",
+                             "-of", "csv=p=0", str(e_mp4)], capture_output=True, text=True).stdout
+        ck("끝 화면은 컷 조각과 같은 규격 (h264 1920×1080 · aac 48kHz 2채널 — 이어붙여도 소리가 산다)",
+           "h264,1920,1080" in pr and "aac,48000,2" in pr and abs(S9.dur_of(e_mp4) - S9.END_SEC) < 0.2,
+           pr.replace("\n", " "))
+        # 맛보기 조각 — 무음 목소리 · 자리 표시 화면 (0원 · 상태 파일 안 건드림)
+        S9.OUT = Path(td)
+        D.RATIO = "16:9"
+        c1 = next(c for c in s95["cuts"] if not c.get("fig"))
+        w = Path(td) / "voice" / "c01.wav"
+        sec = D.silent_wav(c1, w)
+        lens = json.loads(S9.lens_of(w).read_text(encoding="utf-8"))
+        ck("맛보기 무음 목소리 = 글자 잣대 길이 · 줄마다 길이를 적는다 (자막이 그 비율로 흐른다)",
+           abs(S9.dur_of(w) - sec) < 0.05 and abs(sum(lens) - sec) < 0.05)
+        # 다른 대본(또는 지문 없는) 목소리 길이로 영상 길이·값을 세지 않는다 (S95 를 S94 목소리로 셌다)
+        D.CUR["doc"] = s95
+        est = T.SEC60_PER_CHAR * T.chars(c1) + D.GAP + 0.3
+        ck("지문이 안 맞는 목소리는 영상 길이 셈에 안 쓴다 (글자 잣대로 어림)",
+           D.voice_file(c1) is None and abs(D.narr_len(c1) - est) < 1e-6)
+        D.reuse.stamp(w, S9.voice_plan(c1, s95)[0])
+        ck("그 컷 지문이 맞는 목소리는 진짜 길이로 센다",
+           D.voice_file(c1) == w and abs(D.narr_len(c1) - (S9.dur_of(w) / S9.speed() + D.GAP)) < 1e-6)
+        D.CUR.pop("doc", None)
+        ph = Path(td) / "c01.mp4"
+        D.placeholder(s95, c1, {"sec": 6, "dup_of": None}, D.cast_of(s95), ph)
+        ck("맛보기 얼굴 자리 화면은 가로 1920×1080 영상", "1920,1080" in subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height",
+             "-of", "csv=p=0", str(ph)], capture_output=True, text=True).stdout)
+    finally:
+        S9.OUT = keep_out
+        S9.use_layout(live)
+        D.RATIO = "9:16"
+        D.CUR.pop("doc", None)
+d95 = Y.part_meta(s95, s95["parts"][0], last=True)["description"]
+ck("설명란 끝 알림 — 붙여 쓴 「지역·금액」 은 안 쪼갠다 (「 · 」 에서만 줄을 나눈다)",
+   "등장인물 이름은 가명이고 지역·금액은 바꾸었습니다." in d95 and "\n금액은" not in d95)
+prev = srcd[srcd.index("def step_preview"):srcd.index("def step_build")]
+ck("맛보기는 돈 드는 것을 안 부른다 (옴니·목소리 없음) · 자리는 build/preview",
+   "omni.make" not in prev and "tts" not in prev and "step_clips" not in prev and "step_voice" not in prev
+   and 'S9.OUT = PREVIEW_DIR / sid' in prev and 'PREVIEW_DIR = ROOT / "build" / "preview"' in srcd)
+ck("맛보기는 만든 기록(상태 파일)을 안 남긴다", "S9.PREVIEW = True" in prev
+   and "if not PREVIEW:\n        shortstate.mark_made" in src9)
 
 print("─" * 56)
 if bad:

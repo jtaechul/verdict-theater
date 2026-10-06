@@ -12,6 +12,8 @@
     python3 tools/drama60.py S94 build    조립 (0원) → build/s90/<사건>_part1.mp4
     python3 tools/drama60.py S94 sheet    완성 영상 검수 (0원) — 컷마다 한 장 + 컷 시간표
                                           --at 1:36 : 손님이 짚은 시각이 몇 번 컷인지
+    python3 tools/drama60.py S95 preview  맛보기 (0원) — 목소리는 무음 · 얼굴 영상은 자리 표시 · 그림은 진짜
+                                          → build/preview/<사건>/ (진짜 제작 자리·상태·장부를 안 건드린다)
     python3 tools/drama60.py S94 all      check → cast → voice → clips → figs → build 를 차례로
 
     설명 드라마(대본 style="explainer" · 판결극장 기본 짜임) 짓는 법:
@@ -36,6 +38,8 @@
     · 조립은 src/short90.py build 그대로 (자막 · 이름표 · 배경음악) — 말 사이 쉼은 대본 gap
       (설명 드라마 0.5초 · 없으면 0.12초).
     · 같은 지문은 다시 안 산다 (src/reuse.py — 0원). 값은 전부 장부에 적힌다.
+    · ⭐ 대본 layout="long"(긴 영상 · 2026-10-05)이면 옴니도 **가로 16:9** 로 사고, 조립·그림도
+      가로(1920×1080)다. 세로 쇼츠는 예전과 한 글자도 안 바뀐다 (지문·창고 열쇠 그대로).
 """
 import argparse
 import json
@@ -110,6 +114,10 @@ REF_ONLY = ("Use the given images only as references for how the people look; th
 
 _lock = threading.Lock()
 GAP = S9.PAD_TIGHT                 # 말 사이 쉼 — load() 가 대본(gap)에서 정한다
+# ⭐ 옴니 영상 꼴 — 세로 쇼츠 9:16 · 가로 긴 영상 16:9 (load() 가 대본 layout 에서 정한다)
+RATIO = "9:16"
+EYE_LINE_WIDE = ("the eye line held about a third of the way down from the top of the "
+                 "frame")
 NO_BUY = False                     # --no-buy : 창고에 없는 컷이 있으면 사지 말고 멈춘다
 
 
@@ -141,9 +149,12 @@ def save_lib(lib):
 
 
 def vkey(c):
-    """같은 장면인가 — 화면 묘사 · 나오는 사람 · 대사(대사 컷만). 컷 번호·길이는 안 본다."""
+    """같은 장면인가 — 화면 묘사 · 나오는 사람 · 대사(대사 컷만). 컷 번호·길이는 안 본다.
+    가로(16:9) 영상은 열쇠에 꼴을 붙인다 — 세로로 산 영상을 가로 영상에 다시 쓰지 않게
+    (세로 열쇠는 예전 그대로라 이미 산 창고가 그대로 맞는다)."""
     line = c["turns"][0][1] if is_talk(c) else ""
-    return reuse.sig_of("v60", c.get("scene") or "", "|".join(c.get("who") or []), line)
+    wide = ("16:9",) if RATIO != "9:16" else ()
+    return reuse.sig_of("v60", c.get("scene") or "", "|".join(c.get("who") or []), line, *wide)
 
 
 def res_of(doc, asked=""):
@@ -168,10 +179,13 @@ def load(sid, res=""):
     doc = json.loads(f.read_text(encoding="utf-8"))
     if not doc.get("all_video"):
         raise SystemExit(f"❌ {sid} 는 1분 전부 영상 대본이 아니다 (all_video 가 없다)")
-    global GAP, RES
+    global GAP, RES, RATIO
     GAP = S9.gap_of(doc)
     S9.PAD = GAP                   # 조립(cut_sec)과 같은 값으로 컷 길이를 센다
     RES = res_of(doc, res)
+    # ⭐ 세로 쇼츠 / 가로 긴 영상 — 조립·그림(diagram60)·옴니가 같은 꼴을 쓴다
+    RATIO = "16:9" if S9.use_layout(doc) == "long" else "9:16"
+    CUR["doc"] = doc
     return doc
 
 
@@ -205,11 +219,28 @@ def is_fig(c):
 
 
 # ── 길이 ─────────────────────────────────────────────────────────
+CUR = {}                           # load() 가 지금 대본을 둔다 (목소리 지문을 맞춰 보려고)
+
+
+def voice_file(c):
+    """그 컷 목소리 파일 — **지금 대본의 그 컷 것일 때만** (아니면 None).
+    ⚠️ 2026-10-05 — 만드는 자리(build/s90)는 사건이 함께 쓴다. S95 목소리를 만들기 전에 값을 셌더니
+       S94 목소리(컷1~30) 길이로 영상 길이를 재서 105초 · 16,207원이 나왔다(글자 잣대로는 91초 · 14,046원).
+       → 목소리 지문(short90.voice_plan)이 맞는 것만 믿는다. 대본 없이 부르면(시험) 예전처럼 있는 대로."""
+    w = S9.OUT / "voice" / f"c{c['n']:02d}.wav"
+    if not w.exists():
+        return None
+    doc = CUR.get("doc")
+    if doc is not None and not reuse.can_reuse(w, S9.voice_plan(c, doc)[0])[0]:
+        return None
+    return w
+
+
 def narr_len(c):
     """나레이션이 화면에 머무는 길이(초) — 앞뒤 무음을 자른 목소리 ÷ 배속 + 여운.
-    목소리가 아직 없으면 글자 잣대로 어림한다."""
-    w = S9.OUT / "voice" / f"c{c['n']:02d}.wav"
-    if w.exists():
+    목소리가 아직 없으면(또는 다른 대본 것이면) 글자 잣대로 어림한다."""
+    w = voice_file(c)
+    if w:
         return S9.dur_of(w) / S9.speed() + GAP
     return ST90.SEC60_PER_CHAR * ST90.chars(c) + GAP + 0.3
 
@@ -272,9 +303,14 @@ def prompt(c, shot, sec, by):
     scene = english(c.get("scene"), by).rstrip(".")
     lens = camera60.LENS[shot["lens"]]
     height = camera60.HEIGHT[shot["height"]]
+    # ⚠️ 세로 지문은 한 글자도 안 바꾼다 — 이미 산 영상의 지문(창고 · adopt)이 그대로 맞아야 한다
+    wide = RATIO == "16:9"
+    shape = "Horizontal 16:9 widescreen" if wide else "Vertical 9:16"
+    frame = ("horizontal 16:9 widescreen landscape" if wide else "vertical 9:16 portrait")
+    eye = EYE_LINE_WIDE if wide else EYE_LINE
     rows = [
         head,
-        f"{OMNI_HEAD} Vertical 9:16, exactly {sec} seconds, one single continuous shot "
+        f"{OMNI_HEAD} {shape}, exactly {sec} seconds, one single continuous shot "
         "from the first frame to the last.",
         (f"CAST: {cast} is the only person in this scene, looking exactly like the "
          "reference the whole time. The reference shows that person twice — a close "
@@ -285,17 +321,17 @@ def prompt(c, shot, sec, by):
         f"SHOT: {scene}. {shot['text'].format(**fill)}.",
     ]
     if shot["kind"] in ("est", "end"):
-        rows.append("FRAMING: vertical 9:16 portrait, filling the whole frame edge to "
+        rows.append(f"FRAMING: {frame}, filling the whole frame edge to "
                     f"edge; wherever the person is in view, {fill['main']}'s face is "
                     "clearly readable.")
     elif talks:
-        rows.append("FRAMING: vertical 9:16 portrait, filling the whole frame edge to "
+        rows.append(f"FRAMING: {frame}, filling the whole frame edge to "
                     f"edge, {fill['speaker']}'s face and lips clearly visible and "
-                    f"sharp, {EYE_LINE}.")
+                    f"sharp, {eye}.")
     else:
-        rows.append("FRAMING: vertical 9:16 portrait, filling the whole frame edge to "
+        rows.append(f"FRAMING: {frame}, filling the whole frame edge to "
                     f"edge, {fill['main']}'s face clearly visible and sharp, "
-                    f"{EYE_LINE}.")
+                    f"{eye}.")
     rows.append(f"CAMERA: {lens}, {height}.")
     rows.append("TIMELINE:")
     if talks:
@@ -393,7 +429,7 @@ def plan(doc, lib=None, quiet=False):
                                 "refs": [], "krw": 0, "talk": False, "lib": None,
                                 "key": "", "fig": True}
            for c in doc["cuts"]]
-    bad = camera60.check(real, shots)
+    bad = camera60.check(real, shots, reuse=set(dup))      # 같은 장면 다시 쓰기는 특별 시점을 두 번 안 센다
     # ⚠️ 구도가 전부 정해져 있으면(이미 산 영상 · 화질만 올려 다시 사는 영상) 구도 규칙은
     #    알리기만 한다 — 손님이 이미 본 화면이라 막을 까닭이 없다
     if bad and len(pinned) == len(real):
@@ -423,7 +459,7 @@ def run_cap():
 
 
 def show_plan(doc, rows, bad, full=False):
-    print(f"■ {doc['sid']} 「{doc['title']}」 — 전부 영상 드라마 · 옴니 {RES} 9:16 · "
+    print(f"■ {doc['sid']} 「{doc['title']}」 — 전부 영상 드라마 · 옴니 {RES} {RATIO} · "
           f"{len(rows)}컷")
     for c, r in zip(doc["cuts"], rows):
         s = r["shot"]
@@ -498,21 +534,27 @@ def step_voice(doc):
 
 # ⭐ 2026-10-02 — 옴니가 가끔 **액자 속 그림**을 만든다 (S94 컷1: 위아래 약 10% · 좌우 약 4%
 #    옅은 하늘색 테두리 · 카메라가 움직여도 테두리는 그대로). 첫 컷이라 바로 눈에 띄었다.
-#    네 변 **모두**에 움직이지 않는 단색 띠가 있을 때만 안쪽을 9:16 으로 잘라 쓴다
+#    네 변 **모두**에 움직이지 않는 단색 띠가 있을 때만 안쪽을 영상 꼴(9:16 · 16:9)로 잘라 쓴다
 #    (하늘처럼 위쪽만 고른 화면을 테두리로 잘못 보고 자르지 않게).
 FRAME_MIN = 0.02
 
 
+def probe_wh():
+    """테두리를 재는 크기 — 세로 360×640 · 가로 640×360."""
+    return (640, 360) if RATIO == "16:9" else (360, 640)
+
+
 def frame_box(raw):
-    """테두리 안쪽 (w, h, x, y) — 360×640 기준. 테두리가 없으면 None."""
+    """테두리 안쪽 (w, h, x, y) — probe_wh() 크기 기준. 테두리가 없으면 None."""
     from PIL import Image, ImageChops, ImageStat
     dur = S9.dur_of(raw)
     if dur <= 0.3:
         return None
+    pw, ph = probe_wh()
     ims = []
     for f in (0.2, 0.5, 0.8):
         r = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{dur * f:.2f}", "-i", str(raw),
-                            "-frames:v", "1", "-vf", "scale=360:640", "-f", "image2pipe",
+                            "-frames:v", "1", "-vf", f"scale={pw}:{ph}", "-f", "image2pipe",
                             "-vcodec", "png", "-"], capture_output=True)
         if not r.stdout:
             return None
@@ -541,13 +583,16 @@ def frame_box(raw):
     if min(top, bot) < h * FRAME_MIN or min(left, right) < w * FRAME_MIN:
         return None
     iw, ih = w - left - right, h - top - bot
-    cw, ch = min(iw, ih * 9 // 16), min(ih, iw * 16 // 9)
+    if RATIO == "16:9":
+        cw, ch = min(iw, ih * 16 // 9), min(ih, iw * 9 // 16)
+    else:
+        cw, ch = min(iw, ih * 9 // 16), min(ih, iw * 16 // 9)
     cw, ch = cw - cw % 2, ch - ch % 2
     return cw, ch, left + (iw - cw) // 2, top + (ih - ch) // 2
 
 
 def size_of(raw):
-    """영상 (가로, 세로) — 360p 는 360×640, 720p 는 720×1280."""
+    """영상 (가로, 세로) — 세로 360p 는 360×640 · 720p 는 720×1280 (가로는 뒤집힌 꼴)."""
     r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
                         "stream=width,height", "-of", "csv=p=0:s=x", str(raw)],
                        capture_output=True, text=True)
@@ -555,17 +600,17 @@ def size_of(raw):
         w, h = (int(x) for x in r.stdout.strip().split("x")[:2])
         return w, h
     except ValueError:
-        return 360, 640
+        return probe_wh()
 
 
 def crop_of(raw):
-    """테두리 안쪽만 잘라 **원래 크기**로 — 상자는 360×640 에서 재고 영상 크기만큼 곱한다
+    """테두리 안쪽만 잘라 **원래 크기**로 — 상자는 probe_wh() 크기에서 재고 영상 크기만큼 곱한다
     (720p 영상을 360 기준 자리로 자르면 엉뚱한 곳이 잘린다)."""
     b = frame_box(raw)
     if not b:
         return ""
     w, h = size_of(raw)
-    k = w / 360.0
+    k = w / float(probe_wh()[0])
     cw, ch, x, y = (int(round(v * k)) for v in b)
     return f"crop={cw // 2 * 2}:{ch // 2 * 2}:{x}:{y},scale={w}:{h},"
 
@@ -630,7 +675,7 @@ def buy(c, r, by, d, lib):
         while True:
             try:
                 omni.make(r["prompt"], r["refs"], raw, r["sec"],
-                          task="reference_to_video", res=RES)
+                          task="reference_to_video", res=RES, ratio=RATIO)
                 break
             except omni.OmniFiltered:
                 raise
@@ -643,7 +688,8 @@ def buy(c, r, by, d, lib):
         with _lock:
             lib[r["key"]] = {"raw": str(raw.relative_to(d)), "shot": r["shot"],
                              "sec": r["sec"], "prompt": r["prompt"], "n": c["n"],
-                             "scene": c.get("scene"), "who": c.get("who") or [], "res": RES}
+                             "scene": c.get("scene"), "who": c.get("who") or [], "res": RES,
+                             "ratio": RATIO}
             save_lib(lib)
         how = "새로 삼"
     else:
@@ -784,7 +830,8 @@ def stale(story, doc):
         return [(c.get("n"), c.get("turns"), c.get("fig"), c.get("chapter") or "",
                  list(c.get("who") or [])) for c in d.get("cuts") or []]
     return (key(story) != key(doc) or (story.get("figs") or {}) != (doc.get("figs") or {})
-            or any((story.get(k) or "") != (doc.get(k) or "") for k in ("style", "res")))
+            or any((story.get(k) or "") != (doc.get(k) or "")
+                   for k in ("style", "res", "layout", "amount_scale")))
 
 
 def step_check(sid, doc):
@@ -849,6 +896,9 @@ def step_sheet(doc, at=""):
         return 1
     durs = [S9.dur_of(p) for p in parts]
     got = S9.dur_of(final)
+    endc = S9.OUT / "parts" / "end.mp4"           # 긴 영상 끝 화면 (컷이 아니다)
+    if S9.LAYOUT == "long" and endc.exists():
+        got -= S9.dur_of(endc)
     if abs(sum(durs) - got) > 0.5:
         print(f"❌ 컷 조각 합({sum(durs):.1f}초)이 완성 영상({got:.1f}초)과 다르다 — "
               f"다른 사건을 조립한 조각이다. `build` 를 다시 돌린다")
@@ -863,7 +913,8 @@ def step_sheet(doc, at=""):
             print(f"■ {s.strip()} → 컷{r[0]} ({mmss(r[1])}~{mmss(r[2])} · {r[3]}) 「{r[4]}」")
         return 0
     print("\n".join(lines))
-    tw_, th_, cols, lab = 216, 384, 6, 40
+    # 세로 216×384 6칸 · 가로 384×216 5칸
+    tw_, th_, cols, lab = (384, 216, 5, 40) if S9.LAYOUT == "long" else (216, 384, 6, 40)
     rows_n = math.ceil(len(rows) / cols)
     sheet = Image.new("RGB", (cols * (tw_ + 8) + 8, rows_n * (th_ + lab + 8) + 8), (16, 18, 24))
     fnt = ImageFont.truetype(str(ROOT / "assets" / "fonts" / "KoPub_Dotum_Pro_Medium.otf"), 24)
@@ -882,6 +933,104 @@ def step_sheet(doc, at=""):
     sheet.save(out, quality=88)
     print(f"■ 검수 그림 {out.relative_to(ROOT)} · 시간표 {sid}_cuts.txt (0원)")
     return 0
+
+
+# ── ⭐ 맛보기 (0원 · 2026-10-05) ─────────────────────────────────
+#    손님께 드린 약속: "돈을 쓰기 전에 볼 수 있도록, 목소리 대신 무음을 넣은 '맛보기 영상'".
+#    · 목소리 = 무음 (나레이션 글자 수 × 잣대 · 1.28배로 감기 전 길이) — 자막은 글자 비율로 흐른다
+#    · 얼굴 영상 = 자리 표시 화면 (누가 나오는지 · 대사/나레이션 · 같은 장면을 다시 쓰는 컷)
+#    · 그림 컷은 진짜로 그린다 (diagram60) · 조립(자막·이름표·대목·제목·끝 화면·음악)도 진짜 그대로
+#    · 자리는 build/preview/<사건> — 진짜 제작 자리(build/s90)·상태 파일(state/)·장부를 안 건드린다.
+#      옴니·목소리(돈 드는 것)는 부르지 않는다.
+PREVIEW_DIR = ROOT / "build" / "preview"
+PREVIEW_RATE = 24000
+
+
+def preview_len(c):
+    """그 컷 목소리 길이(초 · 배속으로 감기 **전**) — 글자 잣대로 어림한다."""
+    return max(0.6, ST90.SEC60_PER_CHAR * ST90.chars(c) * S9.speed())
+
+
+def silent_wav(c, out):
+    """무음 목소리 + 줄마다 길이(.len.json · 자막이 그 비율로 흐른다)."""
+    import wave
+    sec = preview_len(c)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(out), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(PREVIEW_RATE)
+        w.writeframes(b"\x00\x00" * int(round(sec * PREVIEW_RATE)))
+    turns = S9.turns_of(c)
+    n = [max(1, len(re.sub(r"\s", "", str(t)))) for _, t in turns]
+    S9.lens_of(out).write_text(json.dumps([round(sec * k / sum(n), 3) for k in n]),
+                               encoding="utf-8")
+    return sec
+
+
+def placeholder(doc, c, r, by, out):
+    """얼굴 영상 자리 표시 화면 → 2초 영상 (조립이 컷 길이만큼 되돌려 잇는다 · 0원)."""
+    from PIL import Image, ImageDraw, ImageFilter, ImageFont
+    W, H = S9.W, S9.H
+    k = H / 1080.0 if W > H else W / 1080.0          # 글씨 배율 (가로 1 · 세로도 1)
+    im = Image.new("RGB", (W, H), (28, 32, 42))
+    lay = Image.new("RGB", (W, H), (0, 0, 0))
+    ImageDraw.Draw(lay).ellipse((W * 0.12, H * 0.05, W * 0.88, H * 0.95), fill=(46, 52, 66))
+    im = Image.blend(im, lay.filter(ImageFilter.GaussianBlur(int(H * 0.12))), 0.55)
+    d = ImageDraw.Draw(im)
+    fb = ImageFont.truetype(str(ROOT / "assets" / "fonts" / "KoPub_Dotum_Pro_Bold.otf"), int(46 * k))
+    fm = ImageFont.truetype(str(ROOT / "assets" / "fonts" / "KoPub_Dotum_Pro_Medium.otf"), int(32 * k))
+    labels = S9.labels_of(doc)
+    who = [w for w in (c.get("who") or []) if w in by]
+    # 사람 윤곽 — 머리 + 어깨 (이름표·자막 자리 위 · 화면 위쪽 3분의 2 안)
+    top = H * (0.30 if W > H else 0.26)
+    rad = H * (0.085 if W > H else 0.05)
+    xs = [W * (i + 1) / (len(who) + 1) for i in range(len(who))]
+    for x, w in zip(xs, who):
+        d.ellipse((x - rad, top - rad, x + rad, top + rad), fill=(92, 98, 114))
+        d.pieslice((x - rad * 2.0, top + rad * 1.15, x + rad * 2.0, top + rad * 5.0), 180, 360,
+                   fill=(92, 98, 114))
+        d.text((x, top + rad * 3.35), labels.get(w) or w, font=fm, fill=(236, 233, 226), anchor="mm")
+    head = "얼굴 영상 자리 — 대사" if is_talk(c) else "얼굴 영상 자리 — 나레이션"
+    d.text((W / 2, H * 0.115), head, font=fb, fill=(232, 197, 112), anchor="mm")
+    sub = (f"컷{c['n']} · 컷{r['dup_of']} 과 같은 영상을 다시 씀 (0원)" if r.get("dup_of")
+           else f"컷{c['n']} · {r['sec']}초 영상을 살 자리 · 약 {omni.est_krw(r['sec'], RES):,.0f}원 ({RES})")
+    d.text((W / 2, H * 0.115 + 62 * k), sub, font=fm, fill=(200, 204, 212), anchor="mm")
+    if not who:
+        d.text((W / 2, H * 0.40), "장소 화면 (사람 없음)", font=fb, fill=(150, 155, 166), anchor="mm")
+    png = out.with_suffix(".png")
+    im.save(png)
+    S9.run(["ffmpeg", "-y", "-v", "error", "-loop", "1", "-i", str(png), "-t", "2", "-r",
+            str(S9.FPS), "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+            "-pix_fmt", "yuv420p", str(out)])
+    png.unlink(missing_ok=True)
+
+
+def step_preview(sid, doc):
+    """맛보기 영상 (0원) → build/preview/<사건>/<사건>_part1.mp4 + 컷마다 한 장 검수 그림."""
+    S9.OUT = PREVIEW_DIR / sid
+    S9.PREVIEW = True                         # 조립이 상태 파일(만든 기록)을 안 건드린다
+    S9.OUT.mkdir(parents=True, exist_ok=True)
+    by = cast_of(doc)
+    rows, _bad = plan(doc, lib={}, quiet=True)
+    print(f"■ {sid} 맛보기 (0원) — 목소리는 무음 · 얼굴 영상은 자리 표시 · 그림 컷은 진짜 · "
+          f"→ {S9.OUT.relative_to(ROOT)}")
+    vdir().mkdir(parents=True, exist_ok=True)
+    tot = 0.0
+    for c, r in zip(doc["cuts"], rows):
+        tot += silent_wav(c, S9.OUT / "voice" / f"c{c['n']:02d}.wav")
+        if not r.get("fig"):
+            placeholder(doc, c, r, by, vdir() / f"c{c['n']:02d}.mp4")
+    print(f"  무음 목소리 {len(rows)}컷 (약 {tot / S9.speed():.0f}초) · 자리 표시 화면 "
+          f"{sum(1 for r in rows if not r.get('fig'))}컷")
+    if step_figs(doc):
+        return 1
+    rc = S9.build(doc)
+    if rc:
+        return rc
+    final = S9.part_file(doc, 1)
+    print(f"■ 맛보기 영상 {final.relative_to(ROOT)} · {S9.dur_of(final):.1f}초 · 0원")
+    return step_sheet(doc)
 
 
 def step_build(doc):
@@ -905,7 +1054,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("sid")
     ap.add_argument("what", choices=["check", "plan", "cast", "voice", "clips", "figs", "build",
-                                     "sheet", "all"])
+                                     "sheet", "preview", "all"])
     ap.add_argument("--no-buy", action="store_true",
                     help="clips — 창고에 없는 컷이 있으면 사지 않고 멈춘다 (0원 보장)")
     ap.add_argument("--full", action="store_true", help="plan — 영상 지문까지 다 보인다")
@@ -923,6 +1072,9 @@ def main():
         return step_check(sid, doc)
     if a.what == "sheet":
         return step_sheet(doc, a.at)
+    if a.what == "preview":
+        # ⭐ 값 0원 — 대본 검사를 먼저 본다 (걸린 대본으로 맛보기를 만들면 헛걸음이다)
+        return step_check(sid, doc) or step_preview(sid, doc)
     if a.what == "plan":
         rows, bad = plan(doc)
         show_plan(doc, rows, bad, full=a.full)

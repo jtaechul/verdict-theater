@@ -281,14 +281,23 @@ def plan(cuts, pinned=None):
     return out
 
 
-def check(cuts, shots):
-    """계획이 규칙을 지키는가 — 어긋난 곳 글 목록 (비면 통과)."""
+def check(cuts, shots, reuse=()):
+    """계획이 규칙을 지키는가 — 어긋난 곳 글 목록 (비면 통과).
+
+    reuse = 앞 컷 영상을 **다시 쓰는** 컷 차례들 (drama60 같은 장면 한 번만 사기) — 같은 영상이라
+            특별한 시점 수에 두 번 세지 않는다.
+    ⭐ 긴 영상(2026-10-05 · S95): 두 얼굴 컷 사이에 그림 컷이 끼면(컷 번호가 1 넘게 벌어지면)
+       화면에서 이웃이 아니다 — 이웃 규칙(MIN_DIFF)은 **화면에서 바로 붙는** 컷끼리만 본다.
+       (그림 컷 여섯 장 너머의 얼굴 컷끼리 구도가 비슷하다고 사기를 막았다)"""
     bad = []
     for i in range(1, len(shots)):
+        a, b = cuts[i - 1].get("n"), cuts[i].get("n")
+        if a is not None and b is not None and int(b) - int(a) > 1:
+            continue
         if diff(shots[i - 1], shots[i]) < MIN_DIFF:
             bad.append(f"컷{cuts[i].get('n')}: 앞 컷과 렌즈·높이·움직임이 "
                        f"{3 - diff(shots[i - 1], shots[i])}개나 같다")
-    sp = sum(1 for s in shots if s["special"])
+    sp = sum(1 for i, s in enumerate(shots) if s["special"] and i not in set(reuse))
     if sp > SPECIAL_MAX:
         bad.append(f"특별한 시점이 {sp}번이다 — {SPECIAL_MAX}번까지")
     for c, s in zip(cuts, shots):

@@ -327,7 +327,9 @@ def part_meta(doc, part, last=False):
     import story90                                           # noqa: E402 (늦게 부른다)
     note = clean(story90.style_get(doc, "end_note"))
     if note:
-        say = [x.strip().rstrip(".") + "." for x in note.split("·") if x.strip()]
+        # ⚠️ 띄어 쓴 「 · 」 에서만 나눈다 — 「지역·금액」 처럼 붙여 쓴 점까지 나누면
+        #    "가명이고 지역." / "금액은 바꾸었습니다." 로 문장이 깨진다 (S95 설명란 · 2026-10-05)
+        say = [x.strip().rstrip(".") + "." for x in re.split(r"\s+·\s+", note) if x.strip()]
         say += ["판사의 실명은 밝히지 않습니다."]
     else:
         say = ["실제 판결을 바탕으로 각색한 이야기입니다.",

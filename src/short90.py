@@ -145,9 +145,14 @@ TAIL_LAST = "완결"
 TAIL_SUB_NEXT = "다음 편이 궁금하다면  구독 · 좋아요 · 알림"
 TAIL_SUB_LAST = "구독해 두시면 다음 사건을 놓치지 않습니다"
 TAIL_SUB_SIZE = 40
+# ⭐ 긴 영상(가로)은 끝 알림을 마지막 컷 위에 얹지 않고 **끝 화면**을 따로 붙인다 (2026-10-05 · S95)
+#    마지막 컷이 그림 카드면 카드 글과 「완결」 판이 겹쳤다(맛보기에서 잡았다). 끝 화면은
+#    유튜브 '최종 화면'(구독 단추 · 다음 영상 칸 · 5~20초) 자리로도 쓴다 — 글은 위쪽, 아래는 비운다.
+END_SEC = 8.0
 
 SCRIM_TOP = 1080                 # 여기부터 아래로 서서히 어두워진다
 SCRIM_MAX = 0.88                 # 맨 아래 어두움 (0~1)
+FIG_SCRIM_TOP = SCRIM_TOP        # 그림 컷 그늘 시작 — 세로는 같고, 가로는 그림 아래쪽을 덜 덮게 낮춘다
 MARK_SIZE, MARK_Y = 34, 44
 CHANNEL = "판결극장"
 GOLD = (198, 160, 74, 255)
@@ -1569,6 +1574,21 @@ def voices(doc):
             print(f"■ 목소리 값 약 {won:,.0f}원 — 장부에 적었다")
 
 
+def voice_plan(c, doc):
+    """그 컷 목소리의 (지문, 줄마다 [누가 · 말 · 목소리 · 빠르기 · 읽는 법]).
+    ⭐ 줄마다 **어떻게 읽을지**(say)를 같이 들고 간다 — 같은 글자라도 어떻게 읽으라고 말해 주면
+       낭독이 연기가 된다. ⚠️ 지문에 지시도 넣는다 — 지시를 고치면 그 줄만 다시 만들어야 한다.
+    ⭐ 2026-10-05 — 영상 길이·값을 셀 때(tools/drama60.py)도 이 지문으로 **그 컷 목소리가 맞는지** 본다.
+       만드는 자리(build/s90)는 사건이 함께 쓴다 — S95 값을 S94 목소리 길이로 세어 16,207원이 나왔다."""
+    turns = turns_of(c)
+    says = c.get("say") or [""] * len(turns)
+    plan = [(w, t, voice_of(w, doc),
+             NARR_RATE if w == "나레이션" else 1.0,
+             says[i] if i < len(says) else "")
+            for i, (w, t) in enumerate(turns)]
+    return reuse.sig_of(*[f"{w}|{t}|{v}|{r}|{h}" for w, t, v, r, h in plan]), plan
+
+
 def _voices(doc, tts):
     d = OUT / "voice"
     d.mkdir(parents=True, exist_ok=True)
@@ -1591,15 +1611,7 @@ def _voices(doc, tts):
     for c in doc["cuts"]:
         out = d / f"c{c['n']:02d}.wav"
         turns = turns_of(c)
-        # ⭐ 줄마다 **어떻게 읽을지**(say)를 같이 들고 간다. 이게 이번 바꿈의
-        #   핵심 — 같은 글자라도 어떻게 읽으라고 말해 주면 낭독이 연기가 된다.
-        says = c.get("say") or [""] * len(turns)
-        plan = [(w, t, voice_of(w, doc),
-                 NARR_RATE if w == "나레이션" else 1.0,
-                 says[i] if i < len(says) else "")
-                for i, (w, t) in enumerate(turns)]
-        # ⚠️ 지문에 지시도 넣는다 — 지시를 고치면 그 줄만 다시 만들어야 한다
-        sig = reuse.sig_of(*[f"{w}|{t}|{v}|{r}|{h}" for w, t, v, r, h in plan])
+        sig, plan = voice_plan(c, doc)
         ok, why = reuse.can_reuse(out, sig)
         # ⚠️ 길이 기록이 없으면 자막을 맞출 수가 없다 → 그 컷만 다시 만든다
         if ok and not lens_of(out).exists():
@@ -1722,12 +1734,16 @@ def overlay(c, out, turn=None, now=None, mark="", intro=None, alias=None, labels
     # ⚠️ 맨 아래(1920)에서 가장 진해지게 두면 **자막이 있는 자리(1300~1620)가
     #    아직 옅다.** 밝은 그림 위에서 글자가 묻힌다 — 자막 칸 아래쪽에서
     #    이미 가장 진하도록 잡는다.
-    span = H - SCRIM_TOP
-    full = max(1, SUB_BOT - SCRIM_TOP)
+    top = FIG_SCRIM_TOP if c.get("fig") else SCRIM_TOP
+    if top != SCRIM_TOP:
+        scrim = Image.new("RGBA", (W, H - top), (0, 0, 0, 0))
+        sd = ImageDraw.Draw(scrim)
+    span = H - top
+    full = max(1, SUB_BOT - top)
     for y in range(span):
         a = int(255 * SCRIM_MAX * min(1.0, y / full) ** 1.2)
         sd.line([(0, y), (W, y)], fill=(0, 0, 0, a))
-    img.alpha_composite(scrim, (0, SCRIM_TOP))
+    img.alpha_composite(scrim, (0, top))
 
     d = ImageDraw.Draw(img)
     # 채널 이름 (오른쪽 위, 조용하게)
@@ -1907,6 +1923,24 @@ def end_card(text, out, alpha=1.0, note=""):
     if alpha < 1.0:
         img.putalpha(img.split()[3].point(lambda v: int(v * alpha)))
     img.save(out)
+    return out
+
+
+def end_screen(text, out, note=""):
+    """긴 영상 끝 화면 — 어두운 바탕 + 끝 알림 판(end_card 그대로) · END_SEC 초 · 소리 없음 (0원).
+    컷 조각과 같은 규격(30fps · yuv420p · aac 48kHz 2채널)이라 이어붙이기(-c copy)가 안 어긋난다."""
+    out = Path(out)
+    png = out.with_suffix(".png")
+    end_card(text, png, 1.0, note)
+    bg = Image.new("RGBA", (W, H), (12, 15, 22, 255))
+    bg.alpha_composite(Image.open(png).convert("RGBA"))
+    bg.convert("RGB").save(png)
+    run(["ffmpeg", "-y", "-v", "error", "-loop", "1", "-i", str(png),
+         "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
+         "-vf", "fade=t=in:st=0:d=0.5", "-t", f"{END_SEC:.3f}", "-r", str(FPS),
+         "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
+         "-c:a", "aac", "-b:a", "160k", "-ar", "48000", "-ac", "2", "-shortest", str(out)])
+    png.unlink(missing_ok=True)
     return out
 
 
@@ -2809,6 +2843,38 @@ OPEN_RATIO = "9:16"              # 화면이 세로로 꽉 차므로 세로로 �
 _OPEN_ENV = os.environ.get("VT_OPEN_VIDEO", "").strip() in ("1", "예", "on")
 OPEN_VIDEO = ALL_VIDEO or PEOPLE_VIDEO or _OPEN_ENV
 
+# ── ⭐⭐⭐ 화면 꼴 — 세로 쇼츠(1080×1920) · 가로 긴 영상(1920×1080) (2026-10-05) ──────────────
+#    손님: "긴 영상 + 싼 쇼츠" (CLAUDE.md 0-0). 긴 영상은 가로 16:9 다. 자막·이름표·대목 표시·
+#    편 제목·끝 알림은 **자리와 크기만** 다르고 그리는 법은 같다 → 자리 값만 갈아 끼운다.
+#    ⚠️ 시청자 휴대폰 93%(2026-10-05 스튜디오). 가로 영상을 세로로 들고 보면 화면이 작아진다
+#       → 가로 자막은 화면 너비의 4.6%(88px)로 크게 · 한 토막 약 19자.
+#    ⚠️ 세로 값은 손대지 않는다 — LAYOUT_TALL 은 이 파일이 원래 쓰던 값을 그대로 담는다.
+LAYOUT_KEYS = ("W", "H", "SIDE", "SUB_TOP", "SUB_BOT", "SUB_MAX", "SUB_MIN", "SUB_FIXED",
+               "NAME_Y", "NAME_SIZE", "INTRO_SIZE", "INTRO_ABOVE", "CHAP_Y", "CHAP_SIZE",
+               "TITLE_Y", "TITLE_LABEL", "TITLE_MAX", "TITLE_MIN", "TITLE_SCRIM",
+               "TAIL_Y", "TAIL_SIZE", "TAIL_SUB_SIZE", "SCRIM_TOP", "FIG_SCRIM_TOP",
+               "MARK_SIZE", "MARK_Y")
+LAYOUT_TALL = {k: globals()[k] for k in LAYOUT_KEYS}
+LAYOUT_LONG = dict(LAYOUT_TALL, W=1920, H=1080, SIDE=80, SUB_TOP=868, SUB_BOT=1040,
+                   SUB_MAX=96, SUB_MIN=62, SUB_FIXED=88, NAME_Y=752, NAME_SIZE=52,
+                   INTRO_SIZE=40, INTRO_ABOVE=38, CHAP_Y=54, CHAP_SIZE=32,
+                   TITLE_Y=150, TITLE_LABEL=36, TITLE_MAX=84, TITLE_MIN=56, TITLE_SCRIM=440,
+                   TAIL_Y=330, TAIL_SIZE=80, TAIL_SUB_SIZE=40, SCRIM_TOP=640, FIG_SCRIM_TOP=770,
+                   MARK_SIZE=30, MARK_Y=34)
+LAYOUT = "tall"
+# 맛보기(0원 · tools/drama60.py preview) — 만든 기록(state/shorts.json)을 남기지 않는다.
+#    남기면 관리자 페이지·올리기가 맛보기 길이를 진짜 영상 길이로 읽는다.
+PREVIEW = False
+
+
+def use_layout(doc):
+    """대본이 긴 영상(layout="long")이면 가로 자리값, 아니면 세로 자리값을 끼운다 (여러 번 불러도 같다)."""
+    global LAYOUT
+    want = "long" if ST90.is_long(doc) else "tall"
+    globals().update(LAYOUT_LONG if want == "long" else LAYOUT_TALL)
+    LAYOUT = want
+    return want
+
 
 def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
     """한 편을 조립한다 → build/s90/<SID>_part<N>.mp4"""
@@ -2828,6 +2894,7 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
     print(f"\n■ {part['no']}편 — {part['card'][0]} / {part['card'][1]} "
           f"({len(cuts)}컷)")
     total, made = 0.0, []
+    long_end = LAYOUT == "long"          # 긴 영상 — 끝 알림은 따로 붙이는 끝 화면에 (END_SEC)
     intros = intro_of(doc)
     alias = aliases_of(doc)
     labels = labels_of(doc)
@@ -2879,7 +2946,7 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
         sec0, uca = cut_sec(c, voice, clip if clip.exists() else None)
         ovs = karaoke(c, sec0, None if uca else voice, OUT / "ov", n,
                       title=head if i == 0 else None, mark=mark,
-                      tail=tail if i == len(cuts) - 1 else "",
+                      tail=tail if (i == len(cuts) - 1 and not long_end) else "",
                       # ⭐ 영상 소리를 쓰는 컷이면 그 영상에서 말이 나는
                       #    구간을 재서 자막을 거기에 맞춘다 (값 0원)
                       clip=clip if (uca and clip.exists()) else None,
@@ -2900,7 +2967,12 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
                    else "영상 + 우리 목소리")
         print(f"  컷{n:>2} [{c['kind']:<4}] {sec:>5.2f}초 ({how})"
               + ("  ← 편 제목" if i == 0 else "")
-              + (f"  ← {tail}" if i == len(cuts) - 1 else ""))
+              + (f"  ← {tail}" if i == len(cuts) - 1 and not long_end else ""))
+    if long_end:
+        endc = end_screen(tail, parts_d / "end.mp4", note)
+        total += dur_of(endc)
+        made.append(endc)
+        print(f"  끝 화면 {dur_of(endc):.2f}초 ← {tail} (유튜브 '최종 화면' 자리 · 아래쪽은 비웠다)")
 
     # ⚠️ concat 목록 안의 경로는 **목록 파일이 있는 자리 기준**이다. 파일 이름만
     #    적으면 옆 폴더에 있는 컷을 못 찾는다 (시험이 바로 잡아 줬다).
@@ -2923,7 +2995,8 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
     # ⭐⭐⭐ 2026-09-14 — 이 편에서 **영상이어야 하는데 그림으로 간** 대사 컷.
     #    적어 두면 올리기(src/upload.py)가 막고 화면에도 뜬다.
     gaps = talk_gaps(doc, set(n for n, *_ in [(c["n"],) for c in cuts]))
-    shortstate.mark_made(doc.get("sid") or "S90", part["no"], got, gaps)
+    if not PREVIEW:
+        shortstate.mark_made(doc.get("sid") or "S90", part["no"], got, gaps)
     if gaps:
         print(f"  ⚠️⚠️ **이 편은 아직 덜 됐습니다.** 대사인데 그림으로 간 컷: "
               f"{' · '.join('컷' + str(n) for n in gaps)}\n"
@@ -2947,6 +3020,7 @@ def build_part(doc, part, stills_d, voice_d, clips_d, parts_d):
 def build(doc, only=None):
     """편마다 하나씩 만든다. only 를 주면 그 편만 (나머지는 손대지 않는다)."""
     global PAD
+    use_layout(doc)                      # 세로 쇼츠 / 가로 긴 영상 — 자막·이름표 자리
     if doc.get("all_video"):
         PAD = gap_of(doc)                # 말 사이 쉼 — 대본이 정한다 (기본 0.12초)
     stills_d, voice_d = OUT / "stills", OUT / "voice"

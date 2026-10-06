@@ -118,10 +118,15 @@ def main():
     #    옛 모양(sig = reuse.sig_of(prompt, ...))을 찾던 검사가 그 뒤로
     #    빨간불을 냈다 — 검사가 **구조가 아니라 글자 모양**을 보고 있었다.
     sig_fn = (re.search(r"\ndef talk_sig\([\s\S]*?(?=\ndef )", s9) or [""])[0]
-    for kind, pat in (("컷 그림", r'sig = reuse\.sig_of\(c\["still"\], \*refs\)'),
-                      ("목소리", r"sig = reuse\.sig_of\(\*\[f\"\{w\}\|")):
-        ck(f"{kind}: 만든 재료로 지문을 만든다",
-           re.search(pat, s9) is not None)
+    ck("컷 그림: 만든 재료로 지문을 만든다",
+       re.search(r'sig = reuse\.sig_of\(c\["still"\], \*refs\)', s9) is not None)
+    # ⚠️ 2026-10-05 — 목소리 지문 셈을 voice_plan 한 곳으로 모았다 (영상 값 셈도 같은 지문으로
+    #    그 컷 목소리인지 본다 · tools/drama60.voice_file). talk_sig 때처럼 **구조**를 본다.
+    vp_fn = (re.search(r"\ndef voice_plan\([\s\S]*?(?=\ndef )", s9) or [""])[0]
+    ck("목소리: 만든 재료로 지문을 만든다",
+       re.search(r'reuse\.sig_of\(\*\[f"\{w\}\|\{t\}\|\{v\}\|\{r\}\|\{h\}"', vp_fn) is not None
+       and "sig, plan = voice_plan(c, doc)" in s9,
+       "voice_plan 이 누가·말·목소리·빠르기·읽는 법으로 지문을 안 만든다")
     ck("대사 영상: 만든 재료로 지문을 만든다",
        "reuse.sig_of(" in sig_fn and "str(sec)" in sig_fn and "model" in sig_fn,
        "talk_sig 가 지시문·길이·모델을 안 넣는다")

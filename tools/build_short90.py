@@ -1246,7 +1246,9 @@ def main(argv=None):
             # ⭐ 말 사이 쉼 · 이름표 「이름 (관계)」 · 끝 화면 글 · 그림 설계 (손님 확정)
             #    style="explainer"(설명 드라마)면 앞의 셋은 안 적어도 기본값이 따라온다
             #    res = 옴니 영상 화질 360p / 720p (손님이 고른다 · 없으면 360p)
-            for k in ("style", "res", "gap", "name_first", "end_note", "figs"):
+            #    layout = "long" 이면 가로 16:9 긴 영상 (2026-10-05) · amount_scale = 금액 배율(익명화)
+            for k in ("style", "res", "gap", "name_first", "end_note", "figs", "layout",
+                      "amount_scale"):
                 if story.get(k) is not None:
                     doc[k] = story[k]
     # ⭐⭐⭐ 2026-09-10 — 화면이 값을 **스스로 세지 않게** 여기서 찍어 둔다.

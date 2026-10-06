@@ -5,7 +5,7 @@
  "all_video": true,
  "style": "explainer",
  "layout": "long",
- "res": "360p",
+ "res": "720p",
  "sid": "S95",
  "case_id": "608371",
  "amount_scale": 1.3,
@@ -1352,6 +1352,10 @@
      [
       "rule",
       ""
+     ],
+     [
+      "question",
+      "두 가지"
      ]
     ]
    },
@@ -2541,39 +2545,38 @@
      "who": "남편",
      "at": [
       760,
-      330
+      250
      ],
-     "r": 100,
-     "label": "right"
+     "r": 96
     },
     {
      "id": "wife",
      "who": "아내",
      "at": [
       1320,
-      330
+      250
      ],
-     "r": 110,
+     "r": 104,
      "gold": true
     },
     {
      "id": "son",
      "who": "아들",
      "at": [
-      560,
-      760
+      600,
+      610
      ],
-     "r": 105
+     "r": 96
     },
     {
      "id": "kid2",
      "ghost": true,
      "name": "다른 자녀",
      "at": [
-      960,
-      760
+      920,
+      610
      ],
-     "r": 88
+     "r": 84
     }
    ],
    "edges": [
@@ -2596,7 +2599,11 @@
      "a": "father",
      "b": "wife",
      "style": "solid",
-     "text": "재혼"
+     "text": "재혼",
+     "text_at": [
+      1036,
+      212
+     ]
     }
    ],
    "texts": [
@@ -2604,8 +2611,8 @@
      "id": "t10",
      "text": "10년 넘게 부부",
      "at": [
-      1040,
-      250
+      1036,
+      292
      ],
      "color": "gold"
     }
@@ -2895,7 +2902,8 @@
     {
      "id": "unsure",
      "kind": "chip",
-     "text": "물어 줄지 아직 모른다 · 갚으면 끝"
+     "text": "물어 줄지 아직 모른다 · 갚으면 끝",
+     "new": true
     },
     {
      "id": "notyet",
@@ -2916,7 +2924,8 @@
     {
      "id": "quote",
      "kind": "quote",
-     "text": "자기 빚을 핑계로 유류분을 피하면"
+     "text": "자기 빚을 핑계로 유류분을 피하면",
+     "new": true
     },
     {
      "id": "quote2",
@@ -2926,7 +2935,8 @@
     {
      "id": "guar",
      "kind": "chip",
-     "text": "보증 빚도 상속되지만"
+     "text": "보증 빚도 상속되지만",
+     "new": true
     },
     {
      "id": "guar2",
@@ -2978,7 +2988,8 @@
     {
      "id": "only",
      "kind": "chip",
-     "text": "남긴 재산은 땅 하나뿐"
+     "text": "남긴 재산은 땅 하나뿐",
+     "new": true
     },
     {
      "id": "only2",
@@ -2999,7 +3010,8 @@
     {
      "id": "proof",
      "kind": "chip",
-     "text": "언제 알았는지는 최동준 씨가 증명"
+     "text": "언제 알았는지는 최동준 씨가 증명",
+     "new": true
     },
     {
      "id": "abroad",
