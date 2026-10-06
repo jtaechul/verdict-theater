@@ -24,11 +24,12 @@
       · 대사는 본편 대사 영상의 소리 그대로(입이 맞는다) · 나레이션만 새로 만든다 (본편과 같은 성우)
 
 세로 화면 (1080×1920)
-    맨 위 250px — 채널 이름만 (유튜브 앱 위 단추 줄 자리) · ⚠️ 작은 부제목 글은 두지 않는다 (2026-10-06 손님 "어색해")
-    가운데 — 본편 영상(16:9)을 1080×1000 으로 잘라 키운다 (250~1250 · 컷마다 얼굴 자리 x·y · 천천히 다가간다)
-             뒤는 같은 영상을 흐리고 어둡게 깐다 (검은 띠 없음) · 첫 도장은 첫 컷 동안 영상 칸 아래쪽에
-    아래 — 자막 한 토막씩 (영상 칸 바로 아래 1336 · 92px · 금색 말은 한 토막 안에) · 대사면 이름표(금색 막대)
-    ⚠️ 그 아래는 쇼츠 제목·단추 자리라 비운다
+    맨 위 210px — 채널 이름만 (유튜브 앱 위 단추 줄 자리) · ⚠️ 작은 부제목 글은 두지 않는다 (2026-10-06 손님 "어색해")
+    가운데 — 본편 영상(16:9)을 1080×1000 으로 잘라 키운다 (210~1210 · 컷마다 얼굴 자리 x·y · 천천히 다가간다)
+             뒤는 같은 영상을 흐리고 어둡게 깐다 (검은 띠 없음)
+    아래 — 자막 한 토막씩 (영상 칸 바로 아래 1288 · 92px · 금색 말은 한 토막 안에) · 대사면 이름표(금색 막대)
+           그 바로 아래 도장 상자 (첫 컷 동안 · 3편 「0원」 도 같은 자리) — 2026-10-06 손님 "자막 아래로"
+    ⚠️ 1536 아래는 쇼츠 제목·채널·관련 동영상 링크 자리라 비운다 (UI_TOP)
 """
 import argparse
 import io
@@ -78,21 +79,25 @@ RED = (200, 28, 34)                            # 도장 인주색
 #    쌩뚱맞고 뭔가 어색해. 이거 영상배치를 전반적으로 살짝 위로 올리고 위의 작은 글씨는 없애거나"
 #    → 맨 위 한 줄 글과 날아와 앉던 작은 쪽지를 **없앴다.** 영상 칸을 440 → 250 으로 올리고, 자막을 영상 칸
 #      바로 아래(1336)로 붙였다. 첫 도장은 첫 컷 동안만 크게 있다가 컷이 바뀔 때 사라진다.
-FG_Y, FG_W, FG_H = 250, 1080, 1000             # 본편 영상을 앉히는 칸 (유튜브 앱 위 단추 줄 바로 아래)
-STAMP_W = 940                                  # 첫 도장(서류 쪽지) 너비 — 화면 1080 안에
-SUB_Y = FG_Y + FG_H + 86                       # 자막 가운데 (영상 칸 바로 아래 · 쇼츠 제목 줄보다 한참 위)
+# ⭐ 2026-10-06 손님 (두 번째): "저 아버지가 돌아가시면 내것 이라는 박스프레임은 자막 아래로 넣는건 어때??"
+#    → 도장 상자를 영상 위(인물 가슴께)에서 **자막 바로 아래**로 옮겼다 — 인물을 안 가린다. 화면 맨 아래 약 20%
+#      (1536~)는 유튜브 앱이 제목 · 채널 이름 · 「관련 동영상」 링크를 겹쳐 보여 주는 자리라 그 위에 들어가게
+#      상자를 납작하게(두 줄 · 높이 약 200) 하고, 영상 칸을 40px 더 올렸다 (250 → 210).
+FG_Y, FG_W, FG_H = 210, 1080, 1000             # 본편 영상을 앉히는 칸 (유튜브 앱 위 단추 줄 바로 아래)
+SUB_Y = FG_Y + FG_H + 78                       # 자막 가운데 (영상 칸 바로 아래)
+BOX_W = 760                                    # 도장 상자 너비 상한 — 오른쪽 좋아요·댓글 단추 줄(x≈950~)을 비킨다
+BOX_TOP = SUB_Y + 40                           # 도장 상자 그림 윗변 (그림자 18px 포함 · 종이는 자막 글자 약 25px 아래)
+UI_TOP = 1536                                  # 여기부터 아래는 앱이 제목·채널·관련 동영상 링크를 겹쳐 보여 준다
 SUB_SIZE = 92
 SUB_W = 900                                    # 오른쪽 좋아요·댓글 단추 줄을 피한다
 TAG_Y = FG_Y + FG_H - 96                       # 대사 이름표 (영상 칸 왼쪽 아래)
 MARK_Y, MARK_SIZE = 44, 34
-STAMP_Y = FG_Y + int(FG_H * 0.70)              # 첫 도장 가운데 (얼굴 아래 · 가슴께)
 
 # ── 시간 ──────────────────────────────────────────────────────
 LEAD = 0.10                                    # 첫 말이 나오는 때 (도장이 앉는 순간과 같다)
 GAP = 0.18                                     # 말과 말 사이 (미끼 쇼츠는 숨 가쁘게)
 STAMP_IN = 0.10                                # 첫 장면에 떠 있던 도장이 내려찍히는 때 (편마다 stamp_at 으로 바꾼다)
 STAMP_DROP = 0.12                              # 찍히기 이만큼 전부터 조금 크게 떠 있다가 내려온다
-MID_SCALE, MID_Y = 0.74, 0.80                  # 편 가운데 도장 — 첫 도장보다 작게 · 얼굴 아래(영상 칸 80%)
 FLASH_SEC = 0.12                               # 찍힐 때 번쩍
 SHAKE_SEC, SHAKE_PX = 0.42, 16                 # 찍힌 뒤 화면 흔들림
 STAMP_EXIT = 0.18                              # 첫 컷이 끝날 때 첫 도장이 옅어지며 사라지는 시간
@@ -527,23 +532,23 @@ def ease(u):
 
 
 def stamp_img(lines):
-    """첫 화면 '쾅' — 크림색 서류 쪽지 위에 찍힌 빨간 도장 (RGBA).
-    ⚠️ 2026-10-06 맛보기 — 빨간 글만 얹었더니 아들의 남색 양복 위에서 흐린 물자국처럼 묻혔다.
-       종이 쪽지를 깔아야 빨간 글이 튀고 '서류에 적힌 한 줄' 로 읽힌다 (맨 위에 작게 앉아도 읽힌다)."""
-    f1, f2 = font(FONT_SERIF, 80), font(FONT_SERIF, 118)
+    """도장 상자 (RGBA) — 크림색 종이에 빨간 겹 테두리 · 바탕체 두 줄 (작은 윗줄 + 큰 아랫줄) · 살짝 기울임.
+    ⚠️ 2026-10-06 맛보기 — 빨간 글만 얹었더니 아들의 남색 양복 위에서 흐린 물자국처럼 묻혔다 → 종이를 깐다.
+    ⭐ 2026-10-06 손님 — 자막 아래로 옮겼다. 그 자리는 위아래 약 200px 뿐이라 납작하게 짓고, 너비는 BOX_W 까지."""
+    s1, s2 = 42, 74
+    f1, f2 = font(FONT_SERIF, s1), font(FONT_SERIF, s2)
     w1, w2 = text_w(lines[0], f1), text_w(lines[-1], f2)
-    pad_x, pad_y, gap = 58, 40, 20
+    pad_x, pad_y, gap = 48, 18, 6
     bw = int(max(w1, w2) + pad_x * 2)
-    bh = int(80 + gap + 118 + pad_y * 2 + 14)
+    bh = int(s1 + gap + s2 + pad_y * 2 + 10)
     m = Image.new("L", (bw, bh), 0)
     d = ImageDraw.Draw(m)
-    d.rounded_rectangle([5, 5, bw - 6, bh - 6], radius=14, outline=255, width=12)
-    d.rounded_rectangle([25, 25, bw - 26, bh - 26], radius=8, outline=255, width=5)
+    d.rounded_rectangle([8, 8, bw - 9, bh - 9], radius=10, outline=255, width=7)
+    d.rounded_rectangle([20, 20, bw - 21, bh - 21], radius=6, outline=255, width=3)
     # 바탕체 굵기를 같은 색 테두리로 더 올린다 (인주가 두껍게 묻은 글)
-    d.text((bw / 2, pad_y + 6), lines[0], font=f1, fill=255, anchor="ma",
+    d.text((bw / 2, pad_y + 4), lines[0], font=f1, fill=255, anchor="ma", stroke_width=1, stroke_fill=255)
+    d.text((bw / 2, pad_y + 4 + s1 + gap), lines[-1], font=f2, fill=255, anchor="ma",
            stroke_width=2, stroke_fill=255)
-    d.text((bw / 2, pad_y + 6 + 80 + gap), lines[-1], font=f2, fill=255, anchor="ma",
-           stroke_width=3, stroke_fill=255)
     # 인주 얼룩 — 고정된 씨앗으로 군데군데 아주 조금만 옅게 (읽히는 것이 먼저 · 매번 같은 도장)
     rnd = random.Random(1969)
     speck = Image.new("L", (bw // 3, bh // 3), 255)
@@ -551,29 +556,30 @@ def stamp_img(lines):
     for _ in range(int(bw * bh / 2600)):
         x, y = rnd.randrange(speck.width), rnd.randrange(speck.height)
         r = rnd.choice((1, 1, 2))
-        sd.ellipse([x - r, y - r, x + r, y + r], fill=rnd.randrange(130, 215))
+        sd.ellipse([x - r, y - r, x + r, y + r], fill=rnd.randrange(140, 220))
     speck = speck.resize((bw, bh), Image.BILINEAR).filter(ImageFilter.GaussianBlur(1.0))
     ink = ImageChops.multiply(m, speck).point(lambda v: int(v * 0.97))
     st = Image.new("RGBA", (bw, bh), RED + (0,))
     st.putalpha(ink)
-    st = st.rotate(5, resample=Image.BICUBIC, expand=True)
-    # 서류 쪽지 — 크림색 · 옅은 칸 줄 · 그림자
-    pw, ph = st.width + 80, st.height + 56
-    paper = Image.new("RGBA", (pw + 60, ph + 60), (0, 0, 0, 0))
-    sh = Image.new("L", paper.size, 0)
-    ImageDraw.Draw(sh).rounded_rectangle([34, 40, pw + 30, ph + 36], radius=10, fill=170)
-    paper.paste((0, 0, 0, 255), (0, 0), sh.filter(ImageFilter.GaussianBlur(16)))
-    pd = ImageDraw.Draw(paper)
-    pd.rounded_rectangle([30, 30, pw + 30, ph + 30], radius=10, fill=(246, 240, 226, 250),
-                         outline=(205, 196, 176, 255), width=2)
-    for k in range(1, 4):
-        y = 30 + ph * k / 4
-        pd.line([(52, y), (pw + 8, y)], fill=(190, 182, 164, 150), width=2)
-    pd.line([(30 + pw * 0.16, 44), (30 + pw * 0.16, ph + 16)], fill=(190, 182, 164, 120), width=2)
-    paper.alpha_composite(st, (int(30 + (pw - st.width) / 2), int(30 + (ph - st.height) / 2)))
-    out = paper.rotate(-3, resample=Image.BICUBIC, expand=True)
-    # 화면 너비 안에 — 첫 장면에서 조금 크게 떠 있어도 양옆이 안 잘린다
-    return out.resize((STAMP_W, int(out.height * STAMP_W / out.width)), Image.LANCZOS)
+    # 종이 — 크림색 · 그림자 (상자 자체가 종이다)
+    sh_pad = 18
+    paper = Image.new("RGBA", (bw + sh_pad * 2, bh + sh_pad * 2), (0, 0, 0, 0))
+    shadow = Image.new("L", paper.size, 0)
+    ImageDraw.Draw(shadow).rounded_rectangle([sh_pad + 4, sh_pad + 8, sh_pad + bw + 4, sh_pad + bh + 8],
+                                             radius=10, fill=160)
+    paper.paste((0, 0, 0, 255), (0, 0), shadow.filter(ImageFilter.GaussianBlur(10)))
+    ImageDraw.Draw(paper).rounded_rectangle([sh_pad, sh_pad, sh_pad + bw, sh_pad + bh], radius=10,
+                                            fill=(246, 240, 226, 252), outline=(205, 196, 176, 255), width=2)
+    paper.alpha_composite(st, (sh_pad, sh_pad))
+    out = paper.rotate(-1.5, resample=Image.BICUBIC, expand=True)
+    if out.width > BOX_W:
+        out = out.resize((BOX_W, int(out.height * BOX_W / out.width)), Image.LANCZOS)
+    return out
+
+
+def box_center(pic):
+    """도장 상자 가운데 (x, y) — 자막 바로 아래 · 윗변이 BOX_TOP."""
+    return W / 2, BOX_TOP + pic.height / 2
 
 
 KEEP = ""                                # 금색 말 안의 띄어쓰기 — 자막 토막이 그 말을 안 가른다
@@ -871,7 +877,8 @@ def render(doc, part, segs, cliff, end0, total, out_mp4):
                     al = min(1.0, (stamp_end - t) / STAMP_EXIT)
                     if al < 0.999:
                         st.putalpha(st.getchannel("A").point(lambda v, al=al: int(v * al)))
-                    fr.paste(st, (int(W / 2 - st.width / 2) + dx, int(STAMP_Y - st.height / 2) + dy), st)
+                    bx, by = box_center(stamp)
+                    fr.paste(st, (int(bx - st.width / 2) + dx, int(by - st.height / 2) + dy), st)
                     if slam0 <= t < slam0 + FLASH_SEC:            # 찍히는 순간 번쩍
                         fr = Image.blend(fr, white, 0.26 * (1 - (t - slam0) / FLASH_SEC))
                 for at_, end_, pic, my, mn in mids:               # 편 가운데 도장 — 그 컷 끝까지만 (다음 컷에 안 묻는다)
@@ -931,10 +938,8 @@ def mid_slams(segs):
         sl = seg["c"].get("slam")
         if sl:
             pic = stamp_img(sl["lines"])
-            k = float(sl.get("scale") or MID_SCALE)
-            pic = pic.resize((int(pic.width * k), int(pic.height * k)), Image.LANCZOS)
             out.append((seg["at"] + float(sl.get("at") or 0.0), seg["t1"], pic,
-                        FG_Y + FG_H * float(sl.get("y") or MID_Y), seg["c"]["n"]))
+                        box_center(pic)[1], seg["c"]["n"]))
     return out
 
 

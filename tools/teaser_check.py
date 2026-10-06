@@ -239,6 +239,16 @@ def main():
             import fetch_meta90
             why = fetch_meta90.blocked(json.loads(meta.read_text(encoding="utf-8")))
             ck(f"{f.stem}: 올릴 글이 마지막 문지기를 지난다", not why, " / ".join(why[:2]))
+        # ⭐ 2026-10-06 손님 "자막 아래로" — 도장 상자는 자막 아래 · 앱이 덮는 자리(UI_TOP) 위 · 단추 줄을 비킨다
+        for p in d.get("parts") or []:
+            pics = [("첫 도장", T.stamp_img(p["stamp"]))]
+            pics += [(f"컷{c['n']} 가운데 도장", T.stamp_img(c["slam"]["lines"]))
+                     for c in T.part_cuts(d, p) if c.get("slam")]
+            for what, pic in pics:
+                bottom = T.BOX_TOP + pic.height - 18          # 그림자 18px 은 빼고 종이 아랫변
+                ck(f"{f.stem} {p['no']}편 {what}: 자막 아래 · 앱이 덮는 자리 위 · 단추 줄 비킴",
+                   bottom <= T.UI_TOP and pic.width <= T.BOX_W and T.BOX_TOP > T.SUB_Y,
+                   f"아랫변 {bottom} · 너비 {pic.width}")
     print(f"   (미끼 쇼츠 대본 {seen}개)")
 
     print("\n" + "─" * 56)
