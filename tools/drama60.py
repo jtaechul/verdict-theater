@@ -12,6 +12,7 @@
     python3 tools/drama60.py S94 build    조립 (0원) → build/s90/<사건>_part1.mp4
     python3 tools/drama60.py S94 sheet    완성 영상 검수 (0원) — 컷마다 한 장 + 컷 시간표
                                           --at 1:36 : 손님이 짚은 시각이 몇 번 컷인지
+    python3 tools/drama60.py S95 meta     긴 영상 올릴 글에 설명란 대목 + 자막 파일(.srt) (0원 · build 가 저절로)
     python3 tools/drama60.py S95 preview  맛보기 (0원) — 목소리는 무음 · 얼굴 영상은 자리 표시 · 그림은 진짜
                                           → build/preview/<사건>/ (진짜 제작 자리·상태·장부를 안 건드린다)
     python3 tools/drama60.py S94 all      check → cast → voice → clips → figs → build 를 차례로
@@ -118,6 +119,11 @@ GAP = S9.PAD_TIGHT                 # 말 사이 쉼 — load() 가 대본(gap)�
 RATIO = "9:16"
 EYE_LINE_WIDE = ("the eye line held about a third of the way down from the top of the "
                  "frame")
+# ⚠️ 2026-10-06 S95 첫 시험 컷(컷4) — 「Horizontal 16:9 widescreen」 「cinematic drama」 로 지었더니
+#    옴니가 1280×720 안에 **위아래 검은 띠(레터박스 · 각 약 10%)** 를 넣었다. 와이드스크린 · 시네마틱이
+#    극장 화면비를 부른다 → 가로는 「full-frame 16:9」 · 「TV 드라마」 로 바라는 것만 적는다 (세로는 그대로)
+STYLE_WIDE = ("STYLE: naturalistic Korean TV drama look in a full-frame 16:9 picture, soft film grain, "
+              "muted desaturated palette, soft natural light.")
 NO_BUY = False                     # --no-buy : 창고에 없는 컷이 있으면 사지 말고 멈춘다
 
 
@@ -305,8 +311,9 @@ def prompt(c, shot, sec, by):
     height = camera60.HEIGHT[shot["height"]]
     # ⚠️ 세로 지문은 한 글자도 안 바꾼다 — 이미 산 영상의 지문(창고 · adopt)이 그대로 맞아야 한다
     wide = RATIO == "16:9"
-    shape = "Horizontal 16:9 widescreen" if wide else "Vertical 9:16"
-    frame = ("horizontal 16:9 widescreen landscape" if wide else "vertical 9:16 portrait")
+    shape = ("Full-frame landscape 16:9 video, the picture reaching all four edges of the frame"
+             if wide else "Vertical 9:16")
+    frame = ("full-frame landscape 16:9 picture" if wide else "vertical 9:16 portrait")
     eye = EYE_LINE_WIDE if wide else EYE_LINE
     rows = [
         head,
@@ -359,7 +366,7 @@ def prompt(c, shot, sec, by):
                  "whole time.",
                  "SOUND: only the quiet ambient sound of the place, with no voices "
                  "and no music."]
-    rows += [COLOR, STYLE, NO_TEXT, REF_ONLY]
+    rows += [COLOR, STYLE_WIDE if wide else STYLE, NO_TEXT, REF_ONLY]
     return "\n".join(r for r in rows if r)
 
 
@@ -406,13 +413,17 @@ def plan(doc, lib=None, quiet=False):
     # ⭐ 낮은 화질로 산 영상을 720p 로 다시 살 때도 **구도는 그대로** 둔다 (손님이 본 그 화면)
     pinned = {i: (have.get(i) or lib.get(vkey(c)))["shot"] for i, c in enumerate(real)
               if have.get(i) or (lib.get(vkey(c)) or {}).get("shot")}
-    shots = camera60.plan(real, pinned)
+    # ⭐ 앞 컷 구도를 고를 때 **그 영상을 다시 쓰는 뒤 컷의 이웃**도 보게 한다 (2026-10-06 · S95 컷38)
+    tie = {}
+    for i, j in dup.items():
+        tie.setdefault(j, []).append(i)
+    shots = camera60.plan(real, pinned, tie)
     if dup:
         # 앞 컷과 뒤 컷을 **둘 다** 앞 컷 구도에 못 박는다 — 뒤만 박으면 다시 짤 때 앞 컷 구도가 바뀐다
         for i, j in dup.items():
             pinned.setdefault(j, shots[j])
             pinned[i] = pinned[j]
-        shots = camera60.plan(real, pinned)
+        shots = camera60.plan(real, pinned, tie)
     rows = {}
     for i, (c, sh) in enumerate(zip(real, shots)):
         e = have.get(i)
@@ -580,7 +591,17 @@ def frame_box(raw):
     bot = run(h, lambda k: (0, h - 1 - k, w, h - k))
     left = run(w, lambda k: (k, 0, k + 1, h))
     right = run(w, lambda k: (w - 1 - k, 0, w - k, h))
-    if min(top, bot) < h * FRAME_MIN or min(left, right) < w * FRAME_MIN:
+    if RATIO == "16:9":
+        # ⭐ 가로 영상 — 위아래 띠(레터박스)만 있어도 잘라 낸다 (S95 컷4 · 위아래 각 약 10%).
+        #    안쪽이 16:9 보다 넓으므로 양옆을 조금 덜어 16:9 로 맞추고 원래 크기로 키운다.
+        #    중간에 걷히는 띠도 잡는다 (dark_bars · S95 컷20)
+        dt, db = dark_bars(raw, dur, w, h)
+        top, bot = max(top, dt), max(bot, db)
+        if min(top, bot) < h * FRAME_MIN:
+            return None
+        if min(left, right) < w * FRAME_MIN:
+            left = right = 0
+    elif min(top, bot) < h * FRAME_MIN or min(left, right) < w * FRAME_MIN:
         return None
     iw, ih = w - left - right, h - top - bot
     if RATIO == "16:9":
@@ -589,6 +610,35 @@ def frame_box(raw):
         cw, ch = min(iw, ih * 9 // 16), min(ih, iw * 16 // 9)
     cw, ch = cw - cw % 2, ch - ch % 2
     return cw, ch, left + (iw - cw) // 2, top + (ih - ch) // 2
+
+
+def dark_bars(raw, dur, pw, ph, n=9):
+    """가로 영상의 **까만 띠**(레터박스) 줄 수 (위, 아래) — 장면 n 장에서 세어 가장 큰 값 (0원).
+    ⭐ 2026-10-06 S95 컷20: 앞 2.5초는 위아래 각 104줄(화면의 14%)이 까맣다가 4초에 다 걷혔다.
+       frame_box 의 '안 움직이는 테두리' 검사는 띠가 걷히는 동안 그 자리가 움직여 못 잡았다
+       → 띠가 있는 동안의 안쪽으로 **영상 전체**를 자른다 (걷힌 뒤에도 같은 자리 · 화면이 안 튄다).
+    ⚠️ 위아래가 거의 같을 때만 띠로 본다 — 어두운 천장이나 바닥 한쪽을 띠로 잘못 보지 않게."""
+    from PIL import Image, ImageStat
+    top = bot = 0
+    for k in range(n):
+        at = dur * (0.03 + 0.94 * k / (n - 1))
+        r = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{at:.2f}", "-i", str(raw),
+                            "-frames:v", "1", "-vf", f"scale={pw}:{ph}", "-f", "image2pipe",
+                            "-vcodec", "png", "-"], capture_output=True)
+        if not r.stdout:
+            continue
+        im = Image.open(io.BytesIO(r.stdout)).convert("L")
+        w, h = im.size
+
+        def black(y):
+            st = ImageStat.Stat(im.crop((0, y, w, y + 1)))
+            return st.mean[0] < 14 and st.stddev[0] < 6        # 거의 0 으로 고른 까만 줄
+
+        t = next((y for y in range(h // 3) if not black(y)), h // 3)
+        b = next((y for y in range(h // 3) if not black(h - 1 - y)), h // 3)
+        if min(t, b) >= h * FRAME_MIN and abs(t - b) <= h * 0.03:
+            top, bot = max(top, t), max(bot, b)
+    return top, bot
 
 
 def size_of(raw):
@@ -615,8 +665,92 @@ def crop_of(raw):
     return f"crop={cw // 2 * 2}:{ch // 2 * 2}:{x}:{y},scale={w}:{h},"
 
 
+BAR_MOVE = 0.02                                # 띠 두께가 화면 높이의 2% 넘게 바뀌면 '걷히는 띠'
+
+
+def bar_track(raw):
+    """프레임마다 위·아래 까만 줄 수 [(위, 아래)…] — probe_wh() 크기 · 위아래가 거의 같을 때만 띠 (0원)."""
+    from PIL import Image, ImageStat
+    pw, ph = probe_wh()
+    r = subprocess.run(["ffmpeg", "-v", "error", "-i", str(raw), "-vf", f"scale={pw}:{ph},format=gray",
+                        "-f", "rawvideo", "-"], capture_output=True)
+    n, out = pw * ph, []
+    for k in range(len(r.stdout) // n):
+        im = Image.frombytes("L", (pw, ph), r.stdout[k * n:(k + 1) * n])
+
+        def black(y):
+            st = ImageStat.Stat(im.crop((0, y, pw, y + 1)))
+            return st.mean[0] < 14 and st.stddev[0] < 6
+
+        t = next((y for y in range(ph // 3) if not black(y)), ph // 3)
+        b = next((y for y in range(ph // 3) if not black(ph - 1 - y)), ph // 3)
+        out.append((t, b) if t and b and abs(t - b) <= ph * 0.03 else (0, 0))
+    return out
+
+
+def unbar(raw):
+    """⭐ 중간에 걷히는 까만 띠 → 띠가 있는 동안만 **그만큼 확대**하고, 걷히면 원래 화면 그대로 (0원).
+    2026-10-06 S95 컷20: 앞 2.5초는 위아래 각 104줄이 까맣다가 4초에 다 걷혔다. 띠 안쪽 한 자리로
+    영상 전체를 자르면 띠가 걷힌 끝 장면에서 남편 머리 위와 아내 얼굴이 잘렸다.
+    → 프레임마다 띠 두께를 재어 그 안쪽만 화면 가득 키운다 (띠가 걷히면 카메라가 물러나는 것처럼 보인다).
+    돌려주는 것: 띠를 지운 영상(소리는 그대로) · 가로 영상이 아니거나 띠가 안 움직이면 None."""
+    if RATIO != "16:9":
+        return None
+    raw = Path(raw)
+    out = raw.with_name(raw.stem + "_unbar.mp4")
+    if out.exists() and out.stat().st_mtime >= raw.stat().st_mtime:
+        return out
+    track = bar_track(raw)
+    if not track:
+        return None
+    pw, ph = probe_wh()
+    big = max(max(t, b) for t, b in track)
+    if big < ph * FRAME_MIN or min(max(t, b) for t, b in track) > big - ph * BAR_MOVE:
+        return None                            # 띠가 없거나 늘 같다 → crop_of 가 한 자리로 자른다
+    from PIL import Image
+    w, h = size_of(raw)
+    k = h / float(ph)
+    m = len(track)
+    # 앞뒤 2프레임 가운데 가장 두꺼운 띠 + 여유 2줄 — 한 프레임도 까만 줄이 안 비친다
+    tops = [max(track[j][0] for j in range(max(0, i - 2), min(m, i + 3))) for i in range(m)]
+    bots = [max(track[j][1] for j in range(max(0, i - 2), min(m, i + 3))) for i in range(m)]
+    fps = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+                          "stream=r_frame_rate", "-of", "csv=p=0", str(raw)],
+                         capture_output=True, text=True).stdout.strip() or "24"
+    dec = subprocess.Popen(["ffmpeg", "-v", "error", "-i", str(raw), "-f", "rawvideo",
+                            "-pix_fmt", "rgb24", "-"], stdout=subprocess.PIPE)
+    enc = subprocess.Popen(["ffmpeg", "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
+                            "-s", f"{w}x{h}", "-r", fps, "-i", "-", "-i", str(raw),
+                            "-map", "0:v", "-map", "1:a?", "-c:v", "libx264", "-preset", "veryfast",
+                            "-crf", "16", "-pix_fmt", "yuv420p", "-c:a", "copy", str(out)],
+                           stdin=subprocess.PIPE)
+    size, i = w * h * 3, 0
+    while True:
+        buf = dec.stdout.read(size)
+        if len(buf) < size:
+            break
+        im = Image.frombytes("RGB", (w, h), buf)
+        j = min(i, m - 1)
+        t = (tops[j] + 2) * k if tops[j] else 0.0
+        b = (bots[j] + 2) * k if bots[j] else 0.0
+        ih = h - t - b
+        iw = w * ih / h
+        x0 = (w - iw) / 2
+        if t or b:
+            im = im.resize((w, h), Image.LANCZOS, box=(x0, t, x0 + iw, t + ih))
+        enc.stdin.write(im.tobytes())
+        i += 1
+    enc.stdin.close()
+    dec.wait()
+    if enc.wait() != 0 or not out.exists():
+        out.unlink(missing_ok=True)
+        return None
+    return out
+
+
 def post_talk(raw, out):
     """대사 컷 — 말 앞뒤만 남기고 화면·소리를 함께 1.28배로 (입이 안 어긋난다)."""
+    raw = unbar(raw) or raw                    # 가로 영상 — 중간에 걷히는 까만 띠는 그만큼만 확대
     dur = S9.dur_of(raw)
     beg, fin = S9.speech_span(raw)
     beg = max(0.0, (beg or 0.0) - TALK_LEAD)
@@ -636,6 +770,8 @@ def post_talk(raw, out):
 def post_narr(raw, out, need, land=False, stretch=STRETCH_MAX):
     """나레이션 컷 — 소리는 안 쓴다. 나레이션보다 짧으면 화면만 살짝 느리게 늘인다.
     land=True(움직여 얼굴에서 멈추는 구도)면 길 때 화면을 조금 빠르게 담아 **멈춘 얼굴까지** 보인다."""
+    moving = unbar(raw)                        # 가로 영상 — 중간에 걷히는 까만 띠는 그만큼만 확대
+    raw = moving or raw
     dur = S9.dur_of(raw)
     if dur >= need:
         k = max(SQUEEZE_MIN, need / max(0.1, dur)) if land else 1.0
@@ -657,6 +793,8 @@ def post_narr(raw, out, need, land=False, stretch=STRETCH_MAX):
         note += f" ⚠️ 나레이션 {need:.2f}초보다 짧다"
     if cr:
         note += " · 액자 테두리를 잘라 냈다"
+    if moving:
+        note += " · 걷히는 까만 띠를 그만큼만 확대해 지웠다"
     return note
 
 
@@ -1033,6 +1171,155 @@ def step_preview(sid, doc):
     return step_sheet(doc)
 
 
+def srt_ts(t):
+    ms = int(round(max(0.0, t) * 1000))
+    h, rem = divmod(ms, 3_600_000)
+    m, rem = divmod(rem, 60_000)
+    return f"{h:02d}:{m:02d}:{rem // 1000:02d},{rem % 1000:03d}"
+
+
+def srt_pieces(text, a, b):
+    """한 컷의 말 → [(시작, 끝, 글)] — 문장마다 나누고 **글자 수만큼** 시간을 나눈다 (0원).
+    ⭐ 2026-10-06 (S95): 한 컷 말이 80자까지 한 줄로 들어가 자막을 켜면 화면 아래가 세 줄로 찼다."""
+    parts = [x.strip() for x in re.split(r"(?<=[.?!])\s+", str(text).strip()) if x.strip()]
+    if len(parts) <= 1:
+        return [(a, b, str(text).strip())]
+    n = sum(len(x) for x in parts)
+    out, t = [], a
+    for i, x in enumerate(parts):
+        e = b if i == len(parts) - 1 else t + (b - a) * len(x) / n
+        out.append((t, e, x))
+        t = e
+    return out
+
+
+def step_meta(doc):
+    """⭐ 긴 영상 올릴 글에 **설명란 대목**을 넣고 **자막 파일**(.srt)을 만든다 (0원 · 2026-10-06 · S95).
+    완성 영상의 컷 조각 길이로 시각을 잰다 — build 뒤에 돈다 (build 가 끝에 저절로 부른다).
+    · 대목: 대본 yt_chapters (ytmeta.chapter_lines · 유튜브 규칙 0:00 · 셋 이상 · 10초 이상)
+    · 자막: 컷마다 그 컷의 말 (화면 자막은 영상에 박혀 유튜브가 못 읽는다 → 검색에 걸리게)
+    ⚠️ build_short90 을 다시 돌리면 올릴 글이 대목 없이 다시 써진다 — 그때는 이것을 다시 돌린다."""
+    import ytmeta                                             # noqa: E402
+    parts = [S9.OUT / "parts" / f"c{c['n']:02d}.mp4" for c in doc["cuts"]]
+    if not all(p.exists() for p in parts):
+        print("❌ 컷 조각이 없다 — `build` 를 먼저 돌린다")
+        return 1
+    durs = [S9.dur_of(p) for p in parts]
+    rows = timetable(doc, durs)
+    starts = {n: a for n, a, _b, _k, _t in rows}
+    total = S9.dur_of(S9.part_file(doc, 1))
+    meta = ytmeta.meta90(doc, starts, total)
+    chap = ytmeta.chapter_lines(doc, starts, total)
+    f = ROOT / "data" / "series" / f"{doc['sid']}.meta.json"
+    f.write_text(json.dumps(meta, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    lines, i = [], 0
+    for n, a, b, _k, t in rows:
+        for pa, pb, x in srt_pieces(t, a, b):
+            i += 1
+            lines += [str(i), f"{srt_ts(pa)} --> {srt_ts(max(pa + 0.3, pb - 0.05))}", x, ""]
+    srt = S9.part_file(doc, 1).with_suffix(".srt")
+    srt.write_text("\n".join(lines), encoding="utf-8")
+    print(f"■ 올릴 글 대목 {len(chap)}개 → {f.relative_to(ROOT)} · 자막 {i}줄 → "
+          f"{srt.relative_to(ROOT)} (0원)")
+    for x in chap:
+        print(f"   {x}")
+    th = thumb_long(doc, S9.part_thumb(doc, 1))
+    if th:
+        print(f"■ 긴 영상 썸네일 {th.relative_to(ROOT)} ({th.stat().st_size / 1000:.0f}KB · 0원)")
+    return 0
+
+
+# ⭐ 긴 영상 썸네일 (0원 · 2026-10-06 · S95) — 쇼츠처럼 첫 화면을 그대로 자르지 않는다.
+#    긴 영상은 검색·추천 목록에서 **썸네일이 클릭을 정한다**(쇼츠 피드는 썸네일을 안 쓴다).
+#    오른쪽에 그 사건 사람의 얼굴(대본 thumb.cut 컷 영상의 한 장면 · 자막·이름표 없는 원본),
+#    왼쪽에 큰 글 두 줄(흰 글 + 금색 글 · 굵은 검은 테두리). 1280×720 · 2MB 아래.
+THUMB_W, THUMB_H = 1280, 720
+
+
+def thumb_frame(doc):
+    """썸네일 바탕 한 장 (자막 없는 컷 영상에서) — 대본 thumb = {"cut": 컷, "at": 0~1}."""
+    from PIL import Image
+    th = doc.get("thumb") or {}
+    n = int(th.get("cut") or next(c["n"] for c in doc["cuts"] if not is_fig(c)))
+    clip = vdir() / f"c{n:02d}.mp4"
+    if not clip.exists():
+        return None
+    at = S9.dur_of(clip) * float(th.get("at") if th.get("at") is not None else 0.5)
+    r = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{at:.2f}", "-i", str(clip), "-frames:v", "1",
+                        "-f", "image2pipe", "-vcodec", "png", "-"], capture_output=True)
+    return Image.open(io.BytesIO(r.stdout)).convert("RGB") if r.stdout else None
+
+
+THUMB_FACE_AT = (0.74, 0.42)                   # 썸네일에서 얼굴 가운데가 올 자리 (오른쪽 · 글은 왼쪽)
+
+
+def thumb_long(doc, out, bg=None):
+    """긴 영상 썸네일 → out (jpg). bg 를 안 주면 thumb_frame.
+    대본 thumb = {"cut", "at", "face": [가로, 세로](바탕 장면에서 얼굴 가운데 · 0~1),
+                  "zoom": 확대(1~2), "place": [가로, 세로](썸네일에서 얼굴이 올 자리 · 기본 THUMB_FACE_AT),
+                  "text": [줄1, 줄2]}
+    ⭐ 2026-10-06 (S95): 컷 영상이 이미 16:9 라 '가운데 자리'를 옮겨도 얼굴이 안 움직였다
+       (시안 셋 모두 글이 얼굴을 덮었다) → 얼굴 쪽을 조금 키워 **오른쪽**(THUMB_FACE_AT)에 두고
+       글은 왼쪽 56% 안에 쓴다."""
+    from PIL import Image, ImageDraw, ImageFont
+    bg = bg or thumb_frame(doc)
+    if bg is None:
+        return None
+    th = doc.get("thumb") or {}
+    src = bg.convert("RGB")
+    sw, sh = src.size
+    z = min(2.0, max(1.0, float(th.get("zoom") or 1.0)))
+    cw = min(sw, sh * THUMB_W / THUMB_H) / z
+    ch = cw * THUMB_H / THUMB_W
+    fx, fy = (float(v) for v in (th.get("face") or (0.62, 0.40)))
+    px, py = (float(v) for v in (th.get("place") or THUMB_FACE_AT))
+    x0 = min(fx * sw - px * cw, sw - cw)
+    y0 = min(max(0.0, fy * sh - py * ch), sh - ch)
+    if x0 >= 0:
+        im = src.resize((THUMB_W, THUMB_H), Image.LANCZOS, box=(x0, y0, x0 + cw, y0 + ch))
+    else:
+        # ⭐ 얼굴이 장면 왼쪽에 가까워 오른쪽 자리까지 못 민다 → 모자라는 왼쪽은 어두운 바탕으로 잇고
+        #    장면 왼쪽 끝은 부드럽게 녹인다 (그 자리는 어차피 글 밑 어두운 그늘이다)
+        vw = int(round((x0 + cw) * THUMB_W / cw))
+        part = src.resize((vw, THUMB_H), Image.LANCZOS, box=(0, y0, x0 + cw, y0 + ch))
+        im = Image.new("RGB", (THUMB_W, THUMB_H), (6, 8, 12))
+        feather = max(1, min(vw, 260))
+        mask = Image.new("L", (vw, 1))
+        mask.putdata([min(255, int(255 * (i / feather) ** 1.5)) for i in range(vw)])
+        im.paste(part, (THUMB_W - vw, 0), mask.resize((vw, THUMB_H)))
+    shade = Image.new("L", (THUMB_W, 1))
+    shade.putdata([int(225 * max(0.0, 1 - x / (THUMB_W * 0.66)) ** 1.15) for x in range(THUMB_W)])
+    im.paste((6, 8, 12), (0, 0), shade.resize((THUMB_W, THUMB_H)))
+    d = ImageDraw.Draw(im)
+    lines = [str(x) for x in (th.get("text")
+                              or (doc.get("parts") or [{}])[0].get("card") or []) if str(x).strip()][:2]
+    fpath = str(ROOT / "assets" / "fonts" / "NanumGothic_ExtraBold.ttf")
+    max_w, left = THUMB_W * 0.56, 58
+    size = 140
+    while size > 64:
+        f = ImageFont.truetype(fpath, size)
+        if all(d.textlength(x, font=f) <= max_w for x in lines):
+            break
+        size -= 4
+    f = ImageFont.truetype(fpath, size)
+    gap = int(size * 1.22)
+    y0 = THUMB_H / 2 - gap * (len(lines) - 1) / 2 + 20
+    for i, x in enumerate(lines):
+        col = (255, 255, 255) if i == 0 else (240, 200, 96)
+        d.text((left, y0 + i * gap), x, font=f, fill=col, anchor="lm",
+               stroke_width=max(6, size // 14), stroke_fill=(0, 0, 0))
+    mf = ImageFont.truetype(str(ROOT / "assets" / "fonts" / "KoPub_Batang_Pro_Bold.otf"), 38)
+    d.text((left, 62), S9.CHANNEL, font=mf, fill=(232, 197, 112), anchor="lm",
+           stroke_width=3, stroke_fill=(0, 0, 0))
+    d.line([(left, 92), (left + 150, 92)], fill=(198, 160, 74), width=3)
+    out = Path(out)
+    for q in (92, 86, 78, 70):
+        im.save(out, quality=q)
+        if out.stat().st_size <= S9.THUMB_MAX_BYTES:
+            break
+    return out
+
+
 def step_build(doc):
     miss = [c["n"] for c in doc["cuts"] if not (vdir() / f"c{c['n']:02d}.mp4").exists()]
     if miss:
@@ -1047,6 +1334,8 @@ def step_build(doc):
     if got > talkplan.part_max_sec(doc):
         print(f"⚠️ {got:.1f}초 — 벽({talkplan.part_max_sec(doc):.0f}초)을 넘었다")
         return 1
+    if S9.LAYOUT == "long" and not S9.PREVIEW:
+        return step_meta(doc)                  # 긴 영상 — 설명란 대목 + 자막 파일 (0원)
     return 0
 
 
@@ -1054,7 +1343,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("sid")
     ap.add_argument("what", choices=["check", "plan", "cast", "voice", "clips", "figs", "build",
-                                     "sheet", "preview", "all"])
+                                     "sheet", "meta", "preview", "all"])
     ap.add_argument("--no-buy", action="store_true",
                     help="clips — 창고에 없는 컷이 있으면 사지 않고 멈춘다 (0원 보장)")
     ap.add_argument("--full", action="store_true", help="plan — 영상 지문까지 다 보인다")
@@ -1072,6 +1361,8 @@ def main():
         return step_check(sid, doc)
     if a.what == "sheet":
         return step_sheet(doc, a.at)
+    if a.what == "meta":
+        return step_meta(doc)
     if a.what == "preview":
         # ⭐ 값 0원 — 대본 검사를 먼저 본다 (걸린 대본으로 맛보기를 만들면 헛걸음이다)
         return step_check(sid, doc) or step_preview(sid, doc)

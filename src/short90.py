@@ -1569,7 +1569,8 @@ def voices(doc):
     try:
         return _voices(doc, tts)
     finally:
-        won = tts.bill_flush(f"{SID} 90초 쇼츠")
+        # 장부 설명 — 긴 영상(가로)은 "긴 영상" 으로 적는다 (S95 목소리가 "90초 쇼츠" 로 적혀 헷갈렸다)
+        won = tts.bill_flush(f"{SID} {'긴 영상' if LAYOUT == 'long' else '90초 쇼츠'}")
         if won:
             print(f"■ 목소리 값 약 {won:,.0f}원 — 장부에 적었다")
 

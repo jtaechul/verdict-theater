@@ -256,7 +256,41 @@ def cuts_of(doc, part):
     return [c for c in (doc.get("cuts") or []) if a <= c["n"] <= b]
 
 
-def part_meta(doc, part, last=False):
+def mmss(sec):
+    """설명란 시각 — 「0:00」 「4:21」 「12:05」 (유튜브 대목이 알아보는 꼴)."""
+    sec = int(round(max(0.0, float(sec))))
+    return f"{sec // 60}:{sec % 60:02d}"
+
+
+def chapter_lines(doc, starts, total, min_sec=10.0):
+    """⭐ 긴 영상 설명란 대목(유튜브 챕터) 줄 — ["0:00 사건", "0:54 …", …] (2026-10-06 · S95).
+
+    대본 yt_chapters = [[컷 번호, 대목 이름], …] (없으면 컷 chapter 가 바뀌는 곳)
+    starts = {컷 번호: 완성 영상에서 그 컷이 시작하는 초} · total = 완성 영상 길이(초).
+    유튜브 규칙: 첫 줄은 0:00 · 셋 이상 · 대목마다 10초 이상 → 짧은 대목은 앞 대목에 붙인다(뒤 이름을 버린다).
+    9분 영상에서 보고 싶은 곳으로 건너뛰게 해 나가려던 사람을 붙잡는다."""
+    marks = [list(m) for m in (doc.get("yt_chapters") or [])]
+    if not marks:
+        prev = None
+        for c in doc.get("cuts") or []:
+            ch = c.get("chapter")
+            if ch and ch != prev:
+                marks.append([c["n"], ch])
+                prev = ch
+    pts = sorted((float(starts[int(n)]), clean(t)) for n, t in marks if int(n) in starts and clean(t))
+    if not pts:
+        return []
+    pts[0] = (0.0, pts[0][1])
+    keep = [pts[0]]
+    for t, name in pts[1:]:
+        if t - keep[-1][0] >= min_sec:
+            keep.append((t, name))
+    while len(keep) > 1 and total - keep[-1][0] < min_sec:
+        keep.pop()
+    return [f"{mmss(t)} {name}" for t, name in keep] if len(keep) >= 3 else []
+
+
+def part_meta(doc, part, last=False, starts=None, total=None):
     """한 **편**의 제목·설명·해시태그. 0원 (모델을 안 부른다).
 
     ⭐⭐ 2026-09-01 — 한 사건을 여러 편으로 나눠 올린다. 편마다 제목·설명이
@@ -315,7 +349,12 @@ def part_meta(doc, part, last=False):
 
     body = [clean(part["card"][0]) + ", " + clean(part["card"][1]), ""]
     body += narr_lines(sub, 2)
-    body += ["", "법원은 어떻게 판단했을까요.", "", f"「{label}」"]
+    body += ["", "법원은 어떻게 판단했을까요."]
+    # ⭐ 긴 영상 — 설명란 대목 (완성 영상 시각을 받을 때만 · drama60 <SID> meta)
+    chap = chapter_lines(doc, starts, total) if starts and total else []
+    if chap:
+        body += ["", "대목"] + chap
+    body += ["", f"「{label}」"]
     # ⭐⭐⭐ 2026-09-06 손님: "다음화가 궁금하다면은 구독과 좋아요, 알림을 좀
     #    설정하도록 유도하는 건 어떨까." 영상 끝 화면(short90.end_card)에도
     #    같은 말을 띄운다 — 화면과 설명이 따로 놀면 안 된다.
@@ -349,7 +388,7 @@ def _last(doc):
     return max(nos) if nos else 0
 
 
-def meta90(doc):
+def meta90(doc, starts=None, total=None):
     """사건 하나의 **편별** 올릴 글. 편 수는 대본이 정한다 (2편이든 4편이든).
 
     ⚠️ 예전에는 한 편짜리라 낱개(dict)를 냈다. 지금은 편이 여럿이라 목록을
@@ -357,5 +396,6 @@ def meta90(doc):
     """
     return {"sid": doc.get("sid") or "S90",
             "label": clean(doc.get("series_label")) or clean(doc.get("title")),
-            "parts": [part_meta(doc, p, last=(int(p.get("no") or 0) == _last(doc)))
+            "parts": [part_meta(doc, p, last=(int(p.get("no") or 0) == _last(doc)),
+                                starts=starts, total=total)
                       for p in (doc.get("parts") or [])]}

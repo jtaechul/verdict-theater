@@ -2374,5 +2374,137 @@
     "kind": "목소리",
     "krw": 71,
     "note": "160자(어림) · gemini-3.8-flash-tts S94 90초 쇼츠"
+  },
+  {
+    "date": "2026-10-06",
+    "kind": "image",
+    "krw": 265,
+    "note": "gemini-3.1-flash-image 4K 16:9 _sheet.png"
+  },
+  {
+    "date": "2026-10-06",
+    "kind": "목소리",
+    "krw": 1966,
+    "note": "4459자(어림) · gemini-3.8-flash-tts S95 90초 쇼츠"
+  },
+  {
+    "date": "2026-10-06",
+    "kind": "영상",
+    "krw": 617,
+    "note": "gemini-omni-1.1-flash 720p 4초 v_d114cd54f67ec067_720p.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-06",
+    "kind": "영상",
+    "krw": 926,
+    "note": "gemini-omni-1.1-flash 720p 6초 v_75a3b0be465d40f3_720p.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-06",
+    "kind": "영상",
+    "krw": 926,
+    "note": "gemini-omni-1.1-flash 720p 6초 v_eedc3280a68323fc_720p.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-06",
+    "kind": "영상",
+    "krw": 926,
+    "note": "gemini-omni-1.1-flash 720p 6초 v_fe83e86a31e0cca8_720p.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-06",
+    "kind": "영상",
+    "krw": 617,
+    "note": "gemini-omni-1.1-flash 720p 4초 v_3d8abbfb885c1ef2_720p.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-06",
+    "kind": "영상",
+    "krw": 772,
+    "note": "gemini-omni-1.1-flash 720p 5초 v_f74ee15e3de184b2_720p.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-06",
+    "kind": "영상",
+    "krw": 772,
+    "note": "gemini-omni-1.1-flash 720p 5초 v_54410bb8753bbf79_720p.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-06",
+    "kind": "영상",
+    "krw": 1080,
+    "note": "gemini-omni-1.1-flash 720p 7초 v_14bbab17d4d7416b_720p.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-06",
+    "kind": "영상",
+    "krw": 617,
+    "note": "gemini-omni-1.1-flash 720p 4초 v_038e3d5200fc2769_720p.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-06",
+    "kind": "영상",
+    "krw": 772,
+    "note": "gemini-omni-1.1-flash 720p 5초 v_53a7b031779c3d4e_720p.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-06",
+    "kind": "영상",
+    "krw": 772,
+    "note": "gemini-omni-1.1-flash 720p 5초 v_a0e024907564e52e_720p.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-06",
+    "kind": "영상",
+    "krw": 926,
+    "note": "gemini-omni-1.1-flash 720p 6초 v_c4af501ba9287c28_720p.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-06",
+    "kind": "영상",
+    "krw": 772,
+    "note": "gemini-omni-1.1-flash 720p 5초 v_04bf77b4c34669b0_720p.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-06",
+    "kind": "영상",
+    "krw": 617,
+    "note": "gemini-omni-1.1-flash 720p 4초 v_be31a92cae94e965_720p.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-06",
+    "kind": "영상",
+    "krw": 617,
+    "note": "gemini-omni-1.1-flash 720p 4초 v_0c5dd872c968fbb3_720p.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-06",
+    "kind": "영상",
+    "krw": 1,
+    "note": "gemini-omni-1.1-flash v_0c5dd872c968fbb3_720p.mp4 실제 토큰 값 차액"
+  },
+  {
+    "date": "2026-10-06",
+    "kind": "영상",
+    "krw": 772,
+    "note": "gemini-omni-1.1-flash 720p 5초 v_3780ba21d8900cfb_720p.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-06",
+    "kind": "영상",
+    "krw": 772,
+    "note": "gemini-omni-1.1-flash 720p 5초 v_c2d7aba962b62e79_720p.mp4 (어림)"
+  },
+  {
+    "date": "2026-10-06",
+    "kind": "영상",
+    "krw": 2,
+    "note": "gemini-omni-1.1-flash v_c2d7aba962b62e79_720p.mp4 실제 토큰 값 차액"
+  },
+  {
+    "date": "2026-10-06",
+    "kind": "검토",
+    "krw": 51,
+    "note": "받아쓰기 점검 S95_part1.mp4 (목소리가 대본대로인지)"
   }
 ]

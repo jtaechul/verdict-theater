@@ -487,9 +487,9 @@ ck("대본 검사가 엉뚱한 화질(res)을 잡는다",
    any("화질" in b for b in T.check_drama(dict(story, res="1080p")))
    and not any("화질" in b for b in T.check_drama(dict(story, res="720p"))))
 _keys = b94[b94.index('for k in ("style"'):b94.index("if story.get(k) is not None")]
-ck("제작본(build_short90)이 화질(res) · 화면 꼴(layout) · 금액 배율(amount_scale)을 옮겨 적는다",
+ck("제작본(build_short90)이 화질(res) · 화면 꼴(layout) · 금액 배율 · 설명란 대목 · 썸네일을 옮겨 적는다",
    all(f'"{k}"' in _keys for k in ("res", "gap", "name_first", "end_note", "figs", "layout",
-                                    "amount_scale")))
+                                    "amount_scale", "yt_chapters", "thumb")))
 with tempfile.TemporaryDirectory() as t:
     t = Path(t)
     keep_vd = S9.video_dir
@@ -669,9 +669,40 @@ try:
     D.RATIO = "16:9"
     p16 = D.prompt(narr, sh_n, 5, by)
     t16 = D.prompt(talk, sh_t, 4, by)
-    ck("가로 지문: 16:9 와이드 · 세로 낱말이 하나도 없다",
-       "Horizontal 16:9 widescreen, exactly 5 seconds" in p16 and "horizontal 16:9 widescreen landscape"
-       in t16 and "9:16" not in p16 + t16 and "vertical" not in (p16 + t16).lower())
+    ck("가로 지문: 화면 가득 16:9 · 세로 낱말이 하나도 없다",
+       "Full-frame landscape 16:9 video, the picture reaching all four edges of the frame, exactly 5 seconds"
+       in p16 and "FRAMING: full-frame landscape 16:9 picture" in t16
+       and "9:16" not in p16 + t16 and "vertical" not in (p16 + t16).lower())
+    ck("가로 지문에 극장 화면비를 부르는 말이 없다 (S95 컷4: widescreen · cinematic → 위아래 검은 띠)",
+       "widescreen" not in (p16 + t16).lower() and "cinematic" not in (p16 + t16).lower()
+       and D.STYLE_WIDE in p16)
+    # 가로 영상의 까만 띠 — 늘 있는 띠(S95 컷4) · 중간에 걷히는 띠(S95 컷20) · 한쪽만 어두운 장면
+    with tempfile.TemporaryDirectory() as tb:
+        tb = Path(tb)
+
+        def mk(name, vf):
+            f = tb / name
+            subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i",
+                            "testsrc2=s=1280x720:r=24:d=5", "-vf", vf, "-pix_fmt", "yuv420p", str(f)],
+                           check=True)
+            return f
+
+        def box(cr):
+            m = re.match(r"crop=(\d+):(\d+):(\d+):(\d+),scale=1280:720,", cr)
+            return tuple(int(x) for x in m.groups()) if m else None
+
+        bar = "drawbox=x=0:y=0:w=1280:h=104:color=black:t=fill{e},drawbox=x=0:y=616:w=1280:h=104:color=black:t=fill{e}"
+        b1 = box(D.crop_of(mk("bars.mp4", bar.format(e=""))))
+        b2 = box(D.crop_of(mk("bars_open.mp4", bar.format(e=":enable='lt(t,2.5)'"))))
+        top_only = D.crop_of(mk("top_dark.mp4", "drawbox=x=0:y=0:w=1280:h=104:color=black:t=fill"))
+        plain16 = D.crop_of(mk("plain16.mp4", "null"))
+    ck("가로 영상의 위아래 까만 띠를 잘라 16:9 로 채운다 (띠는 안 남는다)",
+       b1 is not None and b1[3] >= 104 and b1[1] + b1[3] <= 616 and abs(b1[0] / b1[1] - 16 / 9) < 0.02,
+       str(b1))
+    ck("중간에 걷히는 띠도 잡는다 — 띠가 있던 동안의 안쪽으로 영상 전체를 자른다 (S95 컷20)",
+       b2 is not None and b2[3] >= 104 and b2[1] + b2[3] <= 616, str(b2))
+    ck("한쪽만 까만 장면(어두운 천장)과 띠 없는 영상은 안 자른다", top_only == "" and plain16 == "",
+       f"{top_only!r} {plain16!r}")
     k16 = D.vkey(narr)
     D.CUR["doc"] = s95
     rows95, bad95 = D.plan(s95, lib={}, quiet=True)
@@ -709,6 +740,21 @@ ck("이웃 규칙은 화면에서 바로 붙는 얼굴 컷끼리만 (사이에 �
 ck("같은 장면을 다시 쓰는 컷은 특별한 시점 수에 두 번 안 센다",
    not C.check([{"n": 1}, {"n": 9}, {"n": 19}], [_sp, _sp, _sp], reuse={2})
    and any("특별한 시점" in b for b in C.check([{"n": 1}, {"n": 9}, {"n": 19}], [_sp, _sp, _sp])))
+# ⭐ 2026-10-06 (S95) — 컷21 영상을 컷38 이 다시 쓰는데, 컷21 을 고를 때 컷38 바로 앞 컷37(이미 산
+#    영상 · 망원·눈높이)을 안 봐서 컷38 이 걸렸다. 앞 컷을 고를 때 **다시 쓰는 뒤 컷의 정해진 이웃**도 본다.
+_home = [{"n": n, "turns": [[w, "가"]], "who": ["아내"], "scene": sc, "place": "home"}
+         for n, w, sc in ((20, "나레이션", "a"), (21, "나레이션", "b"), (32, "나레이션", "c"),
+                          (37, "아내", "d"), (38, "나레이션", "b"), (60, "나레이션", "e"),
+                          (80, "나레이션", "f"))]
+_fish = next(x for x in C.NARR if x["key"] == "n-fisheye")
+_pin = {2: next(x for x in C.NARR if x["key"] == "n-arc"), 3: C.TALK[0], 5: _fish, 6: _fish}
+_t1 = C.plan(_home, dict(_pin), {1: [4]})
+_t2 = C.plan(_home, {**_pin, 1: _t1[1], 4: _t1[1]}, {1: [4]})
+ck("다시 쓰는 뒤 컷의 정해진 이웃도 보고 앞 컷 구도를 고른다 (S95 컷21→38 · 컷37)",
+   C.diff(_t1[1], C.TALK[0]) >= C.MIN_DIFF and not C.check(_home, _t2, reuse={4}),
+   f"{_t1[1]['key']} · {C.check(_home, _t2, reuse={4})}")
+ck("그림 컷 너머(번호가 벌어진) 이웃 때문에 맞는 구도를 버리지 않는다",
+   "near(i, q)" in (ROOT / "src" / "camera60.py").read_text(encoding="utf-8"))
 srcd = (ROOT / "tools" / "drama60.py").read_text(encoding="utf-8")
 src9 = (ROOT / "src" / "short90.py").read_text(encoding="utf-8")
 ck("옴니에 영상 꼴(16:9)을 그대로 넘긴다 · 창고에 꼴을 적는다",
@@ -764,6 +810,36 @@ with tempfile.TemporaryDirectory() as td:
 d95 = Y.part_meta(s95, s95["parts"][0], last=True)["description"]
 ck("설명란 끝 알림 — 붙여 쓴 「지역·금액」 은 안 쪼갠다 (「 · 」 에서만 줄을 나눈다)",
    "등장인물 이름은 가명이고 지역·금액은 바꾸었습니다." in d95 and "\n금액은" not in d95)
+# 긴 영상 설명란 대목 · 자막 파일 · 썸네일 (2026-10-06 · S95 · 0원)
+_cd = {"yt_chapters": [[1, "사건"], [3, "짧은 대목"], [5, "둘째"], [9, "셋째"]]}
+_st = {1: 0.0, 3: 4.0, 5: 30.0, 9: 70.4}
+ck("대목: 첫 줄 0:00 · 10초 안 되는 대목은 앞 대목에 붙인다 (유튜브 규칙)",
+   Y.chapter_lines(_cd, _st, 100.0) == ["0:00 사건", "0:30 둘째", "1:10 셋째"],
+   str(Y.chapter_lines(_cd, _st, 100.0)))
+ck("대목: 끝에서 10초 안 남은 대목은 버리고, 셋이 안 되면 대목을 아예 안 쓴다",
+   Y.chapter_lines(_cd, _st, 75.0) == [])
+_pm = Y.part_meta(s95, s95["parts"][0], last=True,
+                  starts={c["n"]: 6.0 * i for i, c in enumerate(s95["cuts"])}, total=6.0 * len(s95["cuts"]))
+ck("올릴 글 설명란에 「대목」 이 붙는다 (완성 영상 시각을 줄 때만)",
+   "\n대목\n0:00 사건\n" in _pm["description"] and "\n대목\n" not in d95)
+ck("자막 시각 꼴 (반올림해도 초가 안 어긋난다 · 59.9996초 → 1분)",
+   D.srt_ts(3725.5) == "01:02:05,500" and D.srt_ts(59.9996) == "00:01:00,000")
+_sp2 = D.srt_pieces("첫 문장입니다. 둘째 문장은 조금 더 깁니다!", 10.0, 20.0)
+ck("자막은 문장마다 나누고 글자 수만큼 시간을 나눈다 (한 컷 80자가 한 줄로 안 뜬다)",
+   len(_sp2) == 2 and _sp2[0][0] == 10.0 and _sp2[-1][1] == 20.0 and _sp2[0][1] < 15.0
+   and _sp2[1][2] == "둘째 문장은 조금 더 깁니다!", str(_sp2))
+from PIL import Image as _Im                                  # noqa: E402
+_bg = _Im.new("RGB", (1280, 720), (90, 90, 90))
+_bg.paste((255, 0, 0), (620, 268, 660, 308))                  # 얼굴 자리 (0.5, 0.4)
+with tempfile.TemporaryDirectory() as tt:
+    _th = D.thumb_long({"thumb": {"face": [0.5, 0.4], "zoom": 1.3, "text": ["가나다", "라마바"]},
+                        "parts": [{"card": ["", ""]}]}, Path(tt) / "t.jpg", bg=_bg)
+    _ti = _Im.open(_th).convert("RGB")
+    _fx, _fy = (int(v) for v in (D.THUMB_FACE_AT[0] * 1280, D.THUMB_FACE_AT[1] * 720))
+    _px = _ti.getpixel((_fx, _fy))
+    ck("긴 영상 썸네일: 1280×720 · 2MB 아래 · 얼굴을 오른쪽 자리로 옮긴다 (글이 얼굴을 안 덮는다)",
+       _ti.size == (1280, 720) and _th.stat().st_size <= S9.THUMB_MAX_BYTES
+       and _px[0] > 200 and _px[1] < 80, f"{_ti.size} {_px}")
 prev = srcd[srcd.index("def step_preview"):srcd.index("def step_build")]
 ck("맛보기는 돈 드는 것을 안 부른다 (옴니·목소리 없음) · 자리는 build/preview",
    "omni.make" not in prev and "tts" not in prev and "step_clips" not in prev and "step_voice" not in prev

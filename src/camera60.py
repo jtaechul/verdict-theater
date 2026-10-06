@@ -208,7 +208,7 @@ def _talks(c):
     return any(w != "나레이션" for w, _ in (c.get("turns") or []))
 
 
-def plan(cuts, pinned=None):
+def plan(cuts, pinned=None, tie=None):
     """컷마다 구도 하나 — [{key, kind, lens, height, move, text, cam, special}…].
 
     고르는 차례: 마지막 나레이션 → 끝 구도 · 뒤집히는 나레이션 → 돌리줌 먼저 ·
@@ -216,8 +216,20 @@ def plan(cuts, pinned=None):
     표 안에서는 ㉠ 앞 컷과 꼬리표가 둘 이상 다르고 ㉡ 덜 쓴 것을 고른다.
 
     pinned = {컷 차례: 구도} — **이미 산 영상**의 구도는 그대로 둔다 (다시 안 산다 · 0원).
-    그 옆 컷은 고정된 이웃과도 둘 이상 다르게 고른다."""
+    그 옆 컷은 고정된 이웃과도 둘 이상 다르게 고른다.
+    tie = {컷 차례: [뒤 컷 차례…]} — 그 컷 영상을 **뒤 컷이 그대로 다시 쓴다** (drama60 같은 장면
+          한 번만 사기). 뒤 컷도 같은 구도가 되므로, 뒤 컷의 **이미 정해진 이웃**과도 둘 이상 다르게 고른다.
+    ⭐ 2026-10-06 (S95): 컷38 이 컷21 영상을 다시 쓰는데, 컷21 을 고를 때 컷38 바로 앞 컷37(이미 산
+       영상)을 안 봐서 컷38 이 컷37 과 렌즈·높이가 같아졌다 → 사기 전 검사(check)에 걸려 멈췄다.
+       또 그림 컷이 끼어 화면에서 이웃이 아닌 컷(컷 번호가 1 넘게 벌어진 컷)은 check 처럼
+       **꼭 지킬 이웃 규칙**에서 뺀다 (덜 겹치게 고르는 데에는 그대로 쓴다)."""
     pinned = pinned or {}
+    tie = tie or {}
+
+    def near(a, b):
+        """화면에서 바로 붙는가 — 컷 번호가 1 차이 (번호가 없으면 붙었다고 본다 · check 와 같다)."""
+        na, nb = cuts[a].get("n"), cuts[b].get("n")
+        return na is None or nb is None or abs(int(nb) - int(na)) <= 1
     out, prev, used, special, seen = [], None, {}, 0, set()
     special = sum(1 for s in pinned.values() if s.get("special"))
     last = len(cuts) - 1
@@ -265,14 +277,30 @@ def plan(cuts, pinned=None):
             return True
 
         cand = [s for s in order if fits(s)] or order
+        # 꼭 지킬 이웃 — 화면에서 바로 붙는 앞뒤 컷 + 이 영상을 다시 쓰는 뒤 컷의 정해진 이웃
+        must = [x for x, q in ((prev, i - 1), (nxt, i + 1)) if x is not None and near(i, q)]
+        mine = set(tie.get(i) or ())
+        for t in mine:
+            for q in (t - 1, t + 1):
+                if 0 <= q < len(cuts) and q != i and q not in mine and near(q, t):
+                    got = pinned.get(q) if q in pinned else (out[q] if q < len(out) else None)
+                    if got:
+                        must.append(got)
+
+        def hard(s):
+            return all(diff(s, x) >= MIN_DIFF for x in must)
+
+        def new_key(s):
+            return prev is None or s["key"] != prev["key"]
+
         if twist and any(s["need"] == "twist" for s in cand):
             pick = next(s for s in cand if s["need"] == "twist")
         else:
-            good = [s for s in cand if diff(s, prev) >= MIN_DIFF and
-                    (prev is None or s["key"] != prev["key"]) and
+            good = [s for s in cand if hard(s) and diff(s, prev) >= MIN_DIFF and new_key(s) and
                     (nxt is None or diff(s, nxt) >= MIN_DIFF)] or \
-                   [s for s in cand if diff(s, prev) >= MIN_DIFF and
-                    (prev is None or s["key"] != prev["key"])] or cand
+                   [s for s in cand if hard(s) and new_key(s)] or \
+                   [s for s in cand if hard(s)] or \
+                   [s for s in cand if diff(s, prev) >= MIN_DIFF and new_key(s)] or cand
             pick = min(good, key=lambda s: (used.get(s["key"], 0), order.index(s)))
         used[pick["key"]] = used.get(pick["key"], 0) + 1
         special += 1 if pick["special"] else 0
