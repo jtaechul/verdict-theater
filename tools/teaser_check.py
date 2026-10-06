@@ -182,6 +182,30 @@ def main():
     ck("첫 컷 영상은 말보다 LEAD 만큼 먼저 시작한다", abs(segs[0]["src_at"] - (0.0 - T.LEAD)) < 1e-9)
     fx = [n for n, _ in T.fx_list(segs, cliff)]
     ck("도장 '쾅' 과 끊는 순간 판사봉이 있다", "stamp" in fx and "gavel" in fx)
+    # 대사로 여는 편(2·3편) — 0.0초부터 그 영상 소리 그대로 (LEAD 를 두면 입이 0.1초 어긋난다)
+    d3 = copy.deepcopy(doc)
+    d3["cuts"][0].update({"talk": True, "tag": "아들"})
+    pieces3 = {1: ("a1.wav", 2.5, 0.0), 2: ("a2.wav", 2.0, 0.1), 3: ("a3.wav", 1.5, 3.0)}
+    segs3, _, _, _ = T.timeline(d3, d3["parts"][0], pieces3)
+    ck("대사로 여는 편은 첫 말이 0.0초 · 화면도 그 자리 (입이 맞는다)",
+       segs3[0]["at"] == 0.0 and segs3[0]["src_at"] == 0.0)
+    fx2 = T.fx_list(segs3, 6.0, 1.45)
+    ck("첫 도장 효과음이 편마다 정한 때(stamp_at)에 난다", any(n == "stamp" and abs(t - 1.42) < 1e-6 for n, t in fx2))
+    d4 = copy.deepcopy(doc)
+    d4["cuts"][1]["slam"] = {"lines": ["돌아온 것", "0원"], "at": 0.5}
+    segs4, cl4, _, _ = T.timeline(d4, d4["parts"][0], pieces)
+    fx4 = [(n, round(t, 2)) for n, t in T.fx_list(segs4, cl4)]
+    ck("편 가운데 도장에도 '쾅' 이 난다", ("stamp", round(segs4[1]["at"] + 0.5 - 0.03, 2)) in fx4, fx4)
+    ck("가운데 도장 꼴이 틀리면 막는다", bad_of(lambda d: d["cuts"][1].update({"slam": "0원"})) != "")
+
+    print("\n■ ⑤-2 자막 — 문장마다 소리 쉼에 맞춘다")
+    seg5 = {"c": {"turns": [["아들", "10년이 지났습니다. 너무 늦으셨어요."]], "gold": []},
+            "at": 5.0, "a": 2.6, "t1": 7.8, "voiced": [(0.05, 0.95), (1.55, 2.35)]}
+    w5 = T.sub_windows(seg5)
+    ck("둘째 문장 자막은 둘째 말 덩어리가 시작할 때 뜬다", abs(w5[1][2] - 6.55) < 1e-6, [(x[2], x[3]) for x in w5])
+    ck("마지막 토막은 컷 끝까지", abs(w5[-1][3] - 7.8) < 1e-6)
+    seg6 = dict(seg5, voiced=[])
+    ck("소리 덩어리를 못 재면 글자 수로 나눈다 (맛보기)", len(T.sub_windows(seg6)) == 2)
 
     print("\n■ ⑥ 지켜 주는 것")
     import story90 as ST

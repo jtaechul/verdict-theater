@@ -3,6 +3,7 @@
    그대로 읽혔는지 본다 (한 번 약 15원 · 손으로만 · 값은 장부에)
 
     python3 tools/listen_check.py S94
+    python3 tools/listen_check.py S96 --part 2      편이 여럿이면 그 편만
 
 ⭐ 2026-10-02 (S94 v5) — 목소리 모델이 지시문을 소리 내어 읽거나(컷18 · 25자가 15초) 숫자를
    달리 읽으면 자막과 소리가 어긋난다. 눈으로 보는 검수(drama60 sheet)로는 못 잡는다
@@ -85,7 +86,14 @@ def main():
         return 2
     sid = sys.argv[1].upper()
     doc = json.loads((ROOT / "data" / "series" / f"{sid}.json").read_text(encoding="utf-8"))
-    mp4 = ROOT / "build" / "s90" / f"{sid}_part1.mp4"
+    # ⭐ 2026-10-06 — 편이 여럿인 사건(미끼 쇼츠 S96 1~3편)은 --part N 으로 그 편만 듣는다
+    #    (다른 편 숫자까지 견주면 "안 들렸다" 로 잘못 나온다)
+    no = int(sys.argv[sys.argv.index("--part") + 1]) if "--part" in sys.argv else 1
+    for p in doc.get("parts") or []:
+        if int(p.get("no") or 0) == no and p.get("cuts"):
+            a, b = p["cuts"]
+            doc = dict(doc, cuts=[c for c in doc.get("cuts") or [] if a <= c["n"] <= b])
+    mp4 = ROOT / "build" / "s90" / f"{sid}_part{no}.mp4"
     if not mp4.exists():
         print(f"❌ 영상이 없다: {mp4.relative_to(ROOT)} — drama60 build 를 먼저")
         return 2

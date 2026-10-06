@@ -90,7 +90,9 @@ STAMP_Y = FG_Y + int(FG_H * 0.70)              # 첫 도장 가운데 (얼굴 �
 # ── 시간 ──────────────────────────────────────────────────────
 LEAD = 0.10                                    # 첫 말이 나오는 때 (도장이 앉는 순간과 같다)
 GAP = 0.18                                     # 말과 말 사이 (미끼 쇼츠는 숨 가쁘게)
-STAMP_IN = 0.10                                # 첫 장면에 떠 있던 도장이 내려찍히는 때
+STAMP_IN = 0.10                                # 첫 장면에 떠 있던 도장이 내려찍히는 때 (편마다 stamp_at 으로 바꾼다)
+STAMP_DROP = 0.12                              # 찍히기 이만큼 전부터 조금 크게 떠 있다가 내려온다
+MID_SCALE, MID_Y = 0.74, 0.80                  # 편 가운데 도장 — 첫 도장보다 작게 · 얼굴 아래(영상 칸 80%)
 FLASH_SEC = 0.12                               # 찍힐 때 번쩍
 SHAKE_SEC, SHAKE_PX = 0.42, 16                 # 찍힌 뒤 화면 흔들림
 FLY_SEC = 0.36                                 # 도장이 맨 위로 날아가 앉는 시간
@@ -105,6 +107,7 @@ SFX = ROOT / "assets" / "sfx"
 BGM_DIR = ROOT / "assets" / "bgm"
 NARR_VOICE = S9.VOICE["나레이션"]               # 본편과 같은 성우 (Alnilam)
 WON_PER_CHAR = 0.5                             # 목소리 어림 (S95 실측 약 0.44원/자 · 넉넉히)
+READS_ALOUD = ("gemini-3.8-flash-tts",)        # 지시까지 읽는 목소리 모델 — 처음부터 맨 대사로 (tts._READS_ALOUD)
 
 # 효과음 (파일, 소리 크기, 잘라 쓸 시작, 길이) — 봉우리 자리는 src/render.py 실측을 따른다
 FX = {
@@ -221,8 +224,15 @@ def check(doc):
             bad.append(f"{p['no']}편: 끊는 컷(cliff)은 마지막 컷 하나뿐이다")
         if not cs[0].get("stamp"):
             bad.append(f"{p['no']}편: 첫 컷에 도장(stamp)이 없다 — 첫 3초 충격")
-        if is_talk(cs[0]):
-            bad.append(f"{p['no']}편: 첫 컷은 나레이션이다 (도장과 함께 말이 0.1초에 나온다)")
+        try:
+            if not 0.0 <= float(p.get("stamp_at", STAMP_IN)) <= 3.0:
+                bad.append(f"{p['no']}편: 도장은 3초 안에 찍는다 (stamp_at)")
+        except (TypeError, ValueError):
+            bad.append(f"{p['no']}편: stamp_at 이 숫자가 아니다")
+        for c in cs:
+            sl = c.get("slam")
+            if sl is not None and (not isinstance(sl, dict) or not sl.get("lines")):
+                bad.append(f"컷{c['n']}: 가운데 도장(slam)은 {{'lines': [...], 'at': 초}} 꼴이다")
         if not p.get("stamp") or not p.get("head") or not p.get("end"):
             bad.append(f"{p['no']}편: stamp · head · end 글이 다 있어야 한다")
         for k in ("stamp", "head", "end", "end_note"):
@@ -321,6 +331,39 @@ def trim_wav(w):
         tmp.unlink(missing_ok=True)
 
 
+def envelope(path, win=0.05):
+    """50ms 마다 소리 크기(dB) 목록."""
+    import array
+    hz = 8000
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", str(path), "-vn", "-ac", "1", "-ar", str(hz),
+                          "-f", "s16le", "-"], capture_output=True).stdout
+    a = array.array("h")
+    a.frombytes(raw[: len(raw) // 2 * 2])
+    step = int(hz * win)
+    return [20 * math.log10(max(1.0, (sum(x * x for x in a[i:i + step]) / step) ** 0.5) / 32768)
+            for i in range(0, len(a) - step + 1, step)]
+
+
+def voiced(path, win=0.05, join=0.22):
+    """말이 나는 덩어리 [(시작, 끝)] 초 — 0.22초보다 짧은 쉼은 잇는다 (자막을 문장마다 맞추는 데 쓴다)."""
+    db = envelope(path, win)
+    if len(db) < 4:
+        return []
+    srt = sorted(db)
+    floor, peak = srt[max(0, int(len(srt) * 0.10))], srt[int(len(srt) * 0.95)]
+    thr = max(floor + 8.0, peak - 30.0)
+    out = []
+    for i, v in enumerate(db):
+        if v < thr:
+            continue
+        a, b = i * win, (i + 1) * win
+        if out and a - out[-1][1] < join:
+            out[-1] = (out[-1][0], b)
+        else:
+            out.append((a, b))
+    return [x for x in out if x[1] - x[0] >= 0.12]
+
+
 def talk_span(clip):
     """대사 영상에서 말이 나는 구간 (시작, 끝) — **약한 끝소리까지** 넣는다.
     ⚠️ 2026-10-06 S96 1편 받아쓰기 — short90.speech_span(배경음과 봉우리 사이 20% 문턱)은
@@ -363,6 +406,9 @@ def step_voice(doc, part):
     import tts                                                # 늦게 부른다(열쇠 필요)
     cost.guard_month(f"{doc['sid']} 쇼츠 {part['no']}편 나레이션")
     S9.voice_route_ok(tts, len(need))
+    # ⭐ 2026-10-06 — 이 목소리 모델은 연기 지시를 붙이면 지시까지 소리 내어 읽는다 (S96 1·2편 첫 줄 ·
+    #    한 번에 30~40원씩 버렸다). 어차피 맨 대사로 다시 만드니 처음부터 맨 대사로 보낸다 (1·2편과 같은 소리).
+    getattr(tts, "_READS_ALOUD", set()).update(READS_ALOUD)
     d = work(doc["sid"]) / "voice"
     d.mkdir(exist_ok=True)
     try:
@@ -405,7 +451,7 @@ def prep_audio(doc, part, preview=False):
                  "-i", str(clip), "-vn", "-af", "aresample=48000,aformat=channel_layouts=stereo",
                  str(tmp)])
             level(tmp, out)
-            got[n] = (out, dur_of(out), beg)
+            got[n] = (out, dur_of(out), beg, voiced(out))
             continue
         v = voice_file(doc, c)
         if voice_ok(doc, c):
@@ -419,7 +465,8 @@ def prep_audio(doc, part, preview=False):
         else:
             raise TeaserError(f"컷{n} 나레이션이 없다 — `teaser.py {doc['sid']} voice --part "
                               f"{part['no']}` 를 먼저 (또는 preview)")
-        got[n] = (out, dur_of(out), float(c.get("at") or 0.0))
+        got[n] = (out, dur_of(out), float(c.get("at") or 0.0), [] if preview and not voice_ok(doc, c)
+                  else voiced(out))
     return got
 
 
@@ -435,14 +482,16 @@ def level(src, dst):
 
 def timeline(doc, part, pieces):
     """박자 [{c, t0, t1, at, a, src_at, audio}] · 끊는 때 · 끝 화면 시작 · 전체 길이."""
-    segs, t = [], LEAD
-    for i, c in enumerate(part_cuts(doc, part)):
-        path, a, src_at = pieces[c["n"]]
+    cs = part_cuts(doc, part)
+    # ⭐ 대사로 여는 편(2·3편)은 0.0초부터 그 영상 소리 그대로 — LEAD 를 두면 화면과 입이 0.1초 어긋난다
+    segs, t = [], (0.0 if cs and is_talk(cs[0]) else LEAD)
+    for i, c in enumerate(cs):
+        path, a, src_at, *rest = pieces[c["n"]]
         gap = 0.0 if c.get("cliff") else float(c.get("gap", GAP))
         # 첫 컷 화면은 0.0초부터 — 말(LEAD)보다 먼저 얼굴이 떠 있다
         t0 = 0.0 if i == 0 else t
         segs.append({"c": c, "t0": t0, "t1": t + a + gap, "at": t, "a": a,
-                     "src_at": src_at - (t - t0), "audio": path})
+                     "src_at": src_at - (t - t0), "audio": path, "voiced": (rest or [[]])[0]})
         t = t + a + gap
     cliff = t
     end0 = cliff + CLIFF_BLACK
@@ -555,19 +604,63 @@ def chunks(text, gold=()):
     return [x.replace(KEEP, " ") for x in S9.chunks_of(t, max_w=SUB_W)]
 
 
+def sentence_spans(seg, n):
+    """문장 n 개의 (시작, 끝) — 말 덩어리 사이 쉼 가운데 **가장 긴 n-1 곳**을 문장 경계로 본다.
+    덩어리가 문장보다 적으면 None (그때는 글자 수로 나눈다)."""
+    vs = [(seg["at"] + a, seg["at"] + b) for a, b in (seg.get("voiced") or [])]
+    if n <= 1 or len(vs) < n:
+        return None
+    gaps = sorted(range(len(vs) - 1), key=lambda i: vs[i + 1][0] - vs[i][1], reverse=True)[:n - 1]
+    cut = sorted(gaps)
+    out, k = [], 0
+    for i in cut + [len(vs) - 1]:
+        out.append((vs[k][0], vs[i][1]))
+        k = i + 1
+    return out
+
+
 def sub_windows(seg):
-    """자막 토막마다 (낱말들, 금색 번호들, 시작, 끝) — 말이 나는 동안을 글자 수로 나눈다
-    (끝 토막은 컷 끝까지)."""
+    """자막 토막마다 (낱말들, 금색 번호들, 시작, 끝).
+    ⭐ 문장이 둘 이상이면 소리의 쉼으로 문장 자리를 잡고 그 안에서 글자 수로 나눈다
+       (2026-10-06 S96 2편 「그 땅엔 빚이 더 많습니다. (쉼) 드릴 게 없어요.」 — 글자 수로만 나누면
+       둘째 문장 자막이 말보다 0.2초 먼저 떴다). 끝 토막은 컷 끝까지 남는다."""
     text, gold = text_of(seg["c"]), list(seg["c"].get("gold") or [])
     hot = hot_words(text, gold)
     ch = chunks(text, gold)
+    # 토막마다 몇 번째 문장인가 (chunks_of 는 문장 끝에서 반드시 끊는다)
+    which, k = [], 0
+    for x in ch:
+        which.append(k)
+        if x.rstrip().endswith((".", "?", "!", "…")):
+            k += 1
+    nsent = max(which) + 1 if which else 1
+    spans = sentence_spans(seg, nsent)
+    out, w = [], 0
+    if spans:
+        for si in range(nsent):
+            idx = [i for i, s_ in enumerate(which) if s_ == si]
+            a, b = spans[si]
+            nxt = spans[si + 1][0] if si + 1 < nsent else seg["t1"]
+            tot = sum(S9.syl(ch[i]) for i in idx) or 1
+            t = a
+            for j, i in enumerate(idx):
+                t1 = (nxt if j == len(idx) - 1 else t + (b - a) * S9.syl(ch[i]) / tot)
+                if si == nsent - 1 and j == len(idx) - 1:
+                    t1 = seg["t1"]
+                ws = ch[i].split()
+                out.append((ws, {q - w for q in hot if w <= q < w + len(ws)}, t, t1))
+                t, w = t1, w + len(ws)
+        # 첫 토막은 말이 나기 전부터 떠 있어도 된다 (컷 시작부터)
+        ws0, h0, _, b0 = out[0]
+        out[0] = (ws0, h0, seg["at"], b0)
+        return out
     tot = sum(S9.syl(x) for x in ch)
-    t, k, out = seg["at"], 0, []
+    t = seg["at"]
     for i, x in enumerate(ch):
         ws = x.split()
         t1 = seg["t1"] if i == len(ch) - 1 else t + seg["a"] * S9.syl(x) / tot
-        out.append((ws, {j - k for j in hot if k <= j < k + len(ws)}, t, t1))
-        t, k = t1, k + len(ws)
+        out.append((ws, {q - w for q in hot if w <= q < w + len(ws)}, t, t1))
+        t, w = t1, w + len(ws)
     return out
 
 
@@ -729,8 +822,8 @@ def frames_of(clip, at, need, n, stretch=STRETCH_MAX):
     p.wait()
 
 
-def shake_at(t):
-    u = t - STAMP_IN
+def shake_at(t, slam=STAMP_IN):
+    u = t - slam
     if u < 0 or u > SHAKE_SEC:
         return 0, 0
     a = SHAKE_PX * math.exp(-u * 9.0)
@@ -738,16 +831,18 @@ def shake_at(t):
             int(round(a * math.sin(u * 2 * math.pi * 17))))
 
 
-def stamp_at(t, fly0, big_c, small_c):
-    """첫 도장의 (크기, 가운데) — 첫 장면부터 떠 있다가 STAMP_IN 에 내려찍히고, fly0 부터 맨 위로."""
-    if t < STAMP_IN:
-        return 1.12 - 0.12 * (t / STAMP_IN) ** 2, big_c
+def stamp_at(t, fly0, big_c, small_c, slam=STAMP_IN):
+    """도장의 (크기, 가운데) — slam 조금 전부터 크게 떠 있다가 slam 에 내려찍히고, fly0 부터 맨 위로.
+    (첫 도장 · 편 가운데 도장이 같이 쓴다 · 가운데 도장은 fly0 를 아주 뒤로 준다)"""
+    if t < slam:
+        k = min(1.0, (slam - t) / STAMP_DROP)
+        return 1.0 + 0.12 * k * k, big_c
     if t < fly0:
-        return 1.0 + 0.02 * (t - STAMP_IN), big_c
+        return 1.0 + 0.02 * (t - slam), big_c
     # 먼저 작아지고(앞 절반) 위로 간다 — 큰 쪽지가 얼굴을 덮고 지나가지 않게 (2026-10-06 맛보기)
     u = (t - fly0) / FLY_SEC
     v, z = ease(u), ease(min(1.0, u * 2.0))
-    s0 = 1.0 + 0.02 * (fly0 - STAMP_IN)
+    s0 = 1.0 + 0.02 * (fly0 - slam)
     # 곧장 올라가면 얼굴(가운데) 위를 지난다 → 오른쪽으로 둥글게 돌아 올라간다
     return (s0 * (1 - z) + HEAD_STAMP * z,
             (big_c[0] + FLY_ARC * math.sin(math.pi * v), big_c[1] + (small_c[1] - big_c[1]) * v))
@@ -766,6 +861,8 @@ def render(doc, part, segs, cliff, end0, total, out_mp4):
     fly_end = segs[0]["t1"]
     fly0 = fly_end - FLY_SEC
     big_c, small_c = (W / 2, STAMP_Y), (W / 2, HEAD_STAMP_Y)
+    slam0 = stamp_time(part)
+    mids = mid_slams(segs)                        # [(때, 끝, 그림)] — 편 가운데 '쾅' (3편 「0원」)
     enc = subprocess.Popen(["ffmpeg", "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
                             "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-", "-c:v", "libx264",
                             "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p",
@@ -784,7 +881,10 @@ def render(doc, part, segs, cliff, end0, total, out_mp4):
                 t = (f0 + j) / FPS
                 u = ease(j / max(1, n - 1))
                 fr = bg_of(im)
-                dx, dy = shake_at(t) if c.get("stamp") else (0, 0)
+                dx, dy = shake_at(t, slam0) if c.get("stamp") else (0, 0)
+                for at_, end_, _, _, mn in mids:
+                    if mn == c["n"] and at_ <= t < end_:
+                        dx, dy = shake_at(t, at_)
                 fr.paste(fg_of(im, lerp(c.get("zoom", 1.0), u), lerp(c.get("x", 0.5), u),
                                lerp(c.get("y", 0.45), u)), (dx, FG_Y + dy))
                 fr.paste(chrome, (0, 0), chrome)
@@ -793,13 +893,21 @@ def render(doc, part, segs, cliff, end0, total, out_mp4):
                 landed = not c.get("stamp") or t >= fly_end - 0.04
                 if landed:
                     fr.paste(slip, slip_xy, slip)
-                else:
-                    s, (cx, cy) = stamp_at(t, fly0, big_c, small_c)
+                elif t >= slam0 - STAMP_DROP:
+                    s, (cx, cy) = stamp_at(t, fly0, big_c, small_c, slam0)
                     st = stamp.resize((max(2, int(stamp.width * s)), max(2, int(stamp.height * s))),
                                       Image.BICUBIC)
                     fr.paste(st, (int(cx - st.width / 2) + dx, int(cy - st.height / 2) + dy), st)
-                    if STAMP_IN <= t < STAMP_IN + FLASH_SEC:      # 찍히는 순간 번쩍
-                        fr = Image.blend(fr, white, 0.26 * (1 - (t - STAMP_IN) / FLASH_SEC))
+                    if slam0 <= t < slam0 + FLASH_SEC:            # 찍히는 순간 번쩍
+                        fr = Image.blend(fr, white, 0.26 * (1 - (t - slam0) / FLASH_SEC))
+                for at_, end_, pic, my, mn in mids:               # 편 가운데 도장 — 그 컷 끝까지만 (다음 컷에 안 묻는다)
+                    if mn == c["n"] and at_ - STAMP_DROP <= t < end_:
+                        s, (cx, cy) = stamp_at(t, 1e9, (W / 2, my), small_c, at_)
+                        st = pic.resize((max(2, int(pic.width * s)), max(2, int(pic.height * s))),
+                                        Image.BICUBIC)
+                        fr.paste(st, (int(cx - st.width / 2) + dx, int(cy - st.height / 2) + dy), st)
+                        if at_ <= t < at_ + FLASH_SEC:
+                            fr = Image.blend(fr, white, 0.26 * (1 - (t - at_) / FLASH_SEC))
                 if is_talk(c):                                    # 대사 이름표
                     if c["n"] not in tags:
                         tags[c["n"]] = tag_img(str(c["tag"]))
@@ -836,9 +944,34 @@ def render(doc, part, segs, cliff, end0, total, out_mp4):
     return fi
 
 
-def fx_list(segs, cliff):
-    """효과음 [(이름, 때)] — 도장 '쾅' · (컷마다 적은 것) · 끊는 순간 판사봉."""
-    out = [("stamp", STAMP_IN - 0.03), ("hit", max(0.0, STAMP_IN - 0.10))]
+def stamp_time(part):
+    """첫 도장이 찍히는 때 (초) — 편마다 stamp_at · 없으면 STAMP_IN.
+    대사로 여는 편은 첫 말이 끝나는 자리에 찍는다 (2편: 「그 땅엔 빚이 더 많습니다.」 바로 뒤 「그 빚, 아들이 낸 겁니다」)."""
+    return float(part.get("stamp_at", STAMP_IN))
+
+
+def mid_slams(segs):
+    """편 가운데 도장 [(찍는 때, 사라지는 때, 그림)] — 컷의 slam = {"lines": [...], "at": 그 컷 말 시작부터 초}."""
+    out = []
+    for seg in segs:
+        sl = seg["c"].get("slam")
+        if sl:
+            pic = stamp_img(sl["lines"])
+            k = float(sl.get("scale") or MID_SCALE)
+            pic = pic.resize((int(pic.width * k), int(pic.height * k)), Image.LANCZOS)
+            out.append((seg["at"] + float(sl.get("at") or 0.0), seg["t1"], pic,
+                        FG_Y + FG_H * float(sl.get("y") or MID_Y), seg["c"]["n"]))
+    return out
+
+
+def fx_list(segs, cliff, slam0=STAMP_IN):
+    """효과음 [(이름, 때)] — 도장 '쾅' · (컷마다 적은 것) · 가운데 도장 · 끊는 순간 판사봉."""
+    out = [("stamp", max(0.0, slam0 - 0.03)), ("hit", max(0.0, slam0 - 0.10))]
+    for seg in segs:
+        sl = seg["c"].get("slam")
+        if sl:
+            at_ = seg["at"] + float(sl.get("at") or 0.0)
+            out += [("stamp", max(0.0, at_ - 0.03)), ("hit", max(0.0, at_ - 0.10))]
     for seg in segs:
         for name, dt in seg["c"].get("sfx") or []:
             out.append((name, seg["t0"] + float(dt)))
@@ -846,7 +979,7 @@ def fx_list(segs, cliff):
     return out
 
 
-def mix_audio(doc, segs, cliff, total, out_wav):
+def mix_audio(doc, segs, cliff, total, out_wav, slam0=STAMP_IN):
     """말 + 배경음악(말이 나오면 눌린다 · 끊는 순간 뚝) + 효과음 → out_wav (0원)."""
     ins, fl, voice, fx = [], [], [], []
     for seg in segs:
@@ -857,7 +990,7 @@ def mix_audio(doc, segs, cliff, total, out_wav):
         voice.append(f"[v{i}]")
     ins += ["-i", str(BGM_DIR / f"{doc.get('bgm') or 'hook'}.mp3")]
     ib = len(ins) // 2 - 1
-    for k, (name, at) in enumerate(fx_list(segs, cliff)):
+    for k, (name, at) in enumerate(fx_list(segs, cliff, slam0)):
         f, vol, ss, ln = FX[name]
         ins += ["-i", str(SFX / f"{f}.mp3")]
         i = len(ins) // 2 - 1
@@ -893,7 +1026,7 @@ def step_build(doc, part, preview=False):
     print(f"■ {sid} {no}편 조립{' (맛보기 · 목소리 자리는 무음)' if preview else ''} — "
           f"{len(segs)}박자 · 끊는 때 {cliff:.2f}초 · 전체 {total:.2f}초")
     nf = render(doc, part, segs, cliff, end0, total, v)
-    mix_audio(doc, segs, cliff, total, a)
+    mix_audio(doc, segs, cliff, total, a, stamp_time(part))
     run(["ffmpeg", "-y", "-v", "error", "-i", str(v), "-i", str(a), "-map", "0:v", "-map", "1:a",
          "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-movflags", "+faststart",
          "-t", f"{total:.3f}", str(final)])
@@ -923,8 +1056,9 @@ def step_plan(doc):
     for p in parts_of(doc):
         print(f"\n■ {doc['sid']} {p['no']}편 「{p.get('yt_title', '')}」")
         print(f"  첫 화면 도장: {' / '.join(p['stamp'])} · 맨 위: {' '.join(p['head'])}")
-        t, need = LEAD, 0
-        for c in part_cuts(doc, p):
+        cs = part_cuts(doc, p)
+        t, need = (0.0 if cs and is_talk(cs[0]) else LEAD), 0
+        for c in cs:
             if is_talk(c):
                 try:
                     beg, fin = talk_span(clip_of(doc, c))
