@@ -16,7 +16,7 @@
      건너뛰기 하지 않을 … 그런 상황을 부여하고 호기심 마지막까지 부여해서 본 영상으로 유입되게끔"
     → 짓는 법 (대본 data/series/S96.json 이 본보기):
       · 한 편에 **충격 하나** — 첫 화면(0.0초)부터 얼굴 + 목소리 + 서류 쪽지의 빨간 도장 한 줄이 '쾅'
-        (검은 화면 없음 · 첫 장면에 이미 도장이 떠 있다가 0.1초에 내려찍힌다)
+        (검은 화면 없음 · 첫 장면에 이미 도장이 떠 있다가 내려찍힌다 · 대사로 여는 편은 첫 문장 끝에)
       · 끝까지 궁금하게 — 숫자는 서넛까지 · 30초 안팎 · **말 한복판에서 끊는다**(그 답은 본편에 있다)
       · 끝 화면 = 본편 썸네일 + 「이 이야기의 끝은 본편에서」 + 아래 영상 링크를 가리키는 화살표
       · 퀴즈 · "정답은 본편 몇 분 몇 초" 는 **쓰지 않는다** (check 가 막는다) · 판결문에 없는 일은 지어내지 않는다
@@ -24,11 +24,11 @@
       · 대사는 본편 대사 영상의 소리 그대로(입이 맞는다) · 나레이션만 새로 만든다 (본편과 같은 성우)
 
 세로 화면 (1080×1920)
-    맨 위 — 채널 이름 · 「살아 계신 아버지 땅 등기부에」(첫 화면부터) + 작은 서류 쪽지 (첫 도장이 날아와 앉는다)
-    가운데 — 본편 영상(16:9)을 1080×1000 으로 잘라 키운다 (컷마다 얼굴 자리 x·y · 천천히 다가간다)
-             뒤는 같은 영상을 흐리고 어둡게 깐다 (검은 띠 없음)
-    아래 — 자막 한 토막씩 (92px · 금색 말은 한 토막 안에) · 대사면 이름표(금색 막대)
-    ⚠️ 아래 300px 은 쇼츠 단추·제목 자리라 비운다 (short90 SUB_BOT 과 같은 까닭)
+    맨 위 250px — 채널 이름만 (유튜브 앱 위 단추 줄 자리) · ⚠️ 작은 부제목 글은 두지 않는다 (2026-10-06 손님 "어색해")
+    가운데 — 본편 영상(16:9)을 1080×1000 으로 잘라 키운다 (250~1250 · 컷마다 얼굴 자리 x·y · 천천히 다가간다)
+             뒤는 같은 영상을 흐리고 어둡게 깐다 (검은 띠 없음) · 첫 도장은 첫 컷 동안 영상 칸 아래쪽에
+    아래 — 자막 한 토막씩 (영상 칸 바로 아래 1336 · 92px · 금색 말은 한 토막 안에) · 대사면 이름표(금색 막대)
+    ⚠️ 그 아래는 쇼츠 제목·단추 자리라 비운다
 """
 import argparse
 import io
@@ -74,13 +74,13 @@ GOLD, GOLD_BRIGHT = S9.GOLD, S9.GOLD_BRIGHT
 RED = (200, 28, 34)                            # 도장 인주색
 
 # ── 자리 (세로) ────────────────────────────────────────────────
-FG_Y, FG_W, FG_H = 440, 1080, 1000             # 본편 영상을 앉히는 칸
-HEAD_Y = 196                                   # 맨 위 한 줄 (유튜브 앱 위 단추 180px 아래)
-HEAD_SIZE = 50
-HEAD_STAMP = 0.36                              # 맨 위에 앉는 쪽지 크기 (첫 도장 대비)
-HEAD_STAMP_Y = 352
+# ⭐ 2026-10-06 손님 (S96 1~3편을 보시고): "화면위에 작은글씨로 부제목같은게 적혀있는데 이건 글씨도 너무 작고
+#    쌩뚱맞고 뭔가 어색해. 이거 영상배치를 전반적으로 살짝 위로 올리고 위의 작은 글씨는 없애거나"
+#    → 맨 위 한 줄 글과 날아와 앉던 작은 쪽지를 **없앴다.** 영상 칸을 440 → 250 으로 올리고, 자막을 영상 칸
+#      바로 아래(1336)로 붙였다. 첫 도장은 첫 컷 동안만 크게 있다가 컷이 바뀔 때 사라진다.
+FG_Y, FG_W, FG_H = 250, 1080, 1000             # 본편 영상을 앉히는 칸 (유튜브 앱 위 단추 줄 바로 아래)
 STAMP_W = 940                                  # 첫 도장(서류 쪽지) 너비 — 화면 1080 안에
-SUB_Y = 1528                                   # 자막 가운데 (영상 칸 아래 · 쇼츠 단추 300px 위)
+SUB_Y = FG_Y + FG_H + 86                       # 자막 가운데 (영상 칸 바로 아래 · 쇼츠 제목 줄보다 한참 위)
 SUB_SIZE = 92
 SUB_W = 900                                    # 오른쪽 좋아요·댓글 단추 줄을 피한다
 TAG_Y = FG_Y + FG_H - 96                       # 대사 이름표 (영상 칸 왼쪽 아래)
@@ -95,8 +95,8 @@ STAMP_DROP = 0.12                              # 찍히기 이만큼 전부터 �
 MID_SCALE, MID_Y = 0.74, 0.80                  # 편 가운데 도장 — 첫 도장보다 작게 · 얼굴 아래(영상 칸 80%)
 FLASH_SEC = 0.12                               # 찍힐 때 번쩍
 SHAKE_SEC, SHAKE_PX = 0.42, 16                 # 찍힌 뒤 화면 흔들림
-FLY_SEC = 0.36                                 # 도장이 맨 위로 날아가 앉는 시간
-FLY_ARC = 300                                  # 날아갈 때 오른쪽으로 비켜 가는 폭 (얼굴을 안 덮는다)
+STAMP_EXIT = 0.18                              # 첫 컷이 끝날 때 첫 도장이 옅어지며 사라지는 시간
+END_UP = 80                                    # 끝 화면도 같이 조금 위로
 STRETCH_MAX = 1.4                              # 영상이 모자라면 화면만 이만큼까지 느리게 (그다음은 멈춤)
 TALK_PRE, TALK_POST = 0.08, 0.10               # 대사 소리 — 말 앞뒤로 남기는 숨
 CLIFF_BLACK = 0.24                             # 말 한복판에서 끊은 뒤 까만 화면 (판사봉 '쾅')
@@ -233,9 +233,9 @@ def check(doc):
             sl = c.get("slam")
             if sl is not None and (not isinstance(sl, dict) or not sl.get("lines")):
                 bad.append(f"컷{c['n']}: 가운데 도장(slam)은 {{'lines': [...], 'at': 초}} 꼴이다")
-        if not p.get("stamp") or not p.get("head") or not p.get("end"):
-            bad.append(f"{p['no']}편: stamp · head · end 글이 다 있어야 한다")
-        for k in ("stamp", "head", "end", "end_note"):
+        if not p.get("stamp") or not p.get("end"):
+            bad.append(f"{p['no']}편: stamp · end 글이 다 있어야 한다")
+        for k in ("stamp", "end", "end_note"):
             v = p.get(k) or ""
             if QUIZ.search(" ".join(v) if isinstance(v, list) else str(v)):
                 bad.append(f"{p['no']}편 {k}: 퀴즈 · 시각 안내는 쓰지 않는다")
@@ -707,19 +707,6 @@ def chrome_img():
     return im
 
 
-def head_img(part, stamp):
-    """맨 위 — (한 줄 글 그림, 작은 쪽지 그림). 한 줄은 첫 화면부터 늘 · 쪽지는 첫 도장이 날아와 앉은 뒤."""
-    line = Image.new("RGBA", (W, FG_Y), (0, 0, 0, 0))
-    d = ImageDraw.Draw(line)
-    for y in range(FG_Y):                                  # 위쪽을 조금 어둡게 (글이 읽히게)
-        d.line([(0, y), (W, y)], fill=(0, 0, 0, int(110 * (1 - y / FG_Y))))
-    d.text((W / 2, HEAD_Y), " ".join(part["head"]), font=font(FONT_SUB, HEAD_SIZE),
-           fill=(255, 255, 255, 245), anchor="mt", stroke_width=4, stroke_fill=(0, 0, 0, 200))
-    small = stamp.resize((int(stamp.width * HEAD_STAMP), int(stamp.height * HEAD_STAMP)),
-                         Image.LANCZOS)
-    return line, small
-
-
 def end_img(doc, part):
     """끝 화면 — 본편 썸네일 + 「이 이야기의 끝은 본편에서」 + 아래 영상 링크 안내 (화살표는 따로)."""
     th = OUT / f"{doc['source']}_part1.jpg"
@@ -733,13 +720,13 @@ def end_img(doc, part):
     im = bg.resize((W, H), Image.BICUBIC).convert("RGBA")
     d = ImageDraw.Draw(im)
     a, b = part["end"][0], part["end"][-1]
-    d.text((W / 2, 520), a, font=font(FONT_SUB, 64), fill=(255, 255, 255, 240), anchor="ms",
+    d.text((W / 2, 520 - END_UP), a, font=font(FONT_SUB, 64), fill=(255, 255, 255, 240), anchor="ms",
            stroke_width=4, stroke_fill=(0, 0, 0, 200))
-    d.text((W / 2, 664), b, font=font(FONT_SUB, 118), fill=GOLD_BRIGHT, anchor="ms",
+    d.text((W / 2, 664 - END_UP), b, font=font(FONT_SUB, 118), fill=GOLD_BRIGHT, anchor="ms",
            stroke_width=6, stroke_fill=(0, 0, 0, 210))
     cw = 940
     card = t.resize((cw, int(cw * t.height / t.width)), Image.LANCZOS)
-    cy = 740
+    cy = 740 - END_UP
     shadow = Image.new("RGBA", (card.width + 60, card.height + 60), (0, 0, 0, 0))
     ImageDraw.Draw(shadow).rectangle([30, 30, card.width + 30, card.height + 30], fill=(0, 0, 0, 170))
     shadow = shadow.filter(ImageFilter.GaussianBlur(14))
@@ -831,36 +818,24 @@ def shake_at(t, slam=STAMP_IN):
             int(round(a * math.sin(u * 2 * math.pi * 17))))
 
 
-def stamp_at(t, fly0, big_c, small_c, slam=STAMP_IN):
-    """도장의 (크기, 가운데) — slam 조금 전부터 크게 떠 있다가 slam 에 내려찍히고, fly0 부터 맨 위로.
-    (첫 도장 · 편 가운데 도장이 같이 쓴다 · 가운데 도장은 fly0 를 아주 뒤로 준다)"""
+def stamp_at(t, slam=STAMP_IN):
+    """도장 크기 — slam 조금 전부터 조금 크게 떠 있다가 slam 에 내려찍히고, 그 뒤로 아주 천천히 커진다.
+    (첫 도장 · 편 가운데 도장이 같이 쓴다)"""
     if t < slam:
         k = min(1.0, (slam - t) / STAMP_DROP)
-        return 1.0 + 0.12 * k * k, big_c
-    if t < fly0:
-        return 1.0 + 0.02 * (t - slam), big_c
-    # 먼저 작아지고(앞 절반) 위로 간다 — 큰 쪽지가 얼굴을 덮고 지나가지 않게 (2026-10-06 맛보기)
-    u = (t - fly0) / FLY_SEC
-    v, z = ease(u), ease(min(1.0, u * 2.0))
-    s0 = 1.0 + 0.02 * (fly0 - slam)
-    # 곧장 올라가면 얼굴(가운데) 위를 지난다 → 오른쪽으로 둥글게 돌아 올라간다
-    return (s0 * (1 - z) + HEAD_STAMP * z,
-            (big_c[0] + FLY_ARC * math.sin(math.pi * v), big_c[1] + (small_c[1] - big_c[1]) * v))
+        return 1.0 + 0.12 * k * k
+    return 1.0 + 0.02 * (t - slam)
 
 
 def render(doc, part, segs, cliff, end0, total, out_mp4):
     """화면만 (소리 없이) → out_mp4. 프레임마다 PIL 로 짠다 (0원)."""
     stamp = stamp_img(part["stamp"])
-    head, slip = head_img(part, stamp)
-    slip_xy = (int(W / 2 - slip.width / 2), int(HEAD_STAMP_Y - slip.height / 2))
     white = Image.new("RGB", (W, H), (255, 255, 255))
     chrome = chrome_img()
     endpic, arrow_y = end_img(doc, part)
     arrow = arrow_img()
     subs, tags = {}, {}
-    fly_end = segs[0]["t1"]
-    fly0 = fly_end - FLY_SEC
-    big_c, small_c = (W / 2, STAMP_Y), (W / 2, HEAD_STAMP_Y)
+    stamp_end = segs[0]["t1"]                     # 첫 도장은 첫 컷이 끝나면 사라진다 (맨 위에 작게 남기지 않는다)
     slam0 = stamp_time(part)
     mids = mid_slams(segs)                        # [(때, 끝, 그림)] — 편 가운데 '쾅' (3편 「0원」)
     enc = subprocess.Popen(["ffmpeg", "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
@@ -888,24 +863,23 @@ def render(doc, part, segs, cliff, end0, total, out_mp4):
                 fr.paste(fg_of(im, lerp(c.get("zoom", 1.0), u), lerp(c.get("x", 0.5), u),
                                lerp(c.get("y", 0.45), u)), (dx, FG_Y + dy))
                 fr.paste(chrome, (0, 0), chrome)
-                # 맨 위 — 한 줄은 첫 화면부터 · 작은 쪽지는 첫 도장이 날아와 앉은 뒤
-                fr.paste(head, (0, 0), head)
-                landed = not c.get("stamp") or t >= fly_end - 0.04
-                if landed:
-                    fr.paste(slip, slip_xy, slip)
-                elif t >= slam0 - STAMP_DROP:
-                    s, (cx, cy) = stamp_at(t, fly0, big_c, small_c, slam0)
+                # 첫 도장 — 첫 장면부터 떠 있다가 내려찍히고(번쩍 · 흔들림) · 첫 컷이 끝날 때 옅어지며 사라진다
+                if c.get("stamp") and slam0 - STAMP_DROP <= t < stamp_end:
+                    s = stamp_at(t, slam0)
                     st = stamp.resize((max(2, int(stamp.width * s)), max(2, int(stamp.height * s))),
                                       Image.BICUBIC)
-                    fr.paste(st, (int(cx - st.width / 2) + dx, int(cy - st.height / 2) + dy), st)
+                    al = min(1.0, (stamp_end - t) / STAMP_EXIT)
+                    if al < 0.999:
+                        st.putalpha(st.getchannel("A").point(lambda v, al=al: int(v * al)))
+                    fr.paste(st, (int(W / 2 - st.width / 2) + dx, int(STAMP_Y - st.height / 2) + dy), st)
                     if slam0 <= t < slam0 + FLASH_SEC:            # 찍히는 순간 번쩍
                         fr = Image.blend(fr, white, 0.26 * (1 - (t - slam0) / FLASH_SEC))
                 for at_, end_, pic, my, mn in mids:               # 편 가운데 도장 — 그 컷 끝까지만 (다음 컷에 안 묻는다)
                     if mn == c["n"] and at_ - STAMP_DROP <= t < end_:
-                        s, (cx, cy) = stamp_at(t, 1e9, (W / 2, my), small_c, at_)
+                        s = stamp_at(t, at_)
                         st = pic.resize((max(2, int(pic.width * s)), max(2, int(pic.height * s))),
                                         Image.BICUBIC)
-                        fr.paste(st, (int(cx - st.width / 2) + dx, int(cy - st.height / 2) + dy), st)
+                        fr.paste(st, (int(W / 2 - st.width / 2) + dx, int(my - st.height / 2) + dy), st)
                         if at_ <= t < at_ + FLASH_SEC:
                             fr = Image.blend(fr, white, 0.26 * (1 - (t - at_) / FLASH_SEC))
                 if is_talk(c):                                    # 대사 이름표
@@ -1055,7 +1029,7 @@ def step_plan(doc):
     k = ST90.speed_of(doc)
     for p in parts_of(doc):
         print(f"\n■ {doc['sid']} {p['no']}편 「{p.get('yt_title', '')}」")
-        print(f"  첫 화면 도장: {' / '.join(p['stamp'])} · 맨 위: {' '.join(p['head'])}")
+        print(f"  첫 화면 도장: {' / '.join(p['stamp'])} (첫 컷 동안)")
         cs = part_cuts(doc, p)
         t, need = (0.0 if cs and is_talk(cs[0]) else LEAD), 0
         for c in cs:
@@ -1101,7 +1075,7 @@ def step_sheet(doc, part, preview=False):
     ats = [0.0, 0.05, 0.12, 0.2, 0.6, 1.5]
     if tl.exists():
         rows = json.loads(tl.read_text(encoding="utf-8"))
-        ats += [round(rows[0]["t1"] - FLY_SEC / 2, 2), round(rows[0]["t1"] + 0.1, 2)]
+        ats += [round(rows[0]["t1"] - STAMP_EXIT / 2, 2), round(rows[0]["t1"] + 0.1, 2)]
         ats += [round((r["t0"] + r["t1"]) / 2, 2) for r in rows[1:] if "t0" in r]
         last = rows[-1]
         ats += [last["cliff"] - 0.1, last["cliff"] + 0.1, last["end"] + 0.3, total - 0.1]
