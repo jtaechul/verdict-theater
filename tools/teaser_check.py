@@ -189,6 +189,20 @@ def main():
     segs3, _, _, _ = T.timeline(d3, d3["parts"][0], pieces3)
     ck("대사로 여는 편은 첫 말이 0.0초 · 화면도 그 자리 (입이 맞는다)",
        segs3[0]["at"] == 0.0 and segs3[0]["src_at"] == 0.0)
+    print("\n■ ⑤-3 도장 찍기 — 공중 → 쾅 → 튀었다 앉기 → 컷 끝에 사라짐")
+    pic = T.stamp_img(["아버지가", "돌아가시면 내 것"])
+    sl, en = 1.0, 3.0
+    ck("찍기 전(공중으로 내려오기 전)엔 안 보인다", T.stamp_layers(pic, sl - T.STAMP_DROP - 0.01, sl, en) == [])
+    air = T.stamp_layers(pic, sl - T.STAMP_DROP / 2, sl, en)
+    ck("공중에서는 그림자를 끌고 더 크게 내려온다", len(air) == 2 and air[1][0].width > pic.width)
+    hit = T.stamp_layers(pic, sl + 0.01, sl, en)
+    sat = T.stamp_layers(pic, sl + 1.0, sl, en)
+    ck("쾅 — 눌려 납작 · 인주 번짐 · 튀는 인주 방울", len(hit) == 3 and hit[1][0].height < sat[0][0].height,
+       f"눌린 높이 {hit[1][0].height} · 앉은 높이 {sat[0][0].height}")
+    ck("앉은 뒤엔 도장만", len(sat) == 1)
+    late = T.stamp_layers(pic, en - 0.05, sl, en)
+    ck("그 컷 끝에는 옅어진다", late and late[-1][0].getchannel("A").getextrema()[1] < 250)
+    ck("컷이 끝나면 없다 (다음 컷에 안 묻는다)", T.stamp_layers(pic, en, sl, en) == [])
     fx2 = T.fx_list(segs3, 6.0, 1.45)
     ck("첫 도장 효과음이 편마다 정한 때(stamp_at)에 난다", any(n == "stamp" and abs(t - 1.42) < 1e-6 for n, t in fx2))
     d4 = copy.deepcopy(doc)
@@ -239,16 +253,16 @@ def main():
             import fetch_meta90
             why = fetch_meta90.blocked(json.loads(meta.read_text(encoding="utf-8")))
             ck(f"{f.stem}: 올릴 글이 마지막 문지기를 지난다", not why, " / ".join(why[:2]))
-        # ⭐ 2026-10-06 손님 "자막 아래로" — 도장 상자는 자막 아래 · 앱이 덮는 자리(UI_TOP) 위 · 단추 줄을 비킨다
+        # ⭐ 2026-10-06 손님 "화면 중간에 배치했다 없애고 도장 찍히는 듯한" — 앉은 도장은 화면 안 · 영상 칸 안 · 자막 위
         for p in d.get("parts") or []:
             pics = [("첫 도장", T.stamp_img(p["stamp"]))]
             pics += [(f"컷{c['n']} 가운데 도장", T.stamp_img(c["slam"]["lines"]))
                      for c in T.part_cuts(d, p) if c.get("slam")]
             for what, pic in pics:
-                bottom = T.BOX_TOP + pic.height - 18          # 그림자 18px 은 빼고 종이 아랫변
-                ck(f"{f.stem} {p['no']}편 {what}: 자막 아래 · 앱이 덮는 자리 위 · 단추 줄 비킴",
-                   bottom <= T.UI_TOP and pic.width <= T.BOX_W and T.BOX_TOP > T.SUB_Y,
-                   f"아랫변 {bottom} · 너비 {pic.width}")
+                top, bottom = T.STAMP_C[1] - pic.height / 2, T.STAMP_C[1] + pic.height / 2
+                ck(f"{f.stem} {p['no']}편 {what}: 화면 한가운데 · 영상 칸 안 · 자막을 안 덮는다",
+                   pic.width <= T.STAMP_MAX_W and top >= T.FG_Y and bottom <= T.SUB_Y - 60,
+                   f"{int(top)}~{int(bottom)} · 너비 {pic.width}")
     print(f"   (미끼 쇼츠 대본 {seen}개)")
 
     print("\n" + "─" * 56)

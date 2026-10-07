@@ -28,7 +28,7 @@
     가운데 — 본편 영상(16:9)을 1080×1000 으로 잘라 키운다 (210~1210 · 컷마다 얼굴 자리 x·y · 천천히 다가간다)
              뒤는 같은 영상을 흐리고 어둡게 깐다 (검은 띠 없음)
     아래 — 자막 한 토막씩 (영상 칸 바로 아래 1288 · 92px · 금색 말은 한 토막 안에) · 대사면 이름표(금색 막대)
-           그 바로 아래 도장 상자 (첫 컷 동안 · 3편 「0원」 도 같은 자리) — 2026-10-06 손님 "자막 아래로"
+    도장 상자 — 화면 한가운데에 '쾅' 찍었다가 그 컷이 끝나면 사라진다 (첫 컷 · 3편 「0원」) — 2026-10-06 손님
     ⚠️ 1536 아래는 쇼츠 제목·채널·관련 동영상 링크 자리라 비운다 (UI_TOP)
 """
 import argparse
@@ -85,8 +85,14 @@ RED = (200, 28, 34)                            # 도장 인주색
 #      상자를 납작하게(두 줄 · 높이 약 200) 하고, 영상 칸을 40px 더 올렸다 (250 → 210).
 FG_Y, FG_W, FG_H = 210, 1080, 1000             # 본편 영상을 앉히는 칸 (유튜브 앱 위 단추 줄 바로 아래)
 SUB_Y = FG_Y + FG_H + 78                       # 자막 가운데 (영상 칸 바로 아래)
-BOX_W = 760                                    # 도장 상자 너비 상한 — 오른쪽 좋아요·댓글 단추 줄(x≈950~)을 비킨다
-BOX_TOP = SUB_Y + 40                           # 도장 상자 그림 윗변 (그림자 18px 포함 · 종이는 자막 글자 약 25px 아래)
+# ⭐ 2026-10-06 손님 (세 번째): "도장상자가 나타났다 사라지는 거라면 그냥 화면 중간에 배치했다 없애고 도장 찍히는 듯한
+#    애니메이션효과 추가해서" → 도장 상자는 **화면 한가운데**에 크게 '쾅' 찍고, 그 컷이 끝나면 사라진다 (자막 아래 아님).
+#    찍기: 공중에서 크게 기울어 그림자를 끌고 내려온다(점점 빨라진다) → 쾅(눌려 납작 · 번쩍 · 흔들림 · 인주 번짐 ·
+#    튀는 인주 방울) → 살짝 튀었다 앉는다 → 컷 끝에 옅어지며 떠오른다. 3편 「0원」 도 같다.
+STAMP_C = (W / 2, H / 2)                       # 도장 가운데 — 화면 한가운데 (얼굴은 영상 칸 위쪽이라 안 가린다)
+STAMP_MAX_W = 900                              # 도장 상자 너비 상한 (화면 1080 안 · 양옆 90)
+STAMP_GROW = 1.30                              # 상자를 이만큼 키워 찍는다 (가운데라 크게)
+STAMP_ANGLE = -2.0                             # 앉은 도장의 기울기
 UI_TOP = 1536                                  # 여기부터 아래는 앱이 제목·채널·관련 동영상 링크를 겹쳐 보여 준다
 SUB_SIZE = 92
 SUB_W = 900                                    # 오른쪽 좋아요·댓글 단추 줄을 피한다
@@ -96,11 +102,14 @@ MARK_Y, MARK_SIZE = 44, 34
 # ── 시간 ──────────────────────────────────────────────────────
 LEAD = 0.10                                    # 첫 말이 나오는 때 (도장이 앉는 순간과 같다)
 GAP = 0.18                                     # 말과 말 사이 (미끼 쇼츠는 숨 가쁘게)
-STAMP_IN = 0.10                                # 첫 장면에 떠 있던 도장이 내려찍히는 때 (편마다 stamp_at 으로 바꾼다)
-STAMP_DROP = 0.12                              # 찍히기 이만큼 전부터 조금 크게 떠 있다가 내려온다
+STAMP_IN = 0.18                                # 첫 도장이 '쾅' 찍히는 때 (편마다 stamp_at 으로 바꾼다 · 첫 화면은 얼굴이 깨끗하다)
+STAMP_DROP = 0.16                              # 공중에서 내려오는 시간 (점점 빨라진다)
+STAMP_SQUASH = 0.05                            # 찍힌 순간 눌려 납작한 시간
+STAMP_BOUNCE = 0.14                            # 튀었다 앉는 시간
+INK_SEC = 0.26                                 # 튀는 인주 방울이 퍼졌다 사라지는 시간
 FLASH_SEC = 0.12                               # 찍힐 때 번쩍
 SHAKE_SEC, SHAKE_PX = 0.42, 16                 # 찍힌 뒤 화면 흔들림
-STAMP_EXIT = 0.18                              # 첫 컷이 끝날 때 첫 도장이 옅어지며 사라지는 시간
+STAMP_EXIT = 0.20                              # 그 컷이 끝날 때 도장이 옅어지며 떠오르는 시간
 END_UP = 80                                    # 끝 화면도 같이 조금 위로
 STRETCH_MAX = 1.4                              # 영상이 모자라면 화면만 이만큼까지 느리게 (그다음은 멈춤)
 TALK_PRE, TALK_POST = 0.08, 0.10               # 대사 소리 — 말 앞뒤로 남기는 숨
@@ -534,7 +543,7 @@ def ease(u):
 def stamp_img(lines):
     """도장 상자 (RGBA) — 크림색 종이에 빨간 겹 테두리 · 바탕체 두 줄 (작은 윗줄 + 큰 아랫줄) · 살짝 기울임.
     ⚠️ 2026-10-06 맛보기 — 빨간 글만 얹었더니 아들의 남색 양복 위에서 흐린 물자국처럼 묻혔다 → 종이를 깐다.
-    ⭐ 2026-10-06 손님 — 자막 아래로 옮겼다. 그 자리는 위아래 약 200px 뿐이라 납작하게 짓고, 너비는 BOX_W 까지."""
+    ⭐ 2026-10-06 손님 — 화면 한가운데에 크게 찍는다 (STAMP_GROW · 너비 STAMP_MAX_W 까지). 기울임은 찍을 때 준다."""
     s1, s2 = 42, 74
     f1, f2 = font(FONT_SERIF, s1), font(FONT_SERIF, s2)
     w1, w2 = text_w(lines[0], f1), text_w(lines[-1], f2)
@@ -571,15 +580,97 @@ def stamp_img(lines):
     ImageDraw.Draw(paper).rounded_rectangle([sh_pad, sh_pad, sh_pad + bw, sh_pad + bh], radius=10,
                                             fill=(246, 240, 226, 252), outline=(205, 196, 176, 255), width=2)
     paper.alpha_composite(st, (sh_pad, sh_pad))
-    out = paper.rotate(-1.5, resample=Image.BICUBIC, expand=True)
-    if out.width > BOX_W:
-        out = out.resize((BOX_W, int(out.height * BOX_W / out.width)), Image.LANCZOS)
+    k = min(STAMP_GROW, STAMP_MAX_W / paper.width)
+    return paper.resize((int(paper.width * k), int(paper.height * k)), Image.LANCZOS)
+
+
+def _alpha(im, a):
+    """그림 전체를 a 만큼 옅게 (RGBA 새것)."""
+    out = im.copy()
+    out.putalpha(im.getchannel("A").point(lambda v, a=a: int(v * a)))
     return out
 
 
-def box_center(pic):
-    """도장 상자 가운데 (x, y) — 자막 바로 아래 · 윗변이 BOX_TOP."""
-    return W / 2, BOX_TOP + pic.height / 2
+def _rot_scale(pic, s, ang, sx=1.0, sy=1.0):
+    im = pic.resize((max(2, int(pic.width * s * sx)), max(2, int(pic.height * s * sy))), Image.BICUBIC)
+    return im.rotate(ang, resample=Image.BICUBIC, expand=True) if abs(ang) > 0.05 else im
+
+
+def _silhouette(im, color, a, blur, grow=0):
+    """그림 모양 그대로의 단색 그림자/번짐 (RGBA · 가장자리를 blur 만큼 흐리게 · 캔버스를 넓힌다)."""
+    m = blur * 2 + grow
+    al = Image.new("L", (im.width + m * 2, im.height + m * 2), 0)
+    al.paste(im.getchannel("A"), (m, m))
+    if grow:
+        al = al.filter(ImageFilter.MaxFilter(grow // 2 * 2 + 1))
+    al = al.filter(ImageFilter.GaussianBlur(blur)).point(lambda v, a=a: int(v * a))
+    out = Image.new("RGBA", al.size, color + (0,))
+    out.putalpha(al)
+    return out
+
+
+def _specks(size, v, seed):
+    """찍히는 순간 튀는 인주 방울 (RGBA) — v 0→1 동안 상자 가장자리에서 바깥으로 퍼지며 옅어진다."""
+    w, h = size
+    m = 130
+    im = Image.new("RGBA", (w + m * 2, h + m * 2), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    rnd = random.Random(seed)
+    cx, cy = im.width / 2, im.height / 2
+    for _ in range(18):
+        th = rnd.uniform(0, 2 * math.pi)
+        r0 = rnd.uniform(0.85, 1.0)
+        ex, ey = math.cos(th) * w / 2 * r0, math.sin(th) * h / 2 * r0
+        dist = (14 + rnd.uniform(36, 115) * ease(v))
+        x, y = cx + ex + math.cos(th) * dist, cy + ey + math.sin(th) * dist
+        r = rnd.uniform(4.0, 10.0) * (1 - 0.5 * v)
+        d.ellipse([x - r, y - r, x + r, y + r], fill=RED + (int(235 * (1 - v)),))
+    return im
+
+
+def stamp_layers(pic, t, slam, end, seed=7):
+    """도장 찍기 한 장 — 밑에서부터 [(그림 RGBA, 가운데 x 어긋남, 가운데 y 어긋남)] · 안 보이면 [].
+    ① 공중 (slam 전 STAMP_DROP): 크게 · 더 기울어 · 옅게 · 그림자를 끌고 내려온다 — 점점 빨라진다
+    ② 쾅 (STAMP_SQUASH): 눌려 납작 · 붉게 번진다 · 인주 방울이 튄다 (번쩍 · 흔들림 · 소리는 render · 섞기가 맞춘다)
+    ③ 튀었다 앉는다 (STAMP_BOUNCE) → ④ 앉아 있다 (아주 천천히 커진다) → ⑤ 컷 끝 STAMP_EXIT: 옅어지며 떠오른다"""
+    if t < slam - STAMP_DROP or t >= end:
+        return []
+    if t < slam:
+        u = (t - (slam - STAMP_DROP)) / STAMP_DROP
+        k = u * u
+        im = _rot_scale(pic, 1.55 - 0.55 * k, STAMP_ANGLE - 8.0 * (1 - k))
+        return [(_silhouette(im, (0, 0, 0), 0.20 + 0.40 * (1 - k), 16), 22 * (1 - k), 46 * (1 - k)),
+                (_alpha(im, 0.10 + 0.90 * k), 0, 0)]
+    dt = t - slam
+    sx = sy = 1.0
+    if dt < STAMP_SQUASH:
+        s, sx, sy = 1.0, 1.035, 0.93
+    elif dt < STAMP_SQUASH + STAMP_BOUNCE:
+        v = (dt - STAMP_SQUASH) / STAMP_BOUNCE
+        s = 1.0 + 0.035 * math.sin(math.pi * v) * (1 - v)
+    else:
+        s = 1.0 + 0.012 * (dt - STAMP_SQUASH - STAMP_BOUNCE)
+    al = 1.0
+    if end - t < STAMP_EXIT:
+        v = 1 - (end - t) / STAMP_EXIT
+        al, s = 1 - v, s * (1 + 0.05 * v)
+    im = _rot_scale(pic, s, STAMP_ANGLE, sx, sy)
+    out = []
+    if dt < 0.14:
+        out.append((_silhouette(im, RED, 0.62 * (1 - dt / 0.14), 9, grow=12), 0, 0))
+    out.append((_alpha(im, al) if al < 0.999 else im, 0, 0))
+    if dt < INK_SEC:
+        out.append((_specks(im.size, dt / INK_SEC, seed), 0, 0))
+    return out
+
+
+def paste_stamp(fr, pic, t, slam, end, dx, dy, white, seed=7):
+    """도장 찍기를 화면 한가운데에 얹고, 찍히는 순간 번쩍 — 새 화면을 돌려준다."""
+    for im, ox, oy in stamp_layers(pic, t, slam, end, seed):
+        fr.paste(im, (int(STAMP_C[0] + ox - im.width / 2) + dx, int(STAMP_C[1] + oy - im.height / 2) + dy), im)
+    if slam <= t < slam + FLASH_SEC and t < end:
+        fr = Image.blend(fr, white, 0.26 * (1 - (t - slam) / FLASH_SEC))
+    return fr
 
 
 KEEP = ""                                # 금색 말 안의 띄어쓰기 — 자막 토막이 그 말을 안 가른다
@@ -824,15 +915,6 @@ def shake_at(t, slam=STAMP_IN):
             int(round(a * math.sin(u * 2 * math.pi * 17))))
 
 
-def stamp_at(t, slam=STAMP_IN):
-    """도장 크기 — slam 조금 전부터 조금 크게 떠 있다가 slam 에 내려찍히고, 그 뒤로 아주 천천히 커진다.
-    (첫 도장 · 편 가운데 도장이 같이 쓴다)"""
-    if t < slam:
-        k = min(1.0, (slam - t) / STAMP_DROP)
-        return 1.0 + 0.12 * k * k
-    return 1.0 + 0.02 * (t - slam)
-
-
 def render(doc, part, segs, cliff, end0, total, out_mp4):
     """화면만 (소리 없이) → out_mp4. 프레임마다 PIL 로 짠다 (0원)."""
     stamp = stamp_img(part["stamp"])
@@ -869,26 +951,12 @@ def render(doc, part, segs, cliff, end0, total, out_mp4):
                 fr.paste(fg_of(im, lerp(c.get("zoom", 1.0), u), lerp(c.get("x", 0.5), u),
                                lerp(c.get("y", 0.45), u)), (dx, FG_Y + dy))
                 fr.paste(chrome, (0, 0), chrome)
-                # 첫 도장 — 첫 장면부터 떠 있다가 내려찍히고(번쩍 · 흔들림) · 첫 컷이 끝날 때 옅어지며 사라진다
-                if c.get("stamp") and slam0 - STAMP_DROP <= t < stamp_end:
-                    s = stamp_at(t, slam0)
-                    st = stamp.resize((max(2, int(stamp.width * s)), max(2, int(stamp.height * s))),
-                                      Image.BICUBIC)
-                    al = min(1.0, (stamp_end - t) / STAMP_EXIT)
-                    if al < 0.999:
-                        st.putalpha(st.getchannel("A").point(lambda v, al=al: int(v * al)))
-                    bx, by = box_center(stamp)
-                    fr.paste(st, (int(bx - st.width / 2) + dx, int(by - st.height / 2) + dy), st)
-                    if slam0 <= t < slam0 + FLASH_SEC:            # 찍히는 순간 번쩍
-                        fr = Image.blend(fr, white, 0.26 * (1 - (t - slam0) / FLASH_SEC))
-                for at_, end_, pic, my, mn in mids:               # 편 가운데 도장 — 그 컷 끝까지만 (다음 컷에 안 묻는다)
-                    if mn == c["n"] and at_ - STAMP_DROP <= t < end_:
-                        s = stamp_at(t, at_)
-                        st = pic.resize((max(2, int(pic.width * s)), max(2, int(pic.height * s))),
-                                        Image.BICUBIC)
-                        fr.paste(st, (int(W / 2 - st.width / 2) + dx, int(my - st.height / 2) + dy), st)
-                        if at_ <= t < at_ + FLASH_SEC:
-                            fr = Image.blend(fr, white, 0.26 * (1 - (t - at_) / FLASH_SEC))
+                # 첫 도장 — 화면 한가운데에 '쾅' 찍히고 · 첫 컷이 끝날 때 옅어지며 떠오른다
+                if c.get("stamp"):
+                    fr = paste_stamp(fr, stamp, t, slam0, stamp_end, dx, dy, white)
+                for at_, end_, pic, _, mn in mids:               # 편 가운데 도장 — 그 컷 끝까지만 (다음 컷에 안 묻는다)
+                    if mn == c["n"]:
+                        fr = paste_stamp(fr, pic, t, at_, end_, dx, dy, white, seed=11)
                 if is_talk(c):                                    # 대사 이름표
                     if c["n"] not in tags:
                         tags[c["n"]] = tag_img(str(c["tag"]))
@@ -938,8 +1006,7 @@ def mid_slams(segs):
         sl = seg["c"].get("slam")
         if sl:
             pic = stamp_img(sl["lines"])
-            out.append((seg["at"] + float(sl.get("at") or 0.0), seg["t1"], pic,
-                        box_center(pic)[1], seg["c"]["n"]))
+            out.append((seg["at"] + float(sl.get("at") or 0.0), seg["t1"], pic, STAMP_C[1], seg["c"]["n"]))
     return out
 
 
