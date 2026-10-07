@@ -406,7 +406,13 @@
     ],
     "sec": 29.0,
     "made_at": "2026-10-07T04:07:59Z",
-    "talk_gaps": []
+    "talk_gaps": [],
+    "uploaded": {
+     "video_id": "WKvEP4K7HEc",
+     "privacy": "private",
+     "at": "2026-10-07T10:41:51Z",
+     "publish_at": "2026-10-07T23:00:00Z"
+    }
    },
    "2": {
     "no": 2,
