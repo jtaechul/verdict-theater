@@ -17,3 +17,14 @@
   `KoPub_Dotum_Pro_Bold.otf` 도 `KoPubWorld Dotum Bold.ttf` 도 똑같이 인식합니다.
 - 일부만 있어도 됩니다. 없는 것은 나눔으로 채웁니다.
 - 어떤 역할에 어떤 폰트가 잡혔는지 확인: `python3 src/graphics.py`
+
+## 긴 영상 썸네일 글씨 — Black Han Sans (SIL 오픈 폰트 라이선스 · 상업적 사용 무료)
+
+| 파일 | 쓰는 곳 |
+|---|---|
+| `BlackHanSans-Regular.ttf` | 긴 영상 썸네일 큰 글 · 이름표 (`tools/drama60.py` 의 `thumb_vs`) |
+| `OFL_BlackHanSans.txt` | 라이선스 전문 (폰트와 함께 둔다) |
+
+- 2026-10-07 손님: "썸네일 보고도 아무도 안누른다." 굵은 썸네일 전용 글씨로 바꿨다.
+  폰 목록 크기(가로 360·168px)에서도 두 줄이 읽혀야 한다.
+- 이 파일이 없으면 썸네일 만들기가 멈춘다 (가는 나눔으로 몰래 바꾸지 않는다 — 목록에서 안 보인다).

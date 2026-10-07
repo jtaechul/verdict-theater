@@ -48,13 +48,16 @@ on:
           - '진짜로 올리기'
           - '연습 (올리지 않고 확인만)'
       fix_only:
-        description: '이미 올린 편의 글만 고칠까요 (영상은 그대로 · 0원)'
+        description: '이미 올린 편의 글이나 썸네일만 고칠까요 (영상은 그대로 · 0원)'
         required: false
         default: '아니오 — 새로 올린다'
         type: choice
+        # ⭐ 2026-10-07 — '썸네일만 바꾼다' 를 더했다 (제목·설명은 손대지 않는다).
+        #    ⚠️ 둘 다 '예' 로 시작한다 — 단계마다 startsWith 가 아니라 **글자 그대로** 견준다.
         options:
           - '아니오 — 새로 올린다'
           - '예 — 제목·설명만 고친다'
+          - '예 — 썸네일만 바꾼다'
       every_hours:
         description: 'all 일 때 몇 시간 간격으로 예약 공개할까요 (24 = 하루)'
         required: false
@@ -152,6 +155,7 @@ jobs:
           }
 
       - name: 올릴 글 준비 (0원)
+        if: ${{ inputs.fix_only != '예 — 썸네일만 바꾼다' }}
         env:
           META: ${{ inputs.meta }}
           VT_SID: ${{ inputs.sid }}
@@ -166,7 +170,7 @@ jobs:
       #    그날 세 편이 옛 제목·옛 해시태그로 올라갔다. 아직 공개 전이라
       #    내리지 않고 글만 갈아 끼우면 손해가 0이다.
       - name: 올린 영상 글만 고치기 (0원)
-        if: ${{ startsWith(inputs.fix_only, '예') }}
+        if: ${{ inputs.fix_only == '예 — 제목·설명만 고친다' }}
         env:
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
@@ -185,6 +189,30 @@ jobs:
           python3 src/upload.py fixmeta "${SID:-S90}" --part "$PART" \
             --meta build/s90/meta.json --thumb-dir build/s90 \
             $DRY 2>&1 | tee up.log
+
+      # ⭐⭐ 2026-10-07 손님: "썸네일 보고도 아무도 안누른다. 사람들이 유입되게 썸네일 변경해줘."
+      #    이미 올린 편의 **썸네일만** 바꾼다 — 제목·설명·해시태그는 손대지 않는다 (0원).
+      #    (글 고치기 길은 글까지 다시 보내서, 관리자 화면에서 고친 글이 저장소 글로 되돌아갈 수 있다.)
+      #    그림은 보관함 part<N>.jpg 를 쓴다 — 작업 칸에서 `stage_video.py <사건> --only jpg` 로 넣는다.
+      - name: 올린 영상 썸네일만 바꾸기 (0원)
+        if: ${{ inputs.fix_only == '예 — 썸네일만 바꾼다' }}
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          PART: ${{ inputs.part }}
+          SID: ${{ inputs.sid }}
+        run: |
+          set -o pipefail
+          DRY=""
+          [ "${{ inputs.mode }}" = "연습 (올리지 않고 확인만)" ] && DRY="--dry"
+          mkdir -p build/s90
+          for K in 1 2 3 4 5; do
+            python3 tools/release_file.py get "short90-${SID:-S90}" \
+              "part$K.jpg" "build/s90/part$K.jpg" 2>/dev/null || true
+          done
+          python3 src/upload.py thumb90 "${SID:-S90}" --part "$PART" \
+            --thumb-dir build/s90 $DRY 2>&1 | tee up.log
 
       - name: 유튜브에 올리기
         if: ${{ !startsWith(inputs.fix_only, '예') }}

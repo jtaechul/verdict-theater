@@ -923,6 +923,53 @@ def cmd_fixmeta(args):
     return 1 if bad else 0
 
 
+def cmd_thumb90(args):
+    """⭐⭐ 2026-10-07 — **이미 올린 편의 썸네일만** 갈아 끼운다 (제목·설명·해시태그는 손대지 않는다 · 0원).
+
+    손님: "썸네일 보고도 아무도 안누른다. 사람들이 유입되게 썸네일 변경해줘."
+    글만 고치는 길(fixmeta)도 썸네일을 바꾸지만, 그 길은 **제목·설명까지 다시 보낸다** —
+    관리자 화면에서 고친 글과 저장소 글이 다르면 이미 공개된 영상의 글이 바뀐다.
+    그래서 그림 한 장만 바꾸는 길을 따로 둔다. 유튜브 thumbnails.set 은 하루 할당량만 쓴다.
+    """
+    sys.path.insert(0, str(ROOT / "src"))
+    import shortstate                                        # noqa: E402
+
+    sid = args.sid
+    one = str(args.part) != "all"
+    want = [int(args.part)] if one else [1, 2, 3, 4, 5]
+    token = None
+    done = bad = 0
+    for no in want:
+        was = shortstate.uploaded(sid, no)
+        if not was or not was.get("video_id"):
+            if one:
+                print(f"❌ {sid} {no}편은 아직 안 올렸다 — 바꿀 썸네일이 없다")
+                bad += 1
+            continue
+        vid = was["video_id"]
+        th = Path(args.thumb_dir) / f"part{no}.jpg"
+        if not th.exists():
+            print(f"❌ {no}편 썸네일 파일이 없다 ({th}) — 보관함에 part{no}.jpg 를 먼저 넣는다")
+            bad += 1
+            continue
+        kb = th.stat().st_size / 1024
+        if kb > 2000:
+            print(f"❌ {no}편 썸네일이 {kb:.0f}KB — 유튜브 상한 2MB 를 넘는다")
+            bad += 1
+            continue
+        print(f"{no}편 https://youtu.be/{vid} ← {th.name} ({kb:.0f}KB)")
+        if args.dry:
+            print("  (연습이라 실제로는 안 바꿨다)")
+            done += 1
+            continue
+        token = token or access_token()
+        set_thumbnail(token, vid, th)
+        print("  ✅ 썸네일을 바꿨다 (제목·설명은 그대로)")
+        done += 1
+    print(f"\n■ {done}편 썸네일 교체" + (f" · {bad}편 실패" if bad else ""))
+    return 1 if bad or not done else 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -992,10 +1039,21 @@ def main():
     x.add_argument("--dry", action="store_true",
                    help="연습 — 무엇으로 바뀌는지만 보여 주고 안 고친다")
 
+    y = sub.add_parser("thumb90",
+                       help="이미 올린 편의 썸네일만 바꾼다 (제목·설명은 그대로 · 0원)")
+    y.add_argument("sid")
+    y.add_argument("--part", default="1", help="몇 편인가 (1/2/3… 또는 all)")
+    y.add_argument("--thumb-dir", dest="thumb_dir", required=True,
+                   help="썸네일이 든 자리 (part1.jpg … 를 찾는다)")
+    y.add_argument("--dry", action="store_true",
+                   help="연습 — 무엇을 바꿀지만 보여 주고 안 바꾼다")
+
     args = ap.parse_args()
     try:
         if args.cmd == "fixmeta":
             return cmd_fixmeta(args)
+        if args.cmd == "thumb90":
+            return cmd_thumb90(args)
         if args.cmd == "series":
             return cmd_series(args)
         if args.cmd == "meta":

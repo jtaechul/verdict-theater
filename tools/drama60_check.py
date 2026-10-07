@@ -579,8 +579,18 @@ _upw = (ROOT / ".github" / "workflows" / "short90-upload.yml").read_text(encodin
 ck("올리기 워크플로가 자막 파일을 꺼내 함께 넘긴다",
    '"part$K.srt"' in _upw and _upw.count("--srt ") == 2)
 _s95d = json.loads((ROOT / "data" / "series" / "S95.json").read_text(encoding="utf-8"))
-ck("S95 대본: AI 표시 켬 · 썸네일 정면 얼굴(컷37)", _s95d.get("ai_label") is True
-   and (_s95d.get("thumb") or {}).get("cut") == 37)
+# ⭐ 2026-10-07 손님 "썸네일 보고도 아무도 안누른다" → 두 얼굴 대결 (새엄마 컷37 · 의붓아들 컷4)
+_t95 = _s95d.get("thumb") or {}
+ck("S95 대본: AI 표시 켬 · 썸네일 두 얼굴 대결 (새엄마 컷37 · 의붓아들 컷4 · 「0원?」 빨간 상자)",
+   _s95d.get("ai_label") is True and _t95.get("style") == "vs"
+   and (_t95.get("left") or {}).get("cut") == 37 and (_t95.get("right") or {}).get("cut") == 4
+   and (_t95.get("left") or {}).get("label") == "새엄마" and (_t95.get("right") or {}).get("label") == "의붓아들"
+   and any("{0원?}" in x for x in _t95.get("lines") or []), json.dumps(_t95, ensure_ascii=False)[:160])
+_t95s = json.loads((ROOT / "data" / "series" / "S95.story.json").read_text(encoding="utf-8")).get("thumb")
+ck("S95 대본 원본(.story.json)과 만든 대본(.json)의 썸네일 설정이 같다 (다시 짓기에서 안 되돌아간다)",
+   _t95s == _t95)
+ck("썸네일 얼굴은 위쪽에 둔다 — 두 눈 높이 200px 위 (입이 아래 글 띠에 안 덮인다)",
+   all(float((_t95.get(k) or {}).get("eye_y") or D.VS_EYE[k][1]) <= 200 for k in ("left", "right")))
 if (S9.OUT / "S95_part1.mp4").exists():
     _f95, _b95 = SV.ready("S95")
     ck("S95 는 올릴 준비가 됐다 (영상 · 썸네일 · 자막 파일 · 올릴 글)",
@@ -885,6 +895,40 @@ with tempfile.TemporaryDirectory() as tt:
     ck("긴 영상 썸네일: 1280×720 · 2MB 아래 · 얼굴을 오른쪽 자리로 옮긴다 (글이 얼굴을 안 덮는다)",
        _ti.size == (1280, 720) and _th.stat().st_size <= S9.THUMB_MAX_BYTES
        and _px[0] > 200 and _px[1] < 80, f"{_ti.size} {_px}")
+# ⭐⭐ 2026-10-07 — 두 얼굴 대결 썸네일 (thumb_vs) — 진짜로 그려 본다
+ck("썸네일 글씨(블랙한산스)와 라이선스 파일이 저장소에 있다",
+   D.THUMB_FONT.exists() and (ROOT / "assets" / "fonts" / "OFL_BlackHanSans.txt").exists())
+ck("썸네일 글 표시: [노란 글] · {빨간 상자} 를 나눈다",
+   D.vs_runs("13억 땅은 [아들 차지]") == [("13억 땅은 ", "w"), ("아들 차지", "y")]
+   and D.vs_runs("새엄마 몫은 {0원?}") == [("새엄마 몫은 ", "w"), ("0원?", "box")],
+   str(D.vs_runs("새엄마 몫은 {0원?}")))
+_L = _Im.new("RGB", (1280, 720), (90, 90, 90))
+_L.paste((255, 0, 0), (620, 230, 660, 270))                   # 왼쪽 사람 두 눈 가운데 (640, 250)
+_R = _Im.new("RGB", (1280, 720), (90, 90, 90))
+_R.paste((0, 255, 0), (767, 297, 807, 337))                   # 오른쪽 사람 두 눈 가운데 (787, 317)
+_vdoc = {"thumb": {"style": "vs",
+                   "left": {"eyes": [640, 250], "zoom": 1.35, "eye_y": 170, "label": "새엄마", "tone": "warm"},
+                   "right": {"eyes": [787, 317], "zoom": 1.5, "eye_y": 140, "label": "의붓아들", "tone": "cold"},
+                   "lines": ["13억 땅은 [아들 차지]", "새엄마 몫은 {0원?}"]}}
+with tempfile.TemporaryDirectory() as tt:
+    _vt = D.thumb_long(_vdoc, Path(tt) / "v.jpg", bg=(_L, _R))
+    _vi = _Im.open(_vt).convert("RGB")
+    _lp = _vi.getpixel((int(D.VS_EYE["left"][0] * D.VS_SPLIT[0]), 170))
+    _rp = _vi.getpixel((int(D.VS_SPLIT[1] + D.VS_EYE["right"][0] * (1280 - D.VS_SPLIT[1])), 140))
+    ck("두 얼굴 썸네일: 1280×720 · 2MB 아래 · 두 사람 눈이 정한 자리(왼쪽 170px · 오른쪽 140px)에 온다",
+       _vi.size == (1280, 720) and _vt.stat().st_size <= S9.THUMB_MAX_BYTES
+       and _lp[0] > 180 and _lp[1] < 110 and _rp[1] > 160 and _rp[0] < 110, f"{_lp} {_rp}")
+    _rows = list(D.LAST_VS)
+    ck("두 얼굴 썸네일: 아래 두 줄이 폰 목록에서도 읽힌다 (글 96px 이상 · 360px 폭에서 27px)",
+       len(_rows) == 2 and all(r["size"] >= D.VS_MIN_SIZE for r in _rows), str(_rows))
+    ck("두 얼굴 썸네일: 글이 오른쪽 아래 영상 길이(8:41) 자리를 비운다",
+       all(r["x1"] <= D.VS_BADGE[0] for r in _rows), str(_rows))
+    _corner = _vi.crop((D.VS_BADGE[0] + 10, D.VS_BADGE[1] + 10, 1280, 720)).convert("L")
+    _bright = sum(_corner.histogram()[201:]) / max(1, _corner.width * _corner.height)
+    ck("두 얼굴 썸네일: 오른쪽 아래 구석에 흰 글자가 없다", _bright < 0.02, f"{_bright:.3f}")
+ck("썸네일만 다시 만드는 명령이 있다 (drama60 <사건> thumb · 올릴 글은 안 건드린다)",
+   "def step_thumb(" in srcd and '"thumb", "preview"' in srcd
+   and "step_meta" not in srcd[srcd.index("def step_thumb"):srcd.index("def step_build")])
 prev = srcd[srcd.index("def step_preview"):srcd.index("def step_build")]
 ck("맛보기는 돈 드는 것을 안 부른다 (옴니·목소리 없음) · 자리는 build/preview",
    "omni.make" not in prev and "tts" not in prev and "step_clips" not in prev and "step_voice" not in prev

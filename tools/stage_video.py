@@ -3,6 +3,11 @@
 
     python3 tools/stage_video.py S94                  작업 칸에서 — 올릴 준비를 보고 임시 가지로 밀어 넣는다
     python3 tools/stage_video.py --release stage/S94  워크플로(stage-video.yml)에서 — 보관함으로 옮긴다
+    python3 tools/stage_video.py S95 --only jpg       썸네일만 보관함에 넣는다 (이미 올린 영상의 썸네일 바꾸기)
+
+⭐ 2026-10-07 손님: "썸네일 보고도 아무도 안누른다." 이미 올린 영상은 썸네일만 바꾼다 —
+   45MB 영상을 다시 실어 보낼 까닭이 없다. `--only jpg` 로 part<N>.jpg 만 보관함에 넣고,
+   관리자 페이지 4-2 [썸네일만 바꾼다] 가 그것을 꺼내 유튜브에 건다 (upload.py thumb90 · 0원).
 
 ⭐ 2026-10-03 손님: "이거 유튜브에 올릴 수 있게 준비까지 마무리해줘"
    올리기 단추(관리자 페이지 4-2 · short90-upload.yml)는 보관함에서 part1.mp4 · part1.jpg 를
@@ -152,7 +157,17 @@ def main():
         print(__doc__)
         return 2
     sid = sys.argv[1].upper()
+    only = sys.argv[sys.argv.index("--only") + 1] if "--only" in sys.argv[2:-1] else ""
+    if only and only not in ("jpg", "srt", "meta"):
+        print(f"❌ --only 는 jpg · srt · meta 중 하나다 (받은 것: {only})")
+        return 2
     files, bad = ready(sid)
+    if only:
+        keep = {"jpg": ".jpg", "srt": ".srt", "meta": ".json"}[only]
+        files = {k: v for k, v in files.items() if k.endswith(keep)}
+        if not files:
+            print(f"❌ {sid} 에 보관함에 넣을 {only} 파일이 없다")
+            return 1
     if bad:
         print(f"❌ {sid} 는 아직 올릴 준비가 안 됐다 — 밀어 넣지 않는다")
         for b in bad:

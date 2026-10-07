@@ -16,6 +16,7 @@
    ② 보관함에 넣고, 치울 때 안 지우는가
    ③ 올릴 때 꺼내 와서 **두 길 다** 넘기는가 (세 편·한 편)
    ④ 올린 뒤 실제로 set_thumbnail 을 부르는가 (세 길 다)
+   ⑤ 이미 올린 영상의 썸네일만 바꾸는 길 (2026-10-07 · 글은 안 건드린다)
 """
 import io
 import re
@@ -120,6 +121,35 @@ def main():
     ck("썸네일이 실패해도 영상은 살린다 (try/except)",
        re.search(r"try:[\s\S]{0,200}set_thumbnail\(", fn_of(ul, "cmd_series")),
        "썸네일 하나 때문에 이미 올라간 영상이 실패로 뜨면 안 된다")
+
+    # ⭐⭐ 2026-10-07 손님: "썸네일 보고도 아무도 안누른다. 사람들이 유입되게 썸네일 변경해줘."
+    #    이미 공개된 영상의 썸네일만 바꾸는 길 — 제목·설명은 절대 다시 보내지 않는다.
+    print("\n⑤ 이미 올린 영상의 썸네일만 바꾸는 길 (글은 안 건드린다)")
+    t9 = fn_of(ul, "cmd_thumb90")
+    ck("썸네일만 바꾸는 명령이 있다 (upload.py thumb90 — 부르는 자리까지)",
+       bool(t9) and "cmd_thumb90(args)" in fn_of(ul, "main"))
+    ck("그 명령은 set_thumbnail 만 부르고 제목·설명을 안 보낸다",
+       "set_thumbnail(" in t9 and '"PUT"' not in t9 and "snippet" not in t9,
+       "글까지 보내면 관리자 화면에서 고친 글이 저장소 글로 되돌아간다")
+    ck("올린 기록(state/shorts.json)에서 영상 번호를 찾는다 — 안 올린 편은 건너뛴다",
+       "shortstate.uploaded(" in t9)
+    ck("올리기 워크플로에 [썸네일만 바꾼다] 고르기가 있다", "'예 — 썸네일만 바꾼다'" in up)
+    ck("그 단계는 보관함 썸네일을 꺼내 thumb90 에 넘긴다",
+       re.search(r"fix_only == '예 — 썸네일만 바꾼다'[\s\S]{0,1400}?part\$K\.jpg[\s\S]{0,400}?"
+                 r"upload\.py thumb90[\s\S]{0,120}?--thumb-dir", up) is not None)
+    ck("글 고치기 단계는 글자 그대로 견준다 (썸네일만 고를 때 글까지 다시 보내지 않는다)",
+       "fix_only == '예 — 제목·설명만 고친다'" in up
+       and "if: ${{ startsWith(inputs.fix_only, '예') }}" not in up)
+    ck("새로 올리기 단계는 두 '예' 모두에서 건너뛴다",
+       up.count("if: ${{ !startsWith(inputs.fix_only, '예') }}") == 2)
+    sv = (ROOT / "tools" / "stage_video.py").read_text(encoding="utf-8")
+    ck("보관함에 썸네일만 넣을 수 있다 (stage_video.py <사건> --only jpg — 45MB 영상을 다시 안 싣는다)",
+       '"--only"' in sv and '"jpg": ".jpg"' in sv)
+    r = subprocess.run([sys.executable, str(ROOT / "src" / "upload.py"), "thumb90", "S9999",
+                        "--part", "1", "--thumb-dir", "/nonexistent", "--dry"],
+                       capture_output=True, text=True, cwd=ROOT)
+    ck("안 올린 편은 바꾸지 않고 실패로 알린다", r.returncode == 1 and "아직 안 올렸다" in r.stdout,
+       (r.stdout + r.stderr)[-200:])
 
     print("\n" + "─" * 60)
     if bad:

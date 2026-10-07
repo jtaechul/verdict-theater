@@ -1236,21 +1236,208 @@ def step_meta(doc):
 THUMB_W, THUMB_H = 1280, 720
 
 
-def thumb_frame(doc):
-    """썸네일 바탕 한 장 (자막 없는 컷 영상에서) — 대본 thumb = {"cut": 컷, "at": 0~1}."""
+def clip_frame(n, sec=None, at=None):
+    """컷 영상 c<n>.mp4 의 한 장면 (자막·이름표 없는 원본) — sec(초)가 있으면 그 시각, 없으면 at(0~1)."""
     from PIL import Image
-    th = doc.get("thumb") or {}
-    n = int(th.get("cut") or next(c["n"] for c in doc["cuts"] if not is_fig(c)))
-    clip = vdir() / f"c{n:02d}.mp4"
+    clip = vdir() / f"c{int(n):02d}.mp4"
     if not clip.exists():
         return None
-    at = S9.dur_of(clip) * float(th.get("at") if th.get("at") is not None else 0.5)
-    r = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{at:.2f}", "-i", str(clip), "-frames:v", "1",
+    t = float(sec) if sec is not None else S9.dur_of(clip) * float(at if at is not None else 0.5)
+    r = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{t:.2f}", "-i", str(clip), "-frames:v", "1",
                         "-f", "image2pipe", "-vcodec", "png", "-"], capture_output=True)
     return Image.open(io.BytesIO(r.stdout)).convert("RGB") if r.stdout else None
 
 
+def thumb_frame(doc):
+    """썸네일 바탕 한 장 (자막 없는 컷 영상에서) — 대본 thumb = {"cut": 컷, "at": 0~1}."""
+    th = doc.get("thumb") or {}
+    n = int(th.get("cut") or next(c["n"] for c in doc["cuts"] if not is_fig(c)))
+    return clip_frame(n, at=th.get("at"))
+
+
 THUMB_FACE_AT = (0.74, 0.42)                   # 썸네일에서 얼굴 가운데가 올 자리 (오른쪽 · 글은 왼쪽)
+
+# ⭐⭐⭐ 2026-10-07 손님: "썸네일 보고도 아무도 안누른다. 사람들이 유입되게 썸네일 변경해줘."
+#    S95 공개 1시간 20분에 조회수 1회. 옛 썸네일(아래 thumb_long 기본 꼴 — 얼굴 하나 · 왼쪽 글 두 줄)은
+#    ① 차분한 표정이라 무슨 일인지 얼굴이 말하지 않았고 ② 누가 누구와 다투는지(새엄마 vs 의붓아들)
+#    안 보였고 ③ 글이 가늘고 작아 폰 목록에서 눈에 안 띄었다.
+#    → **두 얼굴 대결(style "vs")**: 왼쪽 당한 쪽 · 오른쪽 상대 쪽 얼굴을 크게 맞세우고 가운데 빨간 번개 금,
+#      위 모서리에 관계 이름표(새엄마 · 의붓아들), 아래에 굵은 두 줄(블랙한산스) — 핵심 숫자는 빨간 상자.
+#      글은 사실(대본·판결)만 · 답은 숨기고 물음표로 끝낸다(「새엄마 몫은 0원?」 — 답은 본편).
+#    대본 thumb = {"style": "vs",
+#                  "left":  {"cut", "sec", "eyes": [x, y](원본 1280×720 에서 두 눈 가운데), "zoom",
+#                            "label", "tone": "warm"|"cold", "eye_y"(썸네일에서 눈 높이 px · 기본)},
+#                  "right": {... 같은 꼴},
+#                  "lines": ["13억 땅은 [아들 차지]", "새엄마 몫은 {0원?}"]}   [노란 글] · {빨간 상자}
+THUMB_FONT = ROOT / "assets" / "fonts" / "BlackHanSans-Regular.ttf"
+VS_SPLIT = (704, 584)                          # 가운데 금 — 위 x · 아래 x (살짝 기울여 부딪히는 느낌)
+VS_EYE = {"left": (0.47, 170), "right": (0.52, 140)}   # 판 안에서 두 눈 가운데가 올 자리 (가로 비율, 세로 px)
+VS_TEXT_Y = (524, 648)                         # 아래 두 줄의 가운데 높이
+VS_TEXT_TOP = VS_TEXT_Y[0] - 68                # 글 띠가 시작하는 높이 — 입은 이 위에 와야 한다 (얼굴을 안 덮는다)
+VS_TEXT_SIZE = 112
+VS_BADGE = (1150, 650)                         # 오른쪽 아래 — 유튜브가 영상 길이(8:41)를 덮어 쓰는 자리
+VS_TONE = {
+    "warm": {"contrast": 1.14, "color": 1.08, "bright": 1.04, "tint": (70, 40, 20), "tint_a": 0.07,
+             "tag": (176, 92, 40)},
+    "cold": {"contrast": 1.18, "color": 0.92, "bright": 0.94, "tint": (16, 34, 62), "tint_a": 0.14,
+             "tag": (34, 62, 110)},
+}
+VS_YELLOW, VS_RED = (255, 222, 60), (214, 18, 28)
+VS_MIN_SIZE = 96                               # 줄여도 이 아래로는 안 간다 — 폰 목록(가로 360px)에서 27px
+LAST_VS = []                                   # 마지막으로 그린 줄마다 {y, size, x0, x1} — 점검이 본다
+
+
+def vs_runs(line):
+    """'13억 땅은 [아들 차지]' → [("13억 땅은 ", "w"), ("아들 차지", "y")] · {…} 는 빨간 상자("box")."""
+    out, buf, mode = [], "", "w"
+    for ch in str(line):
+        if mode == "w" and ch in "[{":
+            if buf:
+                out.append((buf, "w"))
+            buf, mode = "", ("y" if ch == "[" else "box")
+        elif (mode == "y" and ch == "]") or (mode == "box" and ch == "}"):
+            out.append((buf, mode))
+            buf, mode = "", "w"
+        else:
+            buf += ch
+    if buf:
+        out.append((buf, mode))
+    return [r for r in out if r[0]]
+
+
+def _vs_face(img, side, cfg, size):
+    """한쪽 판 — 색을 고르고, 두 눈 가운데가 VS_EYE 자리에 오도록 키워 자른다."""
+    from PIL import Image, ImageEnhance, ImageFilter
+    tone = VS_TONE.get(cfg.get("tone") or ("warm" if side == "left" else "cold"), VS_TONE["warm"])
+    im = ImageEnhance.Contrast(img.convert("RGB")).enhance(tone["contrast"])
+    im = ImageEnhance.Color(im).enhance(tone["color"])
+    im = ImageEnhance.Brightness(im).enhance(tone["bright"])
+    im = Image.blend(im, Image.new("RGB", im.size, tone["tint"]), tone["tint_a"])
+    ow, oh = size
+    z = max(1.0, min(2.2, float(cfg.get("zoom") or 1.3)))
+    cw, ch = ow / z, oh / z
+    ex, ey = (float(v) for v in (cfg.get("eyes") or (im.width / 2, im.height * 0.38)))
+    px = VS_EYE[side][0]
+    py = float(cfg.get("eye_y") or VS_EYE[side][1]) / oh
+    x0 = max(0.0, min(ex - px * cw, im.width - cw))
+    y0 = max(0.0, min(ey - py * ch, im.height - ch))
+    out = im.resize((ow, oh), Image.LANCZOS, box=(x0, y0, x0 + cw, y0 + ch))
+    return out.filter(ImageFilter.UnsharpMask(radius=2, percent=60, threshold=2))
+
+
+def _vs_line(im, y, runs, size, stroke):
+    """가운데 맞춘 한 줄 — 흰 글 · 노란 글 · 빨간 상자. 그림자를 깔고 굵은 검은 테두리. (왼끝, 오른끝)을 돌려준다."""
+    from PIL import Image, ImageDraw, ImageFont, ImageFilter
+    f = ImageFont.truetype(str(THUMB_FONT), size)
+    d = ImageDraw.Draw(im)
+    pad = int(size * 0.16)
+    width = sum(d.textlength(t, font=f) + (2 * pad if k == "box" else 0) for t, k in runs)
+    x = (THUMB_W - width) / 2
+    sh = Image.new("RGBA", im.size, (0, 0, 0, 0))
+    sd = ImageDraw.Draw(sh)
+    cx = x
+    for t, k in runs:
+        cx += pad if k == "box" else 0
+        sd.text((cx + 6, y + 8), t, font=f, fill=(0, 0, 0, 190), anchor="lm",
+                stroke_width=stroke, stroke_fill=(0, 0, 0, 190))
+        cx += d.textlength(t, font=f) + (pad if k == "box" else 0)
+    sh = sh.filter(ImageFilter.GaussianBlur(9))
+    im.paste(sh, (0, 0), sh)
+    cx = x
+    for t, k in runs:
+        tw = d.textlength(t, font=f)
+        if k == "box":
+            d.rounded_rectangle([cx, y - size * 0.62, cx + tw + 2 * pad, y + size * 0.60],
+                                radius=int(size * 0.14), fill=VS_RED, outline=(0, 0, 0), width=max(3, stroke // 2))
+            d.text((cx + pad, y), t, font=f, fill=(255, 255, 255), anchor="lm")
+            cx += tw + 2 * pad
+        else:
+            d.text((cx, y), t, font=f, fill=VS_YELLOW if k == "y" else (255, 255, 255), anchor="lm",
+                   stroke_width=stroke, stroke_fill=(0, 0, 0))
+            cx += tw
+    return x, x + width
+
+
+def _vs_tag(im, x, y, text, bg, right=False):
+    from PIL import ImageDraw, ImageFont
+    f = ImageFont.truetype(str(THUMB_FONT), 52)
+    d = ImageDraw.Draw(im)
+    tw = d.textlength(text, font=f)
+    px, py = 22, 12
+    if right:
+        x -= tw + 2 * px
+    d.rounded_rectangle([x, y, x + tw + 2 * px, y + 52 + 2 * py], radius=11, fill=bg, outline=(0, 0, 0), width=3)
+    d.text((x + px, y + py + 28), text, font=f, fill=(255, 255, 255), anchor="lm")
+
+
+def thumb_vs(doc, out, frames=None):
+    """⭐ 두 얼굴 대결 썸네일 (2026-10-07 · S95) → out (jpg · 1280×720 · 2MB 아래) — 0원.
+    frames = (왼쪽 장면, 오른쪽 장면) 을 주면 컷 영상 대신 그것을 쓴다 (점검용)."""
+    import random
+    from PIL import Image, ImageDraw, ImageFilter
+    if not THUMB_FONT.exists():
+        raise SystemExit(f"❌ 썸네일 글씨 {THUMB_FONT.relative_to(ROOT)} 가 없다 — 가는 글씨로 몰래 바꾸지 않는다")
+    th = doc.get("thumb") or {}
+    lc, rc = th.get("left") or {}, th.get("right") or {}
+    if frames:
+        li, ri = frames
+    else:
+        li = clip_frame(lc.get("cut"), sec=lc.get("sec"), at=lc.get("at"))
+        ri = clip_frame(rc.get("cut"), sec=rc.get("sec"), at=rc.get("at"))
+    if li is None or ri is None:
+        return None
+    top_x, bot_x = VS_SPLIT
+    im = Image.new("RGB", (THUMB_W, THUMB_H), (8, 9, 12))
+    left = _vs_face(li, "left", lc, (top_x, THUMB_H))
+    right = _vs_face(ri, "right", rc, (THUMB_W - bot_x, THUMB_H))
+    ml = Image.new("L", (top_x, THUMB_H), 0)
+    ImageDraw.Draw(ml).polygon([(0, 0), (top_x, 0), (bot_x, THUMB_H), (0, THUMB_H)], fill=255)
+    im.paste(left, (0, 0), ml)
+    mr = Image.new("L", (THUMB_W - bot_x, THUMB_H), 0)
+    ImageDraw.Draw(mr).polygon([(top_x - bot_x, 0), (THUMB_W - bot_x, 0), (THUMB_W - bot_x, THUMB_H),
+                                (0, THUMB_H)], fill=255)
+    im.paste(right, (bot_x, 0), mr)
+    # 가운데 번개 금 — 빨간 번짐 위에 흰 심 (어디서 그어도 같은 모양이 되게 씨앗을 고정)
+    rnd = random.Random(5)
+    n = 9
+    pts = [(top_x + (bot_x - top_x) * i / n + (0 if i in (0, n) else rnd.choice((-1, 1)) * rnd.uniform(14, 30)),
+            THUMB_H * i / n) for i in range(n + 1)]
+    glow = Image.new("RGBA", (THUMB_W, THUMB_H), (0, 0, 0, 0))
+    ImageDraw.Draw(glow).line(pts, fill=(255, 24, 24, 255), width=56, joint="curve")
+    glow = glow.filter(ImageFilter.GaussianBlur(18))
+    im.paste(glow, (0, 0), glow)
+    im.paste(glow, (0, 0), glow)
+    ImageDraw.Draw(im).line(pts, fill=(255, 250, 240), width=12, joint="curve")
+    # 아래 글 띠 — 아래로 갈수록 어둡게
+    m = Image.new("L", (1, THUMB_H))
+    s = THUMB_H * 0.50
+    m.putdata([int(238 * ((y - s) / (THUMB_H - s)) ** 1.3) if y > s else 0 for y in range(THUMB_H)])
+    im.paste((0, 0, 0), (0, 0), m.resize((THUMB_W, THUMB_H)))
+    if lc.get("label"):
+        _vs_tag(im, 40, 34, str(lc["label"]), VS_TONE.get(lc.get("tone") or "warm", VS_TONE["warm"])["tag"])
+    if rc.get("label"):
+        _vs_tag(im, THUMB_W - 40, 34, str(rc["label"]),
+                VS_TONE.get(rc.get("tone") or "cold", VS_TONE["cold"])["tag"], right=True)
+    from PIL import ImageFont
+    probe = ImageDraw.Draw(im)
+    LAST_VS.clear()
+    for line, y in zip([x for x in (th.get("lines") or []) if str(x).strip()][:2], VS_TEXT_Y):
+        runs = vs_runs(line)
+        size = VS_TEXT_SIZE
+        while size > VS_MIN_SIZE:              # 한 줄이 넘치면 줄인다 (양옆 40px · 길이 표시 자리 비움)
+            f = ImageFont.truetype(str(THUMB_FONT), size)
+            w = sum(probe.textlength(t, font=f) + (2 * int(size * 0.16) if k == "box" else 0) for t, k in runs)
+            if w <= THUMB_W - 80 and (THUMB_W + w) / 2 <= VS_BADGE[0]:
+                break
+            size -= 4
+        x0, x1 = _vs_line(im, y, runs, size, max(8, size // 10))
+        LAST_VS.append({"y": y, "size": size, "x0": x0, "x1": x1})
+    out = Path(out)
+    for q in (92, 86, 78, 70):
+        im.save(out, quality=q)
+        if out.stat().st_size <= S9.THUMB_MAX_BYTES:
+            break
+    return out
 
 
 def thumb_long(doc, out, bg=None):
@@ -1260,8 +1447,11 @@ def thumb_long(doc, out, bg=None):
                   "text": [줄1, 줄2]}
     ⭐ 2026-10-06 (S95): 컷 영상이 이미 16:9 라 '가운데 자리'를 옮겨도 얼굴이 안 움직였다
        (시안 셋 모두 글이 얼굴을 덮었다) → 얼굴 쪽을 조금 키워 **오른쪽**(THUMB_FACE_AT)에 두고
-       글은 왼쪽 56% 안에 쓴다."""
+       글은 왼쪽 56% 안에 쓴다.
+    ⭐ 2026-10-07 — 대본 thumb.style 이 "vs" 면 두 얼굴 대결(thumb_vs)로 간다 (긴 영상은 이것이 기본 · CLAUDE.md)."""
     from PIL import Image, ImageDraw, ImageFont
+    if (doc.get("thumb") or {}).get("style") == "vs":
+        return thumb_vs(doc, out, frames=bg)
     bg = bg or thumb_frame(doc)
     if bg is None:
         return None
@@ -1320,6 +1510,19 @@ def thumb_long(doc, out, bg=None):
     return out
 
 
+def step_thumb(doc):
+    """⭐ 썸네일만 다시 만든다 (0원 · 2026-10-07) — 올릴 글·자막 파일은 안 건드린다.
+    `meta` 는 올릴 글(data/series/<사건>.meta.json)까지 새로 쓴다 — 이미 올린 영상의 썸네일만 바꿀 때는 이것."""
+    th = thumb_long(doc, S9.part_thumb(doc, 1))
+    if not th:
+        print("❌ 썸네일 바탕 장면이 없다 — 컷 영상(c<번호>.mp4)을 먼저 받는다")
+        return 1
+    print(f"■ 긴 영상 썸네일 {th.relative_to(ROOT)} ({th.stat().st_size / 1000:.0f}KB · 0원)")
+    for r in LAST_VS:
+        print(f"   글 {r['size']}px · 가로 {r['x0']:.0f}~{r['x1']:.0f}")
+    return 0
+
+
 def step_build(doc):
     miss = [c["n"] for c in doc["cuts"] if not (vdir() / f"c{c['n']:02d}.mp4").exists()]
     if miss:
@@ -1343,7 +1546,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("sid")
     ap.add_argument("what", choices=["check", "plan", "cast", "voice", "clips", "figs", "build",
-                                     "sheet", "meta", "preview", "all"])
+                                     "sheet", "meta", "thumb", "preview", "all"])
     ap.add_argument("--no-buy", action="store_true",
                     help="clips — 창고에 없는 컷이 있으면 사지 않고 멈춘다 (0원 보장)")
     ap.add_argument("--full", action="store_true", help="plan — 영상 지문까지 다 보인다")
@@ -1363,6 +1566,8 @@ def main():
         return step_sheet(doc, a.at)
     if a.what == "meta":
         return step_meta(doc)
+    if a.what == "thumb":
+        return step_thumb(doc)
     if a.what == "preview":
         # ⭐ 값 0원 — 대본 검사를 먼저 본다 (걸린 대본으로 맛보기를 만들면 헛걸음이다)
         return step_check(sid, doc) or step_preview(sid, doc)
