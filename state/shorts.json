@@ -427,7 +427,13 @@
     ],
     "sec": 30.0,
     "made_at": "2026-10-07T04:09:34Z",
-    "talk_gaps": []
+    "talk_gaps": [],
+    "uploaded": {
+     "video_id": "EtLrZ4fySsc",
+     "privacy": "private",
+     "at": "2026-10-08T14:02:14Z",
+     "publish_at": "2026-10-08T23:00:00Z"
+    }
    },
    "3": {
     "no": 3,
