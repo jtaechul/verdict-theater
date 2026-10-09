@@ -89,10 +89,32 @@ def ready(sid):
     if not meta.exists():
         bad.append(f"올릴 글이 없다 ({meta.relative_to(ROOT)}) — build_short90 을 다시")
     else:
-        why = fetch_meta90.blocked(json.loads(meta.read_text(encoding="utf-8")))
+        mj = json.loads(meta.read_text(encoding="utf-8"))
+        why = fetch_meta90.blocked(mj)
         bad += [f"올릴 글: {w}" for w in why]
+        # ⭐⭐ 2026-10-09 손님: "쇼츠 3편 … 제목이랑 내용이랑 해시태그 같은 게 아무것도 안 들어가
+        #    있어서 예약 업로드가 안 돼." — 편마다 제목 · 설명 · 해시태그가 **다 찼는지** 여기서도 본다.
+        bad += [f"올릴 글: {w}" for w in meta_gaps(doc, mj)]
         files["meta.json"] = meta
     return files, bad
+
+
+def meta_gaps(doc, meta):
+    """대본의 편마다 올릴 글(제목 · 설명 · 해시태그)이 다 찼는가 — 빈 것을 줄줄이 돌려준다 (0원)."""
+    have = {int(x.get("part") or 0): x for x in (meta.get("parts") or [])}
+    out = []
+    for p in doc.get("parts") or []:
+        no = int(p["no"])
+        m = have.get(no)
+        if not m:
+            out.append(f"{no}편 글이 아예 없다 — build_short90 (미끼 쇼츠는 teaser.py) 로 다시 짓는다")
+            continue
+        for k, name in (("title", "제목"), ("description", "설명")):
+            if not str(m.get(k) or "").strip():
+                out.append(f"{no}편 {name}이 비었다")
+        if not [t for t in (m.get("tags") or []) if str(t).strip()]:
+            out.append(f"{no}편 해시태그가 비었다")
+    return out
 
 
 def git(*a, cwd=ROOT):

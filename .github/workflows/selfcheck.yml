@@ -392,6 +392,10 @@ jobs:
       - name: 관리자 페이지가 안 깨지는가
         run: |
           node tools/check_admin.mjs
+          # ⭐⭐⭐ 2026-10-09 손님: "쇼츠 3편 … 제목이랑 내용이랑 해시태그 같은 게 아무것도 안 들어가
+          #    있어서 예약 업로드가 안 돼." — 한 편씩 올린 뒤 3편 칸이 비었다. 워커를 진짜로 돌려
+          #    1편만 → 2편만 → 화면 다시 열기 순서로 편마다 칸이 차 있는지 본다 (낱말 찾기가 아니라 동작).
+          node tools/check_admin_meta.mjs
           # ⚠️ 문법은 멀쩡한데 **없는 것을 워크플로에 넘기는** 실수를 잡는다
           node tools/check_scope.mjs
           node tools/check_fold.mjs

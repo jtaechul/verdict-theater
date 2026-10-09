@@ -103,6 +103,19 @@ def main():
     ck("화면은 저장소 글(data/series/<사건>.meta.json)을 먼저 보여 준다 — 저장된 기록이 남은 편 글을 가리지 않는다",
        "getJson(env, 'data/series/'" in yt and "blobText(env, 'meta/'" in yt
        and yt.index("getJson(env, 'data/series/'") < yt.index("blobText(env, 'meta/'"))
+    # 저장소 글이 편마다 다 찼는가 — 화면이 그 글을 그대로 보여 주므로, 저장소에서 비면 화면도 빈다
+    sys.path.insert(0, str(ROOT / "tools"))
+    import stage_video as _SV                                  # noqa: E402
+    for _m in sorted((ROOT / "data" / "series").glob("S*.meta.json")):
+        _sid = _m.name.split(".")[0]
+        _d = ROOT / "data" / "series" / f"{_sid}.json"
+        if not _d.exists():
+            continue
+        _gaps = _SV.meta_gaps(json.loads(_d.read_text(encoding="utf-8")),
+                              json.loads(_m.read_text(encoding="utf-8")))
+        ck(f"{_sid} 올릴 글이 편마다 다 찼다 (제목 · 설명 · 해시태그)", not _gaps, "; ".join(_gaps))
+    ck("보관함에 넣기 전에도 편마다 글이 찼는지 본다 (stage_video.meta_gaps)",
+       "meta_gaps(doc, mj)" in (ROOT / "tools" / "stage_video.py").read_text(encoding="utf-8"))
     up90 = js[js.index("url.pathname === '/api/upload-short90'"):]
     up90 = up90[:up90.index("blobPutText(env, key, saved")]
     ck("한 편만 올려도 앞 기록과 합쳐 저장한다 (남은 편 글을 지우지 않는다)",
