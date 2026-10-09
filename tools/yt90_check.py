@@ -95,6 +95,18 @@ def main():
     #    **읽는 자리인지**를 본다.
     ck("관리자 페이지는 지어 둔 글을 읽는다",
        ".meta.json" in js and "getJson(env, 'data/series/'" in js)
+    # ⭐⭐⭐ 2026-10-09 손님: "쇼츠 3편 같은 경우에는 제목이랑 내용이랑 해시태그 같은 게
+    #    아무것도 안 들어가 있어서 예약 업로드가 안 돼." — 2편만 올릴 때 저장된 기록이
+    #    그 편 글만 남기고 덮였고, 화면은 그 기록을 먼저 보여 줘 3편 칸이 비었다.
+    yt = js[js.index("url.pathname === '/api/yt90'"):]
+    yt = yt[:yt.index("url.pathname === '/api/upload-short90'")]
+    ck("화면은 저장소 글(data/series/<사건>.meta.json)을 먼저 보여 준다 — 저장된 기록이 남은 편 글을 가리지 않는다",
+       "getJson(env, 'data/series/'" in yt and "blobText(env, 'meta/'" in yt
+       and yt.index("getJson(env, 'data/series/'") < yt.index("blobText(env, 'meta/'"))
+    up90 = js[js.index("url.pathname === '/api/upload-short90'"):]
+    up90 = up90[:up90.index("blobPutText(env, key, saved")]
+    ck("한 편만 올려도 앞 기록과 합쳐 저장한다 (남은 편 글을 지우지 않는다)",
+       "prevParts" in up90 and "parts: merged" in up90)
     # ⚠️ 영상을 만들기 전에도 칸이 떠야 한다. 릴리스에만 기대면 처음 쓰는
     #    손님에게는 유튜브 칸이 아예 안 보인다 (실제로 그랬다).
     made = ROOT / "data" / "series" / "S90.meta.json"

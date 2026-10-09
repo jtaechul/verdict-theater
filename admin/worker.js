@@ -4758,11 +4758,6 @@ export default {
       //      없으면 대본에서 **같은 규칙으로** 만들어 준다.
       if (url.pathname === '/api/yt90') {
         const sid = sidOf(url);
-        const kept = await blobText(env, 'meta/' + sid);
-        if (kept) {
-          try { return Response.json({ sid, meta: JSON.parse(kept), saved: true }); }
-          catch (e) { /* 깨졌으면 아래에서 다시 만든다 */ }
-        }
         // ⭐ 셈법을 여기에 옮겨 적지 않는다. 대본을 지을 때 src/ytmeta.py 가
         //   함께 지어 **대본 옆에 둔** 글을 그대로 읽는다.
         //   (자바스크립트로 다시 짜면 언젠가 두 글이 갈라진다)
@@ -4770,8 +4765,19 @@ export default {
         //      영상을 한 번 만들기 전에는 그 파일이 없어서, 손님 화면에는
         //      유튜브 칸이 계속 안 보였다("업로드 버튼이 아직도 없어").
         //      이제 저장소에 늘 있는 파일을 본다 — 영상을 안 만들어도 뜬다.
+        // ⭐⭐⭐ 2026-10-09 손님: "쇼츠 3편 같은 경우에는 제목이랑 내용이랑 해시태그 같은 게
+        //    아무것도 안 들어가 있어서 예약 업로드가 안 돼."
+        //    2편만 따로 올릴 때 화면이 **그 편 글만** 보냈고, 그것이 'meta/<사건>' 에 통째로
+        //    저장돼 1~3편 글을 덮었다. 여기는 저장된 기록을 **먼저** 줬으므로 3편 칸이 비었다.
+        //    올리기는 2026-09-06 부터 저장소 글(data/series/<사건>.meta.json) 하나만 쓴다 —
+        //    화면도 **그 글을 먼저** 보여 준다. 저장된 기록은 저장소 글이 없을 때만 쓴다.
         const made = await getJson(env, 'data/series/' + sid + '.meta.json');
         if (made) return Response.json({ sid, meta: made, saved: false });
+        const kept = await blobText(env, 'meta/' + sid);
+        if (kept) {
+          try { return Response.json({ sid, meta: JSON.parse(kept), saved: true }); }
+          catch (e) { /* 깨졌으면 아래로 */ }
+        }
         return Response.json({ sid, meta: null,
           why: '올릴 글을 아직 못 지었습니다. '
              + '먼저 [이 사건으로 쇼츠 만들기] 로 대본을 지어 주십시오.' });
@@ -4839,7 +4845,18 @@ export default {
           ? String(eh) : '24';
 
         const key = 'meta/' + sid;
-        const saved = JSON.stringify({ sid: sid, parts: parts });
+        // ⭐ 2026-10-09 — 한 편만 올리면 그 편 글만 온다. 앞 기록과 **합쳐** 남은 편 글을 지우지 않는다
+        //    (예전엔 통째로 덮어 3편 칸이 비었다 — 위 /api/yt90 머리말).
+        let prevParts = [];
+        try {
+          const pv = JSON.parse((await blobText(env, key)) || '{}');
+          prevParts = Array.isArray(pv && pv.parts) ? pv.parts : [];
+        } catch (e) { prevParts = []; }
+        const merged = prevParts
+          .filter((x) => !parts.some((y) => y.part === parseInt(x && x.part, 10)))
+          .concat(parts)
+          .sort((a, b) => parseInt(a.part, 10) - parseInt(b.part, 10));
+        const saved = JSON.stringify({ sid: sid, parts: merged });
         await blobPutText(env, key, saved, KV_DAY);
         const fresh = await blobPin(env, req, key, 'meta');
         try {
