@@ -1,0 +1,462 @@
+{
+ "title": "가족명의 펀드 부당권유",
+ "series_label": "원금 보장의 덫",
+ "hook": "재개발 보상금을 몰래 가족 명의 펀드에 넣은 아버지의 결말",
+ "cast": [
+  {
+   "name": "아버지",
+   "sex": "남",
+   "age": 70,
+   "role_en": "the father",
+   "face": "weathered oval face, deep wrinkles, gray sparse hair parted to the side",
+   "build": "frail and slightly hunched build",
+   "wear": "a faded brown corduroy jacket over a simple gray shirt and dark trousers",
+   "voice": "a slow and breathy old man's voice in his seventies, native Korean speaker, cautious and weary"
+  },
+  {
+   "name": "은행원",
+   "sex": "남",
+   "age": 45,
+   "role_en": "the banker",
+   "face": "sharp angular face, confident eyes, slicked-back black hair",
+   "build": "neat and upright average build",
+   "wear": "a crisp navy blue suit, white shirt, and a subtle red tie",
+   "voice": "a smooth mid-range man's voice in his forties, native Korean speaker, persuasive and calm"
+  },
+  {
+   "name": "아들",
+   "sex": "남",
+   "age": 40,
+   "role_en": "the son",
+   "face": "round face, tired eyes, messy short black hair",
+   "build": "ordinary everyday build",
+   "wear": "a casual gray zip-up hoodie and dark jeans",
+   "voice": "a plain mid-range man's voice in his forties, native Korean speaker, bewildered and low, noticeably deeper and slower than the others"
+  }
+ ],
+ "cuts": [
+  {
+   "n": 1,
+   "sec": 6.6,
+   "who": [
+    "아버지"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "쥐덫 공장을 하던 아버지는 보상금 72억 원을 받았습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "아버지 sits alone at a small dusty desk, looking down at a piece of paper"
+  },
+  {
+   "n": 2,
+   "sec": 5.5,
+   "who": [
+    "은행원",
+    "아버지"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "소문을 듣고 은행원이 아버지를 찾아왔습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "은행원 stands by the door of the dusty office, smiling warmly at 아버지"
+  },
+  {
+   "n": 3,
+   "sec": 6.2,
+   "who": [
+    "아버지",
+    "은행원"
+   ],
+   "turns": [
+    [
+     "아버지",
+     "내 평생 만져본 적 없는 큰돈이네. 원금만 보장해 주게."
+    ]
+   ],
+   "say": [
+    "70대 남성이, 걱정을 속으로 삼키며 조심스럽고 낮게"
+   ],
+   "scene": "아버지 looks up at 은행원, his hands lightly clasped on the desk"
+  },
+  {
+   "n": 4,
+   "sec": 5.8,
+   "who": [
+    "은행원",
+    "아버지"
+   ],
+   "turns": [
+    [
+     "은행원",
+     "삼성이 망하지 않는 한 원금은 무조건 보장됩니다."
+    ]
+   ],
+   "say": [
+    "40대 남성이, 확신에 차서 부드럽고 차분하게"
+   ],
+   "scene": "은행원 leans forward slightly, hands resting on the desk near 아버지"
+  },
+  {
+   "n": 5,
+   "sec": 6.6,
+   "who": [
+    "아버지"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "아버지는 은행원 말을 믿고 22억 원을 펀드에 넣었습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "아버지 carefully signs a document with a black pen"
+  },
+  {
+   "n": 6,
+   "sec": 6.6,
+   "who": [
+    "아버지"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "아버지는 가족 이름으로 계좌를 쪼개고 증여세도 냈습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "아버지 looks at a stack of small bankbooks on his desk",
+   "insert": {
+    "word": "계좌",
+    "thing": "a stack of small colorful bankbooks on a wooden surface"
+   }
+  },
+  {
+   "n": 7,
+   "sec": 6.4,
+   "who": [
+    "아버지"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "하지만 아버지는 이 사실을 가족에게 말하지 않았습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "아버지 puts the bankbooks inside a drawer and closes it"
+  },
+  {
+   "n": 8,
+   "sec": 6.0,
+   "who": [
+    "아버지",
+    "은행원"
+   ],
+   "turns": [
+    [
+     "아버지",
+     "애들 알면 싸움만 나네. 내 무덤 갈 때까지 비밀로 해."
+    ]
+   ],
+   "say": [
+    "70대 남성이, 목소리를 낮춰 단호하고 조용하게"
+   ],
+   "scene": "아버지 looks at 은행원 with a serious expression, raising one hand slightly"
+  },
+  {
+   "n": 9,
+   "sec": 6.4,
+   "who": [
+    "은행원",
+    "아버지"
+   ],
+   "turns": [
+    [
+     "은행원",
+     "걱정 마십시오. 가입 서류는 제가 알아서 다 적겠습니다."
+    ]
+   ],
+   "say": [
+    "40대 남성이, 안심시키듯 가볍게 미소 지으며 차분하게"
+   ],
+   "scene": "은행원 nods slowly, putting a pen into his jacket pocket"
+  },
+  {
+   "n": 10,
+   "sec": 7.1,
+   "who": [
+    "은행원"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "이듬해 바다 건너 금융위기가 터져 펀드 수익률이 폭락했습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "은행원 stares at a computer monitor in a bright office, rubbing his chin"
+  },
+  {
+   "n": 11,
+   "sec": 6.4,
+   "who": [
+    "은행원"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "원금 손실 구간에 들어갔지만 은행원은 입을 닫았습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "은행원 crosses his arms, looking out the window of his office"
+  },
+  {
+   "n": 12,
+   "sec": 5.5,
+   "who": [
+    "아버지",
+    "은행원"
+   ],
+   "turns": [
+    [
+     "아버지",
+     "배당금이 끊겼어. 내 돈 22억은 무사한 건가?"
+    ]
+   ],
+   "say": [
+    "70대 남성이, 불안감을 속으로 누르며 낮고 떨리게"
+   ],
+   "scene": "아버지 sits tightly gripping a cup of water, looking at 은행원"
+  },
+  {
+   "n": 13,
+   "sec": 6.4,
+   "who": [
+    "은행원",
+    "아버지"
+   ],
+   "turns": [
+    [
+     "은행원",
+     "시장이 안 좋아서 그렇습니다. 조금만 더 기다려 보시죠."
+    ]
+   ],
+   "say": [
+    "40대 남성이, 시선을 피하며 한 박자 쉬고 조용하게"
+   ],
+   "scene": "은행원 adjusts his tie, looking slightly away from 아버지"
+  },
+  {
+   "n": 14,
+   "sec": 6.2,
+   "who": [
+    "아버지"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "만기가 돌아온 날, 통장에 남은 돈은 반도 안 됐습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "아버지 sits in the dark staring blankly at an open bankbook"
+  },
+  {
+   "n": 15,
+   "sec": 6.6,
+   "who": [
+    "아버지"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "은행에 소송을 걸려면 명의자인 가족들이 나서야 했습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "아버지 stands outside a courthouse, shoulders slumped"
+  },
+  {
+   "n": 16,
+   "sec": 6.4,
+   "who": [
+    "아들"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "아무것도 몰랐던 아들은 법원에서 처음 통장을 봤습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "아들 sits on a bench in the courthouse hallway, holding a small bankbook"
+  },
+  {
+   "n": 17,
+   "sec": 6.2,
+   "who": [
+    "아들"
+   ],
+   "turns": [
+    [
+     "아들",
+     "제 통장에 4억 5천이 있었다고요? 전 오늘 처음 봐요."
+    ]
+   ],
+   "say": [
+    "40대 남성이, 황당함을 속으로 삭이며 헛웃음 섞어 조용히 되묻듯"
+   ],
+   "scene": "아들 looks up from the bankbook, eyes wide with confusion"
+  },
+  {
+   "n": 18,
+   "sec": 6.0,
+   "who": [
+    "아들",
+    "아버지"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "재판부는 은행원의 부당 권유 책임을 인정했습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "아들 and 아버지 sit together quietly in the courtroom"
+  },
+  {
+   "n": 19,
+   "sec": 7.1,
+   "who": [
+    "은행원"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "은행원이 서류를 임의로 조작하고 위험성을 숨긴 탓이었습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "은행원 stands in the courtroom looking down, hands clasped in front of him",
+   "insert": {
+    "word": "서류",
+    "thing": "a stack of folded documents with random checkmarks"
+   }
+  },
+  {
+   "n": 20,
+   "sec": 7.9,
+   "who": [
+    "아버지"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "다만 재판부는 확인서를 안 본 아버지 잘못도 육십오 퍼센트로 보았습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "아버지 looks down at his empty hands, eyes closed"
+  },
+  {
+   "n": 21,
+   "sec": 7.3,
+   "who": [
+    "아들",
+    "아버지"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "가족들은 잃어버린 돈의 일부인 4억 5천만 원만 돌려받았습니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "아들 gently places a hand on 아버지's shoulder as they walk away"
+  },
+  {
+   "n": 22,
+   "sec": 3.8,
+   "who": [
+    "아버지"
+   ],
+   "turns": [
+    [
+     "나레이션",
+     "실제로 있었던 사건입니다."
+    ]
+   ],
+   "say": [
+    "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게"
+   ],
+   "scene": "아버지 walks slowly down the courthouse steps alone"
+  }
+ ],
+ "sid": "S97",
+ "case_id": "149312",
+ "narr": "사건을 전하는 낮고 묵직한 목소리로, 쇼츠 속도에 맞춰 담담하고 또렷하게",
+ "format": "drama",
+ "parts": [
+  {
+   "no": 1,
+   "cuts": [
+    1,
+    22
+   ],
+   "yt_title": "\"삼성이 망하지 않는 한 원금 보장\" 그 말만 믿었습니다",
+   "card": [
+    "평생 모은 돈 22억 원",
+    "가족 몰래 만든 통장"
+   ]
+  }
+ ],
+ "people": {
+  "아버지": {
+   "age": "70대",
+   "sex": "남"
+  },
+  "은행원": {
+   "age": "40대",
+   "sex": "남"
+  },
+  "아들": {
+   "age": "40대",
+   "sex": "남"
+  }
+ }
+}
