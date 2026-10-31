@@ -1144,7 +1144,9 @@ async function s90Cuts() {
     stillsShow();            // ⭐ 그려 둔 그림이 있으면 바로 보인다 (2026-10-01)
   }
   // 2분 드라마는 컷 영상을 손으로 올리지 않는다 (대사 컷은 옴니가 만든다)
-  if (isDrama()) { box.innerHTML = ''; return; }
+  // ⭐⭐⭐ 2026-10-31 손님: "지금 제작 대본 같은 경우에는 어디서 확인해야 돼?" — 여기서 칸을 통째로
+  //    비워서 2분 드라마 · 긴 영상의 대본이 화면 **어디에도** 없었다. 대본 보기 칸을 대신 그린다.
+  if (isDrama()) { box.innerHTML = scriptCard(S90DOC); foldify(); return; }
   const cuts = (S90DOC && S90DOC.cuts) || [];
   if (!cuts.length) { box.innerHTML = ''; return; }
   const nv = Object.keys(S90CLIPS).length;
@@ -1527,6 +1529,47 @@ async function againStory(btn) {
 //    대본(S90DOC)에 format="drama" 가 찍힌 사건만 이 화면을 탄다.
 //    ⚠️ 값은 여기서 세지 않는다 — 대본을 지을 때 tools/build_short90.py 가
 //       talk.drama 에 찍어 둔 것을 그대로 읽는다 (화면·제작이 같은 셈).
+// ⭐ 대본 보기 (읽기만 · 0원) — 형식 · 컷 수 · 길이 어림, 그리고 컷마다 시각 · 종류 · 누가 무슨 말을.
+function scriptCard(doc) {
+  const cuts = (doc && doc.cuts) || [];
+  if (!cuts.length) return '';
+  const kind = doc.layout === 'long' ? '긴 영상 (가로 16:9)'
+    : (doc.format === 'drama' ? '2분 드라마 (세로)' : '60초 여러 편 (세로)');
+  const clock = function (x) {
+    const s0 = Math.floor(x);
+    return Math.floor(s0 / 60) + ':' + String(s0 % 60).padStart(2, '0');
+  };
+  let tot = 0;
+  cuts.forEach(function (c) { tot += Number(c.sec) || 0; });
+  let h = '<div class="card"><h2 data-t="대본 보기">대본 보기 '
+        + '<small style="font-weight:400;color:#9599ab">— ' + kind + ' · ' + cuts.length
+        + '컷 · 약 ' + clock(tot) + '</small></h2>'
+        + '<div class="uphint">읽기만 하는 칸입니다. 고칠 곳은 클로드 작업 칸(대화창)에 '
+        + '<b>컷 번호</b>와 함께 말씀해 주세요.</div>';
+  let t = 0;
+  cuts.forEach(function (c) {
+    const at = clock(t);
+    t += Number(c.sec) || 0;
+    const turns = (Array.isArray(c.turns) && c.turns.length) ? c.turns : [[c.kind || '', c.text || '']];
+    // ⚠️ 대본마다 적는 칸이 다르다 (kind · narr 가 없는 대본도 있다) — 말하는 사람으로도 가른다
+    const onlyNarr = turns.every(function (tn) { return String((tn && tn[0]) || '') === '나레이션'; });
+    const fig = c.place === '그림' || !!c.fig;
+    const tag = fig ? '그림' : ((c.narr || c.kind === '나레이션' || onlyNarr) ? '나레이션' : '대사');
+    const col = tag === '대사' ? '#c6a04a' : (tag === '그림' ? '#7aa7d9' : '#9599ab');
+    h += '<div style="padding:7px 0;border-top:1px solid rgba(149,153,171,.18)">'
+       + '<b>컷 ' + esc(String(c.n)) + '</b> <small style="color:#9599ab">' + at + '</small> '
+       + '<span style="color:' + col + '">' + tag + '</span>';
+    turns.forEach(function (tn) {
+      const who = String((tn && tn[0]) || '');
+      const line = String((tn && tn[1]) || '');
+      h += '<div style="margin-top:3px">'
+         + (who && who !== '나레이션' ? '<b>' + esc(who) + '</b> ' : '') + esc(line) + '</div>';
+    });
+    h += '</div>';
+  });
+  return h + '</div>';
+}
+
 function isDrama() {
   return !!(S90DOC && S90DOC.format === 'drama');
 }
@@ -3292,8 +3335,20 @@ function queueCard(ready) {
        + '<b>1. 재판 기록 모으기</b> 를 먼저 누르십시오.</div></div>';
     return h;
   }
-  h += '<div class="uphint">하나를 고르면 <b>쇼츠 대본</b>(컷·편 나누기·편별 제목)이 '
-     + '한 번에 나옵니다. 대본 한 편에 <b>약 2,100원</b>이 듭니다.</div>';
+  // ⭐⭐⭐ 2026-10-31 손님: "노후 투자 사기로 지금 쇼츠 만들기 눌렀는데 이거 롱폼으로 제작되는 거
+  //    맞지?" — 아니었다. 이 단추는 2분 세로 쇼츠 대본(Gemini)만 짓는다. 그런데 지금 채널 방침은
+  //    긴 영상이다(CLAUDE.md 0-0). 화면에 긴 영상으로 가는 길이 아예 없었다.
+  //    → 사건마다 [긴 영상으로] 를 따로 두고, 옛 단추는 [2분 쇼츠 대본] 이라고 똑바로 부른다.
+  //    마지막 대본 짓기 결과(실패 까닭 · 쓴 값)도 새로 고쳐도 남게 한다(storyLastShow).
+  h += '<div id="w-story-last"></div>';
+  // ⭐⭐⭐ 2026-10-31 손님: "우리는 기본적으로 장편 하나 만들고 롱폼 만든 다음에 그 롱폼과 관련된
+  //    쇼츠를 3개 내지는 5개 정도를 만들 거니까 이거 핵심 규칙으로 반영해." (CLAUDE.md 0-0)
+  h += '<div class="uphint"><b>기본 흐름: 사건 하나 → 긴 영상 1편(8~13분 · 가로) → 그 긴 영상으로 '
+     + '미끼 쇼츠 3~5편.</b> 사건마다 <b>[긴 영상으로]</b> 를 누르시면 클로드 작업 칸(대화창)에 보낼 말을 '
+     + '복사해 드립니다. 대본은 판결문과 대조해 짓고(0원), 값을 먼저 보여 드린 뒤 만듭니다.</div>';
+  h += '<div class="uphint" style="margin-top:4px"><b>[2분 쇼츠만]</b> 은 예전 방식입니다 — 긴 영상 없이 '
+     + '<b>세로 쇼츠 하나</b>만 짓습니다 (Gemini · 한 번에 약 600~2,100원 · 규격에 안 맞아 실패해도 값이 나갑니다).</div>';
+  setTimeout(storyLastShow, 0);
   h += '<div class="uphint" style="margin-top:4px">고르는 차례: 바로 앞 편과 <b>다른 갈래</b> · '
      + '상속은 최근 <b>30% 이하</b> · <b>어르신 이야기</b> 먼저 — 맨 위가 추천입니다.</div>';
   const shown = all.slice(0, QMAX);
@@ -3319,12 +3374,16 @@ function queueCard(ready) {
            //    ⚠️ 사건 번호를 onclick 글자에 끼우지 않는다 — data- 로 넘긴다
            //    (따옴표가 들어가면 페이지가 통째로 깨진다. 실제로 겪었다)
            + '<button class="mini" data-sid="' + esc(String(done)) + '" '
-           + 'onclick="againStory(this)">대본 다시 짓기</button>'
+           + 'onclick="againStory(this)">대본 다시 짓기</button> '
+           + '<button class="mini gold" data-cid="' + esc(String(q.case_id || '')) + '" '
+           + 'data-nm="' + esc(nm) + '" onclick="longAsk(this)">긴 영상으로</button>'
            + '</div>'
          : '<div class="btns" style="margin-top:6px">'
+           + '<button class="mini gold" data-cid="' + esc(String(q.case_id || '')) + '" '
+           + 'data-nm="' + esc(nm) + '" onclick="longAsk(this)">긴 영상으로</button> '
            + '<button class="mini" data-cid="' + esc(String(q.case_id || '')) + '" '
            + 'data-nm="' + esc(nm) + '" onclick="makeStory(this)">'
-           + '이 사건으로 쇼츠 만들기</button></div>')
+           + '2분 쇼츠만 (예전 방식)</button></div>')
       + '</div>';
   });
   if (all.length > QMAX)
@@ -3332,6 +3391,57 @@ function queueCard(ready) {
        + mini('더 보기', 'moreQueue()') + '</div>';
   h += '<div id="w-story-msg" class="uphint"></div></div>';
   return h;
+}
+
+// ⭐⭐⭐ 2026-10-31 — 긴 영상은 이 페이지가 바로 짓지 않는다. 대본을 Claude 가 판결문과 한 줄씩
+//    대조해 지어야 하기 때문이다 (본보기 S95 · 손님 "정말 잘 만들었다"). 작업 칸에 보낼 말을
+//    복사해 드리고 순서를 알려 드린다 (0원 · 아무것도 돌리지 않는다).
+function longAsk(btn) {
+  const cid = (btn && btn.dataset && btn.dataset.cid) || '';
+  const nm = (btn && btn.dataset && btn.dataset.nm) || '';
+  if (!cid) return;
+  const say = '판례 ' + cid + ' 「' + nm + '」 긴 영상으로 만들어줘 (S95처럼 · 대본 먼저 보여줘 · 쇼츠 3~5편까지)';
+  const nl = String.fromCharCode(10);
+  const tell = ['긴 영상(8~13분 · 가로 16:9)은 이 페이지에서 바로 만들지 않습니다.', '',
+    '클로드 작업 칸(대화창)에 아래 말을 붙여 넣어 보내 주세요:', '', say, '',
+    '순서: 판결문과 대조해 긴 영상 대본을 짓습니다(0원)',
+    '→ 이 페이지 작품 칸의 [대본 보기] 에서 대본을 보실 수 있습니다',
+    '→ 값(약 1만 5천 원)을 먼저 보여 드리고, 승인하시면 긴 영상을 만듭니다',
+    '→ 그 긴 영상 조각으로 미끼 쇼츠 3~5편을 만듭니다 (편당 수백 원).'].join(nl);
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText)
+      navigator.clipboard.writeText(say).catch(function () {});
+  } catch (e) { /* 복사가 안 되면 아래 글을 보고 적으시면 된다 */ }
+  alert(tell);
+}
+
+// ⭐⭐⭐ 2026-10-31 — 마지막 대본 짓기 결과를 **늘** 보여 준다. 예전엔 단추를 누른 화면을 켜 둔
+//    동안만 떴고, 새로 고치면 사라졌다 — 그래서 S97 실패(2분 한도 초과 · 558원)를 못 보셨다.
+async function storyLastShow() {
+  const box = document.getElementById('w-story-last');
+  if (!box) return;
+  let r = null;
+  try {
+    r = (await (await fetch('/api/story-last?t=' + Date.now(), { cache: 'no-store' })).json()).last;
+  } catch (e) { r = null; }
+  if (!r || !r.at) return;
+  const age = Date.now() - new Date(r.at).getTime();
+  if (!(age >= 0) || age > 7 * 24 * 3600 * 1000) return;     // 일주일 지난 것은 안 띄운다
+  const ok = r.state === '됨';
+  const won = r.krw ? ' · 쓴 값 약 ' + Number(r.krw).toLocaleString() + '원' : '';
+  let h = '<div class="uphint" style="margin:4px 0 8px;padding:8px 10px;border-radius:8px;'
+        + 'background:' + (ok ? 'rgba(80,160,110,.12)' : 'rgba(210,86,74,.12)') + '">'
+        + '<b>마지막 대본 짓기: ' + (ok ? '됨' : '실패') + '</b> — ' + esc(String(r.sid || ''))
+        + ' 「' + esc(String(r.name || r.title || '')) + '」 · '
+        + esc(new Date(r.at).toLocaleString('ko-KR')) + esc(won);
+  if (!ok) {
+    h += '<div style="margin-top:4px">2분 쇼츠 대본이 규격에 안 맞아 저장하지 않았습니다 '
+       + '(영상은 안 만들어졌고 더 나가는 돈은 없습니다).</div>';
+    (r.why || []).slice(0, 4).forEach(function (x) {
+      h += '<div>· ' + esc(String(x)) + '</div>';
+    });
+  }
+  box.innerHTML = h + '</div>';
 }
 
 // ⚠️ 사건 이름을 onclick 글자에 직접 끼우지 않는다 — 따옴표가 들어 있으면
@@ -3342,9 +3452,11 @@ async function makeStory(btn) {
   if (!cid) return;
   if (WBUSY['story']) return;
   // ⭐ 2026-09-30 — 새 사건은 **2분 드라마**로 짓는다 (손님 확정)
-  if (!confirm(['이 사건으로 2분 드라마 대본을 지을까요?', '', nm, '',
-                '2분짜리 드라마 하나로 짓습니다 — 대사 컷 7~10개는 인물이 직접 말하는 영상입니다.',
-                '값 약 2,100원이 듭니다 (대본만 · 영상은 다음 단계).',
+  if (!confirm(['이 사건으로 2분 세로 쇼츠 대본을 지을까요? (예전 방식)', '', nm, '',
+                '주의: 긴 영상이 아닙니다. 기본 흐름은 긴 영상 1편 → 그 쇼츠 3~5편이고,',
+                '그쪽은 [긴 영상으로] 를 누르세요.', '',
+                '2분짜리 세로 드라마 하나로 짓습니다 — 대사 컷 7~10개는 인물이 직접 말하는 영상입니다.',
+                '값 약 600~2,100원이 듭니다 (대본만 · 규격에 안 맞아 실패해도 나갑니다).',
                 '5~10분 걸리고, 끝나면 목록에 새 작품이 생깁니다.'
                ].join(String.fromCharCode(10)))) return;
   WBUSY['story'] = 1;
