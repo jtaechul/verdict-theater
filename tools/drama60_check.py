@@ -282,7 +282,10 @@ rows, _bad = D.plan(live)
 ck("그림 컷은 옴니를 안 산다 (값 0원)",
    all(r.get("fig") and r["krw"] == 0 for r, c in zip(rows, live["cuts"]) if c.get("fig")))
 # ⚠️ 영상 창고(build/)는 이 작업 칸에만 있다 — 깃허브 자체 점검에는 없으니 그때는 건너뛴다
-if (S9.video_dir() / "library.json").exists():
+#    창고가 있어도 다른 사건(S98 등) 컷만 있으면 S94 를 산 적이 없는 칸이다 — 그때도 건너뛴다
+_lib0 = (S9.video_dir() / "library.json")
+_lib0 = json.loads(_lib0.read_text(encoding="utf-8")) if _lib0.exists() else {}
+if any(D.vkey(c) in _lib0 for c in live["cuts"] if not c.get("fig")):
     ck("그림 컷 밖의 컷은 전부 창고 영상이다 (새로 사는 컷 0개)",
        all(r["lib"] for r, c in zip(rows, live["cuts"]) if not c.get("fig")),
        str([c["n"] for r, c in zip(rows, live["cuts"]) if not c.get("fig") and not r["lib"]]))
@@ -344,6 +347,17 @@ with tempfile.TemporaryDirectory() as t:
     G.render(live, figs[1], 0.5, mp, frames=8)
     ck("그림 컷이 실제로 영상이 된다 (1080×1920 · 소리 없음)",
        mp.exists() and S9.dur_of(mp) > 0.2 and not S9.has_audio(mp))
+    # ⭐ 2026-11-02 그림 디자인 = 사건 기록지 — 긴 영상은 종이 판(검은 잉크), 세로 쇼츠는 옛 어두운 판 그대로
+    ck("세로 쇼츠 그림은 옛 어두운 판이다 (종이 판으로 바뀌지 않는다)",
+       not G.theme_of(live) and G.tone(G.INK) == G.INK)
+    _was = S9.LAYOUT
+    S9.LAYOUT = "long"
+    try:
+        ck("긴 영상 그림은 종이 판 — 글씨가 검은 잉크 · 「fig_theme: dark」 면 옛 판",
+           G.theme_of({}) and sum(G.tone(G.INK)) < 120 and not G.theme_of({"fig_theme": "dark"}))
+    finally:
+        S9.LAYOUT = _was
+        G.theme_of(live)
     raw = t / "raw.mp4"
     subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i",
                     "testsrc2=s=360x640:r=24:d=2", "-pix_fmt", "yuv420p", str(raw)], check=True)
@@ -781,11 +795,15 @@ if libf.exists():
     lib94 = json.loads(libf.read_text(encoding="utf-8"))
     by94 = D.cast_of(json.loads((ROOT / "data" / "series" / "S94.json").read_text(encoding="utf-8")))
     real94 = [c for c in live["cuts"] if not D.is_fig(c)]
-    same = [c["n"] for c in real94 if (lib94.get(D.vkey(c)) or {}).get("prompt") ==
-            D.prompt(c, lib94[D.vkey(c)]["shot"], lib94[D.vkey(c)]["sec"], by94)]
+    # 창고에 S94 컷이 없으면(다른 사건만 산 작업 칸) 그 컷은 건너뛴다 — 없는 열쇠를 읽어 멈추지 않게
     have = [c["n"] for c in real94 if D.vkey(c) in lib94]
-    ck("S94 창고 영상의 지문이 지금 지문과 글자까지 같다 (세로가 안 바뀐 증거)",
-       have and same == have, f"{len(same)}/{len(have)}")
+    same = [c["n"] for c in real94 if D.vkey(c) in lib94 and lib94[D.vkey(c)].get("prompt") ==
+            D.prompt(c, lib94[D.vkey(c)]["shot"], lib94[D.vkey(c)]["sec"], by94)]
+    if have:
+        ck("S94 창고 영상의 지문이 지금 지문과 글자까지 같다 (세로가 안 바뀐 증거)",
+           same == have, f"{len(same)}/{len(have)}")
+    else:
+        print("   ⏭  창고에 S94 컷이 없다 — '산 지문 그대로' 는 S94 창고가 있는 작업 칸에서만 본다")
 else:
     print("   ⏭  S94 영상 창고가 없다 (깃허브) — '산 지문 그대로' 는 작업 칸에서만 본다")
 _sh = C.plan([{"n": 1, "turns": [["나레이션", "가"]], "who": ["딸"], "scene": "a"}])[0]

@@ -55,6 +55,37 @@ INK, MUTE, SOFT = (246, 243, 236), (186, 190, 199), (222, 217, 206)
 LINE, RED, PANEL, CARD = (200, 195, 184), (230, 98, 84), (14, 18, 26), (24, 29, 40)
 GREY = (150, 155, 166)
 
+# ⭐⭐⭐ 2026-11-02 손님: "관계도와 같이 설명해주는 영상의 디자인/UI가 너무 AI스러워" → 3안 중 A안(사건 기록지)
+#    + C안의 흐린 장면 바탕을 섞어 **긴 영상 기본 디자인**으로. 앞 장면을 흐리게 깔고, 그 위에 종이 서류 한 장.
+#    글씨는 검은 잉크 · 강조는 빨간 펜(동그라미 · 줄 긋기 · 도장) · 사람은 클립으로 집은 사진.
+#    그리는 법(자리)은 그대로 두고 색·글씨 테·사진 꼴만 바꾼다 — tone() 이 옛 색을 종이 색으로 옮긴다.
+#    대본 "fig_theme": "dark" 이면 옛 어두운 판 그대로 (세로 쇼츠는 늘 옛 판).
+PAPER = False
+PAPER_BG = (242, 236, 223)
+PAPER_RECT = (110, 84, 1810, 862)      # 종이 자리 — 위 모서리 글(사건 이름 · 판결극장 · y 34~64)과 자막 칸(868~) 사이
+# 그림은 옛 자리값(위 60~830)으로 그리고 종이 안으로 살짝 줄여 옮긴다: y' = 42 + 0.9675y · x 는 가운데 기준
+PAPER_FIT = (0.9675, 42)
+PAPER_INK = (28, 26, 23)
+PAPER_MAP = {INK: PAPER_INK, SOFT: (88, 82, 72), MUTE: (118, 110, 98), GOLD_B: (122, 82, 22),
+             GOLD: (150, 118, 62), LINE: (128, 120, 106), RED: (176, 38, 30), PANEL: PAPER_BG,
+             CARD: (234, 227, 212), GREY: (150, 142, 128), (228, 224, 216): (255, 255, 255),
+             (40, 44, 54): (222, 214, 198), (100, 106, 120): (186, 176, 156),
+             (255, 238, 200): (255, 251, 240), (12, 15, 22): PAPER_BG}
+
+
+def tone(c):
+    """어두운 판 색 → 종이 판 색 (종이 판이 아니면 그대로)."""
+    if not PAPER or c is None:
+        return c
+    return PAPER_MAP.get(tuple(c[:3]), tuple(c[:3]))
+
+
+def theme_of(doc):
+    """그 대본의 그림 판 — 긴 영상은 종이(기본), 세로는 옛 어두운 판."""
+    global PAPER
+    PAPER = S9.LAYOUT == "long" and (doc.get("fig_theme") or "paper") == "paper"
+    return PAPER
+
 APPEAR = 0.42                           # 나타나는 데 걸리는 시간(초)
 STAGGER = 0.14                          # 신호 낱말이 없는 요소들은 이만큼씩 차례로
 LEAD = 0.08                             # 낱말보다 살짝 먼저 (눈이 귀보다 느리다)
@@ -78,12 +109,16 @@ def tw(s, size, f=F_NAME):
 
 
 def text(im, x, y, s, size, color=INK, f=F_NAME, anchor="la", stroke=2, alpha=255):
+    color = tone(color)
+    if PAPER:
+        stroke = 0
     ImageDraw.Draw(im).text((x * SS, y * SS), s, font=font(f, size), fill=color + (alpha,),
                             anchor=anchor, stroke_width=int(stroke * SS),
                             stroke_fill=(0, 0, 0, 175))
 
 
 def line(im, p, q, color, width=5, dash=None, alpha=240):
+    color = tone(color)
     lay = Image.new("RGBA", im.size, (0, 0, 0, 0))
     d = ImageDraw.Draw(lay)
     (x1, y1), (x2, y2) = p, q
@@ -110,6 +145,7 @@ def arrow(im, p, q, color, width=6, head=26):
     n = math.hypot(x2 - x1, y2 - y1)
     ux, uy = (x2 - x1) / n, (y2 - y1) / n
     line(im, p, (x2 - ux * head * 0.8, y2 - uy * head * 0.8), color, width)
+    color = tone(color)
     ImageDraw.Draw(im).polygon(
         [P(x2, y2), P(x2 - ux * head - uy * head * 0.6, y2 - uy * head + ux * head * 0.6),
          P(x2 - ux * head + uy * head * 0.6, y2 - uy * head - ux * head * 0.6)],
@@ -119,18 +155,22 @@ def arrow(im, p, q, color, width=6, head=26):
 def chip(im, cx, cy, s, color=GOLD_B, size=34, solid=False, tcolor=None, f=F_UI_B):
     w = tw(s, size, f) + 40
     h = size + 24
+    color, tcolor = tone(color), tone(tcolor)
     lay = Image.new("RGBA", im.size, (0, 0, 0, 0))
     ImageDraw.Draw(lay).rounded_rectangle(P(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2),
-                                          radius=int(h / 2 * SS),
-                                          fill=(color + (245,)) if solid else (PANEL + (230,)),
+                                          radius=int((8 if PAPER else h / 2) * SS),
+                                          fill=(color + (245,)) if solid else (tone(PANEL) + (230,)),
                                           outline=color + (255,), width=int(3 * SS))
     im.alpha_composite(lay)
-    text(im, cx, cy + 1, s, size, tcolor or (PANEL if solid else color), f, anchor="mm",
+    text(im, cx, cy + 1, s, size, tcolor or (tone(PANEL) if solid else color), f, anchor="mm",
          stroke=0)
     return w
 
 
 def box(im, x1, y1, x2, y2, outline=LINE, fill=CARD, alpha=228, width=3, dash=None, r=24):
+    outline, fill = tone(outline), tone(fill)
+    if PAPER:
+        r = min(r, 6)
     lay = Image.new("RGBA", im.size, (0, 0, 0, 0))
     ImageDraw.Draw(lay).rounded_rectangle(P(x1, y1, x2, y2), radius=int(r * SS),
                                           fill=fill + (alpha,),
@@ -141,6 +181,56 @@ def box(im, x1, y1, x2, y2, outline=LINE, fill=CARD, alpha=228, width=3, dash=No
         for a, b in (((x1 + r, y1), (x2 - r, y1)), ((x1 + r, y2), (x2 - r, y2)),
                      ((x1, y1 + r), (x1, y2 - r)), ((x2, y1 + r), (x2, y2 - r))):
             line(im, a, b, outline, width, dash=dash)
+
+
+def stamp(im, cx, cy, s, size, color=RED, sub=None, angle=-4):
+    """빨간 도장 — 테두리 상자 + 글 · 살짝 기울이고 잉크 얼룩(군데군데 옅게)."""
+    color = tone(color)
+    f = font(F_NAME, size)
+    tw_ = tw(s, size)
+    sw = tw(sub, size * 0.46, F_UI_B) if sub else 0
+    w = max(tw_, sw) + size * 0.9
+    h = size * (1.55 if not sub else 2.05)
+    S = int(max(w, h) * 1.3 * SS)
+    lay = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    d = ImageDraw.Draw(lay)
+    ox, oy = S / 2 - w * SS / 2, S / 2 - h * SS / 2
+    d.rounded_rectangle([ox, oy, ox + w * SS, oy + h * SS], radius=int(8 * SS),
+                        outline=color + (235,), width=int(max(5, size * 0.09) * SS))
+    if sub:
+        d.text((S / 2, oy + h * SS * 0.27), sub, font=font(F_UI_B, size * 0.46), fill=color + (235,), anchor="mm")
+        d.text((S / 2, oy + h * SS * 0.64), s, font=f, fill=color + (235,), anchor="mm")
+    else:
+        d.text((S / 2, S / 2 + size * 0.04 * SS), s, font=f, fill=color + (235,), anchor="mm")
+    import random
+    rnd = random.Random(hash(s) & 0xffff)
+    noise = Image.new("L", (S // 8 + 1, S // 8 + 1))
+    noise.putdata([200 + rnd.randint(0, 55) if rnd.random() > 0.12 else rnd.randint(40, 140)
+                   for _ in range(noise.width * noise.height)])
+    noise = noise.resize((S, S), Image.BILINEAR)
+    lay.putalpha(ImageChops.multiply(lay.getchannel("A"), noise))
+    lay = lay.rotate(angle, resample=Image.BICUBIC)
+    im.alpha_composite(lay, dest=(int(cx * SS - S / 2), int(cy * SS - S / 2)))
+
+
+def pen_circle(im, x1, y1, x2, y2, color=RED, width=5):
+    """빨간 펜 동그라미 — 손으로 두른 듯 끝이 살짝 겹친다."""
+    color = tone(color)
+    cx, cy, rx, ry = (x1 + x2) / 2, (y1 + y2) / 2, (x2 - x1) / 2, (y2 - y1) / 2
+    pts = []
+    for k in range(0, 101):
+        a = math.radians(200 + k * 3.85)
+        wob = 1 + 0.035 * math.sin(k * 0.21)
+        pts.append(P(cx + rx * wob * math.cos(a), cy + ry * wob * math.sin(a)))
+    ImageDraw.Draw(im).line(pts, fill=color + (225,), width=int(width * SS), joint="curve")
+
+
+def pen_line(im, x1, y1, x2, y2, color=RED, width=5):
+    """빨간 펜 밑줄 — 살짝 휘게."""
+    color = tone(color)
+    pts = [P(x1 + (x2 - x1) * k / 40, y1 + (y2 - y1) * k / 40 + 3 * math.sin(k / 40 * math.pi))
+           for k in range(41)]
+    ImageDraw.Draw(im).line(pts, fill=color + (220,), width=int(width * SS), joint="curve")
 
 
 def cross(im, cx, cy, k=40, color=RED, width=14):
@@ -174,6 +264,11 @@ def heading(im, s, y=None):
     g = G()
     y = g["HEAD_Y"] if y is None else y
     cx = g["CX"]
+    if PAPER:                                  # 서류 제목 — 왼쪽 명조 + 아래 굵은 줄
+        x0 = PAPER_RECT[0] + 64
+        text(im, x0, y + 2, s, 54, INK, F_NAME, anchor="lm")
+        line(im, (x0, y + 38), (x0 + tw(s, 54) + 60, y + 38), INK, 3, alpha=255)   # 제목 밑줄만 (그림과 안 겹친다)
+        return
     w = tw(s, 50 if S9.LAYOUT == "tall" else 54)
     text(im, cx, y, s, 50 if S9.LAYOUT == "tall" else 54, GOLD_B, F_NAME, anchor="mm")
     for sg in (-1, 1):
@@ -195,6 +290,8 @@ def shadow(im, cx, cy, r, alpha=150):
 
 
 def glow(im, cx, cy, r, color=GOLD_B, alpha=170, grow=26):
+    if PAPER:                                  # 종이엔 빛이 없다 — 형광펜처럼 옅게
+        color, alpha = (232, 196, 64), min(alpha, 90)
     lay = Image.new("RGBA", im.size, (0, 0, 0, 0))
     ImageDraw.Draw(lay).ellipse(P(cx - r - grow, cy - r - grow, cx + r + grow, cy + r + grow),
                                 fill=color + (alpha,))
@@ -217,13 +314,37 @@ def face_img(role):
             return t
         card = Image.open(f).convert("RGB")
         w, h = card.size
-        fx, fy, side = w * 0.5, h * 0.155, w * 0.50
+        # 머리끝부터 턱 아래까지 — 옛 자리(0.155 · 0.50)는 입 아래가 잘렸다 (2026-11-02 손님 "얼굴 아래쪽이 다 가려진다")
+        fx, fy, side = w * 0.5, h * 0.172, w * 0.72
         _FACES[role] = card.crop((int(fx - side / 2), int(fy - side / 2),
                                   int(fx + side / 2), int(fy + side / 2)))
     return _FACES[role]
 
 
+def photo_frame(im, cx, cy, r, ring):
+    """종이 판 사진 — 흰 테 + 그림자 + 위에 클립."""
+    lay = Image.new("RGBA", im.size, (0, 0, 0, 0))
+    ImageDraw.Draw(lay).rectangle(P(cx - r - 6, cy - r + 6, cx + r + 14, cy + r + 22), fill=(0, 0, 0, 110))
+    im.alpha_composite(lay.filter(ImageFilter.GaussianBlur(9 * SS)))
+    ImageDraw.Draw(im).rectangle(P(cx - r - 10, cy - r - 10, cx + r + 10, cy + r + 10),
+                                 fill=tone(ring) + (255,))
+
+
+def paper_clip(im, cx, top):
+    d = ImageDraw.Draw(im)
+    d.rounded_rectangle(P(cx - 11, top - 26, cx + 11, top + 24), radius=int(11 * SS),
+                        outline=(126, 122, 116, 255), width=int(4 * SS))
+
+
 def person(im, role, cx, cy, r, ring=(228, 224, 216), dim=1.0):
+    if PAPER:
+        pic = face_img(role).resize((2 * r * SS, 2 * r * SS), Image.LANCZOS).convert("RGBA")
+        if dim < 1.0:
+            pic = Image.blend(pic, Image.new("RGBA", pic.size, PAPER_BG + (255,)), 1 - dim)
+        photo_frame(im, cx, cy, r, ring)
+        im.paste(pic, P(cx - r, cy - r))
+        paper_clip(im, cx, cy - r - 10)
+        return
     pic = face_img(role).resize((2 * r * SS, 2 * r * SS), Image.LANCZOS).convert("RGBA")
     if dim < 1.0:
         pic = Image.blend(pic, Image.new("RGBA", pic.size, (12, 15, 22, 255)), 1 - dim)
@@ -235,6 +356,15 @@ def person(im, role, cx, cy, r, ring=(228, 224, 216), dim=1.0):
 
 def ghost(im, cx, cy, r, ring=GREY, dash=False):
     """사진이 없는 사람(고인) — 윤곽만."""
+    if PAPER:
+        photo_frame(im, cx, cy, r, (228, 224, 216))
+        ImageDraw.Draw(im).rectangle(P(cx - r, cy - r, cx + r, cy + r), fill=(226, 218, 202, 255))
+        text(im, cx, cy + 4, "?", r * 1.05, (176, 166, 146), F_NAME, anchor="mm")
+        if dash:
+            box(im, cx - r - 10, cy - r - 10, cx + r + 10, cy + r + 10, outline=GREY, fill=CARD,
+                alpha=0, width=3, dash=(12, 9))
+        paper_clip(im, cx, cy - r - 10)
+        return
     shadow(im, cx, cy, r, alpha=120)
     s = 2 * r * SS
     t = Image.new("RGBA", (s, s), (40, 44, 54, 255))
@@ -269,6 +399,7 @@ def nametag(im, cx, y, name, role=None, color=INK, size=48):
 
 def grave_icon(im, cx, cy, s=1.0, color=GOLD_B):
     """봉분 + 상석 (묘)."""
+    color = tone(color)
     d = ImageDraw.Draw(im)
     d.pieslice(P(cx - 46 * s, cy - 34 * s, cx + 46 * s, cy + 34 * s), 180, 360,
                fill=color + (255,))
@@ -279,43 +410,48 @@ def grave_icon(im, cx, cy, s=1.0, color=GOLD_B):
 
 def table_icon(im, cx, cy, s=1.0, color=GOLD_B):
     """제사상 — 낮은 상 + 초 두 자루."""
+    color = tone(color)
     d = ImageDraw.Draw(im)
     d.rectangle(P(cx - 50 * s, cy - 2 * s, cx + 50 * s, cy + 8 * s), fill=color + (255,))
     for x in (-40, 34):
         d.rectangle(P(cx + x * s, cy + 8 * s, cx + (x + 6) * s, cy + 30 * s), fill=color + (255,))
     for x in (-24, 18):
-        d.rectangle(P(cx + x * s, cy - 34 * s, cx + (x + 7) * s, cy - 2 * s), fill=INK + (255,))
+        d.rectangle(P(cx + x * s, cy - 34 * s, cx + (x + 7) * s, cy - 2 * s), fill=tone(INK) + (255,))
         d.ellipse(P(cx + (x - 1) * s, cy - 48 * s, cx + (x + 8) * s, cy - 34 * s),
                   fill=(255, 196, 92, 255))
 
 
 def coin_icon(im, cx, cy, s=1.0, color=GOLD_B):
     """돈 — 금색 동전에 ₩."""
+    color = tone(color)
     ImageDraw.Draw(im).ellipse(P(cx - 48 * s, cy - 48 * s, cx + 48 * s, cy + 48 * s), fill=color + (255,))
-    text(im, cx, cy + 2 * s, "₩", 54 * s, PANEL, F_UI_B, anchor="mm", stroke=0)
+    text(im, cx, cy + 2 * s, "₩", 54 * s, tone(PANEL), F_UI_B, anchor="mm", stroke=0)
 
 
 def home_icon(im, cx, cy, s=1.0, color=GOLD_B):
     """집·땅 — 지붕 + 벽 + 문."""
+    color = tone(color)
     d = ImageDraw.Draw(im)
     d.polygon([P(cx - 52 * s, cy - 6 * s), P(cx, cy - 50 * s), P(cx + 52 * s, cy - 6 * s)],
               fill=color + (255,))
     d.rectangle(P(cx - 38 * s, cy - 8 * s, cx + 38 * s, cy + 40 * s), fill=color + (255,))
-    d.rectangle(P(cx - 10 * s, cy + 10 * s, cx + 10 * s, cy + 40 * s), fill=PANEL + (255,))
+    d.rectangle(P(cx - 10 * s, cy + 10 * s, cx + 10 * s, cy + 40 * s), fill=tone(PANEL) + (255,))
 
 
 def doc_icon(im, cx, cy, s=1.0, color=GOLD_B):
     """서류 — 귀퉁이 접힌 종이 + 글줄."""
+    color = tone(color)
     d = ImageDraw.Draw(im)
     d.polygon([P(cx - 36 * s, cy - 48 * s), P(cx + 18 * s, cy - 48 * s), P(cx + 36 * s, cy - 30 * s),
                P(cx + 36 * s, cy + 48 * s), P(cx - 36 * s, cy + 48 * s)], fill=color + (255,))
     for k in range(3):
         y = cy - 14 * s + k * 20 * s
-        d.rectangle(P(cx - 22 * s, y, cx + 22 * s, y + 6 * s), fill=PANEL + (255,))
+        d.rectangle(P(cx - 22 * s, y, cx + 22 * s, y + 6 * s), fill=tone(PANEL) + (255,))
 
 
 def scale_icon(im, cx, cy, s=1.0, color=GOLD_B):
     """법 — 저울."""
+    color = tone(color)
     d = ImageDraw.Draw(im)
     d.rectangle(P(cx - 4 * s, cy - 44 * s, cx + 4 * s, cy + 36 * s), fill=color + (255,))
     d.rectangle(P(cx - 30 * s, cy + 34 * s, cx + 30 * s, cy + 44 * s), fill=color + (255,))
@@ -329,11 +465,12 @@ def scale_icon(im, cx, cy, s=1.0, color=GOLD_B):
 
 def ring_icon(im, cx, cy, s=1.0, color=GOLD_B):
     """혼인 — 반지."""
+    color = tone(color)
     d = ImageDraw.Draw(im)
     d.ellipse(P(cx - 36 * s, cy - 24 * s, cx + 36 * s, cy + 48 * s), outline=color + (255,),
               width=int(9 * s * SS))
     d.polygon([P(cx, cy - 50 * s), P(cx + 16 * s, cy - 32 * s), P(cx, cy - 18 * s),
-               P(cx - 16 * s, cy - 32 * s)], fill=INK + (255,))
+               P(cx - 16 * s, cy - 32 * s)], fill=tone(INK) + (255,))
 
 
 # 그림 속 작은 그림 — 쟁점의 원칙 줄 · 판결 줄 · 끝줄에 이름으로 고른다 (사건마다 맞는 것)
@@ -343,6 +480,12 @@ ICONS = {"grave": grave_icon, "table": table_icon, "coin": coin_icon, "home": ho
 
 def ring_glow(im, cx, cy, r, color=RED):
     """얼굴은 그대로 두고 둘레만 빛나게 (붉은 고리 + 번진 빛 · 안쪽은 비운다)."""
+    color = tone(color)
+    if PAPER:                                  # 빨간 펜으로 사진을 한 바퀴 두른다
+        d = ImageDraw.Draw(im)
+        d.ellipse(P(cx - r * 1.40, cy - r * 1.24, cx + r * 1.44, cy + r * 1.18),
+                  outline=color + (225,), width=int(6 * SS))
+        return
     lay = Image.new("RGBA", im.size, (0, 0, 0, 0))
     ImageDraw.Draw(lay).ellipse(P(cx - r - 16, cy - r - 16, cx + r + 16, cy + r + 16),
                                 outline=color + (230,), width=int(22 * SS))
@@ -357,8 +500,8 @@ def ring_glow(im, cx, cy, r, color=RED):
 
 def badge(im, cx, cy, r=38):
     shadow(im, cx, cy, r, alpha=110)
-    ImageDraw.Draw(im).ellipse(P(cx - r, cy - r, cx + r, cy + r), fill=GOLD_B + (255,),
-                               outline=(255, 238, 200, 255), width=int(3 * SS))
+    ImageDraw.Draw(im).ellipse(P(cx - r, cy - r, cx + r, cy + r), fill=tone(GOLD_B) + (255,),
+                               outline=tone((255, 238, 200)) + (255,), width=int(3 * SS))
     grave_icon(im, cx, cy + 4, s=0.52, color=PANEL)
 
 
@@ -374,6 +517,13 @@ class El:
     def build(self):
         im = canvas()
         self.draw(im)
+        if PAPER:                              # 종이 안으로 (위 모서리 글 · 자막과 안 겹치게)
+            k, dy = PAPER_FIT
+            cx = W / 2 * SS
+            im = im.transform(im.size, Image.AFFINE, (1 / k, 0, -cx * (1 - k) / k, 0, 1 / k, -dy * SS / k),
+                              resample=Image.BICUBIC)
+            if self.wipe:
+                self.wipe = tuple((W / 2 + (x - W / 2) * k, dy + y * k) for x, y in self.wipe)
         im = im.resize((W, H), Image.LANCZOS)
         bb = im.getbbox() or (0, 0, 1, 1)
         self.sprite, self.xy = im.crop(bb), (bb[0], bb[1])
@@ -809,7 +959,7 @@ def fig_verdict(doc, spec):
                 cross(im, 945, y + 92, k=40, width=14)
             elif mk == "o":
                 ImageDraw.Draw(im).ellipse(P(945 - 42, y + 92 - 42, 945 + 42, y + 92 + 42),
-                                           outline=GOLD_B + (255,), width=int(13 * SS))
+                                           outline=tone(GOLD_B) + (255,), width=int(13 * SS))
             text(im, 228, y + hgt - 64, r.get("answer") or "", 38, GOLD_B, F_UI_B, anchor="lm")
         return draw
 
@@ -908,6 +1058,10 @@ def fig_board(doc, spec):
                     ICONS[it["icon"]](im, L + 56 * q, y + 46 * q, s=0.72 * q)
                     x = L + 120 * q
                 para(im, x, y + 18 * q, s, 44 * q, R - x - 10, col(it.get("color"), INK), F_UI_B)
+            elif kd == "chip" and PAPER:              # 종이 판 — 알약 대신 줄글 목록 (— 까닭)
+                col_ = RED if it.get("color") == "red" else INK
+                text(im, L + 40 * q, y + 42 * q, "—", 38 * q, MUTE, F_UI, anchor="lm")
+                text(im, L + 100 * q, y + 42 * q, s, 40 * q, col_, F_UI, anchor="lm")
             elif kd == "chip":
                 chip(im, CX, y + 42 * q, s, c, 38 * q, solid=bool(it.get("solid")))
             elif kd == "claim":
@@ -918,6 +1072,15 @@ def fig_board(doc, spec):
             elif kd == "quote":
                 box(im, L + 30, y, R - 30, y + board_h("quote"), outline=SOFT, dash=(14, 10))
                 para(im, CX, y + 30 * q, f"“{s}”", 40 * q, R - L - 120, SOFT, F_NAME_M, anchor="ma")
+            elif kd == "result" and PAPER and len(s.replace(" ", "")) <= 13:   # 짧은 결론 — 빨간 도장
+                stamp(im, CX, y + 54 * q, s, 50 * q, RED, sub=it.get("sub"), angle=-3)
+            elif kd == "result" and PAPER:            # 긴 결론 — 빨간 펜 글 + 손으로 그은 밑줄
+                ty = y + (40 if it.get("sub") else 50) * q
+                text(im, CX, ty, s, 48 * q, RED, F_NAME, anchor="mm")
+                w2 = tw(s, 48 * q) / 2
+                pen_line(im, CX - w2 - 10, ty + 34 * q, CX + w2 + 10, ty + 30 * q)
+                if it.get("sub"):
+                    text(im, CX, ty + 70 * q, it["sub"], 32 * q, SOFT, F_UI, anchor="mm")
             elif kd == "result":
                 if it.get("sub"):
                     text(im, CX, y + 46 * q, s, 56 * q, c, F_NAME, anchor="mm", stroke=3)
@@ -984,13 +1147,19 @@ def fig_timeline_l(doc, spec):
     """연표 (가로) — 줄은 왼쪽 세로 축을 따라 쌓고, 카드는 오른쪽 칸에 그 줄 높이로 붙인다.
     카드 높이는 글 줄 수에 맞춘다 · 카드끼리 겹치면 아래로 밀고, 바닥(800)을 넘으면 위로 당긴다."""
     X, TX, CL, CR = 250, 400, 1060, 1800
-    TOP, BOT, GAP = 150, 800, 14
+    TOP, BOT, GAP = 150, 800, (24 if PAPER else 14)
     rows = spec.get("rows") or []
     n = max(1, len(rows))
     # 줄이 적으면 줄 사이를 넓히고 글씨도 키운다 (6줄 112px · 1배 → 3줄 160px · 1.25배)
     step = min(160, (740 - 190) / max(1, n - 1)) if n > 1 else 0
     q = max(1.0, min(1.25, step / 112)) if n > 1 else 1.25
     at = {r["id"]: 190 + i * step for i, r in enumerate(rows)}
+    if PAPER:
+        # ⭐ 2026-11-02 손님 "글씨 사이 위아래 간격이 너무 좁다" — 종이 판은 제목 아래를 넉넉히 비우고(245~),
+        #    줄마다 이름 42 · 풀이 32 에 사이 12px, 줄과 줄 사이엔 점선을 그어 한 줄씩 끊어 읽히게 한다.
+        step = min(150, (760 - 245) / max(1, n - 1)) if n > 1 else 0
+        q = 1.0
+        at = {r["id"]: 245 + i * step for i, r in enumerate(rows)}
     cds = spec.get("cards") or []
     hs = [(132 + 51 * (max(1, len(wrap(cd.get("text") or "", 38 * q, F_UI_B, CR - CL - 56))) - 1)) * q
           for cd in cds]
@@ -1007,7 +1176,30 @@ def fig_timeline_l(doc, spec):
     bottom = (max(at.values()) if at else 190) + 70 * q
     tmax = CL - TX - 40
 
+    def row_paper(r):
+        def draw(im):
+            yy = at[r["id"]]
+            c = col(r.get("color"), GOLD_B)
+            k = min(1.0, step / 128) if n > 1 else 1.0      # 줄이 빽빽하면(6줄~) 글씨도 조금 줄인다
+            nm, ws, gp = max(34, 42 * k), max(28, 32 * k), 12 * k
+            chip(im, X, yy, r["year"], c, max(26, 30 * k))
+            who, sz = r.get("who") or "", nm
+            while sz > 30 and tw(who, sz) > tmax:
+                sz -= 2
+            text(im, TX, yy, who, sz, INK, F_NAME, anchor="lm")
+            if r.get("what"):
+                text(im, TX, yy + nm / 2 + gp + ws / 2, r["what"], ws,
+                     col(r.get("what_color"), RED if r.get("color") == "red" else SOFT), F_UI, anchor="lm")
+            i = [x["id"] for x in rows].index(r["id"])
+            if i < len(rows) - 1:                  # 이 줄 끝과 다음 줄 머리 한가운데에 점선
+                ym = yy + (nm / 2 + gp + ws + step - nm / 2) / 2
+                line(im, (X - 70, ym), (CL - 60, ym), LINE, 2, dash=(6, 7), alpha=150)
+        return draw
+
     def row(r):
+        if PAPER:
+            return row_paper(r)
+
         def draw(im):
             yy = at[r["id"]]
             c = col(r.get("color"), GOLD_B)
@@ -1030,7 +1222,7 @@ def fig_timeline_l(doc, spec):
         return draw
 
     els = [El("heading", lambda im: (heading(im, spec.get("title") or "일어난 순서"),
-                                     line(im, (X, 160), (X, bottom), LINE, 4, alpha=170)),
+                                     None if PAPER else line(im, (X, 160), (X, bottom), LINE, 4, alpha=170)),
               anim="fade")]
     for r in rows:
         els.append(El(r["id"], row(r), anim="fade"))
@@ -1228,7 +1420,7 @@ def fig_verdict_l(doc, spec):
                 cross(im, 1690, y + hgt / 2, k=40, width=14)
             elif mk == "o":
                 ImageDraw.Draw(im).ellipse(P(1690 - 42, y + hgt / 2 - 42, 1690 + 42, y + hgt / 2 + 42),
-                                           outline=GOLD_B + (255,), width=int(13 * SS))
+                                           outline=tone(GOLD_B) + (255,), width=int(13 * SS))
             text(im, 320, y + hgt - 34, r.get("answer") or "", 40, GOLD_B, F_UI_B, anchor="lm")
         return draw
 
@@ -1384,6 +1576,85 @@ def bg_of(n):
     return im
 
 
+def paper_bg(doc, c):
+    """⭐ 종이 판 바탕 — 바로 앞 영상 컷 장면을 흐리고 어둡게 깔고, 그 위에 서류 한 장 (머리말 · 쪽 번호).
+    장면은 그 사건의 컷 영상(c<번호>.mp4)에서 — 다른 사건 장면이 깔릴 일이 없다."""
+    sync()
+    fid = c["fig"]["id"]
+    order = []
+    for x in doc["cuts"]:
+        f = (x.get("fig") or {}).get("id")
+        if f and f not in order:
+            order.append(f)
+    prev = None
+    for x in doc["cuts"]:
+        if x["n"] >= c["n"]:
+            break
+        if not x.get("fig") and (S9.video_dir() / f"c{x['n']:02d}.mp4").exists():
+            prev = x["n"]
+    if prev is None:
+        prev = next((x["n"] for x in doc["cuts"] if not x.get("fig")
+                     and (S9.video_dir() / f"c{x['n']:02d}.mp4").exists()), None)
+    key = f"paper2_{doc.get('sid')}_{prev}_{W}x{H}.png"
+    out = S9.OUT / "figs" / key
+    if out.exists():
+        return Image.open(out).convert("RGB")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    im = None
+    if prev is not None:
+        clip = S9.video_dir() / f"c{prev:02d}.mp4"
+        r = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{S9.dur_of(clip) * 0.5:.2f}", "-i", str(clip),
+                            "-frames:v", "1", "-vf", f"scale={W}:{H}", "-f", "image2pipe", "-vcodec", "png", "-"],
+                           capture_output=True)
+        if r.stdout:
+            import io
+            im = Image.open(io.BytesIO(r.stdout)).convert("RGB")
+    if im is None:
+        im = Image.new("RGB", (W, H), (60, 54, 46))
+    im = im.filter(ImageFilter.GaussianBlur(14))
+    from PIL import ImageEnhance
+    im = ImageEnhance.Color(im).enhance(0.7)
+    im = Image.blend(im, Image.new("RGB", im.size, (22, 18, 14)), 0.52)
+    # 가장자리를 더 어둡게 (눈이 종이로 간다)
+    vig = Image.new("L", (W, H), 0)
+    ImageDraw.Draw(vig).ellipse([-W * 0.25, -H * 0.3, W * 1.25, H * 1.15], fill=255)
+    vig = vig.filter(ImageFilter.GaussianBlur(160))
+    im = Image.composite(im, Image.blend(im, Image.new("RGB", im.size, (0, 0, 0)), 0.55), vig)
+    x1, y1, x2, y2 = PAPER_RECT
+    sh = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ImageDraw.Draw(sh).rectangle([x1 + 6, y1 + 26, x2 + 6, y2 + 40], fill=(0, 0, 0, 170))
+    im = im.convert("RGBA")
+    im.alpha_composite(sh.filter(ImageFilter.GaussianBlur(28)))
+    import random
+    rnd = random.Random(7)
+    pw, ph = x2 - x1, y2 - y1
+    grain = Image.new("L", (pw // 3, ph // 3))
+    grain.putdata([rnd.randint(-9, 9) + 128 for _ in range(grain.width * grain.height)])
+    grain = grain.resize((pw, ph), Image.BILINEAR).filter(ImageFilter.GaussianBlur(0.6))
+    paper = Image.new("RGB", (pw, ph), PAPER_BG)
+    paper = ImageChops.add(paper, Image.merge("RGB", [grain] * 3), 1, -128)
+    shade = Image.new("L", (pw, ph), 0)
+    ImageDraw.Draw(shade).rectangle([0, int(ph * 0.55), pw, ph], fill=255)
+    shade = shade.filter(ImageFilter.GaussianBlur(ph * 0.35))
+    paper = Image.composite(Image.blend(paper, Image.new("RGB", paper.size, (205, 196, 178)), 0.35), paper, shade)
+    im.paste(paper, (x1, y1))
+    d = ImageDraw.Draw(im)
+    d.line([(x1, y2), (x2, y2)], fill=(214, 205, 188), width=2)
+    # 위 가운데 클립
+    cx = (x1 + x2) // 2
+    d.rounded_rectangle([cx - 76, y1 - 18, cx + 76, y1 + 16], radius=10, outline=(138, 134, 128), width=7)
+    im = im.convert("RGB")
+    im.save(out)
+    return im
+
+
+def scene_bg(doc, c):
+    fid = c["fig"]["id"]
+    if theme_of(doc):
+        return paper_bg(doc, c)
+    return bg_of(bg_n(doc, fid))
+
+
 def speech_sec(c):
     w = S9.OUT / "voice" / f"c{c['n']:02d}.wav"
     if w.exists():
@@ -1411,7 +1682,8 @@ _BUILT = {}
 def elements(doc, fid):
     # ⚠️ 그림 이름은 사건마다 겹친다(verdict · issue …) — 사건 · 화면 꼴까지 열쇠로 둔다
     sync()
-    key = (doc.get("sid"), fid, S9.LAYOUT)
+    theme_of(doc)
+    key = (doc.get("sid"), fid, S9.LAYOUT, PAPER)
     if key not in _BUILT:
         spec = doc["figs"][fid]
         els = fig_of(spec["type"])(doc, spec)
@@ -1464,7 +1736,7 @@ def render(doc, c, sec, out, frames=None):
     for nm, t in adds:
         for r in els[nm].replaces:
             gone[r] = t
-    bg = bg_of(bg_n(doc, fid)).convert("RGBA")
+    bg = scene_bg(doc, c).convert("RGBA")
     n = int(round(sec * FPS)) if frames is None else frames
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -1524,7 +1796,7 @@ def still(doc, c, out):
     vis = list(shown)
     for nm, _t in adds:
         vis = [x for x in vis if x not in els[nm].replaces] + [nm]
-    im = bg_of(bg_n(doc, fid)).convert("RGBA")
+    im = scene_bg(doc, c).convert("RGBA")
     for nm in els:
         if nm in vis:
             im.alpha_composite(els[nm].sprite, dest=els[nm].xy)
