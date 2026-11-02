@@ -480,7 +480,13 @@
     ],
     "sec": 589.8,
     "made_at": "2026-11-02T14:18:11Z",
-    "talk_gaps": []
+    "talk_gaps": [],
+    "uploaded": {
+     "video_id": "kwKV3_qB-58",
+     "privacy": "private",
+     "at": "2026-11-02T14:44:50Z",
+     "publish_at": "2026-11-02T23:00:00Z"
+    }
    }
   },
   "script_sig": "5815323836f2",
