@@ -1334,7 +1334,7 @@ function worksCard() {
   if (!ks.length) {
     h += '<div class="empty">아직 만든 사건이 없습니다.<br>'
        + '아래 <b>소재 대기열</b>에서 사건을 하나 골라 '
-       + '<b>[이 사건으로 쇼츠 만들기]</b> 를 누르십시오.</div></div>';
+       + '<b>[긴 영상으로]</b> 를 누르십시오.</div></div>';
     return h;
   }
   ks.forEach((sid) => {
@@ -1346,18 +1346,59 @@ function worksCard() {
       : (up >= ps.length ? '다 올림'
       : (made >= ps.length ? '만들어짐 · 올림 ' + up + '편'
       : '만드는 중 ' + made + '/' + ps.length + '편'));
+    const long = isLongWork(w);
+    const kids = long ? teaserKids(sid) : [];
     h += '<div class="ep"><div class="ep-top"><div><b>'
        + esc(w.label || w.title || sid) + '</b>'
-       + '<small>' + esc(sid) + ' · ' + ps.length + '편 · '
-       + (w.cuts || 0) + '컷</small></div>'
+       + '<small>' + esc(sid) + ' · ' + (long ? '긴 영상 · ' : '') + ps.length + '편 · '
+       + (w.cuts || 0) + '컷'
+       + (long ? ' · 미끼 쇼츠 ' + (kids.length ? kids.join(', ') : '아직 없음') : '') + '</small></div>'
        + '<span class="pill ' + (up >= ps.length && ps.length ? 'ok' : 'go') + '">'
        + esc(state) + '</span></div>'
        + '<div class="btns">'
        + mini('열기', "openWork('" + sid + "')", 'gold')
+       + (long ? ' ' + teaserBtn(sid, w) : '')
        + '</div></div>';
   });
   h += '</div>';
   return h;
+}
+
+// ⭐⭐⭐ 2026-11-02 — 긴 영상(8~13분)이면 [미끼 쇼츠 만들기]. 쇼츠는 그 긴 영상의 조각(컷 영상 · 목소리)으로
+//    작업 칸에서 짓는다(tools/teaser.py · 편당 수백 원) — 이 페이지는 작업 칸에 보낼 말을 복사해 드린다.
+function isLongWork(w) {
+  return Number((w || {}).wall || 0) >= 600;
+}
+
+function teaserKids(sid) {
+  const w = (WORKS || {})[sid] || {};
+  return Object.keys(WORKS || {}).filter(function (k) {
+    const x = WORKS[k] || {};
+    return k !== sid && x.case_id && x.case_id === w.case_id && !isLongWork(x);
+  }).sort();
+}
+
+function teaserBtn(sid, w) {
+  return '<button class="mini gold" data-sid="' + esc(String(sid)) + '" data-nm="'
+       + esc(String((w && (w.label || w.title)) || sid)) + '" onclick="teaserAsk(this)">미끼 쇼츠 만들기</button>';
+}
+
+function teaserAsk(btn) {
+  const sid = (btn && btn.dataset && btn.dataset.sid) || '';
+  const nm = (btn && btn.dataset && btn.dataset.nm) || '';
+  if (!sid) return;
+  const say = sid + ' 「' + nm + '」 긴 영상으로 미끼 쇼츠 3~5편 만들어줘 (쇼츠 대본 먼저 보여줘)';
+  const nl = String.fromCharCode(10);
+  const tell = ['미끼 쇼츠는 다 만든 긴 영상의 조각(인물 영상 · 목소리 · 그림)으로 짓습니다.', '',
+    '클로드 작업 칸(대화창)에 아래 말을 붙여 넣어 보내 주세요:', '', say, '',
+    '순서: 쇼츠 3~5편 대본을 먼저 보여 드립니다(0원)',
+    '→ 승인하시면 만듭니다 (편당 수백 원 · 값은 먼저 보여 드립니다)',
+    '→ 다 되면 이 페이지 [4-2. 쇼츠 유튜브에 올리기] 에서 편마다 올리시면 됩니다.'].join(nl);
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText)
+      navigator.clipboard.writeText(say).catch(function () {});
+  } catch (e) { /* 복사가 안 되면 아래 글을 보고 적으시면 된다 */ }
+  alert(tell);
 }
 
 async function openWork(sid) {
@@ -1395,7 +1436,8 @@ function workDraw() {
         // ⚠️ mini() 는 id 를 안 붙인다 — lock() 이 못 찾아 단추가 안 잠기고,
         //    두 번 눌리면 값이 두 번 나간다. id 를 붙여 직접 그린다.
         + '<button class="mini" id="w-restory" onclick="workStory()">'
-        + '대본 다시 짓기</button></div>'
+        + '대본 다시 짓기</button>'
+        + (isLongWork(w) ? ' ' + teaserBtn(WORK, w) : '') + '</div>'
         + (up ? '<div class="uphint" style="color:#e0a33c;margin-top:6px">'
               + '<b>이 사건은 이미 ' + up + '편을 유튜브에 올렸습니다.</b> '
               + '대본을 다시 지으면 올라간 영상과 내용이 달라집니다.</div>'
@@ -3346,8 +3388,9 @@ function queueCard(ready) {
   h += '<div class="uphint"><b>기본 흐름: 사건 하나 → 긴 영상 1편(8~13분 · 가로) → 그 긴 영상으로 '
      + '미끼 쇼츠 3~5편.</b> 사건마다 <b>[긴 영상으로]</b> 를 누르시면 클로드 작업 칸(대화창)에 보낼 말을 '
      + '복사해 드립니다. 대본은 판결문과 대조해 짓고(0원), 값을 먼저 보여 드린 뒤 만듭니다.</div>';
-  h += '<div class="uphint" style="margin-top:4px"><b>[2분 쇼츠만]</b> 은 예전 방식입니다 — 긴 영상 없이 '
-     + '<b>세로 쇼츠 하나</b>만 짓습니다 (Gemini · 한 번에 약 600~2,100원 · 규격에 안 맞아 실패해도 값이 나갑니다).</div>';
+  // ⭐⭐⭐ 2026-11-02 손님: "왜 쓸데없는 2분 만들기는 들어가 있고 쇼츠 만들기는 안 들어가 있어?"
+  //    → 옛 [2분 쇼츠만] 단추는 뺀다(긴 영상 없이 짓는 길은 이제 안 쓴다). 쇼츠는 **다 만든 긴 영상**에서
+  //      [미끼 쇼츠 만들기] 로 간다 — 내 작품 목록 · 작품 칸에 있다 (teaserAsk).
   setTimeout(storyLastShow, 0);
   h += '<div class="uphint" style="margin-top:4px">고르는 차례: 바로 앞 편과 <b>다른 갈래</b> · '
      + '상속은 최근 <b>30% 이하</b> · <b>어르신 이야기</b> 먼저 — 맨 위가 추천입니다.</div>';
@@ -3380,10 +3423,7 @@ function queueCard(ready) {
            + '</div>'
          : '<div class="btns" style="margin-top:6px">'
            + '<button class="mini gold" data-cid="' + esc(String(q.case_id || '')) + '" '
-           + 'data-nm="' + esc(nm) + '" onclick="longAsk(this)">긴 영상으로</button> '
-           + '<button class="mini" data-cid="' + esc(String(q.case_id || '')) + '" '
-           + 'data-nm="' + esc(nm) + '" onclick="makeStory(this)">'
-           + '2분 쇼츠만 (예전 방식)</button></div>')
+           + 'data-nm="' + esc(nm) + '" onclick="longAsk(this)">긴 영상으로</button></div>')
       + '</div>';
   });
   if (all.length > QMAX)

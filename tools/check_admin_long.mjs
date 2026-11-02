@@ -55,16 +55,27 @@ vm.runInContext('WORKS = {}', ctx);
 const q = fn('queueCard')([{ case_id: '149312', case_type: '노인에게 원금보장이라며 판 파생펀드',
   gate_score: 88, topic: '노후투자사기', senior: true, one_line: '한 줄' }]);
 ck('사건마다 [긴 영상으로] 단추가 있다', /onclick="longAsk\(this\)">긴 영상으로</.test(q));
-ck('옛 단추는 [2분 쇼츠만 (예전 방식)] 이라고 똑바로 부른다 (긴 영상으로 오해하지 않게)',
-   /onclick="makeStory\(this\)">2분 쇼츠만 \(예전 방식\)</.test(q) && !q.includes('이 사건으로 쇼츠 만들기</button>'));
+// ⭐ 2026-11-02 손님: "왜 쓸데없는 2분 만들기는 들어가 있고 쇼츠 만들기는 안 들어가 있어?"
+ck('대기열에 옛 [2분 쇼츠만] 단추가 없다 (긴 영상 없이 짓는 길은 안 쓴다)',
+   !q.includes('makeStory(this)') && !q.includes('2분 쇼츠만') && !q.includes('이 사건으로 쇼츠 만들기</button>'));
 ck('안내에 기본 흐름(긴 영상 1편 → 미끼 쇼츠 3~5편)과 작업 칸에서 짓는다는 것이 적혀 있다',
    q.includes('긴 영상 1편') && q.includes('미끼 쇼츠 3~5편') && q.includes('작업 칸'));
+vm.runInContext(`WORKS = {S95: {label: '재혼 아내의 몫', case_id: '608371', wall: 899, parts: {}},
+  S96: {label: '재혼 아내의 몫 · 쇼츠', case_id: '608371', wall: 59.5, parts: {}},
+  S98: {label: '원금 보장이라던 펀드', case_id: '149312', wall: 899, parts: {}}}`, ctx);
+const wk = fn('worksCard')();
+ck('내 작품 목록 — 긴 영상마다 [미끼 쇼츠 만들기] 단추 (쇼츠 작품에는 없다)',
+   (wk.match(/onclick="teaserAsk\(this\)">미끼 쇼츠 만들기</g) || []).length === 2
+   && wk.includes('data-sid="S98"') && !wk.includes('data-sid="S96"'), wk.slice(0, 200));
+ck('긴 영상에 이미 만든 미끼 쇼츠가 보인다 (S95 → S96 · S98 → 아직 없음)',
+   wk.includes('미끼 쇼츠 S96') && wk.includes('미끼 쇼츠 아직 없음'));
+fn('teaserAsk')({ dataset: { sid: 'S98', nm: '원금 보장이라던 펀드' } });
+ck('[미끼 쇼츠 만들기] 를 누르면 작업 칸에 보낼 말(사건 번호 · 쇼츠 3~5편 · 대본 먼저)을 알려 준다',
+   alerted.includes('S98') && alerted.includes('미끼 쇼츠 3~5편') && alerted.includes('대본 먼저'), alerted.slice(0, 120));
 fn('longAsk')({ dataset: { cid: '149312', nm: '노후 투자 사기' } });
 ck('[긴 영상으로] 를 누르면 작업 칸에 보낼 말(판례 번호 · 사건 이름)을 알려 준다',
    alerted.includes('판례 149312') && alerted.includes('긴 영상으로 만들어줘')
    && alerted.includes('쇼츠 3~5편'), alerted.slice(0, 120));
-const makeSrc = js.slice(js.indexOf('async function makeStory'), js.indexOf('async function makeStory') + 900);
-ck('[2분 쇼츠 대본] 확인창이 긴 영상이 아니라고 먼저 알린다', makeSrc.includes('긴 영상이 아닙니다'));
 
 console.log('\n② 2분 드라마 · 긴 영상도 대본이 보이는가');
 const s95 = JSON.parse(readFileSync('data/series/S95.json', 'utf8'));
