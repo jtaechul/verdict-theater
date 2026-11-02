@@ -1012,7 +1012,11 @@ def fig_timeline_l(doc, spec):
             yy = at[r["id"]]
             c = col(r.get("color"), GOLD_B)
             chip(im, X, yy, r["year"], c, 32 * q)
-            para(im, TX, yy - 34 * q, r.get("who") or "", 46 * q, tmax, INK, F_NAME)
+            # 이름 줄은 **한 줄**로 — 길면 접지 않고 글씨를 줄인다 (접으면 둘째 줄이 아래 금액 줄에 겹친다 · S98 가입 줄)
+            who, sz = r.get("who") or "", 46 * q
+            while sz > 30 * q and tw(who, sz) > tmax:
+                sz -= 2
+            text(im, TX, yy - 34 * q, who, sz, INK, F_NAME)
             if r.get("what"):
                 text(im, TX, yy + 26 * q, r["what"], 36 * q, col(r.get("what_color"), SOFT), F_UI)
         return draw
