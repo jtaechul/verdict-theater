@@ -2704,5 +2704,23 @@
     "kind": "검토",
     "krw": 56,
     "note": "받아쓰기 점검 S98_part1.mp4 (목소리가 대본대로인지) · 토큰 들어간 14,900 · 나온 3,629 · 생각 9,694"
+  },
+  {
+    "date": "2026-11-02",
+    "kind": "영상",
+    "krw": 1544,
+    "note": "gemini-omni-1.1-flash 720p 10초 v_43e6f95e9de97d6e~1_720p.mp4 (어림)"
+  },
+  {
+    "date": "2026-11-02",
+    "kind": "영상",
+    "krw": 926,
+    "note": "gemini-omni-1.1-flash 720p 6초 v_f3365daca491bf6b~1_720p.mp4 (어림)"
+  },
+  {
+    "date": "2026-11-02",
+    "kind": "영상",
+    "krw": 1235,
+    "note": "gemini-omni-1.1-flash 720p 8초 v_91bb73d67ec1a179~1_720p.mp4 (어림)"
   }
 ]
