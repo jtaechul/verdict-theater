@@ -340,6 +340,11 @@ def prompt(c, shot, sec, by):
                     f"edge, {fill['main']}'s face clearly visible and sharp, "
                     f"{eye}.")
     rows.append(f"CAMERA: {lens}, {height}.")
+    if not talks and c.get("_split"):
+        rows.append(f"HALVES: at the {sec / 2:.0f}-second mark {fill['main']} moves on to a clearly "
+                    "different small action (looks up, turns toward the window, sets something "
+                    "down), so the first half and the second half look like two different "
+                    "moments of the same scene. No cut — one continuous shot.")
     rows.append("TIMELINE:")
     if talks:
         text = c["turns"][0][1]
@@ -370,13 +375,72 @@ def prompt(c, shot, sec, by):
     return "\n".join(r for r in rows if r)
 
 
-def stock(c, lib):
+# ⭐⭐ 2026-11-02 손님: "재사용하는 영상은 재사용 간격을 좀 더 띄울 수 있나? 너무 짧은 간격으로 재사용하니
+#    똑같은 영상이라 식상한데 … 화면 이동 방식을 바꾸거나" → 「변형 + 간격 규칙」 확정.
+#    ① 같은 장면은 REUSE_GAP 초 안에 다시 안 쓴다 — 그 안에 또 나오면 같은 지문으로 **새 장면을 산다**(창고 열쇠 끝 ~1, ~2).
+#    ② 다시 쓸 때는 늘 화면을 바꾼다 — 가까이 당긴 컷 · 천천히 옆으로 흐르기(두 방향) (REUSE_LOOKS · 0원).
+#       좌우 반전은 안 쓴다 — 간판·달력 글씨가 거꾸로 보인다.
+REUSE_GAP = 20.0                           # 2026-11-02 손님 「2번」 — 가장 붙은 곳만 새로 산다 (S98 컷 5·17·33)
+# ③ 2026-11-02 손님: "나레이션에서 쓸 영상은 일부러 길게 만들고 중복되지 않을 구간을 잘라서" →
+#    두 번 이상 나올 장면은 처음부터 SEC_MAX(10초)로 사서 앞 반 · 뒤 반을 번갈아 쓴다 (값은 초 단위라 가장 싸다).
+#    지문에도 「5초에서 다른 작은 동작으로」 를 넣어 두 반이 다른 순간처럼 보이게 한다.
+#    이미 산 짧은 영상(9초 미만)은 나누지 않는다 — 나누면 나레이션보다 한참 짧다.
+SPLIT_MIN = 9.0
+REUSE_LOOKS = [
+    # (확대 배율, 가로 위치 식, 세로 위치 비율) — 위치는 남는 폭(iw-ow) 기준 0~1, t 는 초 · D 는 길이
+    (1.30, "0.5", 0.30),                       # 가까운 컷 — 얼굴 쪽(위)으로 당긴다
+    (1.20, "t/D", 0.40),                       # 왼쪽 → 오른쪽으로 천천히
+    (1.24, "1-t/D", 0.35),                     # 오른쪽 → 왼쪽으로 천천히
+]
+
+
+def reuse_look(k, dur):
+    """k 번째 다시 쓰기(1부터)의 화면 바꾸기 필터 (끝에 쉼표)."""
+    z, xe, yr = REUSE_LOOKS[(k - 1) % len(REUSE_LOOKS)]
+    D = max(0.5, dur)
+    xe = xe.replace("D", f"{D:.2f}")
+    return (f"crop=trunc(iw/{z}/2)*2:trunc(ih/{z}/2)*2:"
+            f"'(iw-ow)*({xe})':'(ih-oh)*{yr}',scale=trunc(iw*{z}/2)*2:trunc(ih*{z}/2)*2,")
+
+
+def cut_starts(doc):
+    """컷마다 화면에 나오는 때(초) 어림 — 목소리가 있으면 그 길이로."""
+    t, out = 0.0, {}
+    for c in doc["cuts"]:
+        out[c["n"]] = t
+        t += narr_len(c)
+    return out
+
+
+def take_keys(doc, real):
+    """나레이션 컷마다 창고 열쇠 — 같은 장면이 REUSE_GAP 초 안에 또 나오면 새 장면(열쇠 ~1, ~2 …)."""
+    at = cut_starts(doc)
+    seen, out = {}, {}
+    for i, c in enumerate(real):
+        base = vkey(c)
+        if is_talk(c):
+            out[i] = base
+            continue
+        g = seen.get(base)
+        if g is None:
+            seen[base] = {"take": 0, "key": base, "last": at[c["n"]]}
+        elif at[c["n"]] - g["last"] < REUSE_GAP:
+            g["take"] += 1
+            g["key"] = f"{base}~{g['take']}"
+            g["last"] = at[c["n"]]
+        else:
+            g["last"] = at[c["n"]]
+        out[i] = seen[base]["key"]
+    return out
+
+
+def stock(c, lib, key=None):
     """창고에 이 장면이 있으면 그 칸, 아니면 None.
 
     ⚠️ 예전에는 늘여도(1.4배) 나레이션보다 짧으면 **새로 샀다.** 2026-10-02 손님이 "살릴 수
        있는 영상은 최대한 살리고" 하셨다 → 1.6배까지 늘이고, 그래도 모자란 만큼은 마지막
        장면에서 멈춰 선다(hold). 몇 초 멈추는지는 계획표에 찍힌다."""
-    e = lib.get(vkey(c))
+    e = lib.get(key or vkey(c))
     if not e or not (vdir() / e["raw"]).exists():
         return None
     # ⭐ 고른 화질보다 낮게 산 영상은 안 쓴다 — 720p 영상에 360p 컷이 섞이면 그 컷만 흐리다.
@@ -399,7 +463,8 @@ def plan(doc, lib=None, quiet=False):
     by = cast_of(doc)
     lib = load_lib() if lib is None else lib
     real = [c for c in doc["cuts"] if not is_fig(c)]
-    have = {i: stock(c, lib) for i, c in enumerate(real)}
+    keys = take_keys(doc, real)
+    have = {i: stock(c, lib, keys[i]) for i, c in enumerate(real)}
     # ⭐ 같은 장면의 나레이션 컷이 한 편에 두 번 이상 나오면 **한 번만 산다** (2026-10-05 · S95)
     #    예전에는 컷마다 따로 사서 같은 영상 값을 두세 번 냈다 (S95 긴 영상: 나레이션 16컷 중 6컷).
     #    뒤 컷은 앞 컷이 산 영상을 창고에서 다시 쓴다(구도도 같다). 대사 컷은 입모양이 달라 따로 산다.
@@ -407,7 +472,7 @@ def plan(doc, lib=None, quiet=False):
     for i, c in enumerate(real):
         if have.get(i) or is_talk(c):
             continue
-        dup_i = first.setdefault(vkey(c), i)
+        dup_i = first.setdefault(keys[i], i)
         if dup_i != i:
             dup[i] = dup_i
     # ⭐ 낮은 화질로 산 영상을 720p 로 다시 살 때도 **구도는 그대로** 둔다 (손님이 본 그 화면)
@@ -424,17 +489,25 @@ def plan(doc, lib=None, quiet=False):
             pinned.setdefault(j, shots[j])
             pinned[i] = pinned[j]
         shots = camera60.plan(real, pinned, tie)
+    uses = {}
+    for i, c in enumerate(real):
+        if not is_talk(c):
+            uses[keys[i]] = uses.get(keys[i], 0) + 1
     rows = {}
     for i, (c, sh) in enumerate(zip(real, shots)):
         e = have.get(i)
         j = dup.get(i)
         sec = e["sec"] if e else omni_sec(real[j] if j is not None else c)
+        if not e and j is None and not is_talk(c) and uses.get(keys[i], 0) >= 2:
+            sec, c = SEC_MAX, dict(c, _split=True)          # 두 번 이상 나올 장면 — 10초로 사서 나눠 쓴다
         refs = [card(w) for w in (c.get("who") or []) if w in by]
         rows[c["n"]] = {"n": c["n"], "shot": sh, "sec": sec,
                         "prompt": e["prompt"] if e else prompt(real[j] if j is not None else c,
                                                                sh, sec, by),
                         "refs": refs, "krw": 0 if (e or j is not None) else omni.est_krw(sec, RES),
-                        "talk": is_talk(c), "lib": e, "key": vkey(c), "fig": False,
+                        "talk": is_talk(c), "lib": e, "key": keys[i], "fig": False,
+                        "look": sum(1 for k in range(i) if keys[k] == keys[i] and not is_talk(real[k])),
+                        "uses": uses.get(keys[i], 0),
                         "dup_of": real[j]["n"] if j is not None else None}
     out = [rows.get(c["n"]) or {"n": c["n"], "shot": FIG_SHOT, "sec": 0, "prompt": "",
                                 "refs": [], "krw": 0, "talk": False, "lib": None,
@@ -767,12 +840,19 @@ def post_talk(raw, out):
     return f"말 {beg:.2f}~{fin:.2f}초 → {S9.dur_of(out):.2f}초"
 
 
-def post_narr(raw, out, need, land=False, stretch=STRETCH_MAX):
+def post_narr(raw, out, need, land=False, stretch=STRETCH_MAX, look=0, half=None):
     """나레이션 컷 — 소리는 안 쓴다. 나레이션보다 짧으면 화면만 살짝 느리게 늘인다.
-    land=True(움직여 얼굴에서 멈추는 구도)면 길 때 화면을 조금 빠르게 담아 **멈춘 얼굴까지** 보인다."""
+    land=True(움직여 얼굴에서 멈추는 구도)면 길 때 화면을 조금 빠르게 담아 **멈춘 얼굴까지** 보인다.
+    half=0/1 — 10초 영상의 앞 반 · 뒤 반만 쓴다 (같은 장면을 두 번 쓸 때 겹치지 않게)."""
     moving = unbar(raw)                        # 가로 영상 — 중간에 걷히는 까만 띠는 그만큼만 확대
     raw = moving or raw
     dur = S9.dur_of(raw)
+    if half is not None:
+        seg = dur / 2
+        cut = Path(str(out) + f".half{half}.mp4")
+        S9.run(["ffmpeg", "-y", "-v", "error", "-ss", f"{half * seg:.3f}", "-t", f"{seg:.3f}", "-i", str(raw),
+                "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "16", "-pix_fmt", "yuv420p", str(cut)])
+        raw, dur = cut, S9.dur_of(cut)
     if dur >= need:
         k = max(SQUEEZE_MIN, need / max(0.1, dur)) if land else 1.0
     else:
@@ -781,8 +861,9 @@ def post_narr(raw, out, need, land=False, stretch=STRETCH_MAX):
     # ⭐ 늘여도 모자라면 마지막 장면에서 멈춰 선다 (되돌려 이으면 장면이 튄다)
     hold = max(0.0, need - dur * k)
     pad = f",tpad=stop_mode=clone:stop_duration={hold + 0.1:.2f}" if hold > 0.02 else ""
+    lk = reuse_look(look, dur) if look else ""
     S9.run(["ffmpeg", "-y", "-v", "error", "-i", str(raw), "-an", "-vf",
-            f"{cr}setpts={k:.4f}*PTS{pad}", "-c:v", "libx264", "-preset", "veryfast",
+            f"{cr}{lk}setpts={k:.4f}*PTS{pad}", "-c:v", "libx264", "-preset", "veryfast",
             "-crf", "18", "-pix_fmt", "yuv420p", str(out)])
     got = S9.dur_of(out)
     note = f"영상 {dur:.2f}초" + (f" → 느리게 {got:.2f}초" if k > 1.0 else
@@ -795,6 +876,11 @@ def post_narr(raw, out, need, land=False, stretch=STRETCH_MAX):
         note += " · 액자 테두리를 잘라 냈다"
     if moving:
         note += " · 걷히는 까만 띠를 그만큼만 확대해 지웠다"
+    if look:
+        note += f" · 다시 쓰기 {look}번째 — 화면을 바꿨다"
+    if half is not None:
+        note += f" · 10초 영상의 {'앞' if half == 0 else '뒤'} 반"
+        Path(str(raw)).unlink(missing_ok=True)
     return note
 
 
@@ -837,9 +923,13 @@ def buy(c, r, by, d, lib):
         note = post_talk(raw, out)
     else:
         sh = r["shot"]
+        lk = r.get("look") or 0
+        half = None
+        if (r.get("uses") or 0) >= 2 and S9.dur_of(raw) >= SPLIT_MIN:
+            half, lk = lk % 2, (lk if lk >= 2 else 0)      # 1·2번째는 앞 반 · 뒤 반, 3번째부터 화면도 바꾼다
         note = post_narr(raw, out, narr_len(c) + 0.05,
                          land=sh["kind"] in ("est", "end") or sh["move"] in LAND_MOVES,
-                         stretch=STRETCH_REUSE if r["lib"] else STRETCH_MAX)
+                         stretch=STRETCH_REUSE if r["lib"] else STRETCH_MAX, look=lk, half=half)
     return c["n"], f"{how} · {note}"
 
 
