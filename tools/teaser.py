@@ -102,6 +102,10 @@ MARK_Y, MARK_SIZE = 44, 34
 # ── 시간 ──────────────────────────────────────────────────────
 LEAD = 0.10                                    # 첫 말이 나오는 때 (도장이 앉는 순간과 같다)
 GAP = 0.18                                     # 말과 말 사이 (미끼 쇼츠는 숨 가쁘게)
+# ⭐⭐⭐ 2026-11-03 손님: "쇼츠에서 앞부분에 훅 나오는 부분이 너무 짧게 지나가 버리잖아" — 도장은 그 컷이 끝나면
+#    사라지는데, 대사 끝에 찍으면(S99 4편: 2.43초에 찍고 2.5초에 컷이 끝남) 0.1초 만에 사라졌다.
+#    → 도장이 찍힌 뒤 **적어도 STAMP_HOLD 초는 화면에 남게** 그 컷을 그만큼 붙잡는다 (말 없이 화면만 이어 간다).
+STAMP_HOLD = 2.0
 STAMP_IN = 0.18                                # 첫 도장이 '쾅' 찍히는 때 (편마다 stamp_at 으로 바꾼다 · 첫 화면은 얼굴이 깨끗하다)
 STAMP_DROP = 0.16                              # 공중에서 내려오는 시간 (점점 빨라진다)
 STAMP_SQUASH = 0.05                            # 찍힌 순간 눌려 납작한 시간
@@ -502,6 +506,10 @@ def timeline(doc, part, pieces):
     for i, c in enumerate(cs):
         path, a, src_at, *rest = pieces[c["n"]]
         gap = 0.0 if c.get("cliff") else float(c.get("gap", GAP))
+        if i == 0:                                 # 첫 도장이 STAMP_HOLD 초는 머물게 (짧으면 컷을 붙잡는다)
+            gap = max(gap, stamp_time(part) + STAMP_HOLD - (t + a))
+        if c.get("slam") and not c.get("cliff"):    # 가운데 도장도 같다 — 찍은 뒤 STAMP_HOLD 초
+            gap = max(gap, float(c["slam"].get("at") or 0.0) + STAMP_HOLD - a)
         # 첫 컷 화면은 0.0초부터 — 말(LEAD)보다 먼저 얼굴이 떠 있다
         t0 = 0.0 if i == 0 else t
         segs.append({"c": c, "t0": t0, "t1": t + a + gap, "at": t, "a": a,
@@ -1119,6 +1127,8 @@ def step_plan(doc):
                 need += 0 if ok else ST90.chars(c)
                 kind = "나레이션" + ("" if ok else "(어림)")
             gap = 0.0 if c.get("cliff") else float(c.get("gap", GAP))
+            if c is part_cuts(doc, p)[0]:
+                gap = max(gap, stamp_time(p) + STAMP_HOLD - (t + a))
             print(f"  {t:5.1f}초  컷{c['n']:>2} 본편 c{c['clip']:<3} {kind:<12} {a:4.1f}초  {text_of(c)}"
                   + ("   ← 여기서 끊는다" if c.get("cliff") else ""))
             t += a + gap

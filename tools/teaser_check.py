@@ -211,6 +211,19 @@ def main():
     fx4 = [(n, round(t, 2)) for n, t in T.fx_list(segs4, cl4)]
     ck("편 가운데 도장에도 '쾅' 이 난다", ("stamp", round(segs4[1]["at"] + 0.5 - 0.03, 2)) in fx4, fx4)
     ck("가운데 도장 꼴이 틀리면 막는다", bad_of(lambda d: d["cuts"][1].update({"slam": "0원"})) != "")
+    # ⭐⭐⭐ 2026-11-03 손님 "앞부분에 훅 나오는 부분이 너무 짧게 지나가 버리잖아" (S99 4편: 2.43초에 찍고 0.1초 만에 사라짐)
+    d5 = copy.deepcopy(doc)
+    d5["cuts"][0].update({"talk": True, "tag": "아들"})
+    d5["parts"][0]["stamp_at"] = 2.4
+    p5 = {1: ("a1.wav", 2.4, 0.0), 2: ("a2.wav", 2.0, 0.1), 3: ("a3.wav", 1.5, 3.0)}
+    segs5, _, _, _ = T.timeline(d5, d5["parts"][0], p5)
+    ck(f"첫 도장은 찍힌 뒤 {T.STAMP_HOLD:.0f}초는 남는다 (말 끝에 찍어도 첫 컷을 붙잡는다)",
+       segs5[0]["t1"] - 2.4 >= T.STAMP_HOLD - 1e-6, f"{segs5[0]['t1'] - 2.4:.2f}초")
+    d6 = copy.deepcopy(doc)
+    d6["cuts"][1]["slam"] = {"lines": ["돌아온 것", "0원"], "at": 1.8}
+    segs6, _, _, _ = T.timeline(d6, d6["parts"][0], pieces)
+    ck(f"가운데 도장도 찍힌 뒤 {T.STAMP_HOLD:.0f}초는 남는다",
+       segs6[1]["t1"] - (segs6[1]["at"] + 1.8) >= T.STAMP_HOLD - 1e-6)
 
     print("\n■ ⑤-2 자막 — 문장마다 소리 쉼에 맞춘다")
     seg5 = {"c": {"turns": [["아들", "10년이 지났습니다. 너무 늦으셨어요."]], "gold": []},
