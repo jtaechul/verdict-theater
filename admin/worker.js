@@ -695,6 +695,9 @@ const WF = ${JSON.stringify(WORKFLOWS)};
 const STAGE = ${JSON.stringify(STAGE_LABEL)};
 const WHEN_SLOT = ${JSON.stringify(WHEN_SLOT)};
 const WHEN_NOW = ${JSON.stringify(WHEN_NOW)};
+// ⚠️ 2026-11-03 — 이 둘을 페이지에 안 실어 [유튜브에 올리기] 가 날짜를 고르면 멈췄다 (AT_RE is not defined)
+const WHEN_PICK = ${JSON.stringify(WHEN_PICK)};
+const AT_RE = new RegExp(${JSON.stringify(AT_RE.source)});
 let S = null;
 let VIEW = 'home';   // 지금 보고 있는 화면. 대본을 보는 중에 첫 화면이 끼어들지 않게 한다
 let QTOPIC = '';     // 대기열에서 지금 고른 갈래 (''=전체)
