@@ -556,7 +556,13 @@
     ],
     "sec": 25.0,
     "made_at": "2026-11-03T12:45:14Z",
-    "talk_gaps": []
+    "talk_gaps": [],
+    "uploaded": {
+     "video_id": "K07wcT8Yzr8",
+     "privacy": "private",
+     "at": "2026-11-03T14:22:56Z",
+     "publish_at": "2026-11-03T23:07:00Z"
+    }
    },
    "4": {
     "no": 4,
