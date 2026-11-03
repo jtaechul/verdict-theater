@@ -48,7 +48,7 @@ def ck(name, ok, why=""):
         bad.append(name)
 
 
-def run_block(privacy, part, every="24", when=""):
+def run_block(privacy, part, every="24", when="", at=""):
     """워크플로의 올리는 칸을 **그대로 뽑아** 돌린다 (업로드는 흉내만)."""
     y = (ROOT / ".github" / "workflows" / "short90-upload.yml").read_text(
         encoding="utf-8")
@@ -67,7 +67,7 @@ def run_block(privacy, part, every="24", when=""):
     (d / "src").mkdir()
     (d / "src" / "upload.py").write_text(
         "import sys\nprint('UP ' + ' '.join(sys.argv[1:]))\n")
-    sh = f'P={privacy}\nPART={part}\nDRY=""\nS=S91\nEVERY={every}\nWHEN="{when}"\n' + blk
+    sh = f'P={privacy}\nPART={part}\nDRY=""\nS=S91\nEVERY={every}\nWHEN="{when}"\nAT="{at}"\n' + blk
     r = subprocess.run(["bash", "-c", sh], cwd=d, capture_output=True, text=True)
     out = []
     for line in r.stdout.splitlines():
@@ -96,11 +96,29 @@ def main():
        all(a for _n, a in got),
        " · ".join(f"{n}편={'예약' if a else '즉시'}" for n, a in got))
     ts = [kst(a) for _n, a in got]
-    ck(f"전부 한국 아침 {NS.HOUR_KST}시다 ({' · '.join(f'{t:%m-%d %H:%M}' for t in ts)})",
-       all(t.hour == NS.HOUR_KST and t.minute == 0 for t in ts))
-    ck("하루씩 띄운다",
-       all((ts[i + 1] - ts[i]).days == 1 for i in range(len(ts) - 1)),
+    # ⭐ 2026-11-03 손님 "정각 … 5분이나 10분 정각이 되지 않도록" — 분은 1~19 가운데 5로 안 나눠떨어지는 것
+    ck(f"전부 한국 아침 {NS.HOUR_KST}시 X분 — 정각·5분 단위가 아니다 ({' · '.join(f'{t:%m-%d %H:%M}' for t in ts)})",
+       all(t.hour == NS.HOUR_KST and 1 <= t.minute <= 19 and t.minute % 5 for t in ts))
+    ck("하루씩 띄운다 (분만 조금 다르다)",
+       all(abs((ts[i + 1] - ts[i]).total_seconds() - 86400) <= 20 * 60 for i in range(len(ts) - 1)),
        str([str(ts[i + 1] - ts[i]) for i in range(len(ts) - 1)]))
+    ck("같은 날 같은 분이 아니다 — 편마다 · 날마다 분이 다르다", len({t.minute for t in ts}) == len(ts))
+    many = [kst(NS.slot(k)) for k in range(30)]
+    ck("한 달 내내 정각·5분 단위가 하나도 없다", all(t.minute % 5 for t in many))
+
+    print("\n① -2 날짜·시각을 직접 고르시면 그 때 (2026-11-03 손님 \"시간 분을 선택할 수 있게 해줘, 날짜랑\")")
+    fut = (datetime.now(NS.KST) + timedelta(days=3)).strftime("%Y-%m-%d") + " 08:07"
+    pk = run_block("public", "all", when="예약 — 날짜·시각 직접 고름", at=fut)
+    pts = [kst(a) for _n, a in (pk or []) if a]
+    ck(f"고른 시각 그대로 · 다음 편은 하루씩 뒤 같은 시각 ({' · '.join(f'{t:%m-%d %H:%M}' for t in pts)})",
+       len(pts) == 3 and f"{pts[0]:%Y-%m-%d %H:%M}" == fut
+       and all((pts[i + 1] - pts[i]).total_seconds() == 86400 for i in range(2)), str(pk))
+    past = run_block("public", "1", when="예약 — 날짜·시각 직접 고름", at="2020-01-01 08:07")
+    ck("지난 시각을 고르면 올리지 않고 멈춘다", past == [], str(past))
+    ck("관리자 페이지에 날짜·시각 칸이 있고 워크플로 글자와 같다",
+       "type=\"date\" id=\"w-day-'" in (ROOT / "admin" / "worker.js").read_text(encoding="utf-8")
+       and "'예약 — 날짜·시각 직접 고름'" in (ROOT / ".github" / "workflows" / "short90-upload.yml").read_text(encoding="utf-8")
+       and "const WHEN_PICK = '예약 — 날짜·시각 직접 고름'" in (ROOT / "admin" / "worker.js").read_text(encoding="utf-8"))
 
     print("\n② 한 편만 올릴 때도 걸리는가 (여기가 비어 있었다)")
     one = run_block("public", "2")

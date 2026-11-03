@@ -174,6 +174,10 @@ const STAGE_LABEL = {
 //    **글자 하나까지 같아야** 한다 (다르면 깃허브가 422 로 통째로 거절한다).
 const WHEN_SLOT = '예약 — 한국 아침 8시 (권장)';
 const WHEN_NOW = '지금 바로 공개';
+// ⭐ 2026-11-03 손님: "정각 … 되지 않도록 · 내가 아니면 시간 분을 선택할 수 있게 해줘, 날짜랑"
+//    날짜·시각을 고르시면 이 글자로 보내고 at 칸에 그 시각을 실어 보낸다 (short90-upload.yml 과 글자 하나까지 같게).
+const WHEN_PICK = '예약 — 날짜·시각 직접 고름';
+const AT_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
 const YT_LEAD_TAGS = ['사연'];
 const YT_BASE_TAGS = ['사이다사연', '반전사연', '막장드라마', '부부',
                       '판결극장', '사연극장', '실화사건'];
@@ -1954,7 +1958,14 @@ function partsCard(w) {
        + '<option>' + WHEN_SLOT + '</option>'
        + '<option>' + WHEN_NOW + '</option></select>'
        + '<div class="uphint">예약이 조회수가 훨씬 좋았습니다 (바로 공개 2건 349·0회 · '
-       + '예약 8건 1,212~2,946회).</div></div>';
+       + '예약 8건 1,212~2,946회).</div>'
+       // ⭐ 2026-11-03 — 날짜·시각을 직접 고르는 칸. 비우면 아침 8시 X분(정각·5분 단위를 피한 분).
+       + '<div style="display:flex;gap:8px;margin-top:8px">'
+       + '<input type="date" id="w-day-' + no + '" style="flex:1;font-size:14px">'
+       + '<input type="time" id="w-at-' + no + '" step="60" style="flex:1;font-size:14px"></div>'
+       + '<div class="uphint">날짜·시각을 고르시면 그 때 공개합니다 (한국 시각 · 적어도 1시간 뒤). '
+       + '비우면 <b>아침 8시 X분</b> — 정각·5분·10분을 피해 날마다 다른 분에 올립니다. '
+       + '정각·5분 단위는 다른 채널 예약과 겹치니 <b>8:07 · 8:13</b> 처럼 고르시길 권합니다.</div></div>';
     h += '<div class="btns" style="margin-top:12px">'
        + mini('연습 (올리지 않고 확인만)', 'workUp(' + no + ',1)')
        + '<button class="gold" id="w-up-' + no + '" onclick="workUp(' + no + ',0)">'
@@ -2407,14 +2418,27 @@ async function workUp(no, dry) {
   const p = ((w.parts || {})[String(no)]) || {};
   const priv = (document.getElementById('w-priv-' + no) || {}).value
              || '비공개 (나만 보기)';
-  const when = (document.getElementById('w-when-' + no) || {}).value || WHEN_SLOT;
+  let when = (document.getElementById('w-when-' + no) || {}).value || WHEN_SLOT;
+  const day = ((document.getElementById('w-day-' + no) || {}).value || '').trim();
+  const hm = ((document.getElementById('w-at-' + no) || {}).value || '').trim();
+  let at = '';
+  if (day || hm) {
+    if (!day || !hm) { showErr('날짜와 시각을 둘 다 고르십시오', '하나만 고르시면 언제 공개할지 정할 수 없습니다.'); return; }
+    at = day + ' ' + hm.slice(0, 5);
+    if (!AT_RE.test(at)) { showErr('날짜·시각 꼴이 틀렸습니다', at); return; }
+    if (new Date(day + 'T' + hm.slice(0, 5) + ':00+09:00').getTime() < Date.now() + 3600 * 1000) {
+      showErr('너무 가깝거나 지난 시각입니다', '적어도 1시간 뒤로 고르십시오 (유튜브가 영상을 변환할 시간).'); return;
+    }
+    if (when !== WHEN_NOW) when = WHEN_PICK;
+  }
   const body = partBody(no);
   if (!body.title) { showErr('제목이 비었습니다', no + '편 제목을 적어 주십시오.'); return; }
   if (!dry) {
     const lines = [no + '편을 유튜브에 올릴까요?', '', body.title, '', '공개 범위: ' + priv];
     if (priv === '공개 (모두에게)')
       lines.push('공개 시각: ' + (when === WHEN_NOW ? '올라가는 대로 바로'
-                                                 : '한국 아침 8시 예약'));
+                                 : (at ? at + ' (한국 시각) 예약'
+                                       : '한국 아침 8시 X분 예약 (정각·5분 단위 피함)')));
     if (p.uploaded)
       lines.push('', '⚠️ 이 편은 이미 올렸습니다 (' + (p.uploaded.privacy || '') + ').',
                  '누르면 같은 영상이 하나 더 올라갑니다.');
@@ -2439,7 +2463,7 @@ async function workUp(no, dry) {
   try {
     const r = await fetch('/api/upload-short90', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sid: WORK, part: String(no), privacy: priv, when: when,
+      body: JSON.stringify({ sid: WORK, part: String(no), privacy: priv, when: when, at: at,
                              dry: !!dry, parts: [body] }),
     });
     const j = await r.json();
@@ -4990,7 +5014,9 @@ export default {
         const mode = (body && body.dry)
           ? '연습 (올리지 않고 확인만)' : '진짜로 올리기';
         // ⭐ 2026-10-03 — 공개 시각: 손님이 [지금 바로 공개] 를 고르셨을 때만 예약을 뺀다
-        const when = String((body && body.when) || '') === WHEN_NOW ? WHEN_NOW : WHEN_SLOT;
+        const at = AT_RE.test(String((body && body.at) || '')) ? String(body.at) : '';
+        const when = String((body && body.when) || '') === WHEN_NOW ? WHEN_NOW
+                   : (at ? WHEN_PICK : WHEN_SLOT);
         // 예약 간격 — all 일 때만 쓴다. 기본 하루.
         const eh = parseInt((body && body.every_hours) || '', 10);
         const every = (Number.isInteger(eh) && eh >= 1 && eh <= 168)
@@ -5014,7 +5040,7 @@ export default {
         try {
           await gh(env, `/repos/${REPO}/actions/workflows/short90-upload.yml/dispatches`, {
             method: 'POST', body: JSON.stringify({ ref: BRANCH,
-              inputs: { sid: sid, part: part, privacy: priv, mode: mode, when: when,
+              inputs: { sid: sid, part: part, privacy: priv, mode: mode, when: when, at: at,
                         every_hours: every, meta: fresh || '',
                         fix_only: fixOnly ? '예 — 제목·설명만 고친다'
                                           : '아니오 — 새로 올린다' } }),
