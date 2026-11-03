@@ -534,7 +534,13 @@
     ],
     "sec": 22.8,
     "made_at": "2026-11-02T15:53:35Z",
-    "talk_gaps": []
+    "talk_gaps": [],
+    "uploaded": {
+     "video_id": "W-CbN41n67s",
+     "privacy": "private",
+     "at": "2026-11-03T10:42:48Z",
+     "publish_at": "2026-11-03T23:00:00Z"
+    }
    },
    "3": {
     "no": 3,
